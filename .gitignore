@@ -1,0 +1,22 @@
+# Godot 4+ specific ignores
+.godot/
+*.import
+
+# Exported builds
+export/
+build/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Blender temp
+*.blend1
+
+# Logs
+*.log
