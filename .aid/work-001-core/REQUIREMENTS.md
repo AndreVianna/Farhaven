@@ -6,6 +6,12 @@
 |------|--------|--------|
 | 2026-03-30 | Initial interview started | /aid-interview |
 | 2026-03-30 | Interview complete — approved | /aid-interview |
+| 2026-03-30 | Cross-ref: Split Build vs Craft — Build button always visible for structures, Craft only near Workbench | /aid-interview (IQ1) |
+| 2026-03-30 | Cross-ref: Storage Chest recipe changed to Raw-tier only for MVP; Campfire noted for future work | /aid-interview (IQ2) |
+| 2026-03-30 | Cross-ref: Grassland defined as safe starter biome, distinct from Forest; progression curve established | /aid-interview (IQ3) |
+| 2026-03-30 | Cross-ref: Water tiles as impassable terrain in worldgen; Bridge stays in MVP (6 Wood + 2 Fiber) | /aid-interview (IQ4) |
+| 2026-03-30 | Added hex elevation system — tiles have height, steep elevation impassable in MVP (Climbing Gear deferred) | User request |
+| 2026-03-30 | Deferred Bridge to future work — water tiles fully impassable in MVP | User request |
 
 ## 1. Objective
 
@@ -49,7 +55,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 
 ### In Scope (core MVP)
 - Hex grid rendering + procedural map generation
-- 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone
+- 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone + Water tiles (impassable terrain, not a full biome)
 - Player movement (tap-to-move + virtual joystick)
 - Resource gathering (Raw tier minimum)
 - Basic crafting (Workbench level)
@@ -60,13 +66,15 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - Save system (serialize world state + player state to JSON)
 
 ### Out of Scope (this work)
-- Full 8 biomes (Volcanic, Swamp, Ruins, Desert, Water)
+- Full 8 biomes (Volcanic, Swamp, Ruins, Desert, Water as full biome with resources/hazards)
 - Ship repair / escape ending
 - Advanced crafting chains (Furnace, Lab, Launch Pad)
 - Monetization / demo gate implementation
 - Audio / music
 - Cloud save (Google Play Games + Apple Game Center — planned for later work)
 - Store listings / publishing
+- Climbing Gear (traversal over steep elevation — deferred to future work)
+- Bridge (crossing water tiles — deferred to future work)
 - Multiplayer (not "later" — never. Game is designed single-player, architecture doesn't need networking)
 - In-app purchases (none, ever — the entire product identity is anti-predatory)
 
@@ -80,7 +88,14 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 ### F1. Hex Grid & World Generation
 - Procedural hex map using axial/cube coordinates (~200–300 tiles)
 - Biome assignment: Grassland, Forest, Rocky (weighted distribution + adjacency rules)
+  - **Grassland:** Open, safe starter biome. Resources: Grass, Berries, Fiber. No hazards.
+  - **Forest:** Dense, more wood. Resources: Wood, Fiber, Berries (thick trees tool-gated). Hazard: Thorns (damage).
+  - **Rocky:** Stone, Ore, Crystals. Hazard: Rockslide (blocks path).
+- Natural progression curve: Crash Site → Grassland → Forest → Rocky (map generation should weight biome placement accordingly)
 - Crash Site placed near center (scripted, not random)
+- Water tiles: impassable terrain barriers (not a full biome — no resources, no hazards). Worldgen distributes water tile clusters between biomes to create chokepoints and guide early-game exploration. Impassable in core MVP (Bridge deferred).
+- **Elevation:** Each hex tile has an elevation value. Biomes influence elevation ranges (e.g., Rocky trends higher, Grassland trends lower). Worldgen produces natural-looking terrain with smooth gradients and occasional cliffs.
+- **Elevation movement rule:** Player can traverse between adjacent hexes only if the elevation difference ≤ a threshold (e.g., ≤1 level). Greater differences are impassable in core MVP. Climbing Gear (tool-gated traversal) deferred to future work.
 - Fog of war — tiles reveal when player moves adjacent to them (not passively)
 
 ### F2. Player Movement & Controls
@@ -88,6 +103,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - Floating joystick: touch-and-hold anywhere on screen → joystick appears at touch point. Not a fixed button or zone.
 - Hold = joystick (fine movement), Tap = pathfind (navigation). Both work simultaneously, no toggle needed.
 - Ignore touches on HUD elements
+- Elevation-aware pathfinding: A* considers elevation thresholds — steep tiles treated as impassable (Climbing Gear deferred)
 - No stamina bar — player can always move, no artificial movement limits
 
 ### F3. Resource Gathering
@@ -101,11 +117,10 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - Gathering feedback (animation/SFX, even placeholder for MVP)
 
 ### F4. Crafting
-- Workbench structure (5 Wood + 3 Stone) — required for crafting
+- Crafting (item recipes) requires being near a Workbench — Craft button appears in HUD only when adjacent to Workbench
 - Progressive recipe discovery: recipes unlock when the player gathers a new material (avoids overwhelm early on)
-- MVP recipes:
+- MVP craft recipes (items made at Workbench):
   - Tools: Stone Axe (Wood + Stone), Stone Pickaxe (Wood + Stone)
-  - Structures: Shelter, Storage Chest, Wall, Torch, Bridge
 
 ### F5. Inventory
 - Grid-based, limited slots (~12 base slots)
@@ -114,10 +129,16 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - Expandable via Storage Chest (+12 slots per chest)
 
 ### F6. Building
+- Build button always visible in HUD — opens menu of structures placeable on adjacent hex tiles
+- Building is separate from Crafting: Build = place structures, Craft = make items at Workbench
+- Workbench is the first thing the player builds (unlocks crafting)
 - Place structures on hex tiles (one structure per tile)
 - Structures have HP (can be damaged by night fauna)
 - Structures block movement (walls, workbench) — important for night defense
 - Shelter = safe zone at night (core purpose: player sleeps through night safely)
+- MVP buildable structures: Workbench, Shelter, Storage Chest, Wall, Torch
+- MVP structure recipes use Raw-tier materials only (no Metal, no Furnace)
+- Note: Campfire (pre-Furnace processing structure) planned for future work, not core MVP
 
 ### F7. Day/Night Cycle
 - Day (~3 min real time) → Dusk (30s warning, screen tint) → Night (~1.5 min) → Dawn
@@ -156,7 +177,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 ### F12. HUD Layout
 - Top: HP, Hunger, Thirst bars (compact horizontal)
 - Top-right: Day counter ("Day 7") + time-of-day icon
-- Bottom-right: Inventory button, Crafting button (when near Workbench)
+- Bottom-right: Inventory button, Build button (always visible), Crafting button (only when near Workbench)
 - No fixed joystick zone (floating, appears at touch point)
 - No minimap (fog of war is the point)
 - Minimal, translucent — screen is the game, not the UI
@@ -251,7 +272,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 
 ### AC2 — Movement
 - [ ] Tap any revealed tile → character arrives via shortest path
-- [ ] Path avoids impassable tiles (water, structures)
+- [ ] Path avoids impassable tiles (water, structures) and too-steep elevation changes
 - [ ] Joystick appears at touch point on hold, character moves continuously
 - [ ] Both input modes work without settings toggle
 - [ ] Input-to-first-movement-frame < 100ms (measured)
