@@ -318,7 +318,29 @@ Before presenting for approval, verify:
 
 If issues found, ask the user to clarify instead of approving.
 
-### Step 2: Present Summary
+### Step 2: KB Hydration
+
+The interview captured project knowledge that belongs in the Knowledge Base — not just
+in REQUIREMENTS.md. Before approval, populate KB docs from what was learned.
+
+Read `references/kb-hydration.md` for the full process.
+
+In summary:
+1. **Extract** — scan REQUIREMENTS.md and write substantive content into each KB document
+   (technology-stack.md, coding-standards.md, architecture.md, infrastructure.md, etc.)
+2. **Gap check** — identify KB docs still empty where the user likely has answers
+3. **Ask** — for each gap the user would reasonably know, ask ONE question at a time
+   (same interactive pattern as the interview). If the user says "skip", respect it.
+4. **Update meta** — refresh README.md completeness table, INDEX.md summaries,
+   DISCOVERY-STATE.md, and REQUIREMENTS.md change log
+
+**This step is mandatory.** Do not skip it even if the user seems eager to approve.
+The KB is consumed by all downstream phases — empty KB docs force specify/detail/execute
+to guess.
+
+After hydration is complete, proceed to the summary.
+
+### Step 3: Present Summary
 
 ```
 I believe I have enough information. Here's a summary:
@@ -335,7 +357,7 @@ Is there anything else we should consider, or are the requirements ready?
 [2] Additional consideration: ___
 ```
 
-### Step 3: Process Response
+### Step 4: Process Response
 
 - **[1] Approved:**
   - Set `**Status:** Approved` in INTERVIEW-STATE.md
