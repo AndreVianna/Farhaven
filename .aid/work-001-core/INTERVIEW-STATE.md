@@ -67,3 +67,4 @@
 | 4 | 2026-03-30 | — | User request | Added hex elevation system to F1, F2, AC1, AC2 |
 | 5 | 2026-03-31 | — | User redesign | MAJOR REDESIGN: New identity (curiosity+story), episodic chapters, auto-interaction, scanner/catalog (F13), journal (F14), fauna/flora personality, Tactical Brutalism discarded. All sections updated. Existing feature SPECs need reconciliation. |
 | 6 | 2026-03-31 | — | Feature Decomposition | 12 features created (replacing old 8). Old features 003-008 archived. New: 003-scanner-catalog, 004-auto-interaction, 005-inventory, 006-crafting, 007-survival-stats, 008-day-night-cycle, 009-building, 010-night-threats, 011-journal, 012-hud. Features 001-002 kept with stale warning. |
+| 7 | 2026-03-31 | — | Delivery Plan | 6 deliveries: Walk → See → Interact → Survive → Defend → Understand. Post-redesign. |

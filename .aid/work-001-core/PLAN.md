@@ -1,97 +1,161 @@
-# Delivery Plan — work-001-core
+# Delivery Plan — work-001-core (Post-Redesign)
 
 **Status:** Approved
 **Created:** 2026-03-31
-**Features:** 8 (all SPECs Ready)
+**Features:** 12 (all SPECs Ready)
+**Replaces:** Pre-redesign plan (8 features, 4 deliveries — invalidated)
 
 ## Dependency Map
 
 | Feature | Depends On | Enables |
 |---------|-----------|---------|
 | 001 Hex Grid | -- (foundation) | All features |
-| 002 Player Movement | 001 | 003, 005, 006, 007, 008 |
-| 003 Resource Gathering | 001, 002, 004 | 005 (discovery trigger) |
-| 004 Inventory | 001 | 003, 005, 006, 008 |
-| 005 Crafting | 004, 008 (Workbench) | 003 (tools unlock gated resources) |
-| 006 Survival Stats | 002, 004, 007, 008 | -- |
-| 007 Day/Night Cycle | 001, 002 | 006, 008 |
-| 008 Building & Threats | 001, 002, 004, 007 | 005, 006 |
+| 002 Player Movement | 001 | 003, 004, 008, 009, 010, 011 |
+| 012 HUD & UI Framework | -- (framework) | All features (feedback, panels, buttons) |
+| 003 Scanner & Catalog | 001, 002 | 004 (catalog gate), 010 (surprise catalog), 011 (anomaly trigger) |
+| 005 Inventory | -- (standalone RefCounted) | 004 (add_item), 006 (has/remove/set_tool), 007 (item_used, drops), 009 (has/remove for building) |
+| 004 Auto-Interaction | 003 (catalog gate), 005 (inventory). Auto-defend stub: 010. Auto-pickup stub: 007. | 012 (floating text feedback) |
+| 006 Crafting | 005 (inventory API), 009 (workbench must exist) | 004 (tools unlock gated resources) |
+| 008 Day/Night + Save | 001 (refresh_visibility), 002 (tile_entered) | 007 (is_daytime, dawn), 010 (night/dawn signals), 011 (day_started) |
+| 007 Survival Stats | 005 (item_used, remove_item), 008 (is_daytime, dawn) | 004 (ground item API) |
+| 009 Building | 001 (tile queries), 005 (materials) | 002 (pathfind update), 006 (workbench), 007 (shelter respawn), 008 (torch tracking), 010 (wall/shelter/torch) |
+| 010 Night Threats | 001, 008 (night/dawn), 003 (surprise catalog) | 004 (auto-defend activates), 007 (meat drops, take_damage) |
+| 011 Journal | 003 (entry_cataloged), 008 (day_started) | -- (terminal — narrative payoff) |
+
+**Key dependency notes:**
+- F-005 (Inventory) has zero feature dependencies — standalone RefCounted
+- F-004 (Auto-Interaction) auto-gather needs only F-003 + F-005. Auto-defend (F-010) and auto-pickup (F-007) are stubs that activate when those features arrive. Core loop is NOT blocked by P1.
+- F-012 (HUD) consumes signals from all features but has no upstream dependency
 
 ## Deliveries
 
-### delivery-001: World Foundation
+### delivery-001: Foundation — Walk the World
 
-**Features:** feature-001-hex-grid, feature-002-player-movement
-**Depends on:** -- (foundation)
-**Cumulative state:** Walk and explore
+**Features:** 001 (Hex Grid) + 002 (Player Movement) + 012 (HUD & UI Framework)
+**Depends on:** --
+**Cumulative state:** Walk around an alien hex world with fog of war, camera follow, HUD shell
 
 Build order:
-1. feature-001 (Hex Grid) — HexGrid autoload, HexTile, MultiMesh rendering, worldgen
-2. feature-002 (Player Movement) — Player node, AStar2D, Camera, JoystickOverlay
+1. feature-001 (Hex Grid) — world exists
+2. feature-012 (HUD) — UI framework ready for all future features to plug into
+3. feature-002 (Player Movement) — player can explore
 
-The first playable moment: crash-land on a hex world, move around, reveal fog of war,
-see biomes and elevation. Foundation for everything else.
+Playable: generate map, walk around, reveal fog, see biomes and elevation. HUD shows
+placeholder stat bars, day counter, button slots. Every subsequent feature plugs into
+this foundation.
 
-**AC coverage:** AC1 (grid generation), AC2 (movement)
+**AC coverage:** AC1 (grid), AC2 (movement, partial — no scan input yet)
 
-### delivery-002: Inventory + Gathering
+### delivery-002: See and Know — Scanner + Inventory
 
-**Features:** feature-004-inventory, feature-003-resource-gathering
+**Features:** 003 (Scanner & Catalog) + 005 (Inventory)
 **Depends on:** delivery-001
-**Cumulative state:** Collect resources
+**Cumulative state:** Scan ❓ elements, build catalog, carry items
 
 Build order:
-1. feature-004 (Inventory) — Inventory RefCounted, HUD CanvasLayer, InventoryPanel, tool slots
-2. feature-003 (Resource Gathering) — GatherSystem, ResourceRenderer, respawn queue
+1. feature-005 (Inventory) — standalone, no dependencies
+2. feature-003 (Scanner & Catalog) — needs player_input scan signals from F-002
 
-First half of the core loop: explore, gather, carry. Limited to bare-hands resources
-(berries, fiber, surface wood) since tools arrive in delivery-004. Tool-gated resources
-show "Requires Stone Axe" feedback — not a silent fail.
+These two are independent of each other but both are needed by delivery-003. Building
+them together means the player can scan the world AND has somewhere to put items.
+The ❓ → scan → identified loop is the game's identity.
 
-**AC coverage:** AC3 (gathering), AC5 (inventory)
+**AC coverage:** AC5 (inventory), AC11 (scanner/catalog), AC2 (scan input complete)
 
-### delivery-003: Day/Night + Building & Threats
+### delivery-003: Movement IS Interaction — Auto-Gather + Crafting
 
-**Features:** feature-007-day-night-cycle, feature-008-building-threats
-**Depends on:** delivery-001, delivery-002
-**Cumulative state:** Survive the night
-
-Build order:
-1. feature-007 (Day/Night Cycle) — DayNightCycle autoload, SaveManager autoload, refresh_visibility, lighting, day counter HUD
-2. feature-008 (Building & Threats) — BuildingSystem, FaunaManager, Build panel, structure/fauna rendering, combat
-
-Game transforms from "walk and collect" into "survive the night." Day/night rhythm,
-save/load, structures (Workbench, Shelter, Wall, Torch), fauna, combat. Meat drops
-accumulate in inventory but have no stat effect until delivery-004.
-
-**AC coverage:** AC6 (building), AC7 (day/night), AC9 (night threats), AC10 (save system)
-
-### delivery-004: Crafting + Survival Stats
-
-**Features:** feature-005-crafting, feature-006-survival-stats
-**Depends on:** delivery-001, delivery-002, delivery-003
-**Cumulative state:** Complete MVP loop
+**Features:** 004 (Auto-Interaction, auto-gather active) + 006 (Crafting)
+**Depends on:** delivery-002
+**Cumulative state:** Walk near cataloged resources → auto-gather → craft tools
 
 Build order:
-1. feature-005 (Crafting) — CraftingSystem, recipe discovery, CraftingPanel, Workbench proximity
-2. feature-006 (Survival Stats) — SurvivalSystem, stat bars, depletion/regen, death/respawn, ground items
+1. feature-004 (Auto-Interaction) — auto-gather active, auto-defend = stub, auto-pickup = stub
+2. feature-006 (Crafting) — needs Inventory (delivered) + Workbench (F-009 not yet, but
+   crafting system works once a Workbench is manually placed for testing)
 
-Complete loop: explore, gather, build, craft, survive, repeat. Tools unlock gated
-resources. Hunger/thirst create urgency. Death has consequences (50% inventory drop)
-but not permadeath. Meat becomes useful (best hunger item).
+**Core loop complete:** explore → scan → catalog → auto-gather → craft tools → unlock
+gated resources → explore further. This is the game.
 
-**AC coverage:** AC4 (crafting), AC8 (survival stats, death/respawn)
+**F-004 stub strategy:** Auto-defend checks `FaunaManager.get_fauna_adjacent_to()` — if
+FaunaManager doesn't exist yet (F-010 not delivered), returns empty array. No fauna =
+no auto-defend. Stub is just "feature not present = no-op." Same for auto-pickup: if
+SurvivalSystem._ground_items is empty (F-007 not delivered), nothing to pick up.
+
+**AC coverage:** AC3 (gathering), AC4 (crafting)
+
+### delivery-004: Time and Consequence — Day/Night + Survival
+
+**Features:** 008 (Day/Night + Save) + 007 (Survival Stats)
+**Depends on:** delivery-003
+**Cumulative state:** Day/night rhythm, hunger/thirst/HP, death/respawn, auto-save
+
+Build order:
+1. feature-008 (Day/Night + Save) — phase timer, lighting, visibility radius, SaveManager
+2. feature-007 (Survival Stats) — needs is_daytime from F-008, Inventory item_used from F-005
+
+Stakes exist. Time passes. Stats deplete. Eating matters (scan to know what's safe!).
+Death has consequences. Progress saves. The world feels alive.
+
+**AC coverage:** AC7 (day/night), AC8 (survival), AC10 (save)
+
+### delivery-005: Night Falls — Building + Threats
+
+**Features:** 009 (Building) + 010 (Night Threats)
+**Depends on:** delivery-004
+**Cumulative state:** Place structures, fauna at night, auto-defend + auto-pickup activate
+
+Build order:
+1. feature-009 (Building) — structures, walls, shelter, torch, workbench
+2. feature-010 (Night Threats) — fauna spawn, AI, contact damage, surprise catalog
+
+When this lands:
+- F-004 auto-defend activates (FaunaManager now exists, returns real fauna data)
+- F-004 auto-pickup activates (ground items from meat drops + death drops now exist)
+- Building gives crafting its workbench (F-006 CraftButton now shows near workbenches)
+- Shelter protects player, walls redirect fauna, torches extend visibility
+- Meat drops give survival a new food source
+
+**AC coverage:** AC6 (building), AC9 (night threats)
+
+### delivery-006: The Story — Journal + Narrative
+
+**Features:** 011 (Journal)
+**Depends on:** delivery-002 (entry_cataloged signal) + delivery-004 (day_started signal)
+**Cumulative state:** Chapter 1 narrative arc complete
+
+Build order:
+1. feature-011 (Journal) — trigger system, cutscene viewer, journal panel
+
+The game has a purpose. The Journal tells the player WHY they're exploring:
+crash → Day 3 strange signal → find anomaly → scan → cutscene → cliffhanger.
+
+This is the emotional hook for Chapter 2. Without it, the game is a loop without
+meaning. With it, the player wants to know what happens next.
+
+**AC coverage:** AC12 (journal)
+
+## Delivery Progression — The Story of a Session
+
+```
+delivery-001: Walk       → "Where am I? Let me explore this beautiful alien world."
+delivery-002: See        → "What are these ❓ things? Let me scan and discover."
+delivery-003: Interact   → "Resources auto-gather! I can craft tools! The world responds to me."
+delivery-004: Survive    → "Time passes. I need to eat. I died... but I came back."
+delivery-005: Defend     → "Night is dangerous. I built shelter. I killed a creature and got meat!"
+delivery-006: Understand → "There were people here before. What happened? I need to find out..."
+```
+
+Each delivery is playable and testable standalone. Each builds on the previous.
+The core loop (deliveries 1-3) has zero P1 dependencies.
 
 ## Notes
 
-- Each delivery is playable and testable standalone
-- Each builds on the previous with no unresolved dependencies
-- delivery-002: tool-gated resources gracefully rejected with feedback until delivery-004
-- delivery-003: meat accumulates with no effect until SurvivalSystem in delivery-004
-- Circular dependency between 005/008 resolved: Building places Workbench, Crafting reads proximity
+- F-004 stubs: auto-defend and auto-pickup activate naturally when F-010/F-007 arrive. No code changes needed — just "feature not present = empty query results = no-op."
+- F-006 (Crafting) needs a Workbench to demo, but F-009 (Building) isn't until delivery-005. For testing, manually place a Workbench via debug command or test fixture.
+- Old PLAN.md (4 deliveries, 8 features) is replaced. Old delivery DETAIL.md files in delivery-001 through delivery-004 are invalidated.
 
 ## Change Log
 
 | Date | Change | Source |
 |------|--------|--------|
-| 2026-03-31 | Plan created — 4 deliveries approved | /aid-plan |
+| 2026-03-31 | Plan created — 6 deliveries, 12 features (post-redesign) | /aid-plan |
