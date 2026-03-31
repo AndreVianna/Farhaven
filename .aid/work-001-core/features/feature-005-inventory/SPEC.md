@@ -97,6 +97,7 @@ Tools never enter `_slots`. Resources never enter `_tool_slots`.
   &"wood":           { "max_stack": 99, "category": &"resource" },
   &"stone":          { "max_stack": 99, "category": &"resource" },
   &"berries":        { "max_stack": 20, "category": &"consumable" },
+  &"toxic_berries":  { "max_stack": 20, "category": &"consumable" },
   &"fiber":          { "max_stack": 99, "category": &"resource" },
   &"ore":            { "max_stack": 99, "category": &"resource" },
   &"crystal":        { "max_stack": 50, "category": &"resource" },

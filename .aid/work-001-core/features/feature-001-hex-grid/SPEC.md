@@ -109,7 +109,7 @@ knows about them. No dual tracking, no leaked responsibilities.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `type` | `StringName` | `&"wood"`, `&"stone"`, `&"berries"`, `&"fiber"`, `&"ore"`, `&"crystal"` |
+| `type` | `StringName` | `&"wood"`, `&"stone"`, `&"berries"`, `&"toxic_berries"`, `&"fiber"`, `&"ore"`, `&"crystal"` |
 | `remaining` | `int` | Gathers left before depletion |
 | `max_amount` | `int` | For respawn reset |
 | `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` |

@@ -36,7 +36,7 @@ Must (P1 -- Tension)
 
 ## Save Integration
 
-Placed structures (type + tile position).
+No separate save data — structures persisted via feature-001 tile data (HexTile.structure field).
 
 ---
 
@@ -133,20 +133,12 @@ Building success uses HexGrid's centralized signals:
 
 #### Save Data
 
-```json
-{
-  "structures": [
-    { "tile_col": 2, "tile_row": -1, "type": "workbench" },
-    { "tile_col": 3, "tile_row": 0, "type": "shelter" },
-    { "tile_col": 4, "tile_row": 0, "type": "wall" }
-  ]
-}
-```
-
-Array format with `tile_col`/`tile_row` convention. No HP (indestructible).
-On load, `HexTile.structure` fields populated from save data. Downstream features
-react to the loaded state (not via `structure_placed` signals — those are for
-runtime placement only).
+No separate save data. Structures are saved as part of feature-001 tile data
+(`HexTile.structure` field, serialized per-tile in the hex grid save). On load,
+`tile.structure` values are already populated — downstream features (crafting
+proximity, torch tracking, shelter respawn, AStar2D edges) react to loaded tile
+state during initialization, not via `structure_placed` signals. Feature-001 is
+the source of truth for structure persistence.
 
 #### Cross-Feature Dependencies
 

@@ -43,7 +43,7 @@ Must (P0 -- Core Loop)
 
 ## Save Integration
 
-Respawn queue for depleted resources (timer state). No new save structure beyond catalog (owned by feature-003).
+No save data. Respawn queue is intentionally not persisted — depleted resources respawn on load. Catalog state owned by feature-003.
 
 ---
 
@@ -81,7 +81,8 @@ stored per `ResourceNode` instance.
 # resource_config: Dictionary[StringName, Dictionary]
 {
   &"wood":    { "gather_time": 1.0, "gather_amount": 1 },
-  &"berries": { "gather_time": 0.5, "gather_amount": 1 },
+  &"berries":        { "gather_time": 0.5, "gather_amount": 1 },
+  &"toxic_berries":  { "gather_time": 0.5, "gather_amount": 1 },
   &"fiber":   { "gather_time": 0.5, "gather_amount": 1 },
   &"stone":   { "gather_time": 1.5, "gather_amount": 1 },
   &"ore":     { "gather_time": 2.0, "gather_amount": 1 },
@@ -194,16 +195,11 @@ signal ground_item_picked_up(coords: Vector2i, type: StringName, amount: int)
 
 #### Save Data
 
-```json
-{
-  "respawn_queue": [
-    { "tile_col": 3, "tile_row": -2, "resource_index": 0, "time_remaining": 45.2 }
-  ]
-}
-```
-
-`ResourceNode.remaining` saved per-tile by feature-001. Respawn queue is the only
-new save data from this feature. Catalog state owned by feature-003.
+No save data from this feature. Respawn queue is intentionally NOT saved.
+On load, all depleted resources respawn instantly — the world "heals" between
+sessions. This is a small player-friendly bonus and avoids serializing timer state.
+`ResourceNode.remaining` values are saved per-tile by feature-001 (they reset to
+`max_amount` when respawn triggers on load). Catalog state owned by feature-003.
 
 #### Cross-Feature Data Contracts
 
@@ -211,7 +207,7 @@ new save data from this feature. Catalog state owned by feature-003.
 |---------------------|--------|---------------|
 | `HexGrid.get_tile(coords).resource_nodes[]` | feature-001 | Resources on tile |
 | `HexGrid.get_tile(coords).fog_state` | feature-001 | For respawn pause/resume |
-| `Catalog.is_cataloged(entry_id)` | feature-003 | Catalog gate for auto-interaction |
+| `Catalog.is_cataloged(entry_id)` | feature-003 | Catalog gate for auto-interaction. Queried per tile_entered, NOT via entry_cataloged signal. |
 | `Catalog.get_entry(entry_id).properties` | feature-003 | Flora edible/toxic, fauna hostile, mineral tool_required |
 | `Inventory.get_tool(slot)` | feature-005 | Tool for can_gather + weapon for auto-defend |
 | `Inventory.add_item(type, amount)` | feature-005 | Store gathered resources |

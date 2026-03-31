@@ -343,12 +343,13 @@ types to catalog entry IDs. This is a static lookup table:
 
 ```gdscript
 const RESOURCE_TO_ENTRY: Dictionary = {
-    &"wood":     &"wood_tree",
-    &"berries":  &"berry_bush",
-    &"fiber":    &"fiber_grass",
-    &"stone":    &"stone_deposit",
-    &"ore":      &"iron_deposit",
-    &"crystal":  &"crystal_cluster",
+    &"wood":           &"wood_tree",
+    &"berries":        &"berry_bush",
+    &"toxic_berries":  &"toxic_berry_bush",
+    &"fiber":          &"fiber_grass",
+    &"stone":          &"stone_deposit",
+    &"ore":            &"iron_deposit",
+    &"crystal":        &"crystal_cluster",
 }
 ```
 
