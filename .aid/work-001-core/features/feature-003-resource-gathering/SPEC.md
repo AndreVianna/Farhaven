@@ -8,6 +8,7 @@
 | 2026-03-30 | Data Model written — resource config table, direct tool matching, respawn queue | /aid-specify |
 | 2026-03-30 | Feature Flow written — gather/move disambiguation, cancel, multi-resource priority | /aid-specify |
 | 2026-03-30 | Layers & Components written — MultiMesh resources, is_gathering flag | /aid-specify |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -97,33 +98,11 @@ A separate data Dictionary — tool × resource type → speed multiplier:
 Effective gather time: look up the relevant tool slot for the resource type, get the
 equipped tool name, then `resource_config[type].gather_time * tool_speed.get(tool, {}).get(type, 1.0)`
 
-#### Tool-Gating — Direct StringName Matching
+#### Tool-Gating — Direct StringName Matching (via Inventory)
 
 No tier system. MVP uses direct matching between `ResourceNode.tool_required` and
-`Player.equipped_tool`:
-
-```gdscript
-# Can the player gather this resource?
-func can_gather(node: ResourceNode, equipped: StringName) -> bool:
-    if node.tool_required == &"":
-        return true  # bare hands
-    return equipped == node.tool_required
-```
-
-- `tool_required == &""` → bare hands (wood, berries, fiber)
-- `tool_required == &"stone_axe"` → needs stone_axe (thick trees)
-- `tool_required == &"stone_pickaxe"` → needs stone_pickaxe (ore, crystals)
-
-Axes and pickaxes are not interchangeable — a stone_axe cannot mine ore, a
-stone_pickaxe cannot chop thick trees. The matching is exact per tool name.
-
-When future work adds metal_axe/metal_pickaxe (upgrades within same category),
-`can_gather` expands to check a category+tier lookup. For MVP, exact match is
-sufficient because there's only one tool per category.
-
-#### Tool Access (contract with feature-004)
-
-Gathering queries tool slots via `Inventory.get_tool()`, not a player property:
+the tool in the corresponding Inventory slot. Gathering queries tool slots via
+`Inventory.get_tool()`, not a player property:
 
 ```gdscript
 # Check if player can gather a resource node:
@@ -335,7 +314,7 @@ a small array is negligible.
 | Node visual change | Swap resource appearance (tree→stump, rock→rubble, bush→bare). | On depletion (remaining hits 0) |
 | Node visual restore | Swap back to full appearance. | On respawn |
 | Sound | Play SFX at gather-complete. Placeholder hook. | On successful gather |
-| Tool-gated feedback | None — wrong tool falls through to movement silently. | On tap with wrong tool |
+| Tool-gated feedback | Floating "REQUIRES [TOOL]" text in red (same GatherFeedback system). | On tap with wrong tool |
 
 ### Layers & Components
 
@@ -441,7 +420,7 @@ grey box = rock, red sphere = berry bush). <500 tris each. Placeholder art for M
 
 #### Input Priority
 
-`gather_system.gd` has lower `process_priority` than `player_input.gd` — it receives
+`gather_system.gd` has a lower `process_priority` value than `player_input.gd` (lower value = higher priority in Godot) — it receives
 `_unhandled_input` first. If it claims the tap (adjacent tile with gatherable resource),
 it calls `get_viewport().set_input_as_handled()`. Otherwise, the event falls through
 to `player_input.gd` for movement.

@@ -133,8 +133,8 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - Building is separate from Crafting: Build = place structures, Craft = make items at Workbench
 - Workbench is the first thing the player builds (unlocks crafting)
 - Place structures on hex tiles (one structure per tile)
-- Structures have HP (can be damaged by night fauna)
-- Structures block movement (walls, workbench) — important for night defense
+- Structures are indestructible in MVP
+- Most structures block movement (walls, workbench); Shelter and Torch are walkable — important for night defense
 - Shelter = safe zone at night (core purpose: player sleeps through night safely)
 - MVP buildable structures: Workbench, Shelter, Storage Chest, Wall, Torch
 - MVP structure recipes use Raw-tier materials only (no Metal, no Furnace)
@@ -301,7 +301,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - [ ] Try to place on occupied hex → rejected
 - [ ] Shelter built → player inside at night takes 0 damage
 - [ ] Wall built → fauna pathfinding routes around it
-- [ ] Fauna attacks unprotected structure → HP decreases
+- [ ] Structures are indestructible — fauna cannot damage them
 
 ### AC7 — Day/Night
 - [ ] Full cycle completes in 5 min ±15s (measurable)

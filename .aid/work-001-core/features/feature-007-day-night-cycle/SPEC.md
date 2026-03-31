@@ -9,6 +9,7 @@
 | 2026-03-31 | Feature Flow written — SaveManager split out, torch sources NIGHT only | /aid-specify |
 | 2026-03-31 | Layers & Components written — lighting registration pattern, SaveManager autoload | /aid-specify |
 | 2026-03-31 | UI Specs written — DAY 07 mil-spec style, design system palette, no drop shadows | /aid-specify |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -77,7 +78,7 @@ const PHASE_DURATIONS: Dictionary = {
     TimePhase.NIGHT:  90.0,  # 1.5 minutes
     TimePhase.DAWN:   10.0,  # brief transition, new day starts
 }
-# Total: ~310 seconds ≈ 5 min 10s (within AC7's 5 min ±15s)
+# Total: ~310 seconds ≈ 5 min 10s (within AC7's 5 min ±15s — tight margin, 5s to spare)
 ```
 
 DAWN is a brief 10s transition — screen brightens, day counter increments. Gives the

@@ -9,6 +9,7 @@
 | 2026-03-31 | Feature Flow written — build, fauna lifecycle, combat, meat via signal | /aid-specify |
 | 2026-03-31 | Layers & Components written — tile highlight API, placement input priority | /aid-specify |
 | 2026-03-31 | UI Specs written — build panel, combat feedback, Tactical Brutalism labels | /aid-specify |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -234,16 +235,16 @@ No `fauna_attacked_structure` — structures are indestructible in MVP.
 
 ```json
 {
-  "structures": {
-    "2,-1": "workbench",
-    "3,0": "shelter",
-    "4,0": "wall"
-  }
+  "structures": [
+    { "tile_col": 2, "tile_row": -1, "type": "workbench" },
+    { "tile_col": 3, "tile_row": 0, "type": "shelter" },
+    { "tile_col": 4, "tile_row": 0, "type": "wall" }
+  ]
 }
 ```
 
-Structure positions keyed as `"col,row"` strings. Value is just the type string —
-no HP (indestructible). Fauna are NOT saved — transient per-night. On load during
+Structure positions use tile_col/tile_row convention matching all other save sections.
+No HP (indestructible). Fauna are NOT saved — transient per-night. On load during
 NIGHT phase, re-run spawn logic.
 
 ### Feature Flow

@@ -8,6 +8,7 @@
 | 2026-03-30 | Data Model written — separated tool slots + resource slots, auto-use tools | /aid-specify |
 | 2026-03-30 | Data Model updated — 4 tool slots (added Scanner), use_item + item_used signal | /aid-specify |
 | 2026-03-30 | Feature Flow + Layers & Components + UI Specs written | /aid-specify |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -55,7 +56,7 @@ to JSON manually. RefCounted keeps it lightweight with no scene tree overhead.
 Two separate storage systems:
 
 1. **Resource/consumable slots** — grid-based, expandable, stackable
-2. **Tool slots** — fixed 3 slots, one tool each, auto-used, upgrade replaces in-place
+2. **Tool slots** — 4 fixed slots, one tool each, auto-used, upgrade replaces in-place
 
 ```gdscript
 # Resource/consumable storage
@@ -157,7 +158,7 @@ func get_tool(slot: StringName) -> StringName
 # Previous tool is discarded (gone), not returned to inventory
 func set_tool(slot: StringName, tool: StringName) -> StringName
 
-# Convenience — does the player have any tool in this slot?
+# Convenience — does the player have any tool in this slot? (convenience API)
 func has_tool_for(slot: StringName) -> bool
 ```
 

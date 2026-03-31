@@ -13,6 +13,7 @@
 | 2026-03-30 | Merged reveal_around + update_visibility → single update_fog method | /aid-specify (feature-002 feedback) |
 | 2026-03-30 | Serialization keys: q/r → tile_col/tile_row for readability | /aid-specify (feature-002 feedback) |
 | 2026-03-31 | update_fog() replaced by refresh_visibility(sources) — multi-source fog | /aid-specify (feature-007) |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -100,6 +101,8 @@ the data level.
 | `max_amount` | `int` | For respawn reset |
 | `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` |
 
+Feature-003 extends ResourceNode with `respawn_time: float` (seconds until respawn after depletion).
+
 #### Elevation Ranges by Biome
 
 Worldgen assigns elevation using a noise layer (`FastNoiseLite`). Biome type constrains
@@ -140,15 +143,15 @@ func get_neighbors(coords: Vector2i) -> Array[Vector2i]
 func get_tiles_in_range(center: Vector2i, radius: int) -> Array[Vector2i]
 func distance(a: Vector2i, b: Vector2i) -> int  # cube/hex distance
 
-# Traversability — MVP rules (no gear checks, no structure exceptions):
+# Traversability — MVP rules:
 #   biome == WATER → impassable (Bridge deferred)
 #   elevation_diff > MAX_ELEVATION_DIFF → impassable (Climbing Gear deferred)
-#   structure != "" → impassable (structures block movement)
+#   structure with blocks_movement: true → impassable (Shelter and Torch are walkable)
 func is_passable(from: Vector2i, to: Vector2i) -> bool
 func get_elevation_diff(from: Vector2i, to: Vector2i) -> int
 
 # Fog of war — single pass, multiple visibility sources (player + torches).
-# Replaces the original update_fog(). See feature-007 for full API documentation.
+# See feature-007 for full API documentation.
 # sources: Array of { "coords": Vector2i, "radius": int }
 # Returns array of newly discovered tiles (were HIDDEN, now VISIBLE).
 func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]
@@ -168,7 +171,7 @@ inspect tile internals.
 # World lifecycle
 signal map_generated()                     # worldgen complete, safe to query
 
-# Fog of war (both emitted by update_fog() in a single pass)
+# Fog of war (both emitted by refresh_visibility() in a single pass)
 signal tile_revealed(coords: Vector2i)     # HIDDEN → VISIBLE (first discovery)
 signal tile_visibility_changed(coords: Vector2i, state: FogState)  # any fog transition (VISIBLE↔REVEALED)
 
@@ -181,7 +184,7 @@ signal resource_depleted(coords: Vector2i, resource_type: StringName)
 signal resource_respawned(coords: Vector2i, resource_type: StringName)
 
 # Structures (emitted by building feature via HexGrid)
-signal tile_contents_changed(coords: Vector2i)  # generic catch-all
+signal tile_contents_changed(coords: Vector2i)  # generic catch-all — reserved for future use
 signal structure_placed(coords: Vector2i, structure_type: StringName)
 signal structure_destroyed(coords: Vector2i, structure_type: StringName)
 ```

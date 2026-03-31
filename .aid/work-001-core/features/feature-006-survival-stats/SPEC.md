@@ -9,6 +9,7 @@
 | 2026-03-30 | Feature Flow written — stat tick, consume, death/respawn, item piling | /aid-specify |
 | 2026-03-30 | Layers & Components written — ground_item_renderer under scripts/survival/ | /aid-specify |
 | 2026-03-31 | UI Specs written — stat bars, fade-to-black death (no text overlay) | /aid-specify |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -92,12 +93,12 @@ hunger > 0 AND thirst > 0. No regen at night, no regen while starving/dehydrated
 ```gdscript
 const CONSUMABLE_CONFIG: Dictionary = {
     &"berries": { "hunger": 15.0, "thirst": 5.0 },
-    # Future consumables add entries here
+    &"meat":    { "hunger": 25.0, "thirst": 0.0 },
 }
 ```
 
 Keyed by item type (matches `item_config` from feature-004). Berries restore mostly
-hunger with a small thirst bonus. New consumables add entries without code changes.
+hunger with a small thirst bonus. Meat is the best hunger item (25 vs berries' 15) — only source is fauna kills (feature-008). Future items (clean water, cooked food) add entries without code changes.
 
 #### Death — Inventory Drop Rules
 
@@ -297,7 +298,6 @@ Respawn triggers (immediate or at dawn):
   │     Player.current_tile = _respawn_tile
   │     Player.position = HexGrid.axial_to_world(_respawn_tile) + elevation Y
   │     Emit HexGrid.tile_entered(_respawn_tile)
-  │     Call HexGrid.update_fog(_respawn_tile)
   │
   ├─ Reset stats:
   │     hp = hp_max             → full HP
@@ -491,7 +491,7 @@ HP hits 0
 func fade_out(duration: float = 1.5) -> void   # alpha 0 → 1
 func fade_in(duration: float = 1.5) -> void    # alpha 1 → 0
 signal fade_out_completed()
-signal fade_in_completed()
+signal fade_in_completed()  # available for future use (no current consumer)
 ```
 
 Reusable for death, save/load transitions, scene changes. Not death-specific.

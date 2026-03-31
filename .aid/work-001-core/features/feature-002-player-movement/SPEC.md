@@ -11,6 +11,7 @@
 | 2026-03-30 | Layers & Components written — player_input as child Node, signal wiring defined | /aid-specify |
 | 2026-03-30 | Mobile Specs written — input latency, touch discrimination, memory | /aid-specify |
 | 2026-03-31 | Tile transition no longer calls fog directly — DayNightCycle owns visibility | /aid-specify (feature-007) |
+| 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
 
 ## Source
 
@@ -340,7 +341,7 @@ joystick_overlay.gd                     player_input.gd                    playe
   │                                       │                          player.gd calls:
   │                                       │                          HexGrid.tile_entered()
   │                                       │                          HexGrid.tile_exited()
-  │                                       │                          HexGrid.update_fog()
+  │                                       │                          (DayNightCycle handles visibility via tile_entered)
 ```
 
 **Connection setup (in `player.gd._ready()`):**
