@@ -10,6 +10,7 @@
 | 2026-03-30 | Layers & Components written — ground_item_renderer under scripts/survival/ | /aid-specify |
 | 2026-03-31 | UI Specs written — stat bars, fade-to-black death (no text overlay) | /aid-specify |
 | 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
+| 2026-03-31 | Round 2 fixes: take_damage() API, fauna signal dependencies | /audit |
 
 ## Source
 
@@ -67,6 +68,17 @@ var is_dead: bool = false
 
 All stats are `float` (0.0 to max). Floats allow smooth depletion and smooth HUD
 bar rendering without rounding artifacts.
+
+#### Public API — External Damage
+
+```gdscript
+# Apply external HP damage (from fauna contact, environmental hazards, etc.)
+func take_damage(amount: float) -> void
+```
+
+Consumed via `fauna_attacked_player` signal from feature-008's FaunaManager.
+Reduces `hp` by `amount`, clamped to 0. Emits `stat_changed`. Triggers death
+check if HP reaches 0.
 
 #### Depletion/Regen Rates — Config
 
@@ -197,6 +209,8 @@ completed before the next save (auto-save at dawn).
 | `is_daytime` for HP regen condition | feature-007 (day/night) |
 | `structure_placed`/`destroyed` for Shelter respawn | feature-008 via HexGrid |
 | `tile_entered` for ground item auto-pickup | feature-002 via HexGrid |
+| `fauna_attacked_player` for external HP damage (`take_damage`) | feature-008 (FaunaManager) |
+| `fauna_killed` for meat ground item creation | feature-008 (FaunaManager) |
 
 ### Feature Flow
 
@@ -408,6 +422,10 @@ HexGrid signals                          survival_system.gd
 DayNightCycle (feature-007)              survival_system.gd
   is_daytime property                ──►  HP regen condition (read per frame)
   dawn signal                        ──►  deferred respawn trigger
+
+FaunaManager (feature-008)               survival_system.gd
+  fauna_attacked_player(id, damage)  ──►  take_damage(damage)
+  fauna_killed(id, coords)           ──►  create meat ground item on fauna death tile
 
 survival_system.gd                       stat_bars.gd
   stat_changed(name, current, max)   ──►  update ProgressBar value + color

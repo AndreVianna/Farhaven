@@ -9,6 +9,7 @@
 | 2026-03-30 | Feature Flow written — gather/move disambiguation, cancel, multi-resource priority | /aid-specify |
 | 2026-03-30 | Layers & Components written — MultiMesh resources, is_gathering flag | /aid-specify |
 | 2026-03-31 | Audit fixes applied (see delivery DETAIL.md) | /audit |
+| 2026-03-31 | Round 2 fixes: tool-gated feedback + movement, equipped var, stale deps | /audit |
 
 ## Source
 
@@ -174,7 +175,7 @@ Tap resolves to target_coords
   │    │    │    → GATHER (claim tap, begin gather action)
   │    │    │
   │    │    ├─ Has resources but ALL are tool-gated (wrong tool) or depleted?
-  │    │    │    → FALL THROUGH TO MOVEMENT (don't block, just walk there)
+  │    │    │    → SHOW FLOATING "REQUIRES [TOOL]" FEEDBACK, THEN FALL THROUGH TO MOVEMENT
   │    │    │
   │    │    └─ No resources on tile?
   │    │         → FALL THROUGH TO MOVEMENT
@@ -184,8 +185,9 @@ Tap resolves to target_coords
   │
 ```
 
-**Key rule:** Wrong tool = move, not "need stone_axe" message. The player is never
-stuck. They walk to the tile and can attempt gathering after equipping the right tool.
+**Key rule:** Wrong tool = show requirement feedback and move. The player is never
+stuck. Floating "REQUIRES [TOOL]" text appears in red, then the tap falls through
+to movement — player walks to the tile while feedback floats.
 
 #### Multi-Resource Priority
 
@@ -222,6 +224,8 @@ Gather begins (target_coords, resource_node determined):
   │     Play gather animation (placeholder: simple bob/swing toward tile)
   │
   ├─ Compute effective gather time:
+  │     tool_slot = item_config[node.tool_required].get("tool_slot", &"")
+  │     equipped = Inventory.get_tool(tool_slot) if tool_slot else &""
   │     base = resource_config[node.type].gather_time
   │     multiplier = tool_speed.get(equipped, {}).get(node.type, 1.0)
   │     effective_time = base * multiplier
@@ -366,7 +370,7 @@ data/
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `gather_system.gd` | Child Node of Player. Owns `is_gathering` flag, gather action lifecycle (start, cancel, complete), respawn queue tick, input disambiguation (claim tap vs fall through to movement). | `HexGrid` (API + signals), `Player` (equipped_tool, current_tile), `Inventory` (add_item contract) |
+| `gather_system.gd` | Child Node of Player. Owns `is_gathering` flag, gather action lifecycle (start, cancel, complete), respawn queue tick, input disambiguation (claim tap vs fall through to movement). | `HexGrid` (API + signals), `Player` (current_tile), `Inventory` (get_tool, add_item) |
 | `resource_renderer.gd` | Manages one `MultiMeshInstance3D` per resource type (~6 types = ~6 draw calls). Spawns/hides/swaps resource visuals based on HexGrid signals. Event-driven, no per-frame work. | `HexGrid` (signals only) |
 | `gather_feedback.gd` | CanvasLayer. Spawns floating "+N Type" labels at screen position of gathered tile. Labels tween up + fade, then `queue_free`. | Screen position from `Camera3D.unproject_position()` |
 
