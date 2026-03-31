@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mkdir -p features/_archived)",
+      "Bash(mv features/feature-003-resource-gathering features/_archived/)",
+      "Bash(mv features/feature-004-inventory features/_archived/)",
+      "Bash(mv features/feature-005-crafting features/_archived/)",
+      "Bash(mv features/feature-006-survival-stats features/_archived/)"
     ]
   }
 }

@@ -12,36 +12,53 @@
 | 2026-03-30 | Cross-ref: Water tiles as impassable terrain in worldgen; Bridge stays in MVP (6 Wood + 2 Fiber) | /aid-interview (IQ4) |
 | 2026-03-30 | Added hex elevation system — tiles have height, steep elevation impassable in MVP (Climbing Gear deferred) | User request |
 | 2026-03-30 | Deferred Bridge to future work — water tiles fully impassable in MVP | User request |
+| 2026-03-31 | MAJOR REDESIGN — New identity (curiosity+story), episodic chapters, auto-interaction, scanner/catalog, journal, fauna/flora redesign, Tactical Brutalism discarded | User redesign |
+| 2026-03-31 | Scanning as universal gate — ❓ = inert to auto-system. Surprise attack auto-catalogs hostile fauna. | User clarification |
 
 ## 1. Objective
 
-Build a mobile survival/crafting game (Android + iOS) using Godot 4.x and GDScript. The player is an astronaut who crash-lands on an alien planet and must explore a procedurally generated hex-tile world, gather resources, craft tools, build structures, survive threats, and ultimately escape.
+Build a mobile exploration/survival game (Android + iOS) using Godot 4.x and GDScript. An astronaut crash-lands on an alien planet. Explores a beautiful, mysterious hex-tile procedural world. Gathers resources, builds shelter, catalogs flora/fauna/minerals with a scanner, and discovers that the supposedly "uninhabited" planet shows signs of civilization. The story is told through the astronaut's Journal, fed by scanner discoveries.
+
+**Feeling references:**
+- My Little Universe (progress satisfaction, walk around and things happen, visually pleasant)
+- Subnautica (scanner as core mechanic, narrative mystery, beautiful but dangerous planet)
+- The game evolves across chapters from MLU (casual, colorful, relaxed) toward Subnautica (deep, mysterious, narrative-driven)
+
+**Tone and aesthetics:**
+- Visually charming and pleasant — NOT dark
+- NOT too difficult — challenge exists but is gentle
+- The player's drive is CURIOSITY and STORY, not difficulty or punishment
+- Colorful, warm, charming low-poly. Astroneer meets MLU — sci-fi but welcoming
+- The planet is alien but beautiful, not hostile. Colors say "explore here"
+- Tactical Brutalism is DISCARDED — wrong vibe. Design system TBD: vibrant colors, soft shapes, sci-fi but warm
 
 **Success criteria:**
 - Playable on Android + iOS in portrait mode, touch-first controls
-- Engaging 15–30 minute sessions (pick up, survive a few days, put down)
-- Procedurally generated hex world (full game: 8 biome types)
-- Core loop feels satisfying at every timescale: explore → gather → craft → survive → progress → escape
-- Monetization: free demo (Days 1–5) with content gate → $2.99 one-time unlock
+- Engaging 15–30 minute sessions (commute-friendly chapters)
+- Procedurally generated hex world with narrative elements
+- Core loop: explore → gather → scan → catalog → discover story → progress
+- Monetization: Chapter 1 free, Chapter 2+ ~$2.50 each (episodic)
 - Performance: 60 fps on mid-range devices (2022+ phones)
 
-**This work (core) is the MVP:** hex grid rendering, player movement, resource gathering, basic crafting, day/night cycle, hunger/thirst/health, and 2–3 biomes. Not the full 8 biomes, not the escape ending, not all crafting recipes — just enough to prove the loop is fun.
+**This work (core) is Chapter 1:** hex grid, movement, auto-gathering, basic crafting, day/night cycle, hunger/thirst/health, scanner/catalog basics, first anomaly, journal foundation. Enough to hook the player and make them want Chapter 2.
 
 ## 2. Problem Statement
 
 Mobile survival/crafting games (e.g., My Little Universe) have a proven, satisfying core loop — but they monetize through ads, fake currencies, energy timers, and psychological pressure. Players enjoy the gameplay but resent the exploitation.
 
-The few premium alternatives that exist are not designed for true mobile-first play: they assume landscape orientation, long sessions, or complex controls. There is no ad-free, pay-once survival/craft game built specifically for portrait mode, quick 15–30 minute sessions, and simple touch controls.
+The few premium alternatives lack story and discovery. They're endless sandbox loops with no narrative reason to keep playing. And they're not designed for true mobile-first play: landscape orientation, long sessions, complex controls.
 
-Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for how people actually play on phones.
+Farhaven fills the gap: the same satisfying exploration/gathering loop, a compelling mystery that drives curiosity, episodic chapters that respect your wallet, designed for how people actually play on phones.
+
+**Target player:** A casual mobile gamer who likes to explore and wants a story. Not a hardcore gamer. Not an idle player. Someone who plays 15-30 minutes on their commute and wants to know what happens in the next chapter.
 
 ## 3. Users & Stakeholders
 
 ### Primary Users
-- **Casual mobile gamers (13+)** who enjoy survival/craft loops but are frustrated by predatory monetization (ads, fake currencies, timers)
+- **Casual mobile gamers (13+)** who enjoy exploration/craft loops, want a story, and are frustrated by predatory monetization (ads, fake currencies, timers)
 
 ### Secondary Users
-- **Indie/premium mobile game fans** — the "I'd rather pay $3 than see one ad" crowd. Active on r/AndroidGaming, TouchArcade, and similar communities. Actively seek paid alternatives.
+- **Indie/premium mobile game fans** — the "I'd rather pay $2.50 than see one ad" crowd. Active on r/AndroidGaming, TouchArcade, and similar communities. Drawn to narrative + discovery.
 
 ### Stakeholders
 - **Andre Vianna & Lola Lovelace** — co-creators, design + development. No external investors, publisher, or client. 100% independent.
@@ -53,35 +70,50 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 
 ## 4. Scope
 
-### In Scope (core MVP)
+### In Scope (Chapter 1 / core MVP)
 - Hex grid rendering + procedural map generation
-- 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone + Water tiles (impassable terrain, not a full biome)
+- 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone + Water tiles (impassable terrain)
 - Player movement (tap-to-move + virtual joystick)
-- Resource gathering (Raw tier minimum)
+- Auto-interaction system (proximity-based gathering, auto-pickup, auto-defend)
+- Resource gathering (Raw tier, tool-gated)
 - Basic crafting (Workbench level)
-- Basic inventory UI (view gathered items, select crafting recipes)
+- Basic inventory UI (resource slots + tool slots)
+- Scanner system (press-and-hold to scan unknown elements, catalog entries)
+- Catalog UI (Flora, Fauna, Minerals, Anomalies categories)
+- Journal foundation (story timeline + catalog sections, at least 1 anomaly + cutscene trigger)
 - Day/night cycle with basic night threats
 - Player stats: Hunger / Thirst / HP
+- Building (Workbench, Shelter, Storage Chest, Wall, Torch)
 - Portrait mode, touch-first UI
 - Save system (serialize world state + player state to JSON)
+- Architecture supports future chapters (modular content, chapter state tracking)
 
 ### Out of Scope (this work)
-- Full 8 biomes (Volcanic, Swamp, Ruins, Desert, Water as full biome with resources/hazards)
+- Full 8 biomes (Volcanic, Swamp, Ruins, Desert, Water as full biome)
 - Ship repair / escape ending
 - Advanced crafting chains (Furnace, Lab, Launch Pad)
-- Monetization / demo gate implementation
+- Chapter 2+ content
+- Chapter purchase / unlock implementation
 - Audio / music
-- Cloud save (Google Play Games + Apple Game Center — planned for later work)
+- Cloud save (Google Play Games + Apple Game Center)
 - Store listings / publishing
-- Climbing Gear (traversal over steep elevation — deferred to future work)
-- Bridge (crossing water tiles — deferred to future work)
-- Multiplayer (not "later" — never. Game is designed single-player, architecture doesn't need networking)
-- In-app purchases (none, ever — the entire product identity is anti-predatory)
+- Climbing Gear (traversal over steep elevation — deferred)
+- Bridge (crossing water tiles — deferred)
+- Multiplayer (not "later" — never)
+- In-app purchases (none, ever)
+- Full cutscene production (Chapter 1 uses placeholder/comic panels)
 
 ### Monetization (full game context)
-- $2.99 one-time unlock. No ads. No IAP. No premium currency.
-- Future monetization only via cosmetic DLC or expansion packs, never consumable IAP.
-- Day counter is the natural score. No formal scoring system in MVP. Post-MVP: speedrun timer, achievements, escape stats screen.
+- **Episodic chapters.** Chapter 1 is free. Chapter 2+ are ~$2.50 each.
+- Zero ads. Zero IAP. Zero premium currency. One-time payment per chapter, complete content.
+- Like comic books — each chapter is an episode. Player buys the next when they want to know what happens.
+- Day counter is the natural score. No formal scoring system in MVP.
+
+**Planned narrative arc:**
+1. Chapter 1 — Crash, survive, build base, discover first anomaly (FREE)
+2. Chapter 2 — Explore further, lost civilization, another crash site
+3. Chapter 3 — Escape the planet, intermediary space station
+4. Chapter 4+ — Final destination, story resolution
 
 ## 5. Functional Requirements
 
@@ -91,96 +123,127 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
   - **Grassland:** Open, safe starter biome. Resources: Grass, Berries, Fiber. No hazards.
   - **Forest:** Dense, more wood. Resources: Wood, Fiber, Berries (thick trees tool-gated). Hazard: Thorns (damage).
   - **Rocky:** Stone, Ore, Crystals. Hazard: Rockslide (blocks path).
-- Natural progression curve: Crash Site → Grassland → Forest → Rocky (map generation should weight biome placement accordingly)
+- Natural progression curve: Crash Site → Grassland → Forest → Rocky
 - Crash Site placed near center (scripted, not random)
-- Water tiles: impassable terrain barriers (not a full biome — no resources, no hazards). Worldgen distributes water tile clusters between biomes to create chokepoints and guide early-game exploration. Impassable in core MVP (Bridge deferred).
-- **Elevation:** Each hex tile has an elevation value. Biomes influence elevation ranges (e.g., Rocky trends higher, Grassland trends lower). Worldgen produces natural-looking terrain with smooth gradients and occasional cliffs.
-- **Elevation movement rule:** Player can traverse between adjacent hexes only if the elevation difference ≤ a threshold (e.g., ≤1 level). Greater differences are impassable in core MVP. Climbing Gear (tool-gated traversal) deferred to future work.
-- Fog of war — tiles reveal when player moves adjacent to them (not passively)
+- Water tiles: impassable terrain barriers. Impassable in core MVP (Bridge deferred).
+- **Elevation:** Each hex tile has an elevation value. Biomes influence elevation ranges. Greater differences are impassable in core MVP (Climbing Gear deferred).
+- Fog of war — tiles reveal when player moves adjacent
+- **Anomaly tiles:** At least 1 anomaly placed in the world (for Chapter 1 narrative trigger). Anomalies are special objects on tiles that can be scanned to unlock story content.
 
 ### F2. Player Movement & Controls
 - Tap-to-move with A* pathfinding on hex grid
-- Floating joystick: touch-and-hold anywhere on screen → joystick appears at touch point. Not a fixed button or zone.
+- Floating joystick: touch-and-hold anywhere on screen → joystick appears at touch point
 - Hold = joystick (fine movement), Tap = pathfind (navigation). Both work simultaneously, no toggle needed.
+- **Press-and-hold toward unknown element = scan** (new input mode — see F13)
 - Ignore touches on HUD elements
-- Elevation-aware pathfinding: A* considers elevation thresholds — steep tiles treated as impassable (Climbing Gear deferred)
-- No stamina bar — player can always move, no artificial movement limits
+- Elevation-aware pathfinding
+- No stamina bar
 
-### F3. Resource Gathering
-- Tap resource when adjacent to gather
+### F3. Resource Gathering — AUTO-INTERACTION
+- **Auto-gather on proximity — cataloged elements only.** Player moves adjacent to a cataloged resource → gathering starts automatically. No tap required. **Uncataloged elements (❓) do NOT auto-gather.** Player must scan first (F13).
+- Once cataloged: auto-gather works forever for that species/type. Toxic flora also auto-gathers after cataloging (player collects it knowingly — it's a resource, just dangerous to consume).
 - Raw tier resources per biome (Wood, Stone, Berries, Fiber, etc.)
-- Tool-gated resources:
-  - Bare hands: Wood, Berries, Fiber
-  - Stone Axe: thick trees, faster wood
-  - Stone Pickaxe: Ore, Crystals
-- Resource respawn: resources regenerate on tiles outside player's visible range. Respawn timer varies by resource type (values TBD). Some resources may not respawn (TBD). Resources never respawn while tile is visible.
-- Gathering feedback (animation/SFX, even placeholder for MVP)
+- Tool-gated resources: bare hands (Wood, Berries, Fiber), Stone Axe (thick trees), Stone Pickaxe (Ore, Crystals). Tool-gating applies after cataloging — uncataloged minerals don't auto-gather regardless of tools.
+- Resource respawn: regenerate on tiles outside visible range. Never respawn while visible.
+- Gathering feedback (floating text, animation/SFX placeholder)
 
 ### F4. Crafting
-- Crafting (item recipes) requires being near a Workbench — Craft button appears in HUD only when adjacent to Workbench
-- Progressive recipe discovery: recipes unlock when the player gathers a new material (avoids overwhelm early on)
-- MVP craft recipes (items made at Workbench):
-  - Tools: Stone Axe (Wood + Stone), Stone Pickaxe (Wood + Stone)
+- Crafting (item recipes) requires being near a Workbench — Craft button appears only when adjacent
+- Progressive recipe discovery: recipes unlock when player gathers a new material
+- MVP craft recipes: Stone Axe (2 Wood + 1 Stone), Stone Pickaxe (3 Wood + 2 Stone)
 
 ### F5. Inventory
-- Grid-based, limited slots (~12 base slots)
+- Grid-based, limited slots (~12 base resource/consumable slots)
+- 4 fixed tool slots (Axe, Pickaxe, Weapon, Scanner) — separate from resource slots
+- Tools auto-used, no manual equip/unequip
 - View items and quantities
-- Select items for crafting
+- Tap consumable to use (with scan-safety check — see F13)
 - Expandable via Storage Chest (+12 slots per chest)
 
 ### F6. Building
-- Build button always visible in HUD — opens menu of structures placeable on adjacent hex tiles
-- Building is separate from Crafting: Build = place structures, Craft = make items at Workbench
-- Workbench is the first thing the player builds (unlocks crafting)
-- Place structures on hex tiles (one structure per tile)
+- Build button always visible in HUD — opens menu of structures placeable on adjacent tiles
+- Building is separate from Crafting: Build = place structures, Craft = make items
+- Workbench is the first thing the player builds
+- Place structures on hex tiles (one per tile)
 - Structures are indestructible in MVP
-- Most structures block movement (walls, workbench); Shelter and Torch are walkable — important for night defense
-- Shelter = safe zone at night (core purpose: player sleeps through night safely)
-- MVP buildable structures: Workbench, Shelter, Storage Chest, Wall, Torch
-- MVP structure recipes use Raw-tier materials only (no Metal, no Furnace)
-- Note: Campfire (pre-Furnace processing structure) planned for future work, not core MVP
+- Most structures block movement; Shelter and Torch are walkable
+- Shelter = safe zone at night
+- MVP structures: Workbench, Shelter, Storage Chest, Wall, Torch
+- Raw-tier recipes only
 
 ### F7. Day/Night Cycle
-- Day (~3 min real time) → Dusk (30s warning, screen tint) → Night (~1.5 min) → Dawn
-- Visual shift (lighting, tint changes)
+- Day (~3 min) → Dusk (30s warning) → Night (~1.5 min) → Dawn
+- Visual shift (lighting, tint changes — warm palette, not dark/oppressive)
 - Night: visibility reduced to 1 hex around player
+- Auto-save at dawn
 
 ### F8. Survival Stats
-- HP, Hunger, Thirst — visible HUD bars at top of screen
+- HP, Hunger, Thirst — visible HUD bars
 - Hunger depletes over time; zero = HP drain
-- Thirst depletes faster than hunger; zero = faster HP drain
-- Eat/drink to restore
+- Thirst depletes faster; zero = faster HP drain
+- Eat/drink to restore — **but unknown flora requires scanning first** (see F13)
 - HP regenerates slowly during day
-- No stamina bar (see F2)
+- No stamina bar
 
 ### F9. Night Threats
-- Days 1–3: peaceful, no fauna (onboarding period)
-- Day 4+: simple fauna spawn at night outside lit/walled areas
+- Days 1–3: peaceful (onboarding)
+- Day 4+: fauna spawn at night outside lit/walled areas
+- **Before cataloging:** All creatures appear as ❓ — player doesn't know if hostile. No auto-defend.
+- **Surprise attack:** Uncataloged hostile fauna attacks → player takes first hit (surprise damage). That species is AUTOMATICALLY cataloged as hostile. Auto-defend activates immediately for all subsequent attacks in that encounter AND all future encounters.
+- **Two paths to catalog hostile fauna:**
+  - Smart path: See ❓ → scan from safe distance → cataloged as hostile → auto-defend ready, zero damage
+  - Hard path: Didn't scan → creature attacks → take first hit → auto-cataloged → auto-defend kicks in
+- **After cataloging:** Auto-identified (red icon), auto-defend when adjacent (player auto-attacks with equipped weapon, no tap)
 - Fauna move toward player within 2 hexes, deal damage on contact
 - Despawn at dawn
-- Player can fight back with tools (slow, costly) or shelter (smart play)
+- **Fauna drops:** Meat on kill (best hunger item, reward for combat risk)
 
 ### F10. Save System
-- Auto-save at dawn (each new day) — mobile-friendly, no manual save needed
-- Serialize world state + player state to local JSON via Godot FileAccess
+- Auto-save at dawn
+- Serialize world + player + catalog + journal state to local JSON
 - Single save slot (MVP)
 - Corrupt/missing save = fresh start without crash
-- Future: cloud save via Google Play Games + Apple Game Center (out of scope for core MVP)
+- **Chapter state tracking:** Save includes chapter ID and progress markers for future extensibility
 
 ### F11. Death & Respawn
-- HP reaches 0 → respawn at Shelter (if built) or Crash Site (if not)
-- Drop 50% of inventory (random items scatter on nearby tiles, recoverable)
-- Day counter continues, doesn't reset
-- If death at night → respawn at dawn
+- HP reaches 0 → fade to black → respawn at Shelter or Crash Site
+- Drop 50% of each resource/consumable stack (rounded down). Tool slots safe.
+- Day counter continues
+- Night death → respawn at dawn (stay on black screen until dawn)
 - No permadeath
 
 ### F12. HUD Layout
-- Top: HP, Hunger, Thirst bars (compact horizontal)
-- Top-right: Day counter ("Day 7") + time-of-day icon
-- Bottom-right: Inventory button, Build button (always visible), Crafting button (only when near Workbench)
-- No fixed joystick zone (floating, appears at touch point)
-- No minimap (fog of war is the point)
-- Minimal, translucent — screen is the game, not the UI
+- Top-left: HP, Hunger, Thirst bars (compact)
+- Top-right: Day counter + time-of-day icon
+- Bottom-right: Inventory button, Build button (always visible), Crafting button (near Workbench only), Scanner/Catalog button
+- No fixed joystick zone (floating)
+- No minimap
+- Minimal, translucent, warm palette — screen is the game, not the UI
+- **Design system TBD** — vibrant colors, soft shapes, sci-fi but warm. NOT Tactical Brutalism.
+
+### F13. Scanner & Catalog System (NEW)
+- **Scanner tool:** Always available (Scanner tool slot, starts equipped)
+- **The scanner is the universal gate.** ❓ = inert to the auto-system. Scan → cataloged → auto-interaction unlocked for that type forever.
+- **Active scan (press and hold):** Player sees unknown element (❓ icon) → press and hold toward it → scan progress bar (2-3 seconds) → entry added to Catalog
+- **Passive identification:** Already-cataloged elements auto-identified when entering scanner range (correct icon: green for passive, red for hostile, resource type icon for minerals)
+- **What can be scanned:**
+  - Flora: identifies edible vs toxic. Uncataloged = no auto-gather. Cataloged edible = auto-gather. Cataloged toxic = auto-gather (player collects knowingly).
+  - Fauna: identifies hostile vs passive. Uncataloged = no auto-defend (surprise attack catalogs automatically on first hit). Cataloged hostile = auto-defend. Cataloged passive = ignored.
+  - Minerals: identifies resource type and tool required. Uncataloged = no auto-gather. Cataloged = auto-gather with tool-gating.
+  - Anomalies: narrative trigger — scanning unlocks cutscene/journal entry
+- **Before scanning:** Elements show ❓ icon. Player doesn't know properties. Real risk on first encounters.
+- **Biome discovery loop:** Arrive → everything is ❓ → scan carefully (tension, discovery) → catalog everything → biome becomes "conquered" (progress satisfaction) → auto-interaction makes the routine fluid
+- **Catalog UI:** Accessible via Scanner button. Categories: Flora, Fauna, Minerals, Anomalies. Each entry: name, icon, description, properties. Discovery counter ("12/47 cataloged").
+- **Save data:** Array of discovered catalog entry IDs
+
+### F14. Journal System (NEW)
+- **The Journal is the emotional heart of the game — the astronaut's logbook**
+- **Two sections:**
+  - **Story Timeline:** Unlocked cutscenes, ordered chronologically. Player can revisit any narrative moment. Example: "Day 1: Crash Landing" → "Day 3: Strange Signal" → "Day 7: The Ruins"
+  - **Catalog:** Scanner discoveries (cross-references with Story Timeline)
+- **Trigger system:** Anomaly scan or story milestone → unlock cutscene → add to Journal
+- **Cutscenes (Chapter 1):** Static comic panels (cheap, beautiful, matches episodic model). Architecture supports: trigger → show cutscene → mark as seen → add to Journal.
+- **The Journal IS the purpose.** The real loop is explore → scan → catalog → discover story. Gather/craft/build are means, not ends.
 
 ## 6. Non-Functional Requirements
 
@@ -194,58 +257,65 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - 100% offline — no server, no account, no telemetry
 - Portrait mode, 1080×1920 viewport
 
+### Visual Design
+- **Tactical Brutalism is DISCARDED.** Wrong vibe for "charming and pleasant."
+- New design system TBD: vibrant colors, soft shapes, sci-fi but warm
+- Astroneer meets MLU aesthetic — colorful, welcoming, low-poly
+- HUD: translucent, warm-toned, minimal. NOT mil-spec/cyan/dark.
+- Placeholder art for MVP; final design system developed alongside art pipeline
+
 ### Code Quality
-- **Linting:** Godot built-in warnings (zero tolerance) + gdtoolkit/gdlint for automated checks
+- **Linting:** Godot built-in warnings (zero tolerance) + gdtoolkit/gdlint
 - **Naming:** snake_case (GDScript standard), PascalCase for class names only
-- **Build policy:** Zero warnings. Manual export for MVP; GitHub Actions CI later.
+- **Build policy:** Zero warnings. Manual export for MVP.
 
 ### Testing
 - **Framework:** GdUnit4 for unit tests
-- **Coverage:** Critical pure-logic systems only — hex math, crafting recipes, survival stats, save/load. No coverage target number.
-- **No render/UI tests** — manual playtesting for visual and interaction quality
+- **Coverage:** Critical pure-logic systems only — hex math, crafting recipes, survival stats, scanner/catalog logic, save/load.
+- **No render/UI tests** — manual playtesting
 
 ### Accessibility (MVP)
 - Touch targets sized for mobile (min 48×48 dp)
-- Clear visual contrast between biome types
-- (Further accessibility — font scaling, colorblind modes — deferred per GDD §16)
+- Clear visual contrast between biome types and element states (unknown ❓ vs identified)
+- (Further accessibility deferred)
 
 ## 7. Constraints
 
 ### Technical
 - **Engine:** Godot 4.x, GDScript only (no C#, no GDExtension)
-- **No native plugins:** Everything via Godot APIs. No Google Play Games, Firebase, analytics SDKs. Keeps build simple and 100% offline.
+- **No native plugins:** Everything via Godot APIs. 100% offline.
+- **Chapter architecture:** Content must be modular — future chapters add biomes, catalog entries, cutscenes, recipes without modifying core systems. Chapter state tracked in save data.
 
 ### Team
-- 2 people + AI agents: Andre (supervision, implementation oversight), Lola (design, coordination). AI agents (Claude Code, Codex) handle implementation. Not "2 devs" in the traditional sense.
+- 2 people + AI agents: Andre (supervision, implementation oversight), Lola (design, coordination). AI agents handle implementation.
 
 ### Budget (low, self-funded)
-- ~$77 for art pipeline (Sloyd for base models + Tripo for refinement/variations)
+- ~$77 for art pipeline (Sloyd + Tripo)
 - $25/year Apple Developer + $25 one-time Google Play
 - Godot = free, GitHub = free
-- Time is invested, not "free"
 
 ### Art Pipeline (decided — see docs/02-visual-assets-pipeline.md)
-- Sloyd for base 3D models (account created)
-- Tripo for refinement/variations (~$77 for ~150 models estimated)
-- Low-poly aesthetic, stylized not realistic
-- MVP uses placeholder art (colored hex tiles + primitive shapes); real assets later
+- Sloyd for base 3D models
+- Tripo for refinement/variations
+- Low-poly aesthetic, colorful and charming (NOT dark/gritty)
+- MVP uses placeholder art
 
 ### Timeline
-- No hard deadline — "done when it's done"
-- Soft goal: playable prototype (core loop working, placeholder art) within ~4–6 weeks
-- If not playable in 6 weeks, the approach needs revisiting (gut check, not deadline)
+- No hard deadline
+- Soft goal: playable prototype within ~4–6 weeks
 
 ## 8. Assumptions & Dependencies
 
 ### Assumptions
-- Godot 4.x latest stable is mature enough for mobile export (Android + iOS)
-- Single-threaded GDScript performance is adequate for ~300-tile hex map with simple AI (A* on 300 nodes is trivial; fauna AI is O(n) with n ≈ 5–10 creatures). Rendering is the bottleneck, not logic.
-- Hex grid math (axial/cube coordinates) maps cleanly to Godot's node system — well-documented via Red Blob Games
-- Touch input latency on mobile Godot is acceptable (<100ms for tap-to-move responsiveness)
-- Godot's FileAccess is reliable for local save/load on both Android and iOS sandboxes
-- Placeholder art is sufficient to validate the core loop with playtesters
-- $2.99 price point is viable for indie mobile market (validated by comparables: Stardew Valley mobile, Slay the Spire, etc.)
-- **No multiplayer, ever.** This is a design decision, not a deferral. Architecture does not need to account for networking, sync, or shared state.
+- Godot 4.x latest stable is mature enough for mobile export
+- Single-threaded GDScript performance adequate for ~300-tile hex map + simple AI + scanner logic
+- Hex grid math maps cleanly to Godot's node system (Red Blob Games reference)
+- Touch input latency acceptable (<100ms)
+- Godot FileAccess reliable for local save/load on Android + iOS
+- Placeholder art sufficient to validate core loop + scanner/catalog feel
+- ~$2.50/chapter price point viable for episodic mobile (validated by comparables: Alto's Odyssey chapters, Monument Valley 2)
+- Episodic model requires strong Chapter 1 hook — free chapter must end on a narrative cliffhanger
+- **No multiplayer, ever.** Design decision, not deferral.
 
 ### Dependencies
 
@@ -255,7 +325,8 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - gdtoolkit/gdlint (linting)
 
 **Design dependency:**
-- Red Blob Games hexagonal grids guide — reference implementation for all hex math
+- Red Blob Games hexagonal grids guide
+- New design system (TBD — vibrant, warm, sci-fi)
 
 **Build dependencies:**
 - Godot Export Templates: Android (SDK/NDK) + iOS (Xcode on Mac)
@@ -269,6 +340,7 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - [ ] Crash Site within 3 hexes of center
 - [ ] No two adjacent tiles with same biome exceed cluster of 5
 - [ ] Fog tiles not visible until player moves adjacent
+- [ ] At least 1 anomaly tile placed per map
 
 ### AC2 — Movement
 - [ ] Tap any revealed tile → character arrives via shortest path
@@ -276,24 +348,27 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 - [ ] Joystick appears at touch point on hold, character moves continuously
 - [ ] Both input modes work without settings toggle
 - [ ] Input-to-first-movement-frame < 100ms (measured)
+- [ ] Press-and-hold toward unknown element initiates scan
 
-### AC3 — Gathering
-- [ ] Tap tree with bare hands → +1 Wood in inventory
-- [ ] Tap ore with bare hands → nothing happens (tool-gated)
-- [ ] Tap ore with Stone Pickaxe equipped → +1 Ore
+### AC3 — Gathering (Auto-Interaction)
+- [ ] Player moves adjacent to uncataloged resource (❓) → nothing happens (scan gate)
+- [ ] Player scans unknown wood resource → cataloged → auto-gather starts on next proximity
+- [ ] Player moves adjacent to cataloged wood → auto-gather, +1 Wood in inventory
+- [ ] Player moves adjacent to cataloged ore without Stone Pickaxe → nothing (tool-gated)
+- [ ] Player moves adjacent to cataloged ore with Stone Pickaxe → auto-gather, +1 Ore
 - [ ] Resource node depletes after N gathers and visually changes
 - [ ] Depleted resource on non-visible tile regenerates after type-specific timer
 
 ### AC4 — Crafting
-- [ ] Player has 5 Wood + 3 Stone → Workbench recipe visible
+- [ ] Player has 5 Wood + 3 Stone → Workbench recipe visible in Build menu
 - [ ] Player has 2 Wood + 0 Stone → Workbench recipe greyed out
-- [ ] Player gathers Stone for first time → Stone Axe recipe appears
-- [ ] Craft Stone Axe → materials consumed, tool in inventory
+- [ ] Player gathers Stone for first time → Stone Axe recipe appears in Craft menu
+- [ ] Craft Stone Axe → materials consumed, tool in axe slot
 
 ### AC5 — Inventory
-- [ ] Start with 12 empty slots
-- [ ] Pick up 13th unique item without Storage Chest → rejected with feedback
-- [ ] Build Storage Chest → inventory expands to 24 slots
+- [ ] Start with 12 empty resource slots + 4 tool slots
+- [ ] Auto-pickup 13th unique item without Storage Chest → rejected with feedback
+- [ ] Build Storage Chest → inventory expands to 24 resource slots
 - [ ] Items stack with quantity display
 
 ### AC6 — Building
@@ -305,28 +380,47 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 
 ### AC7 — Day/Night
 - [ ] Full cycle completes in 5 min ±15s (measurable)
-- [ ] Dusk warning visible/audible 30s before night
+- [ ] Dusk warning visible 30s before night
 - [ ] Night: only tiles within 1 hex of player visible
 - [ ] Torch placed: extends visibility to 2 hexes around torch
 
 ### AC8 — Survival Stats
 - [ ] HUD shows 3 bars at all times
-- [ ] Hunger reaches 0 → HP decreases by X/sec
-- [ ] Eat Berries → Hunger increases by defined amount
-- [ ] All three stats at 0 → player dies → respawn with 50% inventory drop
+- [ ] Hunger reaches 0 → HP decreases at defined rate
+- [ ] Eat scanned-safe Berries → Hunger increases by defined amount
+- [ ] All three stats at 0 → player dies → fade to black → respawn with 50% inventory drop
 
 ### AC9 — Night Threats
 - [ ] Day 3 night → zero fauna spawn
 - [ ] Day 4 night → 1–3 fauna spawn outside lit/walled area
-- [ ] Fauna within 2 hexes → moves toward player
-- [ ] Fauna contacts player → HP damage (defined amount)
-- [ ] Dawn → all fauna despawn within 1 cycle
+- [ ] Uncataloged fauna show ❓ icon, no auto-defend
+- [ ] Uncataloged hostile fauna attacks → player takes surprise damage → species auto-cataloged
+- [ ] After cataloging (scan or surprise): auto-defend active for all future encounters
+- [ ] Dawn → all fauna despawn
 
 ### AC10 — Save System
 - [ ] Dawn triggers → save file exists on disk
-- [ ] Kill app → reopen → world state matches (tiles, structures, resources)
+- [ ] Kill app → reopen → world state matches (tiles, structures, resources, catalog, journal)
 - [ ] Kill app → reopen → player state matches (inventory, stats, position, day count)
 - [ ] Corrupt/delete save → game starts fresh without crash
+
+### AC11 — Scanner & Catalog (NEW)
+- [ ] Unknown flora shows ❓ icon — no auto-gather
+- [ ] Press and hold toward unknown flora → scan progress bar → catalog entry created
+- [ ] After cataloging: flora auto-identified + auto-gather unlocked for that species
+- [ ] Unknown fauna shows ❓ — no auto-defend
+- [ ] Scan fauna from distance → cataloged → auto-defend ready
+- [ ] Alternatively: uncataloged hostile attacks → surprise damage → auto-cataloged → auto-defend immediate
+- [ ] Unknown mineral shows ❓ — no auto-gather. Scan → cataloged → auto-gather with tool-gating
+- [ ] Anomaly scanned → cutscene triggered → journal entry added
+- [ ] Catalog UI shows all discovered entries with categories and counter ("12/47 cataloged")
+
+### AC12 — Journal (NEW)
+- [ ] Journal accessible via UI button
+- [ ] Story Timeline shows unlocked cutscenes in chronological order
+- [ ] Catalog section shows scanner discoveries
+- [ ] Scanning anomaly adds entry to both Catalog and Story Timeline
+- [ ] Cutscene plays on first anomaly scan (placeholder comic panel)
 
 ## 10. Priority
 
@@ -339,25 +433,32 @@ Farhaven fills this gap: the same dopamine loop, none of the abuse, designed for
 ### P0 — Core Loop
 | Feature | Rationale |
 |---------|-----------|
-| F3 Gathering | First interaction with the world |
+| F3 Gathering (auto) | First interaction — walk near things, collect them |
 | F5 Inventory | Store what you gathered |
-| F4 Crafting | Transform resources into tools/structures |
-| F8 Survival Stats | Stakes — hunger/thirst create urgency |
+| F13 Scanner/Catalog | Core mechanic — identify the unknown, drive curiosity |
+| F4 Crafting | Transform resources into tools |
+| F8 Survival Stats | Stakes — hunger/thirst create gentle urgency |
 
 ### P0 — Persistence
 | Feature | Rationale |
 |---------|-----------|
 | F7 Day/Night | Time pressure, pacing |
-| F10 Save | Don't lose progress — essential for playtesting iteration |
+| F10 Save | Don't lose progress |
+
+### P0 — Story Hook
+| Feature | Rationale |
+|---------|-----------|
+| F14 Journal | The reason to keep playing — narrative discovery |
 
 ### P1 — Tension
 | Feature | Rationale |
 |---------|-----------|
-| F6 Building | Shelter, walls, defense — gives crafting purpose |
-| F9 Night Threats | Stakes for the night cycle — makes building matter |
+| F6 Building | Shelter, walls, defense |
+| F9 Night Threats | Stakes for the night cycle |
 
 ### Build Order Notes
-- **Linear dependency chain within P0:** Grid → Movement → Gathering → Inventory → Crafting (each depends on the previous)
-- **Day/Night and Save can be built in parallel** with the Crafting stage
-- Save should be implemented incrementally: start with hex grid + stats serialization, add fields as features come online
-- **P1 is playable-without, not unimportant.** The core loop works without building/threats (boring, but testable). Without inventory or crafting, there's no game at all.
+- **Scanner/Catalog is P0 Core Loop** — it's the central mechanic, not a nice-to-have
+- Journal is P0 Story Hook — without it, Chapter 1 has no narrative cliffhanger
+- Auto-interaction simplifies F3 (no tap disambiguation) but adds proximity detection
+- Existing feature SPECs (001-008) need reconciliation with this redesign
+- Two new features (Scanner/Catalog, Journal) need decomposition and specification

@@ -1,4 +1,4 @@
-# Feature State — Hex Grid & World Generation
+# Feature State — Night Threats
 
 **Status:** Ready
 **Started:** 2026-03-31
@@ -16,5 +16,5 @@
 
 | Date | Change | Source |
 |------|--------|--------|
-| 2026-03-31 | Initialized (reset) — 3 core + 1 auto-activated. Carries forward proven architecture from pre-redesign spec. | /aid-specify |
-| 2026-03-31 | All 4 sections complete — status Ready | /aid-specify |
+| 2026-03-31 | Initialized — all sections proposed in single pass | /aid-specify |
+| 2026-03-31 | All sections complete — shelter farming flagged as known emergent behavior | /aid-specify |
