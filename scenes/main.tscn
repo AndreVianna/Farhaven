@@ -1,0 +1,14 @@
+[gd_scene load_steps=1 format=3 uid="uid://bfarhaven001"]
+
+[node name="Main" type="Node"]
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="JoystickOverlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="ScreenFade" type="CanvasLayer" parent="."]
+layer = 30
