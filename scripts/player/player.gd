@@ -174,27 +174,31 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 	_buffered_dir = _joystick_dir
 	_buffered_magnitude = _joystick_magnitude
 
+	var current_world_2d: Vector2 = _grid.axial_to_world(current_tile)
 	var target_world_2d: Vector2 = _grid.axial_to_world(target)
 	var target_tile = _grid.get_tile(target)
 	var target_y: float = 0.0
 	if target_tile != null:
 		target_y = float(target_tile.elevation) * ELEVATION_SCALE
 
-	var target_pos := Vector3(target_world_2d.x, target_y, target_world_2d.y)
+	# Land just past the border (10% into the target hex), not at center
+	var border_point_2d: Vector2 = current_world_2d.lerp(target_world_2d, 0.55)
+	var land_pos := Vector3(border_point_2d.x, target_y, border_point_2d.y)
+
 	var higher_y: float = maxf(position.y, target_y)
 	var arc_peak: float = higher_y + JUMP_ARC_HEIGHT
 
 	var is_jump_up: bool = traversal_type == _grid.TraversalType.JUMP
-	var duration: float = 0.3 if is_jump_up else 0.2
+	var duration: float = 0.15 if is_jump_up else 0.12  # short & subtle
 
 	_cancel_jump_tween()
 	_jump_tween = create_tween()
 
-	# XZ movement: linear to target
+	# XZ movement: linear to border landing point
 	_jump_tween.set_ease(Tween.EASE_IN_OUT)
 	_jump_tween.set_trans(Tween.TRANS_QUAD)
-	_jump_tween.tween_property(self, "position:x", target_pos.x, duration)
-	_jump_tween.parallel().tween_property(self, "position:z", target_pos.z, duration)
+	_jump_tween.tween_property(self, "position:x", land_pos.x, duration)
+	_jump_tween.parallel().tween_property(self, "position:z", land_pos.z, duration)
 
 	# Y movement: arc up (parabola), gravity down (straight fall)
 	var half: float = duration * 0.5
@@ -204,7 +208,7 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 		_jump_tween.tween_property(self, "position:y", target_y, half).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 	else:
 		# Dropping DOWN: small hop off the edge then fall with gravity
-		var hop_y: float = position.y + JUMP_ARC_HEIGHT * 0.3  # tiny hop, not full arc
+		var hop_y: float = position.y + JUMP_ARC_HEIGHT * 0.3
 		_jump_tween.parallel().tween_property(self, "position:y", hop_y, half * 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		_jump_tween.tween_property(self, "position:y", target_y, half * 1.6).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 
@@ -212,7 +216,7 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 	_jump_tween.finished.connect(func() -> void:
 		_jump_tween = null
 		_emit_tile_transition(old_tile, target)
-		_snap_to_tile(current_tile)
+		# NO snap to center — player continues from where they landed
 		_on_jump_landed()
 	)
 
