@@ -362,7 +362,7 @@ func _step8_reachability_and_anomaly() -> Dictionary:
 
 # --- Step 9: Validate ---
 
-func _step9_validate(reachable: Dictionary) -> bool:
+func _step9_validate(_reachable: Dictionary) -> bool:
 	var tile_count: int = _grid._tiles.size()
 	if tile_count < TARGET_TILE_MIN or tile_count > TARGET_TILE_MAX:
 		return false
