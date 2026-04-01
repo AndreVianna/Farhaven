@@ -236,6 +236,31 @@ func test_icons_removed_when_tile_becomes_hidden() -> void:
 	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
 
 
+# --- Multi-icon tile removal ---
+
+func test_multiple_icons_on_same_tile_removed_cleanly() -> void:
+	# Tile with resource AND anomaly — two unknown icons
+	var tile: HexTile = _HexTile.new()
+	tile.elevation = 0
+	tile.fog_state = _HexTile.FogState.VISIBLE
+	var node: ResourceNode = _ResourceNode.new()
+	node.type = &"berries"
+	tile.resource_nodes = [node]
+	tile.anomaly = &"anomaly_ch1_001"
+	_grid._tiles[Vector2i(1, 0)] = tile
+
+	_scanner.element_unknown.emit(Vector2i(1, 0))
+	_scanner.element_unknown.emit(Vector2i(1, 0))
+
+	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(2)
+
+	# Remove all icons when tile goes REVEALED
+	_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+
+	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
+	assert_bool(_renderer.get_tile_entries().has(Vector2i(1, 0))).is_false()
+
+
 # --- Billboard (structural check — material/shader configured) ---
 
 func test_icons_use_billboard_shader() -> void:

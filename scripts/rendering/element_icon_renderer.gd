@@ -230,9 +230,13 @@ func _remove_icon_at(coords: Vector2i, list_index: int) -> void:
 func _remove_all_icons_at(coords: Vector2i) -> void:
 	if not _tile_entries.has(coords):
 		return
-	var entries_list: Array = _tile_entries[coords].duplicate()
-	for info in entries_list:
+	# Remove one at a time from the live list; _hide_instance swap-and-pop keeps
+	# remaining entries' instance_idx current via _update_instance_index.
+	while _tile_entries.has(coords) and not _tile_entries[coords].is_empty():
+		var entries_list: Array = _tile_entries[coords]
+		var info: Dictionary = entries_list[entries_list.size() - 1]
 		_hide_instance(info.pool, info.instance_idx)
+		entries_list.remove_at(entries_list.size() - 1)
 	_tile_entries.erase(coords)
 
 
