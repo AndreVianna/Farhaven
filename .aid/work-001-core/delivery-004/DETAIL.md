@@ -316,6 +316,43 @@ existing shells — does NOT recreate them.
 - [ ] All tests pass
 - [ ] Build passes with zero warnings
 
+## Integration Contract
+
+### Scene Tree Additions
+Cumulative (adds to delivery-003):
+- World
+  - WorldEnvironment (Node3D) — lighting palette (existing, now wired)
+  - DirectionalLight3D — warm tones (existing, now wired to phase)
+  - GroundItemRenderer (Node3D) — NEW, 1 MultiMesh for death drops
+- DayNightCycle (autoload) — NEW
+- SaveManager (autoload) — NEW
+- Player
+  - SurvivalSystem (Node) — NEW
+
+### Bootstrap Changes
+- DayNightCycle autoload starts phase timer on _ready() (DAY first, 180s)
+- DayNightCycle takes ownership of ALL refresh_visibility calls — **remove Player's direct call from delivery-001**
+- DayNightCycle.register_lighting() called by Main to wire WorldEnvironment + DirectionalLight3D
+- SurvivalSystem._ready() → connects to DayNightCycle phase signals for HP regen rules
+- SaveManager._ready() → connects to DayNightCycle.day_started for auto-save
+- StatBars (delivery-001 shell) wired to SurvivalSystem signals
+- DayCounter (delivery-001 shell) wired to DayNightCycle signals
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Everything from delivery-003 still works
+- [ ] Day/night cycle visible: lighting changes color over ~5 minutes (warm day → purple/plum night)
+- [ ] Day counter increments
+- [ ] Stat bars animate: hunger/thirst slowly decrease
+- [ ] Night: visibility radius shrinks to 1 hex
+- [ ] Dawn: visibility expands back to 2 hexes
+- [ ] Eat berries → hunger bar increases
+- [ ] Die (let stats drain) → fade to black → respawn at crash site → 50% items dropped on ground
+- [ ] Close and reopen → save loaded, state preserved
+
+### Dev Environment
+No additional requirements beyond delivery-001.
+
 ## Change Log
 
 | Date | Change | Source |

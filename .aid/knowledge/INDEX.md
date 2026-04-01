@@ -25,3 +25,4 @@ If your task touches an area covered here, read the relevant document first.
 | infrastructure.md | Pending |
 | ui-architecture.md | Pending |
 | feature-inventory.md | Pending |
+| known-issues.md | Active — platform gotchas and development environment notes |

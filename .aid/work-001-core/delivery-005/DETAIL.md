@@ -215,7 +215,9 @@ DayNightCycle from delivery-004), not on each other.
   - **Spawn:** on `DayNightCycle.night`, Day 4+ only. Tile validation: not VISIBLE,
     no structure, passable, ≥3 hexes from player, not within torch radius 2.
   - **Movement:** `_process` NIGHT only, cooldown-gated. Move toward player within
-    detection_range. Wall avoidance (is_passable). No stacking.
+    detection_range. Wall avoidance via `_is_fauna_passable(from, to, max_jump)` —
+    NOT `HexGrid.is_passable()` (which allows JUMP/DROP). Thornback (`max_jump: 1`)
+    treats elevation diff 2+ as BLOCKED. No stacking.
   - **Contact damage:** after fauna move, if adjacent to player: shelter check
     (0 damage if on shelter, signal still fires), else 10 HP.
     Emit `fauna_attacked_player(id, damage, species_type)`
@@ -279,6 +281,42 @@ DayNightCycle from delivery-004), not on each other.
 - [ ] Auto-pickup activates: ground items from meat drops picked up on tile_entered
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
+
+## Integration Contract
+
+### Scene Tree Additions
+Cumulative (adds to delivery-004):
+- Player
+  - BuildingSystem (Node) — NEW
+  - FaunaManager (Node) — NEW
+- World
+  - StructureRenderer (Node3D) — NEW, ~5 MultiMesh for structure types
+  - FaunaRenderer (Node3D) — NEW, 1 MultiMesh for fauna bodies
+
+### Bootstrap Changes
+- BuildingSystem._ready() → connects to HexGrid.tile_entered + structure_placed/destroyed
+- FaunaManager._ready() → connects to DayNightCycle.night_started/day_started for spawn/despawn
+- FaunaManager.apply_damage() API available for AutoInteractionSystem auto-defend
+- AutoInteractionSystem auto-defend stub activates (was stub since delivery-003)
+- AutoInteractionSystem auto-pickup stub activates (ground items from delivery-004)
+- Torch placement → DayNightCycle.register_visibility_source() for extended night visibility
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Everything from delivery-004 still works
+- [ ] Tap Build button → panel shows 5 structures with costs
+- [ ] Select structure → adjacent valid tiles highlight cyan
+- [ ] Tap highlighted tile → structure appears → tile occupied
+- [ ] Storage Chest placed → inventory expands to 24 slots
+- [ ] Night (day 4+): fauna appear outside visible area, approach player
+- [ ] Uncataloged fauna shows ❓, attacks player → surprise damage → auto-cataloged
+- [ ] After cataloging: player auto-attacks approaching fauna
+- [ ] Shelter: standing on shelter tile → 0 damage from fauna contact
+- [ ] Dawn: all fauna despawn
+- [ ] Walls: fauna routes around placed walls
+
+### Dev Environment
+No additional requirements beyond delivery-001.
 
 ## Change Log
 

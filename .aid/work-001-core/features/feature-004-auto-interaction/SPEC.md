@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F3, F9 (auto-defend portion), §9 AC3, AC9 (auto-defend criteria) | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fixes: gather-always-completes, 7-tile check, chain from current pos, scan→check | /aid-specify |
+| 2026-04-01 | I5: Fly-to-player animation updated to ~0.5s, marked [TUNING_REQUIRED] for HEX_SIZE=3.0 scale. M2: Resource offset specified as ±15% of HEX_SIZE radius. Range note: auto-gather area transitioning to circular world-unit [TUNING_REQUIRED]. | /pivot-cascade |
 
 ## Source
 
@@ -67,7 +68,7 @@ This feature adds:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn). Set by worldgen from BiomeData. |
+| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn). Set by MapLoader from BiomeData. |
 
 No other per-node additions. `gather_time` and `gather_amount` are resource-type
 properties looked up from the resource config table at gather time.
@@ -230,7 +231,11 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │
   ├─ AutoInteractionSystem receives signal
   │
-  ├─ Check current tile + ALL adjacent tiles (player tile + 6 neighbors = 7 tiles):
+  ├─ Check current tile + ALL adjacent tiles (player tile + 6 neighbors = 7 tiles).
+  │   **[TUNING_REQUIRED]** — Range system is transitioning from hex-distance to
+  │   world-unit circular areas. Auto-gather will be "player's immediate vicinity"
+  │   (circular area, radius TBD). This may reduce from 7 tiles to current-tile-only
+  │   or a small circular radius. Flag for playtesting.
   │     For each tile in [current_tile] + HexGrid.get_neighbors(coords):
   │       For each resource_node in tile.resource_nodes:
   │         if resource_node.remaining <= 0: skip (depleted)
@@ -274,7 +279,8 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │       Emit auto_gather_completed(coords, node.type, added)
   │       → Visual: resource visually "flies to" player's CURRENT position
   │         (not where they were when gather started). Tween from resource
-  │         world position to Player.position over ~0.3s.
+  │         world position to Player.position over ~0.5s. **[TUNING_REQUIRED]** —
+  │         at HEX_SIZE=3.0 fly distance is ~3× larger; scale duration with distance.
   │       → HUD (feature-012): floating "+1 Wood" text at player position
   │       → Sound: gather "ding" at player position
   │     else:
@@ -530,7 +536,8 @@ meshes: colored cylinder (tree), grey box (rock), red sphere (berry bush), green
 strand (fiber), dark grey vein (ore), purple crystal (crystal cluster). <500 tris each.
 
 **Instance positioning:** Each resource gets a slight random offset within its hex tile
-(not dead-center) for visual variety. Offset computed deterministically from coords +
+(not dead-center) for visual variety. Offset = ±15% of hex radius (i.e., ±`HEX_SIZE × 0.15`
+= ±0.45 world units at HEX_SIZE=3.0). Computed deterministically from coords +
 resource index (seeded, not truly random — consistent across save/load).
 
 **Mesh variants:** Full → depleted (tree → stump, rock → rubble). Swap via instance
@@ -579,9 +586,11 @@ fires synchronously during the tile transition sequence. AutoInteractionSystem r
 it in the same frame.
 
 **Fly-to-player visual:** On gather complete, resource sprite tweens from resource
-world position to Player.position over ~0.3s. This is a lightweight Tween on a
-temporary Sprite3D (or screen-space label). One active at a time during chain
-gathering. No draw call impact — the sprite exists for 0.3s then `queue_free`.
+world position to Player.position over ~0.5s (tunable, should scale with fly distance).
+**[TUNING_REQUIRED]** — at HEX_SIZE=3.0 adjacent resource is ~3 world units away; 0.3s
+would appear 3× faster than intended. This is a lightweight Tween on a temporary
+Sprite3D (or screen-space label). One active at a time during chain gathering.
+No draw call impact — sprite exists briefly then `queue_free`.
 
 #### Touch Interaction
 

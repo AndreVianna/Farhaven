@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://hexgridrenderer01"]
+
+[ext_resource type="Script" path="res://scenes/world/hex_grid_renderer.gd" id="1_hgrscript"]
+
+[node name="HexGridRenderer" type="Node3D"]
+script = ExtResource("1_hgrscript")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]

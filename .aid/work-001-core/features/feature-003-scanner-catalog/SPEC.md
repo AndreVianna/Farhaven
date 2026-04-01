@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F13, §9 AC11 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
+| 2026-04-01 | I6: _scan_range (2 hexes) noted as [TUNING_REQUIRED] for HEX_SIZE=3.0; range transitioning to circular world-unit area. I2: Touch target estimate marked [TUNING_REQUIRED]. | /pivot-cascade |
 
 ## Source
 
@@ -131,7 +132,7 @@ func get_scannable_at(coords: Vector2i) -> StringName
 | `_scan_target_entry_id` | `StringName` | Entry being scanned |
 | `_scan_progress` | `float` | 0.0 → 1.0, increments during hold |
 | `_scan_duration` | `float` | Seconds to complete scan (2.0-3.0, configurable per category) |
-| `_scan_range` | `int` | Max hex distance from player to scan target (default: 2) |
+| `_scan_range` | `int` | Max hex distance from player to scan target (default: 2). **[TUNING_REQUIRED]** — at HEX_SIZE=3.0 this is ~6 world units; range system is transitioning to circular world-unit area (~1 inscribed hex radius ≈ 2.6 units at HEX_SIZE=3.0). Flag for playtesting — scanner is a long-range tool so 2 hexes may be correct. |
 
 #### Scan Duration Config
 
@@ -576,7 +577,7 @@ responds within the same frame — timeout never fires in practice.
 #### Touch Interaction
 
 - **Scan hold:** Player holds on ❓ element for 2-3 seconds. No additional touch
-  targets — the ❓ icon IS the target, positioned on the hex tile (54-72px).
+  targets — the ❓ icon IS the target, positioned on the hex tile. **[TUNING_REQUIRED]** — hex tile screen size for HEX_SIZE=3.0 to be verified post-camera calibration.
 - **Catalog panel:** Same touch targets as other bottom drawers. Entry rows ~80px,
   tabs ~48px, buttons ≥48dp.
 - **No platform differences.** Same touch events on iOS and Android.

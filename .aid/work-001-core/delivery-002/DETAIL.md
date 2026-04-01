@@ -291,6 +291,38 @@ Integration tests verifying delivery-002 features together:
 - [ ] All tests pass
 - [ ] Build passes with zero warnings
 
+## Integration Contract
+
+### Scene Tree Additions
+Cumulative (adds to delivery-001):
+- Player
+  - ScannerSystem (Node) — NEW
+  - Inventory (RefCounted, not in tree — owned by Player script)
+- World
+  - ElementIconRenderer (Node3D) — NEW, 5 MultiMesh pools for ❓/identified icons
+  - ScanProgressRenderer (Node3D) — NEW, scan progress ring
+- HUD
+  - InventoryPanel (bottom drawer ~45%) — NEW
+  - CatalogPanel (bottom drawer ~45%) — NEW
+
+### Bootstrap Changes
+- ScannerSystem._ready() → connects to PlayerInput scan_hold_started/update/ended
+- ElementIconRenderer receives map_generated → creates ❓ icons for all elements on revealed tiles
+- ElementIconRenderer receives entry_cataloged → swaps ❓ to identified icon
+- Inventory created in Player._ready() with 12 base slots + 4 tool slots (survival_knife + scanner)
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Everything from delivery-001 still works
+- [ ] ❓ icons floating above undiscovered resources/flora on revealed tiles
+- [ ] Press-and-hold toward ❓ → scan progress ring appears → completes → ❓ becomes identified icon
+- [ ] Tap Inventory button → panel slides up showing 12 empty slots + 4 tool slots
+- [ ] Tap Scanner button → catalog panel shows discovered entries (after scanning something)
+- [ ] Panels are mutually exclusive — opening one closes others
+
+### Dev Environment
+No additional requirements beyond delivery-001.
+
 ## Change Log
 
 | Date | Change | Source |

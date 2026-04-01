@@ -14,10 +14,14 @@
 | 2026-03-30 | Deferred Bridge to future work — water tiles fully impassable in MVP | User request |
 | 2026-03-31 | MAJOR REDESIGN — New identity (curiosity+story), episodic chapters, auto-interaction, scanner/catalog, journal, fauna/flora redesign, Tactical Brutalism discarded | User redesign |
 | 2026-03-31 | Scanning as universal gate — ❓ = inert to auto-system. Surprise attack auto-catalogs hostile fauna. | User clarification |
+| 2026-04-01 | §11 Game Initialization added — bootstrap sequence, extension points, dev environment | /audit-fix |
+| 2026-04-01 | [PIVOT] §5 F2: joystick-only movement. Tap reserved for interactions. §9 AC2 updated. | /design-pivot |
+| 2026-04-01 | [PIVOT] §5 F1: hand-crafted maps (MapLoader replaces WorldGenerator). Elevation 0-9, 3-tier traversal. §9 AC1+AC2 updated. | /design-pivot |
+| 2026-04-01 | C1+C6: HEX_SIZE=3.0 and ELEVATION_STEP=0.5 added to §5 F1 Spatial Constants. Player occupancy ~30% noted. C2: Cliff faces added as current scope. | /pivot-cascade |
 
 ## 1. Objective
 
-Build a mobile exploration/survival game (Android + iOS) using Godot 4.x and GDScript. An astronaut crash-lands on an alien planet. Explores a beautiful, mysterious hex-tile procedural world. Gathers resources, builds shelter, catalogs flora/fauna/minerals with a scanner, and discovers that the supposedly "uninhabited" planet shows signs of civilization. The story is told through the astronaut's Journal, fed by scanner discoveries.
+Build a mobile exploration/survival game (Android + iOS) using Godot 4.x and GDScript. An astronaut crash-lands on an alien planet. Explores a beautiful, mysterious hex-tile world. Gathers resources, builds shelter, catalogs flora/fauna/minerals with a scanner, and discovers that the supposedly "uninhabited" planet shows signs of civilization. The story is told through the astronaut's Journal, fed by scanner discoveries.
 
 **Feeling references:**
 - My Little Universe (progress satisfaction, walk around and things happen, visually pleasant)
@@ -35,7 +39,7 @@ Build a mobile exploration/survival game (Android + iOS) using Godot 4.x and GDS
 **Success criteria:**
 - Playable on Android + iOS in portrait mode, touch-first controls
 - Engaging 15–30 minute sessions (commute-friendly chapters)
-- Procedurally generated hex world with narrative elements
+- Hand-crafted hex world with narrative elements
 - Core loop: explore → gather → scan → catalog → discover story → progress
 - Monetization: Chapter 1 free, Chapter 2+ ~$2.50 each (episodic)
 - Performance: 60 fps on mid-range devices (2022+ phones)
@@ -71,9 +75,9 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 ## 4. Scope
 
 ### In Scope (Chapter 1 / core MVP)
-- Hex grid rendering + procedural map generation
-- 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone + Water tiles (impassable terrain)
-- Player movement (tap-to-move + virtual joystick)
+- Hex grid rendering + hand-crafted map loading
+- 3 biomes (Grassland, Forest, Rocky) + Crash Site + Water tiles (impassable terrain)
+- Player movement (virtual joystick only — tap reserved for interactions)
 - Auto-interaction system (proximity-based gathering, auto-pickup, auto-defend)
 - Resource gathering (Raw tier, tool-gated)
 - Basic crafting (Workbench level)
@@ -117,26 +121,36 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 
 ## 5. Functional Requirements
 
-### F1. Hex Grid & World Generation
-- Procedural hex map using axial/cube coordinates (~200–300 tiles)
-- Biome assignment: Grassland, Forest, Rocky (weighted distribution + adjacency rules)
+### F1. Hex Grid & World
+- **[PIVOT] Hand-crafted hex maps** loaded from JSON level files. Each chapter has a designed map (~200–300 tiles). MapLoader replaces WorldGenerator.
+- Biome types: Grassland, Forest, Rocky, Crash Site, Water
   - **Grassland:** Open, safe starter biome. Resources: Grass, Berries, Fiber. No hazards.
   - **Forest:** Dense, more wood. Resources: Wood, Fiber, Berries (thick trees tool-gated). Hazard: Thorns (damage).
   - **Rocky:** Stone, Ore, Crystals. Hazard: Rockslide (blocks path).
 - Natural progression curve: Crash Site → Grassland → Forest → Rocky
-- Crash Site placed near center (scripted, not random)
+- Crash Site at map origin (0,0)
 - Water tiles: impassable terrain barriers. Impassable in core MVP (Bridge deferred).
-- **Elevation:** Each hex tile has an elevation value. Biomes influence elevation ranges. Greater differences are impassable in core MVP (Climbing Gear deferred).
+- **[PIVOT] Elevation 0–9 per tile.** 3-tier traversal:
+  - Diff 0–1: Walk (smooth mesh transition)
+  - Diff 2–3: Auto-jump up / auto-drop down (gap, no connecting mesh)
+  - Diff 4+: Blocked (cliff, future wall texture)
+  - Asymmetric gravity: dropping faster than jumping. Both auto-triggered, no input.
+- **Spatial constants (define world scale):**
+  - `HEX_SIZE = 3.0` — world-space size of one hex (center to corner). All spatial calculations derive from this constant.
+  - `ELEVATION_STEP = 0.5` — world units of Y offset per elevation level. Total height range: 0–4.5 world units.
+  - Player visual occupies ~30% of hex width (~0.9 units at HEX_SIZE=3.0)
+- **Cliff faces:** Flat vertical quads between adjacent hexes at different elevations. Higher tile's biome color × 0.6. Part of the hex ArrayMesh (zero extra draw calls). Current scope, not deferred.
 - Fog of war — tiles reveal when player moves adjacent
-- **Anomaly tiles:** At least 1 anomaly placed in the world (for Chapter 1 narrative trigger). Anomalies are special objects on tiles that can be scanned to unlock story content.
+- **Anomaly tiles:** Hand-placed by level designer. Scanned to unlock story content.
 
 ### F2. Player Movement & Controls
-- Tap-to-move with A* pathfinding on hex grid
-- Floating joystick: touch-and-hold anywhere on screen → joystick appears at touch point
-- Hold = joystick (fine movement), Tap = pathfind (navigation). Both work simultaneously, no toggle needed.
+- **[PIVOT] Joystick-only movement.** Floating joystick: touch-and-drag anywhere on screen → joystick appears at touch point. Continuous movement (not tile-snapped during motion).
+- **Tap on world = no movement.** Tap is reserved for UI buttons and world interactions (building placement, future object inspect).
 - **Press-and-hold toward unknown element = scan** (new input mode — see F13)
 - Ignore touches on HUD elements
-- Elevation-aware pathfinding
+- **[PIVOT] 3-tier elevation traversal:** Walk (0-1), auto-jump/drop (2-3), blocked (4+)
+- Player position is continuous; `current_tile` is derived from position
+- On joystick release, player snaps to current tile center
 - No stamina bar
 
 ### F3. Resource Gathering — AUTO-INTERACTION
@@ -334,19 +348,21 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 
 ## 9. Acceptance Criteria
 
-### AC1 — Hex Grid & World Gen
-- [ ] Generate 3 different maps → all have 200–300 tiles
-- [ ] All 3 biomes + Crash Site present in every map
-- [ ] Crash Site within 3 hexes of center
-- [ ] No two adjacent tiles with same biome exceed cluster of 5
+### AC1 — Hex Grid & World
+- [ ] Load Chapter 1 map from JSON → 200–300 tiles
+- [ ] All 3 biomes + Crash Site present
+- [ ] Crash Site at origin (0,0)
 - [ ] Fog tiles not visible until player moves adjacent
-- [ ] At least 1 anomaly tile placed per map
+- [ ] At least 1 anomaly tile in map data
+- [ ] Elevation 0–9 per tile, 3-tier traversal enforced (walk/jump/blocked)
 
 ### AC2 — Movement
-- [ ] Tap any revealed tile → character arrives via shortest path
-- [ ] Path avoids impassable tiles (water, structures) and too-steep elevation changes
-- [ ] Joystick appears at touch point on hold, character moves continuously
-- [ ] Both input modes work without settings toggle
+- [ ] Joystick appears at touch point on drag, character moves continuously
+- [ ] Player avoids BLOCKED tiles (water, structures, elevation diff 4+) — slides along boundary
+- [ ] Elevation diff 2-3: auto-jump (up ~0.3s) / auto-drop (down ~0.2s) with arc
+- [ ] Elevation diff 0-1: smooth walk with Y interpolation
+- [ ] Tap on world = no movement (reserved for interactions)
+- [ ] On joystick release, player snaps to current tile center
 - [ ] Input-to-first-movement-frame < 100ms (measured)
 - [ ] Press-and-hold toward unknown element initiates scan
 
@@ -422,7 +438,32 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - [ ] Scanning anomaly adds entry to both Catalog and Story Timeline
 - [ ] Cutscene plays on first anomaly scan (placeholder comic panel)
 
-## 10. Priority
+## 11. Game Initialization & Bootstrap
+
+The game startup sequence must be explicitly defined. Each system initializes in order, and later deliveries extend this sequence.
+
+### Bootstrap Sequence (delivery-001 baseline)
+1. `Main._ready()` → create `MapLoader(HexGrid)` → `load_map("res://data/maps/ch1.json")` → map populated
+2. `Player._ready()` → spawn at map's spawn tile (0,0) → snap to tile center
+3. `HexGrid.refresh_visibility([{coords: player.current_tile, radius: 2}])` → initial fog reveal
+4. `HexGridRenderer` receives `map_generated` → builds ArrayMesh (single draw call)
+5. `HexGridRenderer` receives `tile_visibility_changed` → updates vertex colors per tile
+6. `PlayerCamera._ready()` → targets Player → isometric overhead angle (rotation.x ≈ -34°)
+7. `HUD._ready()` → stat bars (placeholder), day counter (placeholder), 5 action buttons, CraftButton hidden
+
+### Extension Points
+Each delivery that adds systems MUST document how it extends this sequence:
+- **delivery-002:** ScannerSystem + Inventory initialize after Player (no dependencies on other new systems)
+- **delivery-003:** AutoInteractionSystem connects to tile_entered signal after Player ready
+- **delivery-004:** DayNightCycle autoload starts phase timer. SurvivalSystem connects to phase signals. SaveManager connects to day_started for auto-save. Visibility radius changes per phase (day=2, night=1). DayNightCycle takes ownership of refresh_visibility calls (replaces delivery-001 player-driven calls)
+- **delivery-005:** BuildingSystem + FaunaManager initialize as Player children. Torch placement registers visibility sources with DayNightCycle
+- **delivery-006:** JournalSystem connects to entry_cataloged + day_started signals
+
+### Dev Environment Requirements
+- **Desktop testing requires mouse→touch emulation:** `project.godot` must include `[input_devices]` section with `pointing/emulate_touch_from_mouse=true`
+- **Headless testing:** GdUnit4 requires `--ignoreHeadlessMode` flag. HTML reporter has cosmetic errors in Godot 4.6 — not project bugs
+
+## 12. Priority
 
 ### P0 — Foundation
 | Feature | Rationale |

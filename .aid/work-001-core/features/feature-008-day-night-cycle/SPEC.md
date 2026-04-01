@@ -330,7 +330,7 @@ DayNightCycle emits day_started(day_count)
 SaveManager on game start:
   │
   ├─ FileAccess.file_exists("user://save.json")?
-  │     ✗ No → new game (worldgen, defaults)
+  │     ✗ No → new game (MapLoader, defaults)
   │
   ├─ Read + JSON.parse_string()
   │     ✗ Parse fails → delete corrupt file, new game (no crash)

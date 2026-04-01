@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="uid://cgrassland001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+biome_name = "Grassland"
+elevation_range = Vector2i(0, 9)
+resource_table = [{"chance": 0.5, "max_amount": 4, "min_amount": 1, "tool_required": "", "type": "berries"}, {"chance": 0.6, "max_amount": 4, "min_amount": 1, "tool_required": "", "type": "fiber"}, {"chance": 0.3, "max_amount": 3, "min_amount": 1, "tool_required": "", "type": "wood"}]
+color = Color(0.4, 0.75, 0.3, 1)
+color_variations = [Color(0.486, 0.733, 0.196, 1), Color(0.420, 0.557, 0.137, 1), Color(0.0, 0.792, 0.384, 1)]

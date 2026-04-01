@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="uid://crocky0000001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+biome_name = "Rocky"
+elevation_range = Vector2i(0, 9)
+resource_table = [{"chance": 0.7, "max_amount": 6, "min_amount": 2, "tool_required": "stone_pickaxe", "type": "stone"}, {"chance": 0.3, "max_amount": 4, "min_amount": 1, "tool_required": "stone_pickaxe", "type": "ore"}, {"chance": 0.1, "max_amount": 2, "min_amount": 1, "tool_required": "stone_pickaxe", "type": "crystal"}]
+color = Color(0.55, 0.5, 0.45, 1)
+color_variations = [Color(0.502, 0.502, 0.502, 1), Color(0.439, 0.502, 0.565, 1), Color(0.251, 0.251, 0.251, 1)]
