@@ -65,6 +65,8 @@ DayNightCycle from delivery-004), not on each other.
   - Placement validation: adjacent, passable, no existing structure, sufficient materials
   - On valid placement: `Inventory.remove_item` per ingredient,
     `HexGrid.get_tile(coords).structure = type`, emit `HexGrid.structure_placed`
+  - **Storage Chest effect:** after placement, call `Inventory.expand(12)` directly
+    (Inventory is RefCounted — cannot listen to signals itself)
   - `structure_build_failed(reason)` signal
   - `get_save_data()` / `load_save_data()` — no separate save (F-001 tile data is source of truth)
 - `data/structure_config.tres` (or static Dictionary)
@@ -75,6 +77,7 @@ DayNightCycle from delivery-004), not on each other.
 - [ ] Materials consumed on successful placement
 - [ ] `structure_placed` emitted with correct coords + type
 - [ ] `structure_build_failed` emitted with reason on rejection
+- [ ] Storage Chest placement calls `Inventory.expand(12)` — inventory grows to 24 slots
 - [ ] Shelter `blocks_movement: false`, Torch `blocks_movement: false`
 - [ ] Workbench, Storage Chest, Wall `blocks_movement: true`
 - [ ] Unit tests for all validation paths

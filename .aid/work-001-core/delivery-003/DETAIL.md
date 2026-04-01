@@ -68,8 +68,10 @@ task-023 depends on everything.
   - Weapon damage: `WEAPON_DAMAGE = { survival_knife: 10, "": 5 }`
   - Auto-defend config: attack_cooldown 1.0s, attack_range 1
   - `can_gather(node, inventory)`: tool_required match via Inventory.get_tool
-  - All 7 signals declared (auto_gather_started/completed/failed, auto_defend_triggered/
-    cooldown_started, resource_depleted/respawned, ground_item_picked_up)
+  - 5 signals declared: `auto_gather_started`, `auto_gather_completed`,
+    `auto_gather_failed`, `auto_defend_triggered`, `ground_item_picked_up`
+  - `resource_depleted` / `resource_respawned` emitted via HexGrid (canonical owner),
+    NOT duplicated on AutoInteractionSystem
   - No flow logic yet — data + config + utilities only
 
 **Criteria:**
@@ -78,7 +80,8 @@ task-023 depends on everything.
 - [ ] Resource config: all 8 types (including toxic_berries) with correct values
 - [ ] Tool speed: stone_axe halves wood time (1.0 * 0.5 = 0.5s)
 - [ ] Weapon damage: survival_knife=10, bare hands=5
-- [ ] All 7 signals declared
+- [ ] 5 signals declared (auto_gather_started/completed/failed, auto_defend_triggered, ground_item_picked_up)
+- [ ] resource_depleted/respawned emitted via HexGrid, NOT on AutoInteractionSystem
 - [ ] Build passes with zero warnings
 
 ---
@@ -95,8 +98,9 @@ task-023 depends on everything.
 - Begin gather: compute effective_time (base * tool_speed), create Tween
 - **Gather always completes** — no cancel, no range check after start
 - On tween complete: decrement remaining, `Inventory.add_item` (at arrival, not start),
-  emit `auto_gather_completed`. If remaining==0: emit `resource_depleted`, add to
-  respawn queue if respawn_time>0.
+  emit `auto_gather_completed`. If remaining==0: emit `HexGrid.resource_depleted`
+  (HexGrid owns tile data and the canonical signal — ResourceRenderer listens there),
+  add to respawn queue if respawn_time>0.
 - **Chain:** re-check from player's CURRENT position after each completion.
   Player may have moved. Chain continues while resources available.
 - Inventory full: emit `auto_gather_failed(&"inventory_full")`
@@ -126,7 +130,8 @@ task-023 depends on everything.
 - **Respawn queue** in `_process`:
   - Tick `time_remaining` only when tile `fog_state != VISIBLE`
   - Pause on VISIBLE, resume on REVEALED/HIDDEN
-  - On expire: `node.remaining = max_amount`, emit `resource_respawned`
+  - On expire: `node.remaining = max_amount`, emit `HexGrid.resource_respawned`
+    (HexGrid owns the canonical signal — ResourceRenderer listens there)
   - `respawn_time == 0` → never enters queue
   - NOT saved (intentional — world heals on load)
 - **Auto-defend stub:**

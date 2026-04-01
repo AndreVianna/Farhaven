@@ -11,18 +11,19 @@
 ```
 task-039 (Journal data layer + trigger system)
   │
-  ▼
-task-040 (Cutscene viewer — fullscreen comic panel player)
-  │
-  ▼
-task-041 (Journal panel UI + HUD integration)
-  │
-  ▼
+  ├──────────────────┐
+  ▼                  ▼
+task-040           task-041
+(Cutscene viewer)  (Journal panel UI
+                    + HUD integration)
+  │                  │
+  └──────┬───────────┘
+         ▼
 task-042 (Integration test — narrative arc end-to-end)
 ```
 
-Linear chain — each task builds on the previous. Single feature, no parallelism
-opportunities within the delivery.
+**Parallel group:** task-040 + task-041 — both depend on task-039 but not on each other.
+Can run in parallel if two agents are available.
 
 ## Tasks
 
