@@ -13,8 +13,8 @@ var _gd_scripteditor_context_menu: Variant
 
 func _enter_tree() -> void:
 
-	var inferred_declaration: int = ProjectSettings.get_setting("debug/gdscript/warnings/inferred_declaration")
-	var exclude_addons: bool = ProjectSettings.get_setting("debug/gdscript/warnings/exclude_addons")
+	var inferred_declaration: int = ProjectSettings.get_setting("debug/gdscript/warnings/inferred_declaration", 0)
+	var exclude_addons: bool = ProjectSettings.get_setting("debug/gdscript/warnings/exclude_addons", false)
 	if !exclude_addons and inferred_declaration != 0:
 		printerr("GdUnit4: 'inferred_declaration' is set to Warning/Error!")
 		printerr("GdUnit4 is not 'inferred_declaration' save, you have to excluded addons (debug/gdscript/warnings/exclude_addons)")

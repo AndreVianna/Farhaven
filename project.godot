@@ -29,6 +29,11 @@ window/handheld/orientation=1
 window/stretch/mode="viewport"
 window/stretch/aspect="keep"
 
+[debug]
+
+gdscript/warnings/exclude_addons=true
+gdscript/warnings/inferred_declaration=0
+
 [rendering]
 
 renderer/rendering_method="mobile"
