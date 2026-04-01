@@ -8,3 +8,4 @@ extends Resource
 @export var elevation_range: Vector2i = Vector2i(0, 0)
 @export var resource_table: Array = []
 @export var color: Color = Color.WHITE
+@export var color_variations: Array[Color] = []

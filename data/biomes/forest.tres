@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_biome")
 biome_name = "Forest"
-elevation_range = Vector2i(0, 2)
+elevation_range = Vector2i(0, 9)
 resource_table = [{"chance": 0.7, "max_amount": 5, "min_amount": 2, "tool_required": "", "type": "wood"}, {"chance": 0.4, "max_amount": 3, "min_amount": 1, "tool_required": "", "type": "berries"}, {"chance": 0.2, "max_amount": 2, "min_amount": 1, "tool_required": "", "type": "toxic_berries"}]
 color = Color(0.15, 0.5, 0.15, 1)
+color_variations = [Color(0.133, 0.545, 0.133, 1), Color(0.227, 0.373, 0.235, 1), Color(0.227, 0.373, 0.176, 1)]
