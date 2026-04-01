@@ -17,6 +17,7 @@
 | 2026-03-31 | SPEC reset + all sections rewritten — simplified input (no tap-to-interact), scan forwarding | /aid-specify |
 | 2026-04-01 | [PIVOT] 3-tier traversal: WALK (0-1) / JUMP-DROP (2-3) / BLOCKED (4+). JUMPING state added. Asymmetric gravity. | /design-pivot |
 | 2026-04-01 | [PIVOT] Joystick-only movement. Tap-to-move removed. Continuous position. current_tile derived. A* pathfinder removed (fauna uses it in F-010). | /design-pivot |
+| 2026-04-01 | C3: Camera offset updated to Vector3(0, 12, 8) for HEX_SIZE=3.0. C4: move_speed default 5.0 units/sec (deliberate exploration pace, not tripled). I2: Touch target estimate marked [TUNING_REQUIRED]. I3: Jump arc peak now proportional to gap_height × ELEVATION_STEP, marked [TUNING_REQUIRED]. I8: Snap tween updated to ~0.2s, marked [TUNING_REQUIRED]. I10: Flow diagram labels updated (TAP = no-op path, SCAN = Outcome 1, JOYSTICK = Outcome 2). | /pivot-cascade |
 
 ## Source
 
@@ -65,7 +66,7 @@ Adds player position (current tile coordinates) to save data.
 |----------|------|-------------|
 | `current_tile` | `Vector2i` | Axial coords of tile the player is on — **derived** from `HexMath.world_to_axial(position)`, updated when hex boundary crossed |
 | `move_state` | `MoveState` | Current movement mode |
-| `move_speed` | `float` | World units/sec (exported, tunable) |
+| `move_speed` | `float` | World units/sec — default `5.0` (exported, tunable). Calibrated for HEX_SIZE=3.0 as a deliberate exploration pace (NOT tripled from a HEX_SIZE=1.0 baseline — slower crossing feels right for the curiosity/story genre). |
 | `facing_direction` | `Vector2` | Normalized, for character orientation |
 
 **[PIVOT] Removed:** `target_tile`, `move_path` — no pathfinding. Position is continuous Vector3 on the Node3D. `current_tile` is computed, not set directly.
@@ -95,7 +96,7 @@ The player is a `Node3D`, not a `CharacterBody3D`. Movement is continuous (not d
   - BLOCKED → slide along boundary
 - **Elevation:** Y component smoothly interpolated based on hex elevations (WALK). Jump/Drop uses arc trajectory.
 - **Tile transitions:** `current_tile` is derived from `HexMath.world_to_axial(position)`. When it changes, `tile_entered`/`tile_exited` fire
-- **On stop:** Short tween (~0.1s) snaps to current tile center — prevents player from standing between hexes when idle
+- **On stop:** Short tween (~0.2s, tunable) snaps to current tile center — prevents player from standing between hexes when idle. **[TUNING_REQUIRED]** — at HEX_SIZE=3.0 max snap distance is ~1.5 units; 0.1s may feel too fast/jarring.
 
 **[PIVOT] No Tween-based tile-to-tile movement.** Player moves smoothly through world space. The hex grid is the logical layer; the player's physical position is independent.
 
@@ -151,7 +152,7 @@ Three states. Jump/drop is brief and automatic.
 | From | Trigger | To | What Happens |
 |------|---------|-----|-------------|
 | IDLE | Joystick held (drag ≥ threshold) | WALKING | Move continuously in joystick direction |
-| WALKING | Joystick released | IDLE | Snap to current tile center (~0.1s tween) |
+| WALKING | Joystick released | IDLE | Snap to current tile center (~0.2s tween, tunable) |
 | WALKING | Tile boundary with elevation diff 2-3 | JUMPING | Auto-jump (up ~0.3s) or auto-drop (down ~0.2s) arc |
 | JUMPING | Arc animation completes | WALKING | Resume movement, process buffered joystick input |
 | JUMPING | Joystick released during jump | IDLE | Land, then snap to tile center |
@@ -162,7 +163,7 @@ Three states. Jump/drop is brief and automatic.
 #### Joystick Release Snap
 
 When joystick is released, player may be between hex centers:
-- Short tween (~0.1s) to `current_tile` center position
+- Short tween (~0.2s, tunable) to `current_tile` center position
 - `current_tile` is already correct (derived from position continuously)
 - No tiebreaker needed — the player is always "on" exactly one tile
 
@@ -175,14 +176,14 @@ Touch DOWN received
   │
   ├─ Track duration and drag distance
   │
-  ├─ OUTCOME 1: TAP (interaction — NOT movement)
+  ├─ NO-OP PATH: TAP (interaction — NOT movement)
   │     Touch UP before 300ms AND drag distance < 20px
   │     → In delivery-001: no-op on world (no interactable objects yet)
   │     → Future: emit tap_world(coords: Vector2i) for building placement,
   │       object inspection, etc.
   │     → UI buttons: consumed by Godot _gui_input before reaching player_input
   │
-  ├─ OUTCOME 2: POTENTIAL SCAN HOLD
+  ├─ OUTCOME 1: POTENTIAL SCAN HOLD
   │     Duration reaches 300ms AND drag < 20px
   │     → Convert touch to coords: HexGrid.world_to_axial(world_pos)
   │     → Emit scan_hold_started(coords: Vector2i)
@@ -191,7 +192,7 @@ Touch DOWN received
   │       → Rejected: emit scan_rejected → fall back to JOYSTICK
   │     → On touch UP: emit scan_hold_ended()
   │
-  ├─ OUTCOME 3: JOYSTICK (movement)
+  ├─ OUTCOME 2: JOYSTICK (movement)
   │     Drag distance reaches 20px (regardless of duration)
   │     OR scan_rejected received
   │     → Show joystick at touch origin
@@ -294,7 +295,7 @@ Drag ≥ 20px (any time) OR scan_rejected fallback
 
 **Elevation interpolation (WALK only):** During movement between same-elevation or diff-1 tiles, Y position interpolates between the source and destination tile elevations based on distance to each tile center. This prevents jarring Y jumps at boundaries.
 
-**Jump/Drop arc:** Uses a simple parabolic arc. Jump: Y rises by ~0.5 world units above the higher tile, then lands. Drop: Y follows a gravity-like curve to the lower tile. Both use Tween with EASE_IN_OUT.
+**Jump/Drop arc:** Uses a simple parabolic arc. Jump: Y rises by `gap_height * 0.5 + 0.3` above the higher tile, where `gap_height = elevation_diff × ELEVATION_STEP` (e.g., diff-2 gap at ELEVATION_STEP=0.5 → 1.0 world units → peak 0.8 units above tile). Drop: Y follows a gravity-like curve to the lower tile. Both use Tween with EASE_IN_OUT. Arc peak and timing are `@export` tunable. **[TUNING_REQUIRED]** — timing (0.3s jump / 0.2s drop) calibrated for HEX_SIZE=1.0; may need adjustment at HEX_SIZE=3.0.
 
 #### Input Pipeline — Scan Hold (Outcome 2, feature-003 owned)
 
@@ -457,7 +458,7 @@ RefCounted can't receive it.
 ```gdscript
 # player_camera.gd — on Camera3D, sibling of Player
 @export var follow_speed: float = 8.0
-@export var offset: Vector3 = Vector3(0, 15, 10)
+@export var offset: Vector3 = Vector3(0, 12, 8)  # Calibrated for HEX_SIZE=3.0
 
 var _target: Node3D
 var _map_bounds: Rect2
@@ -525,7 +526,7 @@ defensive timeout (32ms) catches edge cases without perceptible delay.
 
 #### Touch Target Sizes
 
-- Hex tiles: ~54–72px at 1080×1920 portrait. Above 48dp minimum.
+- Hex tiles: **[TUNING_REQUIRED for HEX_SIZE=3.0 + camera Vector3(0, 12, 8)]** — previous estimate (~54-72px) was for HEX_SIZE=1.0. Verify after camera calibration. Target: above 48dp minimum.
 - ❓ elements: positioned on hex tiles, same touch target size.
 - Joystick: no fixed zone — appears at touch point.
 

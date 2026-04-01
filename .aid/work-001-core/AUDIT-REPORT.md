@@ -218,3 +218,5 @@ All save sections now use `tile_col`/`tile_row` convention:
 | **Grade** | **B+** | **A-** |
 
 All blocking issues resolved. Remaining 5 issues are non-blocking — implementers can resolve them at coding time with clear intent from surrounding context. Documentation is implementation-ready.
+
+**Note (2026-04-01):** This audit (Grade A-) covers API/signal consistency and was performed before design decisions #7–#11 (HEX_SIZE tripled, ELEVATION_STEP, cliff faces, player occupancy, scatter props). Its findings (N1–N5) remain valid and unaffected by spatial changes. A re-audit of the spatial/rendering layer will be needed after constants are propagated and the renderer is implemented. The A- grade should be understood as covering the logical/API layer only.

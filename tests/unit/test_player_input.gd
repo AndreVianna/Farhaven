@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 class_name TestPlayerInput
 
-## Tests for PlayerInput three-outcome touch classifier.
+## Tests for PlayerInput two-outcome touch classifier.
 ## Injects a mock grid and bypasses Camera3D (null → _screen_to_axial returns (0,0)).
 ## Calls internal _on_touch_down/_on_touch_up/_on_drag/_process directly.
 

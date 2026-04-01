@@ -22,6 +22,7 @@
 | 2026-03-31 | Mobile Specs written — carried forward unchanged | /aid-specify |
 | 2026-04-01 | [PIVOT] Renderer: 5 MultiMesh per biome → single ArrayMesh with per-vertex color blending. 1 draw call. Scatter props deferred. | /design-pivot |
 | 2026-04-01 | [PIVOT] Elevation 0-9 all biomes. 3-tier traversal (walk/jump/blocked). Hand-crafted maps via MapLoader (replaces WorldGenerator). | /design-pivot |
+| 2026-04-01 | C1: HEX_SIZE=3.0 added to Constants table. C6: ELEVATION_STEP=0.5 added to Constants table. C2: Cliff faces moved from deferred to current scope — flat vertical quads, higher tile biome color × 0.6, same ArrayMesh (0 extra draw calls). I7: Elevation lightening (+5%/level) marked [TUNING_REQUIRED]. I2: Touch pixel estimate marked [TUNING_REQUIRED] for HEX_SIZE=3.0. M3: Cliff faces noted as 0 extra draw calls. Fog of War range: transitioning to circular world-unit area [TUNING_REQUIRED]. | /pivot-cascade |
 
 ## Source
 
@@ -163,7 +164,7 @@ Each biome has 2–3 color variations. The level designer assigns per-tile in th
 | ROCKY | Gray, slate, charcoal | Highlands, barriers |
 | WATER | Deep blue, teal, navy | Impassable water |
 
-Colors are defined in BiomeData .tres files as `color_variations: Array[Color]` (2-3 entries). Elevation subtly lightens the color (higher = lighter, +5% per elevation level).
+Colors are defined in BiomeData .tres files as `color_variations: Array[Color]` (2-3 entries). Elevation subtly lightens the color (higher = lighter, +5% per elevation level). **[TUNING_REQUIRED]** — with ELEVATION_STEP=0.5 and 10 levels the total lightening is 45%; may need reduction (e.g., +3%/level) once visual height range is tested.
 
 **Scatter props** (post-MVP): Biome visual identity will come from decorative 3D props placed on hexes (grass tufts, rocks, bushes, flowers). These are NOT part of the hex mesh — they are separate MultiMesh instances managed by a future ScatterRenderer. Not specified or implemented until after delivery-006.
 
@@ -182,6 +183,8 @@ Map container and sole public API. All cross-feature interaction goes through He
 
 | Constant | Value | Description |
 |----------|-------|-------------|
+| `HEX_SIZE` | `3.0` | World-space radius of one hex (center to corner). All spatial calculations derive from this constant. Drives `axial_to_world`, `world_to_axial`, camera calibration, and player scale. |
+| `ELEVATION_STEP` | `0.5` | World units of Y offset per elevation level. Total height range: 9 × 0.5 = 4.5 units. Drives cliff face heights, jump arc parameters, and vertical camera framing. |
 | `WALK_MAX_DIFF` | `1` | Walk: smooth mesh, normal movement |
 | `JUMP_MAX_DIFF` | `3` | Jump/Drop: gap, auto-animation. 4+ = BLOCKED (cliff) |
 
@@ -205,6 +208,9 @@ func is_passable(from: Vector2i, to: Vector2i) -> bool  # convenience: != BLOCKE
 func get_elevation_diff(from: Vector2i, to: Vector2i) -> int
 
 # Fog — multi-source, single pass (see feature-008 for full docs)
+# Range system note: Fog of War reveal is transitioning from hex-distance (radius 2/3 hexes)
+# to world-unit circular area (~3 inscribed hex radii ≈ 7.8 world units at HEX_SIZE=3.0).
+# [TUNING_REQUIRED] — exact radius tuned during playtesting.
 func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]
 
 # Coordinate conversions
@@ -434,7 +440,7 @@ shaders/
 - Same elevation → shared corner/edge vertices → blended color → smooth transition
 - Different elevation → each hex owns its own vertices at its own Y → hard cliff edge
 - This creates natural visual hierarchy: color = biome, hard edge = elevation change
-- Cliff face geometry (vertical quads between elevation steps) deferred to post-MVP polish
+**Cliff face geometry:** Flat vertical quads rendered between adjacent hexes at different elevations. Uses the higher tile's biome color × 0.6. Added as additional triangles in the same ArrayMesh build loop — **zero extra draw calls**. Cliff quad height = `ELEVATION_STEP × elevation_diff` world units. Implemented in task-004 alongside floor tile geometry.
 
 **Anomaly visual markers are NOT owned by HexGridRenderer.** Anomaly rendering
 (❓ icons, scan progress, revealed state) is owned by feature-003 (scanner/catalog)
@@ -455,9 +461,11 @@ Carried forward from pre-redesign — unchanged.
 
 | Metric | Budget (whole game) | Hex Grid Usage | Remaining |
 |--------|-------------------|----------------|-----------|
-| Draw calls | <100/frame | ~1 (single ArrayMesh) | ~99 |
-| Memory | <200MB | <1MB (tiles + MultiMesh + mesh + materials) | ~199MB |
-| Tris per object | <500 | <20 (hex mesh) | — |
+| Draw calls | <100/frame | ~1 (single ArrayMesh, cliff faces included) | ~99 |
+| Memory | <200MB | <1MB (tiles + mesh + materials) | ~199MB |
+| Tris per object | <500 | <20 (hex floor) + cliff quads (2 tris per cliff edge) | — |
+
+**Cliff faces share the ArrayMesh draw call** — zero additional draw calls beyond the single HexGridRenderer call.
 
 #### Map Loading Cost
 
@@ -474,7 +482,7 @@ Zero. Renderer is event-driven. Worst case per move: ~12 instance updates
 #### Touch Input Geometry
 
 - `world_to_axial()`: O(1) per touch (Red Blob Games nearest-hex algorithm)
-- ~54-72px per hex at 1080x1920 portrait. Above 48dp minimum.
+- Hex screen size at HEX_SIZE=3.0 + camera `Vector3(0, 12, 8)`: **[TUNING_REQUIRED]** — previous estimate (~54-72px) was for HEX_SIZE=1.0. Verify after camera calibration. Target: above 48dp minimum.
 
 #### Platform Differences
 

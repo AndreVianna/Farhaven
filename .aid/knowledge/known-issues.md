@@ -7,7 +7,7 @@
 ## Godot 4.x Gotchas
 
 ### INSTANCE_CUSTOM — vertex() only
-`INSTANCE_CUSTOM` is only available in the `vertex()` function in Godot 4.x shaders. To use per-instance data in `fragment()`, pass it through a `varying`. This applies to ALL MultiMesh shaders.
+`INSTANCE_CUSTOM` is only available in the `vertex()` function in Godot 4.x shaders. To use per-instance data in `fragment()`, pass it through a `varying`. This applies to ALL MultiMesh shaders. **Note:** The hex grid renderer (feature-001) now uses a single ArrayMesh (not MultiMesh), so this only applies to the icon/resource/structure/fauna renderers (features 003, 004, 009, 010).
 
 **Wrong:**
 ```glsl

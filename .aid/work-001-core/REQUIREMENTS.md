@@ -17,6 +17,7 @@
 | 2026-04-01 | §11 Game Initialization added — bootstrap sequence, extension points, dev environment | /audit-fix |
 | 2026-04-01 | [PIVOT] §5 F2: joystick-only movement. Tap reserved for interactions. §9 AC2 updated. | /design-pivot |
 | 2026-04-01 | [PIVOT] §5 F1: hand-crafted maps (MapLoader replaces WorldGenerator). Elevation 0-9, 3-tier traversal. §9 AC1+AC2 updated. | /design-pivot |
+| 2026-04-01 | C1+C6: HEX_SIZE=3.0 and ELEVATION_STEP=0.5 added to §5 F1 Spatial Constants. Player occupancy ~30% noted. C2: Cliff faces added as current scope. | /pivot-cascade |
 
 ## 1. Objective
 
@@ -134,6 +135,11 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
   - Diff 2–3: Auto-jump up / auto-drop down (gap, no connecting mesh)
   - Diff 4+: Blocked (cliff, future wall texture)
   - Asymmetric gravity: dropping faster than jumping. Both auto-triggered, no input.
+- **Spatial constants (define world scale):**
+  - `HEX_SIZE = 3.0` — world-space size of one hex (center to corner). All spatial calculations derive from this constant.
+  - `ELEVATION_STEP = 0.5` — world units of Y offset per elevation level. Total height range: 0–4.5 world units.
+  - Player visual occupies ~30% of hex width (~0.9 units at HEX_SIZE=3.0)
+- **Cliff faces:** Flat vertical quads between adjacent hexes at different elevations. Higher tile's biome color × 0.6. Part of the hex ArrayMesh (zero extra draw calls). Current scope, not deferred.
 - Fog of war — tiles reveal when player moves adjacent
 - **Anomaly tiles:** Hand-placed by level designer. Scanned to unlock story content.
 

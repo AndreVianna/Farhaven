@@ -27,7 +27,7 @@ task-004           task-005
 task-006 (Player movement — continuous + camera)
   │
   ▼
-task-007 (Player input — 3-outcome classifier + joystick)
+task-007 (Player input — two-outcome classifier + joystick)
   │
   ▼
 task-008 (Integration test — Walk the World end-to-end)
@@ -50,7 +50,7 @@ for task-005 implementation.
 | 004 | HexGridRenderer — single ArrayMesh + per-vertex color blending | IMPLEMENT | 003 | 005 |
 | 005 | HUD framework — layout, bars, counter, text, notifications | IMPLEMENT | 003 | 004 |
 | 006 | Player movement — continuous joystick, derived tile, camera | IMPLEMENT | 003, 004 | -- |
-| 007 | Player input — 3-outcome classifier + joystick | IMPLEMENT | 006 | -- |
+| 007 | Player input — two-outcome classifier + joystick | IMPLEMENT | 006 | -- |
 | 008 | Integration test — Walk the World end-to-end | TEST | all above | -- |
 
 ## Task Details
@@ -95,7 +95,9 @@ for task-005 implementation.
 **Scope:**
 - `scripts/hex/hex_math.gd` — static class (`class_name HexMath`):
   `axial_to_cube`, `axial_to_world`, `world_to_axial`, `distance`,
-  `get_neighbors`, `get_tiles_in_range`, ring iteration
+  `get_neighbors`, `get_tiles_in_range`, ring iteration.
+  **Must define `const HEX_SIZE: float = 3.0` and `const ELEVATION_STEP: float = 0.5`**
+  as the authoritative source of these constants (all spatial math derives from them).
 - `scripts/hex/hex_tile.gd` — Resource with all properties: coords, biome, elevation,
   fog_state, structure, resource_nodes, anomaly. Biome + FogState enums.
 - `scripts/hex/resource_node.gd` — Resource: type, remaining, max_amount, tool_required
@@ -178,7 +180,8 @@ The ch1.json test map should include all elevation tiers for traversal testing.
   - 7 vertices per hex (1 center + 6 corners)
   - Center vertex color = biome color variation (from BiomeData, noise-selected)
   - Corner/edge vertex color: at same elevation = average of adjacent tiles' colors (smooth blending); at different elevation = each hex owns its own vertices (hard cliff edge)
-  - Y position = elevation offset per tile
+  - **Cliff face geometry:** flat vertical quads between adjacent hexes at different elevations; uses higher tile's biome color × 0.6; additional triangles in same ArrayMesh (0 extra draw calls). Cliff quad height = `ELEVATION_STEP × elevation_diff` world units.
+  - Y position = elevation offset per tile (Y = elevation × ELEVATION_STEP)
   - HIDDEN tiles = degenerate triangles (zero area)
 - `shaders/hex_tile.gdshader`: per-vertex color pass-through with fog modulation
   (REVEALED = dimmed, VISIBLE = full brightness, HIDDEN = culled)
@@ -196,6 +199,7 @@ Biome transitions smooth at shared edges. Elevation differences create natural c
 - [ ] Map renders with visually distinct biome colors (2-3 variations per biome)
 - [ ] Biome transitions smooth at shared edges/corners (per-vertex color blending)
 - [ ] Elevation differences create hard cliff edges (no vertex sharing across elevation gaps)
+- [ ] Cliff faces rendered as vertical quads between elevation gaps (higher tile color × 0.6, same ArrayMesh)
 - [ ] HIDDEN tiles not visible, REVEALED dimmed, VISIBLE full
 - [ ] Elevation creates visible Y offset between tiles
 - [ ] Draw calls: ~1 for hex grid (single ArrayMesh)
@@ -270,7 +274,7 @@ Projection testing deferred to task-008. Implementation is complete without came
 - `scripts/player/player_camera.gd` — on Camera3D:
   - Lerp follow: `position.lerp(target + offset, follow_speed * delta)`
   - Map AABB clamping on `map_generated`
-  - Exported: follow_speed (8.0), offset
+  - Exported: follow_speed (8.0), offset = `Vector3(0, 12, 8)` (calibrated for HEX_SIZE=3.0)
 - `scenes/player/player.tscn` — Player + PlayerVisual (placeholder) + PlayerInput (empty Node)
 - Add Player + Camera3D to World scene as siblings
 
@@ -375,7 +379,7 @@ After this delivery, `main.tscn` MUST contain:
     - HexGridRenderer (Node3D, script: hex_grid_renderer.gd) — single MeshInstance3D child (per-vertex color blending)
     - WorldEnvironment + DirectionalLight3D — basic lighting
   - Player (from player.tscn)
-    - PlayerVisual (MeshInstance3D — placeholder blue cube 0.4×0.8×0.4)
+    - PlayerVisual (MeshInstance3D — placeholder blue cube 0.9×1.8×0.9)
     - PlayerInput (Node)
     - PlayerCamera (Camera3D, rotation.x ≈ -34°, isometric overhead)
   - JoystickOverlay (CanvasLayer, layer=10)
@@ -413,3 +417,4 @@ Run the game on desktop (F5). You MUST see:
 | 2026-03-31 | 8 tasks created (001-008) — approved | /aid-detail |
 | 2026-04-01 | [PIVOT] Single mesh renderer, joystick-only movement, tasks 004/006/007/008 updated | /design-pivot |
 | 2026-04-01 | [PIVOT] Hand-crafted maps (MapLoader), 3-tier traversal, JUMPING state, task-003/006/008 updated | /design-pivot |
+| 2026-04-01 | I1: Execution graph label fixed — "two-outcome classifier". C5+I9: Player cube updated to 0.9×1.8×0.9 (HEX_SIZE=3.0, 30% occupancy). C3: Camera offset Vector3(0, 12, 8) noted in task-006. Cliff face geometry added to task-004 scope and criteria. task-002 noted to define HEX_SIZE=3.0 and ELEVATION_STEP=0.5 constants. | /pivot-cascade |

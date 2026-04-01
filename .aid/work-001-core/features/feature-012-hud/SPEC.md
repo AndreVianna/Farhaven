@@ -8,6 +8,7 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fix: notification queue max depth 3, faster dismiss for queued items | /aid-specify |
 | 2026-04-01 | [PIVOT] Scene tree updated for single-mesh renderer. Draw call budget updated. | /design-pivot |
+| 2026-04-01 | M3: HexGridRenderer draw call note updated — cliff faces included in ArrayMesh (0 extra draw calls). | /pivot-cascade |
 
 ## Source
 
@@ -587,7 +588,7 @@ component. Tweens run independently via Godot's tween system.
 
 | Renderer | Feature | Draw Calls |
 |----------|---------|-----------|
-| HexGridRenderer | 001 | ~1 |
+| HexGridRenderer | 001 | ~1 (includes cliff face geometry — same ArrayMesh, 0 extra draw calls) |
 | ElementIconRenderer | 003 | ~5 |
 | ResourceRenderer | 004 | ~6 |
 | GroundItemRenderer | 007 | ~1 |
