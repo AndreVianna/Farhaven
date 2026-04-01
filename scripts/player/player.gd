@@ -13,7 +13,8 @@ signal player_moved(from: Vector2i, to: Vector2i)
 @export var move_speed: float = 4.0
 
 ## Elevation scale: world Y per elevation level.
-const ELEVATION_SCALE: float = 0.3
+## MUST match HexGridRenderer.ELEVATION_STEP (0.5).
+const ELEVATION_SCALE: float = 0.5
 
 ## Jump arc height above the higher tile.
 const JUMP_ARC_HEIGHT: float = 0.5
@@ -188,17 +189,24 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 
 	_cancel_jump_tween()
 	_jump_tween = create_tween()
-	_jump_tween.set_ease(Tween.EASE_IN_OUT)
-	_jump_tween.set_trans(Tween.TRANS_QUAD)
 
 	# XZ movement: linear to target
+	_jump_tween.set_ease(Tween.EASE_IN_OUT)
+	_jump_tween.set_trans(Tween.TRANS_QUAD)
 	_jump_tween.tween_property(self, "position:x", target_pos.x, duration)
 	_jump_tween.parallel().tween_property(self, "position:z", target_pos.z, duration)
 
-	# Y arc: up then down
+	# Y movement: arc up (parabola), gravity down (straight fall)
 	var half: float = duration * 0.5
-	_jump_tween.parallel().tween_property(self, "position:y", arc_peak, half)
-	_jump_tween.tween_property(self, "position:y", target_y, half)
+	if is_jump_up:
+		# Jumping UP: arc over the peak then land
+		_jump_tween.parallel().tween_property(self, "position:y", arc_peak, half).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		_jump_tween.tween_property(self, "position:y", target_y, half).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	else:
+		# Dropping DOWN: small hop off the edge then fall with gravity
+		var hop_y: float = position.y + JUMP_ARC_HEIGHT * 0.3  # tiny hop, not full arc
+		_jump_tween.parallel().tween_property(self, "position:y", hop_y, half * 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		_jump_tween.tween_property(self, "position:y", target_y, half * 1.6).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 
 	var old_tile: Vector2i = current_tile
 	_jump_tween.finished.connect(func() -> void:
