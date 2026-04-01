@@ -7,11 +7,14 @@ extends Control
 @onready var _notifications := $NotificationContainer
 @onready var _placement_label: Label = $PlacementLabel
 @onready var _craft_button: Button = $BottomBar/CraftButton
+@onready var _inventory_button: Button = $BottomBar/InventoryButton
+@onready var _inventory_panel = $InventoryPanel  # InventoryPanel
 
 
 func _ready() -> void:
 	_placement_label.hide()
 	_craft_button.hide()
+	_inventory_button.pressed.connect(_inventory_panel.toggle)
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
@@ -45,3 +48,14 @@ func update_day(day: int) -> void:
 
 func update_phase(phase: String) -> void:
 	_day_counter.update_phase(phase)
+
+
+# --- Inventory integration ---
+
+func connect_inventory(inv) -> void:
+	_inventory_panel.set_inventory(inv)
+	inv.inventory_full.connect(_on_inventory_full)
+
+
+func _on_inventory_full(_type: StringName, _rejected: int) -> void:
+	show_notification("INVENTORY FULL")
