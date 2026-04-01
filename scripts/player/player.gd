@@ -237,7 +237,11 @@ func _complete_tile_transition(from: Vector2i, to: Vector2i) -> void:
 	target_tile = to
 	# 3. Emit tile_entered
 	_grid.tile_entered.emit(to)
-	# 4. Emit player_moved
+	# 4. Reveal fog around new position (day radius 2)
+	if _grid.has_method("refresh_visibility"):
+		var sources: Array[Dictionary] = [{"coords": to, "radius": 2}]
+		_grid.refresh_visibility(sources)
+	# 5. Emit player_moved
 	player_moved.emit(from, to)
 
 

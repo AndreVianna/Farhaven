@@ -6,7 +6,16 @@
 [node name="Player" type="Node3D"]
 script = ExtResource("1_player")
 
-[node name="PlayerVisual" type="Node3D" parent="."]
+[sub_resource type="BoxMesh" id="player_box"]
+size = Vector3(0.4, 0.8, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="player_mat"]
+albedo_color = Color(0.2, 0.5, 1.0, 1.0)
+
+[node name="PlayerVisual" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("player_box")
+material_override = SubResource("player_mat")
 
 [node name="PlayerInput" type="Node" parent="."]
 script = ExtResource("2_input")
