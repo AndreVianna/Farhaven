@@ -58,6 +58,24 @@ grid.refresh_visibility(sources)
 ### Scene tree wiring is not automatic
 Nodes defined in specs as "child of X" must be explicitly added in `.tscn` files or via `add_child()`. Tests that instantiate systems directly may pass while the actual game has missing scene tree connections. Always verify the scene tree matches the spec.
 
+### .tscn sub_resource ordering
+All `[sub_resource]` blocks MUST appear before the first `[node]` block in `.tscn` files. Placing them after a node corrupts the scene silently — nodes disappear with no parse error. Also update `load_steps` to count all `ext_resource` + `sub_resource` entries + 1.
+
+**Wrong** (sub_resource after first node):
+```
+[node name="Root" type="Node3D"]
+[sub_resource type="BoxMesh" id="box"]   # TOO LATE — scene corrupts
+[node name="Child" type="MeshInstance3D" parent="."]
+```
+
+**Correct:**
+```
+[sub_resource type="BoxMesh" id="box"]   # Before any node
+[node name="Root" type="Node3D"]
+[node name="Child" type="MeshInstance3D" parent="."]
+mesh = SubResource("box")
+```
+
 ## Project-Specific Issues
 
 ### Fog reveal ownership transition
