@@ -9,7 +9,7 @@ entry_id = &"wood_tree"
 category = 0
 display_name = "Thornwood Tree"
 description = "A twisted alien tree with dense bark. Burns well."
-properties = {"resource_type": &"wood"}
+properties = {"edible": false, "toxic": false, "resource_type": &"wood"}
 
 [sub_resource type="Resource" id="berry_bush"]
 script = ExtResource("2_entry")
@@ -33,7 +33,7 @@ entry_id = &"fiber_grass"
 category = 0
 display_name = "Fiber Grass"
 description = "Coarse, stringy grass useful for weaving and rope-making."
-properties = {"resource_type": &"fiber"}
+properties = {"edible": false, "toxic": false, "resource_type": &"fiber"}
 
 [resource]
 script = ExtResource("1_data")

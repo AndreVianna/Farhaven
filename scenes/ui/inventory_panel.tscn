@@ -18,7 +18,7 @@ theme_override_constants/separation = 8
 layout_mode = 2
 size_flags_horizontal = 3
 text = "INVENTORY"
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 28
 
 [node name="HeaderSpacer" type="Control" parent="VBox/Header"]
 layout_mode = 2

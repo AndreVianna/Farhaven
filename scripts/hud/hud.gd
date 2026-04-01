@@ -66,6 +66,9 @@ func connect_inventory(inv) -> void:
 
 
 func _on_inventory_full(_type: StringName, _rejected: int) -> void:
+	# Using show_notification instead of FloatingTextManager because the
+	# inventory_full signal carries no world position — the item was rejected
+	# before placement, so there is no spatial anchor to attach a float to.
 	show_notification("INVENTORY FULL")
 
 

@@ -47,6 +47,7 @@ var _scan_range: int = 2  # max hex distance
 var _grid: Node  # HexGrid autoload
 var _player: Node3D  # Parent Player node
 var _player_input: Node  # PlayerInput sibling
+var _camera: Camera3D  # Camera3D for screen→world projection (drift check)
 
 
 func _ready() -> void:
@@ -57,6 +58,10 @@ func _ready() -> void:
 	_catalog.initialize(_grid, null)
 	_connect_player_input()
 	_connect_grid_signals()
+	# Camera is a sibling of Player in World
+	var world: Node = _player.get_parent() if _player != null else null
+	if world != null:
+		_camera = world.get_node_or_null("Camera3D") as Camera3D
 
 
 func _connect_player_input() -> void:
@@ -69,6 +74,8 @@ func _connect_player_input() -> void:
 		_player_input.scan_hold_started.connect(_on_scan_hold_started)
 	if _player_input.has_signal("scan_hold_ended"):
 		_player_input.scan_hold_ended.connect(_on_scan_hold_ended)
+	if _player_input.has_signal("scan_hold_update"):
+		_player_input.scan_hold_update.connect(_on_scan_hold_update)
 
 
 func _connect_grid_signals() -> void:
@@ -131,6 +138,22 @@ func _on_scan_hold_started(coords: Vector2i) -> void:
 
 func _on_scan_hold_ended() -> void:
 	if _scan_state == ScanState.SCANNING and _scan_progress < 1.0:
+		_cancel_scan()
+
+
+func _on_scan_hold_update(screen_pos: Vector2) -> void:
+	if _scan_state != ScanState.SCANNING:
+		return
+	if _camera == null or _grid == null:
+		return
+	var ray_origin: Vector3 = _camera.project_ray_origin(screen_pos)
+	var ray_dir: Vector3 = _camera.project_ray_normal(screen_pos)
+	if abs(ray_dir.y) < 0.0001:
+		return
+	var t: float = -ray_origin.y / ray_dir.y
+	var world_3d: Vector3 = ray_origin + ray_dir * t
+	var coords: Vector2i = _grid.world_to_axial(Vector2(world_3d.x, world_3d.z))
+	if coords != _scan_target_coords:
 		_cancel_scan()
 
 

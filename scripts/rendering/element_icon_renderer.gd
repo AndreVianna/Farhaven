@@ -124,8 +124,6 @@ func _find_scanner() -> Node:
 
 func _on_element_identified(coords: Vector2i, entry_id: StringName) -> void:
 	var pool_idx: int = _get_pool_for_entry(entry_id)
-	if pool_idx == Pool.UNKNOWN:
-		pool_idx = Pool.FLORA  # fallback
 	_entry_pool_map[entry_id] = pool_idx
 	_add_icon(coords, entry_id, pool_idx)
 

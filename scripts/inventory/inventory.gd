@@ -154,9 +154,8 @@ func get_used_slot_count() -> int:
 func use_item(type: StringName) -> bool:
 	if not has_item(type):
 		return false
-	remove_item(type, 1)
+	remove_item(type, 1)  # remove_item already emits inventory_changed
 	item_used.emit(type)
-	inventory_changed.emit()
 	return true
 
 

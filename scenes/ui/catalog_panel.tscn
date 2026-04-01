@@ -19,13 +19,13 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 text = "CATALOG"
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 28
 
 [node name="CounterLabel" type="Label" parent="VBox/Header"]
 layout_mode = 2
 size_flags_vertical = 4
 text = "0/0 cataloged"
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 22
 
 [node name="HeaderSpacer" type="Control" parent="VBox/Header"]
 layout_mode = 2
@@ -39,7 +39,8 @@ text = "X"
 [node name="CategoryTabs" type="TabContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/tab_height = 48
+theme_override_constants/tab_height = 64
+theme_override_font_sizes/font_size = 22
 
 [node name="Flora" type="ScrollContainer" parent="VBox/CategoryTabs"]
 layout_mode = 2

@@ -34,21 +34,21 @@ theme_override_constants/separation = 4
 script = ExtResource("2")
 
 [node name="HPBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 20)
+custom_minimum_size = Vector2(200, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
 [node name="HungerBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 20)
+custom_minimum_size = Vector2(200, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
 [node name="ThirstBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 20)
+custom_minimum_size = Vector2(200, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
@@ -65,10 +65,10 @@ script = ExtResource("3")
 [node name="DayLabel" type="Label" parent="TopBar/DayCounter"]
 text = "DAY 01"
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 
 [node name="PhaseIcon" type="ColorRect" parent="TopBar/DayCounter"]
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(64, 64)
 color = Color(1.0, 0.851, 0.239, 1.0)
 
 [node name="BottomBar" type="HBoxContainer" parent="."]
@@ -77,7 +77,7 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -80.0
+offset_top = -144.0
 offset_right = -8.0
 offset_bottom = -8.0
 grow_horizontal = 2
@@ -87,25 +87,30 @@ theme_override_constants/separation = 8
 size_flags_horizontal = 3
 
 [node name="InventoryButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(128, 128)
 text = "INV"
+theme_override_font_sizes/font_size = 28
 
 [node name="BuildButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(128, 128)
 text = "BLD"
+theme_override_font_sizes/font_size = 28
 
 [node name="CraftButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(128, 128)
 text = "CRF"
 visible = false
+theme_override_font_sizes/font_size = 28
 
 [node name="ScannerButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(128, 128)
 text = "SCN"
+theme_override_font_sizes/font_size = 28
 
 [node name="JournalButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(128, 128)
 text = "JNL"
+theme_override_font_sizes/font_size = 28
 
 [node name="InventoryPanel" parent="." instance=ExtResource("6")]
 layout_mode = 1

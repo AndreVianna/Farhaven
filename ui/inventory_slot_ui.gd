@@ -28,7 +28,7 @@ var _highlight_tween: Tween
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(90, 90)
+	custom_minimum_size = Vector2(110, 110)
 	mouse_filter = MOUSE_FILTER_STOP
 
 
