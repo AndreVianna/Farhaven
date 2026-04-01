@@ -153,7 +153,7 @@ enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 #### Biome Color Palette
 
-Each biome has 2–3 color variations. WorldGenerator picks per-tile using noise. Edge/corner vertices blend adjacent tile colors automatically.
+Each biome has 2–3 color variations. The level designer assigns per-tile in the map JSON. Edge/corner vertices blend adjacent tile colors automatically.
 
 | Biome | Base Colors | Character |
 |-------|------------|-----------|
@@ -444,7 +444,7 @@ or feature-011 (journal). HexGridRenderer renders terrain only.
 
 - **HexGrid as autoload:** Global access without node references.
 - **HexMath as static class_name:** Pure math, no singleton lifecycle.
-- **WorldGenerator as RefCounted:** Run once, produce data, garbage collected.
+- **MapLoader as RefCounted:** Run once, load map data, garbage collected.
 - **BiomeData as .tres:** Data-driven tuning without code changes.
 
 ### Mobile Specs

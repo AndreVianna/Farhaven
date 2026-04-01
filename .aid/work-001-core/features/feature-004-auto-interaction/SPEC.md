@@ -67,7 +67,7 @@ This feature adds:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn). Set by worldgen from BiomeData. |
+| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn). Set by MapLoader from BiomeData. |
 
 No other per-node additions. `gather_time` and `gather_amount` are resource-type
 properties looked up from the resource config table at gather time.

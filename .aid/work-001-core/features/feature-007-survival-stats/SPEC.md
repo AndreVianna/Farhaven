@@ -138,7 +138,7 @@ entries with same coords supported. Items on non-visible tiles recoverable when 
 
 #### Ground Items — Transient Pickups
 
-Separate from ResourceNode (tile property from worldgen). Ground items are death drops
+Separate from ResourceNode (tile property from map data). Ground items are death drops
 + fauna meat drops that persist until picked up.
 
 ```gdscript

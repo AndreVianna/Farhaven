@@ -105,10 +105,11 @@ damage and auto-defend ignores them.
 - `max_jump: 1` — can only WALK (diff 0-1). Treats diff 2+ as impassable. (Default: thornback)
 - `max_jump: 3` — can traverse gaps up to diff 3 (same as player JUMP).
 - `max_jump: -1` — flying fauna, ignores ALL elevation gaps.
-- Mechanic implementation deferred. For now, FaunaManager stores the attribute but
-  uses the existing `is_passable()` (which treats diff 2+ as BLOCKED for fauna).
-  When implemented: `FaunaManager._is_fauna_passable(from, to, max_jump)` replaces
-  the `HexGrid.is_passable()` call for fauna movement.
+- Mechanic implementation deferred. **Note:** `HexGrid.is_passable()` returns true
+  for JUMP/DROP (diff 2-3), so fauna using `is_passable()` alone would incorrectly
+  cross gaps. Delivery-005 MUST implement `FaunaManager._is_fauna_passable(from, to, max_jump)`
+  that treats `elevation_diff > max_jump` as BLOCKED for that species.
+  Thornback (`max_jump: 1`) should only WALK (diff 0-1).
 
 #### FaunaManager Properties (on Node)
 

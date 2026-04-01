@@ -373,16 +373,12 @@ No custom implementation. Godot's built-in input propagation:
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       │    ├─ MultiMeshInstance3D [CRASH_SITE]
-       │    ├─ MultiMeshInstance3D [GRASSLAND]
-       │    ├─ MultiMeshInstance3D [FOREST]
-       │    ├─ MultiMeshInstance3D [ROCKY]
-       │    └─ MultiMeshInstance3D [WATER]
-       ├─ Player (Node3D)                        ← NEW
+       │    └─ MeshInstance3D [single ArrayMesh — entire hex grid]
+       ├─ Player (Node3D)
        │    ├─ PlayerVisual (Node3D)              ← mesh/sprite placeholder
-       │    └─ PlayerInput (Node)                 ← three-outcome input classifier
-       └─ Camera3D                                ← NEW
-  └─ JoystickOverlay (CanvasLayer)                ← NEW (screen-space joystick)
+       │    └─ PlayerInput (Node)                 ← two-outcome input classifier
+       └─ Camera3D
+  └─ JoystickOverlay (CanvasLayer)                ← screen-space joystick
 ```
 
 **Autoloads:** `HexGrid` only (feature-001). No new singletons for movement.
@@ -392,9 +388,8 @@ Main (Node)
 ```
 scripts/
   player/
-    player.gd              # Node3D — state machine, tile transitions, tween orchestration
-    player_input.gd        # Node (child of Player) — _unhandled_input, three-outcome classifier
-    player_pathfinder.gd   # RefCounted — AStar2D wrapper, coord↔id mapping, path queries
+    player.gd              # Node3D — state machine (IDLE/WALKING/JUMPING), continuous movement
+    player_input.gd        # Node (child of Player) — _unhandled_input, two-outcome classifier
     player_camera.gd       # Camera3D script — lerp follow, map bounds clamping
 
 scenes/
@@ -406,13 +401,15 @@ ui/
   joystick_overlay.tscn    # Scene — joystick circle + drag indicator
 ```
 
+**[PIVOT] Removed:** `player_pathfinder.gd` — player no longer uses A* pathfinding.
+Feature-010 (fauna) will implement its own pathfinder in delivery-005.
+
 #### Component Responsibilities
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `player.gd` | Owns `MoveState` machine, `current_tile`, tween lifecycle. Orchestrates tile transitions (exit → enter). Emits `player_moved`. Receives tap_tile and joystick signals from player_input. Does NOT receive scan signals. | `HexGrid` (API), `player_input.gd` (move signals only), `player_pathfinder.gd` |
-| `player_input.gd` | Child Node of Player. `_unhandled_input`. Three-outcome classification: tap (→ player.gd), joystick (→ player.gd via joystick_overlay), potential scan hold (→ feature-003 decides). Converts screen pos to coords at hold threshold — does NOT query catalog, fauna, or tile contents. Falls back to joystick on `scan_rejected`. | `joystick_overlay.gd` (drag signals), `HexGrid` (world_to_axial only), feature-003 (`scan_rejected` signal) |
-| `player_pathfinder.gd` | RefCounted owned by player.gd. AStar2D graph build on `map_generated`, update on `structure_placed`/`destroyed`. `find_path(from, to) -> Array[Vector2i]`. | `HexGrid` (API + signals) |
+| `player.gd` | Owns `MoveState` machine (IDLE/WALKING/JUMPING), `current_tile` (derived), continuous movement. Queries `HexGrid.get_traversal()` at tile boundaries. Orchestrates tile transitions (exit → enter). Emits `player_moved`. Receives joystick signals from player_input. Does NOT receive scan signals. | `HexGrid` (API), `player_input.gd` (joystick signals only) |
+| `player_input.gd` | Child Node of Player. `_unhandled_input`. Two-outcome classification: tap (no-op on world in delivery-001, future interactions), joystick (→ player.gd), potential scan hold (→ feature-003 decides). Converts screen pos to coords at hold threshold — does NOT query catalog, fauna, or tile contents. Falls back to joystick on `scan_rejected`. | `joystick_overlay.gd` (drag signals), `HexGrid` (world_to_axial only), feature-003 (`scan_rejected` signal) |
 | `player_camera.gd` | Script on Camera3D (sibling of Player, not child). Lerp follow with exported `follow_speed` (8.0) and `offset`. Map AABB clamping computed on `map_generated`. | `Player.position`, `HexGrid` (map bounds) |
 | `joystick_overlay.gd` | CanvasLayer. Shows/hides joystick at touch origin. Emits drag vector + magnitude each frame. Disappears on release. | Touch input only |
 
@@ -425,10 +422,10 @@ joystick_overlay.gd                     player_input.gd
   signal joystick_released()        ──►
 
 player_input.gd                         player.gd (movement)
-  signal tap_tile(coords: Vector2i)          ──►  pathfind to tile
+  signal tap_world(coords: Vector2i)         ──►  no-op in delivery-001 (future: building, inspect)
   signal joystick_start(dir: Vector2)        ──►  begin walking
   signal joystick_move(dir: Vector2, m: float) ──►  continue walking
-  signal joystick_stop()                     ──►  snap tiebreaker, IDLE
+  signal joystick_stop()                     ──►  snap to tile center, IDLE
 
 player_input.gd                         feature-003 (scanner)
   signal scan_hold_started(coords: Vector2i)                            ──►
@@ -447,19 +444,13 @@ player.gd                              HexGrid (centralized signals)
 
 1. `player_input` connects to `joystick_overlay` signals (sibling in scene tree —
    injected reference or `get_node()`)
-2. `player.gd` connects to `player_input` movement signals: `tap_tile`,
-   `joystick_start`, `joystick_move`, `joystick_stop`
+2. `player.gd` connects to `player_input` movement signals: `joystick_start`,
+   `joystick_move`, `joystick_stop`
 3. `player.gd` does NOT connect to scan signals — feature-003 connects to those
    directly on `player_input`
-4. `player_pathfinder` connects to `HexGrid.map_generated`, `structure_placed`,
-   `structure_destroyed` (player.gd wires these during setup since pathfinder is
-   RefCounted)
 
 **Why player_input is a child Node:** `_unhandled_input()` is a Node callback.
 RefCounted can't receive it.
-
-**Why player_pathfinder is RefCounted:** No `_unhandled_input` or `_process` needed.
-Pure data structure queried on demand.
 
 #### Camera Follow
 
@@ -494,19 +485,18 @@ Computed once on `map_generated`.
 
 | Path | Breakdown | Total |
 |------|-----------|-------|
-| Tap-to-move | Input poll (~16ms worst case) + `world_to_axial` O(1) + `AStar2D.get_point_path` (<1ms, C++ native, 300 nodes) + Tween creation (~1ms) | ~21ms worst case |
-| Joystick | Input poll (~16ms) + drag vector read + `is_passable` check + Tween creation | ~21ms worst case |
+| Joystick | Input poll (~16ms) + drag vector read + `get_traversal` check + position update | ~21ms worst case |
 | Scan hold | Input poll (~16ms) + world_to_axial O(1) + emit signal (~0ms) + feature-003 response (~1ms, within 1 frame) | ~17ms to coords, +16ms for response = ~33ms total |
 
 All within 100ms. Scan hold classification at 300ms is intentional — the 300ms wait
 is the design threshold, not latency. Once classified, the signal fires in <2ms.
 
-#### Three-Outcome Touch Discrimination — Thresholds
+#### Two-Outcome Touch Discrimination — Thresholds
 
 | Parameter | Value | Exported | Rationale |
 |-----------|-------|----------|-----------|
 | `tap_max_duration` | 300ms | Yes | Standard mobile tap threshold |
-| `tap_max_drag` | 20px | Yes | Prevents drag-taps from triggering pathfind |
+| `tap_max_drag` | 20px | Yes | Prevents drag-taps from triggering interactions |
 | `hold_threshold` | 300ms | Yes | Same as tap max — classification happens at this moment |
 | `drag_threshold` | 20px | Yes | Drag triggers joystick immediately (even over ❓) |
 
@@ -515,7 +505,7 @@ is the design threshold, not latency. Once classified, the signal fires in <2ms.
 ```
 t=0ms     Touch DOWN. Start tracking duration + drag.
 t<300ms   If drag ≥ 20px → JOYSTICK immediately (drag = intent to move).
-          If touch UP → TAP (duration < 300ms, drag < 20px).
+          If touch UP → TAP (duration < 300ms, drag < 20px) → no-op on world.
 t=300ms   Hold threshold reached. Convert to coords, emit scan_hold_started(coords).
           Wait for feature-003 response:
           → Claimed (scannable found) → SCAN HOLD.
@@ -546,5 +536,5 @@ Android in Godot. No platform-specific code.
 
 #### Memory
 
-Player node + AStar2D (300 points, ~600 edges) + Camera + JoystickOverlay = negligible.
+Player node + Camera + JoystickOverlay = negligible.
 Hit-test at hold threshold: one-time query, no ongoing memory.

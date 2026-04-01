@@ -215,7 +215,9 @@ DayNightCycle from delivery-004), not on each other.
   - **Spawn:** on `DayNightCycle.night`, Day 4+ only. Tile validation: not VISIBLE,
     no structure, passable, ≥3 hexes from player, not within torch radius 2.
   - **Movement:** `_process` NIGHT only, cooldown-gated. Move toward player within
-    detection_range. Wall avoidance (is_passable). No stacking.
+    detection_range. Wall avoidance via `_is_fauna_passable(from, to, max_jump)` —
+    NOT `HexGrid.is_passable()` (which allows JUMP/DROP). Thornback (`max_jump: 1`)
+    treats elevation diff 2+ as BLOCKED. No stacking.
   - **Contact damage:** after fauna move, if adjacent to player: shelter check
     (0 damage if on shelter, signal still fires), else 10 HP.
     Emit `fauna_attacked_player(id, damage, species_type)`
