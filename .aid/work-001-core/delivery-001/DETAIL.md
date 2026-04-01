@@ -345,6 +345,45 @@ Projection testing deferred to task-008. Implementation is complete without came
 - [ ] All tests pass
 - [ ] Build passes with zero warnings
 
+## Integration Contract
+
+### Scene Tree Additions
+After this delivery, `main.tscn` MUST contain:
+- Main (Node, script: main.gd)
+  - World (Node3D)
+    - HexGridRenderer (Node3D, script: hex_grid_renderer.gd) — 5 MultiMeshInstance3D children auto-created
+    - WorldEnvironment + DirectionalLight3D — basic lighting
+  - Player (from player.tscn)
+    - PlayerVisual (MeshInstance3D — placeholder blue cube 0.4×0.8×0.4)
+    - PlayerInput (Node)
+    - PlayerCamera (Camera3D, rotation.x ≈ -34°, isometric overhead)
+  - JoystickOverlay (CanvasLayer, layer=10)
+  - HUD (CanvasLayer, layer=20)
+    - StatBars (top-left, placeholder shells)
+    - DayCounter (top-right, placeholder shell)
+    - 5 ActionButtons (bottom-right: Inventory, Build, Craft, Scanner, Journal)
+    - CraftButton (hidden — no workbench proximity)
+    - FloatingTextManager
+    - NotificationManager
+  - ScreenFade (CanvasLayer, layer=30)
+
+### Bootstrap Changes
+This IS the bootstrap baseline. See REQUIREMENTS.md §11.
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Colored hexagon tiles visible (brown Crash Site center, surrounding biomes)
+- [ ] Blue cube (player) standing on center tile
+- [ ] Fog of war — tiles beyond radius 2 are hidden/dimmed
+- [ ] Click a visible tile → player moves there, new tiles reveal
+- [ ] Click-and-drag → joystick appears, player moves continuously
+- [ ] HUD elements visible: stat bar area top-left, day counter top-right, buttons bottom-right
+- [ ] Camera follows player from above at an angle
+
+### Dev Environment
+- Mouse→touch emulation enabled in project.godot (see known-issues.md)
+- GdUnit4 headless: use `--ignoreHeadlessMode` flag
+
 ## Change Log
 
 | Date | Change | Source |

@@ -316,6 +316,35 @@ Integration tests verifying the complete core loop:
 - [ ] All tests pass
 - [ ] Build passes with zero warnings
 
+## Integration Contract
+
+### Scene Tree Additions
+Cumulative (adds to delivery-002):
+- Player
+  - AutoInteractionSystem (Node) — NEW
+  - CraftingSystem (Node) — NEW
+- World
+  - ResourceRenderer (Node3D) — NEW, ~6 MultiMesh pools for resource visuals
+
+### Bootstrap Changes
+- AutoInteractionSystem._ready() → connects to HexGrid.tile_entered for proximity checks
+- AutoInteractionSystem queries Catalog.is_cataloged() before any auto-gather
+- CraftingSystem._ready() → connects to Inventory.item_added for recipe discovery
+- CraftButton becomes visible when player is adjacent to workbench (workbench_proximity_changed signal)
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Everything from delivery-002 still works
+- [ ] Walk near a cataloged resource → gather animation starts → resource flies to player → inventory updates
+- [ ] Walk near uncataloged resource → nothing happens (must scan first)
+- [ ] Resources deplete visually after gathering
+- [ ] Place workbench (if building exists, otherwise skip) → Craft button appears
+- [ ] Open Craft panel → recipes show with ingredient counts (green=have, red=need)
+- [ ] Craft Stone Axe → materials consumed, tool appears in tool slot
+
+### Dev Environment
+No additional requirements beyond delivery-001.
+
 ## Change Log
 
 | Date | Change | Source |

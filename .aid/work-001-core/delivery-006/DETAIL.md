@@ -181,6 +181,34 @@ They CAN run in parallel if two agents are available.
 - [ ] All tests pass
 - [ ] Build passes with zero warnings
 
+## Integration Contract
+
+### Scene Tree Additions
+Cumulative (adds to delivery-005):
+- Player
+  - JournalSystem (Node) — NEW
+- CutsceneViewer (CanvasLayer, layer=40) — NEW, above everything
+
+### Bootstrap Changes
+- JournalSystem._ready() → connects to ScannerSystem.entry_cataloged + DayNightCycle.day_started
+- JournalSystem loads chapter data from data/journal/ch1_entries.tres
+- GAME_START trigger fires immediately → crash_landing cutscene queues
+- CutsceneViewer.process_mode = PROCESS_MODE_ALWAYS (runs during pause)
+
+### Visual Smoke Test
+Run the game on desktop (F5). You MUST see:
+- [ ] Everything from delivery-005 still works
+- [ ] Game start → crash landing cutscene plays (placeholder: colored panel + caption text)
+- [ ] Tap to advance cutscene panels → cutscene ends → game resumes
+- [ ] Tap Journal button → panel shows Story Timeline with crash_landing entry
+- [ ] Tap entry → REPLAY button → cutscene replays
+- [ ] Day 3 → "strange signal" journal entry unlocks (text only, no cutscene)
+- [ ] Scan anomaly → cutscene plays → both Catalog entry and Journal entry created
+- [ ] During cutscene: game is paused (no stat drain, no fauna movement, no day/night progression)
+
+### Dev Environment
+No additional requirements beyond delivery-001.
+
 ## Change Log
 
 | Date | Change | Source |
