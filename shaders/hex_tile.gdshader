@@ -14,9 +14,15 @@ render_mode unshaded, cull_back;
 
 uniform vec4 base_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 
+varying vec4 v_custom;
+
+void vertex() {
+	v_custom = INSTANCE_CUSTOM;
+}
+
 void fragment() {
-	float fog = INSTANCE_CUSTOM.x;
-	vec3 highlight = INSTANCE_CUSTOM.yzw;
+	float fog = v_custom.x;
+	vec3 highlight = v_custom.yzw;
 
 	// Dim albedo by fog factor (0.5 = revealed, 1.0 = full brightness)
 	vec3 albedo = base_color.rgb * fog;
