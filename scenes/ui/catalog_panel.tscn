@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/catalog_panel.gd" id="1"]
+
+[node name="CatalogPanel" type="PanelContainer"]
+script = ExtResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+text = "CATALOG"
+theme_override_font_sizes/font_size = 20
+
+[node name="CounterLabel" type="Label" parent="VBox/Header"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "0/0 cataloged"
+theme_override_font_sizes/font_size = 16
+
+[node name="HeaderSpacer" type="Control" parent="VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="VBox/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(48, 48)
+text = "X"
+
+[node name="CategoryTabs" type="TabContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/tab_height = 48
+
+[node name="Flora" type="ScrollContainer" parent="VBox/CategoryTabs"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FloraList" type="VBoxContainer" parent="VBox/CategoryTabs/Flora"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Fauna" type="ScrollContainer" parent="VBox/CategoryTabs"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FaunaList" type="VBoxContainer" parent="VBox/CategoryTabs/Fauna"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Minerals" type="ScrollContainer" parent="VBox/CategoryTabs"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MineralList" type="VBoxContainer" parent="VBox/CategoryTabs/Minerals"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Anomalies" type="ScrollContainer" parent="VBox/CategoryTabs"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AnomalyList" type="VBoxContainer" parent="VBox/CategoryTabs/Anomalies"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4

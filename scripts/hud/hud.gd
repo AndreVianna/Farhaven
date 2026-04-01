@@ -8,13 +8,21 @@ extends Control
 @onready var _placement_label: Label = $PlacementLabel
 @onready var _craft_button: Button = $BottomBar/CraftButton
 @onready var _inventory_button: Button = $BottomBar/InventoryButton
+@onready var _scanner_button: Button = $BottomBar/ScannerButton
 @onready var _inventory_panel = $InventoryPanel  # InventoryPanel
+@onready var _catalog_panel = $CatalogPanel  # CatalogPanel
+
+var _panels: Array = []
 
 
 func _ready() -> void:
 	_placement_label.hide()
 	_craft_button.hide()
 	_inventory_button.pressed.connect(_inventory_panel.toggle)
+	_scanner_button.pressed.connect(_catalog_panel.toggle)
+	_panels = [_inventory_panel, _catalog_panel]
+	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
+	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
@@ -59,3 +67,17 @@ func connect_inventory(inv) -> void:
 
 func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 	show_notification("INVENTORY FULL")
+
+
+# --- Catalog integration ---
+
+func connect_catalog(cat) -> void:
+	_catalog_panel.set_catalog(cat)
+
+
+# --- Mutual exclusion: closing other panels when one opens ---
+
+func _on_panel_opened(opened_panel) -> void:
+	for panel in _panels:
+		if panel != opened_panel:
+			panel.close()
