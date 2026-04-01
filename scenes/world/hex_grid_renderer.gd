@@ -17,7 +17,7 @@ extends Node3D
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
-const ELEVATION_STEP: float = 0.3
+const ELEVATION_STEP: float = 0.5
 const FOG_REVEALED_FACTOR: float = 0.4
 
 ## BiomeData .tres paths indexed by HexTile.Biome enum value.
@@ -222,6 +222,63 @@ func _rebuild_mesh() -> void:
 			st.set_normal(Vector3.UP)
 			st.set_color(color_j)
 			st.add_vertex(Vector3(cj_x, elevation_y, cj_z))
+
+	# Step 5: Generate cliff faces between tiles at different elevations.
+	# Only process from the HIGHER tile on each edge to avoid duplicate quads.
+	for coords: Variant in tile_colors:
+		var tile: Resource = HexGrid._tiles[coords]
+		var world_2d: Vector2 = HexMath.axial_to_world(coords)
+		var cx: float = world_2d.x
+		var cz: float = world_2d.y
+		var high_y: float = float(tile.elevation) * ELEVATION_STEP
+
+		for i: int in range(6):
+			var neighbor_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[i] as Vector2i)
+			var neighbor_tile: Resource = HexGrid._tiles.get(neighbor_coords, null)
+			if neighbor_tile == null:
+				continue
+			if neighbor_tile.elevation >= tile.elevation:
+				continue  # Same or higher elevation: skip (or let the higher tile generate it).
+
+			var low_y: float = float(neighbor_tile.elevation) * ELEVATION_STEP
+			var cliff_color: Color = tile_colors[coords] * 0.6
+
+			var angle_i: float = deg_to_rad(60.0 * float(i))
+			var angle_j: float = deg_to_rad(60.0 * float(i + 1))
+			var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
+			var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
+			var cj_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE
+			var cj_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE
+
+			var mid_angle: float = deg_to_rad(60.0 * float(i) + 30.0)
+			var cliff_normal: Vector3 = Vector3(cos(mid_angle), 0.0, sin(mid_angle))
+
+			var v0 := Vector3(ci_x, high_y, ci_z)   # left-top
+			var v1 := Vector3(cj_x, high_y, cj_z)   # right-top
+			var v2 := Vector3(ci_x, low_y, ci_z)    # left-bottom
+			var v3 := Vector3(cj_x, low_y, cj_z)    # right-bottom
+
+			# Triangle 1: v0, v3, v2 — outward-facing CCW
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v0)
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v3)
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v2)
+
+			# Triangle 2: v0, v1, v3 — outward-facing CCW
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v0)
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v1)
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v3)
 
 	_mesh_instance.mesh = st.commit()
 

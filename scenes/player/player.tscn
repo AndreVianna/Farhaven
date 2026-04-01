@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/player/player_input.gd" id="2_input"]
 
 [sub_resource type="BoxMesh" id="player_box"]
-size = Vector3(0.4, 0.8, 0.4)
+size = Vector3(0.9, 1.2, 0.9)
 
 [sub_resource type="StandardMaterial3D" id="player_mat"]
 albedo_color = Color(0.2, 0.5, 1.0, 1.0)
@@ -13,7 +13,7 @@ albedo_color = Color(0.2, 0.5, 1.0, 1.0)
 script = ExtResource("1_player")
 
 [node name="PlayerVisual" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 mesh = SubResource("player_box")
 material_override = SubResource("player_mat")
 

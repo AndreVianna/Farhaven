@@ -4,7 +4,7 @@ extends Camera3D
 ## Attached to Camera3D, sibling of Player (not child).
 
 @export var follow_speed: float = 8.0
-@export var offset: Vector3 = Vector3(0, 15, 10)
+@export var offset: Vector3 = Vector3(0, 12, 8)
 
 var _target: Node3D
 var _map_bounds: Rect2 = Rect2()
@@ -50,8 +50,8 @@ func _compute_bounds() -> void:
 		min_z = minf(min_z, world_2d.y)
 		max_z = maxf(max_z, world_2d.y)
 
-	# Padding of ~2 tile widths.
-	var padding: float = 3.0
+	# Padding of ~2 tile widths (scaled with HEX_SIZE).
+	var padding: float = 9.0
 	_map_bounds = Rect2(
 		min_x - padding,
 		min_z - padding,

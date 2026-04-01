@@ -4,7 +4,7 @@ class_name HexMath
 ## Uses axial coordinates (q, r) stored as Vector2i.
 ## Flat-top hexagon layout. Follows Red Blob Games conventions.
 
-const HEX_SIZE: float = 1.0
+const HEX_SIZE: float = 3.0
 
 # Flat-top axial neighbor directions (E, NE, NW, W, SW, SE)
 const DIRECTIONS = [
