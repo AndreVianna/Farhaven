@@ -119,11 +119,11 @@ func test_get_total_count_matches_all_entries() -> void:
 func test_get_discovery_text_format() -> void:
 	_catalog.catalog_entry(&"berry_bush")
 	var text: String = _catalog.get_discovery_text()
-	assert_str(text).is_equal("1/9 cataloged")
+	assert_str(text).is_equal("1 entry")
 
 
 func test_get_discovery_text_zero() -> void:
-	assert_str(_catalog.get_discovery_text()).is_equal("0/9 cataloged")
+	assert_str(_catalog.get_discovery_text()).is_equal("0 entries")
 
 
 # --- catalog_entry emits entry_cataloged signal ---

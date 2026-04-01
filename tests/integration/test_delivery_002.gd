@@ -212,7 +212,7 @@ func test_scan_flora_full_flow_icon_swap_and_catalog_panel() -> void:
 	panel.open()
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(1)
-	assert_bool(panel._counter_label.text.begins_with("1/")).is_true()
+	assert_str(panel._counter_label.text).is_equal("1 entry")
 
 	panel.queue_free()
 	_teardown_scanner_tree()
@@ -661,7 +661,7 @@ func test_catalog_panel_correct_categories_after_scans() -> void:
 	assert_int(panel._mineral_list.get_child_count()).is_equal(1)
 	assert_int(panel._fauna_list.get_child_count()).is_equal(0)
 	assert_int(panel._anomaly_list.get_child_count()).is_equal(0)
-	assert_bool(panel._counter_label.text.begins_with("2/")).is_true()
+	assert_str(panel._counter_label.text).is_equal("2 entries")
 
 	panel.queue_free()
 	_teardown_scanner_tree()
@@ -686,7 +686,7 @@ func test_catalog_panel_refreshes_on_entry_cataloged() -> void:
 	cat.catalog_entry(&"berry_bush")
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(1)
-	assert_bool(panel._counter_label.text.begins_with("1/")).is_true()
+	assert_str(panel._counter_label.text).is_equal("1 entry")
 
 	panel.queue_free()
 

@@ -175,7 +175,7 @@ func test_catalog_panel_counter_updates_on_open() -> void:
 	cat.catalog_entry(&"berry_bush")
 	_panel.set_catalog(cat)
 	_panel.open()
-	assert_bool(_panel._counter_label.text.begins_with("1/")).is_true()
+	assert_str(_panel._counter_label.text).is_equal("1 entry")
 
 
 func test_catalog_panel_counter_updates_on_entry_cataloged() -> void:
@@ -184,7 +184,7 @@ func test_catalog_panel_counter_updates_on_entry_cataloged() -> void:
 	_panel.set_catalog(cat)
 	_panel.open()
 	cat.catalog_entry(&"berry_bush")
-	assert_bool(_panel._counter_label.text.begins_with("1/")).is_true()
+	assert_str(_panel._counter_label.text).is_equal("1 entry")
 
 
 # --- Entries per category ---

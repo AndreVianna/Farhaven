@@ -82,7 +82,10 @@ func get_total_count() -> int:
 
 
 func get_discovery_text() -> String:
-	return "%d/%d cataloged" % [get_discovery_count(), _total_count]
+	var count: int = get_discovery_count()
+	if count == 1:
+		return "1 entry"
+	return "%d entries" % count
 
 
 # --- Mutation ---

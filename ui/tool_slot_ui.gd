@@ -26,6 +26,7 @@ var _icon_rect: ColorRect
 
 func _init() -> void:
 	custom_minimum_size = Vector2(110, 110)
+	size_flags_horizontal = SIZE_EXPAND_FILL
 	mouse_filter = MOUSE_FILTER_IGNORE
 
 
@@ -42,7 +43,7 @@ func _ready() -> void:
 	_slot_label.anchor_bottom = 0.3
 	_slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_slot_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_slot_label.add_theme_font_size_override("font_size", 14)
+	_slot_label.add_theme_font_size_override("font_size", 22)
 	_slot_label.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_slot_label)
 
