@@ -21,6 +21,7 @@
 | 2026-03-31 | Layers & Components written — carried forward unchanged | /aid-specify |
 | 2026-03-31 | Mobile Specs written — carried forward unchanged | /aid-specify |
 | 2026-04-01 | [PIVOT] Renderer: 5 MultiMesh per biome → single ArrayMesh with per-vertex color blending. 1 draw call. Scatter props deferred. | /design-pivot |
+| 2026-04-01 | [PIVOT] Elevation 0-9 all biomes. 3-tier traversal (walk/jump/blocked). Hand-crafted maps via MapLoader (replaces WorldGenerator). | /design-pivot |
 
 ## Source
 
@@ -30,15 +31,18 @@
 
 ## Description
 
-The game world is a procedurally generated hex-tile map using axial/cube coordinates. Each playthrough creates a unique map of 200–300 tiles with three biome types (Grassland, Forest, Rocky) distributed via weighted rules and adjacency constraints, plus a scripted Crash Site near center as the player's starting zone. Tiles are hidden under fog of war until the player moves adjacent to them. At least one anomaly tile is placed per map for narrative triggers (scanner/catalog system).
+The game world is a hand-crafted hex-tile map loaded from JSON level files. Each chapter has a designed map of 200–300 tiles with three biome types (Grassland, Forest, Rocky), a Crash Site as the player's starting zone, and intentionally placed anomalies for narrative triggers. Tiles are hidden under fog of war until the player moves adjacent to them.
+
+**[PIVOT] Maps are hand-crafted, not procedural.** A story-driven game needs authored level design — anomaly locations, elevation puzzles, biome flow, and narrative pacing are all intentional. MapLoader replaces WorldGenerator.
 
 This is the foundational feature — everything else builds on top of the hex grid.
 
 ## User Stories
 
-- As a player, I want each playthrough to generate a unique map so that exploration feels fresh every time
+- As a player, I want a hand-crafted world that feels designed and intentional
 - As a player, I want to see different biome types with distinct visual identities so I can plan where to explore
 - As a player, I want fog of war so that exploration feels like discovery, not just walking
+- As a player, I want elevation to create interesting terrain — gradual ramps, jumpable gaps, and impassable cliffs
 
 ## Priority
 
@@ -46,16 +50,16 @@ Must (P0 — Foundation)
 
 ## Acceptance Criteria
 
-- [ ] Generate 3 different maps → all have 200–300 tiles
-- [ ] All 3 biomes + Crash Site present in every map
-- [ ] Crash Site within 3 hexes of center
-- [ ] No two adjacent tiles with same biome exceed cluster of 5
+- [ ] Load Chapter 1 map from JSON → 200–300 tiles
+- [ ] All 3 biomes + Crash Site present
+- [ ] Crash Site at origin (0,0)
 - [ ] Fog tiles not visible until player moves adjacent
-- [ ] At least 1 anomaly tile placed per map
+- [ ] At least 1 anomaly tile placed in map data
+- [ ] Elevation 0-9 per tile, 3-tier traversal rules enforced
 
 ## Save Integration
 
-This feature introduces the first save data: hex grid layout (tile positions, biome types, fog state). Auto-save at dawn serializes grid state to JSON via Godot FileAccess. Corrupt/missing save = fresh start without crash.
+Save stores runtime delta over the base map: fog state per tile, resource depletion, structures. The base map is read-only JSON. Auto-save at dawn serializes runtime state via Godot FileAccess. Corrupt/missing save = reload base map.
 
 ---
 
@@ -90,7 +94,7 @@ Lightweight data object — one per tile, ~300 max. Extends `Resource`.
 |----------|------|-------------|
 | `coords` | `Vector2i` | Axial `(q, r)` — immutable |
 | `biome` | `Biome` | Biome enum value |
-| `elevation` | `int` | 0–5 range, affects traversability |
+| `elevation` | `int` | 0–9 range, affects traversability (3-tier: walk/jump/blocked) |
 | `fog_state` | `FogState` | Current visibility state |
 | `structure` | `StringName` | Built structure (`&""` = empty) |
 | `resource_nodes` | `Array[ResourceNode]` | Gatherable resources on this tile |
@@ -117,15 +121,35 @@ knows about them. No dual tracking, no leaked responsibilities.
 
 Feature-004 (auto-interaction) extends with `respawn_time: float`.
 
-#### Elevation Ranges by Biome
+#### Elevation
 
-| Biome | Elevation Range | Character |
-|-------|----------------|-----------|
+All biomes use elevation 0–9. Elevation is set per-tile in the hand-crafted map data — no biome-based constraints.
+
+| Biome | Typical Elevation | Character |
+|-------|------------------|-----------|
 | Crash Site | 0 | Flat, accessible. Resources: Wood, Stone, Fiber |
-| Grassland | 0–1 | Flat starter terrain |
-| Forest | 0–2 | Gentle hills |
-| Rocky | 2–5 | Highlands, cliff barriers |
+| Grassland | 0–3 | Open terrain, gentle hills |
+| Forest | 0–4 | Moderate hills, undergrowth |
+| Rocky | 3–9 | Highlands, plateaus, cliff barriers |
 | Water | 0 | Always lowest |
+
+*Ranges are design guidance, not constraints. The level designer places elevation freely.*
+
+#### Traversal Rules (3-Tier)
+
+```gdscript
+enum TraversalType { WALK, JUMP, DROP, BLOCKED }
+```
+
+| Elevation Diff | Going Up (↑) | Going Down (↓) | Visual |
+|---------------|--------------|----------------|--------|
+| 0–1 | WALK | WALK | Smooth mesh transition |
+| 2–3 | JUMP (~0.3s) | DROP (~0.2s) | Gap, no connecting mesh |
+| 4+ | BLOCKED | BLOCKED | Cliff gap, future wall texture |
+
+**Asymmetric gravity:** Dropping is faster than jumping (0.2s vs 0.3s) but both are auto-triggered — no player input. The player walks toward a jumpable gap and the character jumps/drops automatically.
+
+**Fauna traversal:** Each fauna species has a `max_jump: int` attribute (see F-010). A fauna with `max_jump: 1` treats diff 2+ as BLOCKED. A fauna with `max_jump: 3` can traverse diff 2–3 gaps. `max_jump: -1` (sentinel) = flying, ignores all gaps. Mechanic implementation deferred — attribute defined now.
 
 #### Biome Color Palette
 
@@ -158,7 +182,8 @@ Map container and sole public API. All cross-feature interaction goes through He
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `MAX_ELEVATION_DIFF` | `1` | Max traversable elevation difference |
+| `WALK_MAX_DIFF` | `1` | Walk: smooth mesh, normal movement |
+| `JUMP_MAX_DIFF` | `3` | Jump/Drop: gap, auto-animation. 4+ = BLOCKED (cliff) |
 
 #### Core API
 
@@ -169,11 +194,14 @@ func get_neighbors(coords: Vector2i) -> Array[Vector2i]
 func get_tiles_in_range(center: Vector2i, radius: int) -> Array[Vector2i]
 func distance(a: Vector2i, b: Vector2i) -> int
 
-# Traversability — MVP rules:
-#   biome == WATER → impassable
-#   elevation_diff > MAX_ELEVATION_DIFF → impassable
-#   structure with blocks_movement: true → impassable (Shelter/Torch walkable)
-func is_passable(from: Vector2i, to: Vector2i) -> bool
+# Traversability — 3-tier rules:
+#   biome == WATER → BLOCKED
+#   elevation_diff 0-1 → WALK (smooth)
+#   elevation_diff 2-3 → JUMP (up) / DROP (down) — auto-animation
+#   elevation_diff 4+ → BLOCKED (cliff)
+#   structure with blocks_movement: true → BLOCKED
+func get_traversal(from: Vector2i, to: Vector2i) -> TraversalType
+func is_passable(from: Vector2i, to: Vector2i) -> bool  # convenience: != BLOCKED
 func get_elevation_diff(from: Vector2i, to: Vector2i) -> int
 
 # Fog — multi-source, single pass (see feature-008 for full docs)
@@ -228,81 +256,87 @@ Code uses `q`/`r`. Serialized JSON uses `tile_col`/`tile_row` for readability.
 
 ### Feature Flow
 
-#### World Generation Pipeline
+#### Map Loading Pipeline
 
-Carried forward from pre-redesign (Steps 1–7, 10–11 unchanged). New: reachability
-BFS before anomaly placement (Step 8), updated validation (Step 9).
+**[PIVOT] Hand-crafted maps replace procedural generation.** MapLoader reads a JSON
+level file and populates HexGrid. WorldGenerator is removed.
 
 ```
-SEED (int — random or from save file)
+MAP FILE (res://data/maps/ch1.json)
   │
-  ├─ Step 1: Place Crash Site
-  │     Tiles at (0,0) + neighbors (radius ~1-2), Biome = CRASH_SITE, elevation = 0
+  ├─ Step 1: Parse JSON
+  │     Read and validate chapter_id, name, spawn coords, tiles dictionary.
   │
-  ├─ Step 2: Expand map ring-by-ring (BFS from center)
-  │     Target 200–300 tiles. Connected, roughly circular — no islands.
+  ├─ Step 2: Create HexTile objects
+  │     For each tile entry: create HexTile Resource, set coords/biome/elevation.
+  │     Populate resource_nodes from tile's "resources" array.
+  │     Set anomaly from tile's "anomaly" field (if present).
   │
-  ├─ Step 3: Assign biomes via noise
-  │     FastNoiseLite, distance-weighted: inner → Grassland, mid → Forest, outer → Rocky.
+  ├─ Step 3: Register tiles in HexGrid
+  │     Add each HexTile to HexGrid._tiles dictionary.
   │
-  ├─ Step 4: Place water tile clusters
-  │     Algorithm TBD at implementation. Goal: chokepoints between biome regions.
-  │
-  ├─ Step 5: Post-process biome clusters
-  │     Flood-fill, swap edge tiles if cluster > 5. Deterministic, O(n).
-  │
-  ├─ Step 6: Generate elevation
-  │     Noise clamped to biome ranges. Crash Site → 0, Water → 0.
-  │
-  ├─ Step 7: Populate resource nodes
-  │     Per-biome tables from BiomeData .tres. 0–3 nodes per tile.
-  │
-  ├─ Step 8: Compute reachability + place anomalies
-  │     8a. Run BFS from Crash Site using is_passable() rules.
-  │         Produces _reachable_tiles: Set[Vector2i] — all tiles the player
-  │         can actually walk to from Crash Site.
-  │     8b. Place anomaly from reachable set:
-  │         - Filter _reachable_tiles: ring distance >= 70% of max ring distance
-  │         - Exclude tiles with structures
-  │         - Pick randomly from candidates
-  │         - Set tile.anomaly = &"anomaly_ch1_001"
-  │         - Chapter 1 = 1 anomaly. Architecture supports N per chapter.
-  │     Anomaly is reachable BY CONSTRUCTION — no wasted retries.
-  │
-  ├─ Step 9: Validate map
+  ├─ Step 4: Validate map
   │     ✓ Tile count 200–300
   │     ✓ All required biomes present (GRASSLAND, FOREST, ROCKY, CRASH_SITE)
-  │     ✓ Crash Site within 3 hexes of center
-  │     ✓ Cluster constraint met (guaranteed by Step 5, double-check)
-  │     ✓ Reachability: at least one tile of each non-WATER biome in _reachable_tiles
-  │     ✓ Anomaly placed and reachable (defensive assertion — guaranteed by Step 8)
-  │     On failure → re-seed, retry (max 10 attempts).
-  │     Retries should be rare — cluster post-processing + reachability-based
-  │     anomaly placement eliminate most failure modes.
+  │     ✓ Spawn tile exists and is CRASH_SITE
+  │     ✓ At least 1 anomaly tile present
+  │     ✓ All elevations in range 0–9
+  │     ✓ Reachability BFS from spawn: every non-WATER tile reachable
+  │       (using is_passable — includes WALK and JUMP/DROP tiles)
+  │     On failure → error log with specific issue. Do not crash.
   │
-  ├─ Step 10: Initialize fog
-  │     All → HIDDEN. Crash Site + immediate neighbors → VISIBLE.
+  ├─ Step 5: Initialize fog
+  │     All → HIDDEN. Spawn tile + immediate neighbors → VISIBLE.
   │
-  └─ Step 11: Emit map_generated()
+  └─ Step 6: Emit map_generated()
 ```
+
+#### Map File Format
+
+```json
+{
+  "chapter_id": "ch1",
+  "name": "Crash Landing",
+  "spawn": [0, 0],
+  "tiles": {
+    "0,0":   { "biome": "crash_site", "elevation": 0 },
+    "1,0":   { "biome": "crash_site", "elevation": 0, "resources": ["wood", "stone"] },
+    "0,1":   { "biome": "grassland",  "elevation": 1 },
+    "-3,5":  { "biome": "rocky",      "elevation": 6, "anomaly": "anomaly_ch1_001" },
+    "2,-1":  { "biome": "water",      "elevation": 0 }
+  }
+}
+```
+
+**Keys:** `"q,r"` axial coordinates as strings.
+**biome:** String matching Biome enum name (lowercase).
+**elevation:** Integer 0–9.
+**resources:** Optional array of StringName IDs. MapLoader creates ResourceNode
+objects using BiomeData config tables (remaining, max_amount, tool_required).
+**anomaly:** Optional StringName ID.
+**Missing tile = off-map.** Not rendered, not accessible.
+
+**The map file is read-only at runtime.** Save data stores the runtime delta
+(fog state, resource depletion, structures placed). Loading a save applies
+deltas on top of the base map.
 
 #### Design Rationale
 
-**Ring-by-ring expansion:** Connected by construction — no islands, no gaps.
+**Hand-crafted over procedural:** A curiosity/story-driven game needs authored
+pacing. The anomaly goes on the plateau because the designer put it there —
+not because an algorithm rolled dice.
 
-**Post-processing over rejection-retry for clusters:** Deterministic fix, O(n).
-Retry reserved for the harder reachability constraint.
+**JSON format:** Simple, human-editable, diffable in git. 200–300 tile entries
+is manageable in a text editor. Future: visual editor tool (Godot plugin or
+standalone) can export to this format.
 
-**Reachability BFS before anomaly placement:** The BFS is already needed for
-Step 9 validation. Computing it once in Step 8a and reusing the set for both
-anomaly placement (8b) and validation (9) avoids redundant work and guarantees
-the anomaly is always reachable — no map rejection for anomaly isolation.
+**Reachability validation:** Even hand-crafted maps get validated. A level design
+error that makes the anomaly unreachable should fail loudly during development,
+not silently at runtime.
 
-**Anomaly at 70% distance:** Player must explore most of the map before finding it.
-Natural Chapter 1 arc: crash → explore/scan/gather/build → discover anomaly far out →
-narrative reward. Not trivially close to start, but guaranteed reachable.
-
-**Resource tables are data-driven:** BiomeData .tres files, not hardcoded.
+**Resource tables are data-driven:** BiomeData .tres files define what resources
+exist per biome and their properties. Map files only list which resource types
+spawn on each tile — MapLoader looks up config from BiomeData.
 
 ### Layers & Components
 
@@ -338,17 +372,19 @@ scripts/
     hex_tile.gd           # Resource — tile data
     resource_node.gd      # Resource — gatherable resource on a tile
     hex_math.gd           # Static utility (class_name HexMath)
-    world_generator.gd    # RefCounted — generation pipeline (Steps 1–11)
-    biome_data.gd         # Resource — per-biome config
+    map_loader.gd         # RefCounted — loads JSON level files, populates HexGrid
+    biome_data.gd         # Resource — per-biome config (colors, resource tables)
 
 scenes/
   world/
-    hex_grid_renderer.gd  # Node3D — MultiMesh management, signal-driven
-    hex_grid_renderer.tscn # Scene — 5 MultiMeshInstance3D children
+    hex_grid_renderer.gd  # Node3D — single ArrayMesh, signal-driven
+    hex_grid_renderer.tscn # Scene — single MeshInstance3D child
 
 data/
   biomes/
     crash_site.tres, grassland.tres, forest.tres, rocky.tres, water.tres
+  maps/
+    ch1.json              # Chapter 1 hand-crafted level data
 
 shaders/
   hex_tile.gdshader       # Per-vertex color pass-through + optional fog/highlight modulation
@@ -360,8 +396,8 @@ shaders/
 |-----------|---------------|------------|
 | `hex_grid.gd` | Data ownership, public API, signals. Owns `_tiles` Dictionary. | `hex_tile.gd`, `hex_math.gd` |
 | `hex_math.gd` | Pure static functions: axial↔cube↔world, distance, neighbors, rings. No state. | Nothing |
-| `world_generator.gd` | Generation pipeline (Steps 1–11). RefCounted — freed after generation. | `hex_grid.gd`, `hex_math.gd`, `biome_data.gd` |
-| `biome_data.gd` | Data-only Resource: resource tables, elevation range, cluster weight, material ref. | Nothing |
+| `map_loader.gd` | Loads JSON level file, creates HexTiles, populates HexGrid, validates. RefCounted — freed after loading. | `hex_grid.gd`, `hex_math.gd`, `biome_data.gd` |
+| `biome_data.gd` | Data-only Resource: color variations, resource tables, material ref. | Nothing |
 | `hex_grid_renderer.gd` | Single ArrayMesh with per-vertex color blending. Builds mesh on map_generated. Updates vertex colors on fog changes. Signal-driven, no per-frame queries. 1 draw call. | `hex_grid.gd` (signals only) |
 | `hex_tile.gdshader` | Fog tinting (dim/full) + highlight channel for placement mode. | Nothing (GPU-side) |
 
@@ -423,11 +459,12 @@ Carried forward from pre-redesign — unchanged.
 | Memory | <200MB | <1MB (tiles + MultiMesh + mesh + materials) | ~199MB |
 | Tris per object | <500 | <20 (hex mesh) | — |
 
-#### World Generation Cost
+#### Map Loading Cost
 
-- 300 tiles x noise + cluster post-processing + reachability BFS + A* validation
+- Parse JSON + create 200–300 HexTile Resources + reachability BFS validation
 - Single-threaded GDScript, CPU-bound
-- Expected <200ms on mid-range 2022+ devices. One-time startup cost.
+- Expected <100ms on mid-range 2022+ devices. One-time startup cost. Faster than
+  procedural generation (no noise, no cluster post-processing).
 
 #### Per-Frame Cost
 

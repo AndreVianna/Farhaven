@@ -15,7 +15,7 @@ task-001 (Project setup + autoload skeleton)
 task-002 (HexMath + HexTile + ResourceNode data layer)
   │
   ▼
-task-003 (HexGrid autoload + WorldGenerator pipeline)  ← HEAVIEST TASK
+task-003 (HexGrid autoload + MapLoader)
   │
   ├──────────────────┐
   ▼                  ▼
@@ -46,7 +46,7 @@ for task-005 implementation.
 |---|------|------|-----------|---------------|
 | 001 | Godot project setup + autoload skeleton | CONFIGURE | -- | -- |
 | 002 | HexMath + HexTile + ResourceNode data layer | IMPLEMENT | 001 | -- |
-| 003 | HexGrid autoload + WorldGenerator pipeline | IMPLEMENT | 002 | -- |
+| 003 | HexGrid autoload + MapLoader | IMPLEMENT | 002 | -- |
 | 004 | HexGridRenderer — single ArrayMesh + per-vertex color blending | IMPLEMENT | 003 | 005 |
 | 005 | HUD framework — layout, bars, counter, text, notifications | IMPLEMENT | 003 | 004 |
 | 006 | Player movement — continuous joystick, derived tile, camera | IMPLEMENT | 003, 004 | -- |
@@ -117,53 +117,54 @@ for task-005 implementation.
 
 ---
 
-### task-003: HexGrid Autoload + WorldGenerator Pipeline [IMPLEMENT]
+### task-003: HexGrid Autoload + MapLoader [IMPLEMENT]
 
-**Source:** feature-001 → Data Model (HexGrid API) + Feature Flow (pipeline)
+**Source:** feature-001 → Data Model (HexGrid API) + Feature Flow (MapLoader pipeline)
 
 **Scope:**
 - `scripts/hex/hex_grid.gd` autoload:
   - Storage: `_tiles: Dictionary[Vector2i, HexTile]`, `_seed: int`
-  - Constant: `MAX_ELEVATION_DIFF = 1`
+  - Constants: `WALK_MAX_DIFF = 1`, `JUMP_MAX_DIFF = 3`
   - Core API: `get_tile`, `get_neighbors`, `get_tiles_in_range`, `distance`,
-    `is_passable`, `get_elevation_diff`, `refresh_visibility`, coordinate conversions
+    `get_traversal` (returns TraversalType), `is_passable` (convenience: != BLOCKED),
+    `get_elevation_diff`, `refresh_visibility`, coordinate conversions
+  - TraversalType enum: `WALK`, `JUMP`, `DROP`, `BLOCKED`
   - 11 signals: `map_generated`, `tile_revealed`, `tile_visibility_changed`,
     `tile_entered`, `tile_exited`, `resource_depleted`, `resource_respawned`,
     `tile_contents_changed`, `structure_placed`, `structure_destroyed`
   - `get_save_data()` / `load_save_data()`
-- `scripts/hex/world_generator.gd` (RefCounted) — 11-step pipeline:
-  1. Crash Site at (0,0) + neighbors
-  2. Ring-by-ring BFS expansion (200-300 tiles)
-  3. Noise-based biome assignment (distance-weighted)
-  4. Water cluster placement
-  5. Cluster post-processing (flood-fill, swap if >5)
-  6. Elevation generation (noise clamped to biome ranges)
-  7. Resource node population from BiomeData
-  8. Reachability BFS + anomaly placement (≥70% max distance, reachable)
-  9. Validation (tile count, biomes, Crash Site, clusters, reachability, anomaly)
-  10. Fog initialization (HIDDEN, Crash Site VISIBLE)
-  11. Emit `map_generated()`
-- `is_passable` rules: water=impassable, elevation_diff>1=impassable,
-  structure with blocks_movement=true=impassable (Shelter/Torch walkable)
+- `scripts/hex/map_loader.gd` (RefCounted) — 6-step pipeline:
+  1. Parse JSON level file
+  2. Create HexTile objects (coords, biome, elevation 0-9, resources, anomaly)
+  3. Register tiles in HexGrid._tiles
+  4. Validate (tile count, biomes, spawn tile, anomaly, elevation range, reachability BFS)
+  5. Initialize fog (all HIDDEN, spawn + neighbors VISIBLE)
+  6. Emit `map_generated()`
+- `data/maps/ch1.json` — Chapter 1 test map (hand-crafted, ~50 tiles minimum for dev testing)
+- `get_traversal` rules: water=BLOCKED, diff 0-1=WALK, diff 2-3=JUMP(up)/DROP(down),
+  diff 4+=BLOCKED, structure with blocks_movement=true=BLOCKED
 - `refresh_visibility(sources)`: demote VISIBLE→REVEALED, promote per source,
   emit tile_revealed + tile_visibility_changed
 - Serialization: tile_col/tile_row convention, anomaly field
 
 **Criteria:**
-- [ ] WorldGenerator produces valid maps across 10 different seeds
-- [ ] AC1: tile count 200-300, all biomes present, Crash Site within 3 hexes,
-      clusters ≤5, fog correct, at least 1 anomaly
-- [ ] `is_passable` rejects water, steep elevation, blocking structures
-- [ ] `is_passable` allows Shelter and Torch tiles (blocks_movement: false)
+- [ ] MapLoader loads ch1.json and populates HexGrid correctly
+- [ ] AC1: tile count correct, all biomes present, spawn at origin, fog correct, anomaly present
+- [ ] `get_traversal` returns WALK for diff 0-1
+- [ ] `get_traversal` returns JUMP for diff 2-3 uphill
+- [ ] `get_traversal` returns DROP for diff 2-3 downhill
+- [ ] `get_traversal` returns BLOCKED for diff 4+, water, blocking structures
+- [ ] `is_passable` returns true for WALK/JUMP/DROP, false for BLOCKED
 - [ ] `refresh_visibility` single-source works (player radius 2)
 - [ ] `refresh_visibility` multi-source works (player + torch)
 - [ ] Serialization round-trip: get_save_data → load_save_data preserves all state
-- [ ] Worldgen completes within 10 retry attempts on all tested seeds
+- [ ] Elevation 0-9 range validated on load
+- [ ] Invalid JSON / missing fields → error log, no crash
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
 
-**Note:** This is the heaviest task (~2-3x others). If anything fails in delivery-001,
-it will likely be here. The SPEC is detailed enough for execution.
+**Note:** Simpler than the old WorldGenerator pipeline — no noise, no clusters, no retries.
+The ch1.json test map should include all elevation tiers for traversal testing.
 
 ---
 
@@ -253,13 +254,17 @@ Projection testing deferred to task-008. Implementation is complete without came
 
 **Scope:**
 - `scripts/player/player.gd` — Node3D:
-  - MoveState enum: IDLE, WALKING (no PATHFINDING)
+  - MoveState enum: IDLE, WALKING, JUMPING (no PATHFINDING)
   - Continuous movement: position updated per-frame by joystick input
   - `current_tile` derived from `HexMath.world_to_axial(position)`, updated on boundary cross
+  - Tile boundary: query `HexGrid.get_traversal(from, to)`:
+    - WALK: seamless cross, smooth Y interpolation
+    - JUMP/DROP: enter JUMPING state, tween arc to destination tile center
+      (JUMP ~0.3s arc up, DROP ~0.2s arc down). Buffer joystick input. Resume WALKING on land.
+    - BLOCKED: slide along hex edge (smooth rejection)
   - Tile transition sequence: tile_exited(A) → current_tile=B → tile_entered(B) → player_moved(A,B)
-  - Impassable boundary: slide along hex edge (smooth rejection)
   - On joystick release: tween snap to current_tile center (~0.1s)
-  - Elevation Y interpolation during cross-tile movement
+  - Elevation Y interpolation during cross-tile movement (WALK only)
   - Properties: current_tile (derived), move_state, move_speed, facing_direction
   - `get_save_data()` / `load_save_data()` (snap to center on load)
 - `scripts/player/player_camera.gd` — on Camera3D:
@@ -276,9 +281,12 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
 - [ ] Player moves continuously with joystick (direction + magnitude)
 - [ ] current_tile updates when hex boundary crossed
 - [ ] Tile transition emits 4 signals in order (exited, current update, entered, moved)
-- [ ] Impassable tiles block movement (slide along boundary, no hard stop)
+- [ ] WALK traversal (diff 0-1): seamless boundary crossing, smooth Y interpolation
+- [ ] JUMP traversal (diff 2-3 up): auto-jump arc ~0.3s, JUMPING state, resumes on land
+- [ ] DROP traversal (diff 2-3 down): auto-drop arc ~0.2s, JUMPING state, resumes on land
+- [ ] BLOCKED traversal (diff 4+, water, wall): slide along boundary, no hard stop
+- [ ] Joystick input buffered during JUMPING, resumes on land
 - [ ] Snap to tile center on joystick release (~0.1s tween)
-- [ ] Elevation Y interpolation smooth during boundary crossing
 - [ ] Camera follows smoothly, no jitter
 - [ ] Camera clamps to map bounds
 - [ ] Player spawns at Crash Site on startup
@@ -404,3 +412,4 @@ Run the game on desktop (F5). You MUST see:
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (001-008) — approved | /aid-detail |
 | 2026-04-01 | [PIVOT] Single mesh renderer, joystick-only movement, tasks 004/006/007/008 updated | /design-pivot |
+| 2026-04-01 | [PIVOT] Hand-crafted maps (MapLoader), 3-tier traversal, JUMPING state, task-003/006/008 updated | /design-pivot |

@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F9, §9 AC9 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
+| 2026-04-01 | [PIVOT] Added max_jump attribute to fauna config. Mechanic deferred, attribute defined now. | /design-pivot |
 
 ## Source
 
@@ -75,6 +76,7 @@ const FAUNA_CONFIG: Dictionary = {
     "contact_damage": 10,         # HP to player per move cycle when adjacent
     "move_cooldown": 1.0,         # seconds between tile moves
     "detection_range": 2,         # hexes — move toward player if within range
+    "max_jump": 1,                # [NEW] max elevation diff fauna can traverse (1=walk only, 2-3=can jump gaps, -1=flying)
     "spawn_count_min": 1,
     "spawn_count_max": 3,
     "first_spawn_day": 4,         # Days 1-3 peaceful (onboarding)
@@ -98,6 +100,15 @@ feature-003's data files (`data/catalog/fauna.tres`).
 **Passive fauna:** Not in Chapter 1 scope. Architecture supports passive species
 (hostile = false in catalog entry). FaunaManager spawns them but they don't deal
 damage and auto-defend ignores them.
+
+**[PIVOT] `max_jump` attribute:** Determines how fauna handles elevation differences.
+- `max_jump: 1` — can only WALK (diff 0-1). Treats diff 2+ as impassable. (Default: thornback)
+- `max_jump: 3` — can traverse gaps up to diff 3 (same as player JUMP).
+- `max_jump: -1` — flying fauna, ignores ALL elevation gaps.
+- Mechanic implementation deferred. For now, FaunaManager stores the attribute but
+  uses the existing `is_passable()` (which treats diff 2+ as BLOCKED for fauna).
+  When implemented: `FaunaManager._is_fauna_passable(from, to, max_jump)` replaces
+  the `HexGrid.is_passable()` call for fauna movement.
 
 #### FaunaManager Properties (on Node)
 

@@ -15,6 +15,7 @@
 | 2026-03-31 | Redesign: requirements updated — SPEC needs reconciliation | /aid-interview |
 | 2026-03-31 | SPEC reset — full rewrite with three-outcome input, scan forwarding, no movement locks | /aid-specify |
 | 2026-03-31 | SPEC reset + all sections rewritten — simplified input (no tap-to-interact), scan forwarding | /aid-specify |
+| 2026-04-01 | [PIVOT] 3-tier traversal: WALK (0-1) / JUMP-DROP (2-3) / BLOCKED (4+). JUMPING state added. Asymmetric gravity. | /design-pivot |
 | 2026-04-01 | [PIVOT] Joystick-only movement. Tap-to-move removed. Continuous position. current_tile derived. A* pathfinder removed (fauna uses it in F-010). | /design-pivot |
 
 ## Source
@@ -40,7 +41,9 @@ Must (P0 — Foundation)
 ## Acceptance Criteria
 
 - [ ] Joystick appears at touch point on hold/drag, character moves continuously
-- [ ] Player avoids impassable tiles (water, structures, steep elevation)
+- [ ] Player avoids impassable tiles (water, structures, elevation diff 4+)
+- [ ] Elevation diff 2-3: auto-jump (up) / auto-drop (down) with arc animation
+- [ ] Elevation diff 0-1: smooth walk with Y interpolation
 - [ ] Input-to-first-movement-frame < 100ms (measured)
 - [ ] Tap on world = no movement (reserved for interactions)
 - [ ] Press-and-hold toward unknown element initiates scan (feature-003 integration)
@@ -70,21 +73,27 @@ Adds player position (current tile coordinates) to save data.
 #### MoveState Enum
 
 ```gdscript
-enum MoveState { IDLE, WALKING }
+enum MoveState { IDLE, WALKING, JUMPING }
 ```
 
 - `IDLE` — no input, standing still (snapped to tile center)
 - `WALKING` — joystick held, continuous movement frame-by-frame
+- `JUMPING` — auto-jump/drop in progress (~0.2-0.3s). Joystick input buffered, movement resumes on land.
 
 **[PIVOT] Removed:** `PATHFINDING` — no tap-to-move, no A* pathfinding for the player.
+**[PIVOT] Added:** `JUMPING` — triggered by 2-3 elevation difference at tile boundary.
 
 #### Movement Architecture: Node3D + Continuous Position
 
 The player is a `Node3D`, not a `CharacterBody3D`. Movement is continuous (not discrete tile-to-tile):
 
 - **Position:** `position` updated every `_process(delta)` frame by joystick input
-- **Passability:** checked before entering a new tile via `HexGrid.is_passable(current_tile, candidate_tile)` — if the next hex is impassable, the player stops at the boundary
-- **Elevation:** Y component smoothly interpolated based on hex elevations
+- **Traversal:** checked before entering a new tile via `HexGrid.get_traversal(current_tile, candidate_tile)`:
+  - WALK → seamless crossing, smooth Y interpolation
+  - JUMP → auto-jump animation (~0.3s arc up), then continue
+  - DROP → auto-drop animation (~0.2s arc down), then continue
+  - BLOCKED → slide along boundary
+- **Elevation:** Y component smoothly interpolated based on hex elevations (WALK). Jump/Drop uses arc trajectory.
 - **Tile transitions:** `current_tile` is derived from `HexMath.world_to_axial(position)`. When it changes, `tile_entered`/`tile_exited` fire
 - **On stop:** Short tween (~0.1s) snaps to current tile center — prevents player from standing between hexes when idle
 
@@ -127,13 +136,15 @@ Only `current_tile` (derived) is saved. On load, player snaps to the center of t
         ┌─────────┐   joystick held    ┌──────────┐
         │  IDLE   │ ─────────────────► │ WALKING  │
         └─────────┘                    └──────────┘
-             ▲                              │
-             │     joystick released        │
-             │     (snap to tile center)    │
-             └──────────────────────────────┘
+             ▲         ▲                    │ │
+             │         │  land              │ │ elevation diff 2-3
+             │         └────────────────────┼─┘
+             │     joystick released   ┌────▼─────┐
+             │     (snap to center)    │ JUMPING  │
+             └─────────────────────────└──────────┘
 ```
 
-Two states. Simple.
+Three states. Jump/drop is brief and automatic.
 
 #### Transition Rules
 
@@ -141,8 +152,12 @@ Two states. Simple.
 |------|---------|-----|-------------|
 | IDLE | Joystick held (drag ≥ threshold) | WALKING | Move continuously in joystick direction |
 | WALKING | Joystick released | IDLE | Snap to current tile center (~0.1s tween) |
+| WALKING | Tile boundary with elevation diff 2-3 | JUMPING | Auto-jump (up ~0.3s) or auto-drop (down ~0.2s) arc |
+| JUMPING | Arc animation completes | WALKING | Resume movement, process buffered joystick input |
+| JUMPING | Joystick released during jump | IDLE | Land, then snap to tile center |
 
 **[PIVOT] Removed:** All PATHFINDING transitions, tap-to-move pipeline, path cancellation, joystick-cancels-path logic.
+**[PIVOT] Added:** JUMPING state for auto-jump/drop. Player cannot change direction mid-air. Joystick input is buffered (read on land).
 
 #### Joystick Release Snap
 
@@ -197,7 +212,7 @@ In delivery-001, tap on world = no-op. Only joystick moves the player.
 
 - **Joystick walk near ❓ element:** Movement continues past. No auto-scan. Scanning requires deliberate press-and-hold while stationary or moving slowly.
 
-- **Impassable boundary:** Player slides along the edge of impassable tiles (no hard stop). Movement direction projects onto the hex boundary, allowing diagonal sliding past obstacles.
+- **Impassable boundary (BLOCKED):** Player slides along the edge of BLOCKED tiles (no hard stop). Movement direction projects onto the hex boundary, allowing diagonal sliding past obstacles.
 
 - **Multiple boundary crossings per frame:** At high speed, player might cross multiple tile boundaries in one frame. Process each crossing sequentially (fire tile_exited/entered for each).
 
@@ -244,16 +259,23 @@ Drag ≥ 20px (any time) OR scan_rejected fallback
   │     # Boundary check — derive candidate tile
   │     candidate_tile = HexMath.world_to_axial(new_position)
   │     if candidate_tile != current_tile:
-  │       if HexGrid.is_passable(current_tile, candidate_tile):
-  │         position = new_position  # cross boundary
-  │         _on_tile_changed(old_tile, candidate_tile)
-  │       else:
-  │         # Slide along boundary — project velocity parallel to hex edge
-  │         position = _slide_along_boundary(position, velocity, delta)
+  │       var traversal = HexGrid.get_traversal(current_tile, candidate_tile)
+  │       match traversal:
+  │         WALK:
+  │           position = new_position  # cross boundary
+  │           _on_tile_changed(old_tile, candidate_tile)
+  │         JUMP, DROP:
+  │           _start_jump(candidate_tile, traversal)  # enter JUMPING state
+  │           # Arc tween from current pos to candidate tile center
+  │           # JUMP: arc up (~0.3s), DROP: arc down (~0.2s)
+  │           # On completion → _on_tile_changed + resume WALKING
+  │         BLOCKED:
+  │           # Slide along boundary — project velocity parallel to hex edge
+  │           position = _slide_along_boundary(position, velocity, delta)
   │     else:
   │       position = new_position  # still same tile, always OK
   │
-  │     Update elevation Y (interpolate between tile elevations)
+  │     Update elevation Y (WALK: interpolate between tile elevations)
   │     Update facing_direction
   │
   └─ Touch UP:
@@ -262,9 +284,17 @@ Drag ≥ 20px (any time) OR scan_rejected fallback
        Set move_state = IDLE
 ```
 
-**Tile boundary crossing:** The player moves in continuous world space. When `HexMath.world_to_axial(position)` returns a different tile than `current_tile`, a boundary crossing occurs. If the new tile is passable, the crossing is allowed and tile transition signals fire. If impassable, the player slides along the boundary edge (no hard stop — smooth rejection).
+**Tile boundary crossing:** The player moves in continuous world space. When `HexMath.world_to_axial(position)` returns a different tile than `current_tile`, a boundary crossing occurs. The system queries `HexGrid.get_traversal()` to determine the crossing type:
+- **WALK (diff 0-1):** Seamless crossing. Tile transition signals fire. Smooth Y interpolation.
+- **JUMP (diff 2-3 up):** Enter JUMPING state. Tween arc from current position to destination tile center, Y arcs up then down (~0.3s). On land: tile transition signals fire, resume WALKING.
+- **DROP (diff 2-3 down):** Same as JUMP but faster (~0.2s), Y arcs down with gravity feel.
+- **BLOCKED (diff 4+, water, wall):** Slide along boundary edge (no hard stop — smooth rejection).
 
-**Elevation interpolation:** During movement between tiles, Y position interpolates between the source and destination tile elevations based on distance to each tile center. This prevents jarring Y jumps at boundaries.
+**During JUMPING:** Joystick input is buffered (direction and magnitude stored). Player cannot change direction mid-air. On landing, buffered input immediately resumes movement — no perceptible pause.
+
+**Elevation interpolation (WALK only):** During movement between same-elevation or diff-1 tiles, Y position interpolates between the source and destination tile elevations based on distance to each tile center. This prevents jarring Y jumps at boundaries.
+
+**Jump/Drop arc:** Uses a simple parabolic arc. Jump: Y rises by ~0.5 world units above the higher tile, then lands. Drop: Y follows a gravity-like curve to the lower tile. Both use Tween with EASE_IN_OUT.
 
 #### Input Pipeline — Scan Hold (Outcome 2, feature-003 owned)
 
