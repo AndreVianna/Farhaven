@@ -24,7 +24,7 @@ task-004           task-005
   │                  │
   └──────┬───────────┘
          ▼
-task-006 (Player movement + pathfinding + camera)
+task-006 (Player movement — continuous + camera)
   │
   ▼
 task-007 (Player input — 3-outcome classifier + joystick)
@@ -47,9 +47,9 @@ for task-005 implementation.
 | 001 | Godot project setup + autoload skeleton | CONFIGURE | -- | -- |
 | 002 | HexMath + HexTile + ResourceNode data layer | IMPLEMENT | 001 | -- |
 | 003 | HexGrid autoload + WorldGenerator pipeline | IMPLEMENT | 002 | -- |
-| 004 | HexGridRenderer — MultiMesh + fog shader | IMPLEMENT | 003 | 005 |
+| 004 | HexGridRenderer — single ArrayMesh + per-vertex color blending | IMPLEMENT | 003 | 005 |
 | 005 | HUD framework — layout, bars, counter, text, notifications | IMPLEMENT | 003 | 004 |
-| 006 | Player movement — state machine, pathfinding, camera | IMPLEMENT | 003, 004 | -- |
+| 006 | Player movement — continuous joystick, derived tile, camera | IMPLEMENT | 003, 004 | -- |
 | 007 | Player input — 3-outcome classifier + joystick | IMPLEMENT | 006 | -- |
 | 008 | Integration test — Walk the World end-to-end | TEST | all above | -- |
 
@@ -167,28 +167,39 @@ it will likely be here. The SPEC is detailed enough for execution.
 
 ---
 
-### task-004: HexGridRenderer — MultiMesh + Fog Shader [IMPLEMENT]
+### task-004: HexGridRenderer — Single ArrayMesh + Per-Vertex Color Blending [IMPLEMENT]
 
 **Source:** feature-001 → Layers & Components
 
 **Scope:**
-- `scenes/world/hex_grid_renderer.gd` + `.tscn` — Node3D with 5 MultiMeshInstance3D
-  children (one per biome: CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER)
-- Hex tile mesh: flat-top hexagon, 6 triangles, <20 tris
-- 5 biome materials (distinct placeholder colors)
-- `shaders/hex_tile.gdshader`: per-instance custom data for fog tinting
-  (0.0=hidden/zero-scale, 0.5=revealed/dimmed, 1.0=visible/full) + highlight channel
-- On `map_generated()`: allocate instances, set transforms (position + elevation Y)
-- On `tile_revealed`/`tile_visibility_changed`: update affected instance custom data
-- `highlight_tiles(coords, color)` / `clear_highlights()` API (no callers yet)
-- HIDDEN = zero scale (invisible). REVEALED = dimmed. VISIBLE = full brightness.
+- `scenes/world/hex_grid_renderer.gd` + `.tscn` — Node3D with single MeshInstance3D child
+- Build single ArrayMesh from HexGrid tile data on `map_generated`:
+  - 7 vertices per hex (1 center + 6 corners)
+  - Center vertex color = biome color variation (from BiomeData, noise-selected)
+  - Corner/edge vertex color: at same elevation = average of adjacent tiles' colors (smooth blending); at different elevation = each hex owns its own vertices (hard cliff edge)
+  - Y position = elevation offset per tile
+  - HIDDEN tiles = degenerate triangles (zero area)
+- `shaders/hex_tile.gdshader`: per-vertex color pass-through with fog modulation
+  (REVEALED = dimmed, VISIBLE = full brightness, HIDDEN = culled)
+- On `tile_revealed`/`tile_visibility_changed`: update ONLY affected hex + neighbor vertices
+  (partial mesh update, not full rebuild)
+- `highlight_tiles(coords, color)` / `clear_highlights()` API (vertex color override)
+- BiomeData .tres files: add `color_variations: Array[Color]` (2-3 entries per biome)
+- Elevation subtly lightens color (+5% per elevation level)
+
+**[PIVOT]** Single ArrayMesh with per-vertex color blending replaces 5 MultiMeshInstance3D.
+Biome transitions smooth at shared edges. Elevation differences create natural cliff edges.
+1 draw call for entire grid.
 
 **Criteria:**
-- [ ] Map renders with visually distinct biome colors
+- [ ] Map renders with visually distinct biome colors (2-3 variations per biome)
+- [ ] Biome transitions smooth at shared edges/corners (per-vertex color blending)
+- [ ] Elevation differences create hard cliff edges (no vertex sharing across elevation gaps)
 - [ ] HIDDEN tiles not visible, REVEALED dimmed, VISIBLE full
 - [ ] Elevation creates visible Y offset between tiles
-- [ ] Draw calls: ~5 for hex grid (one MultiMesh per biome)
+- [ ] Draw calls: ~1 for hex grid (single ArrayMesh)
 - [ ] `highlight_tiles` colors specified tiles, `clear_highlights` resets
+- [ ] Fog updates only affect changed tile + neighbors (partial mesh update)
 - [ ] Signal-driven updates (no per-frame queries)
 - [ ] Build passes with zero warnings
 
@@ -236,23 +247,21 @@ Projection testing deferred to task-008. Implementation is complete without came
 
 ---
 
-### task-006: Player Movement — State Machine, Pathfinding, Camera [IMPLEMENT]
+### task-006: Player Movement — Continuous Joystick + Derived Tile + Camera [IMPLEMENT]
 
 **Source:** feature-002 → Data Model + Feature Flow
 
 **Scope:**
 - `scripts/player/player.gd` — Node3D:
-  - MoveState enum: IDLE, WALKING, PATHFINDING
-  - State machine with 7 transitions per SPEC table
-  - Tween-based tile-to-tile movement (Node3D + Tween, not CharacterBody3D)
+  - MoveState enum: IDLE, WALKING (no PATHFINDING)
+  - Continuous movement: position updated per-frame by joystick input
+  - `current_tile` derived from `HexMath.world_to_axial(position)`, updated on boundary cross
   - Tile transition sequence: tile_exited(A) → current_tile=B → tile_entered(B) → player_moved(A,B)
-  - Snap tiebreaker: >50% forward, ≤50% back
-  - Properties: current_tile, target_tile, move_state, move_path, move_speed, facing_direction
-  - `get_save_data()` / `load_save_data()`
-- `scripts/player/player_pathfinder.gd` — RefCounted:
-  - AStar2D wrapper with Dictionary[Vector2i, int] ID mapping
-  - Build on `map_generated`, update on `structure_placed`/`destroyed`
-  - `find_path(from, to) -> Array[Vector2i]`
+  - Impassable boundary: slide along hex edge (smooth rejection)
+  - On joystick release: tween snap to current_tile center (~0.1s)
+  - Elevation Y interpolation during cross-tile movement
+  - Properties: current_tile (derived), move_state, move_speed, facing_direction
+  - `get_save_data()` / `load_save_data()` (snap to center on load)
 - `scripts/player/player_camera.gd` — on Camera3D:
   - Lerp follow: `position.lerp(target + offset, follow_speed * delta)`
   - Map AABB clamping on `map_generated`
@@ -260,55 +269,56 @@ Projection testing deferred to task-008. Implementation is complete without came
 - `scenes/player/player.tscn` — Player + PlayerVisual (placeholder) + PlayerInput (empty Node)
 - Add Player + Camera3D to World scene as siblings
 
+**[PIVOT] Removed:** PlayerPathfinder, A* graph, PATHFINDING state, tap-to-move transitions.
+A* pathfinding preserved for fauna (feature-010, delivery-005).
+
 **Criteria:**
-- [ ] Pathfinder unit tests: valid paths, avoids water/elevation/structures, empty for unreachable
-- [ ] State machine transitions match SPEC table (7 transitions)
+- [ ] Player moves continuously with joystick (direction + magnitude)
+- [ ] current_tile updates when hex boundary crossed
 - [ ] Tile transition emits 4 signals in order (exited, current update, entered, moved)
-- [ ] Snap tiebreaker: >50% snaps forward, ≤50% snaps back
-- [ ] Camera follows smoothly, no jitter during tween
-- [ ] Camera clamps to map bounds (no void visible)
+- [ ] Impassable tiles block movement (slide along boundary, no hard stop)
+- [ ] Snap to tile center on joystick release (~0.1s tween)
+- [ ] Elevation Y interpolation smooth during boundary crossing
+- [ ] Camera follows smoothly, no jitter
+- [ ] Camera clamps to map bounds
 - [ ] Player spawns at Crash Site on startup
-- [ ] Save data: tile_col/tile_row round-trip
+- [ ] Save data: tile_col/tile_row round-trip, loads snapped to center
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
 
 ---
 
-### task-007: Player Input — Three-Outcome Classifier + Joystick [IMPLEMENT]
+### task-007: Player Input — Two-Outcome Classifier + Joystick [IMPLEMENT]
 
 **Source:** feature-002 → Feature Flow (input pipelines) + Mobile Specs
 
 **Scope:**
 - `scripts/player/player_input.gd` — child Node of Player, `_unhandled_input`:
-  - Three-outcome classification:
-    - TAP: touch UP <300ms, drag <20px → emit `tap_tile(coords: Vector2i)`
-    - SCAN HOLD: hold ≥300ms, drag <20px → emit `scan_hold_started(coords: Vector2i)`,
-      `scan_hold_update(screen_pos: Vector2)`, `scan_hold_ended()`
+  - Two-outcome classification (tap is no longer movement):
+    - TAP: touch UP <300ms, drag <20px → no-op in delivery-001
+      (future: emit `tap_world(coords)` for building/interaction)
+    - SCAN HOLD: hold ≥300ms, drag <20px → emit `scan_hold_started(coords)`,
+      `scan_hold_update(screen_pos)`, `scan_hold_ended()`
     - JOYSTICK: drag ≥20px (any time) OR scan_rejected fallback →
       emit `joystick_start/move/stop`
-  - Drag always wins over scan (drag ≥20px before 300ms = joystick, never scan)
-  - `scan_rejected(coords)` from feature-003 → fall back to joystick (2-frame timeout)
-  - Screen→world→axial conversion via Camera3D.project_position + HexGrid.world_to_axial
-  - HUD filtering: `_unhandled_input` only (buttons use mouse_filter=STOP)
-  - Exported thresholds: tap_max_duration (300ms), tap_max_drag (20px),
-    hold_threshold (300ms), drag_threshold (20px)
-- `ui/joystick_overlay.gd` + `ui/joystick_overlay.tscn` — CanvasLayer layer 10:
-  - Appears at touch origin on joystick activation
-  - Emits: `joystick_started(origin)`, `joystick_moved(dir, mag)`, `joystick_released()`
-  - Disappears on release
-- Wire: joystick_overlay → player_input → player.gd (movement signals)
-- Wire: player_input → (scan signals emitted, no consumer yet — feature-003 future)
-- Joystick walking: direction→nearest hex neighbor, is_passable check, tween
+  - Drag always wins over scan (drag ≥20px before 300ms = joystick)
+  - `scan_rejected(coords)` → fall back to joystick
+  - Screen→world→axial conversion via Camera3D + HexGrid.world_to_axial
+  - Exported thresholds: tap_max_duration, tap_max_drag, hold_threshold, drag_threshold
+- `ui/joystick_overlay.gd` + `ui/joystick_overlay.tscn` — CanvasLayer layer 10
+- Wire: joystick_overlay → player_input → player.gd (joystick signals only)
+
+**[PIVOT]** Tap on world = no movement. Tap reserved for future interactions.
 
 **Criteria:**
-- [ ] Tap <300ms on revealed tile → pathfinding starts
+- [ ] Tap on world does NOT trigger movement
 - [ ] Hold ≥300ms → `scan_hold_started` emits with correct axial coords
-- [ ] Drag ≥20px → joystick immediately (even over ❓ elements)
+- [ ] Drag ≥20px → joystick immediately
 - [ ] `scan_rejected` → falls back to joystick behavior
 - [ ] Joystick visual appears at touch origin, disappears on release
 - [ ] Player moves continuously with joystick (direction + magnitude)
-- [ ] Snap tiebreaker on joystick release
-- [ ] HUD button taps do NOT trigger movement
+- [ ] Snap to tile center on joystick release
+- [ ] HUD button taps do NOT trigger movement or world interactions
 - [ ] All thresholds exported and tunable
 - [ ] Input-to-first-movement < 100ms
 - [ ] All existing tests pass
@@ -323,20 +333,23 @@ Projection testing deferred to task-008. Implementation is complete without came
 **Scope:**
 - Integration tests verifying delivery-001 playable state:
   - Generate map → renders → player spawns at Crash Site
-  - Tap to move → fog reveals → pathfinding works
-  - Joystick movement → continuous, snap tiebreaker
+  - Joystick movement → continuous, fog reveals, snap on release
+  - Tap on world → no movement (verify no-op)
   - Hold → scan_hold signals emit (no consumer yet — verify signals fire)
+  - Biome color blending visible at hex boundaries
   - HUD: stat bars visible, day counter visible, 5 buttons visible, CraftButton hidden
   - FloatingTextManager projection (now Camera3D exists from task-006)
   - Panel mutual exclusion (mock panels)
 - All AC1 criteria via automated tests
-- All AC2 criteria (except scan consumer — feature-003 not present)
+- All AC2 criteria (joystick-only, no tap-to-move)
 - HUD layout verification
-- Document manual-only scenarios (visual rendering quality, joystick feel, camera smoothness)
+- Document manual-only scenarios (visual rendering quality, joystick feel, color blending)
 
 **Criteria:**
 - [ ] All AC1 automated: tile count, biomes, Crash Site position, clusters, fog, anomaly
-- [ ] AC2: tap pathfinding, impassable avoidance, joystick both modes, <100ms latency
+- [ ] AC2: joystick movement, impassable avoidance, snap on release, <100ms latency
+- [ ] Biome color blending visible at hex boundaries (visual — document for manual check)
+- [ ] Tap on world = no movement (verify no-op)
 - [ ] HUD: stat bars top-left, day counter top-right, buttons bottom-right, CraftButton hidden
 - [ ] FloatingTextManager projects world→screen correctly with Camera3D
 - [ ] Scan hold signals fire with correct coords (no consumer — just verify emission)
@@ -351,7 +364,7 @@ Projection testing deferred to task-008. Implementation is complete without came
 After this delivery, `main.tscn` MUST contain:
 - Main (Node, script: main.gd)
   - World (Node3D)
-    - HexGridRenderer (Node3D, script: hex_grid_renderer.gd) — 5 MultiMeshInstance3D children auto-created
+    - HexGridRenderer (Node3D, script: hex_grid_renderer.gd) — single MeshInstance3D child (per-vertex color blending)
     - WorldEnvironment + DirectionalLight3D — basic lighting
   - Player (from player.tscn)
     - PlayerVisual (MeshInstance3D — placeholder blue cube 0.4×0.8×0.4)
@@ -372,11 +385,12 @@ This IS the bootstrap baseline. See REQUIREMENTS.md §11.
 
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
-- [ ] Colored hexagon tiles visible (brown Crash Site center, surrounding biomes)
+- [ ] Colored hexagon tiles with smooth biome transitions at edges
 - [ ] Blue cube (player) standing on center tile
 - [ ] Fog of war — tiles beyond radius 2 are hidden/dimmed
-- [ ] Click a visible tile → player moves there, new tiles reveal
 - [ ] Click-and-drag → joystick appears, player moves continuously
+- [ ] Click on a tile → player does NOT move (tap reserved for interactions)
+- [ ] New tiles reveal as player moves (fog of war works)
 - [ ] HUD elements visible: stat bar area top-left, day counter top-right, buttons bottom-right
 - [ ] Camera follows player from above at an angle
 
@@ -389,3 +403,4 @@ Run the game on desktop (F5). You MUST see:
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (001-008) — approved | /aid-detail |
+| 2026-04-01 | [PIVOT] Single mesh renderer, joystick-only movement, tasks 004/006/007/008 updated | /design-pivot |

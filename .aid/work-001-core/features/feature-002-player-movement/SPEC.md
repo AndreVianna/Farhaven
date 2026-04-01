@@ -15,6 +15,7 @@
 | 2026-03-31 | Redesign: requirements updated — SPEC needs reconciliation | /aid-interview |
 | 2026-03-31 | SPEC reset — full rewrite with three-outcome input, scan forwarding, no movement locks | /aid-specify |
 | 2026-03-31 | SPEC reset + all sections rewritten — simplified input (no tap-to-interact), scan forwarding | /aid-specify |
+| 2026-04-01 | [PIVOT] Joystick-only movement. Tap-to-move removed. Continuous position. current_tile derived. A* pathfinder removed (fauna uses it in F-010). | /design-pivot |
 
 ## Source
 
@@ -24,13 +25,13 @@
 
 ## Description
 
-The player moves through the hex world via two simultaneous input modes: tap-to-move (tap a revealed tile → character pathfinds via A* along the shortest route) and a floating joystick (touch-and-hold anywhere on screen → joystick appears at touch point for fine continuous movement). Both modes are always available — no toggle needed. Touches on HUD elements are ignored. Press-and-hold toward unknown elements initiates scanning (owned by feature-003, not this feature). There is no stamina bar; the player can always move freely.
+The player moves through the hex world exclusively via a floating joystick (touch-and-hold anywhere on screen → joystick appears at touch point for continuous movement). Tap is reserved for UI buttons and world interactions (building placement, future object inspect). Press-and-hold toward unknown elements initiates scanning (owned by feature-003, not this feature). There is no stamina bar; the player can always move freely. Player position is continuous (not snapped to tile centers during movement). `current_tile` is derived from position — `tile_entered`/`tile_exited` signals fire when the player crosses a hex boundary.
 
 ## User Stories
 
-- As a player, I want to tap a tile to move there automatically so navigation feels effortless
-- As a player, I want a floating joystick for fine control when I need precise positioning
-- As a player, I want movement to feel responsive (<100ms) so the game feels snappy on my phone
+- As a player, I want a floating joystick for intuitive movement so I can explore freely
+- As a player, I want movement to feel smooth and responsive (<100ms) so the game feels alive
+- As a player, I want to tap objects to interact with them, not accidentally move there
 
 ## Priority
 
@@ -38,12 +39,12 @@ Must (P0 — Foundation)
 
 ## Acceptance Criteria
 
-- [ ] Tap any revealed tile → character arrives via shortest path
-- [ ] Path avoids impassable tiles (water, structures) and too-steep elevation changes
-- [ ] Joystick appears at touch point on hold, character moves continuously
-- [ ] Both input modes work without settings toggle
+- [ ] Joystick appears at touch point on hold/drag, character moves continuously
+- [ ] Player avoids impassable tiles (water, structures, steep elevation)
 - [ ] Input-to-first-movement-frame < 100ms (measured)
+- [ ] Tap on world = no movement (reserved for interactions)
 - [ ] Press-and-hold toward unknown element initiates scan (feature-003 integration)
+- [ ] On joystick release, player snaps smoothly to current tile center
 
 ## Save Integration
 
@@ -59,65 +60,41 @@ Adds player position (current tile coordinates) to save data.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `current_tile` | `Vector2i` | Axial coords of tile the player occupies |
-| `target_tile` | `Vector2i` | Pathfinding destination (= `current_tile` when idle) |
+| `current_tile` | `Vector2i` | Axial coords of tile the player is on — **derived** from `HexMath.world_to_axial(position)`, updated when hex boundary crossed |
 | `move_state` | `MoveState` | Current movement mode |
-| `move_path` | `Array[Vector2i]` | Remaining path tiles (pathfinding), empty when idle/walking |
 | `move_speed` | `float` | World units/sec (exported, tunable) |
 | `facing_direction` | `Vector2` | Normalized, for character orientation |
+
+**[PIVOT] Removed:** `target_tile`, `move_path` — no pathfinding. Position is continuous Vector3 on the Node3D. `current_tile` is computed, not set directly.
 
 #### MoveState Enum
 
 ```gdscript
-enum MoveState { IDLE, WALKING, PATHFINDING }
+enum MoveState { IDLE, WALKING }
 ```
 
-- `IDLE` — no input, standing still
+- `IDLE` — no input, standing still (snapped to tile center)
 - `WALKING` — joystick held, continuous movement frame-by-frame
-- `PATHFINDING` — tap destination set, following `move_path` tile-by-tile
 
-**No GATHERING or ATTACKING states.** Pre-redesign had cross-feature movement locks
-(`is_gathering`, `is_attacking` flags from feature-003/008). The redesign replaces
-tap-to-interact with auto-interaction (feature-004), which triggers by proximity
-and does NOT lock movement. The player is never movement-locked by other systems.
+**[PIVOT] Removed:** `PATHFINDING` — no tap-to-move, no A* pathfinding for the player.
 
-#### Movement Architecture: Node3D + Tween
+#### Movement Architecture: Node3D + Continuous Position
 
-The player is a `Node3D`, not a `CharacterBody3D`. Movement is discrete tile-to-tile
-with visual interpolation via `Tween`. No physics engine involvement:
+The player is a `Node3D`, not a `CharacterBody3D`. Movement is continuous (not discrete tile-to-tile):
 
-- **Passability** handled by `HexGrid.is_passable()` and `AStar2D` — checked before
-  movement begins, not via collision layers
-- **Visual interpolation** via `Tween` on `position` property — smooth, lightweight
-- **Elevation** reflected in Y component (from `HexGrid.axial_to_world()` + elevation offset)
+- **Position:** `position` updated every `_process(delta)` frame by joystick input
+- **Passability:** checked before entering a new tile via `HexGrid.is_passable(current_tile, candidate_tile)` — if the next hex is impassable, the player stops at the boundary
+- **Elevation:** Y component smoothly interpolated based on hex elevations
+- **Tile transitions:** `current_tile` is derived from `HexMath.world_to_axial(position)`. When it changes, `tile_entered`/`tile_exited` fire
+- **On stop:** Short tween (~0.1s) snaps to current tile center — prevents player from standing between hexes when idle
 
-#### A* Pathfinding via AStar2D
+**[PIVOT] No Tween-based tile-to-tile movement.** Player moves smoothly through world space. The hex grid is the logical layer; the player's physical position is independent.
 
-Godot's built-in `AStar2D` (C++ under the hood). Populated from HexGrid on
-`map_generated`:
+#### Pathfinding
 
-```
-Setup:
-  _coord_to_id: Dictionary[Vector2i, int]  # axial coords → AStar2D point IDs
-  _next_id: int = 0                         # incrementing counter
+**[PIVOT] Player no longer uses A* pathfinding.** Joystick-only movement means the player always has direct control.
 
-  For each tile in HexGrid._tiles:
-    id = _next_id; _next_id += 1
-    _coord_to_id[tile.coords] = id
-    AStar2D.add_point(id, HexGrid.axial_to_world(tile.coords))
-
-  For each tile:
-    For each neighbor in HexGrid.get_neighbors(tile.coords):
-      if HexGrid.is_passable(tile.coords, neighbor):
-        AStar2D.connect_points(_coord_to_id[tile.coords], _coord_to_id[neighbor])
-```
-
-Dictionary ID mapping with incrementing counter — safe with negative axial coords.
-
-**Pathfinder updates on world changes:**
-- `structure_placed` / `structure_destroyed` → disconnect/reconnect affected tile edges
-- Resources don't block movement → no updates
-- Elevation and water immutable after worldgen → no updates
+A* pathfinding (`AStar2D`) is needed for NPC/fauna movement in feature-010. The `PlayerPathfinder` class is removed from this feature. Feature-010 will implement `FaunaPathfinder` when needed.
 
 #### Player Signals
 
@@ -140,178 +117,115 @@ those signals per feature-001's ownership pattern).
 }
 ```
 
-Only `current_tile` is saved. `move_state`, `move_path`, `target_tile`, `facing_direction`
-are transient — player loads at rest on saved tile. Serialization uses `tile_col`/`tile_row`
-convention.
+Only `current_tile` (derived) is saved. On load, player snaps to the center of the saved tile. All other state is transient. Serialization uses `tile_col`/`tile_row` convention.
 
 ### Feature Flow
 
 #### Movement State Machine
 
 ```
-                 ┌──────────────────────────────────┐
-                 │                                  │
-                 ▼                                  │
-            ┌────────┐   joystick held         ┌─────────┐
-            │  IDLE  │ ─────────────────────► │ WALKING  │
-            └────────┘                         └─────────┘
-               │  ▲                              │  ▲
-    tap tile   │  │ path complete                │  │ joystick held
-               │  │ or destination reached       │  │ (cancels path)
-               ▼  │                              │  │
-          ┌─────────────┐    joystick held       │  │
-          │ PATHFINDING │ ───────────────────────┘  │
-          └─────────────┘                           │
-               │                                    │
-               │  tap new tile ─────────────────────┘
-               └─► (cancel current path, re-pathfind from current tile)
+        ┌─────────┐   joystick held    ┌──────────┐
+        │  IDLE   │ ─────────────────► │ WALKING  │
+        └─────────┘                    └──────────┘
+             ▲                              │
+             │     joystick released        │
+             │     (snap to tile center)    │
+             └──────────────────────────────┘
 ```
+
+Two states. Simple.
 
 #### Transition Rules
 
 | From | Trigger | To | What Happens |
 |------|---------|-----|-------------|
-| IDLE | Tap revealed, passable tile | PATHFINDING | Compute A* path, start tween to first tile |
-| IDLE | Joystick held (on empty ground) | WALKING | Move continuously in joystick direction |
-| PATHFINDING | Reach destination | IDLE | Clear `move_path`, snap to destination tile |
-| PATHFINDING | Tap different tile | PATHFINDING | Cancel current tween, recompute A* from `current_tile` |
-| PATHFINDING | Joystick held | WALKING | Cancel path immediately, switch to joystick |
-| WALKING | Joystick released | IDLE | Snap tiebreaker (>50% → forward, ≤50% → back) |
-| WALKING | Tap tile | PATHFINDING | Snap to nearest tile, compute A* from there |
+| IDLE | Joystick held (drag ≥ threshold) | WALKING | Move continuously in joystick direction |
+| WALKING | Joystick released | IDLE | Snap to current tile center (~0.1s tween) |
 
-**Priority rule:** Joystick always wins — holding joystick during pathfinding cancels
-the path instantly. Direct control overrides automation.
+**[PIVOT] Removed:** All PATHFINDING transitions, tap-to-move pipeline, path cancellation, joystick-cancels-path logic.
 
-**Tap during pathfinding:** Replaces current path, does not queue.
+#### Joystick Release Snap
 
-**Scan hold does NOT appear in the state machine.** Scan hold is classified by
-`player_input.gd` before reaching `player.gd`. If input is classified as scan,
-it never reaches the movement state machine (see Input Classification below).
+When joystick is released, player may be between hex centers:
+- Short tween (~0.1s) to `current_tile` center position
+- `current_tile` is already correct (derived from position continuously)
+- No tiebreaker needed — the player is always "on" exactly one tile
 
-#### Walking Snap Tiebreaker
+#### Two-Outcome Input Classification
 
-When joystick is released mid-tween between tile A (origin) and tile B (target):
-
-- **Tween progress > 50%** → snap to tile B (moving toward)
-- **Tween progress ≤ 50%** → snap back to tile A (origin)
-
-Measured as the tween's elapsed fraction, not world distance. On snap: kill active
-tween, create short tween (~0.1s) to chosen tile center. Update `current_tile`.
-
-#### Three-Outcome Input Classification
-
-`player_input.gd` classifies every touch into exactly one of three outcomes:
+**[PIVOT]** Tap no longer triggers movement. Classification simplified:
 
 ```
 Touch DOWN received
   │
-  ├─ Wait for classification threshold:
-  │     Track duration (frames since DOWN) and drag distance
+  ├─ Track duration and drag distance
   │
-  ├─ OUTCOME 1: TAP (movement)
+  ├─ OUTCOME 1: TAP (interaction — NOT movement)
   │     Touch UP before 300ms AND drag distance < 20px
-  │     → Emit tap_tile(coords: Vector2i)
-  │     → player.gd handles: pathfind to tile
+  │     → In delivery-001: no-op on world (no interactable objects yet)
+  │     → Future: emit tap_world(coords: Vector2i) for building placement,
+  │       object inspection, etc.
+  │     → UI buttons: consumed by Godot _gui_input before reaching player_input
   │
   ├─ OUTCOME 2: POTENTIAL SCAN HOLD
   │     Duration reaches 300ms AND drag < 20px
   │     → Convert touch to coords: HexGrid.world_to_axial(world_pos)
-  │     → Emit scan_hold_started(coords: Vector2i) — just coords, nothing else
-  │     → Feature-003 checks if anything scannable exists at coords
-  │       → If yes: feature-003 claims input, starts scan progress
-  │       → If no: feature-003 emits scan_rejected(coords)
-  │              → player_input falls back to JOYSTICK behavior
+  │     → Emit scan_hold_started(coords: Vector2i)
+  │     → Feature-003 claims or rejects
+  │       → Claimed: scan in progress, movement blocked
+  │       → Rejected: emit scan_rejected → fall back to JOYSTICK
   │     → On touch UP: emit scan_hold_ended()
   │
-  ├─ OUTCOME 3: JOYSTICK (continuous movement)
-  │     Drag distance reaches 20px (regardless of duration or location)
-  │     OR scan_rejected received from feature-003 after hold threshold
-  │     → Emit joystick_start(direction: Vector2)
-  │     → JoystickOverlay shows at touch origin
-  │     → player.gd handles: continuous tile-to-tile movement
-  │     → On touch UP: emit joystick_stop()
+  ├─ OUTCOME 3: JOYSTICK (movement)
+  │     Drag distance reaches 20px (regardless of duration)
+  │     OR scan_rejected received
+  │     → Show joystick at touch origin
+  │     → Player moves continuously
+  │     → On touch UP: snap to tile center, hide joystick
   │
   └─ END
 ```
 
-**Hold threshold classification:** When duration reaches 300ms (and drag < 20px),
-`player_input.gd` does ONE thing:
+**Key change:** TAP on the game world does NOT move the player. Tap is reserved for:
+- UI buttons (Godot handles via _gui_input)
+- Building placement (feature-009, future delivery)
+- Object interaction (future)
 
-```
-1. Project touch screen position to world space via Camera3D.project_position()
-2. Convert to axial: HexGrid.world_to_axial(world_pos) → coords
-3. Emit scan_hold_started(coords)
-4. Wait for response from feature-003:
-   → Feature-003 claims (scannable element found) → stay in SCAN HOLD
-   → Feature-003 rejects (scan_rejected signal) → fall back to JOYSTICK
-```
-
-**player_input.gd does NOT query the catalog, FaunaManager, or tile contents.**
-It converts screen position to tile coords (one HexGrid dependency) and asks
-feature-003 "is there anything scannable here?" via signal. Feature-003 owns all
-scan-eligibility logic — it checks resource_nodes, fauna, anomalies, and catalog
-state internally.
+In delivery-001, tap on world = no-op. Only joystick moves the player.
 
 **Edge cases:**
 
-- **Finger slides off target during scan hold:** Once feature-003 claims the input,
-  it stays scan until touch UP. Feature-003 handles "out of range" (cancel scan
-  progress, show feedback) using `scan_hold_update` screen position. `player_input.gd`
-  doesn't reclassify mid-hold.
+- **Joystick walk near ❓ element:** Movement continues past. No auto-scan. Scanning requires deliberate press-and-hold while stationary or moving slowly.
 
-- **Drag triggers joystick even over ❓:** If drag distance reaches 20px before the
-  300ms threshold, it's ALWAYS joystick — regardless of what's under the touch. This
-  prevents accidental scan when the player starts dragging immediately. Drag = intent
-  to move, not intent to scan.
+- **Impassable boundary:** Player slides along the edge of impassable tiles (no hard stop). Movement direction projects onto the hex boundary, allowing diagonal sliding past obstacles.
 
-- **Mid-pathfind encounters ❓ tile:** Movement continues through the tile. ❓ elements
-  don't block pathfinding or movement. The player walks past them. To scan, the player
-  must stop and press-hold on the ❓. Auto-interaction (feature-004) also ignores
-  uncataloged elements — no auto-gather on ❓ tiles.
+- **Multiple boundary crossings per frame:** At high speed, player might cross multiple tile boundaries in one frame. Process each crossing sequentially (fire tile_exited/entered for each).
 
-- **Joystick walk through ❓ tile:** Same — joystick movement passes through. No
-  automatic scanning while walking. Scanning requires deliberate press-and-hold while
-  stationary or while the character approaches. The scan input is intentional, not
-  incidental.
+- **Scan hold during WALKING:** If player is joystick-walking and lifts finger, movement stops (snap to center). A NEW touch starting as scan hold is independent — player must be stopped or will stop first.
 
-- **Scan hold during PATHFINDING or WALKING:** If the player is mid-pathfind or
-  joystick-walking and lifts their finger, movement continues to the next tile
-  (pathfinding) or snaps (joystick). A NEW touch starting as scan hold does not
-  cancel existing movement — it's a second touch intent. On single-touch devices,
-  the previous touch must end (UP) before a new classification begins.
-
-#### Input Pipeline — Tap-to-Move (Outcome 1)
+#### Input Pipeline — Tap on World (Outcome 1)
 
 ```
 Touch DOWN + UP (duration < 300ms, drag < 20px)
   │
   ├─ Reject if touch hits HUD Control node (Godot _gui_input consumes it)
   │
-  ├─ Screen coords → Camera3D.project_position() → world_pos on ground plane
+  ├─ delivery-001: no-op (no world interactions yet)
   │
-  ├─ HexGrid.world_to_axial(world_pos) → target_coords
+  ├─ Future deliveries:
+  │     Screen coords → Camera3D.project_position() → world_pos
+  │     HexGrid.world_to_axial(world_pos) → coords
+  │     Emit tap_world(coords: Vector2i)
+  │     → feature-009 (building): place structure on tapped tile
+  │     → future: inspect object, select target
   │
-  ├─ Validate:
-  │     ✗ tile doesn't exist → reject (off-map)
-  │     ✗ tile.fog_state == HIDDEN → reject (can't tap unexplored)
-  │     ✗ target_coords == current_tile → reject (no self-pathfind)
-  │
-  ├─ AStar2D.get_point_path(current_id, target_id) → path
-  │     ✗ path empty → reject, no valid route (optional: visual feedback)
-  │
-  └─ Set move_state = PATHFINDING
-     move_path = path (excluding current_tile)
-     Start tween to first tile in path
+  └─ No movement. Player stays where they are.
 ```
-
-**No input priority stack.** Pre-redesign had fauna > gather > movement disambiguation.
-That's eliminated — movement is the sole tap consumer. All interactions are
-proximity-based (feature-004) or scan-based (feature-003).
 
 #### Input Pipeline — Floating Joystick (Outcome 3)
 
 ```
-Hold ≥ 300ms on empty ground, OR drag ≥ 20px (any location)
+Drag ≥ 20px (any time) OR scan_rejected fallback
   │
   ├─ Reject if touch originated on HUD Control node
   │
@@ -323,20 +237,34 @@ Hold ≥ 300ms on empty ground, OR drag ≥ 20px (any location)
   │     direction = drag_vector.normalized()
   │     magnitude = clamp(drag_vector.length() / max_radius, 0.0, 1.0)
   │
-  │     Pick candidate_tile: nearest neighbor of current_tile in direction
-  │       (project direction onto 6 hex neighbor directions, pick closest)
+  │     # Continuous movement
+  │     velocity = direction * move_speed * magnitude
+  │     new_position = position + velocity * delta
   │
-  │     if HexGrid.is_passable(current_tile, candidate_tile):
-  │       Tween toward candidate_tile at move_speed * magnitude
-  │       On arrival: update current_tile, trigger tile transition sequence
+  │     # Boundary check — derive candidate tile
+  │     candidate_tile = HexMath.world_to_axial(new_position)
+  │     if candidate_tile != current_tile:
+  │       if HexGrid.is_passable(current_tile, candidate_tile):
+  │         position = new_position  # cross boundary
+  │         _on_tile_changed(old_tile, candidate_tile)
+  │       else:
+  │         # Slide along boundary — project velocity parallel to hex edge
+  │         position = _slide_along_boundary(position, velocity, delta)
   │     else:
-  │       Don't move (player bumps against impassable)
+  │       position = new_position  # still same tile, always OK
+  │
+  │     Update elevation Y (interpolate between tile elevations)
+  │     Update facing_direction
   │
   └─ Touch UP:
-       Apply snap tiebreaker (>50% → forward, ≤50% → back)
        Hide joystick visual
+       Tween snap to current_tile center (~0.1s)
        Set move_state = IDLE
 ```
+
+**Tile boundary crossing:** The player moves in continuous world space. When `HexMath.world_to_axial(position)` returns a different tile than `current_tile`, a boundary crossing occurs. If the new tile is passable, the crossing is allowed and tile transition signals fire. If impassable, the player slides along the boundary edge (no hard stop — smooth rejection).
+
+**Elevation interpolation:** During movement between tiles, Y position interpolates between the source and destination tile elevations based on distance to each tile center. This prevents jarring Y jumps at boundaries.
 
 #### Input Pipeline — Scan Hold (Outcome 2, feature-003 owned)
 
@@ -387,7 +315,7 @@ Every time the player moves from tile A to tile B (both tap and joystick):
 4. Emit player_moved(A, B)              — convenience for systems that need both
 ```
 
-Movement does NOT call fog updates. DayNightCycle (feature-008) listens to
+Movement does NOT call fog updates directly. DayNightCycle (feature-008) listens to
 `tile_entered` and calls `HexGrid.refresh_visibility(sources)` with phase-based
 radius + torch sources.
 

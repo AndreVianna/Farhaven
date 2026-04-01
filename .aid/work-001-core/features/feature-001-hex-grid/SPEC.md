@@ -20,6 +20,7 @@
 | 2026-03-31 | Feature Flow written — anomaly placement uses reachability BFS | /aid-specify |
 | 2026-03-31 | Layers & Components written — carried forward unchanged | /aid-specify |
 | 2026-03-31 | Mobile Specs written — carried forward unchanged | /aid-specify |
+| 2026-04-01 | [PIVOT] Renderer: 5 MultiMesh per biome → single ArrayMesh with per-vertex color blending. 1 draw call. Scatter props deferred. | /design-pivot |
 
 ## Source
 
@@ -125,6 +126,22 @@ Feature-004 (auto-interaction) extends with `respawn_time: float`.
 | Forest | 0–2 | Gentle hills |
 | Rocky | 2–5 | Highlands, cliff barriers |
 | Water | 0 | Always lowest |
+
+#### Biome Color Palette
+
+Each biome has 2–3 color variations. WorldGenerator picks per-tile using noise. Edge/corner vertices blend adjacent tile colors automatically.
+
+| Biome | Base Colors | Character |
+|-------|------------|-----------|
+| CRASH_SITE | Warm brown, burnt sienna, dark earth | Scorched landing zone |
+| GRASSLAND | Light green, olive, spring green | Open starter terrain |
+| FOREST | Dark green, forest green, moss | Dense undergrowth |
+| ROCKY | Gray, slate, charcoal | Highlands, barriers |
+| WATER | Deep blue, teal, navy | Impassable water |
+
+Colors are defined in BiomeData .tres files as `color_variations: Array[Color]` (2-3 entries). Elevation subtly lightens the color (higher = lighter, +5% per elevation level).
+
+**Scatter props** (post-MVP): Biome visual identity will come from decorative 3D props placed on hexes (grass tufts, rocks, bushes, flowers). These are NOT part of the hex mesh — they are separate MultiMesh instances managed by a future ScatterRenderer. Not specified or implemented until after delivery-006.
 
 #### HexGrid (Node — autoload singleton)
 
@@ -297,14 +314,12 @@ Carried forward from pre-redesign spec — unchanged by the redesign.
 Main (Node)
   └─ World (Node3D)
        └─ HexGridRenderer (Node3D)
-            ├─ MultiMeshInstance3D [CRASH_SITE]
-            ├─ MultiMeshInstance3D [GRASSLAND]
-            ├─ MultiMeshInstance3D [FOREST]
-            ├─ MultiMeshInstance3D [ROCKY]
-            └─ MultiMeshInstance3D [WATER]
+            └─ MeshInstance3D [single ArrayMesh — entire hex grid]
 ```
 
-No FogOverlay. HIDDEN = not rendered. REVEALED = dimmed via shader. VISIBLE = full.
+No FogOverlay. HIDDEN = vertices culled (degenerate triangle). REVEALED = dimmed vertex color. VISIBLE = full vertex color.
+
+**[PIVOT] Single mesh replaces 5 MultiMeshInstance3D.** Per-vertex color blending creates smooth biome transitions at edges and corners. One draw call for the entire grid.
 
 #### Autoload
 
@@ -336,7 +351,7 @@ data/
     crash_site.tres, grassland.tres, forest.tres, rocky.tres, water.tres
 
 shaders/
-  hex_tile.gdshader       # Per-instance fog tinting + highlight channel
+  hex_tile.gdshader       # Per-vertex color pass-through + optional fog/highlight modulation
 ```
 
 #### Component Responsibilities
@@ -347,17 +362,43 @@ shaders/
 | `hex_math.gd` | Pure static functions: axial↔cube↔world, distance, neighbors, rings. No state. | Nothing |
 | `world_generator.gd` | Generation pipeline (Steps 1–11). RefCounted — freed after generation. | `hex_grid.gd`, `hex_math.gd`, `biome_data.gd` |
 | `biome_data.gd` | Data-only Resource: resource tables, elevation range, cluster weight, material ref. | Nothing |
-| `hex_grid_renderer.gd` | 5 MultiMeshInstance3D (one per biome). Signal-driven updates. No per-frame queries. | `hex_grid.gd` (signals only) |
+| `hex_grid_renderer.gd` | Single ArrayMesh with per-vertex color blending. Builds mesh on map_generated. Updates vertex colors on fog changes. Signal-driven, no per-frame queries. 1 draw call. | `hex_grid.gd` (signals only) |
 | `hex_tile.gdshader` | Fog tinting (dim/full) + highlight channel for placement mode. | Nothing (GPU-side) |
 
-#### Rendering Architecture — MultiMesh
+#### Rendering Architecture — Single ArrayMesh
 
-~5 draw calls for the entire grid. Per-instance custom data controls fog tint and
-highlight. Instance transforms encode position + elevation Y offset. HIDDEN tiles at
-zero scale. Updates on `tile_revealed`/`tile_visibility_changed` signals.
+**[PIVOT]** One draw call for the entire grid. Replaces 5 MultiMeshInstance3D.
 
-`highlight_tiles(coords, color)` / `clear_highlights()` API for building placement
-mode (feature-009). Uses the shader's highlight channel — zero additional draw calls.
+**Mesh construction (on `map_generated`):**
+1. For each hex tile, generate 7 vertices: 1 center + 6 corners
+2. Center vertex color = biome color variation (from BiomeData, noise-selected)
+3. Corner vertex color = average of the 2–3 hex tiles sharing that corner
+4. Edge midpoints (if using subdivided hex): average of 2 adjacent tiles
+5. Assemble triangles (6 per hex, fan from center)
+6. Y position = elevation offset
+7. Hidden tiles: degenerate triangles (zero area) or skip entirely
+
+**Fog rendering:**
+- HIDDEN: vertices excluded from mesh (or degenerate) — not rendered
+- REVEALED: vertex colors darkened (multiply by ~0.4)
+- VISIBLE: full vertex colors
+
+**Fog updates (on `tile_visibility_changed`):**
+- Rebuild ONLY affected hex vertices (the changed tile + its neighbors for smooth edge updates)
+- Do NOT rebuild entire mesh — partial vertex buffer update via `SurfaceTool` or direct `mesh.surface_get_arrays()` modification
+
+**Highlight (for building placement):**
+- `highlight_tiles(coords, color)`: temporarily override vertex colors for specified tiles
+- `clear_highlights()`: restore original colors
+- Zero additional draw calls
+
+**Biome transitions are automatic.** Because corner vertices average their neighbors' colors, a Grassland hex next to a Forest hex will have green-to-dark-green gradient at the shared edge. No explicit transition logic needed. The mesh topology handles it.
+
+**Elevation and vertex sharing:**
+- Same elevation → shared corner/edge vertices → blended color → smooth transition
+- Different elevation → each hex owns its own vertices at its own Y → hard cliff edge
+- This creates natural visual hierarchy: color = biome, hard edge = elevation change
+- Cliff face geometry (vertical quads between elevation steps) deferred to post-MVP polish
 
 **Anomaly visual markers are NOT owned by HexGridRenderer.** Anomaly rendering
 (❓ icons, scan progress, revealed state) is owned by feature-003 (scanner/catalog)
@@ -378,7 +419,7 @@ Carried forward from pre-redesign — unchanged.
 
 | Metric | Budget (whole game) | Hex Grid Usage | Remaining |
 |--------|-------------------|----------------|-----------|
-| Draw calls | <100/frame | ~5 (one MultiMesh per biome) | ~95 |
+| Draw calls | <100/frame | ~1 (single ArrayMesh) | ~99 |
 | Memory | <200MB | <1MB (tiles + MultiMesh + mesh + materials) | ~199MB |
 | Tris per object | <500 | <20 (hex mesh) | — |
 

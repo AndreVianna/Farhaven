@@ -15,6 +15,7 @@
 | 2026-03-31 | MAJOR REDESIGN — New identity (curiosity+story), episodic chapters, auto-interaction, scanner/catalog, journal, fauna/flora redesign, Tactical Brutalism discarded | User redesign |
 | 2026-03-31 | Scanning as universal gate — ❓ = inert to auto-system. Surprise attack auto-catalogs hostile fauna. | User clarification |
 | 2026-04-01 | §11 Game Initialization added — bootstrap sequence, extension points, dev environment | /audit-fix |
+| 2026-04-01 | [PIVOT] §5 F2: joystick-only movement. Tap reserved for interactions. §9 AC2 updated. | /design-pivot |
 
 ## 1. Objective
 
@@ -74,7 +75,7 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 ### In Scope (Chapter 1 / core MVP)
 - Hex grid rendering + procedural map generation
 - 3 procedural biomes (Grassland, Forest, Rocky) + Crash Site as scripted start zone + Water tiles (impassable terrain)
-- Player movement (tap-to-move + virtual joystick)
+- Player movement (virtual joystick only — tap reserved for interactions)
 - Auto-interaction system (proximity-based gathering, auto-pickup, auto-defend)
 - Resource gathering (Raw tier, tool-gated)
 - Basic crafting (Workbench level)
@@ -132,12 +133,13 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - **Anomaly tiles:** At least 1 anomaly placed in the world (for Chapter 1 narrative trigger). Anomalies are special objects on tiles that can be scanned to unlock story content.
 
 ### F2. Player Movement & Controls
-- Tap-to-move with A* pathfinding on hex grid
-- Floating joystick: touch-and-hold anywhere on screen → joystick appears at touch point
-- Hold = joystick (fine movement), Tap = pathfind (navigation). Both work simultaneously, no toggle needed.
+- **[PIVOT] Joystick-only movement.** Floating joystick: touch-and-drag anywhere on screen → joystick appears at touch point. Continuous movement (not tile-snapped during motion).
+- **Tap on world = no movement.** Tap is reserved for UI buttons and world interactions (building placement, future object inspect).
 - **Press-and-hold toward unknown element = scan** (new input mode — see F13)
 - Ignore touches on HUD elements
-- Elevation-aware pathfinding
+- Elevation-aware movement (Y interpolation, impassable boundary slide)
+- Player position is continuous; `current_tile` is derived from position
+- On joystick release, player snaps to current tile center
 - No stamina bar
 
 ### F3. Resource Gathering — AUTO-INTERACTION
@@ -344,10 +346,10 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - [ ] At least 1 anomaly tile placed per map
 
 ### AC2 — Movement
-- [ ] Tap any revealed tile → character arrives via shortest path
-- [ ] Path avoids impassable tiles (water, structures) and too-steep elevation changes
-- [ ] Joystick appears at touch point on hold, character moves continuously
-- [ ] Both input modes work without settings toggle
+- [ ] Joystick appears at touch point on drag, character moves continuously
+- [ ] Player avoids impassable tiles (water, structures, steep elevation) — slides along boundary
+- [ ] Tap on world = no movement (reserved for interactions)
+- [ ] On joystick release, player snaps to current tile center
 - [ ] Input-to-first-movement-frame < 100ms (measured)
 - [ ] Press-and-hold toward unknown element initiates scan
 

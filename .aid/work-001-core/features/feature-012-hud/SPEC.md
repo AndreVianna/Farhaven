@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F12 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fix: notification queue max depth 3, faster dismiss for queued items | /aid-specify |
+| 2026-04-01 | [PIVOT] Scene tree updated for single-mesh renderer. Draw call budget updated. | /design-pivot |
 
 ## Source
 
@@ -335,6 +336,7 @@ Main (Node)
        ├─ WorldEnvironment                      [feature-008]
        ├─ DirectionalLight3D                    [feature-008]
        ├─ HexGridRenderer (Node3D)              [feature-001]
+       │    └─ MeshInstance3D [single ArrayMesh — per-vertex color blending]
        ├─ ElementIconRenderer (Node3D)          [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
@@ -585,7 +587,7 @@ component. Tweens run independently via Godot's tween system.
 
 | Renderer | Feature | Draw Calls |
 |----------|---------|-----------|
-| HexGridRenderer | 001 | ~5 |
+| HexGridRenderer | 001 | ~1 |
 | ElementIconRenderer | 003 | ~5 |
 | ResourceRenderer | 004 | ~6 |
 | GroundItemRenderer | 007 | ~1 |
@@ -593,9 +595,9 @@ component. Tweens run independently via Godot's tween system.
 | FaunaRenderer | 010 | ~1 |
 | ScanProgressRenderer | 003 | ~1 |
 | Player mesh | 002 | ~1 |
-| **Total 3D** | | **~25** |
+| **Total 3D** | | **~21** |
 | **Budget** | | **<100** |
-| **Remaining** | | **~75** |
+| **Remaining** | | **~79** |
 
 Well within budget. ~75 draw calls remaining for future chapters, effects, and polish.
 
