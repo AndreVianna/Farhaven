@@ -32,6 +32,17 @@ func _ready() -> void:
 	_pathfinder = PlayerPathfinder.new()
 	_pathfinder.setup(_grid)
 	_grid.map_generated.connect(_on_map_generated)
+	_connect_player_input()
+
+
+func _connect_player_input() -> void:
+	var pi: Node = get_node_or_null("PlayerInput")
+	if pi == null:
+		return
+	pi.tap_tile.connect(pathfind_to)
+	pi.joystick_started.connect(start_walking)
+	pi.joystick_moved.connect(walk_direction)
+	pi.joystick_released.connect(stop_walking)
 
 
 func _on_map_generated() -> void:
@@ -109,6 +120,11 @@ func continue_walking(direction: Vector2, _magnitude: float) -> void:
 	# Only start a new tween if we're not already mid-tween.
 	if _active_tween == null or not _active_tween.is_running():
 		_walk_toward(direction)
+
+
+## Update joystick walking direction (connected to PlayerInput.joystick_moved).
+func walk_direction(direction: Vector2, magnitude: float) -> void:
+	continue_walking(direction, magnitude)
 
 
 ## Stop joystick — apply snap tiebreaker.

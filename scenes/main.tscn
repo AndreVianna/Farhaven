@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://bfarhaven001"]
+[gd_scene load_steps=5 format=3 uid="uid://bfarhaven001"]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="3_camera"]
+[ext_resource type="PackedScene" path="res://ui/joystick_overlay.tscn" id="4_joystick"]
 
 [node name="Main" type="Node"]
 
@@ -16,6 +17,8 @@ script = ExtResource("3_camera")
 
 [node name="JoystickOverlay" type="CanvasLayer" parent="."]
 layer = 10
+
+[node name="JoystickOverlay" parent="JoystickOverlay" instance=ExtResource("4_joystick")]
 
 [node name="HUD" type="CanvasLayer" parent="."]
 layer = 20

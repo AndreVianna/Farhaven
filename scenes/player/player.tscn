@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://playerscene001"]
+[gd_scene load_steps=3 format=3 uid="uid://playerscene001"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player/player_input.gd" id="2_input"]
 
 [node name="Player" type="Node3D"]
 script = ExtResource("1_player")
@@ -8,3 +9,4 @@ script = ExtResource("1_player")
 [node name="PlayerVisual" type="Node3D" parent="."]
 
 [node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("2_input")
