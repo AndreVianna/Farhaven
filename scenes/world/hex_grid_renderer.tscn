@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://hexgridrenderer01"]
+
+[ext_resource type="Script" path="res://scenes/world/hex_grid_renderer.gd" id="1_hgrscript"]
+
+[node name="HexGridRenderer" type="Node3D"]
+script = ExtResource("1_hgrscript")
+
+[node name="CRASH_SITE" type="MultiMeshInstance3D" parent="."]
+
+[node name="GRASSLAND" type="MultiMeshInstance3D" parent="."]
+
+[node name="FOREST" type="MultiMeshInstance3D" parent="."]
+
+[node name="ROCKY" type="MultiMeshInstance3D" parent="."]
+
+[node name="WATER" type="MultiMeshInstance3D" parent="."]
