@@ -733,3 +733,38 @@ func test_full_walkthrough_generate_spawn_move_reveal_fog() -> void:
 			assert_int(_grid._tiles[c].fog_state).is_equal(_HexTile.FogState.VISIBLE)
 
 	player.queue_free()
+
+
+## ============================================================
+## Bootstrap regression test (fix 2be5430)
+## ============================================================
+
+func test_main_scene_bootstrap_generates_world() -> void:
+	# Loading main.tscn must trigger WorldGenerator via main.gd _ready().
+	# Before fix 2be5430, no bootstrap existed — HexGrid stayed empty at runtime.
+	var main_scene: PackedScene = load("res://scenes/main.tscn")
+	var main: Node = main_scene.instantiate()
+	add_child(main)
+
+	# Give _ready() a frame to run.
+	await get_tree().process_frame
+
+	# HexGrid autoload should now have tiles.
+	var crash_tile: Variant = HexGrid.get_tile(Vector2i.ZERO)
+	assert_object(crash_tile).is_not_null().override_failure_message(
+		"Bootstrap must call WorldGenerator so HexGrid has tiles at (0,0)"
+	)
+
+	# Verify tile count is within expected range (200-300 per SPEC).
+	var tile_count: int = HexGrid._tiles.size()
+	assert_int(tile_count).is_greater_equal(200).override_failure_message(
+		"Expected >= 200 tiles, got %d" % tile_count
+	)
+	assert_int(tile_count).is_less_equal(300).override_failure_message(
+		"Expected <= 300 tiles, got %d" % tile_count
+	)
+
+	main.queue_free()
+
+	# Clean HexGrid state for other tests.
+	HexGrid._tiles.clear()
