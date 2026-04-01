@@ -167,9 +167,9 @@ func test_walk_y_interpolation() -> void:
 	var to_world: Vector2 = _grid.axial_to_world(Vector2i(1, 0))
 	var mid: Vector2 = (from_world + to_world) * 0.5
 	_player._update_elevation_y_interpolated(mid, Vector2i(0, 0), Vector2i(1, 0))
-	# Y should be roughly halfway between 0.0 and 0.3 (elevation 1 * 0.3)
-	assert_float(_player.position.y).is_greater(0.1)
-	assert_float(_player.position.y).is_less(0.2)
+	# Y should be roughly halfway between 0.0 and 0.5 (elevation 1 * ELEVATION_SCALE 0.5)
+	assert_float(_player.position.y).is_greater(0.2)
+	assert_float(_player.position.y).is_less(0.3)
 
 
 # --- JUMP/DROP traversal (elevation diff 2-3) ---
