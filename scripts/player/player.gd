@@ -105,10 +105,9 @@ func _on_joystick_stop() -> void:
 	_buffered_dir = Vector2.ZERO
 	_buffered_magnitude = 0.0
 	if move_state == MoveState.JUMPING:
-		# Will snap to tile center when jump lands
 		return
 	move_state = MoveState.IDLE
-	_tween_snap_to_center()
+	# Player stays where they stopped — no snap to center
 
 
 # --- Continuous movement ---
@@ -228,7 +227,7 @@ func _on_jump_landed() -> void:
 		_joystick_magnitude = _buffered_magnitude
 	else:
 		move_state = MoveState.IDLE
-		_tween_snap_to_center()
+		# No snap — player stays at landing point
 	_buffered_dir = Vector2.ZERO
 	_buffered_magnitude = 0.0
 

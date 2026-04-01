@@ -184,6 +184,11 @@ func _rebuild_mesh() -> void:
 		corner_colors[key] = Color(r / n, g / n, b / n, a / n)
 
 	# Step 4: Assemble triangles with SurfaceTool.
+	# Each hex has 13 vertices: center + 6 inner ring (85% radius) + 6 corners.
+	# Inner ring vertices = pure tile color. Only corners blend with neighbors.
+	# This creates a narrow 15% transition band at hex edges.
+	const INNER_RING: float = 0.85  # inner ring at 85% of hex radius
+
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -199,10 +204,17 @@ func _rebuild_mesh() -> void:
 			var angle_i: float = deg_to_rad(60.0 * float(i))
 			var angle_j: float = deg_to_rad(60.0 * float((i + 1) % 6))
 
+			# Outer corners (blended with neighbors)
 			var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
 			var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
 			var cj_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE
 			var cj_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE
+
+			# Inner ring (pure tile color)
+			var ii_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE * INNER_RING
+			var ii_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE * INNER_RING
+			var ij_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE * INNER_RING
+			var ij_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE * INNER_RING
 
 			var key_i := Vector3i(roundi(ci_x * 1000.0), tile.elevation, roundi(ci_z * 1000.0))
 			var key_j := Vector3i(roundi(cj_x * 1000.0), tile.elevation, roundi(cj_z * 1000.0))
@@ -210,11 +222,34 @@ func _rebuild_mesh() -> void:
 			var color_i: Color = corner_colors.get(key_i, center_color)
 			var color_j: Color = corner_colors.get(key_j, center_color)
 
-			# Triangle: center → corner_i → corner_{i+1}
+			# Inner triangle: center → inner_i → inner_j (pure tile color)
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
 			st.add_vertex(Vector3(cx, elevation_y, cz))
 
+			st.set_normal(Vector3.UP)
+			st.set_color(center_color)
+			st.add_vertex(Vector3(ii_x, elevation_y, ii_z))
+
+			st.set_normal(Vector3.UP)
+			st.set_color(center_color)
+			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
+
+			# Outer quad: inner_i → corner_i → corner_j → inner_j (transition band)
+			# Triangle A: inner_i → corner_i → inner_j
+			st.set_normal(Vector3.UP)
+			st.set_color(center_color)
+			st.add_vertex(Vector3(ii_x, elevation_y, ii_z))
+
+			st.set_normal(Vector3.UP)
+			st.set_color(color_i)
+			st.add_vertex(Vector3(ci_x, elevation_y, ci_z))
+
+			st.set_normal(Vector3.UP)
+			st.set_color(center_color)
+			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
+
+			# Triangle B: corner_i → corner_j → inner_j
 			st.set_normal(Vector3.UP)
 			st.set_color(color_i)
 			st.add_vertex(Vector3(ci_x, elevation_y, ci_z))
@@ -222,6 +257,10 @@ func _rebuild_mesh() -> void:
 			st.set_normal(Vector3.UP)
 			st.set_color(color_j)
 			st.add_vertex(Vector3(cj_x, elevation_y, cj_z))
+
+			st.set_normal(Vector3.UP)
+			st.set_color(center_color)
+			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
 
 	# Step 5: Generate cliff faces between tiles at different elevations.
 	# Only process from the HIGHER tile on each edge to avoid duplicate quads.
