@@ -150,6 +150,7 @@ offset_left = 8.0
 offset_top = -260.0
 offset_right = -8.0
 offset_bottom = -96.0
+mouse_filter = 2
 grow_horizontal = 2
 grow_vertical = 0
 alignment = 2
