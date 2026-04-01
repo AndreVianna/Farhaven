@@ -29,7 +29,6 @@ func _process(delta: float) -> void:
 		return
 
 	var desired: Vector3 = _target.position + offset
-	look_at(_target.position, Vector3.UP)
 
 	if _has_bounds:
 		desired.x = clampf(desired.x, _map_bounds.position.x, _map_bounds.end.x)

@@ -8,7 +8,13 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
 
-const MAX_ELEVATION_DIFF: int = 1
+const WALK_MAX_DIFF: int = 1
+const JUMP_MAX_DIFF: int = 3
+
+# Legacy alias — existing code may reference this
+const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
+
+enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 # Structures that do NOT block movement (walkable)
 const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch"]
@@ -60,17 +66,7 @@ func distance(a: Vector2i, b: Vector2i) -> int:
 # --- Traversability ---
 
 func is_passable(from: Vector2i, to: Vector2i) -> bool:
-	var tile: Resource = _tiles.get(to, null)
-	if tile == null:
-		return false
-	if tile.biome == _HexTile.Biome.WATER:
-		return false
-	if get_elevation_diff(from, to) > MAX_ELEVATION_DIFF:
-		return false
-	if tile.structure != &"":
-		if not (tile.structure as StringName) in WALKABLE_STRUCTURES:
-			return false
-	return true
+	return get_traversal(from, to) != TraversalType.BLOCKED
 
 
 func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
@@ -79,6 +75,30 @@ func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
 	if tile_from == null or tile_to == null:
 		return 999
 	return abs(int(tile_to.elevation) - int(tile_from.elevation))
+
+
+## 3-tier traversal: WALK (0-1), JUMP/DROP (2-3), BLOCKED (4+, water, wall).
+func get_traversal(from: Vector2i, to: Vector2i) -> int:
+	var tile_to: Resource = _tiles.get(to, null)
+	if tile_to == null:
+		return TraversalType.BLOCKED
+	if tile_to.biome == _HexTile.Biome.WATER:
+		return TraversalType.BLOCKED
+	if tile_to.structure != &"":
+		if not (tile_to.structure as StringName) in WALKABLE_STRUCTURES:
+			return TraversalType.BLOCKED
+	var diff: int = get_elevation_diff(from, to)
+	if diff <= WALK_MAX_DIFF:
+		return TraversalType.WALK
+	if diff <= JUMP_MAX_DIFF:
+		var tile_from: Resource = _tiles.get(from, null)
+		if tile_from == null:
+			return TraversalType.BLOCKED
+		if int(tile_to.elevation) > int(tile_from.elevation):
+			return TraversalType.JUMP
+		else:
+			return TraversalType.DROP
+	return TraversalType.BLOCKED
 
 
 # --- Fog of War ---

@@ -183,9 +183,10 @@ func test_is_passable_rejects_steep_elevation() -> void:
 	var tile_b: Resource = _HexTile.new()
 	tile_b.coords = Vector2i(1, 0)
 	tile_b.biome = _HexTile.Biome.ROCKY
-	tile_b.elevation = 3
+	tile_b.elevation = 5
 	_grid._tiles[Vector2i(1, 0)] = tile_b
 
+	# Elevation diff 5 (>3) is BLOCKED — impassable
 	assert_bool(_grid.is_passable(Vector2i(0, 0), Vector2i(1, 0))).is_false()
 
 
