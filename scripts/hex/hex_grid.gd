@@ -190,6 +190,11 @@ func get_save_data() -> Dictionary:
 	}
 
 
+func load_map(path: String) -> bool:
+	var loader = load("res://scripts/hex/map_loader.gd").new(self)
+	return loader.load_map(path)
+
+
 func load_save_data(data: Dictionary) -> void:
 	_tiles.clear()
 	_seed = data.get("seed", 0)
