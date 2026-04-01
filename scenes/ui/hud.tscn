@@ -1,0 +1,145 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/hud/stat_bars.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/hud/day_counter.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/hud/floating_text_manager.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/hud/notification_manager.gd" id="5"]
+
+[node name="HUD" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 88.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="StatBars" type="VBoxContainer" parent="TopBar"]
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+script = ExtResource("2")
+
+[node name="HPBar" type="ProgressBar" parent="TopBar/StatBars"]
+custom_minimum_size = Vector2(200, 20)
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="HungerBar" type="ProgressBar" parent="TopBar/StatBars"]
+custom_minimum_size = Vector2(200, 20)
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="ThirstBar" type="ProgressBar" parent="TopBar/StatBars"]
+custom_minimum_size = Vector2(200, 20)
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="Spacer" type="Control" parent="TopBar"]
+size_flags_horizontal = 3
+
+[node name="DayCounter" type="HBoxContainer" parent="TopBar"]
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+script = ExtResource("3")
+
+[node name="DayLabel" type="Label" parent="TopBar/DayCounter"]
+text = "DAY 01"
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 24
+
+[node name="PhaseIcon" type="ColorRect" parent="TopBar/DayCounter"]
+custom_minimum_size = Vector2(32, 32)
+color = Color(1.0, 0.851, 0.239, 1.0)
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -80.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer2" type="Control" parent="BottomBar"]
+size_flags_horizontal = 3
+
+[node name="InventoryButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(64, 64)
+text = "INV"
+
+[node name="BuildButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(64, 64)
+text = "BLD"
+
+[node name="CraftButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(64, 64)
+text = "CRF"
+visible = false
+
+[node name="ScannerButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(64, 64)
+text = "SCN"
+
+[node name="JournalButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(64, 64)
+text = "JNL"
+
+[node name="FloatingTextContainer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4")
+
+[node name="NotificationContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -260.0
+offset_right = -8.0
+offset_bottom = -96.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 2
+script = ExtResource("5")
+
+[node name="PlacementLabel" type="Label" parent="."]
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.35
+anchor_bottom = 0.35
+offset_left = -200.0
+offset_top = -24.0
+offset_right = 200.0
+offset_bottom = 24.0
+visible = false
+horizontal_alignment = 1
+vertical_alignment = 1
