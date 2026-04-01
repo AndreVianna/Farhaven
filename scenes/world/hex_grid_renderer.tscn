@@ -5,12 +5,4 @@
 [node name="HexGridRenderer" type="Node3D"]
 script = ExtResource("1_hgrscript")
 
-[node name="CRASH_SITE" type="MultiMeshInstance3D" parent="."]
-
-[node name="GRASSLAND" type="MultiMeshInstance3D" parent="."]
-
-[node name="FOREST" type="MultiMeshInstance3D" parent="."]
-
-[node name="ROCKY" type="MultiMeshInstance3D" parent="."]
-
-[node name="WATER" type="MultiMeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]

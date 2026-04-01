@@ -1,35 +1,23 @@
-// Per-instance fog tinting and highlight shader for hex tiles.
+// Per-vertex color pass-through shader for the single-ArrayMesh hex grid.
 //
-// INSTANCE_CUSTOM layout (Color packed as vec4):
-//   x (R): fog intensity  — 0.0 = hidden (zero-scale), 0.5 = revealed/dimmed, 1.0 = visible/full
-//   y (G): highlight R
-//   z (B): highlight G
-//   w (A): highlight B
+// Fog state (HIDDEN/REVEALED/VISIBLE) and biome color blending are handled
+// entirely in GDScript by manipulating vertex colors before mesh commit.
+// This shader simply outputs what the vertex color says.
 //
-// HIDDEN tiles are invisible via zero-scale transform — fog=0.0 is a safety fallback.
-// Highlight is inactive when y+z+w == 0.
+// HIDDEN tiles are excluded from the mesh entirely (no geometry).
+// REVEALED tiles have vertex colors pre-multiplied by ~0.4 in GDScript.
+// VISIBLE tiles carry full biome colors.
+// Highlights are also baked into vertex colors by GDScript.
 
 shader_type spatial;
 render_mode unshaded, cull_back;
 
-uniform vec4 base_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-
-varying vec4 v_custom;
+varying vec4 v_color;
 
 void vertex() {
-	v_custom = INSTANCE_CUSTOM;
+	v_color = COLOR;
 }
 
 void fragment() {
-	float fog = v_custom.x;
-	vec3 highlight = v_custom.yzw;
-
-	// Dim albedo by fog factor (0.5 = revealed, 1.0 = full brightness)
-	vec3 albedo = base_color.rgb * fog;
-
-	// Blend highlight color when any channel is active
-	float highlight_active = step(0.001, max(highlight.r, max(highlight.g, highlight.b)));
-	albedo = mix(albedo, highlight, highlight_active * 0.5);
-
-	ALBEDO = albedo;
+	ALBEDO = v_color.rgb;
 }
