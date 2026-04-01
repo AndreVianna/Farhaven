@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CatalogData" load_steps=3 format=3 uid="uid://catalogfauna001"]
+
+[ext_resource type="Script" path="res://scripts/scanner/catalog_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/scanner/catalog_entry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="thornback"]
+script = ExtResource("2_entry")
+entry_id = &"thornback"
+category = 1
+display_name = "Thornback"
+description = "A heavily armoured quadruped with spiked carapace. Highly aggressive when approached."
+properties = {"hostile": true, "damage": 10, "hp": 30}
+
+[resource]
+script = ExtResource("1_data")
+entries = [SubResource("thornback")]

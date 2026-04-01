@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CatalogData" load_steps=7 format=3 uid="uid://catalogflora001"]
+
+[ext_resource type="Script" path="res://scripts/scanner/catalog_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/scanner/catalog_entry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="wood_tree"]
+script = ExtResource("2_entry")
+entry_id = &"wood_tree"
+category = 0
+display_name = "Thornwood Tree"
+description = "A twisted alien tree with dense bark. Burns well."
+properties = {"resource_type": &"wood"}
+
+[sub_resource type="Resource" id="berry_bush"]
+script = ExtResource("2_entry")
+entry_id = &"berry_bush"
+category = 0
+display_name = "Berry Bush"
+description = "Small purple berries with a tart flavour. Edible and safe."
+properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
+
+[sub_resource type="Resource" id="toxic_berry_bush"]
+script = ExtResource("2_entry")
+entry_id = &"toxic_berry_bush"
+category = 0
+display_name = "Toxic Berry Bush"
+description = "Red-streaked berries that smell wrong. Consuming them will hurt you."
+properties = {"edible": false, "toxic": true, "resource_type": &"toxic_berries"}
+
+[sub_resource type="Resource" id="fiber_grass"]
+script = ExtResource("2_entry")
+entry_id = &"fiber_grass"
+category = 0
+display_name = "Fiber Grass"
+description = "Coarse, stringy grass useful for weaving and rope-making."
+properties = {"resource_type": &"fiber"}
+
+[resource]
+script = ExtResource("1_data")
+entries = [SubResource("wood_tree"), SubResource("berry_bush"), SubResource("toxic_berry_bush"), SubResource("fiber_grass")]
