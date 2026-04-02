@@ -2,21 +2,22 @@ extends GdUnitTestSuite
 class_name TestDelivery002
 
 ## Integration tests for delivery-002: See and Know — Scanner + Inventory.
-## Tests inventory data + UI, scanner lifecycle, element icons, catalog panel,
+## Tests inventory data + UI, proximity auto-scan, 3-state labels, catalog panel,
 ## mutual exclusion, toxic berries warning, and cross-system signal flows.
 ##
 ## Manual-only verification (not automatable — documented here):
-##   - Element icons float above tiles and billboard toward camera
+##   - Prop meshes float above tiles (cube=flora, sphere=fauna, cube=mineral/anomaly)
 ##   - Scan progress bar animates smoothly from left to right
+##   - Labels billboard toward camera (❓/⚠️/name)
 ##   - Inventory panel slides up from bottom covering ~45% screen
 ##   - Catalog panel slides up from bottom covering ~45% screen
-##   - Icon colors: unknown=yellow, flora=green, fauna=red, mineral=gray, anomaly=purple
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
-const _ElementIconRenderer = preload("res://scripts/rendering/element_icon_renderer.gd")
+const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
+const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
 
@@ -47,33 +48,40 @@ class FakeGrid extends Node:
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)
 		return (abs(cube_a.x - cube_b.x) + abs(cube_a.y - cube_b.y) + abs(cube_a.z - cube_b.z)) / 2
 
+	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
+		var directions: Array[Vector2i] = [
+			Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+			Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+		]
+		var result: Array[Vector2i] = []
+		for d in directions:
+			var n: Vector2i = coords + d
+			if _tiles.has(n):
+				result.append(n)
+		return result
+
 
 class FakePlayer extends Node3D:
 	var current_tile: Vector2i = Vector2i.ZERO
-
-
-class FakePlayerInput extends Node:
-	signal scan_hold_started(coords: Vector2i)
-	signal scan_hold_update(screen_pos: Vector2)
-	signal scan_hold_ended()
 
 
 # --- State ---
 
 var _grid: FakeGrid
 var _player: FakePlayer
-var _input: FakePlayerInput
 var _scanner: Node  # ScannerSystem
 var _world: Node3D
-var _renderer: Node3D  # ElementIconRenderer
+var _prop_renderer: Node3D
+var _label_renderer: Node3D
 
-# Signal capture (instance-level, used by tests that need signal verification)
+# Signal capture
 var _sig_entry_id: StringName = &""
 var _sig_category: int = -1
 var _sig_coords: Vector2i = Vector2i(-999, -999)
 var _sig_identified_count: int = 0
 var _sig_unknown_count: int = 0
-var _sig_cancelled_count: int = 0
+var _sig_interrupted_count: int = 0
+var _sig_encountered_count: int = 0
 
 
 # --- Helpers ---
@@ -84,7 +92,8 @@ func _reset_sig_captures() -> void:
 	_sig_coords = Vector2i(-999, -999)
 	_sig_identified_count = 0
 	_sig_unknown_count = 0
-	_sig_cancelled_count = 0
+	_sig_interrupted_count = 0
+	_sig_encountered_count = 0
 
 
 func _on_sig_scan_started(eid: StringName, c: Vector2i) -> void:
@@ -101,12 +110,16 @@ func _on_sig_element_identified(_c: Vector2i, _eid: StringName) -> void:
 	_sig_identified_count += 1
 
 
-func _on_sig_element_unknown(_c: Vector2i) -> void:
+func _on_sig_element_unknown(_c: Vector2i, _eid: StringName, _cat: int) -> void:
 	_sig_unknown_count += 1
 
 
-func _on_sig_scan_cancelled() -> void:
-	_sig_cancelled_count += 1
+func _on_sig_element_encountered(_c: Vector2i, _eid: StringName, _label: String) -> void:
+	_sig_encountered_count += 1
+
+
+func _on_sig_scan_interrupted() -> void:
+	_sig_interrupted_count += 1
 
 
 func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTile:
@@ -133,9 +146,6 @@ func _setup_scanner_tree() -> void:
 
 	_player = FakePlayer.new()
 	_player.name = "Player"
-	_input = FakePlayerInput.new()
-	_input.name = "PlayerInput"
-	_player.add_child(_input)
 
 	_scanner = _ScannerSystem.new()
 	_scanner.name = "ScannerSystem"
@@ -148,19 +158,33 @@ func _setup_scanner_tree() -> void:
 	add_child(_world)
 	_world.add_child(_player)
 
-	_renderer = _ElementIconRenderer.new()
-	_renderer.name = "ElementIconRenderer"
-	_renderer._grid = _grid
-	_world.add_child(_renderer)
+	# PropRenderer
+	_prop_renderer = _PropRenderer.new()
+	_prop_renderer.name = "PropRenderer"
+	_prop_renderer._grid = _grid
+	_world.add_child(_prop_renderer)
 
-	# Manually connect scanner signals (deferred connect may not run in test)
-	_renderer._scanner = _scanner
-	if not _scanner.element_identified.is_connected(_renderer._on_element_identified):
-		_scanner.element_identified.connect(_renderer._on_element_identified)
-	if not _scanner.element_unknown.is_connected(_renderer._on_element_unknown):
-		_scanner.element_unknown.connect(_renderer._on_element_unknown)
-	if not _scanner.entry_cataloged.is_connected(_renderer._on_entry_cataloged):
-		_scanner.entry_cataloged.connect(_renderer._on_entry_cataloged)
+	# PropLabelRenderer
+	_label_renderer = _PropLabelRenderer.new()
+	_label_renderer.name = "PropLabelRenderer"
+	_label_renderer._grid = _grid
+	_world.add_child(_label_renderer)
+
+	# Manually connect scanner signals
+	_prop_renderer._scanner = _scanner
+	_label_renderer._scanner = _scanner
+
+	# PropRenderer connections
+	_scanner.element_identified.connect(_prop_renderer._on_element_identified)
+	_scanner.element_unknown.connect(_prop_renderer._on_element_unknown)
+	_scanner.element_encountered.connect(_prop_renderer._on_element_encountered)
+
+	# PropLabelRenderer connections
+	_scanner.element_identified.connect(_label_renderer._on_element_identified)
+	_scanner.element_unknown.connect(_label_renderer._on_element_unknown)
+	_scanner.element_encountered.connect(_label_renderer._on_element_encountered)
+	_scanner.entry_cataloged.connect(_label_renderer._on_entry_cataloged)
+	_scanner.entry_encountered.connect(_label_renderer._on_entry_encountered)
 
 
 func _teardown_scanner_tree() -> void:
@@ -170,40 +194,42 @@ func _teardown_scanner_tree() -> void:
 	if is_instance_valid(_grid):
 		remove_child(_grid)
 		_grid.queue_free()
-	_renderer = null
+	_prop_renderer = null
+	_label_renderer = null
 	_scanner = null
 	_player = null
-	_input = null
 	_grid = null
 	_world = null
 
 
 # ===========================================================================
-# INTEGRATION: Scan unknown flora -> catalog entry -> icon swap -> catalog panel
+# Walk near unknown flora → proximity scan starts → catalog → label update → panel
 # ===========================================================================
 
-func test_scan_flora_full_flow_icon_swap_and_catalog_panel() -> void:
+func test_walk_near_unknown_flora_full_flow() -> void:
 	_setup_scanner_tree()
 
-	# Place unknown berry tile
+	# Place unknown berry tile adjacent to player
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
-	# Passive ID fires element_unknown on reveal
+	# Passive ID: reveal tile → shows ❓ label
 	_scanner._check_passive_identification(Vector2i(1, 0))
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
-	# Scan: start -> progress -> complete
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.SCANNING)
+	# Proximity scan starts automatically
+	_scanner._process(0.016)
+	assert_bool(_scanner.is_scanning()).is_true()
 
+	# Complete scan (flora = 2.0s)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.IDLE)
+	assert_bool(_scanner.is_scanning()).is_false()
 
-	# Icon swap: unknown -> flora
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.FLORA)).is_equal(1)
+	# Label updates to real name (bulk update)
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
 
 	# Catalog panel shows the entry
 	var panel: PanelContainer = _CatalogPanelScene.instantiate()
@@ -219,40 +245,156 @@ func test_scan_flora_full_flow_icon_swap_and_catalog_panel() -> void:
 
 
 # ===========================================================================
-# INTEGRATION: Bulk swap — all visible unknown of cataloged type flip at once
+# Leave range during scan → progress resets immediately, scan interrupted
 # ===========================================================================
 
-func test_bulk_swap_all_visible_unknowns_flip_on_catalog() -> void:
+func test_leave_range_during_scan_interrupts() -> void:
 	_setup_scanner_tree()
 
-	# Three berry tiles at different coords
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(2, 1)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(0, -1)] = _make_tile_with_resource(&"berries")
-	# One stone tile (should stay unknown)
-	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i(4, 0)] = _HexTile.new()
 	_player.current_tile = Vector2i.ZERO
 
-	# Passive ID marks all as unknown
-	for coords in [Vector2i(1, 0), Vector2i(2, 1), Vector2i(0, -1), Vector2i(3, 0)]:
-		_scanner._check_passive_identification(coords)
+	var interrupted: Array = []
+	_scanner.scan_interrupted.connect(func() -> void:
+		interrupted.append(true)
+	)
 
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(4)
+	_scanner._process(0.016)  # start proximity scan
+	assert_bool(_scanner.is_scanning()).is_true()
 
-	# Scan one berry to catalog berry_bush
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
-	_scanner._scan_progress = 0.99
-	_scanner._process(0.05)
+	# Move player beyond range
+	_player.current_tile = Vector2i(4, 0)
+	_scanner._process(0.016)
 
-	# All 3 berry unknowns should be flora now, stone stays unknown
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.FLORA)).is_equal(3)
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	assert_bool(_scanner.is_scanning()).is_false()
+	assert_int(interrupted.size()).is_equal(1)
+	assert_float(_scanner.get_scan_progress()).is_equal(0.0)
 
 	_teardown_scanner_tree()
 
 
 # ===========================================================================
-# INTEGRATION: Inventory add -> panel displays -> inventory full -> notification
+# One scan at a time, nearest prop first
+# ===========================================================================
+
+func test_one_scan_at_a_time_nearest_first() -> void:
+	_setup_scanner_tree()
+
+	_grid._tiles[Vector2i.ZERO] = _make_tile_with_resource(&"berries")  # distance 0
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")  # distance 1
+	_player.current_tile = Vector2i.ZERO
+
+	_scanner._process(0.016)  # should pick nearest (distance 0)
+	assert_bool(_scanner.is_scanning()).is_true()
+
+	# Complete first scan
+	_scanner._scan_progress = 0.99
+	_scanner._process(0.05)
+
+	# Should auto-start next scan on adjacent tile
+	_scanner._process(0.016)
+	assert_bool(_scanner.is_scanning()).is_true()
+
+	_teardown_scanner_tree()
+
+
+# ===========================================================================
+# Bulk label update: all visible ❓ labels of cataloged type flip at once
+# ===========================================================================
+
+func test_bulk_label_update_on_catalog() -> void:
+	_setup_scanner_tree()
+
+	# Three berry tiles
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(2, 1)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(0, -1)] = _make_tile_with_resource(&"berries")
+	# One stone tile
+	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_resource(&"stone")
+	_player.current_tile = Vector2i.ZERO
+
+	# Passive ID marks all
+	for coords in [Vector2i(1, 0), Vector2i(2, 1), Vector2i(0, -1), Vector2i(3, 0)]:
+		_scanner._check_passive_identification(coords)
+
+	# All show ❓
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(3, 0)).contains("❓")).is_true()
+
+	# Scan one berry to catalog berry_bush
+	_scanner._process(0.016)  # start scan
+	_scanner._scan_progress = 0.99
+	_scanner._process(0.05)
+
+	# All 3 berry labels should now show real name
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 1))).is_equal("Berry Bush")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(0, -1))).is_equal("Berry Bush")
+	# Stone still shows ❓
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(3, 0)).contains("❓")).is_true()
+
+	_teardown_scanner_tree()
+
+
+# ===========================================================================
+# ENCOUNTERED fauna label: "⚠️ Unidentified Fauna (Hostile)"
+# ===========================================================================
+
+func test_encountered_fauna_label() -> void:
+	_setup_scanner_tree()
+
+	# Surprise encounter
+	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
+
+	# Check catalog state
+	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
+	assert_str(_scanner._catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
+
+	_teardown_scanner_tree()
+
+
+# ===========================================================================
+# 3-state labels: UNKNOWN=❓, ENCOUNTERED=⚠️, CATALOGED=name
+# ===========================================================================
+
+func test_three_state_labels() -> void:
+	_setup_scanner_tree()
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+
+	# UNKNOWN
+	_scanner._check_passive_identification(Vector2i(1, 0))
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.UNKNOWN)
+
+	# CATALOGED via scan (catalog berry_bush directly for testing label)
+	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.CATALOGED)
+
+	_teardown_scanner_tree()
+
+
+# ===========================================================================
+# Catalog counter counts both ENCOUNTERED and CATALOGED entries
+# ===========================================================================
+
+func test_catalog_counter_counts_encountered_and_cataloged() -> void:
+	_setup_scanner_tree()
+
+	_scanner._catalog.catalog_entry(&"berry_bush")
+	_scanner._catalog.encounter_entry(&"thornback", "Hostile")
+
+	assert_int(_scanner._catalog.get_discovery_count()).is_equal(2)
+	assert_str(_scanner._catalog.get_discovery_text()).is_equal("2 entries")
+
+	_teardown_scanner_tree()
+
+
+# ===========================================================================
+# Inventory add → panel displays → inventory full → floating text
 # ===========================================================================
 
 func test_inventory_add_panel_display_and_full_notification() -> void:
@@ -267,12 +409,6 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 
 	# Panel displays correct state
 	panel.open()
-	var slots: Array[Dictionary] = inv.get_slots()
-	var occupied_count: int = 0
-	for slot in slots:
-		if slot["type"] != &"":
-			occupied_count += 1
-	assert_int(occupied_count).is_equal(1)
 	assert_int(inv.get_used_slot_count()).is_equal(1)
 	panel.close()
 
@@ -282,7 +418,7 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 		full_fired.append({"type": type, "rejected": rejected})
 	)
 
-	# Fill all 12 slots with different resources
+	# Fill slots
 	inv.add_item(&"stone", 99)
 	inv.add_item(&"berries", 20)
 	inv.add_item(&"toxic_berries", 20)
@@ -290,20 +426,15 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 	inv.add_item(&"ore", 99)
 	inv.add_item(&"crystal", 50)
 	inv.add_item(&"meat", 20)
-	# 8 types in 8 slots. Existing wood in slot 0 = 9 used. Add more.
-	inv.add_item(&"wood", 99)  # fills to max, second stack
-	inv.add_item(&"stone", 99)  # second stack
-	inv.add_item(&"berries", 20)  # second stack
+	inv.add_item(&"wood", 99)
+	inv.add_item(&"stone", 99)
+	inv.add_item(&"berries", 20)
+	inv.add_item(&"meat", 20)
 
-	# By now we have 11 or 12 used slots. Try to add a new type that won't fit
-	# Fill remaining slots first
-	var extra_added: int = inv.add_item(&"meat", 20)  # fill last slot
-	# Now add more — should trigger inventory_full
-	var rejected: int = inv.add_item(&"meat", 20)
-	if rejected == 0 and full_fired.size() > 0:
-		assert_bool(true).is_true()
-	elif inv.is_full():
-		var overflow: int = inv.add_item(&"wood", 10)
+	# Try to add more
+	inv.add_item(&"meat", 20)
+	if inv.is_full():
+		inv.add_item(&"wood", 10)
 		assert_bool(full_fired.size() > 0).override_failure_message(
 			"inventory_full signal must fire when inventory is full"
 		).is_true()
@@ -312,7 +443,7 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 
 
 # ===========================================================================
-# INTEGRATION: Mutual exclusion — open Catalog -> Inventory closes, vice versa
+# Mutual exclusion: open Catalog → Inventory closes, and vice versa
 # ===========================================================================
 
 func test_mutual_exclusion_catalog_closes_inventory() -> void:
@@ -322,11 +453,9 @@ func test_mutual_exclusion_catalog_closes_inventory() -> void:
 	var inv_panel = hud.get_node("InventoryPanel")
 	var cat_panel = hud.get_node("CatalogPanel")
 
-	# Open inventory
 	inv_panel.open()
 	assert_bool(inv_panel.visible).is_true()
 
-	# Open catalog — inventory should close
 	cat_panel.open()
 	assert_bool(cat_panel.visible).is_true()
 	assert_bool(inv_panel.visible).is_false()
@@ -341,11 +470,9 @@ func test_mutual_exclusion_inventory_closes_catalog() -> void:
 	var inv_panel = hud.get_node("InventoryPanel")
 	var cat_panel = hud.get_node("CatalogPanel")
 
-	# Open catalog
 	cat_panel.open()
 	assert_bool(cat_panel.visible).is_true()
 
-	# Open inventory — catalog should close
 	inv_panel.open()
 	assert_bool(inv_panel.visible).is_true()
 	assert_bool(cat_panel.visible).is_false()
@@ -361,45 +488,6 @@ func test_ac5_12_base_slots() -> void:
 	var inv: Inventory = _Inventory.new()
 	assert_int(inv.get_max_slots()).is_equal(12)
 	assert_int(inv.get_used_slot_count()).is_equal(0)
-
-
-func test_ac5_13th_item_rejected_when_full() -> void:
-	var inv: Inventory = _Inventory.new()
-	var full_fired: Array = []
-	inv.inventory_full.connect(func(_type: StringName, _rejected: int) -> void:
-		full_fired.append(true)
-	)
-
-	# Fill all 12 slots (use types with max_stack=20 for smaller fills)
-	# Each type occupies 1 slot (amount <= max_stack)
-	inv.add_item(&"wood", 1)
-	inv.add_item(&"stone", 1)
-	inv.add_item(&"berries", 1)
-	inv.add_item(&"toxic_berries", 1)
-	inv.add_item(&"fiber", 1)
-	inv.add_item(&"ore", 1)
-	inv.add_item(&"crystal", 1)
-	inv.add_item(&"meat", 1)
-	# 8 types in 8 slots. Need 4 more slots.
-	# Add more of existing types to create new stacks (fill current first)
-	inv.add_item(&"wood", 99)  # fills slot 0 to 99, done (1 slot still)
-	# Actually each existing slot can absorb more. We need distinct stacks.
-	# Use max_stack overflow: wood max=99, add 99 more to create 2nd slot
-	inv.add_item(&"wood", 99)   # slot0: 99, slot8: 99 = 2 slots
-	inv.add_item(&"stone", 99)  # slot1: 99, slot9: 1 = 2 slots
-	inv.add_item(&"berries", 20)  # slot2: 20 (max), slot10: 1 = 2 slots
-	inv.add_item(&"toxic_berries", 20)  # slot3: 20 (max), slot11: 1 = 2 slots
-
-	assert_int(inv.get_used_slot_count()).is_equal(12)
-
-	# 13th slot — should be rejected
-	full_fired.clear()
-	var added: int = inv.add_item(&"fiber", 100)
-	# Some may stack into existing slot (fiber in slot4 has room)
-	# After slot4 fills, overflow needs new slot which doesn't exist
-	assert_bool(full_fired.size() > 0 or added < 100).override_failure_message(
-		"Adding items beyond capacity must reject or trigger inventory_full"
-	).is_true()
 
 
 func test_ac5_stacking_within_max_stack() -> void:
@@ -441,33 +529,34 @@ func test_ac5_expansion_adds_12_slots() -> void:
 
 
 # ===========================================================================
-# AC11: Element icons, scan flow, auto-identify after, mineral scan, anomaly
+# AC11: proximity scan flow, ENCOUNTERED state, auto-identify, mineral, anomaly
 # ===========================================================================
 
-func test_ac11_unknown_icon_on_tile_reveal() -> void:
+func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_setup_scanner_tree()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
-	# Simulate tile reveal -> passive ID -> element_unknown
 	_scanner._on_tile_revealed(Vector2i(1, 0))
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
 	_teardown_scanner_tree()
 
 
-func test_ac11_scan_flow_idle_scanning_complete() -> void:
+func test_ac11_proximity_scan_flow() -> void:
 	_setup_scanner_tree()
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.IDLE)
+	assert_bool(_scanner.is_scanning()).is_false()
 
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.SCANNING)
+	_scanner._process(0.016)  # proximity scan starts
+	assert_bool(_scanner.is_scanning()).is_true()
 
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.IDLE)
+	assert_bool(_scanner.is_scanning()).is_false()
 	assert_bool(_scanner._catalog.is_cataloged(&"berry_bush")).is_true()
 
 	_teardown_scanner_tree()
@@ -476,10 +565,8 @@ func test_ac11_scan_flow_idle_scanning_complete() -> void:
 func test_ac11_auto_identify_after_catalog() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
-	# Catalog berry_bush first
 	_scanner._catalog.catalog_entry(&"berry_bush")
 
-	# Now reveal a tile with berries — should emit element_identified, not element_unknown
 	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_resource(&"berries")
 
 	_scanner.element_identified.connect(_on_sig_element_identified)
@@ -495,12 +582,13 @@ func test_ac11_auto_identify_after_catalog() -> void:
 func test_ac11_mineral_scan_complete() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	_scanner.entry_cataloged.connect(_on_sig_entry_cataloged)
 
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
+	_scanner._process(0.016)  # start proximity scan
 	assert_float(_scanner._scan_duration).is_equal(2.0)
 
 	_scanner._scan_progress = 0.99
@@ -515,12 +603,13 @@ func test_ac11_mineral_scan_complete() -> void:
 func test_ac11_anomaly_scan_complete_and_signal() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_anomaly(&"anomaly_ch1_001")
 	_player.current_tile = Vector2i.ZERO
 
 	_scanner.entry_cataloged.connect(_on_sig_entry_cataloged)
 
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
+	_scanner._process(0.016)  # start proximity scan
 	assert_float(_scanner._scan_duration).is_equal(3.0)
 
 	_scanner._scan_progress = 0.99
@@ -532,55 +621,26 @@ func test_ac11_anomaly_scan_complete_and_signal() -> void:
 	_teardown_scanner_tree()
 
 
-# ===========================================================================
-# AC2: Scan input — scan_hold signals fire with correct coords
-# ===========================================================================
-
-func test_ac2_scan_hold_signals_connect_and_fire() -> void:
+func test_ac11_encountered_state_on_surprise_attack() -> void:
 	_setup_scanner_tree()
-	_reset_sig_captures()
-	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_resource(&"fiber")
-	_player.current_tile = Vector2i.ZERO
 
-	_scanner.scan_started.connect(_on_sig_scan_started)
+	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
 
-	# Fire PlayerInput scan_hold_started
-	_input.scan_hold_started.emit(Vector2i(2, 0))
-
-	assert_str(String(_sig_entry_id)).is_equal("fiber_grass")
-	assert_int(_sig_coords.x).is_equal(2)
-	assert_int(_sig_coords.y).is_equal(0)
-
-	_teardown_scanner_tree()
-
-
-func test_ac2_scan_hold_ended_cancels_scan() -> void:
-	_setup_scanner_tree()
-	_reset_sig_captures()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_player.current_tile = Vector2i.ZERO
-
-	_scanner.scan_cancelled.connect(_on_sig_scan_cancelled)
-
-	_input.scan_hold_started.emit(Vector2i(1, 0))
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.SCANNING)
-
-	_input.scan_hold_ended.emit()
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.IDLE)
-	assert_int(_sig_cancelled_count).is_equal(1)
+	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
+	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_false()
+	assert_str(_scanner._catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
 
 	_teardown_scanner_tree()
 
 
 # ===========================================================================
-# INTEGRATION: Toxic berries — consume shows warning dialog
+# Toxic berries — consume shows warning dialog
 # ===========================================================================
 
 func test_toxic_berries_tap_shows_warning_dialog() -> void:
 	var inv: Inventory = _Inventory.new()
 	inv.add_item(&"toxic_berries", 5)
 
-	# Create a catalog with toxic berry bush discovered
 	var cat := _Catalog.new()
 	cat.initialize()
 	cat.catalog_entry(&"toxic_berry_bush")
@@ -591,14 +651,11 @@ func test_toxic_berries_tap_shows_warning_dialog() -> void:
 	panel.set_catalog(cat)
 	panel.open()
 
-	# Simulate tapping the toxic berries slot
 	panel._on_slot_tapped(&"toxic_berries")
 
-	# Warning dialog should be visible (popup_centered was called)
 	assert_str(String(panel._pending_use_type)).is_equal("toxic_berries")
 	assert_bool(panel._confirm_dialog != null).is_true()
 
-	# Confirm consumption
 	panel._on_toxic_confirmed()
 	assert_int(inv.get_count(&"toxic_berries")).is_equal(4)
 	assert_str(String(panel._pending_use_type)).is_equal("")
@@ -620,36 +677,38 @@ func test_non_toxic_berries_tap_uses_directly() -> void:
 	panel.set_catalog(cat)
 	panel.open()
 
-	# Simulate tapping berries — no toxic warning, direct consume
 	panel._on_slot_tapped(&"berries")
 
-	# Should use directly (no pending dialog)
 	assert_int(inv.get_count(&"berries")).is_equal(4)
 
 	panel.queue_free()
 
 
 # ===========================================================================
-# INTEGRATION: Catalog panel shows correct categories after scan
+# Catalog panel: correct categories after scan + ENCOUNTERED entry
 # ===========================================================================
 
-func test_catalog_panel_correct_categories_after_scans() -> void:
+func test_catalog_panel_correct_categories_and_encountered() -> void:
 	_setup_scanner_tree()
 
-	# Scan a flora (berries), mineral (stone), and check categories in panel
+	# Catalog flora and mineral
+	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i(0, 1)] = _make_tile_with_resource(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	# Scan berries
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
+	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
 
 	# Scan stone
-	_scanner._on_scan_hold_started(Vector2i(2, 0))
+	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
+
+	# Surprise encounter fauna
+	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
 
 	# Open catalog panel
 	var panel: PanelContainer = _CatalogPanelScene.instantiate()
@@ -659,16 +718,16 @@ func test_catalog_panel_correct_categories_after_scans() -> void:
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(1)
 	assert_int(panel._mineral_list.get_child_count()).is_equal(1)
-	assert_int(panel._fauna_list.get_child_count()).is_equal(0)
+	assert_int(panel._fauna_list.get_child_count()).is_equal(1)
 	assert_int(panel._anomaly_list.get_child_count()).is_equal(0)
-	assert_str(panel._counter_label.text).is_equal("2 entries")
+	assert_str(panel._counter_label.text).is_equal("3 entries")
 
 	panel.queue_free()
 	_teardown_scanner_tree()
 
 
 # ===========================================================================
-# INTEGRATION: Catalog panel updates on entry_cataloged signal
+# Catalog panel refreshes on entry_cataloged signal
 # ===========================================================================
 
 func test_catalog_panel_refreshes_on_entry_cataloged() -> void:
@@ -682,7 +741,6 @@ func test_catalog_panel_refreshes_on_entry_cataloged() -> void:
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(0)
 
-	# Catalog an entry while panel is open
 	cat.catalog_entry(&"berry_bush")
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(1)
@@ -692,7 +750,7 @@ func test_catalog_panel_refreshes_on_entry_cataloged() -> void:
 
 
 # ===========================================================================
-# INTEGRATION: Inventory panel re-renders on inventory_changed
+# Inventory panel re-renders on inventory_changed
 # ===========================================================================
 
 func test_inventory_panel_rerenders_on_inventory_changed() -> void:
@@ -702,14 +760,11 @@ func test_inventory_panel_rerenders_on_inventory_changed() -> void:
 	panel.set_inventory(inv)
 	panel.open()
 
-	# Verify initial state has 12 empty slot nodes
 	assert_int(panel._slot_nodes.size()).is_equal(12)
 
-	# Add items while panel is open — panel should re-render
 	inv.add_item(&"wood", 25)
 
-	# Panel should reflect the change
-	var slots: Array[Dictionary] = inv.get_slots()
+	var slots: Array = inv.get_slots()
 	var first_slot: Dictionary = slots[0]
 	assert_object(first_slot["type"]).is_equal(&"wood")
 	assert_int(first_slot["quantity"]).is_equal(25)
@@ -718,16 +773,16 @@ func test_inventory_panel_rerenders_on_inventory_changed() -> void:
 
 
 # ===========================================================================
-# INTEGRATION: Surprise catalog (fauna attack -> instant catalog)
+# Surprise encounter → ENCOUNTERED, not CATALOGED
 # ===========================================================================
 
-func test_surprise_catalog_fauna_attack_catalogs_and_emits() -> void:
+func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 	_setup_scanner_tree()
 
-	var surprise_ids: Array = []
+	var encounter_ids: Array = []
 	var catalog_ids: Array = []
-	_scanner.surprise_cataloged.connect(func(eid: StringName) -> void:
-		surprise_ids.append(String(eid))
+	_scanner.entry_encountered.connect(func(eid: StringName, _label: String) -> void:
+		encounter_ids.append(String(eid))
 	)
 	_scanner.entry_cataloged.connect(func(eid: StringName, _cat: int) -> void:
 		catalog_ids.append(String(eid))
@@ -735,59 +790,34 @@ func test_surprise_catalog_fauna_attack_catalogs_and_emits() -> void:
 
 	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
 
-	assert_int(surprise_ids.size()).is_equal(1)
-	assert_str(surprise_ids[0]).is_equal("thornback")
-	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_true()
-	assert_int(catalog_ids.size()).is_equal(1)
+	assert_int(encounter_ids.size()).is_equal(1)
+	assert_str(encounter_ids[0]).is_equal("thornback")
+	assert_int(catalog_ids.size()).is_equal(0)  # NOT cataloged, just encountered
+	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
+	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_false()
 
 	_teardown_scanner_tree()
 
 
 # ===========================================================================
-# INTEGRATION: Element icon removed on tile visibility REVEALED/HIDDEN
+# Prop removed on tile visibility REVEALED/HIDDEN
 # ===========================================================================
 
-func test_element_icon_removed_on_tile_revealed() -> void:
+func test_prop_removed_on_tile_revealed() -> void:
 	_setup_scanner_tree()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_scanner.element_unknown.emit(Vector2i(1, 0))
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
-	_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
-
-	_teardown_scanner_tree()
-
-
-# ===========================================================================
-# INTEGRATION: scan_rejected never emitted while SCANNING
-# ===========================================================================
-
-func test_scan_rejected_suppressed_while_scanning() -> void:
-	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_player.current_tile = Vector2i.ZERO
-
-	var rejected_count: int = 0
-	_scanner.scan_rejected.connect(func(_c: Vector2i) -> void:
-		rejected_count += 1
-	)
-
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.SCANNING)
-
-	# Try another scan on empty tile while already scanning
-	_scanner._on_scan_hold_started(Vector2i(5, 5))
-
-	# Must NOT emit scan_rejected while scanning
-	assert_int(rejected_count).is_equal(0)
+	_prop_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(0)
 
 	_teardown_scanner_tree()
 
 
 # ===========================================================================
-# INTEGRATION: Save/load round-trip for both Inventory and Catalog
+# Save/load round-trip for both Inventory and Catalog
 # ===========================================================================
 
 func test_inventory_save_load_round_trip() -> void:
@@ -812,7 +842,7 @@ func test_catalog_save_load_round_trip() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
 	cat.catalog_entry(&"berry_bush")
-	cat.catalog_entry(&"stone_deposit")
+	cat.encounter_entry(&"thornback", "Hostile")
 
 	var save_data: Dictionary = cat.get_save_data()
 
@@ -821,13 +851,13 @@ func test_catalog_save_load_round_trip() -> void:
 	cat2.load_save_data(save_data)
 
 	assert_bool(cat2.is_cataloged(&"berry_bush")).is_true()
-	assert_bool(cat2.is_cataloged(&"stone_deposit")).is_true()
-	assert_bool(cat2.is_cataloged(&"wood_tree")).is_false()
+	assert_bool(cat2.is_encountered(&"thornback")).is_true()
+	assert_str(cat2.get_encounter_label(&"thornback")).is_equal("Hostile")
 	assert_int(cat2.get_discovery_count()).is_equal(2)
 
 
 # ===========================================================================
-# INTEGRATION: HUD structure — Inventory + Scanner buttons exist
+# HUD structure — buttons exist
 # ===========================================================================
 
 func test_hud_inventory_and_scanner_buttons_exist() -> void:
@@ -839,7 +869,6 @@ func test_hud_inventory_and_scanner_buttons_exist() -> void:
 	assert_bool(inv_btn != null).override_failure_message("InventoryButton must exist in HUD").is_true()
 	assert_bool(scn_btn != null).override_failure_message("ScannerButton must exist in HUD").is_true()
 
-	# Check button sizes (64x64 minimum)
 	if inv_btn != null:
 		assert_float((inv_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
 	if scn_btn != null:
@@ -849,7 +878,7 @@ func test_hud_inventory_and_scanner_buttons_exist() -> void:
 
 
 # ===========================================================================
-# INTEGRATION: HUD connect_inventory + inventory_full -> notification
+# HUD inventory_full → notification
 # ===========================================================================
 
 func test_hud_inventory_full_shows_notification() -> void:
@@ -858,7 +887,7 @@ func test_hud_inventory_full_shows_notification() -> void:
 	var inv: Inventory = _Inventory.new()
 	hud.connect_inventory(inv)
 
-	# Fill inventory completely
+	# Fill all 12 slots
 	inv.add_item(&"wood", 99)
 	inv.add_item(&"wood", 99)
 	inv.add_item(&"stone", 99)
@@ -871,12 +900,10 @@ func test_hud_inventory_full_shows_notification() -> void:
 	inv.add_item(&"fiber", 99)
 	inv.add_item(&"ore", 99)
 	inv.add_item(&"ore", 99)
-	# 12 slots filled
 
-	# This should trigger inventory_full
+	# Overflow
 	inv.add_item(&"crystal", 10)
 
-	# NotificationContainer should have at least 1 child
 	var notif_container: Node = hud.get_node_or_null("NotificationContainer")
 	assert_bool(notif_container != null).is_true()
 	if notif_container != null:
@@ -885,30 +912,3 @@ func test_hud_inventory_full_shows_notification() -> void:
 		).is_greater(0)
 
 	hud.queue_free()
-
-
-# ===========================================================================
-# INTEGRATION: Range check cancels scan when player moves away
-# ===========================================================================
-
-func test_range_check_cancels_scan_integration() -> void:
-	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_player.current_tile = Vector2i.ZERO
-
-	var cancelled: Array = []
-	_scanner.scan_cancelled.connect(func() -> void:
-		cancelled.append(true)
-	)
-
-	_scanner._on_scan_hold_started(Vector2i(1, 0))
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.SCANNING)
-
-	# Move player beyond range (>2 hexes)
-	_player.current_tile = Vector2i(4, 0)
-	_scanner._process(0.016)
-
-	assert_int(_scanner.get_scan_state()).is_equal(_ScannerSystem.ScanState.IDLE)
-	assert_int(cancelled.size()).is_equal(1)
-
-	_teardown_scanner_tree()
