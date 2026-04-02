@@ -1,7 +1,7 @@
 class_name PropUtils
 extends RefCounted
 
-## Shared utilities for PropRenderer and PropLabelRenderer.
+## Shared utilities for ResourceRenderer and PropLabelRenderer.
 ## Provides resource type → entry_id reverse lookup and tile offset calculation.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")

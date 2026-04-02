@@ -16,7 +16,7 @@ const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
-const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
+const _ResourceRenderer = preload("res://scripts/rendering/resource_renderer.gd")
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
@@ -71,7 +71,7 @@ var _grid: FakeGrid
 var _player: FakePlayer
 var _scanner: Node  # ScannerSystem
 var _world: Node3D
-var _prop_renderer: Node3D
+var _resource_renderer: Node3D
 var _label_renderer: Node3D
 
 # Signal capture
@@ -158,11 +158,11 @@ func _setup_scanner_tree() -> void:
 	add_child(_world)
 	_world.add_child(_player)
 
-	# PropRenderer
-	_prop_renderer = _PropRenderer.new()
-	_prop_renderer.name = "PropRenderer"
-	_prop_renderer._grid = _grid
-	_world.add_child(_prop_renderer)
+	# ResourceRenderer
+	_resource_renderer = _ResourceRenderer.new()
+	_resource_renderer.name = "ResourceRenderer"
+	_resource_renderer._grid = _grid
+	_world.add_child(_resource_renderer)
 
 	# PropLabelRenderer
 	_label_renderer = _PropLabelRenderer.new()
@@ -171,13 +171,7 @@ func _setup_scanner_tree() -> void:
 	_world.add_child(_label_renderer)
 
 	# Manually connect scanner signals
-	_prop_renderer._scanner = _scanner
 	_label_renderer._scanner = _scanner
-
-	# PropRenderer connections
-	_scanner.element_identified.connect(_prop_renderer._on_element_identified)
-	_scanner.element_unknown.connect(_prop_renderer._on_element_unknown)
-	_scanner.element_encountered.connect(_prop_renderer._on_element_encountered)
 
 	# PropLabelRenderer connections
 	_scanner.element_identified.connect(_label_renderer._on_element_identified)
@@ -194,7 +188,7 @@ func _teardown_scanner_tree() -> void:
 	if is_instance_valid(_grid):
 		remove_child(_grid)
 		_grid.queue_free()
-	_prop_renderer = null
+	_resource_renderer = null
 	_label_renderer = null
 	_scanner = null
 	_player = null
@@ -214,10 +208,11 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
-	# Passive ID: reveal tile → shows ❓ marker
+	# Passive ID: reveal tile → shows ❓ marker + resource mesh
 	_scanner._check_passive_identification(Vector2i(1, 0))
+	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
 
 	# Proximity scan starts automatically
 	_scanner._process(0.016)
@@ -538,8 +533,9 @@ func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
 	_scanner._on_tile_revealed(Vector2i(1, 0))
+	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
 
 	_teardown_scanner_tree()
 
@@ -804,15 +800,15 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 # Prop removed on tile visibility REVEALED/HIDDEN
 # ===========================================================================
 
-func test_prop_removed_on_tile_revealed() -> void:
+func test_resource_removed_on_tile_hidden() -> void:
 	_setup_scanner_tree()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
 
-	_prop_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
-	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(0)
+	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
+	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(0)
 
 	_teardown_scanner_tree()
 

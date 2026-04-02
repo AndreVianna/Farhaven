@@ -11,6 +11,7 @@ extends Control
 @onready var _scanner_button: Button = $BottomBar/ScannerButton
 @onready var _inventory_panel = $InventoryPanel  # InventoryPanel
 @onready var _catalog_panel = $CatalogPanel  # CatalogPanel
+@onready var _crafting_panel = $CraftingPanel  # CraftingPanel
 
 var _panels: Array = []
 
@@ -20,9 +21,11 @@ func _ready() -> void:
 	_craft_button.hide()
 	_inventory_button.pressed.connect(_inventory_panel.toggle)
 	_scanner_button.pressed.connect(_catalog_panel.toggle)
-	_panels = [_inventory_panel, _catalog_panel]
+	_craft_button.pressed.connect(_crafting_panel.toggle)
+	_panels = [_inventory_panel, _catalog_panel, _crafting_panel]
 	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
 	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
+	_crafting_panel.panel_opened.connect(_on_panel_opened.bind(_crafting_panel))
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
@@ -76,6 +79,26 @@ func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 
 func connect_catalog(cat) -> void:
 	_catalog_panel.set_catalog(cat)
+
+
+# --- Crafting integration ---
+
+func connect_crafting(crafting_system: Node, inv) -> void:
+	_crafting_panel.set_crafting_system(crafting_system)
+	_crafting_panel.set_inventory(inv)
+	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
+	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
+
+
+func _on_workbench_proximity_changed(near: bool) -> void:
+	_craft_button.visible = near
+	if not near and _crafting_panel.visible:
+		_crafting_panel.close()
+
+
+func _on_recipe_discovered(recipe_name: StringName) -> void:
+	var display_name: String = recipe_name.replace("_", " ").capitalize()
+	show_notification("New recipe: %s!" % display_name)
 
 
 # --- Mutual exclusion: closing other panels when one opens ---
