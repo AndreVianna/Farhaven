@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bfarhaven001"]
+[gd_scene load_steps=10 format=3 uid="uid://bfarhaven001"]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -6,8 +6,9 @@
 [ext_resource type="PackedScene" path="res://ui/joystick_overlay.tscn" id="4_joystick"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="5_main"]
 [ext_resource type="PackedScene" path="res://scenes/world/hex_grid_renderer.tscn" id="6_renderer"]
-[ext_resource type="PackedScene" path="res://scenes/world/element_icon_renderer.tscn" id="7_icons"]
-[ext_resource type="PackedScene" path="res://scenes/world/scan_progress_renderer.tscn" id="8_progress"]
+[ext_resource type="PackedScene" path="res://scenes/world/prop_renderer.tscn" id="7_props"]
+[ext_resource type="PackedScene" path="res://scenes/world/prop_label_renderer.tscn" id="8_labels"]
+[ext_resource type="PackedScene" path="res://scenes/world/scan_progress_renderer.tscn" id="9_progress"]
 
 [node name="Main" type="Node"]
 script = ExtResource("5_main")
@@ -16,9 +17,11 @@ script = ExtResource("5_main")
 
 [node name="HexGridRenderer" parent="World" instance=ExtResource("6_renderer")]
 
-[node name="ElementIconRenderer" parent="World" instance=ExtResource("7_icons")]
+[node name="PropRenderer" parent="World" instance=ExtResource("7_props")]
 
-[node name="ScanProgressRenderer" parent="World" instance=ExtResource("8_progress")]
+[node name="PropLabelRenderer" parent="World" instance=ExtResource("8_labels")]
+
+[node name="ScanProgressRenderer" parent="World" instance=ExtResource("9_progress")]
 
 [node name="Player" parent="World" instance=ExtResource("2_player")]
 

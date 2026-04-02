@@ -85,9 +85,9 @@ func _connect_signals() -> void:
 	if _scanner.has_signal("scan_completed"):
 		if not _scanner.scan_completed.is_connected(_on_scan_completed):
 			_scanner.scan_completed.connect(_on_scan_completed)
-	if _scanner.has_signal("scan_cancelled"):
-		if not _scanner.scan_cancelled.is_connected(_on_scan_cancelled):
-			_scanner.scan_cancelled.connect(_on_scan_cancelled)
+	if _scanner.has_signal("scan_interrupted"):
+		if not _scanner.scan_interrupted.is_connected(_on_scan_interrupted):
+			_scanner.scan_interrupted.connect(_on_scan_interrupted)
 
 
 func _find_scanner() -> Node:
@@ -124,7 +124,7 @@ func _on_scan_completed(_entry_id: StringName) -> void:
 	_progress = 0.0
 
 
-func _on_scan_cancelled() -> void:
+func _on_scan_interrupted() -> void:
 	_hide_bar()
 	_active = false
 	_progress = 0.0

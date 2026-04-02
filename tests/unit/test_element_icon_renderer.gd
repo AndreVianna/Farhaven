@@ -1,8 +1,10 @@
 extends GdUnitTestSuite
 
-## Unit tests for ElementIconRenderer (task-013).
+## Unit tests for PropRenderer + PropLabelRenderer (task-013).
+## Replaces old ElementIconRenderer tests.
 
-const _ElementIconRenderer = preload("res://scripts/rendering/element_icon_renderer.gd")
+const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
+const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -33,22 +35,29 @@ class FakeGrid extends Node:
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)
 		return (abs(cube_a.x - cube_b.x) + abs(cube_a.y - cube_b.y) + abs(cube_a.z - cube_b.z)) / 2
 
+	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
+		var directions: Array[Vector2i] = [
+			Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+			Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+		]
+		var result: Array[Vector2i] = []
+		for d in directions:
+			var n: Vector2i = coords + d
+			if _tiles.has(n):
+				result.append(n)
+		return result
+
 
 class FakePlayer extends Node3D:
 	var current_tile: Vector2i = Vector2i.ZERO
 
 
-class FakePlayerInput extends Node:
-	signal scan_hold_started(coords: Vector2i)
-	signal scan_hold_ended()
-
-
 # --- Test state ---
 
-var _renderer: Node3D
+var _prop_renderer: Node3D
+var _label_renderer: Node3D
 var _grid: FakeGrid
 var _player: FakePlayer
-var _input: FakePlayerInput
 var _scanner: Node
 
 
@@ -69,9 +78,6 @@ func before_test() -> void:
 	# Build player + scanner in tree
 	_player = FakePlayer.new()
 	_player.name = "Player"
-	_input = FakePlayerInput.new()
-	_input.name = "PlayerInput"
-	_player.add_child(_input)
 
 	_scanner = _ScannerSystem.new()
 	_scanner.name = "ScannerSystem"
@@ -79,29 +85,47 @@ func before_test() -> void:
 	_scanner.set_process(false)
 	_player.add_child(_scanner)
 
-	# World container (renderer expects parent = World, sibling = Player)
+	# World container
 	var world := Node3D.new()
 	world.name = "World"
 	add_child(world)
 	world.add_child(_player)
 
-	# Renderer — set grid before add_child so _ready uses our fake
-	_renderer = _ElementIconRenderer.new()
-	_renderer.name = "ElementIconRenderer"
-	_renderer._grid = _grid
-	world.add_child(_renderer)
+	# PropRenderer
+	_prop_renderer = _PropRenderer.new()
+	_prop_renderer.name = "PropRenderer"
+	_prop_renderer._grid = _grid
+	world.add_child(_prop_renderer)
 
-	# Manually connect scanner signals since deferred connect may not have run
-	_renderer._scanner = _scanner
-	if _scanner.has_signal("element_identified"):
-		if not _scanner.element_identified.is_connected(_renderer._on_element_identified):
-			_scanner.element_identified.connect(_renderer._on_element_identified)
-	if _scanner.has_signal("element_unknown"):
-		if not _scanner.element_unknown.is_connected(_renderer._on_element_unknown):
-			_scanner.element_unknown.connect(_renderer._on_element_unknown)
-	if _scanner.has_signal("entry_cataloged"):
-		if not _scanner.entry_cataloged.is_connected(_renderer._on_entry_cataloged):
-			_scanner.entry_cataloged.connect(_renderer._on_entry_cataloged)
+	# PropLabelRenderer
+	_label_renderer = _PropLabelRenderer.new()
+	_label_renderer.name = "PropLabelRenderer"
+	_label_renderer._grid = _grid
+	world.add_child(_label_renderer)
+
+	# Manually connect scanner signals
+	_prop_renderer._scanner = _scanner
+	_label_renderer._scanner = _scanner
+
+	# PropRenderer connections
+	if not _scanner.element_identified.is_connected(_prop_renderer._on_element_identified):
+		_scanner.element_identified.connect(_prop_renderer._on_element_identified)
+	if not _scanner.element_unknown.is_connected(_prop_renderer._on_element_unknown):
+		_scanner.element_unknown.connect(_prop_renderer._on_element_unknown)
+	if not _scanner.element_encountered.is_connected(_prop_renderer._on_element_encountered):
+		_scanner.element_encountered.connect(_prop_renderer._on_element_encountered)
+
+	# PropLabelRenderer connections
+	if not _scanner.element_identified.is_connected(_label_renderer._on_element_identified):
+		_scanner.element_identified.connect(_label_renderer._on_element_identified)
+	if not _scanner.element_unknown.is_connected(_label_renderer._on_element_unknown):
+		_scanner.element_unknown.connect(_label_renderer._on_element_unknown)
+	if not _scanner.element_encountered.is_connected(_label_renderer._on_element_encountered):
+		_scanner.element_encountered.connect(_label_renderer._on_element_encountered)
+	if not _scanner.entry_cataloged.is_connected(_label_renderer._on_entry_cataloged):
+		_scanner.entry_cataloged.connect(_label_renderer._on_entry_cataloged)
+	if not _scanner.entry_encountered.is_connected(_label_renderer._on_entry_encountered):
+		_scanner.entry_encountered.connect(_label_renderer._on_entry_encountered)
 
 
 func after_test() -> void:
@@ -112,167 +136,216 @@ func after_test() -> void:
 	if is_instance_valid(_grid):
 		remove_child(_grid)
 		_grid.queue_free()
-	_renderer = null
+	_prop_renderer = null
+	_label_renderer = null
 	_scanner = null
 	_player = null
-	_input = null
 	_grid = null
 
 
-# --- Pool creation tests ---
+# ===========================================
+# PropRenderer tests
+# ===========================================
 
 func test_five_multimesh_pools_created() -> void:
-	assert_int(_renderer.get_pool_count()).is_equal(5)
+	assert_int(_prop_renderer.get_pool_count()).is_equal(5)
 
 
 func test_pools_have_zero_visible_instances_initially() -> void:
 	for i in range(5):
-		assert_int(_renderer.get_pool_visible_count(i)).is_equal(0)
+		assert_int(_prop_renderer.get_pool_visible_count(i)).is_equal(0)
 
 
-# --- Unknown element icon ---
+func test_unknown_element_adds_prop_to_correct_pool() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
-func test_unknown_element_shows_question_mark_icon() -> void:
-	var tile: HexTile = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(1, 0)] = tile
+	# Emit element_unknown with FLORA category
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	# Emit element_unknown signal
-	_scanner.element_unknown.emit(Vector2i(1, 0))
-
-	# Unknown pool (index 0) should have 1 instance
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
 
-func test_unknown_element_at_correct_tile_position() -> void:
-	var tile: HexTile = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(1, 0)] = tile
+func test_identified_element_adds_prop_to_category_pool() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")
 
-	_scanner.element_unknown.emit(Vector2i(1, 0))
+	_scanner.element_identified.emit(Vector2i(1, 0), &"stone_deposit")
 
-	var entries: Dictionary = _renderer.get_tile_entries()
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.MINERAL)).is_equal(1)
+
+
+func test_encountered_element_adds_prop_to_fauna_pool() -> void:
+	_scanner.element_encountered.emit(Vector2i(1, 0), &"thornback", "Hostile")
+
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FAUNA)).is_equal(1)
+
+
+func test_prop_at_correct_tile_position() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+
+	var entries: Dictionary = _prop_renderer.get_tile_entries()
 	assert_bool(entries.has(Vector2i(1, 0))).is_true()
 	assert_int(entries[Vector2i(1, 0)].size()).is_equal(1)
 
 
-# --- Identified element icon ---
+func test_props_removed_when_tile_becomes_revealed() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-func test_identified_element_shows_category_icon() -> void:
-	var tile: HexTile = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(1, 0)] = tile
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
+	_prop_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(0)
+
+
+func test_props_removed_when_tile_becomes_hidden() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+
+	_prop_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
+
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(0)
+
+
+func test_multi_prop_tile_offset() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+
+	# Add two props on same tile
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"fiber_grass", _Catalog.CatalogCategory.FLORA)
+
+	var entries: Dictionary = _prop_renderer.get_tile_entries()
+	assert_int(entries[Vector2i(1, 0)].size()).is_equal(2)
+
+
+func test_same_mesh_regardless_of_knowledge_state() -> void:
+	# Unknown flora and identified flora both go to FLORA pool
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_identified.emit(Vector2i(2, 0), &"wood_tree")
+
+	# Both should be in FLORA pool
+	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(2)
+
+
+# ===========================================
+# PropLabelRenderer tests
+# ===========================================
+
+func test_unknown_label_shows_question_mark_and_category() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_bool(text.contains("❓")).is_true()
+	assert_bool(text.contains("Vegetation")).is_true()
+
+
+func test_unknown_mineral_label() -> void:
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"stone_deposit", _Catalog.CatalogCategory.MINERAL)
+
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_bool(text.contains("Mineral")).is_true()
+
+
+func test_encountered_label_shows_warning_and_type() -> void:
+	_scanner.element_encountered.emit(Vector2i(1, 0), &"thornback", "Hostile")
+
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_bool(text.contains("⚠️")).is_true()
+	assert_bool(text.contains("Hostile")).is_true()
+	assert_bool(text.contains("Unidentified Fauna")).is_true()
+
+
+func test_encountered_shy_label() -> void:
+	_scanner.element_encountered.emit(Vector2i(1, 0), &"some_fauna", "Shy")
+
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_bool(text.contains("Shy")).is_true()
+
+
+func test_identified_label_shows_real_name() -> void:
 	_scanner.element_identified.emit(Vector2i(1, 0), &"berry_bush")
 
-	# Flora pool (index 1) should have 1 instance
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.FLORA)).is_equal(1)
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_str(text).is_equal("Berry Bush")
 
 
-func test_identified_mineral_shows_mineral_icon() -> void:
-	var tile: HexTile = _make_tile_with_resource(&"stone")
-	_grid._tiles[Vector2i(2, 0)] = tile
+func test_bulk_label_update_on_entry_cataloged() -> void:
+	# Add two unknown berry labels
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(2, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	_scanner.element_identified.emit(Vector2i(2, 0), &"stone_deposit")
+	# Verify they show ❓
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(2, 0)).contains("❓")).is_true()
 
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.MINERAL)).is_equal(1)
-
-
-# --- Bulk swap on entry_cataloged ---
-
-func test_bulk_swap_on_entry_cataloged() -> void:
-	# Add two unknown berry tiles
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(2, 1)] = _make_tile_with_resource(&"berries")
-
-	_scanner.element_unknown.emit(Vector2i(1, 0))
-	_scanner.element_unknown.emit(Vector2i(2, 1))
-
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(2)
-
-	# Catalog berry_bush — should swap all unknown berries to flora pool
+	# Catalog berry_bush — bulk update
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	# Unknown should be 0, flora should be 2
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.FLORA)).is_equal(2)
+	# Both labels should now show real name
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("Berry Bush")
 
 
-func test_bulk_swap_only_affects_matching_type() -> void:
-	# Berry bush unknown + stone deposit unknown
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_resource(&"stone")
+func test_bulk_label_update_only_affects_matching_entry() -> void:
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(2, 0), &"stone_deposit", _Catalog.CatalogCategory.MINERAL)
 
-	_scanner.element_unknown.emit(Vector2i(1, 0))
-	_scanner.element_unknown.emit(Vector2i(2, 0))
-
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(2)
-
-	# Catalog only berry_bush
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	# Stone unknown stays, berry becomes flora
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.FLORA)).is_equal(1)
+	# Berry label updated, stone label unchanged
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(2, 0)).contains("❓")).is_true()
 
 
-# --- Icons removed when tile goes REVEALED or HIDDEN ---
+func test_label_update_on_entry_encountered() -> void:
+	# Add unknown fauna label
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"thornback", _Catalog.CatalogCategory.FAUNA)
 
-func test_icons_removed_when_tile_becomes_revealed() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_scanner.element_unknown.emit(Vector2i(1, 0))
+	# Verify it shows ❓
+	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
 
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(1)
+	# Encounter thornback
+	_scanner.entry_encountered.emit(&"thornback", "Hostile")
 
-	# Tile visibility changes to REVEALED
-	_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
-
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
-
-
-func test_icons_removed_when_tile_becomes_hidden() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_scanner.element_unknown.emit(Vector2i(1, 0))
-
-	_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
+	# Label should now show ⚠️
+	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
+	assert_bool(text.contains("⚠️")).is_true()
+	assert_bool(text.contains("Hostile")).is_true()
 
 
-# --- Multi-icon tile removal ---
+func test_labels_removed_when_tile_becomes_revealed() -> void:
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-func test_multiple_icons_on_same_tile_removed_cleanly() -> void:
-	# Tile with resource AND anomaly — two unknown icons
-	var tile: HexTile = _HexTile.new()
-	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = &"berries"
-	tile.resource_nodes = [node]
-	tile.anomaly = &"anomaly_ch1_001"
-	_grid._tiles[Vector2i(1, 0)] = tile
+	assert_int(_label_renderer.get_label_count()).is_equal(1)
 
-	_scanner.element_unknown.emit(Vector2i(1, 0))
-	_scanner.element_unknown.emit(Vector2i(1, 0))
+	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
 
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(2)
-
-	# Remove all icons when tile goes REVEALED
-	_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
-
-	assert_int(_renderer.get_pool_visible_count(_ElementIconRenderer.Pool.UNKNOWN)).is_equal(0)
-	assert_bool(_renderer.get_tile_entries().has(Vector2i(1, 0))).is_false()
+	assert_int(_label_renderer.get_label_count()).is_equal(0)
 
 
-# --- Billboard (structural check — material/shader configured) ---
+func test_labels_removed_when_tile_becomes_hidden() -> void:
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-func test_icons_use_billboard_shader() -> void:
-	# Verify pool 0 has a ShaderMaterial with the icon_billboard shader
-	var pool_0: MultiMeshInstance3D = _renderer._pools[0]
-	var mat = pool_0.material_override
-	assert_bool(mat is ShaderMaterial).is_true()
+	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
+
+	assert_int(_label_renderer.get_label_count()).is_equal(0)
 
 
-# --- Draw calls estimate ---
+func test_labels_billboard_enabled() -> void:
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-func test_draw_calls_five_pools_plus_one_progress() -> void:
-	# 5 MultiMesh pools = ~5 draw calls for icons
-	# This is a structural assertion — the pool count
-	assert_int(_renderer.get_pool_count()).is_equal(5)
+	var labels: Dictionary = _label_renderer.get_tile_labels()
+	var label_node: Label3D = labels[Vector2i(1, 0)][0].label_node
+	assert_int(label_node.billboard).is_equal(BaseMaterial3D.BILLBOARD_ENABLED)
+
+
+# ===========================================
+# Draw calls estimate
+# ===========================================
+
+func test_draw_calls_five_prop_pools() -> void:
+	assert_int(_prop_renderer.get_pool_count()).is_equal(5)

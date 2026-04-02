@@ -1,9 +1,10 @@
 extends Node3D
 
-## ElementIconRenderer — 5 MultiMeshInstance3D pools for element icons.
-## Pools: unknown (question mark), flora, fauna, mineral, anomaly.
+## PropRenderer — 5 MultiMeshInstance3D pools for 3D prop meshes on world tiles.
+## Pools: flora (cube), fauna (sphere), mineral (octahedron), anomaly (tetrahedron), generic (fallback).
 ## Signal-driven: subscribes to ScannerSystem element_identified/element_unknown/
-## entry_cataloged and HexGrid tile_visibility_changed signals.
+## element_encountered and HexGrid tile_visibility_changed signals.
+## Props always look the same regardless of knowledge state — the mesh doesn't change.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -11,25 +12,28 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Constants ---
 
-## Y offset above tile surface for floating icons
-const ICON_Y_OFFSET: float = 2.5
+## Y offset above tile surface for props
+const PROP_Y_OFFSET: float = 0.6
 
 ## Max instances per MultiMesh pool (Chapter 1: ~50 elements max)
 const MAX_INSTANCES: int = 128
 
-## Icon quad half-size (width and height of billboard quad)
-const ICON_HALF_SIZE: float = 0.5
+## Pool indices matching CatalogCategory
+enum Pool { FLORA, FAUNA, MINERAL, ANOMALY, GENERIC }
 
-## Pool indices matching CatalogCategory + unknown at 0
-enum Pool { UNKNOWN, FLORA, FAUNA, MINERAL, ANOMALY }
+## HEX_SIZE for multi-prop offset calculation
+const HEX_SIZE: float = 3.0
+
+## Radial offset factor for multi-prop tiles
+const MULTI_PROP_RADIUS_FACTOR: float = 0.3
 
 ## Colors per pool
 const POOL_COLORS: Dictionary = {
-	Pool.UNKNOWN: Color(1.0, 1.0, 0.0, 1.0),   # Yellow question mark
 	Pool.FLORA:   Color(0.2, 0.8, 0.2, 1.0),   # Green
 	Pool.FAUNA:   Color(0.8, 0.2, 0.2, 1.0),   # Red
 	Pool.MINERAL: Color(0.6, 0.6, 0.7, 1.0),   # Gray-blue
 	Pool.ANOMALY: Color(0.7, 0.2, 0.9, 1.0),   # Purple
+	Pool.GENERIC: Color(0.5, 0.5, 0.5, 1.0),   # Gray
 }
 
 # --- State ---
@@ -40,8 +44,8 @@ var _pools: Array = []  # Array of MultiMeshInstance3D
 ## Tile coords -> Array of {entry_id: StringName, pool: int, instance_idx: int}
 var _tile_entries: Dictionary = {}
 
-## entry_id -> pool index mapping for identified entries
-var _entry_pool_map: Dictionary = {}
+## Tile coords -> int (number of props on this tile, for offset calculation)
+var _tile_prop_count: Dictionary = {}
 
 ## Reference to ScannerSystem (found at runtime)
 var _scanner: Node = null
@@ -58,29 +62,52 @@ func _ready() -> void:
 
 
 func _create_pools() -> void:
-	var quad_mesh: QuadMesh = QuadMesh.new()
-	quad_mesh.size = Vector2(ICON_HALF_SIZE * 2.0, ICON_HALF_SIZE * 2.0)
+	# Flora: cube
+	_create_pool(Pool.FLORA, _make_cube_mesh(0.4), POOL_COLORS[Pool.FLORA])
+	# Fauna: sphere
+	_create_pool(Pool.FAUNA, _make_sphere_mesh(0.35), POOL_COLORS[Pool.FAUNA])
+	# Mineral: octahedron (approximated with sphere for now)
+	_create_pool(Pool.MINERAL, _make_cube_mesh(0.35), POOL_COLORS[Pool.MINERAL])
+	# Anomaly: tetrahedron (approximated with prism for now)
+	_create_pool(Pool.ANOMALY, _make_cube_mesh(0.3), POOL_COLORS[Pool.ANOMALY])
+	# Generic: fallback cube
+	_create_pool(Pool.GENERIC, _make_cube_mesh(0.3), POOL_COLORS[Pool.GENERIC])
 
-	for i in range(5):
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_custom_data = true
-		mm.instance_count = MAX_INSTANCES
-		mm.visible_instance_count = 0
-		mm.mesh = quad_mesh
 
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.name = "Pool_%d" % i
+func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.instance_count = MAX_INSTANCES
+	mm.visible_instance_count = 0
+	mm.mesh = mesh
 
-		# Material with billboard + pool color
-		var mat := ShaderMaterial.new()
-		mat.shader = preload("res://shaders/icon_billboard.gdshader")
-		mat.set_shader_parameter("icon_color", POOL_COLORS[i])
-		mmi.material_override = mat
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.name = "PropPool_%d" % pool_idx
 
-		add_child(mmi)
-		_pools.append(mmi)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mmi.material_override = mat
+
+	add_child(mmi)
+	_pools.append(mmi)
+
+
+func _make_cube_mesh(half_size: float) -> Mesh:
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(half_size * 2.0, half_size * 2.0, half_size * 2.0)
+	return mesh
+
+
+func _make_sphere_mesh(radius: float) -> Mesh:
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 8
+	mesh.rings = 4
+	return mesh
 
 
 func _connect_signals() -> void:
@@ -105,9 +132,9 @@ func _connect_scanner_signals() -> void:
 	if _scanner.has_signal("element_unknown"):
 		if not _scanner.element_unknown.is_connected(_on_element_unknown):
 			_scanner.element_unknown.connect(_on_element_unknown)
-	if _scanner.has_signal("entry_cataloged"):
-		if not _scanner.entry_cataloged.is_connected(_on_entry_cataloged):
-			_scanner.entry_cataloged.connect(_on_entry_cataloged)
+	if _scanner.has_signal("element_encountered"):
+		if not _scanner.element_encountered.is_connected(_on_element_encountered):
+			_scanner.element_encountered.connect(_on_element_encountered)
 
 
 func _find_scanner() -> Node:
@@ -124,56 +151,27 @@ func _find_scanner() -> Node:
 
 func _on_element_identified(coords: Vector2i, entry_id: StringName) -> void:
 	var pool_idx: int = _get_pool_for_entry(entry_id)
-	_entry_pool_map[entry_id] = pool_idx
-	_add_icon(coords, entry_id, pool_idx)
+	_add_prop(coords, entry_id, pool_idx)
 
 
-func _on_element_unknown(coords: Vector2i) -> void:
-	_add_icon(coords, &"__unknown__", Pool.UNKNOWN)
+func _on_element_unknown(coords: Vector2i, entry_id: StringName, category: int) -> void:
+	var pool_idx: int = _category_to_pool(category)
+	_add_prop(coords, entry_id, pool_idx)
 
 
-func _on_entry_cataloged(entry_id: StringName, category: int) -> void:
-	# Bulk swap: find all unknown icons matching this entry and move to identified pool
-	var target_pool: int = _category_to_pool(category)
-	_entry_pool_map[entry_id] = target_pool
-
-	# Collect tiles that need swapping (coords only — we rebuild after removing)
-	var swap_coords: Array[Vector2i] = []
-	for coords in _tile_entries:
-		var entries_list: Array = _tile_entries[coords]
-		for info in entries_list:
-			if info.pool == Pool.UNKNOWN:
-				var tile = _grid.get_tile(coords) if _grid != null else null
-				if tile != null and _tile_has_entry(tile, entry_id):
-					swap_coords.append(coords)
-					break  # one match per tile is enough
-
-	# Process swaps: remove unknown, add identified
-	for coords in swap_coords:
-		# Find and remove the unknown entry for this tile
-		if not _tile_entries.has(coords):
-			continue
-		var entries_list: Array = _tile_entries[coords]
-		for i in range(entries_list.size() - 1, -1, -1):
-			var info: Dictionary = entries_list[i]
-			if info.pool == Pool.UNKNOWN:
-				var tile = _grid.get_tile(coords) if _grid != null else null
-				if tile != null and _tile_has_entry(tile, entry_id):
-					_remove_icon_at(coords, i)
-					break  # remove one unknown per tile per cataloged entry
-
-		# Add identified icon
-		_add_icon(coords, entry_id, target_pool)
+func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: String) -> void:
+	var pool_idx: int = _get_pool_for_entry(entry_id)
+	_add_prop(coords, entry_id, pool_idx)
 
 
 func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 	if state == _HexTile.FogState.REVEALED or state == _HexTile.FogState.HIDDEN:
-		_remove_all_icons_at(coords)
+		_remove_all_props_at(coords)
 
 
-# --- Icon management ---
+# --- Prop management ---
 
-func _add_icon(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
+func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	if pool_idx < 0 or pool_idx >= _pools.size():
 		return
 
@@ -184,13 +182,20 @@ func _add_icon(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	if idx >= MAX_INSTANCES:
 		return
 
-	# Position: tile center world coords + Y offset
+	# Track prop count for multi-prop offset
+	var prop_index: int = _tile_prop_count.get(coords, 0)
+	_tile_prop_count[coords] = prop_index + 1
+
+	# Position: tile center world coords + offset + Y
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile = _grid.get_tile(coords) if _grid != null else null
 	var elevation_y: float = 0.0
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
-	var pos := Vector3(world_2d.x, elevation_y + ICON_Y_OFFSET, world_2d.y)
+
+	# Multi-prop offset
+	var offset: Vector2 = _calc_prop_offset(coords, prop_index)
+	var pos := Vector3(world_2d.x + offset.x, elevation_y + PROP_Y_OFFSET, world_2d.y + offset.y)
 
 	var xform := Transform3D.IDENTITY
 	xform.origin = pos
@@ -208,34 +213,28 @@ func _add_icon(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	})
 
 
-func _remove_icon_at(coords: Vector2i, list_index: int) -> void:
+func _calc_prop_offset(coords: Vector2i, prop_index: int) -> Vector2:
+	# For the first prop, we don't know total count yet.
+	# We recalculate offsets when adding subsequent props.
+	# For simplicity: single prop centered, N≥2 props use radial distribution.
+	var total: int = _tile_prop_count.get(coords, 1)
+	if total <= 1:
+		return Vector2.ZERO
+	var angle: float = (2.0 * PI / float(total)) * float(prop_index)
+	var radius: float = MULTI_PROP_RADIUS_FACTOR * HEX_SIZE
+	return Vector2(cos(angle) * radius, sin(angle) * radius)
+
+
+func _remove_all_props_at(coords: Vector2i) -> void:
 	if not _tile_entries.has(coords):
 		return
-	var entries_list: Array = _tile_entries[coords]
-	if list_index < 0 or list_index >= entries_list.size():
-		return
-
-	var info: Dictionary = entries_list[list_index]
-	var pool_idx: int = info.pool
-	var instance_idx: int = info.instance_idx
-
-	_hide_instance(pool_idx, instance_idx)
-	entries_list.remove_at(list_index)
-	if entries_list.is_empty():
-		_tile_entries.erase(coords)
-
-
-func _remove_all_icons_at(coords: Vector2i) -> void:
-	if not _tile_entries.has(coords):
-		return
-	# Remove one at a time from the live list; _hide_instance swap-and-pop keeps
-	# remaining entries' instance_idx current via _update_instance_index.
 	while _tile_entries.has(coords) and not _tile_entries[coords].is_empty():
 		var entries_list: Array = _tile_entries[coords]
 		var info: Dictionary = entries_list[entries_list.size() - 1]
 		_hide_instance(info.pool, info.instance_idx)
 		entries_list.remove_at(entries_list.size() - 1)
 	_tile_entries.erase(coords)
+	_tile_prop_count.erase(coords)
 
 
 func _hide_instance(pool_idx: int, instance_idx: int) -> void:
@@ -245,7 +244,6 @@ func _hide_instance(pool_idx: int, instance_idx: int) -> void:
 	var mm: MultiMesh = mmi.multimesh
 	if instance_idx >= mm.visible_instance_count:
 		return
-	# Swap-and-pop: move last visible instance into this slot
 	var last_idx: int = mm.visible_instance_count - 1
 	if instance_idx != last_idx:
 		var last_xform: Transform3D = mm.get_instance_transform(last_idx)
@@ -268,14 +266,12 @@ func _update_instance_index(pool_idx: int, old_idx: int, new_idx: int) -> void:
 # --- Helpers ---
 
 func _get_pool_for_entry(entry_id: StringName) -> int:
-	if _entry_pool_map.has(entry_id):
-		return _entry_pool_map[entry_id]
 	var catalog: RefCounted = _get_catalog()
 	if catalog == null:
-		return Pool.UNKNOWN
+		return Pool.GENERIC
 	var entry = catalog.get_entry(entry_id)
 	if entry == null:
-		return Pool.UNKNOWN
+		return Pool.GENERIC
 	return _category_to_pool(entry.category)
 
 
@@ -290,17 +286,7 @@ func _category_to_pool(category: int) -> int:
 		_Catalog.CatalogCategory.ANOMALY:
 			return Pool.ANOMALY
 		_:
-			return Pool.UNKNOWN
-
-
-func _tile_has_entry(tile: Resource, entry_id: StringName) -> bool:
-	for node in tile.resource_nodes:
-		var mapped: StringName = _Catalog.RESOURCE_TO_ENTRY.get(node.type, &"")
-		if mapped == entry_id:
-			return true
-	if tile.anomaly == entry_id:
-		return true
-	return false
+			return Pool.GENERIC
 
 
 func _get_catalog() -> RefCounted:

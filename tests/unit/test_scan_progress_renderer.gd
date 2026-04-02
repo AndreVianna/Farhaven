@@ -31,14 +31,21 @@ class FakeGrid extends Node:
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)
 		return (abs(cube_a.x - cube_b.x) + abs(cube_a.y - cube_b.y) + abs(cube_a.z - cube_b.z)) / 2
 
+	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
+		var directions: Array[Vector2i] = [
+			Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+			Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+		]
+		var result: Array[Vector2i] = []
+		for d in directions:
+			var n: Vector2i = coords + d
+			if _tiles.has(n):
+				result.append(n)
+		return result
+
 
 class FakePlayer extends Node3D:
 	var current_tile: Vector2i = Vector2i.ZERO
-
-
-class FakePlayerInput extends Node:
-	signal scan_hold_started(coords: Vector2i)
-	signal scan_hold_ended()
 
 
 # --- Test state ---
@@ -55,9 +62,6 @@ func before_test() -> void:
 
 	_player = FakePlayer.new()
 	_player.name = "Player"
-	var input := FakePlayerInput.new()
-	input.name = "PlayerInput"
-	_player.add_child(input)
 
 	_scanner = _ScannerSystem.new()
 	_scanner.name = "ScannerSystem"
@@ -83,8 +87,8 @@ func before_test() -> void:
 		_scanner.scan_progress_updated.connect(_renderer._on_scan_progress_updated)
 	if not _scanner.scan_completed.is_connected(_renderer._on_scan_completed):
 		_scanner.scan_completed.connect(_renderer._on_scan_completed)
-	if not _scanner.scan_cancelled.is_connected(_renderer._on_scan_cancelled):
-		_scanner.scan_cancelled.connect(_renderer._on_scan_cancelled)
+	if not _scanner.scan_interrupted.is_connected(_renderer._on_scan_interrupted):
+		_scanner.scan_interrupted.connect(_renderer._on_scan_interrupted)
 
 
 func after_test() -> void:
@@ -127,11 +131,11 @@ func test_bar_hides_on_scan_completed() -> void:
 	assert_bool(_renderer.is_bar_visible()).is_false()
 
 
-func test_bar_hides_on_scan_cancelled() -> void:
+func test_bar_hides_on_scan_interrupted() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _HexTile.new()
 	_scanner.scan_started.emit(&"berry_bush", Vector2i(1, 0))
 
-	_scanner.scan_cancelled.emit()
+	_scanner.scan_interrupted.emit()
 
 	assert_bool(_renderer.is_bar_visible()).is_false()
 
@@ -157,11 +161,11 @@ func test_progress_resets_on_completed() -> void:
 	assert_float(_renderer.get_progress()).is_equal(0.0)
 
 
-func test_progress_resets_on_cancelled() -> void:
+func test_progress_resets_on_interrupted() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _HexTile.new()
 	_scanner.scan_started.emit(&"berry_bush", Vector2i(1, 0))
 	_scanner.scan_progress_updated.emit(0.6)
 
-	_scanner.scan_cancelled.emit()
+	_scanner.scan_interrupted.emit()
 
 	assert_float(_renderer.get_progress()).is_equal(0.0)
