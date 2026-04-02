@@ -156,6 +156,12 @@ func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 # --- Marker management ---
 
 func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Color, state: int, category: int) -> void:
+	# Prevent duplicate markers for same entry on same tile
+	if _tile_labels.has(coords):
+		for info in _tile_labels[coords]:
+			if info.entry_id == entry_id:
+				return  # Already has a marker
+
 	var label_index: int = _tile_label_count.get(coords, 0)
 	_tile_label_count[coords] = label_index + 1
 
