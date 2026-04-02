@@ -592,34 +592,29 @@ they must not overlap at the same center point. PropRenderer distributes them ra
 - Tile becomes HIDDEN → remove instances
 - Entry cataloged → PropRenderer does NOT change meshes. Props stay as-is.
 
-#### Prop Label Rendering (Floating Pills)
+#### Prop Label Rendering (Colored Markers)
 
-**Floating pill-shaped labels** above props. Billboard-enabled (faces camera).
+**Colored ❓/⚠️ markers** above props. Billboard-enabled (faces camera).
+Small, clean, non-overlapping per-prop markers using Label3D with single emoji characters.
 
-One `MultiMeshInstance3D` pool for label backgrounds (~1 draw call). Text rendered
-via Label3D or equivalent.
+**Marker content (3-state):**
+- UNKNOWN: Colored ❓ (color by category)
+  - Mineral: blue `Color(0.3, 0.5, 1.0)`
+  - Flora: green `Color(0.3, 0.8, 0.3)`
+  - Fauna: red `Color(1.0, 0.3, 0.3)`
+  - Anomaly: purple `Color(0.7, 0.3, 0.9)`
+- ENCOUNTERED (fauna only): ⚠️ in orange/amber `Color(1.0, 0.6, 0.1)`
+- CATALOGED: **No marker** — the prop speaks for itself
 
-**Label content (3-state):**
-- UNKNOWN: "❓ Unknown Vegetation", "❓ Unknown Mineral", "❓ Unknown Creature", etc.
-- ENCOUNTERED: "⚠️ Unidentified Fauna (Hostile)" or "⚠️ Unidentified Fauna (Shy)"
-- CATALOGED: Real name ("Berry Bush", "Iron Deposit", "Thornback", etc.)
+**Marker lifecycle:**
+- Tile becomes VISIBLE → PropLabelRenderer adds colored ❓ for UNKNOWN, ⚠️ for ENCOUNTERED, nothing for CATALOGED
+- Entry encountered → `entry_encountered` signal → PropLabelRenderer updates matching ❓ markers to ⚠️ with orange color
+- Entry cataloged → `entry_cataloged` signal → PropLabelRenderer hides/clears all matching markers (CATALOGED = no marker)
 
-**Label visibility:** Only shows for nearby/targeted props (not all at once).
-This keeps the screen uncluttered.
-
-**Label lifecycle:**
-- Tile becomes VISIBLE → PropLabelRenderer sets label text based on knowledge state
-- Entry encountered → `entry_encountered` signal → PropLabelRenderer updates matching
-  labels from "❓ Unknown Creature" to "⚠️ Unidentified Fauna (Hostile/Shy)"
-- Entry cataloged → `entry_cataloged` signal → PropLabelRenderer iterates ALL visible
-  props, updates matching labels from ❓ or ⚠️ to real name.
-  This is the "biome conquered" moment — all labels for that type flip at once.
-
-**Bulk label update mechanism:** `PropLabelRenderer` maintains a mapping
-`Dictionary[Vector2i, Array[StringName]]` — tile coords → list of element entry_ids
-currently displayed. On `entry_cataloged(entry_id)`, iterate the mapping, find all
-tiles showing that entry_id with ❓ or ⚠️ label, update label text to real name.
-O(n) where n = visible tiles with that element type — typically 5-15.
+**Bulk marker update mechanism:** `PropLabelRenderer` maintains a mapping
+`Dictionary[Vector2i, Array]` — tile coords → list of marker info dicts.
+On `entry_cataloged(entry_id)`, iterate the mapping, find all markers for that
+entry_id, hide them and clear text. O(n) where n = visible tiles with that element type.
 
 #### Catalog Panel UI
 

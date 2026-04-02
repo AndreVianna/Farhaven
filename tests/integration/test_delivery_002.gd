@@ -214,9 +214,9 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
-	# Passive ID: reveal tile → shows ❓ label
+	# Passive ID: reveal tile → shows ❓ marker
 	_scanner._check_passive_identification(Vector2i(1, 0))
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
 	# Proximity scan starts automatically
@@ -228,8 +228,8 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 	_scanner._process(0.05)
 	assert_bool(_scanner.is_scanning()).is_false()
 
-	# Label updates to real name (bulk update)
-	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	# Marker cleared on catalog (CATALOGED = no marker)
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
 
 	# Catalog panel shows the entry
 	var panel: PanelContainer = _CatalogPanelScene.instantiate()
@@ -321,20 +321,20 @@ func test_bulk_label_update_on_catalog() -> void:
 		_scanner._check_passive_identification(coords)
 
 	# All show ❓
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(3, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(3, 0))).is_equal("❓")
 
 	# Scan one berry to catalog berry_bush
 	_scanner._process(0.016)  # start scan
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
 
-	# All 3 berry labels should now show real name
-	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
-	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 1))).is_equal("Berry Bush")
-	assert_str(_label_renderer.get_label_text_at(Vector2i(0, -1))).is_equal("Berry Bush")
+	# All 3 berry markers cleared (CATALOGED = no marker)
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 1))).is_equal("")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(0, -1))).is_equal("")
 	# Stone still shows ❓
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(3, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(3, 0))).is_equal("❓")
 
 	_teardown_scanner_tree()
 
@@ -366,12 +366,12 @@ func test_three_state_labels() -> void:
 
 	# UNKNOWN
 	_scanner._check_passive_identification(Vector2i(1, 0))
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 
-	# CATALOGED via scan (catalog berry_bush directly for testing label)
+	# CATALOGED via scan (catalog berry_bush directly for testing marker)
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
-	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
 	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.CATALOGED)
 
 	_teardown_scanner_tree()
@@ -537,7 +537,7 @@ func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
 	_scanner._on_tile_revealed(Vector2i(1, 0))
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(1)
 
 	_teardown_scanner_tree()

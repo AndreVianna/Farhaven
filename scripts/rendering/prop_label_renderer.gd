@@ -1,10 +1,10 @@
 extends Node3D
 
-## PropLabelRenderer — floating pill-shaped labels above props.
-## Shows "❓ Unknown [category]" for UNKNOWN, "⚠️ Unidentified Fauna (label)"
-## for ENCOUNTERED, real name for CATALOGED.
-## Subscribes to ScannerSystem signals for 3-state label management.
-## On entry_cataloged: bulk label update — all visible props of that type flip.
+## PropLabelRenderer — colored marker icons above props.
+## Shows colored ❓ for UNKNOWN (color by category), ⚠️ for ENCOUNTERED (fauna only),
+## and NO marker for CATALOGED (the prop speaks for itself).
+## Subscribes to ScannerSystem signals for 3-state marker management.
+## On entry_cataloged: bulk remove — all visible markers of that type disappear.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -12,7 +12,7 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Constants ---
 
-## Y offset above prop for label
+## Y offset above prop for marker
 const LABEL_Y_OFFSET: float = 2.0
 
 ## HEX_SIZE for multi-prop offset calculation
@@ -21,7 +21,18 @@ const HEX_SIZE: float = 3.0
 ## Radial offset factor (must match PropRenderer)
 const MULTI_PROP_RADIUS_FACTOR: float = 0.3
 
-## Category display names for UNKNOWN labels
+## Category colors for UNKNOWN ❓ markers
+const CATEGORY_COLORS: Dictionary = {
+	_Catalog.CatalogCategory.MINERAL: Color(0.3, 0.5, 1.0),   # Blue
+	_Catalog.CatalogCategory.FLORA:   Color(0.3, 0.8, 0.3),   # Green
+	_Catalog.CatalogCategory.FAUNA:   Color(1.0, 0.3, 0.3),   # Red
+	_Catalog.CatalogCategory.ANOMALY: Color(0.7, 0.3, 0.9),   # Purple
+}
+
+## Color for ENCOUNTERED ⚠️ markers
+const ENCOUNTERED_COLOR: Color = Color(1.0, 0.6, 0.1)  # Orange/amber
+
+## Category display names (kept for compatibility with test assertions)
 const CATEGORY_NAMES: Dictionary = {
 	_Catalog.CatalogCategory.FLORA:   "Vegetation",
 	_Catalog.CatalogCategory.FAUNA:   "Creature",
@@ -31,7 +42,7 @@ const CATEGORY_NAMES: Dictionary = {
 
 # --- State ---
 
-## Tile coords -> Array of {entry_id: StringName, label_node: Label3D, state: int}
+## Tile coords -> Array of {entry_id: StringName, label_node: Label3D, state: int, category: int}
 var _tile_labels: Dictionary = {}
 
 ## Tile coords -> int (label count for offset calculation)
@@ -95,56 +106,46 @@ func _find_scanner() -> Node:
 
 # --- Signal handlers ---
 
-func _on_element_identified(coords: Vector2i, entry_id: StringName) -> void:
-	var catalog: RefCounted = _get_catalog()
-	var display_name: String = entry_id
-	if catalog != null:
-		var entry = catalog.get_entry(entry_id)
-		if entry != null:
-			display_name = entry.display_name
-	_add_label(coords, entry_id, display_name, _Catalog.KnowledgeState.CATALOGED)
+func _on_element_identified(_coords: Vector2i, _entry_id: StringName) -> void:
+	# CATALOGED = no marker at all. The prop speaks for itself.
+	pass
 
 
 func _on_element_unknown(coords: Vector2i, entry_id: StringName, category: int) -> void:
-	var cat_name: String = CATEGORY_NAMES.get(category, "Unknown")
-	var text: String = "❓ Unknown %s" % cat_name
-	_add_label(coords, entry_id, text, _Catalog.KnowledgeState.UNKNOWN)
+	var color: Color = CATEGORY_COLORS.get(category, Color.WHITE)
+	_add_marker(coords, entry_id, "❓", color, _Catalog.KnowledgeState.UNKNOWN, category)
 
 
-func _on_element_encountered(coords: Vector2i, entry_id: StringName, label: String) -> void:
-	var text: String = "⚠️ Unidentified Fauna (%s)" % label
-	_add_label(coords, entry_id, text, _Catalog.KnowledgeState.ENCOUNTERED)
+func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: String) -> void:
+	_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, _Catalog.KnowledgeState.ENCOUNTERED, _Catalog.CatalogCategory.FAUNA)
 
 
 func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
-	# Bulk label update: iterate all visible labels, update matching entry_id
-	var catalog: RefCounted = _get_catalog()
-	var display_name: String = String(entry_id)
-	if catalog != null:
-		var entry = catalog.get_entry(entry_id)
-		if entry != null:
-			display_name = entry.display_name
-
-	for coords in _tile_labels:
+	# Bulk remove: iterate all visible markers, remove matching entry_id.
+	# CATALOGED = no marker. The prop speaks for itself.
+	for coords in _tile_labels.keys():
 		var labels: Array = _tile_labels[coords]
-		for info in labels:
+		var i: int = labels.size() - 1
+		while i >= 0:
+			var info: Dictionary = labels[i]
 			if info.entry_id == entry_id and info.state != _Catalog.KnowledgeState.CATALOGED:
 				info.state = _Catalog.KnowledgeState.CATALOGED
-				if info.label_node != null:
-					info.label_node.text = display_name
+				if info.label_node != null and is_instance_valid(info.label_node):
+					info.label_node.visible = false
+					info.label_node.text = ""
+			i -= 1
 
 
-func _on_entry_encountered(entry_id: StringName, label: String) -> void:
-	# Update matching UNKNOWN labels to ENCOUNTERED
-	var text: String = "⚠️ Unidentified Fauna (%s)" % label
-
+func _on_entry_encountered(entry_id: StringName, _label: String) -> void:
+	# Update matching UNKNOWN markers to ENCOUNTERED ⚠️
 	for coords in _tile_labels:
 		var labels: Array = _tile_labels[coords]
 		for info in labels:
 			if info.entry_id == entry_id and info.state == _Catalog.KnowledgeState.UNKNOWN:
 				info.state = _Catalog.KnowledgeState.ENCOUNTERED
 				if info.label_node != null:
-					info.label_node.text = text
+					info.label_node.text = "⚠️"
+					info.label_node.modulate = ENCOUNTERED_COLOR
 
 
 func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
@@ -152,9 +153,9 @@ func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 		_remove_all_labels_at(coords)
 
 
-# --- Label management ---
+# --- Marker management ---
 
-func _add_label(coords: Vector2i, entry_id: StringName, text: String, state: int) -> void:
+func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Color, state: int, category: int) -> void:
 	var label_index: int = _tile_label_count.get(coords, 0)
 	_tile_label_count[coords] = label_index + 1
 
@@ -170,10 +171,12 @@ func _add_label(coords: Vector2i, entry_id: StringName, text: String, state: int
 
 	var label_3d := Label3D.new()
 	label_3d.text = text
-	label_3d.font_size = 48
+	label_3d.font_size = 64
 	label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label_3d.no_depth_test = true
-	label_3d.pixel_size = 0.01
+	label_3d.pixel_size = 0.008
+	label_3d.modulate = color
+	label_3d.outline_size = 0
 	label_3d.position = pos
 	add_child(label_3d)
 
@@ -183,15 +186,11 @@ func _add_label(coords: Vector2i, entry_id: StringName, text: String, state: int
 		"entry_id": entry_id,
 		"label_node": label_3d,
 		"state": state,
+		"category": category,
 	})
 
 
 func _calc_label_offset(coords: Vector2i, label_index: int) -> Vector2:
-	# TODO(multi-prop-offset): When N goes from 1→2, the first label (index 0) stays
-	# centered at (0,0) instead of being repositioned to its radial slot (angle 0).
-	# Unlike MultiMesh props, Label3D nodes could be repositioned via
-	# _tile_labels[coords][0].label_node.position, but keeping behavior consistent
-	# with PropRenderer for now. See matching TODO in prop_renderer.gd.
 	var total: int = _tile_label_count.get(coords, 1)
 	if total <= 1:
 		return Vector2.ZERO

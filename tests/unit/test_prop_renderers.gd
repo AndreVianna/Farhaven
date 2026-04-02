@@ -230,64 +230,57 @@ func test_same_mesh_regardless_of_knowledge_state() -> void:
 
 
 # ===========================================
-# PropLabelRenderer tests
+# PropLabelRenderer tests (colored ❓/⚠️ markers)
 # ===========================================
 
-func test_unknown_label_shows_question_mark_and_category() -> void:
+func test_unknown_label_shows_question_mark() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_bool(text.contains("❓")).is_true()
-	assert_bool(text.contains("Vegetation")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 
 
 func test_unknown_mineral_label() -> void:
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"stone_deposit", _Catalog.CatalogCategory.MINERAL)
 
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_bool(text.contains("Mineral")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 
 
-func test_encountered_label_shows_warning_and_type() -> void:
+func test_encountered_label_shows_warning() -> void:
 	_scanner.element_encountered.emit(Vector2i(1, 0), &"thornback", "Hostile")
 
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_bool(text.contains("⚠️")).is_true()
-	assert_bool(text.contains("Hostile")).is_true()
-	assert_bool(text.contains("Unidentified Fauna")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
 
 
 func test_encountered_shy_label() -> void:
 	_scanner.element_encountered.emit(Vector2i(1, 0), &"some_fauna", "Shy")
 
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_bool(text.contains("Shy")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
 
 
-func test_identified_label_shows_real_name() -> void:
+func test_identified_element_creates_no_marker() -> void:
 	_scanner.element_identified.emit(Vector2i(1, 0), &"berry_bush")
 
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_str(text).is_equal("Berry Bush")
+	# CATALOGED = no marker at all
+	assert_int(_label_renderer.get_label_count()).is_equal(0)
 
 
 func test_bulk_label_update_on_entry_cataloged() -> void:
-	# Add two unknown berry labels
+	# Add two unknown berry markers
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 	_scanner.element_unknown.emit(Vector2i(2, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
 	# Verify they show ❓
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(2, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("❓")
 
-	# Catalog berry_bush — bulk update
+	# Catalog berry_bush — bulk update: markers cleared
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	# Both labels should now show real name
-	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
-	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("Berry Bush")
+	# Both markers should now be empty (CATALOGED = no marker)
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("")
 
 
 func test_bulk_label_update_only_affects_matching_entry() -> void:
@@ -296,25 +289,23 @@ func test_bulk_label_update_only_affects_matching_entry() -> void:
 
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
 
-	# Berry label updated, stone label unchanged
-	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("Berry Bush")
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(2, 0)).contains("❓")).is_true()
+	# Berry marker cleared, stone marker unchanged
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
+	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("❓")
 
 
 func test_label_update_on_entry_encountered() -> void:
-	# Add unknown fauna label
+	# Add unknown fauna marker
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"thornback", _Catalog.CatalogCategory.FAUNA)
 
 	# Verify it shows ❓
-	assert_bool(_label_renderer.get_label_text_at(Vector2i(1, 0)).contains("❓")).is_true()
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 
 	# Encounter thornback
 	_scanner.entry_encountered.emit(&"thornback", "Hostile")
 
-	# Label should now show ⚠️
-	var text: String = _label_renderer.get_label_text_at(Vector2i(1, 0))
-	assert_bool(text.contains("⚠️")).is_true()
-	assert_bool(text.contains("Hostile")).is_true()
+	# Marker should now show ⚠️
+	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
 
 
 func test_labels_removed_when_tile_becomes_revealed() -> void:
