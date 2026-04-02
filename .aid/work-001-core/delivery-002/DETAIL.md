@@ -187,7 +187,7 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 - [ ] Unit tests: scan duration per category (flora 2s, fauna 3s, anomaly 3s)
 - [ ] Unit tests: range check (cancel if player > _scan_range from target)
 - [ ] Unit tests: surprise catalog (uncataloged species → instant catalog_entry)
-- [ ] Unit tests: passive ID (cataloged resource → element_identified, uncataloged → element_unknown)
+- [ ] Unit tests: passive ID (cataloged resource → element_identified, uncataloged → element_unknown with entry_id + category)
 - [ ] scan_rejected never emitted while _scan_state == SCANNING
 - [ ] entry_cataloged emitted on completion with correct entry_id + category
 - [ ] Connects to PlayerInput scan_hold signals from delivery-001
@@ -204,15 +204,16 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
   - 5 MultiMeshInstance3D pools: flora (cube), fauna (sphere), mineral (octahedron),
     anomaly (tetrahedron), generic (fallback)
   - On `element_identified(coords, entry_id)`: add prop mesh to appropriate pool
-  - On `element_unknown(coords)`: add prop mesh to appropriate pool
-    (same mesh regardless of catalog state — props always look the same)
+  - On `element_unknown(coords, entry_id, category)`: add prop mesh to appropriate pool
+    (uses category to pick correct mesh pool; same mesh regardless of catalog state)
   - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove instances
   - Prop positioning: `HexGrid.axial_to_world(coords)` + Y offset
 - `scripts/rendering/prop_label_renderer.gd` — Node3D:
   - ~1 MultiMeshInstance3D pool for pill-shaped label backgrounds (billboard)
   - `_tile_entries: Dictionary[Vector2i, Array[StringName]]` — tile → displayed entry IDs
   - On `element_identified(coords, entry_id)`: show real name label above prop
-  - On `element_unknown(coords)`: show "❓ Unknown [category]" label above prop
+  - On `element_unknown(coords, entry_id, category)`: show "❓ Unknown [category]" label above prop
+    (uses category to resolve label text: Flora→"Vegetation", Fauna→"Creature", etc.)
   - On `entry_cataloged(entry_id, category)`: bulk label update — iterate all visible
     props, update matching labels from ❓ → real name. "Biome conquered" moment.
   - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove labels
@@ -227,6 +228,7 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 **Criteria:**
 - [ ] PropRenderer: 5 MultiMesh pools created (flora, fauna, mineral, anomaly, generic)
 - [ ] PropRenderer: prop meshes appear at correct tile positions (same mesh before/after catalog)
+- [ ] PropRenderer: multi-prop tiles use radial offset (N≥2 → 360°/N spacing at 0.3*HEX_SIZE radius; single prop centered)
 - [ ] PropRenderer: meshes removed when tile goes REVEALED or HIDDEN
 - [ ] PropLabelRenderer: uncataloged props show "❓ Unknown [category]" label
 - [ ] PropLabelRenderer: cataloged props show real name label
