@@ -3,11 +3,13 @@ class_name AutoInteractionSystem
 
 ## Auto-interaction system — child of Player.
 ## Resource config, tool tables, weapon tables, can_gather utility,
-## and auto-gather flow (proximity check, tween timer, chaining).
+## auto-gather flow (proximity check, tween timer, chaining),
+## respawn queue, auto-defend stub, and auto-pickup stub.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
+const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 # --- Signals ---
 
@@ -105,11 +107,19 @@ func _resolve_dependencies() -> void:
 			_catalog = scanner._catalog
 
 
+func _process(delta: float) -> void:
+	_tick_respawn_queue(delta)
+	if _defend_cooldown > 0.0:
+		_defend_cooldown -= delta
+
+
 func _connect_signals() -> void:
 	if _grid == null:
 		return
 	if _grid.has_signal("tile_entered"):
 		_grid.tile_entered.connect(_on_tile_entered)
+	# Auto-defend: connect to FaunaManager.fauna_moved if available
+	_connect_fauna_manager()
 
 
 # --- Utility: can_gather ---
@@ -131,6 +141,7 @@ func can_gather(node: Resource, inventory: RefCounted) -> bool:
 
 ## Called when player enters a new tile. Triggers proximity scan for gatherable resources.
 func _on_tile_entered(coords: Vector2i) -> void:
+	_try_auto_pickup(coords)
 	if _is_gathering:
 		return  # Already gathering — chain will re-check after completion
 	_try_gather_nearby(coords)
@@ -269,3 +280,110 @@ func _on_gather_tween_complete() -> void:
 	# Chain: re-check from player's CURRENT position
 	if _player != null and "current_tile" in _player:
 		_try_gather_nearby(_player.current_tile)
+
+
+# --- Respawn Queue ---
+
+## Tick respawn timers. Only ticks when the tile is NOT VISIBLE (fog_state != VISIBLE).
+## On expire: reset node.remaining = max_amount, emit HexGrid.resource_respawned.
+func _tick_respawn_queue(delta: float) -> void:
+	var i: int = _respawn_queue.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _respawn_queue[i]
+		var coords: Vector2i = entry["coords"]
+		var tile = _grid.get_tile(coords) if _grid != null else null
+		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
+			# Paused — tile is visible, skip tick
+			i -= 1
+			continue
+		entry["time_remaining"] -= delta
+		if entry["time_remaining"] <= 0.0:
+			# Respawn the resource
+			if tile != null:
+				var idx: int = entry["resource_index"]
+				if idx >= 0 and idx < tile.resource_nodes.size():
+					var node: Resource = tile.resource_nodes[idx]
+					node.remaining = node.max_amount
+					_grid.resource_respawned.emit(coords, node.type)
+			_respawn_queue.remove_at(i)
+		i -= 1
+
+
+# --- Auto-Defend Stub ---
+
+var _fauna_manager: Node = null
+
+
+## Attempt to connect to FaunaManager.fauna_moved signal.
+## If FaunaManager is not available, this is a no-op.
+func _connect_fauna_manager() -> void:
+	var fm: Node = get_node_or_null("/root/FaunaManager")
+	if fm == null:
+		return
+	if not fm.has_signal("fauna_moved"):
+		return
+	_fauna_manager = fm
+	fm.fauna_moved.connect(_on_fauna_moved)
+
+
+## Called when fauna moves. Checks adjacent tiles for cataloged hostile fauna,
+## applies cooldown gate, looks up weapon damage, emits auto_defend_triggered.
+func _on_fauna_moved(fauna_id: int, coords: Vector2i) -> void:
+	if _player == null or _grid == null or _catalog == null:
+		return
+	if _defend_cooldown > 0.0:
+		return
+	var player_tile: Vector2i = _player.current_tile if "current_tile" in _player else Vector2i.ZERO
+	var dist: int = _grid.distance(player_tile, coords)
+	if dist > AUTO_DEFEND_CONFIG["attack_range"]:
+		return
+	# Check if fauna is cataloged or encountered AND hostile
+	if _fauna_manager == null:
+		return
+	if not _fauna_manager.has_method("get_fauna_entry_id"):
+		return
+	var entry_id: StringName = _fauna_manager.get_fauna_entry_id(fauna_id)
+	if entry_id == &"":
+		return
+	# Must be ENCOUNTERED or CATALOGED
+	var state: int = _catalog.get_knowledge_state(entry_id)
+	if state < _Catalog.KnowledgeState.ENCOUNTERED:
+		return
+	# Must be hostile
+	if not _fauna_manager.has_method("is_hostile"):
+		return
+	if not _fauna_manager.is_hostile(fauna_id):
+		return
+	# Weapon lookup
+	var weapon: StringName = &""
+	if _inventory != null:
+		var equipped: StringName = _inventory.get_tool(&"weapon") if _inventory.has_method("get_tool") else &""
+		if equipped != &"":
+			weapon = equipped
+	var damage: int = WEAPON_DAMAGE.get(weapon, WEAPON_DAMAGE.get(&"", 5))
+	_defend_cooldown = AUTO_DEFEND_CONFIG["attack_cooldown"]
+	auto_defend_triggered.emit(fauna_id, damage)
+
+
+# --- Auto-Pickup Stub ---
+
+## On tile_entered: query SurvivalSystem for ground items and pick them up.
+func _try_auto_pickup(coords: Vector2i) -> void:
+	var survival: Node = get_node_or_null("/root/SurvivalSystem")
+	if survival == null:
+		return
+	if not survival.has_method("get_ground_items_at"):
+		return
+	var items: Array = survival.get_ground_items_at(coords)
+	if items.is_empty():
+		return
+	if _inventory == null:
+		return
+	for item in items:
+		var item_name: StringName = item.get("name", &"")
+		var amount: int = item.get("amount", 1)
+		if item_name == &"":
+			continue
+		var added: int = _inventory.add_item(item_name, amount)
+		if added > 0:
+			ground_item_picked_up.emit(item_name, added)
