@@ -187,6 +187,11 @@ func _add_label(coords: Vector2i, entry_id: StringName, text: String, state: int
 
 
 func _calc_label_offset(coords: Vector2i, label_index: int) -> Vector2:
+	# TODO(multi-prop-offset): When N goes from 1→2, the first label (index 0) stays
+	# centered at (0,0) instead of being repositioned to its radial slot (angle 0).
+	# Unlike MultiMesh props, Label3D nodes could be repositioned via
+	# _tile_labels[coords][0].label_node.position, but keeping behavior consistent
+	# with PropRenderer for now. See matching TODO in prop_renderer.gd.
 	var total: int = _tile_label_count.get(coords, 1)
 	if total <= 1:
 		return Vector2.ZERO

@@ -217,6 +217,13 @@ func _calc_prop_offset(coords: Vector2i, prop_index: int) -> Vector2:
 	# For the first prop, we don't know total count yet.
 	# We recalculate offsets when adding subsequent props.
 	# For simplicity: single prop centered, N≥2 props use radial distribution.
+	# TODO(multi-prop-offset): When N goes from 1→2, the first prop (index 0) stays
+	# centered at (0,0) instead of being repositioned to its radial slot (angle 0).
+	# Fixing this requires finding the first prop's MultiMesh instance index from
+	# _tile_entries and calling mm.set_instance_transform() to reposition it.
+	# The swap-and-remove pattern in _hide_instance makes instance indices unstable,
+	# so a lookup through _tile_entries[coords] is needed. Deferred to a future pass
+	# since the visual difference is minor with only 2-3 props per tile.
 	var total: int = _tile_prop_count.get(coords, 1)
 	if total <= 1:
 		return Vector2.ZERO

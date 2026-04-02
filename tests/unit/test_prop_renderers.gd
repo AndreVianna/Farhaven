@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## Unit tests for PropRenderer + PropLabelRenderer (task-013).
-## Replaces old ElementIconRenderer tests.
+## Tests for PropRenderer and PropLabelRenderer.
 
 const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
