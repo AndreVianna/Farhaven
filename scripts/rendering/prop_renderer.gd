@@ -24,8 +24,8 @@ enum Pool { FLORA, FAUNA, MINERAL, ANOMALY, GENERIC }
 ## HEX_SIZE for multi-prop offset calculation
 const HEX_SIZE: float = 3.0
 
-## Radial offset factor for multi-prop tiles
-const MULTI_PROP_RADIUS_FACTOR: float = 0.3
+## Offset scale factor: maps normalized [-1,1] to world units
+const OFFSET_SCALE: float = 0.4
 
 ## Colors per pool
 const POOL_COLORS: Dictionary = {
@@ -43,9 +43,6 @@ var _pools: Array = []  # Array of MultiMeshInstance3D
 
 ## Tile coords -> Array of {entry_id: StringName, pool: int, instance_idx: int}
 var _tile_entries: Dictionary = {}
-
-## Tile coords -> int (number of props on this tile, for offset calculation)
-var _tile_prop_count: Dictionary = {}
 
 ## Reference to ScannerSystem (found at runtime)
 var _scanner: Node = null
@@ -188,10 +185,6 @@ func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	if idx >= MAX_INSTANCES:
 		return
 
-	# Track prop count for multi-prop offset
-	var prop_index: int = _tile_prop_count.get(coords, 0)
-	_tile_prop_count[coords] = prop_index + 1
-
 	# Position: tile center world coords + offset + Y
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile = _grid.get_tile(coords) if _grid != null else null
@@ -199,11 +192,24 @@ func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 
-	# Multi-prop offset
-	var offset: Vector2 = _calc_prop_offset(coords, prop_index)
-	var pos := Vector3(world_2d.x + offset.x, elevation_y + PROP_Y_OFFSET, world_2d.y + offset.y)
+	# Look up resource_node offset/rotation from tile data
+	var prop_offset: Vector2 = Vector2.ZERO
+	var prop_rotation: float = 0.0
+	if tile != null:
+		for rn in tile.resource_nodes:
+			var rn_entry_id: StringName = _get_entry_id_for_type(rn.type)
+			if rn_entry_id == entry_id:
+				prop_offset = rn.offset
+				prop_rotation = rn.rotation_deg
+				break
 
+	# Convert normalized offset to world offset
+	var world_offset := Vector2(prop_offset.x * HEX_SIZE * OFFSET_SCALE, prop_offset.y * HEX_SIZE * OFFSET_SCALE)
+	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + PROP_Y_OFFSET, world_2d.y + world_offset.y)
+
+	# Apply rotation (rotate basis only, then set origin)
 	var xform := Transform3D.IDENTITY
+	xform = xform.rotated(Vector3.UP, deg_to_rad(prop_rotation))
 	xform.origin = pos
 
 	mm.visible_instance_count = idx + 1
@@ -219,25 +225,6 @@ func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 	})
 
 
-func _calc_prop_offset(coords: Vector2i, prop_index: int) -> Vector2:
-	# For the first prop, we don't know total count yet.
-	# We recalculate offsets when adding subsequent props.
-	# For simplicity: single prop centered, N≥2 props use radial distribution.
-	# TODO(multi-prop-offset): When N goes from 1→2, the first prop (index 0) stays
-	# centered at (0,0) instead of being repositioned to its radial slot (angle 0).
-	# Fixing this requires finding the first prop's MultiMesh instance index from
-	# _tile_entries and calling mm.set_instance_transform() to reposition it.
-	# The swap-and-remove pattern in _hide_instance makes instance indices unstable,
-	# so a lookup through _tile_entries[coords] is needed. Deferred to a future pass
-	# since the visual difference is minor with only 2-3 props per tile.
-	var total: int = _tile_prop_count.get(coords, 1)
-	if total <= 1:
-		return Vector2.ZERO
-	var angle: float = (2.0 * PI / float(total)) * float(prop_index)
-	var radius: float = MULTI_PROP_RADIUS_FACTOR * HEX_SIZE
-	return Vector2(cos(angle) * radius, sin(angle) * radius)
-
-
 func _remove_all_props_at(coords: Vector2i) -> void:
 	if not _tile_entries.has(coords):
 		return
@@ -247,7 +234,6 @@ func _remove_all_props_at(coords: Vector2i) -> void:
 		_hide_instance(info.pool, info.instance_idx)
 		entries_list.remove_at(entries_list.size() - 1)
 	_tile_entries.erase(coords)
-	_tile_prop_count.erase(coords)
 
 
 func _hide_instance(pool_idx: int, instance_idx: int) -> void:
@@ -277,6 +263,17 @@ func _update_instance_index(pool_idx: int, old_idx: int, new_idx: int) -> void:
 
 
 # --- Helpers ---
+
+## Reverse lookup: resource type → catalog entry_id.
+## Built from Catalog.RESOURCE_TO_ENTRY on first call.
+var _type_to_entry: Dictionary = {}
+
+func _get_entry_id_for_type(type: StringName) -> StringName:
+	if _type_to_entry.is_empty():
+		for res_type in _Catalog.RESOURCE_TO_ENTRY:
+			_type_to_entry[res_type] = _Catalog.RESOURCE_TO_ENTRY[res_type]
+	return _type_to_entry.get(type, &"")
+
 
 func _get_pool_for_entry(entry_id: StringName) -> int:
 	var catalog: RefCounted = _get_catalog()

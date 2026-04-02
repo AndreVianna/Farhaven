@@ -90,8 +90,14 @@ func load_map(path: String) -> bool:
 		tile.anomaly = StringName(td.get("anomaly", ""))
 
 		var rn_list: Array = []
-		for res_id in td.get("resources", []):
-			rn_list.append(_make_resource_node(StringName(str(res_id)), biome_int))
+		for res_entry in td.get("resources", []):
+			if res_entry is String:
+				rn_list.append(_make_resource_node(StringName(str(res_entry)), biome_int))
+			elif res_entry is Dictionary:
+				var rn = _make_resource_node(StringName(str(res_entry.get("type", ""))), biome_int)
+				rn.offset = Vector2(float(res_entry.get("x", 0.0)), float(res_entry.get("y", 0.0)))
+				rn.rotation_deg = float(res_entry.get("rotation", 0.0))
+				rn_list.append(rn)
 		tile.resource_nodes = rn_list
 
 		_grid._tiles[coords] = tile

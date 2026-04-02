@@ -209,7 +209,7 @@ func test_props_removed_when_tile_becomes_hidden() -> void:
 	assert_int(_prop_renderer.get_pool_visible_count(_PropRenderer.Pool.FLORA)).is_equal(0)
 
 
-func test_multi_prop_tile_offset() -> void:
+func test_multi_prop_tile_entries() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 
 	# Add two props on same tile
@@ -337,6 +337,63 @@ func test_labels_billboard_enabled() -> void:
 # ===========================================
 # Draw calls estimate
 # ===========================================
+
+func test_resource_with_offset_adds_prop_and_matches_entry() -> void:
+	# Create a tile with a resource that has a specific offset
+	var tile: HexTile = _HexTile.new()
+	tile.elevation = 0
+	tile.fog_state = _HexTile.FogState.VISIBLE
+	var node: ResourceNode = _ResourceNode.new()
+	node.type = &"berries"
+	node.offset = Vector2(0.5, -0.3)
+	node.rotation_deg = 45.0
+	tile.resource_nodes = [node]
+	_grid._tiles[Vector2i(0, 0)] = tile
+
+	_scanner.element_unknown.emit(Vector2i(0, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+
+	# Verify prop was added
+	var entries: Dictionary = _prop_renderer.get_tile_entries()
+	assert_bool(entries.has(Vector2i(0, 0))).is_true()
+	assert_int(entries[Vector2i(0, 0)].size()).is_equal(1)
+
+	# Verify the resource_node offset is accessible from the tile
+	var retrieved_tile = _grid.get_tile(Vector2i(0, 0))
+	assert_bool(retrieved_tile != null).is_true()
+	var rn: ResourceNode = retrieved_tile.resource_nodes[0]
+	assert_float(rn.offset.x).is_equal_approx(0.5, 0.001)
+	assert_float(rn.offset.y).is_equal_approx(-0.3, 0.001)
+	assert_float(rn.rotation_deg).is_equal_approx(45.0, 0.001)
+
+	# Verify the reverse lookup maps correctly
+	var entry_id: StringName = _prop_renderer._get_entry_id_for_type(&"berries")
+	assert_str(String(entry_id)).is_equal("berry_bush")
+
+	# Verify expected world offset calculation
+	# HEX_SIZE=3.0, OFFSET_SCALE=0.4
+	# world_offset = (0.5 * 3.0 * 0.4, -0.3 * 3.0 * 0.4) = (0.6, -0.36)
+	var expected_offset_x: float = 0.5 * _PropRenderer.HEX_SIZE * _PropRenderer.OFFSET_SCALE
+	var expected_offset_z: float = -0.3 * _PropRenderer.HEX_SIZE * _PropRenderer.OFFSET_SCALE
+	assert_float(expected_offset_x).is_equal_approx(0.6, 0.001)
+	assert_float(expected_offset_z).is_equal_approx(-0.36, 0.001)
+
+
+func test_resource_without_offset_has_zero_offset() -> void:
+	# Default offset (0,0) should remain zero
+	var tile: HexTile = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(0, 0)] = tile
+
+	_scanner.element_unknown.emit(Vector2i(0, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+
+	var entries: Dictionary = _prop_renderer.get_tile_entries()
+	assert_bool(entries.has(Vector2i(0, 0))).is_true()
+
+	# Verify the resource_node has default zero offset
+	var rn: ResourceNode = tile.resource_nodes[0]
+	assert_float(rn.offset.x).is_equal_approx(0.0, 0.001)
+	assert_float(rn.offset.y).is_equal_approx(0.0, 0.001)
+	assert_float(rn.rotation_deg).is_equal_approx(0.0, 0.001)
+
 
 func test_draw_calls_five_prop_pools() -> void:
 	assert_int(_prop_renderer.get_pool_count()).is_equal(5)
