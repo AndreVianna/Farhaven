@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 class_name TestPlayerInput
 
-## Tests for PlayerInput two-outcome touch classifier.
+## Tests for PlayerInput two-outcome touch classifier (tap + joystick).
+## Scan hold removed — scanning is now proximity-based in ScannerSystem.
 ## Injects a mock grid and bypasses Camera3D (null → _screen_to_axial returns (0,0)).
 ## Calls internal _on_touch_down/_on_touch_up/_on_drag/_process directly.
 
@@ -26,15 +27,6 @@ func before_test() -> void:
 	_signals.clear()
 	_player_input.tap_tile.connect(func(c: Vector2i) -> void:
 		_signals.append({"type": "tap_tile", "coords": c})
-	)
-	_player_input.scan_hold_started.connect(func(c: Vector2i) -> void:
-		_signals.append({"type": "scan_hold_started", "coords": c})
-	)
-	_player_input.scan_hold_update.connect(func(p: Vector2) -> void:
-		_signals.append({"type": "scan_hold_update", "pos": p})
-	)
-	_player_input.scan_hold_ended.connect(func() -> void:
-		_signals.append({"type": "scan_hold_ended"})
 	)
 	_player_input.joystick_started.connect(func(d: Vector2) -> void:
 		_signals.append({"type": "joystick_started", "dir": d})
@@ -102,7 +94,6 @@ func test_tap_emits_correct_coords_from_grid() -> void:
 func test_tap_exceeding_max_duration_does_not_emit_tap() -> void:
 	_player_input._on_touch_down(Vector2.ZERO)
 	_player_input._touch_duration = 0.35  # > tap_max_duration (0.3)
-	# Manually set state so _process would have classified as scan hold, but we force TRACKING.
 	_player_input._state = 1  # _State.TRACKING
 	_player_input._on_touch_up()
 	assert_bool(_has_signal_of_type("tap_tile")).is_false()
@@ -117,9 +108,6 @@ func test_tap_with_large_drag_does_not_emit_tap() -> void:
 
 
 func test_tap_on_hidden_tile_does_not_emit_tap() -> void:
-	# Manually set _screen_to_axial to return hidden tile coords by bypassing camera:
-	# Set a revealed tile at (0,0) and tap should map to (0,0).
-	# To test hidden rejection, we add only a hidden tile and remove the revealed one.
 	_grid._tiles.erase(Vector2i.ZERO)
 	_player_input._on_touch_down(Vector2.ZERO)
 	_player_input._touch_duration = 0.1
@@ -130,51 +118,6 @@ func test_tap_on_hidden_tile_does_not_emit_tap() -> void:
 	tile.coords = Vector2i.ZERO
 	tile.fog_state = _HexTile.FogState.REVEALED
 	_grid._tiles[Vector2i.ZERO] = tile
-
-
-# --- SCAN HOLD outcome ---
-
-func test_hold_at_threshold_emits_scan_hold_started() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)  # hold_threshold reached → _enter_scan_hold
-	assert_bool(_has_signal_of_type("scan_hold_started")).is_true()
-
-
-func test_scan_hold_started_includes_coords() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)
-	var holds := _signals.filter(func(s) -> bool: return s.get("type","") == "scan_hold_started")
-	assert_int(holds.size()).is_equal(1)
-	# Camera is null → _screen_to_axial returns (0,0).
-	assert_object(holds[0]["coords"]).is_equal(Vector2i.ZERO)
-
-
-func test_scan_hold_update_emits_while_held() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)  # enter SCAN_HOLD
-	_signals.clear()
-	_player_input._touch_current = Vector2(5.0, 5.0)
-	_player_input._process(0.016)  # should emit scan_hold_update
-	assert_bool(_has_signal_of_type("scan_hold_update")).is_true()
-
-
-func test_scan_hold_ended_on_touch_up() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)
-	_player_input._on_touch_up()
-	assert_bool(_has_signal_of_type("scan_hold_ended")).is_true()
-
-
-func test_scan_hold_does_not_emit_tap_on_release() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)
-	_player_input._on_touch_up()
-	assert_bool(_has_signal_of_type("tap_tile")).is_false()
 
 
 # --- JOYSTICK outcome ---
@@ -233,38 +176,19 @@ func test_joystick_magnitude_clamped_to_one() -> void:
 		assert_float(m["mag"]).is_less_equal(1.0)
 
 
-# --- Drag wins over scan hold ---
-
-func test_drag_during_scan_hold_switches_to_joystick() -> void:
+func test_hold_past_threshold_enters_joystick() -> void:
 	_player_input._on_touch_down(Vector2.ZERO)
 	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)  # enter SCAN_HOLD
-	_signals.clear()
-	_player_input._on_drag(Vector2(25.0, 0.0))  # drag ≥20px while in SCAN_HOLD
-	assert_bool(_has_signal_of_type("scan_hold_ended")).is_true()
+	_player_input._process(0.0)  # tap_max_duration reached → enters joystick
 	assert_bool(_has_signal_of_type("joystick_started")).is_true()
 
 
-# --- scan_rejected fallback ---
+# --- No scan hold signals ---
 
-func test_scan_rejected_transitions_to_joystick() -> void:
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.3
-	_player_input._process(0.0)  # enter SCAN_HOLD
-	_signals.clear()
-	_player_input.receive_scan_rejected(Vector2i.ZERO)
-	# Needs 2 _process frames to expire the rejection countdown.
-	_player_input._process(0.016)
-	_player_input._process(0.016)
-	assert_bool(_has_signal_of_type("joystick_started")).is_true()
-
-
-func test_scan_rejected_outside_scan_hold_has_no_effect() -> void:
-	# IDLE state — rejection should be ignored.
-	_player_input.receive_scan_rejected(Vector2i.ZERO)
-	_player_input._process(0.016)
-	_player_input._process(0.016)
-	assert_bool(_has_signal_of_type("joystick_started")).is_false()
+func test_no_scan_hold_signals() -> void:
+	assert_bool(_player_input.has_signal("scan_hold_started")).is_false()
+	assert_bool(_player_input.has_signal("scan_hold_ended")).is_false()
+	assert_bool(_player_input.has_signal("scan_hold_update")).is_false()
 
 
 # --- Threshold values are exported (tunable) ---
@@ -272,7 +196,6 @@ func test_scan_rejected_outside_scan_hold_has_no_effect() -> void:
 func test_exported_thresholds_have_correct_defaults() -> void:
 	assert_float(_player_input.tap_max_duration).is_equal(0.3)
 	assert_float(_player_input.tap_max_drag).is_equal(20.0)
-	assert_float(_player_input.hold_threshold).is_equal(0.3)
 	assert_float(_player_input.drag_threshold).is_equal(20.0)
 
 

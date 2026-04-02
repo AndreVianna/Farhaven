@@ -1,21 +1,17 @@
 extends Node
 class_name PlayerInput
 
-## Three-outcome touch classifier. Child Node of Player.
+## Two-outcome touch classifier. Child Node of Player.
 ## Uses _unhandled_input so HUD elements (mouse_filter=STOP) consume first.
 ##
 ## Outcomes:
 ##   TAP        — touch DOWN+UP in <tap_max_duration AND drag <tap_max_drag
-##   SCAN HOLD  — hold ≥hold_threshold AND drag <drag_threshold
-##   JOYSTICK   — drag ≥drag_threshold at ANY time, or scan_rejected fallback
+##   JOYSTICK   — drag ≥drag_threshold at ANY time
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 # --- Signals ---
 signal tap_tile(coords: Vector2i)
-signal scan_hold_started(coords: Vector2i)
-signal scan_hold_update(screen_pos: Vector2)
-signal scan_hold_ended()
 signal joystick_started(direction: Vector2)
 signal joystick_moved(direction: Vector2, magnitude: float)
 signal joystick_released()
@@ -23,17 +19,15 @@ signal joystick_released()
 # --- Exported thresholds (tunable) ---
 @export var tap_max_duration: float = 0.3
 @export var tap_max_drag: float = 20.0
-@export var hold_threshold: float = 0.3
 @export var drag_threshold: float = 20.0
 
 # --- Internal state ---
-enum _State { IDLE, TRACKING, SCAN_HOLD, SCAN_REJECTED, JOYSTICK }
+enum _State { IDLE, TRACKING, JOYSTICK }
 
 var _state: _State = _State.IDLE
 var _touch_origin: Vector2 = Vector2.ZERO
 var _touch_current: Vector2 = Vector2.ZERO
 var _touch_duration: float = 0.0
-var _rejection_frames: int = 0
 
 # --- Dependencies (injected in _ready; may be replaced in tests) ---
 var _camera: Camera3D
@@ -71,13 +65,8 @@ func _process(delta: float) -> void:
 	match _state:
 		_State.TRACKING:
 			_touch_duration += delta
-			if _touch_duration >= hold_threshold:
-				_enter_scan_hold()
-		_State.SCAN_HOLD:
-			scan_hold_update.emit(_touch_current)
-		_State.SCAN_REJECTED:
-			_rejection_frames -= 1
-			if _rejection_frames <= 0:
+			# If held long enough without dragging, start joystick
+			if _touch_duration >= tap_max_duration:
 				_enter_joystick()
 		_State.JOYSTICK:
 			_emit_joystick_moved()
@@ -90,7 +79,6 @@ func _on_touch_down(pos: Vector2) -> void:
 	_touch_origin = pos
 	_touch_current = pos
 	_touch_duration = 0.0
-	_rejection_frames = 0
 
 
 func _on_touch_up() -> void:
@@ -100,34 +88,22 @@ func _on_touch_up() -> void:
 			var drag_ok: bool = (_touch_current - _touch_origin).length() < tap_max_drag
 			if duration_ok and drag_ok:
 				_emit_tap()
-		_State.SCAN_HOLD:
-			scan_hold_ended.emit()
 		_State.JOYSTICK:
 			joystick_released.emit()
 			if _joystick_overlay != null and _joystick_overlay.has_method("hide_visual"):
 				_joystick_overlay.hide_visual()
-		_State.SCAN_REJECTED:
-			pass  # Rejection timer still running; touch ended before joystick started.
 	_state = _State.IDLE
 
 
 func _on_drag(pos: Vector2) -> void:
 	_touch_current = pos
-	if _state == _State.TRACKING or _state == _State.SCAN_HOLD:
+	if _state == _State.TRACKING:
 		var drag_dist: float = (_touch_current - _touch_origin).length()
 		if drag_dist >= drag_threshold:
-			if _state == _State.SCAN_HOLD:
-				scan_hold_ended.emit()
 			_enter_joystick()
 
 
 # --- State transitions ---
-
-func _enter_scan_hold() -> void:
-	_state = _State.SCAN_HOLD
-	var coords: Vector2i = _screen_to_axial(_touch_current)
-	scan_hold_started.emit(coords)
-
 
 func _enter_joystick() -> void:
 	_state = _State.JOYSTICK
@@ -149,16 +125,6 @@ func _emit_joystick_moved() -> void:
 	joystick_moved.emit(dir, mag)
 	if _joystick_overlay != null and _joystick_overlay.has_method("update_knob"):
 		_joystick_overlay.update_knob(_touch_current)
-
-
-# --- External API ---
-
-## Called by feature-003 (scanner) when nothing scannable exists at coords.
-## Falls back to joystick mode after a 2-frame delay.
-func receive_scan_rejected(_coords: Vector2i) -> void:
-	if _state == _State.SCAN_HOLD:
-		_state = _State.SCAN_REJECTED
-		_rejection_frames = 2
 
 
 # --- Helpers ---
