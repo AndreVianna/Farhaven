@@ -3,11 +3,14 @@ extends PanelContainer
 
 ## Catalog bottom drawer panel (~45% screen height).
 ## Opens/closes on ScannerButton tap. Shows 4 category tabs with discovered entries.
+## Supports 3-state display: ENCOUNTERED entries show "Unidentified Fauna (label)"
+## with no details. CATALOGED entries show full info.
 ## Emits panel_opened for mutual exclusion with other panels.
 
 signal panel_opened()
 
 const CatalogEntryUI = preload("res://ui/catalog_entry_ui.gd")
+const _Catalog = preload("res://scripts/scanner/catalog.gd")
 
 @onready var _counter_label: Label = $VBox/Header/CounterLabel
 @onready var _close_button: Button = $VBox/Header/CloseButton
@@ -35,10 +38,14 @@ func _ready() -> void:
 
 func set_catalog(cat: Catalog) -> void:
 	if _catalog != null:
-		_catalog.entry_cataloged.disconnect(_on_entry_cataloged)
+		if _catalog.entry_cataloged.is_connected(_on_entry_cataloged):
+			_catalog.entry_cataloged.disconnect(_on_entry_cataloged)
+		if _catalog.entry_encountered.is_connected(_on_entry_encountered):
+			_catalog.entry_encountered.disconnect(_on_entry_encountered)
 	_catalog = cat
 	if _catalog != null:
 		_catalog.entry_cataloged.connect(_on_entry_cataloged)
+		_catalog.entry_encountered.connect(_on_entry_encountered)
 
 
 func toggle() -> void:
@@ -79,10 +86,22 @@ func _populate_list(list: VBoxContainer, category: int) -> void:
 	for entry in entries:
 		var row := CatalogEntryUI.new()
 		list.add_child(row)
-		row.setup(entry)
+		var state: int = _catalog.get_knowledge_state(entry.entry_id)
+		if state == Catalog.KnowledgeState.ENCOUNTERED:
+			var label: String = _catalog.get_encounter_label(entry.entry_id)
+			row.setup_encountered(label)
+		else:
+			row.setup(entry)
 
 
 func _on_entry_cataloged(_entry_id: StringName, _category: int) -> void:
+	if visible:
+		_refresh()
+	elif _catalog != null:
+		_counter_label.text = _catalog.get_discovery_text()
+
+
+func _on_entry_encountered(_entry_id: StringName, _label: String) -> void:
 	if visible:
 		_refresh()
 	elif _catalog != null:

@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 class_name TestCatalogPanelUI
 
 ## Unit tests for CatalogEntryUI and CatalogPanel (task-014).
-## Follows TDD: written before implementation.
+## Tests 3-state display: ENCOUNTERED entries show minimal info,
+## CATALOGED entries show full info.
 
 const _CatalogEntryUIPkg = preload("res://ui/catalog_entry_ui.gd")
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
@@ -35,7 +36,7 @@ func after_test() -> void:
 	_panel = null
 
 
-# --- CatalogEntryUI ---
+# --- CatalogEntryUI: CATALOGED display ---
 
 func test_catalog_entry_ui_minimum_height() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
@@ -102,6 +103,53 @@ func test_catalog_entry_ui_mineral_shows_tool() -> void:
 	e.properties = {"resource_type": &"ore", "tool_required": &"stone_pickaxe"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.to_lower().contains("pickaxe")).is_true()
+	entry_ui.queue_free()
+
+
+# --- CatalogEntryUI: ENCOUNTERED display ---
+
+func test_catalog_entry_ui_encountered_shows_warning_label() -> void:
+	var entry_ui = _CatalogEntryUIPkg.new()
+	add_child(entry_ui)
+	entry_ui.setup_encountered("Hostile")
+	assert_bool(entry_ui._name_label.text.contains("Unidentified Fauna")).is_true()
+	assert_bool(entry_ui._name_label.text.contains("Hostile")).is_true()
+	assert_bool(entry_ui._name_label.text.contains("⚠️")).is_true()
+	entry_ui.queue_free()
+
+
+func test_catalog_entry_ui_encountered_shy_label() -> void:
+	var entry_ui = _CatalogEntryUIPkg.new()
+	add_child(entry_ui)
+	entry_ui.setup_encountered("Shy")
+	assert_bool(entry_ui._name_label.text.contains("Shy")).is_true()
+	entry_ui.queue_free()
+
+
+func test_catalog_entry_ui_encountered_no_description() -> void:
+	var entry_ui = _CatalogEntryUIPkg.new()
+	add_child(entry_ui)
+	entry_ui.setup_encountered("Hostile")
+	assert_str(entry_ui._desc_label.text).is_equal("")
+	assert_str(entry_ui._props_label.text).is_equal("")
+	entry_ui.queue_free()
+
+
+func test_catalog_entry_ui_encountered_flag() -> void:
+	var entry_ui = _CatalogEntryUIPkg.new()
+	add_child(entry_ui)
+	entry_ui.setup_encountered("Hostile")
+	assert_bool(entry_ui.is_encountered()).is_true()
+	entry_ui.queue_free()
+
+
+func test_catalog_entry_ui_cataloged_not_encountered() -> void:
+	var entry_ui = _CatalogEntryUIPkg.new()
+	add_child(entry_ui)
+	var e := _make_entry(&"berry_bush", "Berry Bush", 0)
+	e.properties = {}
+	entry_ui.setup(e)
+	assert_bool(entry_ui.is_encountered()).is_false()
 	entry_ui.queue_free()
 
 
@@ -187,6 +235,16 @@ func test_catalog_panel_counter_updates_on_entry_cataloged() -> void:
 	assert_str(_panel._counter_label.text).is_equal("1 entry")
 
 
+func test_catalog_panel_counter_counts_encountered_plus_cataloged() -> void:
+	var cat := _Catalog.new()
+	cat.initialize()
+	cat.catalog_entry(&"berry_bush")
+	cat.encounter_entry(&"thornback", "Hostile")
+	_panel.set_catalog(cat)
+	_panel.open()
+	assert_str(_panel._counter_label.text).is_equal("2 entries")
+
+
 # --- Entries per category ---
 
 func test_catalog_panel_flora_tab_shows_flora_entries() -> void:
@@ -205,3 +263,38 @@ func test_catalog_panel_wrong_category_not_in_flora() -> void:
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_int(_panel._flora_list.get_child_count()).is_equal(0)
+
+
+func test_catalog_panel_encountered_fauna_shows_in_fauna_tab() -> void:
+	var cat := _Catalog.new()
+	cat.initialize()
+	cat.encounter_entry(&"thornback", "Hostile")
+	_panel.set_catalog(cat)
+	_panel.open()
+	assert_int(_panel._fauna_list.get_child_count()).is_equal(1)
+
+
+func test_catalog_panel_encountered_entry_uses_encountered_display() -> void:
+	var cat := _Catalog.new()
+	cat.initialize()
+	cat.encounter_entry(&"thornback", "Hostile")
+	_panel.set_catalog(cat)
+	_panel.open()
+	# The entry in the fauna list should be an encountered entry
+	var child: Node = _panel._fauna_list.get_child(0)
+	assert_bool(child is _CatalogEntryUIPkg).is_true()
+	if child is _CatalogEntryUIPkg:
+		assert_bool(child.is_encountered()).is_true()
+
+
+func test_catalog_panel_updates_on_entry_encountered() -> void:
+	var cat := _Catalog.new()
+	cat.initialize()
+	_panel.set_catalog(cat)
+	_panel.open()
+	assert_int(_panel._fauna_list.get_child_count()).is_equal(0)
+
+	cat.encounter_entry(&"thornback", "Hostile")
+
+	assert_int(_panel._fauna_list.get_child_count()).is_equal(1)
+	assert_str(_panel._counter_label.text).is_equal("1 entry")

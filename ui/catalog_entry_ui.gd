@@ -2,6 +2,9 @@ class_name CatalogEntryUI
 extends PanelContainer
 
 ## Single catalog entry row: icon placeholder + name + description + properties.
+## Supports two display modes:
+##   - CATALOGED: full info (name, description, properties)
+##   - ENCOUNTERED: "Unidentified Fauna (Hostile/Shy)" with no details
 ## Builds itself programmatically — no child scene required.
 
 const CATEGORY_COLORS: Dictionary = {
@@ -11,10 +14,13 @@ const CATEGORY_COLORS: Dictionary = {
 	3: Color(0.5, 0.3, 0.8),   # ANOMALY
 }
 
+const ENCOUNTERED_COLOR: Color = Color(0.7, 0.5, 0.1)  # Warning amber
+
 var _icon_rect: ColorRect
 var _name_label: Label
 var _desc_label: Label
 var _props_label: Label
+var _is_encountered: bool = false
 
 
 func _init() -> void:
@@ -58,11 +64,26 @@ func _ready() -> void:
 	vbox.add_child(_props_label)
 
 
+## Setup for CATALOGED entries — full info display.
 func setup(entry: CatalogEntry) -> void:
+	_is_encountered = false
 	_name_label.text = entry.display_name
 	_desc_label.text = entry.description
 	_props_label.text = _format_properties(entry)
 	_icon_rect.color = CATEGORY_COLORS.get(entry.category, Color(0.5, 0.5, 0.5))
+
+
+## Setup for ENCOUNTERED entries — minimal display, no details.
+func setup_encountered(label: String) -> void:
+	_is_encountered = true
+	_name_label.text = "⚠️ Unidentified Fauna (%s)" % label
+	_desc_label.text = ""
+	_props_label.text = ""
+	_icon_rect.color = ENCOUNTERED_COLOR
+
+
+func is_encountered() -> bool:
+	return _is_encountered
 
 
 func _format_properties(entry: CatalogEntry) -> String:
