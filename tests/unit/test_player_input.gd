@@ -180,7 +180,10 @@ func test_hold_past_threshold_enters_joystick() -> void:
 	_player_input._on_touch_down(Vector2.ZERO)
 	_player_input._touch_duration = 0.3
 	_player_input._process(0.0)  # tap_max_duration reached → enters joystick
-	assert_bool(_has_signal_of_type("joystick_started")).is_true()
+	# Zero drag → state transitions to JOYSTICK but joystick_started is NOT emitted
+	# (avoids WALKING with zero direction). Signal emits on first actual drag.
+	assert_bool(_has_signal_of_type("joystick_started")).is_false()
+	assert_int(_player_input._state).is_equal(PlayerInput._State.JOYSTICK)
 
 
 # --- No scan hold signals ---

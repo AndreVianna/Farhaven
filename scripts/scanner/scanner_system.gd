@@ -77,41 +77,38 @@ func _connect_grid_signals() -> void:
 func _process(delta: float) -> void:
 	if _player == null or _grid == null:
 		return
-
-	var player_tile: Vector2i = _player.current_tile if "current_tile" in _player else Vector2i.ZERO
-
+	var player_tile: Vector2i = _player.current_tile
 	if _is_scanning:
-		# Check if player is still in range of current target
-		var dist: int = _grid.distance(player_tile, _scan_target_coords)
-		if dist > SCAN_RANGE:
-			# Player left range — interrupt immediately, reset progress
-			_is_scanning = false
-			_scan_progress = 0.0
-			scan_interrupted.emit()
-			# Fall through to check for new nearby targets
-		else:
-			# Still in range — advance progress
-			_scan_progress += delta / _scan_duration
-			if _scan_progress >= 1.0:
-				_scan_progress = 1.0
-				_complete_scan()
-				return  # Completed, will check for new targets next frame
-			else:
-				scan_progress_updated.emit(_scan_progress)
-				return  # Don't start a new scan while one is active
+		if _update_active_scan(player_tile, delta):
+			return  # Still scanning or just completed
+	_start_nearest_scan(player_tile)
 
-	# Not scanning — check nearby tiles for scannable props
+
+func _update_active_scan(player_tile: Vector2i, delta: float) -> bool:
+	var dist: int = _grid.distance(player_tile, _scan_target_coords)
+	if dist > SCAN_RANGE:
+		_is_scanning = false
+		_scan_progress = 0.0
+		scan_interrupted.emit()
+		return false  # Interrupted, check for new target
+	_scan_progress += delta / _scan_duration
+	if _scan_progress >= 1.0:
+		_scan_progress = 1.0
+		_complete_scan()
+		return true  # Completed, check next frame
+	scan_progress_updated.emit(_scan_progress)
+	return true  # Still in progress
+
+
+func _start_nearest_scan(player_tile: Vector2i) -> void:
 	var nearby_tiles: Array[Vector2i] = [player_tile]
 	if _grid.has_method("get_neighbors"):
 		var neighbors: Array[Vector2i] = _grid.get_neighbors(player_tile)
 		for n in neighbors:
 			nearby_tiles.append(n)
-
-	# Filter to tiles within SCAN_RANGE and find nearest scannable prop
 	var best_entry_id: StringName = &""
 	var best_coords: Vector2i = Vector2i.ZERO
 	var best_distance: int = 999
-
 	for coords in nearby_tiles:
 		var dist: int = _grid.distance(player_tile, coords)
 		if dist > SCAN_RANGE:
@@ -122,9 +119,7 @@ func _process(delta: float) -> void:
 				best_distance = dist
 				best_entry_id = entry_id
 				best_coords = coords
-
 	if best_entry_id != &"":
-		# Start proximity scan on nearest target
 		_is_scanning = true
 		_scan_target_coords = best_coords
 		_scan_target_entry_id = best_entry_id
@@ -236,3 +231,14 @@ func is_scanning() -> bool:
 
 func get_scan_progress() -> float:
 	return _scan_progress
+
+
+## Bootstrap: check passive identification for all currently visible tiles.
+## Called by Main after map load to populate initial tile props/labels.
+func bootstrap_visible() -> void:
+	if _grid == null:
+		return
+	for coords in _grid._tiles:
+		var tile = _grid._tiles[coords]
+		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
+			_check_passive_identification(coords)

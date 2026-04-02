@@ -370,9 +370,10 @@ func test_three_state_labels() -> void:
 	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 
 	# CATALOGED via scan (catalog berry_bush directly for testing marker)
+	# Label nodes are freed and removed from tracking on catalog — no label exists anymore.
 	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
-	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(_Catalog.KnowledgeState.CATALOGED)
+	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(-1)
 
 	_teardown_scanner_tree()
 

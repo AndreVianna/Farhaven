@@ -108,10 +108,12 @@ func _on_drag(pos: Vector2) -> void:
 func _enter_joystick() -> void:
 	_state = _State.JOYSTICK
 	var drag_vec: Vector2 = _touch_current - _touch_origin
-	var dir: Vector2 = drag_vec.normalized() if not drag_vec.is_zero_approx() else Vector2.ZERO
-	joystick_started.emit(dir)
 	if _joystick_overlay != null and _joystick_overlay.has_method("show_at"):
 		_joystick_overlay.show_at(_touch_origin)
+	# Only emit joystick_started if there's actual drag — avoid WALKING with zero direction
+	if not drag_vec.is_zero_approx():
+		var dir: Vector2 = drag_vec.normalized()
+		joystick_started.emit(dir)
 	_emit_joystick_moved()
 
 

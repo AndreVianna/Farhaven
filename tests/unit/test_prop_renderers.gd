@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 
 const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -365,15 +366,15 @@ func test_resource_with_offset_adds_prop_and_matches_entry() -> void:
 	assert_float(rn.offset.y).is_equal_approx(-0.3, 0.001)
 	assert_float(rn.rotation_deg).is_equal_approx(45.0, 0.001)
 
-	# Verify the reverse lookup maps correctly
-	var entry_id: StringName = _prop_renderer._get_entry_id_for_type(&"berries")
+	# Verify the reverse lookup maps correctly (now via PropUtils)
+	var entry_id: StringName = _PropUtils.get_entry_id_for_type(&"berries")
 	assert_str(String(entry_id)).is_equal("berry_bush")
 
 	# Verify expected world offset calculation
-	# HEX_SIZE=3.0, OFFSET_SCALE=0.4
+	# HEX_SIZE=3.0, PropUtils.OFFSET_SCALE=0.4
 	# world_offset = (0.5 * 3.0 * 0.4, -0.3 * 3.0 * 0.4) = (0.6, -0.36)
-	var expected_offset_x: float = 0.5 * _PropRenderer.HEX_SIZE * _PropRenderer.OFFSET_SCALE
-	var expected_offset_z: float = -0.3 * _PropRenderer.HEX_SIZE * _PropRenderer.OFFSET_SCALE
+	var expected_offset_x: float = 0.5 * _PropRenderer.HEX_SIZE * _PropUtils.OFFSET_SCALE
+	var expected_offset_z: float = -0.3 * _PropRenderer.HEX_SIZE * _PropUtils.OFFSET_SCALE
 	assert_float(expected_offset_x).is_equal_approx(0.6, 0.001)
 	assert_float(expected_offset_z).is_equal_approx(-0.36, 0.001)
 

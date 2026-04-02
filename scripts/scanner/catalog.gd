@@ -130,9 +130,12 @@ func catalog_entry(entry_id: StringName) -> void:
 
 
 func encounter_entry(entry_id: StringName, label: String) -> void:
-	# Guard: only fauna can enter ENCOUNTERED state (flora/mineral are static)
 	var entry := get_entry(entry_id)
-	if entry and entry.category != CatalogCategory.FAUNA:
+	if entry == null:
+		push_warning("encounter_entry called for unknown entry: %s" % entry_id)
+		return
+	# Guard: only fauna can enter ENCOUNTERED state (flora/mineral are static)
+	if entry.category != CatalogCategory.FAUNA:
 		push_warning("encounter_entry called for non-fauna entry: %s" % entry_id)
 		return
 	var old_state: int = get_knowledge_state(entry_id)

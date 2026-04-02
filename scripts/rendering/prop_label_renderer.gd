@@ -9,6 +9,7 @@ extends Node3D
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # --- Constants ---
 
@@ -17,9 +18,6 @@ const LABEL_Y_OFFSET: float = 2.0
 
 ## HEX_SIZE for multi-prop offset calculation
 const HEX_SIZE: float = 3.0
-
-## Offset scale factor: maps normalized [-1,1] to world units (must match PropRenderer)
-const OFFSET_SCALE: float = 0.4
 
 ## Category colors for UNKNOWN ❓ markers
 const CATEGORY_COLORS: Dictionary = {
@@ -118,19 +116,19 @@ func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: Str
 
 
 func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
-	# Bulk remove: iterate all visible markers, remove matching entry_id.
-	# CATALOGED = no marker. The prop speaks for itself.
+	# CATALOGED = no marker. Remove and free all matching Label3D nodes.
 	for coords in _tile_labels.keys():
 		var labels: Array = _tile_labels[coords]
 		var i: int = labels.size() - 1
 		while i >= 0:
 			var info: Dictionary = labels[i]
-			if info.entry_id == entry_id and info.state != _Catalog.KnowledgeState.CATALOGED:
-				info.state = _Catalog.KnowledgeState.CATALOGED
+			if info.entry_id == entry_id:
 				if info.label_node != null and is_instance_valid(info.label_node):
-					info.label_node.visible = false
-					info.label_node.text = ""
+					info.label_node.queue_free()
+				labels.remove_at(i)
 			i -= 1
+		if labels.is_empty():
+			_tile_labels.erase(coords)
 
 
 func _on_entry_encountered(entry_id: StringName, _label: String) -> void:
@@ -167,15 +165,9 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 		elevation_y = float(tile.elevation) * 0.5
 
 	# Look up resource_node offset from tile data (anomalies stay at center)
-	var prop_offset: Vector2 = Vector2.ZERO
-	if tile != null:
-		for rn in tile.resource_nodes:
-			var rn_entry_id: StringName = _get_entry_id_for_type(rn.type)
-			if rn_entry_id == entry_id:
-				prop_offset = rn.offset
-				break
-
-	var world_offset := Vector2(prop_offset.x * HEX_SIZE * OFFSET_SCALE, prop_offset.y * HEX_SIZE * OFFSET_SCALE)
+	var placement: Array = _PropUtils.get_prop_placement(tile, entry_id)
+	var prop_offset: Vector2 = placement[0]
+	var world_offset: Vector2 = _PropUtils.offset_to_world(prop_offset, HEX_SIZE)
 	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + LABEL_Y_OFFSET, world_2d.y + world_offset.y)
 
 	var label_3d := Label3D.new()
@@ -210,17 +202,6 @@ func _remove_all_labels_at(coords: Vector2i) -> void:
 
 
 # --- Helpers ---
-
-## Reverse lookup: resource type → catalog entry_id.
-## Built from Catalog.RESOURCE_TO_ENTRY on first call.
-var _type_to_entry: Dictionary = {}
-
-func _get_entry_id_for_type(type: StringName) -> StringName:
-	if _type_to_entry.is_empty():
-		for res_type in _Catalog.RESOURCE_TO_ENTRY:
-			_type_to_entry[res_type] = _Catalog.RESOURCE_TO_ENTRY[res_type]
-	return _type_to_entry.get(type, &"")
-
 
 func _get_catalog() -> RefCounted:
 	if _scanner != null and _scanner.has_method("get_catalog"):

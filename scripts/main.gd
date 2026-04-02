@@ -2,8 +2,6 @@ extends Node
 
 ## Bootstrap: loads the world map on game start and wires all systems together.
 
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-
 func _ready() -> void:
 	_wire_systems()
 	HexGrid.load_map("res://data/maps/ch1.json")
@@ -37,10 +35,5 @@ func _bootstrap_visible_tiles() -> void:
 	var scanner: Node = $World/Player.get_node_or_null("ScannerSystem")
 	if scanner == null:
 		return
-	# Iterate all tiles and trigger passive identification for any that are
-	# already VISIBLE (set by MapLoader during load_map).
-	for coords in HexGrid._tiles:
-		var tile = HexGrid._tiles[coords]
-		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
-			if scanner.has_method("_check_passive_identification"):
-				scanner._check_passive_identification(coords)
+	if scanner.has_method("bootstrap_visible"):
+		scanner.bootstrap_visible()

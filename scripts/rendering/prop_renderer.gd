@@ -1,7 +1,7 @@
 extends Node3D
 
 ## PropRenderer — 5 MultiMeshInstance3D pools for 3D prop meshes on world tiles.
-## Pools: flora (cube), fauna (sphere), mineral (octahedron), anomaly (tetrahedron), generic (fallback).
+## Pools: flora (cube), fauna (sphere), mineral (cube), anomaly (cube), generic (cube). All placeholders.
 ## Signal-driven: subscribes to ScannerSystem element_identified/element_unknown/
 ## element_encountered and HexGrid tile_visibility_changed signals.
 ## Props always look the same regardless of knowledge state — the mesh doesn't change.
@@ -9,6 +9,7 @@ extends Node3D
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # --- Constants ---
 
@@ -23,9 +24,6 @@ enum Pool { FLORA, FAUNA, MINERAL, ANOMALY, GENERIC }
 
 ## HEX_SIZE for multi-prop offset calculation
 const HEX_SIZE: float = 3.0
-
-## Offset scale factor: maps normalized [-1,1] to world units
-const OFFSET_SCALE: float = 0.4
 
 ## Colors per pool
 const POOL_COLORS: Dictionary = {
@@ -59,13 +57,13 @@ func _ready() -> void:
 
 
 func _create_pools() -> void:
-	# Flora: cube
+	# Flora: cube (placeholder)
 	_create_pool(Pool.FLORA, _make_cube_mesh(0.4), POOL_COLORS[Pool.FLORA])
-	# Fauna: sphere
+	# Fauna: sphere (placeholder)
 	_create_pool(Pool.FAUNA, _make_sphere_mesh(0.35), POOL_COLORS[Pool.FAUNA])
-	# Mineral: octahedron (approximated with sphere for now)
+	# Mineral: cube (placeholder — real assets later)
 	_create_pool(Pool.MINERAL, _make_cube_mesh(0.35), POOL_COLORS[Pool.MINERAL])
-	# Anomaly: tetrahedron (approximated with prism for now)
+	# Anomaly: cube (placeholder — real assets later)
 	_create_pool(Pool.ANOMALY, _make_cube_mesh(0.3), POOL_COLORS[Pool.ANOMALY])
 	# Generic: fallback cube
 	_create_pool(Pool.GENERIC, _make_cube_mesh(0.3), POOL_COLORS[Pool.GENERIC])
@@ -193,18 +191,10 @@ func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
 		elevation_y = float(tile.elevation) * 0.5
 
 	# Look up resource_node offset/rotation from tile data
-	var prop_offset: Vector2 = Vector2.ZERO
-	var prop_rotation: float = 0.0
-	if tile != null:
-		for rn in tile.resource_nodes:
-			var rn_entry_id: StringName = _get_entry_id_for_type(rn.type)
-			if rn_entry_id == entry_id:
-				prop_offset = rn.offset
-				prop_rotation = rn.rotation_deg
-				break
-
-	# Convert normalized offset to world offset
-	var world_offset := Vector2(prop_offset.x * HEX_SIZE * OFFSET_SCALE, prop_offset.y * HEX_SIZE * OFFSET_SCALE)
+	var placement: Array = _PropUtils.get_prop_placement(tile, entry_id)
+	var prop_offset: Vector2 = placement[0]
+	var prop_rotation: float = placement[1]
+	var world_offset: Vector2 = _PropUtils.offset_to_world(prop_offset, HEX_SIZE)
 	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + PROP_Y_OFFSET, world_2d.y + world_offset.y)
 
 	# Apply rotation (rotate basis only, then set origin)
@@ -263,17 +253,6 @@ func _update_instance_index(pool_idx: int, old_idx: int, new_idx: int) -> void:
 
 
 # --- Helpers ---
-
-## Reverse lookup: resource type → catalog entry_id.
-## Built from Catalog.RESOURCE_TO_ENTRY on first call.
-var _type_to_entry: Dictionary = {}
-
-func _get_entry_id_for_type(type: StringName) -> StringName:
-	if _type_to_entry.is_empty():
-		for res_type in _Catalog.RESOURCE_TO_ENTRY:
-			_type_to_entry[res_type] = _Catalog.RESOURCE_TO_ENTRY[res_type]
-	return _type_to_entry.get(type, &"")
-
 
 func _get_pool_for_entry(entry_id: StringName) -> int:
 	var catalog: RefCounted = _get_catalog()
