@@ -8,6 +8,9 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-01 | I6: _scan_range (2 hexes) noted as [TUNING_REQUIRED] for HEX_SIZE=3.0; range transitioning to circular world-unit area. I2: Touch target estimate marked [TUNING_REQUIRED]. | /pivot-cascade |
 | 2026-04-02 | Architecture: ElementIconRenderer → PropRenderer + PropLabelRenderer. 3D prop meshes replace billboard icons; floating pill labels show ❓/name. Catalog changes label text, not mesh. | /spec-update |
+| 2026-04-02 | Major redesign: press-and-hold → proximity auto-scan. Three-state knowledge (UNKNOWN/ENCOUNTERED/CATALOGED). Trap + Sneak mechanics designed but deferred post-MVP. See docs/design/scan-redesign-2026-04-02.md | /design-session |
+
+> **📐 Design Note (2026-04-02):** The scan system has been fundamentally redesigned from press-and-hold to proximity-based auto-scan. Props now have three knowledge states (UNKNOWN → ENCOUNTERED → CATALOGED) instead of two. Fauna scanning introduces Trap (passive) and Sneak Scan (hostile) mechanics, both deferred post-MVP. Full design rationale and state transition details: [`docs/design/scan-redesign-2026-04-02.md`](../../../../docs/design/scan-redesign-2026-04-02.md)
 
 ## Source
 
