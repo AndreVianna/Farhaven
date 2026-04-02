@@ -516,3 +516,7 @@ Each delivery that adds systems MUST document how it extends this sequence:
 - Auto-interaction simplifies F3 (no tap disambiguation) but adds proximity detection
 - Existing feature SPECs (001-008) need reconciliation with this redesign
 - Two new features (Scanner/Catalog, Journal) need decomposition and specification
+
+## §13 Prop Taxonomy
+
+See `docs/design/prop-taxonomy.md` for the authoritative 4-category prop classification (Decoration, Resource, Structure, Entity) and render pipeline.

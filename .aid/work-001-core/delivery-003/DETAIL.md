@@ -175,6 +175,12 @@ task-023 depends on everything.
 - On `resource_depleted`: swap mesh variant (tree→stump, rock→rubble)
 - On `resource_respawned`: swap back (stump→tree)
 - Per-node deterministic random offset within hex (seeded from coords+index)
+- **Replaces PropRenderer** (delivery-002 placeholder): Delete `scripts/rendering/prop_renderer.gd`,
+  `scenes/world/prop_renderer.tscn`, and remove from `main.tscn`. PropRenderer's generic category
+  cubes are superseded by ResourceRenderer's per-type meshes.
+- **PropLabelRenderer stays** — labels (❓/⚠️/name) serve resources AND future fauna.
+  Signal source changes: labels now driven by ResourceRenderer signals instead of PropRenderer.
+- **PropUtils stays** — shared offset/type-lookup utilities still used by PropLabelRenderer.
 
 **Criteria:**
 - [ ] 6 MultiMeshInstance3D children, one per resource type
@@ -324,7 +330,8 @@ Cumulative (adds to delivery-002):
   - AutoInteractionSystem (Node) — NEW
   - CraftingSystem (Node) — NEW
 - World
-  - ResourceRenderer (Node3D) — NEW, ~6 MultiMesh pools for resource visuals
+  - ResourceRenderer (Node3D) — NEW, ~6 MultiMesh pools for resource visuals (replaces PropRenderer from delivery-002)
+  - ~~PropRenderer~~ — REMOVED (superseded by ResourceRenderer)
 
 ### Bootstrap Changes
 - AutoInteractionSystem._ready() → connects to HexGrid.tile_entered for proximity checks

@@ -50,6 +50,11 @@ No separate save data — structures persisted via feature-001 tile data (HexTil
 Five MVP structures. This is the canonical reference — other features reference
 these definitions but don't own them. **All structures are indestructible in MVP.**
 
+**Map-placed structures:** Structures aren't limited to player-built. MapLoader can
+place structures like boulders, ruins, and bridges directly in the map JSON. These
+use the same `HexTile.structure` field and `blocks_movement` rules. The only
+difference is origin (MapLoader vs BuildingSystem). See `docs/design/prop-taxonomy.md`.
+
 ```gdscript
 # structure_config: Dictionary[StringName, Dictionary]
 {
