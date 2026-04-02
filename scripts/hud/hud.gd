@@ -88,6 +88,7 @@ func connect_crafting(crafting_system: Node, inv) -> void:
 	_crafting_panel.set_inventory(inv)
 	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
 	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
+	crafting_system.craft_completed.connect(_on_craft_completed)
 
 
 func _on_workbench_proximity_changed(near: bool) -> void:
@@ -99,6 +100,53 @@ func _on_workbench_proximity_changed(near: bool) -> void:
 func _on_recipe_discovered(recipe_name: StringName) -> void:
 	var display_name: String = recipe_name.replace("_", " ").capitalize()
 	show_notification("New recipe: %s!" % display_name)
+
+
+func _on_craft_completed(recipe_name: StringName) -> void:
+	var display_name: String = recipe_name.replace("_", " ").capitalize()
+	show_notification("Crafted %s!" % display_name)
+
+
+# --- Auto-gather feedback integration ---
+
+func connect_auto_interaction(auto_interaction: Node) -> void:
+	auto_interaction.auto_gather_completed.connect(_on_auto_gather_completed)
+	auto_interaction.auto_gather_failed.connect(_on_auto_gather_failed)
+	auto_interaction.auto_defend_triggered.connect(_on_auto_defend_triggered)
+
+
+func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
+	var display_name: String = resource_type.replace("_", " ").capitalize()
+	var text: String = "+%d %s" % [amount, display_name]
+	var player: Node = _get_player()
+	if player:
+		show_text(player.position, text, Color.GREEN)
+
+
+func _on_auto_gather_failed(_coords: Vector2i, reason: StringName) -> void:
+	var player: Node = _get_player()
+	var pos: Vector3 = player.position if player else Vector3.ZERO
+	if reason == &"inventory_full":
+		show_text(pos, "INVENTORY FULL", Color.RED)
+	elif reason == &"tool_gated":
+		show_text(pos, "REQUIRES TOOL", Color.RED)
+
+
+func _on_auto_defend_triggered(_fauna_id: int, damage: int) -> void:
+	# Stub: show damage at player position until fauna positions are available.
+	var player: Node = _get_player()
+	if player:
+		show_text(player.position, "-%d" % damage, Color.RED)
+
+
+func _get_player() -> Node:
+	# Walk up to find the Main node, then locate Player
+	var main: Node = get_parent()  # CanvasLayer "HUD"
+	if main:
+		main = main.get_parent()  # Main node
+	if main:
+		return main.get_node_or_null("World/Player")
+	return null
 
 
 # --- Mutual exclusion: closing other panels when one opens ---
