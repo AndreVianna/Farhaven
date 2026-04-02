@@ -10,7 +10,9 @@ func _ready() -> void:
 	# After map loads, populate renderers for already-visible tiles.
 	# MapLoader sets initial tiles to VISIBLE but doesn't emit tile_revealed,
 	# so renderers miss the starting hex and its neighbors.
-	_bootstrap_visible_tiles()
+	# Deferred so child renderers connect their signals first (their _ready()
+	# fires before ours, and they use call_deferred for signal wiring).
+	_bootstrap_visible_tiles.call_deferred()
 
 
 func _wire_systems() -> void:

@@ -149,12 +149,8 @@ func _position_at(coords: Vector2i) -> void:
 func _update_fill(progress: float) -> void:
 	if _fill_mesh_instance == null:
 		return
-	# Scale the fill bar width based on progress (0.0 to 1.0)
-	# Offset so it grows from left to right
-	var fill_width: float = BAR_WIDTH * clampf(progress, 0.0, 1.0)
-	var offset_x: float = (fill_width - BAR_WIDTH) * 0.5
+	# Scale from center — no position offset needed, works with billboard mode
 	_fill_mesh_instance.scale = Vector3(clampf(progress, 0.001, 1.0), 1.0, 1.0)
-	_fill_mesh_instance.position = Vector3(offset_x, 0.0, 0.0)
 
 
 func _show_bar() -> void:
