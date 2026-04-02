@@ -172,6 +172,12 @@ func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 # --- Prop management ---
 
 func _add_prop(coords: Vector2i, entry_id: StringName, pool_idx: int) -> void:
+	# Prevent duplicate props for same entry on same tile
+	if _tile_entries.has(coords):
+		for info in _tile_entries[coords]:
+			if info.entry_id == entry_id:
+				return  # Already rendered
+
 	if pool_idx < 0 or pool_idx >= _pools.size():
 		return
 
