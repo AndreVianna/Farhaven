@@ -93,3 +93,25 @@ For the current delivery, implement basic scan only:
 - **Trap System**: consumable crafting, placement, trigger, immobilize timer
 - **Sneak/Stealth**: fauna facing direction, detection cones, stealth approach, cone visualization?
 - **Fauna AI**: flee behavior improvements, patrol paths, detection ranges
+
+## Design Decisions (Resolved 2026-04-02)
+
+The following open questions from the impact audit were resolved:
+
+1. **ENCOUNTERED visual label:** "Unidentified Fauna (Hostile)" if it attacked, "Unidentified Fauna (Shy)" if it fled. No species name until CATALOGED. This preserves the mystery incentive — the player knows *something* hostile exists but doesn't know what it is.
+
+2. **Auto-defend gate:** Activates at ENCOUNTERED (confirmed intentional). The player doesn't need to fully catalog hostile fauna for combat purposes. The incentive for CATALOGED = knowing drops/details, not survival. This is a deliberate design choice: ENCOUNTERED gives safety, CATALOGED gives knowledge.
+
+3. **Multi-prop proximity scan:** One scan at a time, nearest prop first. This is consistent with the chain gathering pattern and avoids complexity. After completing one scan, the system automatically targets the next nearest uncataloged prop.
+
+4. **Catalog counter:** Shows total "X entries" (ENCOUNTERED + CATALOGED both count). ENCOUNTERED entries display as "Unidentified Fauna (Hostile)" or "Unidentified Fauna (Shy)" with no details. CATALOGED entries show full info (name, drops, edible, etc.). This rewards exploration — every encounter counts toward discovery.
+
+5. **Flora/mineral ENCOUNTERED:** Never. Code enforces UNKNOWN → CATALOGED only for static elements. ENCOUNTERED is a fauna-only concept representing partial knowledge from behavioral observation (attacked/fled). Static elements have no behavior to observe.
+
+6. **Passive fauna MVP:** Seeing fauna flee registers ENCOUNTERED. Player knows something exists but can't scan until Trap mechanic (deferred post-MVP). This creates a natural "I need to come back with a trap" moment.
+
+7. **Proximity scan range:** 1 hex (adjacent). Tunable constant (`SCAN_RANGE`). Adjacent-only keeps the discovery moment intimate — you have to get close to learn.
+
+8. **Grace period:** None. Binary in/out of range. Progress resets immediately on exit. This creates clear, predictable behavior and encourages the player to pause near interesting props.
+
+9. **task-013:** Also removes ElementIconRenderer from main.tscn. PropRenderer + PropLabelRenderer replace it entirely.

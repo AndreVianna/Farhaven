@@ -10,6 +10,7 @@
 | 2026-04-01 | [PIVOT] Scene tree updated for single-mesh renderer. Draw call budget updated. | /design-pivot |
 | 2026-04-01 | M3: HexGridRenderer draw call note updated — cliff faces included in ArrayMesh (0 extra draw calls). | /pivot-cascade |
 | 2026-04-02 | Draw call budget: ElementIconRenderer ~5 → PropRenderer ~5 + PropLabelRenderer ~1. Scene tree updated. | /spec-update |
+| 2026-04-02 | Scan redesign: scan_completed feedback still works (proximity scan). Added entry_encountered feedback for ENCOUNTERED state. Catalog display updated for 3-state entries. | /scan-redesign-apply |
 
 ## Source
 
@@ -130,6 +131,7 @@ func show_text(world_pos: Vector3, text: String, color: Color, duration: float =
 | feature-004 (auto_gather_failed &"tool_gated") | "REQUIRES STONE AXE" | Red | Player position |
 | feature-004 (auto_defend_triggered) | "-10" | Red | Fauna position |
 | feature-003 (scan_completed) | "Cataloged!" | Cyan/white | Scan target position |
+| feature-003 (entry_encountered) | "Encountered!" | Orange/yellow | Fauna position |
 | feature-006 (recipe_discovered) | "New recipe!" | Gold | Player position |
 | feature-009 (structure_build_failed) | Build error text | Red | Player position |
 | feature-011 (journal_entry_unlocked) | "New journal entry!" | Gold | Screen center |
@@ -215,6 +217,7 @@ visual styling is decoupled.
 | `auto_defend_triggered(fauna_id, damage)` | feature-004 | Floating "-N" red at fauna |
 | `inventory_full(type, rejected)` | feature-005 | Floating "INVENTORY FULL" red |
 | `scan_completed(entry_id)` | feature-003 | Floating "Cataloged!" |
+| `entry_encountered(entry_id, label)` | feature-003 | Floating "Encountered!" |
 | `recipe_discovered(name)` | feature-006 | Notification "New recipe!" |
 | `structure_build_failed(reason)` | feature-009 | Floating error text |
 | `placement_mode_entered(type)` | feature-009 | Show placement label |

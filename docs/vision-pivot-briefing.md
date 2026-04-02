@@ -1,5 +1,7 @@
 # Briefing for Analyst — Vision Pivot (work-001-core re-interview)
 
+> **⚠️ SUPERSEDED (2026-04-02):** The scan mechanic described in this document (press-and-hold) has been replaced by proximity-based auto-scan. See [`docs/design/scan-redesign-2026-04-02.md`](design/scan-redesign-2026-04-02.md) for the current design. All references to "press and hold" scanning in this document are historical.
+
 ---
 
 ## Context

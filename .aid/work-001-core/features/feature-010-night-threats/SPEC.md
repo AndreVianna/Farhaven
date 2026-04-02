@@ -9,6 +9,7 @@
 | 2026-04-01 | [PIVOT] Added max_jump attribute to fauna config. Mechanic deferred, attribute defined now. | /design-pivot |
 | 2026-04-01 | I4: move_cooldown and detection_range marked [TUNING_REQUIRED] for HEX_SIZE=3.0 visual feel. Range note: detection_range transitioning to circular world-unit area (~2 inscribed hex radii). | /pivot-cascade |
 | 2026-04-02 | Scene tree + fauna icon references: ElementIconRenderer → PropRenderer + PropLabelRenderer. Fauna body mesh via PropRenderer, ❓/name label via PropLabelRenderer. | /spec-update |
+| 2026-04-02 | Scan redesign: "surprise auto-catalog" → "auto-register as ENCOUNTERED". First hit registers hostile fauna as ENCOUNTERED (not CATALOGED). Auto-defend activates at ENCOUNTERED. Shelter farming produces ENCOUNTERED fauna (drops unknown until CATALOGED). | /scan-redesign-apply |
 
 ## Source
 
@@ -17,7 +18,7 @@
 
 ## Description
 
-Starting Day 4, fauna spawn at night outside lit/walled areas. Before cataloging, all creatures show ? -- player doesn't know if hostile. Uncataloged hostile fauna delivers a surprise attack (first hit taken, species auto-cataloged). Cataloged hostile fauna are auto-identified (red icon). Fauna move toward player within 2 hexes, deal contact damage, despawn at dawn. Killed fauna drop meat. Emits signals consumed by feature-004 for auto-defend triggers.
+Starting Day 4, fauna spawn at night outside lit/walled areas. Before any encounter, all creatures show ❓ — player doesn't know if hostile. UNKNOWN hostile fauna delivers a surprise attack (first hit taken, species auto-registered as ENCOUNTERED with "Unidentified Fauna (Hostile)" label). ENCOUNTERED and CATALOGED hostile fauna are auto-identified (⚠️ or name). Auto-defend activates at ENCOUNTERED level (not CATALOGED). Fauna move toward player within 2 hexes, deal contact damage, despawn at dawn. Killed fauna drop meat. Emits signals consumed by feature-004 for auto-defend triggers.
 
 ## User Stories
 
@@ -33,9 +34,9 @@ Must (P1 -- Tension)
 
 - [ ] Day 3 night -> zero fauna spawn
 - [ ] Day 4 night -> 1-3 fauna spawn outside lit/walled area
-- [ ] Uncataloged fauna show ? icon, no auto-defend
-- [ ] Uncataloged hostile fauna attacks -> player takes surprise damage -> species auto-cataloged
-- [ ] After cataloging (scan or surprise): auto-defend active for all future encounters
+- [ ] UNKNOWN fauna show ❓ icon, no auto-defend
+- [ ] UNKNOWN hostile fauna attacks → player takes surprise damage → species auto-registered as ENCOUNTERED
+- [ ] After ENCOUNTERED (surprise attack) or CATALOGED (future scan): auto-defend active for all future encounters
 - [ ] Dawn -> all fauna despawn
 
 ## Save Integration
@@ -66,9 +67,9 @@ night, processed in `_process` by FaunaManager.
 ```
 
 **[NEW] `species_type`:** Maps to a CatalogEntry in feature-003. Determines:
-- Whether the fauna is hostile or passive (`Catalog.get_entry(species_type).properties.hostile`)
-- Whether the player has cataloged it (`Catalog.is_cataloged(species_type)`)
-- What icon shows in the world (❓ if uncataloged, red if hostile+cataloged, green if passive+cataloged)
+- Whether the fauna is hostile or passive (`Catalog.get_entry(species_type).properties.hostile` — only available for CATALOGED)
+- The player's knowledge state (`Catalog.get_knowledge_state(species_type)` — UNKNOWN/ENCOUNTERED/CATALOGED)
+- What shows in the world: ❓ if UNKNOWN, "⚠️ Unidentified Fauna (Hostile/Shy)" if ENCOUNTERED, real name if CATALOGED
 
 #### Fauna Config
 
@@ -236,11 +237,11 @@ DayNightCycle emits night()
   │       _next_id += 1
   │
   │     Emit fauna_spawned(id, spawn_tile, species)
-  │       → feature-003 (scanner): check if species cataloged
-  │         → Uncataloged: PropRenderer shows fauna mesh at spawn_tile,
-  │           PropLabelRenderer shows "❓ Unknown Fauna" label
-  │         → Cataloged hostile: PropLabelRenderer shows real name
-  │         → Cataloged passive: PropLabelRenderer shows real name (future chapters)
+  │       → feature-003 (scanner): check species knowledge state
+  │         → UNKNOWN: PropRenderer shows fauna mesh at spawn_tile,
+  │           PropLabelRenderer shows "❓ Unknown Creature" label
+  │         → ENCOUNTERED: PropLabelRenderer shows "⚠️ Unidentified Fauna (Hostile/Shy)"
+  │         → CATALOGED: PropLabelRenderer shows real name
   │
   └─ Done
 ```
@@ -298,19 +299,23 @@ fauna moves adjacent to player, NOT when player moves adjacent to fauna. If play
 approaches between fauna move ticks, player gets a free first strike via auto-defend
 (feature-004) before fauna's next contact tick. Rewards aggressive play.
 
-**[NEW] Surprise auto-catalog:** When `fauna_attacked_player` fires with an
-uncataloged `species_type`, feature-003 (ScannerSystem) automatically catalogs the
-species. No scan progress bar — instant catalog on first hit. From that moment,
-auto-defend (feature-004) activates for all subsequent attacks in this encounter
-AND all future encounters with this species.
+**[NEW] Surprise auto-register as ENCOUNTERED:** When `fauna_attacked_player` fires with an
+UNKNOWN `species_type`, feature-003 (ScannerSystem) auto-registers the species as
+ENCOUNTERED with label "Hostile". No scan progress bar — instant transition on first hit.
+From that moment, auto-defend (feature-004) activates for all subsequent attacks in
+this encounter AND all future encounters with this species. The player does NOT learn
+the species name or drops — only that it's hostile. Full details require CATALOGED state
+(Sneak Scan mechanic, deferred post-MVP).
 
 **Shelter protection:** `structure == &"shelter"` on player's tile → contact damage = 0.
 Signal still fires (with damage = 0) so surprise auto-catalog still triggers — the
 player learns what attacked them even if they're safe.
 
 **Known emergent behavior — shelter farming:** Player in shelter takes 0 damage →
-fauna auto-catalogs on contact → auto-defend activates → kills fauna from safety →
-free meat (1-3 per night). This is intentional for MVP: mild reward for building
+fauna auto-registers as ENCOUNTERED on contact → auto-defend activates → kills fauna
+from safety → free meat (1-3 per night). Note: shelter farming produces ENCOUNTERED
+fauna (auto-defend works, but drops remain unknown until full CATALOGED state via
+Sneak Scan, deferred post-MVP). This is intentional for MVP: mild reward for building
 shelter, "base building pays off" feel. Rate is balanced (~5 min cycle for 1-3 meat).
 Flag for balancing review in future chapters if meat economy needs tuning.
 

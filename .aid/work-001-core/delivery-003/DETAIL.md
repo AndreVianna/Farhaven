@@ -92,7 +92,7 @@ task-023 depends on everything.
 
 **Scope:**
 - On `tile_entered`: check current tile + 6 neighbors (7 tiles total)
-- Catalog gate: `Catalog.is_cataloged(RESOURCE_TO_ENTRY[node.type])`
+- Catalog gate: `Catalog.is_cataloged(RESOURCE_TO_ENTRY[node.type])` (CATALOGED state required for auto-gather; flora/mineral go UNKNOWN→CATALOGED directly so this works)
 - Tool gate: `can_gather(node, Inventory)`
 - Candidate sorting: TOOL_PRIORITY desc, then nearest to player
 - Begin gather: compute effective_time (base * tool_speed), create Tween
@@ -151,8 +151,8 @@ task-023 depends on everything.
 - [ ] Respawn triggers at time_remaining ≤ 0, resets to max_amount
 - [ ] `respawn_time == 0` → never enters queue
 - [ ] Auto-defend cooldown decrements, blocks when > 0
-- [ ] Auto-defend fires on adjacent cataloged hostile (mock FaunaManager)
-- [ ] Auto-defend ignores passive fauna, ignores uncataloged
+- [ ] Auto-defend fires on adjacent ENCOUNTERED or CATALOGED hostile (mock FaunaManager)
+- [ ] Auto-defend ignores passive fauna, ignores UNKNOWN fauna
 - [ ] Auto-pickup picks up ground items (mock SurvivalSystem)
 - [ ] No crash when FaunaManager / SurvivalSystem absent
 - [ ] All existing tests pass
@@ -350,3 +350,4 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (016-023) — 3 parallel chains documented | /aid-detail |
+| 2026-04-02 | Scan redesign: task-017 catalog gate uses `is_cataloged` (CATALOGED only for auto-gather). task-018 auto-defend fires on ENCOUNTERED or CATALOGED hostile. | /scan-redesign-apply |

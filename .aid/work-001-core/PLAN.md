@@ -58,7 +58,7 @@ Build order:
 
 These two are independent of each other but both are needed by delivery-003. Building
 them together means the player can scan the world AND has somewhere to put items.
-The ❓ → scan → identified loop is the game's identity.
+The ❓ → walk near → proximity scan → identified loop is the game's identity.
 
 **AC coverage:** AC5 (inventory), AC11 (scanner/catalog), AC2 (scan input complete)
 
@@ -138,7 +138,7 @@ meaning. With it, the player wants to know what happens next.
 
 ```
 delivery-001: Walk       → "Where am I? Let me explore this beautiful alien world."
-delivery-002: See        → "What are these ❓ things? Let me scan and discover."
+delivery-002: See        → "What are these ❓ things? Let me walk near them to scan and discover."
 delivery-003: Interact   → "Resources auto-gather! I can craft tools! The world responds to me."
 delivery-004: Survive    → "Time passes. I need to eat. I died... but I came back."
 delivery-005: Defend     → "Night is dangerous. I built shelter. I killed a creature and got meat!"
@@ -159,3 +159,4 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | Plan created — 6 deliveries, 12 features (post-redesign) | /aid-plan |
+| 2026-04-02 | Scan redesign: delivery-002 description updated (proximity scan, not press-hold). Delivery progression language updated. | /scan-redesign-apply |

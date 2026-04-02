@@ -18,6 +18,7 @@
 | 2026-04-01 | [PIVOT] §5 F2: joystick-only movement. Tap reserved for interactions. §9 AC2 updated. | /design-pivot |
 | 2026-04-01 | [PIVOT] §5 F1: hand-crafted maps (MapLoader replaces WorldGenerator). Elevation 0-9, 3-tier traversal. §9 AC1+AC2 updated. | /design-pivot |
 | 2026-04-01 | C1+C6: HEX_SIZE=3.0 and ELEVATION_STEP=0.5 added to §5 F1 Spatial Constants. Player occupancy ~30% noted. C2: Cliff faces added as current scope. | /pivot-cascade |
+| 2026-04-02 | Scan redesign: F2 removed press-and-hold reference, F13 rewritten for proximity auto-scan + 3-state knowledge, AC2 removed scan hold criterion, AC11 rewritten for proximity scan + ENCOUNTERED state. §4 updated. | /scan-redesign-apply |
 
 ## 1. Objective
 
@@ -82,7 +83,7 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - Resource gathering (Raw tier, tool-gated)
 - Basic crafting (Workbench level)
 - Basic inventory UI (resource slots + tool slots)
-- Scanner system (press-and-hold to scan unknown elements, catalog entries)
+- Scanner system (proximity-based auto-scan of unknown elements, 3-state knowledge, catalog entries)
 - Catalog UI (Flora, Fauna, Minerals, Anomalies categories)
 - Journal foundation (story timeline + catalog sections, at least 1 anomaly + cutscene trigger)
 - Day/night cycle with basic night threats
@@ -146,7 +147,7 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 ### F2. Player Movement & Controls
 - **[PIVOT] Joystick-only movement.** Floating joystick: touch-and-drag anywhere on screen → joystick appears at touch point. Continuous movement (not tile-snapped during motion).
 - **Tap on world = no movement.** Tap is reserved for UI buttons and world interactions (building placement, future object inspect).
-- **Press-and-hold toward unknown element = scan** (new input mode — see F13)
+- **Proximity auto-scan:** walking near unknown elements starts scanning automatically (see F13)
 - Ignore touches on HUD elements
 - **[PIVOT] 3-tier elevation traversal:** Walk (0-1), auto-jump/drop (2-3), blocked (4+)
 - Player position is continuous; `current_tile` is derived from position
@@ -238,17 +239,26 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 ### F13. Scanner & Catalog System (NEW)
 - **Scanner tool:** Always available (Scanner tool slot, starts equipped)
 - **The scanner is the universal gate.** ❓ = inert to the auto-system. Scan → cataloged → auto-interaction unlocked for that type forever.
-- **Active scan (press and hold):** Player sees unknown element (❓ icon) → press and hold toward it → scan progress bar (2-3 seconds) → entry added to Catalog
+- **Proximity auto-scan:** Player walks adjacent to an unknown element (❓ icon) → scan starts automatically (no press-and-hold) → scan progress bar (2-3 seconds while in range) → entry added to Catalog. Moving out of range interrupts scan and resets progress immediately. One scan at a time, nearest prop first.
+- **Three-state knowledge system:**
+  - **UNKNOWN (❓):** Never seen. No auto-interaction. No info.
+  - **ENCOUNTERED (⚠️):** Fauna only — hostile fauna that attacked (label: "Unidentified Fauna (Hostile)") or passive fauna that fled (label: "Unidentified Fauna (Shy)"). Auto-defend activates for hostile. No species name, no details until CATALOGED.
+  - **CATALOGED (✅):** Fully identified. Full auto-interaction. All details known (name, drops, edible, etc.).
+- **State transitions:**
+  - Flora & Mineral: UNKNOWN → CATALOGED (proximity scan, no ENCOUNTERED state)
+  - Fauna Hostile: UNKNOWN → ENCOUNTERED (first attack auto-registers). ENCOUNTERED → CATALOGED (Sneak Scan, deferred post-MVP)
+  - Fauna Passive: UNKNOWN → ENCOUNTERED (fauna flees on approach). ENCOUNTERED → CATALOGED (Trap mechanic, deferred post-MVP)
+  - Anomaly: UNKNOWN → CATALOGED (proximity scan, no ENCOUNTERED state)
 - **Passive identification:** Already-cataloged elements auto-identified when entering scanner range (correct icon: green for passive, red for hostile, resource type icon for minerals)
-- **What can be scanned:**
+- **What can be scanned (proximity):**
   - Flora: identifies edible vs toxic. Uncataloged = no auto-gather. Cataloged edible = auto-gather. Cataloged toxic = auto-gather (player collects knowingly).
-  - Fauna: identifies hostile vs passive. Uncataloged = no auto-defend (surprise attack catalogs automatically on first hit). Cataloged hostile = auto-defend. Cataloged passive = ignored.
   - Minerals: identifies resource type and tool required. Uncataloged = no auto-gather. Cataloged = auto-gather with tool-gating.
   - Anomalies: narrative trigger — scanning unlocks cutscene/journal entry
+  - Fauna: NOT proximity-scannable in MVP. Hostile → ENCOUNTERED on first hit (auto-defend activates). Full catalog requires Sneak Scan (deferred). Passive → ENCOUNTERED when fleeing. Full catalog requires Trap (deferred).
 - **Before scanning:** Elements show ❓ icon. Player doesn't know properties. Real risk on first encounters.
-- **Biome discovery loop:** Arrive → everything is ❓ → scan carefully (tension, discovery) → catalog everything → biome becomes "conquered" (progress satisfaction) → auto-interaction makes the routine fluid
-- **Catalog UI:** Accessible via Scanner button. Categories: Flora, Fauna, Minerals, Anomalies. Each entry: name, icon, description, properties. Discovery counter ("12/47 cataloged").
-- **Save data:** Array of discovered catalog entry IDs
+- **Biome discovery loop:** Arrive → everything is ❓ → walk near to scan (tension, discovery) → catalog everything → biome becomes "conquered" (progress satisfaction) → auto-interaction makes the routine fluid
+- **Catalog UI:** Accessible via Scanner button. Categories: Flora, Fauna, Minerals, Anomalies. Counter shows total entries (ENCOUNTERED + CATALOGED). ENCOUNTERED entries show "Unidentified Fauna (Hostile/Shy)" with no details. CATALOGED entries show full info.
+- **Save data:** Per-entry knowledge state (UNKNOWN/ENCOUNTERED/CATALOGED) + encounter labels
 
 ### F14. Journal System (NEW)
 - **The Journal is the emotional heart of the game — the astronaut's logbook**
@@ -364,7 +374,6 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - [ ] Tap on world = no movement (reserved for interactions)
 - [ ] On joystick release, player snaps to current tile center
 - [ ] Input-to-first-movement-frame < 100ms (measured)
-- [ ] Press-and-hold toward unknown element initiates scan
 
 ### AC3 — Gathering (Auto-Interaction)
 - [ ] Player moves adjacent to uncataloged resource (❓) → nothing happens (scan gate)
@@ -422,14 +431,18 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 
 ### AC11 — Scanner & Catalog (NEW)
 - [ ] Unknown flora shows ❓ icon — no auto-gather
-- [ ] Press and hold toward unknown flora → scan progress bar → catalog entry created
+- [ ] Walk adjacent to unknown flora → scan progress bar starts automatically → catalog entry created
+- [ ] Leave range during scan → progress resets immediately (no grace period)
 - [ ] After cataloging: flora auto-identified + auto-gather unlocked for that species
 - [ ] Unknown fauna shows ❓ — no auto-defend
-- [ ] Scan fauna from distance → cataloged → auto-defend ready
-- [ ] Alternatively: uncataloged hostile attacks → surprise damage → auto-cataloged → auto-defend immediate
-- [ ] Unknown mineral shows ❓ — no auto-gather. Scan → cataloged → auto-gather with tool-gating
+- [ ] Hostile fauna attacks uncataloged → ENCOUNTERED state → "Unidentified Fauna (Hostile)" label → auto-defend activates
+- [ ] Passive fauna flees on approach → ENCOUNTERED state → "Unidentified Fauna (Shy)" label
+- [ ] Unknown mineral shows ❓ — no auto-gather. Proximity scan → cataloged → auto-gather with tool-gating
 - [ ] Anomaly scanned → cutscene triggered → journal entry added
-- [ ] Catalog UI shows all discovered entries with categories and counter ("12/47 cataloged")
+- [ ] Catalog UI shows entries with counter ("X entries" — ENCOUNTERED + CATALOGED both count)
+- [ ] ENCOUNTERED entries show "Unidentified Fauna (Hostile/Shy)" with no details
+- [ ] CATALOGED entries show full info (name, drops, edible, etc.)
+- [ ] Only one proximity scan at a time, nearest prop first
 
 ### AC12 — Journal (NEW)
 - [ ] Journal accessible via UI button

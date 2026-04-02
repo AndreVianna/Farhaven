@@ -9,6 +9,7 @@
 | 2026-04-01 | I6: _scan_range (2 hexes) noted as [TUNING_REQUIRED] for HEX_SIZE=3.0; range transitioning to circular world-unit area. I2: Touch target estimate marked [TUNING_REQUIRED]. | /pivot-cascade |
 | 2026-04-02 | Architecture: ElementIconRenderer → PropRenderer + PropLabelRenderer. 3D prop meshes replace billboard icons; floating pill labels show ❓/name. Catalog changes label text, not mesh. | /spec-update |
 | 2026-04-02 | Major redesign: press-and-hold → proximity auto-scan. Three-state knowledge (UNKNOWN/ENCOUNTERED/CATALOGED). Trap + Sneak mechanics designed but deferred post-MVP. See docs/design/scan-redesign-2026-04-02.md | /design-session |
+| 2026-04-02 | Full spec rewrite: proximity auto-scan, 3-state knowledge system, ENCOUNTERED labels, resolved design decisions applied. Old press-and-hold flow, ScanState machine, scan_hold signals, scan_rejected, drift/range checks all removed. | /scan-redesign-apply |
 
 > **📐 Design Note (2026-04-02):** The scan system has been fundamentally redesigned from press-and-hold to proximity-based auto-scan. Props now have three knowledge states (UNKNOWN → ENCOUNTERED → CATALOGED) instead of two. Fauna scanning introduces Trap (passive) and Sneak Scan (hostile) mechanics, both deferred post-MVP. Full design rationale and state transition details: [`docs/design/scan-redesign-2026-04-02.md`](../../../../docs/design/scan-redesign-2026-04-02.md)
 
@@ -19,33 +20,43 @@
 
 ## Description
 
-The scanner is the central tool and universal gate for all auto-interactions. Players press and hold toward unknown elements (?) to scan them over 2-3 seconds, adding entries to the Catalog. Once cataloged, elements are auto-identified and auto-interaction is unlocked forever for that species/type. Flora scanning reveals edible vs toxic. Fauna scanning reveals hostile vs passive. Mineral scanning reveals resource type and tool requirements. Anomaly scanning triggers narrative cutscenes. The Catalog UI shows discovered entries by category with a completion counter.
+The scanner is the central tool and universal gate for all auto-interactions. When the player walks near an unknown element (❓), scanning starts automatically — no button press, no hold, just proximity. The scan progress bar fills over 2-3 seconds while the player stays in range (1 hex adjacent). Moving out of range interrupts the scan and resets progress immediately (no grace period). One scan at a time, nearest prop first (consistent with chain gathering).
+
+Props have three knowledge states: **UNKNOWN** (❓ — never seen), **ENCOUNTERED** (⚠️ — hostile fauna that attacked or passive fauna that fled, identity unknown), and **CATALOGED** (✅ — fully identified, all details known). Flora and minerals skip ENCOUNTERED and go directly UNKNOWN → CATALOGED via proximity scan. Fauna hostile goes UNKNOWN → ENCOUNTERED on first attack, and ENCOUNTERED → CATALOGED via Sneak Scan (deferred post-MVP). Passive fauna registers ENCOUNTERED when it flees on player approach; full cataloging requires Trap mechanic (deferred post-MVP).
+
+Once cataloged, elements are auto-identified and auto-interaction is unlocked forever for that species/type. Flora scanning reveals edible vs toxic. Fauna scanning reveals hostile vs passive. Mineral scanning reveals resource type and tool requirements. Anomaly scanning triggers narrative cutscenes.
+
+The Catalog UI shows entries by category with a counter. The counter shows total entries (ENCOUNTERED + CATALOGED both count). ENCOUNTERED entries display as "Unidentified Fauna (Hostile)" or "Unidentified Fauna (Shy)" with no species details. CATALOGED entries show full info (name, drops, edible, etc.).
 
 ## User Stories
 
-- As a player, I want to scan unknown things to learn about them before interacting
+- As a player, I want scanning to happen automatically when I walk near things so movement IS interaction
 - As a player, I want my catalog to track everything I've discovered so I feel progress
-- As a player, I want scanning to feel like a real discovery moment -- tension, then knowledge
+- As a player, I want scanning to feel like a real discovery moment — tension, then knowledge
 
 ## Priority
 
-Must (P0 -- Core Loop)
+Must (P0 — Core Loop)
 
 ## Acceptance Criteria
 
-- [ ] Unknown flora shows ? icon -- no auto-gather
-- [ ] Press and hold toward unknown flora -> scan progress bar -> catalog entry created
+- [ ] Unknown flora shows ❓ icon — no auto-gather
+- [ ] Walk adjacent to unknown flora → scan progress bar starts automatically → catalog entry created
+- [ ] Leave range during scan → progress resets immediately (no grace period)
 - [ ] After cataloging: flora auto-identified + auto-gather unlocked for that species
-- [ ] Unknown fauna shows ? -- no auto-defend
-- [ ] Scan fauna from distance -> cataloged -> auto-defend ready
-- [ ] Alternatively: uncataloged hostile attacks -> surprise damage -> auto-cataloged -> auto-defend immediate
-- [ ] Unknown mineral shows ? -- no auto-gather. Scan -> cataloged -> auto-gather with tool-gating
-- [ ] Anomaly scanned -> cutscene triggered -> journal entry added
-- [ ] Catalog UI shows all discovered entries with categories and counter ("12/47 cataloged")
+- [ ] Unknown fauna shows ❓ — no auto-defend
+- [ ] Hostile fauna attacks uncataloged → ENCOUNTERED state → "Unidentified Fauna (Hostile)" label → auto-defend activates
+- [ ] Passive fauna flees on approach → ENCOUNTERED state → "Unidentified Fauna (Shy)" label
+- [ ] Unknown mineral shows ❓ — no auto-gather. Proximity scan → cataloged → auto-gather with tool-gating
+- [ ] Anomaly scanned → cutscene triggered → journal entry added
+- [ ] Catalog UI shows all entries with counter ("X entries" — ENCOUNTERED + CATALOGED both count)
+- [ ] ENCOUNTERED entries show "Unidentified Fauna (Hostile/Shy)" with no details
+- [ ] CATALOGED entries show full info (name, drops, edible, etc.)
+- [ ] Only one scan at a time, nearest prop first
 
 ## Save Integration
 
-Array of discovered catalog entry IDs. Per-species catalog state.
+Array of discovered catalog entry IDs. Per-species knowledge state (UNKNOWN/ENCOUNTERED/CATALOGED).
 
 ---
 
@@ -82,48 +93,60 @@ startup from data files — not created at runtime.
 enum CatalogCategory { FLORA, FAUNA, MINERAL, ANOMALY }
 ```
 
-#### ScanState Enum
+#### KnowledgeState Enum
 
 ```gdscript
-enum ScanState { IDLE, SCANNING, COMPLETE, REJECTED }
+enum KnowledgeState { UNKNOWN, ENCOUNTERED, CATALOGED }
 ```
 
-- `IDLE` — no scan in progress
-- `SCANNING` — scan progress bar active, player holding
-- `COMPLETE` — scan finished, entry added to catalog
-- `REJECTED` — nothing scannable at target coords
+- `UNKNOWN` — never seen, shows ❓
+- `ENCOUNTERED` — fauna only: hostile attacked player or passive fled. Shows ⚠️ "Unidentified Fauna (Hostile)" or "Unidentified Fauna (Shy)". Auto-defend activates for hostile. No species name, no details.
+- `CATALOGED` — fully identified. Shows real name + all details. Auto-interaction fully unlocked.
+
+**State transitions by element type:**
+- **Flora & Mineral:** UNKNOWN → CATALOGED only (proximity scan). Never ENCOUNTERED.
+- **Fauna Hostile:** UNKNOWN → ENCOUNTERED (first attack auto-registers). ENCOUNTERED → CATALOGED (Sneak Scan, deferred post-MVP).
+- **Fauna Passive:** UNKNOWN → ENCOUNTERED (fauna flees on approach). ENCOUNTERED → CATALOGED (Trap mechanic, deferred post-MVP).
+- **Anomaly:** UNKNOWN → CATALOGED only (proximity scan). Never ENCOUNTERED.
 
 #### Catalog (RefCounted)
 
-Runtime catalog state — tracks which entries the player has discovered. Owned by
-ScannerSystem node.
+Runtime catalog state — tracks knowledge state per entry. Owned by ScannerSystem node.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `_discovered` | `Dictionary[StringName, bool]` | entry_id → true. Missing = not cataloged. |
+| `_knowledge` | `Dictionary[StringName, KnowledgeState]` | entry_id → KnowledgeState. Missing = UNKNOWN. |
+| `_encounter_labels` | `Dictionary[StringName, String]` | entry_id → "Hostile" or "Shy" (for ENCOUNTERED fauna only) |
 | `_all_entries` | `Dictionary[StringName, CatalogEntry]` | All possible entries, loaded from data files. |
-| `_total_count` | `int` | Total scannable entries in current chapter (for "12/47" counter). |
+| `_total_count` | `int` | Total scannable entries in current chapter (for counter). |
 
 **Public API:**
 
 ```gdscript
 # Query
-func is_cataloged(entry_id: StringName) -> bool
+func get_knowledge_state(entry_id: StringName) -> KnowledgeState
+func is_cataloged(entry_id: StringName) -> bool  # shortcut: state == CATALOGED
+func is_encountered(entry_id: StringName) -> bool  # shortcut: state == ENCOUNTERED
+func is_known(entry_id: StringName) -> bool  # shortcut: state >= ENCOUNTERED
 func get_entry(entry_id: StringName) -> CatalogEntry
-func get_discovered_entries() -> Array[CatalogEntry]
+func get_discovered_entries() -> Array[CatalogEntry]  # ENCOUNTERED + CATALOGED
 func get_discovered_by_category(category: CatalogCategory) -> Array[CatalogEntry]
-func get_discovery_count() -> int          # number discovered
+func get_discovery_count() -> int          # ENCOUNTERED + CATALOGED count
 func get_total_count() -> int              # total possible
-func get_discovery_text() -> String        # "12/47 cataloged"
+func get_discovery_text() -> String        # "X entries"
+func get_encounter_label(entry_id: StringName) -> String  # "Hostile" or "Shy"
 
 # Mutation
-func catalog_entry(entry_id: StringName) -> void  # marks as discovered, emits signal
+func catalog_entry(entry_id: StringName) -> void  # marks as CATALOGED, emits signal
+func encounter_entry(entry_id: StringName, label: String) -> void  # marks as ENCOUNTERED with "Hostile"/"Shy" label
 
 # Eligibility (used by scan flow)
 func get_scannable_at(coords: Vector2i) -> StringName
     # Returns entry_id of first uncataloged scannable element at coords, or &"" if none.
     # Checks: tile.resource_nodes[].type, tile.anomaly, FaunaManager positions.
     # Maps resource/anomaly/fauna type → entry_id via _all_entries lookup.
+    # Skips ENCOUNTERED fauna (can't be proximity-scanned — needs Trap/Sneak).
+    # Only returns elements that can be cataloged by proximity scan.
 ```
 
 #### ScannerSystem Properties (on ScannerSystem Node)
@@ -131,12 +154,12 @@ func get_scannable_at(coords: Vector2i) -> StringName
 | Property | Type | Description |
 |----------|------|-------------|
 | `_catalog` | `Catalog` | RefCounted catalog instance |
-| `_scan_state` | `ScanState` | Current scan lifecycle state |
+| `_is_scanning` | `bool` | Whether a proximity scan is in progress |
 | `_scan_target_coords` | `Vector2i` | Tile being scanned |
 | `_scan_target_entry_id` | `StringName` | Entry being scanned |
-| `_scan_progress` | `float` | 0.0 → 1.0, increments during hold |
+| `_scan_progress` | `float` | 0.0 → 1.0, increments while in range |
 | `_scan_duration` | `float` | Seconds to complete scan (2.0-3.0, configurable per category) |
-| `_scan_range` | `int` | Max hex distance from player to scan target (default: 2). **[TUNING_REQUIRED]** — at HEX_SIZE=3.0 this is ~6 world units; range system is transitioning to circular world-unit area (~1 inscribed hex radius ≈ 2.6 units at HEX_SIZE=3.0). Flag for playtesting — scanner is a long-range tool so 2 hexes may be correct. |
+| `_scan_range` | `int` | Proximity detection range in hexes (default: 1 — adjacent only). Tunable constant. |
 
 #### Scan Duration Config
 
@@ -144,9 +167,15 @@ func get_scannable_at(coords: Vector2i) -> StringName
 const SCAN_DURATIONS: Dictionary = {
     CatalogCategory.FLORA:   2.0,  # seconds
     CatalogCategory.MINERAL: 2.0,
-    CatalogCategory.FAUNA:   3.0,  # longer — risky to hold near unknown creature
+    CatalogCategory.FAUNA:   3.0,  # longer — but deferred (needs Trap/Sneak)
     CatalogCategory.ANOMALY: 3.0,  # narrative weight — moment of discovery
 }
+```
+
+#### Proximity Scan Constants
+
+```gdscript
+const SCAN_RANGE: int = 1  # hexes — adjacent only. Tunable.
 ```
 
 #### Signals
@@ -156,16 +185,18 @@ const SCAN_DURATIONS: Dictionary = {
 signal scan_started(entry_id: StringName, coords: Vector2i)
 signal scan_progress_updated(progress: float)       # 0.0-1.0, emitted each frame
 signal scan_completed(entry_id: StringName)          # entry added to catalog
-signal scan_cancelled()                              # player released early or moved out of range
-signal scan_rejected(coords: Vector2i)               # nothing scannable at coords (consumed by feature-002)
+signal scan_interrupted()                            # player left range, progress reset
 
-# Catalog changes
+# Knowledge state changes
 signal entry_cataloged(entry_id: StringName, category: CatalogCategory)
-signal surprise_cataloged(entry_id: StringName)      # auto-catalog from surprise attack (feature-010)
+signal entry_encountered(entry_id: StringName, label: String)  # "Hostile" or "Shy"
+signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: int)
+signal surprise_cataloged(entry_id: StringName)      # auto-register from surprise attack (feature-010) — now registers ENCOUNTERED, not CATALOGED
 
 # Passive identification
 signal element_identified(coords: Vector2i, entry_id: StringName)  # cataloged element enters visibility range
 signal element_unknown(coords: Vector2i, entry_id: StringName, category: int)  # uncataloged element enters visibility range (show ❓)
+signal element_encountered(coords: Vector2i, entry_id: StringName, label: String)  # ENCOUNTERED element enters visibility range (show ⚠️)
 ```
 
 #### Save Data
@@ -173,14 +204,21 @@ signal element_unknown(coords: Vector2i, entry_id: StringName, category: int)  #
 ```json
 {
   "catalog": {
-    "discovered": ["berry_bush", "fiber_grass", "wood_tree", "thornback", "anomaly_ch1_001"]
+    "knowledge": {
+      "berry_bush": "CATALOGED",
+      "thornback": "ENCOUNTERED",
+      "fiber_grass": "CATALOGED"
+    },
+    "encounter_labels": {
+      "thornback": "Hostile"
+    }
   }
 }
 ```
 
-Only discovered entry IDs are saved. Static entry definitions loaded from data files.
-Chapter ID determines which entries are in the world — future chapters add entries
-without modifying save format.
+Knowledge state and encounter labels saved per entry. Static entry definitions loaded
+from data files. Chapter ID determines which entries are in the world — future chapters
+add entries without modifying save format.
 
 #### Cross-Feature Data Contracts
 
@@ -192,8 +230,7 @@ without modifying save format.
 
 | This feature is queried by | Consumer | What it provides |
 |---------------------------|----------|-----------------|
-| feature-004 (auto-interaction) | `is_cataloged(type)` — gates auto-gather/auto-defend |
-| feature-002 (player_input.gd) | `scan_rejected` signal — fallback to joystick |
+| feature-004 (auto-interaction) | `get_knowledge_state(type)` — gates auto-gather (CATALOGED) and auto-defend (ENCOUNTERED or CATALOGED) |
 | feature-012 (HUD) | Catalog UI data (`get_discovered_entries`, counters) |
 | feature-011 (journal) | `entry_cataloged` + anomaly properties for cutscene triggers |
 
@@ -201,114 +238,140 @@ without modifying save format.
 
 ### Feature Flow
 
-#### Active Scan Flow (press-and-hold)
+#### Proximity Auto-Scan Flow
 
 ```
-feature-002 emits scan_hold_started(coords: Vector2i)
+ScannerSystem._process(delta) runs every frame
   │
-  ├─ ScannerSystem receives signal
-  │
-  ├─ Check eligibility: Catalog.get_scannable_at(coords)
-  │     Checks tile.resource_nodes, tile.anomaly, FaunaManager positions
-  │     Maps element → entry_id via catalog lookup
-  │     ├─ entry_id found (uncataloged element exists):
-  │     │     _scan_target_coords = coords
-  │     │     _scan_target_entry_id = entry_id
-  │     │     _scan_state = SCANNING
-  │     │     _scan_progress = 0.0
-  │     │     Look up duration from SCAN_DURATIONS[entry.category]
-  │     │     Emit scan_started(entry_id, coords)
-  │     │     → UI: show scan progress bar over target
-  │     │
-  │     └─ No uncataloged element:
-  │           _scan_state = REJECTED
-  │           Emit scan_rejected(coords)
-  │           → feature-002 falls back to joystick
-  │           Done.
-  │
-  ├─ Each frame while SCANNING (_process):
-  │     ├─ Receive scan_hold_update(screen_pos) from feature-002
-  │     │
-  │     ├─ Range check: HexGrid.distance(player.current_tile, _scan_target_coords)
-  │     │     > _scan_range → cancel scan (player walked away or target too far)
-  │     │
-  │     ├─ Drift check: convert screen_pos to world coords, check if still pointing
-  │     │     at _scan_target_coords tile (within hex boundary)
-  │     │     Drifted to different tile → cancel scan
-  │     │
-  │     ├─ _scan_progress += delta / _scan_duration
-  │     │     Emit scan_progress_updated(_scan_progress)
-  │     │     → UI: update progress bar fill
-  │     │
-  │     └─ if _scan_progress >= 1.0:
-  │           → Scan complete (see below)
-  │
-  ├─ On scan_hold_ended() from feature-002 (touch UP):
-  │     if _scan_state == SCANNING AND _scan_progress < 1.0:
-  │       _scan_state = IDLE
+  ├─ If _is_scanning:
+  │     # Check if player is still in range of current target
+  │     distance = HexGrid.distance(player.current_tile, _scan_target_coords)
+  │     if distance > _scan_range:
+  │       # Player left range — interrupt immediately, reset progress
+  │       _is_scanning = false
   │       _scan_progress = 0.0
-  │       Emit scan_cancelled()
-  │       → UI: hide progress bar
+  │       Emit scan_interrupted()
+  │       → UI: hide scan progress bar
+  │       # Fall through to check for new nearby targets
+  │     else:
+  │       # Still in range — advance progress
+  │       _scan_progress += delta / _scan_duration
+  │       Emit scan_progress_updated(_scan_progress)
+  │       → UI: update progress bar fill
   │
-  └─ On scan complete (_scan_progress >= 1.0):
-        _scan_state = COMPLETE
-        Catalog.catalog_entry(_scan_target_entry_id)
-        Emit scan_completed(_scan_target_entry_id)
-        Emit entry_cataloged(_scan_target_entry_id, entry.category)
-        → UI: PropLabelRenderer updates label text from "❓ Unknown [category]" to real name
-             (bulk label update for all visible props of this type)
-        → UI: brief "Cataloged!" feedback
-        → Auto-interaction (feature-004) now unlocked for this type:
-          - Cataloged edible flora → auto-gather enabled
-          - Cataloged toxic flora → auto-gather ALSO enabled (player collects
-            knowingly — the gate is catalog status, not edibility. Danger is in
-            consuming, not gathering. Feature-007 handles toxic damage on use.)
-          - Cataloged mineral → auto-gather with tool-gating
-          - Cataloged hostile fauna → auto-defend active
-          - Cataloged passive fauna → ignored by auto-interaction
-        if entry.category == ANOMALY:
-          → feature-011 (journal) handles cutscene trigger via entry_cataloged signal
-        _scan_state = IDLE
-        _scan_progress = 0.0
+  │       if _scan_progress >= 1.0:
+  │         → Scan complete (see below)
+  │       return  # Don't start a new scan while one is active
+  │
+  ├─ If NOT _is_scanning:
+  │     # Check nearby tiles for scannable props
+  │     nearby_tiles = [player.current_tile] + HexGrid.get_neighbors(player.current_tile)
+  │     # Filter to tiles within _scan_range
+  │     in_range_tiles = nearby_tiles.filter(|t| HexGrid.distance(player.current_tile, t) <= _scan_range)
+  │
+  │     # Find nearest scannable prop
+  │     best_entry_id = &""
+  │     best_coords = Vector2i.ZERO
+  │     best_distance = INF
+  │     for coords in in_range_tiles:
+  │       entry_id = Catalog.get_scannable_at(coords)
+  │       if entry_id != &"":
+  │         dist = HexGrid.distance(player.current_tile, coords)
+  │         if dist < best_distance:
+  │           best_distance = dist
+  │           best_entry_id = entry_id
+  │           best_coords = coords
+  │
+  │     if best_entry_id != &"":
+  │       # Start proximity scan on nearest target
+  │       _is_scanning = true
+  │       _scan_target_coords = best_coords
+  │       _scan_target_entry_id = best_entry_id
+  │       _scan_progress = 0.0
+  │       var entry = Catalog.get_entry(best_entry_id)
+  │       _scan_duration = SCAN_DURATIONS[entry.category]
+  │       Emit scan_started(best_entry_id, best_coords)
+  │       → UI: show scan progress bar over target
+  │
+  └─ End
 ```
 
-#### Surprise Catalog Flow (fauna first-hit, feature-010 owned)
+**Key design principles:**
+
+- **One scan at a time, nearest first.** Consistent with chain gathering pattern.
+- **No grace period.** Binary in/out of range. Progress resets immediately on exit.
+- **Proximity range = 1 hex (adjacent).** Tunable constant.
+- **Flora/mineral only for MVP.** ENCOUNTERED fauna cannot be proximity-scanned (needs Trap/Sneak). `get_scannable_at` skips them.
+
+#### Scan Complete
+
+```
+On scan complete (_scan_progress >= 1.0):
+  _is_scanning = false
+  _scan_progress = 0.0
+  Catalog.catalog_entry(_scan_target_entry_id)
+  Emit scan_completed(_scan_target_entry_id)
+  Emit entry_cataloged(_scan_target_entry_id, entry.category)
+  Emit knowledge_state_changed(_scan_target_entry_id, UNKNOWN, CATALOGED)
+  → UI: PropLabelRenderer updates label text from "❓ Unknown [category]" to real name
+       (bulk label update for all visible props of this type)
+  → UI: brief "Cataloged!" feedback
+  → Auto-interaction (feature-004) now unlocked for this type:
+    - Cataloged edible flora → auto-gather enabled
+    - Cataloged toxic flora → auto-gather ALSO enabled (player collects
+      knowingly — the gate is catalog status, not edibility. Danger is in
+      consuming, not gathering. Feature-007 handles toxic damage on use.)
+    - Cataloged mineral → auto-gather with tool-gating
+    - Cataloged hostile fauna → full auto-interaction (but fauna cataloging is deferred post-MVP)
+    - Cataloged passive fauna → ignored by auto-interaction
+  if entry.category == ANOMALY:
+    → feature-011 (journal) handles cutscene trigger via entry_cataloged signal
+```
+
+#### Surprise Encounter Flow (fauna first-hit, feature-010 owned)
 
 ```
 feature-010 emits fauna_attacked_player(fauna_id, damage, species_type: StringName)
   │
   ├─ ScannerSystem receives signal
   │
-  ├─ Check: is species_type already cataloged?
-  │     if Catalog.is_cataloged(species_type): return (already known)
+  ├─ Check: is species_type already known?
+  │     state = Catalog.get_knowledge_state(species_type)
+  │     if state >= ENCOUNTERED: return (already registered)
   │
-  ├─ Auto-catalog:
-  │     Catalog.catalog_entry(species_type)
-  │     Emit surprise_cataloged(species_type)
-  │     Emit entry_cataloged(species_type, CatalogCategory.FAUNA)
-  │     → UI: PropLabelRenderer updates label on attacker from "❓ Unknown" to real name
+  ├─ Auto-register as ENCOUNTERED:
+  │     Catalog.encounter_entry(species_type, "Hostile")
+  │     Emit entry_encountered(species_type, "Hostile")
+  │     Emit knowledge_state_changed(species_type, UNKNOWN, ENCOUNTERED)
+  │     Emit surprise_cataloged(species_type)  # legacy name, now means ENCOUNTERED
+  │     → UI: PropLabelRenderer updates label on attacker from "❓ Unknown Creature" to "⚠️ Unidentified Fauna (Hostile)"
   │     → Auto-defend (feature-004) activates immediately for this species
   │
-  └─ Done — no scan progress bar, instant catalog on first hit
+  └─ Done — no scan progress bar, instant ENCOUNTERED on first hit
 ```
 
-**Note on signal from feature-010:** The `fauna_attacked_player` signal needs the
-`species_type: StringName` added to its signature (beyond the pre-redesign
-`id, damage` args). Feature-010 SPEC must include this.
+#### Passive Fauna Flee Flow
 
-#### Movement Lock During Scan (this feature's half)
+```
+Player approaches passive fauna → fauna flees (feature-010 owned)
+  │
+  ├─ ScannerSystem receives fauna_fled(fauna_id, species_type) signal
+  │
+  ├─ Check: is species_type already known?
+  │     state = Catalog.get_knowledge_state(species_type)
+  │     if state >= ENCOUNTERED: return (already registered)
+  │
+  ├─ Auto-register as ENCOUNTERED:
+  │     Catalog.encounter_entry(species_type, "Shy")
+  │     Emit entry_encountered(species_type, "Shy")
+  │     Emit knowledge_state_changed(species_type, UNKNOWN, ENCOUNTERED)
+  │     → UI: PropLabelRenderer updates label to "⚠️ Unidentified Fauna (Shy)"
+  │
+  └─ Done — player knows something exists but can't scan until Trap mechanic
+```
 
-Feature-002 states: "movement doesn't start during scan hold." This feature's
-complementary guarantee: **while `_scan_state == SCANNING`, ScannerSystem does NOT
-emit `scan_rejected`.** It holds the input claim until scan completes or the player
-releases (touch UP → `scan_hold_ended` → `scan_cancelled`).
-
-The two features document the same constraint from their own perspective:
-- Feature-002: player_input.gd won't emit movement signals while scan is active
-- Feature-003: ScannerSystem won't release the input claim while scanning
-
-Only two ways out of SCANNING: completion (`scan_completed`) or cancellation
-(`scan_cancelled` on touch UP, range exceeded, or drift). Never `scan_rejected`.
+**Note:** Passive fauna flee behavior and `fauna_fled` signal are deferred post-MVP
+(no passive fauna in Chapter 1). Architecture supports it when fauna AI arrives.
 
 #### Passive Identification Flow (on tile reveal/enter)
 
@@ -320,15 +383,22 @@ HexGrid emits tile_revealed(coords) or tile_visibility_changed(coords, VISIBLE)
   ├─ Check tile for elements:
   │     For each resource_node in tile.resource_nodes:
   │       entry_id = _map_resource_to_entry(resource_node.type)
-  │       if Catalog.is_cataloged(entry_id):
-  │         Emit element_identified(coords, entry_id)
-  │         → PropRenderer: show prop mesh at tile position
-  │         → PropLabelRenderer: show real name label
-  │       else:
-  │         var cat = _all_entries[entry_id].category
-  │         Emit element_unknown(coords, entry_id, cat)
-  │         → PropRenderer: show prop mesh at tile position (uses category for mesh pool)
-  │         → PropLabelRenderer: show "❓ Unknown [category]" label (uses category for text)
+  │       state = Catalog.get_knowledge_state(entry_id)
+  │       match state:
+  │         CATALOGED:
+  │           Emit element_identified(coords, entry_id)
+  │           → PropRenderer: show prop mesh at tile position
+  │           → PropLabelRenderer: show real name label
+  │         ENCOUNTERED:
+  │           var label = Catalog.get_encounter_label(entry_id)
+  │           Emit element_encountered(coords, entry_id, label)
+  │           → PropRenderer: show prop mesh at tile position
+  │           → PropLabelRenderer: show "⚠️ Unidentified Fauna ([label])" label
+  │         UNKNOWN:
+  │           var cat = _all_entries[entry_id].category
+  │           Emit element_unknown(coords, entry_id, cat)
+  │           → PropRenderer: show prop mesh at tile position (uses category for mesh pool)
+  │           → PropLabelRenderer: show "❓ Unknown [category]" label
   │
   │     If tile.anomaly != &"":
   │       if Catalog.is_cataloged(tile.anomaly):
@@ -337,14 +407,14 @@ HexGrid emits tile_revealed(coords) or tile_visibility_changed(coords, VISIBLE)
   │         Emit element_unknown(coords, tile.anomaly, CatalogCategory.ANOMALY)
   │
   │     (Fauna handled separately — FaunaManager emits fauna_spawned with position,
-  │      ScannerSystem checks catalog state for that species and emits appropriate icon signal)
+  │      ScannerSystem checks knowledge state for that species and emits appropriate signal)
   │
   └─ Done
 ```
 
 This runs once per tile when it becomes VISIBLE. PropRenderer places the 3D prop mesh
-(always the same regardless of catalog state). PropLabelRenderer subscribes and sets
-the appropriate label text (❓ or real name).
+(always the same regardless of knowledge state). PropLabelRenderer subscribes and sets
+the appropriate label text (❓, ⚠️, or real name).
 
 #### Resource-to-Entry Mapping
 
@@ -376,7 +446,7 @@ Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
        ├─ PropRenderer (Node3D)                  ← NEW (3D prop meshes on tiles)
-       ├─ PropLabelRenderer (Node3D)              ← NEW (floating pill labels: ❓/name)
+       ├─ PropLabelRenderer (Node3D)              ← NEW (floating pill labels: ❓/⚠️/name)
        ├─ ScanProgressRenderer (Node3D)         ← NEW (scan progress bar over target)
        ├─ Player (Node3D)                       [feature-002]
        │    ├─ PlayerVisual (Node3D)
@@ -393,7 +463,7 @@ Main (Node)
             │    ├─ FaunaList (ScrollContainer > VBoxContainer)
             │    ├─ MineralList (ScrollContainer > VBoxContainer)
             │    └─ AnomalyList (ScrollContainer > VBoxContainer)
-            └─ DiscoveryCounter (Label)         ← "12/47 cataloged"
+            └─ DiscoveryCounter (Label)         ← "X entries"
 ```
 
 #### File Structure
@@ -401,9 +471,9 @@ Main (Node)
 ```
 scripts/
   scanner/
-    scanner_system.gd        # Node (child of Player) — scan lifecycle, eligibility,
-                              #   passive identification, surprise catalog handler
-    catalog.gd               # RefCounted — catalog data, discovery state, queries
+    scanner_system.gd        # Node (child of Player) — proximity auto-scan in _process,
+                              #   passive identification, surprise encounter handler
+    catalog.gd               # RefCounted — catalog data, 3-state knowledge, queries
     catalog_entry.gd         # Resource — static entry definition
 
   rendering/
@@ -432,27 +502,20 @@ data/
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `scanner_system.gd` | Child Node of Player. Owns `Catalog` instance. Receives `scan_hold_started`/`update`/`ended` from feature-002. Checks eligibility (`get_scannable_at`). Manages scan lifecycle (progress, complete, cancel). Handles passive identification on `tile_revealed`/`tile_visibility_changed`. Handles surprise catalog on `fauna_attacked_player`. Emits all scanner/catalog signals. | `HexGrid` (tile queries), `FaunaManager` feature-010 (fauna position queries + surprise signal), `player_input.gd` feature-002 (scan hold signals) |
-| `catalog.gd` | RefCounted owned by ScannerSystem. Discovery state (`_discovered`). All query APIs (`is_cataloged`, `get_entry`, `get_scannable_at`, counters). `catalog_entry()` mutation. `get_save_data()`/`load_save_data()`. | `catalog_entry.gd` (static definitions), `HexGrid` (for `get_scannable_at` tile queries), `FaunaManager` (for fauna position in `get_scannable_at`) |
+| `scanner_system.gd` | Child Node of Player. Owns `Catalog` instance. Runs proximity check in `_process` — finds nearest uncataloged prop within `SCAN_RANGE`, starts/continues/interrupts scan based on player distance. Handles passive identification on `tile_revealed`/`tile_visibility_changed`. Handles surprise encounter on `fauna_attacked_player`. Handles passive fauna encounter on `fauna_fled`. Emits all scanner/catalog signals. | `HexGrid` (tile queries), `FaunaManager` feature-010 (fauna position queries + surprise signal), `Player` (current_tile for proximity) |
+| `catalog.gd` | RefCounted owned by ScannerSystem. 3-state knowledge tracking (`_knowledge`). Encounter labels for fauna. All query APIs (`get_knowledge_state`, `is_cataloged`, `get_entry`, `get_scannable_at`, counters). `catalog_entry()` and `encounter_entry()` mutations. `get_save_data()`/`load_save_data()`. | `catalog_entry.gd` (static definitions), `HexGrid` (for `get_scannable_at` tile queries), `FaunaManager` (for fauna position in `get_scannable_at`) |
 | `catalog_entry.gd` | Resource — static definition. Loaded from `.tres` data files. No runtime mutation. | Nothing (data only) |
-| `prop_renderer.gd` | Node3D under World. MultiMesh per prop type (~5 pools: flora cube, fauna sphere, mineral octahedron, anomaly tetrahedron, generic). Places 3D placeholder meshes at resource positions on hexes. Updates on `element_identified(coords, entry_id)`/`element_unknown(coords, entry_id, category)`. Uses `category` to select the correct MultiMesh pool. Props are always visible once tile is revealed — catalog state does NOT change meshes. **Multi-prop offset:** When a tile has multiple props, distributes them radially around the tile center. For N props on a tile, places at angles `(360/N * i)` degrees at radius `0.3 * HEX_SIZE` from center. Single prop stays centered. PropRenderer tracks prop count per tile via an internal `Dictionary[Vector2i, int]` to assign offsets. | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
-| `prop_label_renderer.gd` | Node3D under World. Floating pill-shaped labels above props (~1 MultiMesh pool). Billboard-enabled (faces camera). Shows "❓ Unknown [category]" for uncataloged (uses `category` from `element_unknown` signal to resolve text: Flora→"Vegetation", Fauna→"Creature", Mineral→"Mineral", Anomaly→"Anomaly"), real name for cataloged. Only renders labels for nearby/targeted props. On `entry_cataloged`: bulk label text update for all visible props of that type. Labels inherit prop offset positions from PropRenderer (same radial distribution when multiple props on a tile). | `ScannerSystem` (signals), `Catalog` (name lookups) |
-| `scan_progress_renderer.gd` | Node3D under World. Shows a progress bar billboard above the scan target tile during active scan. Updates on `scan_started`/`scan_progress_updated`/`scan_completed`/`scan_cancelled`. Single instance (only one scan at a time). | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
-| `catalog_panel.gd` | Control on CatalogPanel. Bottom drawer (same pattern as Inventory/Crafting/Build panels). 4 category tabs, entry list per category, discovery counter. Mutual exclusion with other panels. | `Catalog` (query APIs for entries and counters) |
+| `prop_renderer.gd` | Node3D under World. MultiMesh per prop type (~5 pools: flora cube, fauna sphere, mineral octahedron, anomaly tetrahedron, generic). Places 3D placeholder meshes at resource positions on hexes. Updates on `element_identified(coords, entry_id)`/`element_unknown(coords, entry_id, category)`/`element_encountered(coords, entry_id, label)`. Uses `category` to select the correct MultiMesh pool. Props are always visible once tile is revealed — knowledge state does NOT change meshes. **Multi-prop offset:** When a tile has multiple props, distributes them radially around the tile center. For N props on a tile, places at angles `(360/N * i)` degrees at radius `0.3 * HEX_SIZE` from center. Single prop stays centered. PropRenderer tracks prop count per tile via an internal `Dictionary[Vector2i, int]` to assign offsets. | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
+| `prop_label_renderer.gd` | Node3D under World. Floating pill-shaped labels above props (~1 MultiMesh pool). Billboard-enabled (faces camera). Shows "❓ Unknown [category]" for UNKNOWN, "⚠️ Unidentified Fauna (Hostile/Shy)" for ENCOUNTERED, real name for CATALOGED. Only renders labels for nearby/targeted props. On `entry_cataloged`: bulk label text update for all visible props of that type. On `entry_encountered`: update matching labels from ❓ → ⚠️ label. Labels inherit prop offset positions from PropRenderer (same radial distribution when multiple props on a tile). | `ScannerSystem` (signals), `Catalog` (name lookups, encounter labels) |
+| `scan_progress_renderer.gd` | Node3D under World. Shows a progress bar billboard above the scan target tile during active scan. Updates on `scan_started`/`scan_progress_updated`/`scan_completed`/`scan_interrupted`. Single instance (only one scan at a time). | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
+| `catalog_panel.gd` | Control on CatalogPanel. Bottom drawer (same pattern as Inventory/Crafting/Build panels). 4 category tabs, entry list per category, discovery counter. Mutual exclusion with other panels. ENCOUNTERED entries show "Unidentified Fauna (Hostile/Shy)" with no details. CATALOGED entries show full info. | `Catalog` (query APIs for entries, counters, knowledge states, encounter labels) |
 
 #### Signal Wiring — Complete
 
 ```
-feature-002 (player_input.gd)               scanner_system.gd
-  scan_hold_started(coords)              ──►  check eligibility, start or reject
-  scan_hold_update(screen_pos)           ──►  drift/range check during scan
-  scan_hold_ended()                      ──►  cancel if incomplete
-
-scanner_system.gd                            feature-002 (player_input.gd)
-  scan_rejected(coords)                  ──►  fall back to joystick
-
 feature-010 (FaunaManager)                   scanner_system.gd
-  fauna_attacked_player(id, dmg, species)──►  surprise catalog if uncataloged
+  fauna_attacked_player(id, dmg, species)──►  surprise encounter if unknown (→ ENCOUNTERED)
+  fauna_fled(id, species)                ──►  passive encounter if unknown (→ ENCOUNTERED)
 
 HexGrid signals                              scanner_system.gd
   tile_revealed(coords)                  ──►  passive identification check
@@ -461,32 +524,38 @@ HexGrid signals                              scanner_system.gd
 scanner_system.gd                            prop_renderer.gd
   element_identified(coords, entry_id)   ──►  add prop mesh instance to appropriate MultiMesh pool
   element_unknown(coords, entry_id, cat) ──►  add prop mesh instance to appropriate MultiMesh pool
+  element_encountered(coords, id, label) ──►  add prop mesh instance to appropriate MultiMesh pool
                                               (uses category to pick correct mesh pool;
-                                              same mesh regardless of catalog state)
+                                              same mesh regardless of knowledge state)
 
 scanner_system.gd                            prop_label_renderer.gd
   element_identified(coords, entry_id)   ──►  show real name label above prop
   element_unknown(coords, entry_id, cat) ──►  show "❓ Unknown [category]" label above prop
                                               (uses category int to resolve label text:
                                               0=Vegetation, 1=Creature, 2=Mineral, 3=Anomaly)
+  element_encountered(coords, id, label) ──►  show "⚠️ Unidentified Fauna ([label])" label
   entry_cataloged(entry_id, category)    ──►  BULK LABEL UPDATE: iterate all visible props,
                                               update matching labels from ❓ → real name.
                                               This is the "biome conquered" satisfaction moment.
+  entry_encountered(entry_id, label)     ──►  LABEL UPDATE: iterate visible props of this species,
+                                              update from ❓ → "⚠️ Unidentified Fauna ([label])"
 
 scanner_system.gd                            scan_progress_renderer.gd
   scan_started(entry_id, coords)         ──►  show progress bar at tile
   scan_progress_updated(progress)        ──►  update bar fill
   scan_completed(entry_id)               ──►  hide bar, flash "Cataloged!"
-  scan_cancelled()                       ──►  hide bar
+  scan_interrupted()                     ──►  hide bar
 
 scanner_system.gd                            feature-011 (journal)
   entry_cataloged(entry_id, category)    ──►  if ANOMALY: trigger cutscene
 
 scanner_system.gd                            feature-004 (auto-interaction)
-  entry_cataloged(entry_id, category)    ──►  unlock auto-gather/auto-defend for type
+  entry_cataloged(entry_id, category)    ──►  unlock auto-gather for type
+  entry_encountered(entry_id, label)     ──►  unlock auto-defend for hostile fauna
 
 scanner_system.gd                            catalog_panel.gd
   entry_cataloged(entry_id, category)    ──►  refresh entry list + counter
+  entry_encountered(entry_id, label)     ──►  add ENCOUNTERED entry to list + counter
 ```
 
 #### Prop Rendering (3D Meshes)
@@ -515,9 +584,10 @@ they must not overlap at the same center point. PropRenderer distributes them ra
   `element_unknown` signal
 
 **Prop lifecycle:**
-- Tile becomes VISIBLE → ScannerSystem checks catalog → emit `element_identified` or
-  `element_unknown` → PropRenderer adds prop mesh instance to appropriate MultiMesh pool.
-  **The same mesh is used regardless of catalog state** — the prop always looks the same.
+- Tile becomes VISIBLE → ScannerSystem checks catalog → emit `element_identified`,
+  `element_unknown`, or `element_encountered` → PropRenderer adds prop mesh instance
+  to appropriate MultiMesh pool. **The same mesh is used regardless of knowledge state**
+  — the prop always looks the same.
 - Tile becomes REVEALED → remove instances (dimmed tile, no props)
 - Tile becomes HIDDEN → remove instances
 - Entry cataloged → PropRenderer does NOT change meshes. Props stay as-is.
@@ -529,23 +599,26 @@ they must not overlap at the same center point. PropRenderer distributes them ra
 One `MultiMeshInstance3D` pool for label backgrounds (~1 draw call). Text rendered
 via Label3D or equivalent.
 
-**Label content:**
-- Uncataloged: "❓ Unknown Vegetation", "❓ Unknown Mineral", etc.
-- Cataloged: Real name ("Berry Bush", "Iron Deposit", etc.)
+**Label content (3-state):**
+- UNKNOWN: "❓ Unknown Vegetation", "❓ Unknown Mineral", "❓ Unknown Creature", etc.
+- ENCOUNTERED: "⚠️ Unidentified Fauna (Hostile)" or "⚠️ Unidentified Fauna (Shy)"
+- CATALOGED: Real name ("Berry Bush", "Iron Deposit", "Thornback", etc.)
 
 **Label visibility:** Only shows for nearby/targeted props (not all at once).
 This keeps the screen uncluttered.
 
 **Label lifecycle:**
-- Tile becomes VISIBLE → PropLabelRenderer sets label text based on catalog state
+- Tile becomes VISIBLE → PropLabelRenderer sets label text based on knowledge state
+- Entry encountered → `entry_encountered` signal → PropLabelRenderer updates matching
+  labels from "❓ Unknown Creature" to "⚠️ Unidentified Fauna (Hostile/Shy)"
 - Entry cataloged → `entry_cataloged` signal → PropLabelRenderer iterates ALL visible
-  props, updates matching labels from "❓ Unknown [category]" to real name.
-  This is the "biome conquered" moment — all ❓ labels for that type flip at once.
+  props, updates matching labels from ❓ or ⚠️ to real name.
+  This is the "biome conquered" moment — all labels for that type flip at once.
 
 **Bulk label update mechanism:** `PropLabelRenderer` maintains a mapping
 `Dictionary[Vector2i, Array[StringName]]` — tile coords → list of element entry_ids
 currently displayed. On `entry_cataloged(entry_id)`, iterate the mapping, find all
-tiles showing that entry_id with ❓ label, update label text to real name.
+tiles showing that entry_id with ❓ or ⚠️ label, update label text to real name.
 O(n) where n = visible tiles with that element type — typically 5-15.
 
 #### Catalog Panel UI
@@ -557,16 +630,20 @@ Build (feature-009). Full width, ~45% height, semi-transparent.
 ┌──────────────────────────┐
 │      (game world)        │  ← ~55% visible
 ├──────────────────────────┤
-│  CATALOG  12/47      [X] │  ← header + counter + close
+│  CATALOG  X entries  [X] │  ← header + counter + close
 │ [Flora][Fauna][Min][Anom]│  ← category tabs
 │ ─────────────────────────│
 │ ┌──────────────────────┐ │
-│ │ [icon] Berry Bush    │ │  ← entry row
+│ │ [icon] Berry Bush    │ │  ← CATALOGED entry (full info)
 │ │   Edible. Restores   │ │
 │ │   hunger.            │ │
 │ └──────────────────────┘ │
 │ ┌──────────────────────┐ │
-│ │ [icon] Iron Deposit  │ │  ← scrollable
+│ │ [⚠️] Unidentified    │ │  ← ENCOUNTERED entry (no details)
+│ │   Fauna (Hostile)    │ │
+│ └──────────────────────┘ │
+│ ┌──────────────────────┐ │
+│ │ [icon] Iron Deposit  │ │  ← CATALOGED entry (full info)
 │ │   Requires Pickaxe.  │ │
 │ └──────────────────────┘ │  ← ~45% height
 └──────────────────────────┘
@@ -576,8 +653,9 @@ Build (feature-009). Full width, ~45% height, semi-transparent.
 - **Opens via ScannerButton** in HUD (bottom-right, 64×64px)
 - **Category tabs:** Flora, Fauna, Minerals, Anomalies. Each tab has its own
   ScrollContainer with VBoxContainer of entries.
-- **Entry display:** Icon + name + description + properties summary. Read-only.
-- **Discovery counter:** "12/47 cataloged" in header. Updates on `entry_cataloged`.
+- **Entry display (CATALOGED):** Icon + name + description + properties summary. Read-only.
+- **Entry display (ENCOUNTERED):** ⚠️ icon + "Unidentified Fauna (Hostile/Shy)" — no name, no details.
+- **Discovery counter:** "X entries" in header (ENCOUNTERED + CATALOGED both count). Updates on `entry_cataloged` and `entry_encountered`.
 - **Game continues running** — no pause.
 - **Touch targets:** Entry rows ~80px height, tabs ~48px, close 48×48, ScannerButton 64×64.
 
@@ -589,13 +667,14 @@ Build (feature-009). Full width, ~45% height, semi-transparent.
 
 | Operation | Cost | When |
 |-----------|------|------|
-| Eligibility check (`get_scannable_at`) | O(1): tile lookup + resource_nodes iteration (1-3) + fauna query + catalog hash lookup | Once at 300ms hold threshold |
+| Proximity check (`_process`) | O(7): player tile + 6 neighbors. Each: `get_scannable_at` (tile lookup + resource_nodes iteration 1-3 + catalog hash lookup) | Every frame (lightweight — just distance + hash checks) |
 | Scan progress tick | One float add per frame | During active scan only (2-3 seconds) |
 | Passive identification (tile reveal) | O(n): n = resource_nodes on tile (1-3) + anomaly check | Once per tile when VISIBLE |
-| Surprise catalog | O(1): catalog hash lookup + insert | Once per new hostile species |
+| Surprise encounter | O(1): catalog hash lookup + insert | Once per new hostile species |
 
-No per-frame cost when not scanning. Passive identification is event-driven
-(signal on tile reveal), not polled.
+The per-frame proximity check is lightweight: 7 tiles × ~3 hash lookups each = ~21
+dictionary lookups. Negligible (<0.1ms). When not near any scannable prop, the check
+exits early.
 
 #### Draw Call Budget — Scanner Share
 
@@ -607,31 +686,18 @@ No per-frame cost when not scanning. Passive identification is event-driven
 | CatalogPanel (UI) | 0 | CanvasLayer, not 3D draw calls |
 | **Scanner total** | **~7** | Within remaining ~90 budget after terrain (~5) |
 
-#### Scan Hold Latency
-
-The 300ms hold threshold is a design constant, not latency. Once the threshold fires:
-
-| Step | Time |
-|------|------|
-| feature-002 emits `scan_hold_started(coords)` | ~0ms (signal) |
-| ScannerSystem `get_scannable_at` eligibility check | <1ms |
-| Response: `scan_started` or `scan_rejected` | <1ms |
-| **Total from threshold to response** | **<2ms (within same frame)** |
-
-feature-002 has a 2-frame (32ms) defensive timeout for the response. The scanner
-responds within the same frame — timeout never fires in practice.
-
 #### Touch Interaction
 
-- **Scan hold:** Player holds on ❓ element for 2-3 seconds. No additional touch
-  targets — the ❓ icon IS the target, positioned on the hex tile. **[TUNING_REQUIRED]** — hex tile screen size for HEX_SIZE=3.0 to be verified post-camera calibration.
+- **No scan-specific touch input.** Proximity scan is automatic — no tap, no hold.
+  The player just walks near props.
 - **Catalog panel:** Same touch targets as other bottom drawers. Entry rows ~80px,
   tabs ~48px, buttons ≥48dp.
-- **No platform differences.** Same touch events on iOS and Android.
+- **No platform differences.** Same behavior on iOS and Android.
 
 #### Memory
 
-- `Catalog._discovered`: Dictionary with ~50 entries max (Chapter 1). Negligible.
+- `Catalog._knowledge`: Dictionary with ~50 entries max (Chapter 1). Negligible.
+- `Catalog._encounter_labels`: Dictionary with ~5 fauna entries max. Negligible.
 - `CatalogEntry` resources: ~50 static definitions. <100KB total.
 - Prop meshes: 5 MultiMesh pools × ~50 instances each = ~250 instances max.
   ~64 bytes per instance (transform + custom data). Total: <100KB.
@@ -642,10 +708,24 @@ responds within the same frame — timeout never fires in practice.
 
 ## Known Limitations
 
-### Scan Target Granularity
-The scanner targets tiles (hex coordinates), not individual props. When a tile has
-multiple uncataloged elements, `get_scannable_at()` returns the first match. This means:
-- Players cannot choose which element to scan on a multi-element tile
-- Scan order follows resource_nodes array order, then anomaly
+### Proximity Scan — One at a Time, Nearest First
+The scanner processes one proximity scan at a time, targeting the nearest uncataloged
+prop within range (1 hex). This is consistent with the chain gathering pattern.
+When multiple uncataloged props are in range:
+- Nearest prop is scanned first
+- After completion, the next nearest is automatically targeted
+- Players cannot choose which element to scan
 - This is acceptable for MVP (most tiles have 1-2 elements)
-- Future: with real 3D assets and raycast selection, scanning could target individual props
+
+### Fauna Cataloging Deferred
+Full fauna cataloging (ENCOUNTERED → CATALOGED) requires Trap (passive) or Sneak Scan
+(hostile) mechanics, both deferred post-MVP. In Chapter 1:
+- Hostile fauna can only reach ENCOUNTERED state (via first attack)
+- Passive fauna can only reach ENCOUNTERED state (via fleeing)
+- Auto-defend works at ENCOUNTERED level — knowing drops is the incentive for CATALOGED
+- The player knows *something* is there but can't learn details until future mechanics arrive
+
+### Flora/Mineral Never ENCOUNTERED
+Code enforces that static elements (flora, mineral, anomaly) go UNKNOWN → CATALOGED
+only. They never enter ENCOUNTERED state. This is by design — ENCOUNTERED is a
+fauna-only concept representing partial knowledge from behavioral observation.
