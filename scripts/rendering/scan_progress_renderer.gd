@@ -46,12 +46,14 @@ func _create_bar() -> void:
 	bg_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	bg_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	bg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bg_mat.render_priority = 10
 	bg_mat.no_depth_test = true
 
 	_bg_mesh_instance = MeshInstance3D.new()
 	_bg_mesh_instance.mesh = bg_mesh
 	_bg_mesh_instance.material_override = bg_mat
 	_bg_mesh_instance.name = "ProgressBG"
+	_bg_mesh_instance.visible = false
 	add_child(_bg_mesh_instance)
 
 	# Fill bar (scales with progress)
@@ -62,12 +64,15 @@ func _create_bar() -> void:
 	fill_mat.albedo_color = BAR_FILL_COLOR
 	fill_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fill_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fill_mat.render_priority = 11
 	fill_mat.no_depth_test = true
 
 	_fill_mesh_instance = MeshInstance3D.new()
 	_fill_mesh_instance.mesh = fill_mesh
 	_fill_mesh_instance.material_override = fill_mat
 	_fill_mesh_instance.name = "ProgressFill"
+	_fill_mesh_instance.visible = false
 	add_child(_fill_mesh_instance)
 
 
