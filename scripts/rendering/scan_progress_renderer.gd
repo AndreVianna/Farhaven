@@ -1,7 +1,8 @@
 extends Node3D
 
 ## ScanProgressRenderer — single billboard progress bar above scan target.
-## Shows/hides on scan lifecycle signals from ScannerSystem.
+## Uses a shader-based approach: one QuadMesh with a spatial shader that
+## handles both billboard orientation and progress fill via UV coordinates.
 ## Only one scan at a time, so a single progress bar instance suffices.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
@@ -14,13 +15,11 @@ const PROGRESS_Y_OFFSET: float = 3.5
 ## Bar dimensions
 const BAR_WIDTH: float = 1.5
 const BAR_HEIGHT: float = 0.2
-const BAR_BG_COLOR: Color = Color(0.2, 0.2, 0.2, 0.8)
-const BAR_FILL_COLOR: Color = Color(0.2, 0.9, 0.4, 1.0)
 
 # --- State ---
 
-var _bg_mesh_instance: MeshInstance3D = null
-var _fill_mesh_instance: MeshInstance3D = null
+var _mesh_instance: MeshInstance3D = null
+var _shader_material: ShaderMaterial = null
 var _progress: float = 0.0
 var _target_coords: Vector2i = Vector2i.ZERO
 var _active: bool = false
@@ -37,43 +36,22 @@ func _ready() -> void:
 
 
 func _create_bar() -> void:
-	# Background bar (full width, dark)
-	var bg_mesh := QuadMesh.new()
-	bg_mesh.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 
-	var bg_mat := StandardMaterial3D.new()
-	bg_mat.albedo_color = BAR_BG_COLOR
-	bg_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	bg_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bg_mat.render_priority = 10
-	bg_mat.no_depth_test = true
+	var shader := load("res://shaders/scan_progress.gdshader")
+	_shader_material = ShaderMaterial.new()
+	_shader_material.shader = shader
+	_shader_material.set_shader_parameter("progress", 0.0)
+	_shader_material.set_shader_parameter("fill_color", Color(0.2, 0.9, 0.4, 1.0))
+	_shader_material.set_shader_parameter("bg_color", Color(0.2, 0.2, 0.2, 0.8))
 
-	_bg_mesh_instance = MeshInstance3D.new()
-	_bg_mesh_instance.mesh = bg_mesh
-	_bg_mesh_instance.material_override = bg_mat
-	_bg_mesh_instance.name = "ProgressBG"
-	_bg_mesh_instance.visible = false
-	add_child(_bg_mesh_instance)
-
-	# Fill bar (scales with progress)
-	var fill_mesh := QuadMesh.new()
-	fill_mesh.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-
-	var fill_mat := StandardMaterial3D.new()
-	fill_mat.albedo_color = BAR_FILL_COLOR
-	fill_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	fill_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	fill_mat.render_priority = 11
-	fill_mat.no_depth_test = true
-
-	_fill_mesh_instance = MeshInstance3D.new()
-	_fill_mesh_instance.mesh = fill_mesh
-	_fill_mesh_instance.material_override = fill_mat
-	_fill_mesh_instance.name = "ProgressFill"
-	_fill_mesh_instance.visible = false
-	add_child(_fill_mesh_instance)
+	_mesh_instance = MeshInstance3D.new()
+	_mesh_instance.mesh = quad
+	_mesh_instance.material_override = _shader_material
+	_mesh_instance.name = "ProgressBar"
+	_mesh_instance.visible = false
+	add_child(_mesh_instance)
 
 
 func _connect_signals() -> void:
@@ -146,31 +124,26 @@ func _position_at(coords: Vector2i) -> void:
 	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET, world_2d.y)
 
 
-func _update_fill(progress: float) -> void:
-	if _fill_mesh_instance == null:
+func _update_fill(progress_val: float) -> void:
+	if _shader_material == null:
 		return
-	# Scale from center — no position offset needed, works with billboard mode
-	_fill_mesh_instance.scale = Vector3(clampf(progress, 0.001, 1.0), 1.0, 1.0)
+	_shader_material.set_shader_parameter("progress", clampf(progress_val, 0.0, 1.0))
 
 
 func _show_bar() -> void:
-	if _bg_mesh_instance != null:
-		_bg_mesh_instance.visible = true
-	if _fill_mesh_instance != null:
-		_fill_mesh_instance.visible = true
+	if _mesh_instance != null:
+		_mesh_instance.visible = true
 
 
 func _hide_bar() -> void:
-	if _bg_mesh_instance != null:
-		_bg_mesh_instance.visible = false
-	if _fill_mesh_instance != null:
-		_fill_mesh_instance.visible = false
+	if _mesh_instance != null:
+		_mesh_instance.visible = false
 
 
 # --- Public API (for testing) ---
 
 func is_bar_visible() -> bool:
-	return _active and _bg_mesh_instance != null and _bg_mesh_instance.visible
+	return _active and _mesh_instance != null and _mesh_instance.visible
 
 
 func get_progress() -> float:
