@@ -18,7 +18,7 @@ var _props_label: Label
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(0, 80)
+	custom_minimum_size = Vector2(0, 100)
 
 
 func _ready() -> void:
@@ -34,7 +34,7 @@ func _ready() -> void:
 	add_child(hbox)
 
 	_icon_rect = ColorRect.new()
-	_icon_rect.custom_minimum_size = Vector2(56, 56)
+	_icon_rect.custom_minimum_size = Vector2(72, 72)
 	_icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(_icon_rect)
 
@@ -44,16 +44,16 @@ func _ready() -> void:
 	hbox.add_child(vbox)
 
 	_name_label = Label.new()
-	_name_label.add_theme_font_size_override("font_size", 18)
+	_name_label.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(_name_label)
 
 	_desc_label = Label.new()
-	_desc_label.add_theme_font_size_override("font_size", 14)
+	_desc_label.add_theme_font_size_override("font_size", 18)
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(_desc_label)
 
 	_props_label = Label.new()
-	_props_label.add_theme_font_size_override("font_size", 12)
+	_props_label.add_theme_font_size_override("font_size", 16)
 	_props_label.modulate = Color(0.80, 0.80, 0.80)
 	vbox.add_child(_props_label)
 

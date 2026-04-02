@@ -24,8 +24,8 @@ theme_override_font_sizes/font_size = 28
 [node name="CounterLabel" type="Label" parent="VBox/Header"]
 layout_mode = 2
 size_flags_vertical = 4
-text = "0/0 cataloged"
-theme_override_font_sizes/font_size = 22
+text = "0 entries"
+theme_override_font_sizes/font_size = 28
 
 [node name="HeaderSpacer" type="Control" parent="VBox/Header"]
 layout_mode = 2
@@ -41,8 +41,8 @@ theme_override_font_sizes/font_size = 36
 layout_mode = 2
 size_flags_vertical = 3
 tab_alignment = 1
-theme_override_constants/tab_height = 72
-theme_override_font_sizes/font_size = 28
+theme_override_constants/tab_height = 96
+theme_override_font_sizes/font_size = 36
 
 [node name="Flora" type="ScrollContainer" parent="VBox/CategoryTabs"]
 layout_mode = 2
