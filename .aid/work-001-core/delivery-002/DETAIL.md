@@ -18,7 +18,7 @@ task-009 (Inventory data layer)        task-011 (Catalog data layer)
 task-010 (Inventory panel UI +         task-012 (Scanner system core)
           HUD integration)               │
   │                                      ▼
-  │                                    task-013 (Element icon + scan
+  │                                    task-013 (Prop + label + scan
   │                                              progress renderers)
   │                                      │
   │                                      ▼
@@ -40,7 +40,7 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 | 010 | Inventory panel UI + HUD integration | IMPLEMENT | 009 | 011, 012 |
 | 011 | Catalog data layer | IMPLEMENT | delivery-001 | 009 |
 | 012 | Scanner system core | IMPLEMENT | 011 | 009, 010 |
-| 013 | Element icon + scan progress renderers | IMPLEMENT | 012 | -- |
+| 013 | Prop renderer + prop label renderer + scan progress renderer | IMPLEMENT | 012 | -- |
 | 014 | Catalog panel UI | IMPLEMENT | 011 | 010 |
 | 015 | Delivery-002 integration test | TEST | all above | -- |
 
@@ -130,26 +130,37 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
   fauna hostile/damage/hp, mineral resource_type/tool_required, anomaly journal/cutscene IDs)
 - `scripts/scanner/catalog.gd` — RefCounted:
   - `CatalogCategory` enum: FLORA, FAUNA, MINERAL, ANOMALY
-  - `_discovered: Dictionary[StringName, bool]`
+  - `KnowledgeState` enum: UNKNOWN, ENCOUNTERED, CATALOGED
+  - `_knowledge: Dictionary[StringName, KnowledgeState]` (replaces old `_discovered: Dictionary[StringName, bool]`)
+  - `_encounter_labels: Dictionary[StringName, String]` — "Hostile" or "Shy" for ENCOUNTERED fauna
   - `_all_entries: Dictionary[StringName, CatalogEntry]`
   - `_total_count: int`
-  - Full API: `is_cataloged`, `get_entry`, `get_discovered_entries`,
-    `get_discovered_by_category`, `get_discovery_count`, `get_total_count`,
-    `get_discovery_text`, `catalog_entry`, `get_scannable_at`
+  - Full API: `get_knowledge_state`, `is_cataloged`, `is_encountered`, `is_known`,
+    `get_entry`, `get_discovered_entries` (ENCOUNTERED + CATALOGED),
+    `get_discovered_by_category`, `get_discovery_count` (ENCOUNTERED + CATALOGED),
+    `get_total_count`, `get_discovery_text` ("X entries"),
+    `catalog_entry`, `encounter_entry`, `get_encounter_label`, `get_scannable_at`
+  - `get_scannable_at` skips ENCOUNTERED fauna (needs Trap/Sneak, not proximity scan)
   - `RESOURCE_TO_ENTRY` mapping: wood→wood_tree, berries→berry_bush,
     toxic_berries→toxic_berry_bush, fiber→fiber_grass, stone→stone_deposit,
     ore→iron_deposit, crystal→crystal_cluster
-  - `get_save_data()` / `load_save_data()`
+  - Signals: `entry_cataloged`, `entry_encountered`, `knowledge_state_changed`
+  - `get_save_data()` / `load_save_data()` — saves knowledge state + encounter labels
 - Data files: `data/catalog/flora.tres`, `fauna.tres`, `minerals.tres`, `anomalies.tres`
   with Chapter 1 entries
 
 **Criteria:**
+- [ ] Unit tests: get_knowledge_state returns UNKNOWN/ENCOUNTERED/CATALOGED correctly
 - [ ] Unit tests: is_cataloged before/after catalog_entry call
-- [ ] Unit tests: get_discovered_entries, get_discovered_by_category filtering
-- [ ] Unit tests: get_discovery_count / get_total_count / get_discovery_text format
-- [ ] Unit tests: catalog_entry emits entry_cataloged signal, marks discovered
-- [ ] Unit tests: get_scannable_at returns entry_id for uncataloged element, &"" for cataloged
-- [ ] Unit tests: save/load round-trip (discovered IDs preserved)
+- [ ] Unit tests: encounter_entry sets ENCOUNTERED + stores label ("Hostile"/"Shy")
+- [ ] Unit tests: get_discovered_entries returns ENCOUNTERED + CATALOGED (not UNKNOWN)
+- [ ] Unit tests: get_discovered_by_category filtering
+- [ ] Unit tests: get_discovery_count counts ENCOUNTERED + CATALOGED
+- [ ] Unit tests: get_discovery_text returns "X entries" format
+- [ ] Unit tests: catalog_entry emits entry_cataloged + knowledge_state_changed signals
+- [ ] Unit tests: encounter_entry emits entry_encountered + knowledge_state_changed signals
+- [ ] Unit tests: get_scannable_at returns entry_id for UNKNOWN element, &"" for CATALOGED, &"" for ENCOUNTERED fauna
+- [ ] Unit tests: save/load round-trip (knowledge states + encounter labels preserved)
 - [ ] Unit tests: RESOURCE_TO_ENTRY mapping — all 7 resource types map to valid entry IDs
 - [ ] Data files: at least 3 flora (including berry_bush + toxic_berry_bush), 1 fauna (thornback),
       3 minerals, 1 anomaly for Chapter 1
@@ -159,73 +170,93 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 
 ### task-012: Scanner System Core [IMPLEMENT]
 
-**Source:** feature-003 → Data Model (ScannerSystem) + Feature Flow
+**Source:** feature-003 → Data Model (ScannerSystem) + Feature Flow (proximity auto-scan)
 
 **Scope:**
 - `scripts/scanner/scanner_system.gd` — Node (child of Player):
-  - `ScanState` enum: IDLE, SCANNING, COMPLETE, REJECTED
-  - Properties: `_catalog`, `_scan_state`, `_scan_target_coords`, `_scan_target_entry_id`,
-    `_scan_progress`, `_scan_duration`, `_scan_range` (2 hexes)
+  - Properties: `_catalog`, `_is_scanning`, `_scan_target_coords`, `_scan_target_entry_id`,
+    `_scan_progress`, `_scan_duration`, `_scan_range` (1 hex — adjacent only, tunable constant)
   - `SCAN_DURATIONS` config: Flora 2.0s, Mineral 2.0s, Fauna 3.0s, Anomaly 3.0s
-  - **Active scan flow:** receive `scan_hold_started(coords)` from PlayerInput →
-    `get_scannable_at(coords)` → claim or reject → progress tick in `_process` →
-    range + drift checks → complete or cancel
-  - **Surprise catalog:** receive `fauna_attacked_player(id, damage, species)` →
-    if uncataloged → instant `catalog_entry`. Stub connection (activates when F-010 arrives).
+  - **Proximity auto-scan flow:** `_process` checks nearby tiles (player tile + 6 neighbors
+    within `_scan_range`) for uncataloged props via `get_scannable_at`. Starts scan on
+    nearest match. Progress advances while player stays in range. Interrupts immediately
+    when player leaves range (no grace period). One scan at a time, nearest first.
+  - **Surprise encounter:** receive `fauna_attacked_player(id, damage, species)` →
+    if UNKNOWN → instant `encounter_entry("Hostile")`. Stub connection (activates when F-010 arrives).
   - **Passive identification:** on `tile_revealed`/`tile_visibility_changed(VISIBLE)` →
-    check resource_nodes + anomaly against catalog → emit `element_identified` or
-    `element_unknown`
-  - **Movement lock:** while SCANNING, never emit `scan_rejected`
-  - Signals: `scan_started`, `scan_progress_updated`, `scan_completed`, `scan_cancelled`,
-    `scan_rejected`, `entry_cataloged`, `surprise_cataloged`, `element_identified`,
-    `element_unknown`
-  - Connect to PlayerInput scan_hold signals (from delivery-001)
+    check resource_nodes + anomaly against catalog → emit `element_identified`,
+    `element_unknown`, or `element_encountered` based on 3-state knowledge
+  - Signals: `scan_started`, `scan_progress_updated`, `scan_completed`, `scan_interrupted`,
+    `entry_cataloged`, `entry_encountered`, `knowledge_state_changed`, `surprise_cataloged`,
+    `element_identified`, `element_unknown`, `element_encountered`
+  - No connection to PlayerInput — proximity scan runs independently in `_process`
 
 **Criteria:**
-- [ ] Unit tests: eligibility (uncataloged returns entry_id, cataloged returns &"")
-- [ ] Unit tests: scan lifecycle (IDLE→SCANNING→COMPLETE, IDLE→SCANNING→cancelled on touch UP)
-- [ ] Unit tests: scan duration per category (flora 2s, fauna 3s, anomaly 3s)
-- [ ] Unit tests: range check (cancel if player > _scan_range from target)
-- [ ] Unit tests: surprise catalog (uncataloged species → instant catalog_entry)
-- [ ] Unit tests: passive ID (cataloged resource → element_identified, uncataloged → element_unknown)
-- [ ] scan_rejected never emitted while _scan_state == SCANNING
+- [ ] Unit tests: proximity detection (finds nearest uncataloged prop within 1 hex)
+- [ ] Unit tests: scan lifecycle (start on proximity → progress → complete)
+- [ ] Unit tests: scan interruption (player leaves range → progress resets immediately)
+- [ ] Unit tests: one scan at a time (nearest first, no parallel scans)
+- [ ] Unit tests: scan duration per category (flora 2s, mineral 2s, anomaly 3s)
+- [ ] Unit tests: surprise encounter (UNKNOWN hostile species → instant ENCOUNTERED with "Hostile" label)
+- [ ] Unit tests: passive ID with 3 states (CATALOGED → element_identified, ENCOUNTERED → element_encountered, UNKNOWN → element_unknown)
+- [ ] Unit tests: flora/mineral never enter ENCOUNTERED state (UNKNOWN → CATALOGED only)
 - [ ] entry_cataloged emitted on completion with correct entry_id + category
-- [ ] Connects to PlayerInput scan_hold signals from delivery-001
+- [ ] knowledge_state_changed emitted on all transitions
+- [ ] No scan_hold signals, no scan_rejected — proximity-based only
 - [ ] Build passes with zero warnings
 
 ---
 
-### task-013: Element Icon + Scan Progress Renderers [IMPLEMENT]
+### task-013: Prop Renderer + Prop Label Renderer + Scan Progress Renderer [IMPLEMENT]
 
 **Source:** feature-003 → Layers & Components (renderers)
 
 **Scope:**
-- `scripts/rendering/element_icon_renderer.gd` — Node3D:
-  - 5 MultiMeshInstance3D pools: unknown (❓), flora, fauna, mineral, anomaly
-  - `_tile_entries: Dictionary[Vector2i, Array[StringName]]` — tile → displayed entry IDs
-  - On `element_identified(coords, entry_id)`: add to identified pool
-  - On `element_unknown(coords)`: add to unknown (❓) pool
-  - On `entry_cataloged(entry_id, category)`: bulk swap — iterate all visible tiles,
-    move matching ❓ instances → identified pool. "Biome conquered" moment.
+- `scripts/rendering/prop_renderer.gd` — Node3D:
+  - 5 MultiMeshInstance3D pools: flora (cube), fauna (sphere), mineral (octahedron),
+    anomaly (tetrahedron), generic (fallback)
+  - On `element_identified(coords, entry_id)`: add prop mesh to appropriate pool
+  - On `element_unknown(coords, entry_id, category)`: add prop mesh to appropriate pool
+    (uses category to pick correct mesh pool; same mesh regardless of knowledge state)
+  - On `element_encountered(coords, entry_id, label)`: add prop mesh to appropriate pool
   - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove instances
-  - Icon positioning: `HexGrid.axial_to_world(coords)` + Y offset, billboard
+  - Prop positioning: `HexGrid.axial_to_world(coords)` + Y offset
+- `scripts/rendering/prop_label_renderer.gd` — Node3D:
+  - ~1 MultiMeshInstance3D pool for pill-shaped label backgrounds (billboard)
+  - `_tile_entries: Dictionary[Vector2i, Array[StringName]]` — tile → displayed entry IDs
+  - On `element_identified(coords, entry_id)`: show real name label above prop
+  - On `element_unknown(coords, entry_id, category)`: show "❓ Unknown [category]" label above prop
+    (uses category to resolve label text: Flora→"Vegetation", Fauna→"Creature", etc.)
+  - On `element_encountered(coords, entry_id, label)`: show "⚠️ Unidentified Fauna ([label])" label
+  - On `entry_cataloged(entry_id, category)`: bulk label update — iterate all visible
+    props, update matching labels from ❓ or ⚠️ → real name. "Biome conquered" moment.
+  - On `entry_encountered(entry_id, label)`: update matching labels from ❓ → ⚠️ label
+  - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove labels
+  - Labels only render for nearby/targeted props (not all at once)
 - `scripts/rendering/scan_progress_renderer.gd` — Node3D:
   - Single billboard progress bar above scan target
-  - On `scan_started`: show at target coords
+  - On `scan_started`: show at target coords (proximity auto-scan trigger)
   - On `scan_progress_updated`: update fill
-  - On `scan_completed`/`scan_cancelled`: hide
-- `scenes/world/element_icon_renderer.tscn`, `scan_progress_renderer.tscn`
+  - On `scan_completed`/`scan_interrupted`: hide
+- `scenes/world/prop_renderer.tscn`, `prop_label_renderer.tscn`, `scan_progress_renderer.tscn`
+- **Remove ElementIconRenderer from main.tscn** (replaced by PropRenderer + PropLabelRenderer)
 
 **Criteria:**
-- [ ] 5 MultiMesh pools created (unknown, flora, fauna, mineral, anomaly)
-- [ ] Unknown elements show ❓ icon at correct tile positions
-- [ ] Identified elements show category-appropriate icon
-- [ ] Bulk swap on entry_cataloged: all visible ❓ for that type → identified pool
-- [ ] Icons removed when tile goes REVEALED or HIDDEN
-- [ ] ScanProgressRenderer shows/hides on scan lifecycle signals
+- [ ] PropRenderer: 5 MultiMesh pools created (flora, fauna, mineral, anomaly, generic)
+- [ ] PropRenderer: prop meshes appear at correct tile positions (same mesh regardless of knowledge state)
+- [ ] PropRenderer: multi-prop tiles use radial offset (N≥2 → 360°/N spacing at 0.3*HEX_SIZE radius; single prop centered)
+- [ ] PropRenderer: meshes removed when tile goes REVEALED or HIDDEN
+- [ ] PropLabelRenderer: UNKNOWN props show "❓ Unknown [category]" label
+- [ ] PropLabelRenderer: ENCOUNTERED props show "⚠️ Unidentified Fauna (Hostile/Shy)" label
+- [ ] PropLabelRenderer: CATALOGED props show real name label
+- [ ] PropLabelRenderer: bulk label update on entry_cataloged — all visible ❓/⚠️ labels for that type → real name
+- [ ] PropLabelRenderer: label update on entry_encountered — matching ❓ labels → ⚠️ label
+- [ ] PropLabelRenderer: labels billboard toward camera (pill-shaped)
+- [ ] PropLabelRenderer: labels only render for nearby/targeted props
+- [ ] ScanProgressRenderer shows/hides on proximity scan lifecycle signals
 - [ ] Progress bar fill updates on scan_progress_updated
-- [ ] Icons billboard toward camera
-- [ ] Draw calls: ~5 for icons + 1 for progress bar = ~6
+- [ ] ElementIconRenderer removed from main.tscn
+- [ ] Draw calls: ~5 for props + ~1 for labels + 1 for progress bar = ~7
 - [ ] Build passes with zero warnings
 
 ---
@@ -262,30 +293,36 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 
 ### task-015: Delivery-002 Integration Test [TEST]
 
-**Source:** AC5 + AC11 + AC2 (scan input complete)
+**Source:** AC5 + AC11
 
 **Scope:**
 Integration tests verifying delivery-002 features together:
 - Inventory: add_item with real item_config → panel displays correctly
 - Inventory full → floating "INVENTORY FULL" text via HUD
-- Scanner: scan_hold_started → eligibility check → progress → complete → catalog entry
-- Element icons: ❓ appears on reveal → scan → icon swaps to identified
-- Bulk swap: catalog one berry_bush → all visible berry_bush ❓ flip to identified
+- Scanner: walk adjacent to uncataloged prop → proximity scan starts → progress → complete → catalog entry
+- Scanner: leave range during scan → progress resets immediately
+- Scanner: one scan at a time, nearest prop first
+- Prop labels: ❓ label appears on reveal → proximity scan → label updates to real name
+- 3-state labels: UNKNOWN shows ❓, ENCOUNTERED shows ⚠️ "Unidentified Fauna (Hostile/Shy)", CATALOGED shows real name
+- Bulk label update: catalog one berry_bush → all visible berry_bush ❓ labels flip to real name
 - Catalog panel: newly cataloged entry appears in correct tab, counter updates
+- Catalog panel: ENCOUNTERED entry shows "Unidentified Fauna (Hostile)" with no details
 - Mutual exclusion: Inventory ↔ Catalog panels
 - Toxic berries in inventory: tap → warning dialog
 - Full AC5 coverage (12 slots, 13th rejected, stacking, expansion)
-- Full AC11 coverage (❓ icons, scan flow, auto-identify after, mineral scan, anomaly → journal signal)
-- AC2 completion (scan input — scan_hold fires with coords)
+- Full AC11 coverage (❓ icons, proximity scan flow, ENCOUNTERED state, auto-identify after, mineral scan, anomaly → journal signal)
 
 **Criteria:**
-- [ ] Scan unknown flora → catalog entry → icon swap → catalog panel shows entry
-- [ ] Bulk swap: all visible ❓ of cataloged type flip at once
+- [ ] Walk near unknown flora → proximity scan starts → catalog entry → label update → catalog panel shows entry
+- [ ] Leave range during scan → progress resets immediately, scan interrupted
+- [ ] One scan at a time, nearest prop first
+- [ ] Bulk label update: all visible ❓ labels of cataloged type flip to real name at once
+- [ ] ENCOUNTERED fauna label: "⚠️ Unidentified Fauna (Hostile)" (no species name)
+- [ ] Catalog counter counts both ENCOUNTERED and CATALOGED entries
 - [ ] Inventory add → panel displays → inventory full → floating text
 - [ ] Mutual exclusion: open Catalog → Inventory closes, and vice versa
 - [ ] AC5 fully covered (12 slots, rejection, stacking, tool slots)
-- [ ] AC11 fully covered (❓, scan, auto-identify, mineral, anomaly trigger)
-- [ ] AC2 scan input verified (scan_hold signals fire with correct coords)
+- [ ] AC11 fully covered (❓, proximity scan, ENCOUNTERED, auto-identify, mineral, anomaly trigger)
 - [ ] Toxic berries: consume shows warning dialog
 - [ ] Tests deterministic, clean setup/teardown
 - [ ] All tests pass
@@ -299,23 +336,25 @@ Cumulative (adds to delivery-001):
   - ScannerSystem (Node) — NEW
   - Inventory (RefCounted, not in tree — owned by Player script)
 - World
-  - ElementIconRenderer (Node3D) — NEW, 5 MultiMesh pools for ❓/identified icons
+  - PropRenderer (Node3D) — NEW, 5 MultiMesh pools for 3D prop meshes
+  - PropLabelRenderer (Node3D) — NEW, floating pill labels (❓/name) above props
   - ScanProgressRenderer (Node3D) — NEW, scan progress ring
 - HUD
   - InventoryPanel (bottom drawer ~45%) — NEW
   - CatalogPanel (bottom drawer ~45%) — NEW
 
 ### Bootstrap Changes
-- ScannerSystem._ready() → connects to PlayerInput scan_hold_started/update/ended
-- ElementIconRenderer receives map_generated → creates ❓ icons for all elements on revealed tiles
-- ElementIconRenderer receives entry_cataloged → swaps ❓ to identified icon
+- ScannerSystem._ready() → proximity scan runs in `_process` (no PlayerInput connection needed)
+- PropRenderer receives map_generated → creates prop meshes for all elements on revealed tiles
+- PropLabelRenderer receives map_generated → creates ❓/⚠️/name labels based on 3-state knowledge
+- PropLabelRenderer receives entry_cataloged → updates ❓ labels to real names
 - Inventory created in Player._ready() with 12 base slots + 4 tool slots (survival_knife + scanner)
 
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
 - [ ] Everything from delivery-001 still works
-- [ ] ❓ icons floating above undiscovered resources/flora on revealed tiles
-- [ ] Press-and-hold toward ❓ → scan progress ring appears → completes → ❓ becomes identified icon
+- [ ] 3D prop meshes visible on revealed tiles with "❓ Unknown [category]" floating labels
+- [ ] Walk near prop → scan progress ring appears automatically → completes → label updates to real name
 - [ ] Tap Inventory button → panel slides up showing 12 empty slots + 4 tool slots
 - [ ] Tap Scanner button → catalog panel shows discovered entries (after scanning something)
 - [ ] Panels are mutually exclusive — opening one closes others
@@ -328,3 +367,5 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 7 tasks created (009-015) — approved. Merged original task-003 into task-010. | /aid-detail |
+| 2026-04-02 | task-013 rewritten: ElementIconRenderer → PropRenderer + PropLabelRenderer. Scene tree, criteria, and integration contract updated. | /spec-update |
+| 2026-04-02 | Scan redesign applied: task-011 adds KnowledgeState + encounter_entry. task-012 rewritten for proximity auto-scan. task-013 adds 3-state labels + ElementIconRenderer removal. task-015 rewritten for proximity flow. Bootstrap/smoke test updated. | /scan-redesign-apply |

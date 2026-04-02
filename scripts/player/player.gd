@@ -5,6 +5,7 @@ extends Node3D
 ## current_tile is derived from HexMath.world_to_axial(position), not set directly.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
 enum MoveState { IDLE, WALKING, JUMPING }
 
@@ -22,6 +23,7 @@ const JUMP_ARC_HEIGHT: float = 0.5
 var current_tile: Vector2i = Vector2i.ZERO
 var move_state: MoveState = MoveState.IDLE
 var facing_direction: Vector2 = Vector2.ZERO
+var inventory: _Inventory
 
 var _grid: Node  # HexGrid reference (autoload or test substitute)
 var _joystick_dir: Vector2 = Vector2.ZERO
@@ -33,10 +35,15 @@ var _snap_tween: Tween
 
 
 func _ready() -> void:
+	inventory = _Inventory.new()
 	if _grid == null:
 		_grid = HexGrid
 	_grid.map_generated.connect(_on_map_generated)
 	_connect_player_input()
+
+
+func get_inventory() -> _Inventory:
+	return inventory
 
 
 func _connect_player_input() -> void:

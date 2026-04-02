@@ -300,39 +300,37 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
 
 ---
 
-### task-007: Player Input — Two-Outcome Classifier + Joystick [IMPLEMENT]
+### task-007: Player Input — Single-Outcome Classifier + Joystick [IMPLEMENT]
 
 **Source:** feature-002 → Feature Flow (input pipelines) + Mobile Specs
 
 **Scope:**
 - `scripts/player/player_input.gd` — child Node of Player, `_unhandled_input`:
-  - Two-outcome classification (tap is no longer movement):
+  - Single-outcome classification (tap is no longer movement, scanning is proximity-based):
     - TAP: touch UP <300ms, drag <20px → no-op in delivery-001
       (future: emit `tap_world(coords)` for building/interaction)
-    - SCAN HOLD: hold ≥300ms, drag <20px → emit `scan_hold_started(coords)`,
-      `scan_hold_update(screen_pos)`, `scan_hold_ended()`
-    - JOYSTICK: drag ≥20px (any time) OR scan_rejected fallback →
-      emit `joystick_start/move/stop`
-  - Drag always wins over scan (drag ≥20px before 300ms = joystick)
-  - `scan_rejected(coords)` → fall back to joystick
-  - Screen→world→axial conversion via Camera3D + HexGrid.world_to_axial
-  - Exported thresholds: tap_max_duration, tap_max_drag, hold_threshold, drag_threshold
+    - JOYSTICK: drag ≥20px (any time) → emit `joystick_start/move/stop`
+  - No scan hold classification — scanning is proximity-based (feature-003 owns entirely)
+  - No `scan_hold_started/update/ended` signals
+  - No `scan_rejected` fallback path
+  - Screen→world→axial conversion via Camera3D + HexGrid.world_to_axial (for future tap_world)
+  - Exported thresholds: tap_max_duration, tap_max_drag, drag_threshold
 - `ui/joystick_overlay.gd` + `ui/joystick_overlay.tscn` — CanvasLayer layer 10
 - Wire: joystick_overlay → player_input → player.gd (joystick signals only)
 
 **[PIVOT]** Tap on world = no movement. Tap reserved for future interactions.
+**[SCAN REDESIGN]** No scan hold input — scanning is proximity-based (feature-003).
 
 **Criteria:**
 - [ ] Tap on world does NOT trigger movement
-- [ ] Hold ≥300ms → `scan_hold_started` emits with correct axial coords
 - [ ] Drag ≥20px → joystick immediately
-- [ ] `scan_rejected` → falls back to joystick behavior
 - [ ] Joystick visual appears at touch origin, disappears on release
 - [ ] Player moves continuously with joystick (direction + magnitude)
 - [ ] Snap to tile center on joystick release
 - [ ] HUD button taps do NOT trigger movement or world interactions
 - [ ] All thresholds exported and tunable
 - [ ] Input-to-first-movement < 100ms
+- [ ] No scan_hold signals declared or emitted
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
 
@@ -347,7 +345,6 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
   - Generate map → renders → player spawns at Crash Site
   - Joystick movement → continuous, fog reveals, snap on release
   - Tap on world → no movement (verify no-op)
-  - Hold → scan_hold signals emit (no consumer yet — verify signals fire)
   - Biome color blending visible at hex boundaries
   - HUD: stat bars visible, day counter visible, 5 buttons visible, CraftButton hidden
   - FloatingTextManager projection (now Camera3D exists from task-006)
@@ -356,6 +353,7 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
 - All AC2 criteria (joystick-only, no tap-to-move)
 - HUD layout verification
 - Document manual-only scenarios (visual rendering quality, joystick feel, color blending)
+- **Note:** No scan_hold signal tests — scanning is proximity-based (feature-003, delivery-002)
 
 **Criteria:**
 - [ ] All AC1 automated: tile count, biomes, Crash Site position, clusters, fog, anomaly
@@ -364,7 +362,6 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
 - [ ] Tap on world = no movement (verify no-op)
 - [ ] HUD: stat bars top-left, day counter top-right, buttons bottom-right, CraftButton hidden
 - [ ] FloatingTextManager projects world→screen correctly with Camera3D
-- [ ] Scan hold signals fire with correct coords (no consumer — just verify emission)
 - [ ] Panel mutual exclusion works with mock panels
 - [ ] Tests deterministic, clean setup/teardown
 - [ ] All tests pass
@@ -402,6 +399,7 @@ Run the game on desktop (F5). You MUST see:
 - [ ] Fog of war — tiles beyond radius 2 are hidden/dimmed
 - [ ] Click-and-drag → joystick appears, player moves continuously
 - [ ] Click on a tile → player does NOT move (tap reserved for interactions)
+- [ ] (Scanning tested in delivery-002 — proximity-based, not input-based)
 - [ ] New tiles reveal as player moves (fog of war works)
 - [ ] HUD elements visible: stat bar area top-left, day counter top-right, buttons bottom-right
 - [ ] Camera follows player from above at an angle
@@ -418,3 +416,4 @@ Run the game on desktop (F5). You MUST see:
 | 2026-04-01 | [PIVOT] Single mesh renderer, joystick-only movement, tasks 004/006/007/008 updated | /design-pivot |
 | 2026-04-01 | [PIVOT] Hand-crafted maps (MapLoader), 3-tier traversal, JUMPING state, task-003/006/008 updated | /design-pivot |
 | 2026-04-01 | I1: Execution graph label fixed — "two-outcome classifier". C5+I9: Player cube updated to 0.9×1.8×0.9 (HEX_SIZE=3.0, 30% occupancy). C3: Camera offset Vector3(0, 12, 8) noted in task-006. Cliff face geometry added to task-004 scope and criteria. task-002 noted to define HEX_SIZE=3.0 and ELEVATION_STEP=0.5 constants. | /pivot-cascade |
+| 2026-04-02 | Scan redesign: task-007 simplified to single-outcome classifier (no scan_hold signals). task-008 removed scan_hold signal tests. | /scan-redesign-apply |

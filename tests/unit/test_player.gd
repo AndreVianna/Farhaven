@@ -259,16 +259,17 @@ func test_slide_along_boundary_moves_position() -> void:
 
 # --- Snap to tile center ---
 
-func test_snap_on_joystick_release() -> void:
+func test_no_snap_on_joystick_release() -> void:
 	_player._on_joystick_start(Vector2.RIGHT)
 	_player._joystick_dir = Vector2.RIGHT
 	_player._joystick_magnitude = 1.0
 	# Move a bit so we're offset from center
 	_player._process_walking(0.05)
+	var pos_before: Vector3 = _player.position
 	_player._on_joystick_stop()
 	assert_int(_player.move_state).is_equal(_Player.MoveState.IDLE)
-	# Snap tween should be active
-	assert_bool(_player._snap_tween != null).is_true()
+	# No snap — player stays where they stopped
+	assert_vector(_player.position).is_equal(pos_before)
 
 
 # --- Serialization ---

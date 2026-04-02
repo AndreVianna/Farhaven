@@ -221,7 +221,7 @@ DayNightCycle from delivery-004), not on each other.
   - **Contact damage:** after fauna move, if adjacent to player: shelter check
     (0 damage if on shelter, signal still fires), else 10 HP.
     Emit `fauna_attacked_player(id, damage, species_type)`
-  - **Surprise auto-catalog:** signal includes species_type for F-003 to auto-catalog
+  - **Surprise encounter:** signal includes species_type for F-003 to auto-register as ENCOUNTERED
   - **`apply_damage(fauna_id, damage)`:** called by F-004 auto-defend. Reduce HP,
     emit `fauna_killed(id, coords, species_type)` on death.
   - **Despawn:** on `DayNightCycle.dawn` → clear all, emit `fauna_despawned` per fauna
@@ -260,24 +260,24 @@ DayNightCycle from delivery-004), not on each other.
 - Placeholder mesh: colored sphere (<500 tris)
 - **Signal wiring to downstream features:**
   - `fauna_attacked_player` → SurvivalSystem `take_damage(damage)` (feature-007)
-  - `fauna_attacked_player` → ScannerSystem surprise auto-catalog (feature-003)
+  - `fauna_attacked_player` → ScannerSystem surprise encounter (UNKNOWN → ENCOUNTERED) (feature-003)
   - `fauna_attacked_player` → HUD `ScreenFade.flash(red)` (feature-012/007)
   - `fauna_killed` → SurvivalSystem `add_ground_item(&"meat", 1)` (feature-007)
-  - `fauna_spawned` → ElementIconRenderer (❓ or identified icon, feature-003)
+  - `fauna_spawned` → PropRenderer (prop mesh, feature-003) + PropLabelRenderer (❓/⚠️/name label based on knowledge state, feature-003)
   - `fauna_moved` → AutoInteractionSystem auto-defend adjacency check (feature-004)
 - **F-004 stubs activate:** FaunaManager now exists → `get_fauna_adjacent_to` returns
-  real data → auto-defend fires for cataloged hostile fauna
+  real data → auto-defend fires for ENCOUNTERED or CATALOGED hostile fauna
 - **F-004 auto-pickup activates:** ground items from meat drops now exist →
   `SurvivalSystem.get_ground_items_at` returns real data
 
 **Criteria:**
 - [ ] Fauna render at correct positions, move between tiles, disappear on kill/despawn
 - [ ] Draw calls: 1 (single MultiMesh)
-- [ ] Surprise attack: uncataloged fauna → `fauna_attacked_player` → F-003 auto-catalogs
+- [ ] Surprise attack: UNKNOWN fauna → `fauna_attacked_player` → F-003 auto-registers as ENCOUNTERED
 - [ ] Contact damage: `fauna_attacked_player` → F-007 `take_damage`
 - [ ] Damage feedback: `fauna_attacked_player` → ScreenFade.flash(red)
 - [ ] Meat drop: `fauna_killed` → F-007 `add_ground_item(&"meat", 1)`
-- [ ] Auto-defend activates: F-004 now gets real fauna data from query API
+- [ ] Auto-defend activates: F-004 now gets real fauna data from query API (fires on ENCOUNTERED or CATALOGED hostile)
 - [ ] Auto-pickup activates: ground items from meat drops picked up on tile_entered
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
@@ -309,8 +309,8 @@ Run the game on desktop (F5). You MUST see:
 - [ ] Tap highlighted tile → structure appears → tile occupied
 - [ ] Storage Chest placed → inventory expands to 24 slots
 - [ ] Night (day 4+): fauna appear outside visible area, approach player
-- [ ] Uncataloged fauna shows ❓, attacks player → surprise damage → auto-cataloged
-- [ ] After cataloging: player auto-attacks approaching fauna
+- [ ] UNKNOWN fauna shows ❓, attacks player → surprise damage → auto-registered as ENCOUNTERED → "⚠️ Unidentified Fauna (Hostile)"
+- [ ] After ENCOUNTERED: player auto-attacks approaching fauna (auto-defend activates at ENCOUNTERED)
 - [ ] Shelter: standing on shelter tile → 0 damage from fauna contact
 - [ ] Dawn: all fauna despawn
 - [ ] Walls: fauna routes around placed walls
@@ -323,3 +323,5 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 7 tasks created (032-038). Two parallel chains. Highlight API redundancy eliminated. | /aid-detail |
+| 2026-04-02 | task-038: fauna_spawned signal wiring updated — ElementIconRenderer → PropRenderer + PropLabelRenderer. | /spec-update |
+| 2026-04-02 | Scan redesign: task-037 "surprise auto-catalog" → "auto-register as ENCOUNTERED". task-038 auto-defend activates on ENCOUNTERED, not CATALOGED. | /scan-redesign-apply |

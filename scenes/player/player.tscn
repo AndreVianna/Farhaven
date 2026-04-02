@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://playerscene001"]
+[gd_scene load_steps=6 format=3 uid="uid://playerscene001"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/player_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/scanner/scanner_system.gd" id="3_scanner"]
 
 [sub_resource type="BoxMesh" id="player_box"]
 size = Vector3(0.9, 1.2, 0.9)
@@ -19,3 +20,6 @@ material_override = SubResource("player_mat")
 
 [node name="PlayerInput" type="Node" parent="."]
 script = ExtResource("2_input")
+
+[node name="ScannerSystem" type="Node" parent="."]
+script = ExtResource("3_scanner")

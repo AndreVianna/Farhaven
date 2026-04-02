@@ -7,11 +7,22 @@ extends Control
 @onready var _notifications := $NotificationContainer
 @onready var _placement_label: Label = $PlacementLabel
 @onready var _craft_button: Button = $BottomBar/CraftButton
+@onready var _inventory_button: Button = $BottomBar/InventoryButton
+@onready var _scanner_button: Button = $BottomBar/ScannerButton
+@onready var _inventory_panel = $InventoryPanel  # InventoryPanel
+@onready var _catalog_panel = $CatalogPanel  # CatalogPanel
+
+var _panels: Array = []
 
 
 func _ready() -> void:
 	_placement_label.hide()
 	_craft_button.hide()
+	_inventory_button.pressed.connect(_inventory_panel.toggle)
+	_scanner_button.pressed.connect(_catalog_panel.toggle)
+	_panels = [_inventory_panel, _catalog_panel]
+	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
+	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
@@ -45,3 +56,31 @@ func update_day(day: int) -> void:
 
 func update_phase(phase: String) -> void:
 	_day_counter.update_phase(phase)
+
+
+# --- Inventory integration ---
+
+func connect_inventory(inv) -> void:
+	_inventory_panel.set_inventory(inv)
+	inv.inventory_full.connect(_on_inventory_full)
+
+
+func _on_inventory_full(_type: StringName, _rejected: int) -> void:
+	# Using show_notification instead of FloatingTextManager because the
+	# inventory_full signal carries no world position — the item was rejected
+	# before placement, so there is no spatial anchor to attach a float to.
+	show_notification("INVENTORY FULL")
+
+
+# --- Catalog integration ---
+
+func connect_catalog(cat) -> void:
+	_catalog_panel.set_catalog(cat)
+
+
+# --- Mutual exclusion: closing other panels when one opens ---
+
+func _on_panel_opened(opened_panel) -> void:
+	for panel in _panels:
+		if panel != opened_panel:
+			panel.close()

@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F4, §9 AC4 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
+| 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 
 ## Source
 
@@ -241,7 +242,8 @@ changes. HUD binds `CraftButton.visible` to this signal.
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
        ├─ Player (Node3D)                       [feature-002]

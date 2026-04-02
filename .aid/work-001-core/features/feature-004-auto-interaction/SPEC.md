@@ -8,6 +8,8 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fixes: gather-always-completes, 7-tile check, chain from current pos, scan→check | /aid-specify |
 | 2026-04-01 | I5: Fly-to-player animation updated to ~0.5s, marked [TUNING_REQUIRED] for HEX_SIZE=3.0 scale. M2: Resource offset specified as ±15% of HEX_SIZE radius. Range note: auto-gather area transitioning to circular world-unit [TUNING_REQUIRED]. | /pivot-cascade |
+| 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
+| 2026-04-02 | Scan redesign: auto-defend gate changed from CATALOGED to ENCOUNTERED (hostile fauna). Auto-gather gate remains CATALOGED. Catalog query updated to `get_knowledge_state`. | /scan-redesign-apply |
 
 ## Source
 
@@ -39,8 +41,8 @@ Must (P0 -- Core Loop)
 - [ ] Player moves adjacent to cataloged ore with Stone Pickaxe -> auto-gather, +1 Ore
 - [ ] Resource node depletes after N gathers and visually changes
 - [ ] Depleted resource on non-visible tile regenerates after type-specific timer
-- [ ] Uncataloged hostile fauna -> no auto-defend
-- [ ] Cataloged hostile fauna adjacent -> auto-defend (player auto-attacks with equipped weapon)
+- [ ] UNKNOWN hostile fauna → no auto-defend
+- [ ] ENCOUNTERED or CATALOGED hostile fauna adjacent → auto-defend (player auto-attacks with equipped weapon)
 
 ## Save Integration
 
@@ -57,8 +59,9 @@ No save data. Respawn queue is intentionally not persisted — depleted resource
 **Movement IS interaction.** The player controls WHERE to go. The game handles the
 rest. All interactions are proximity-based and catalog-gated:
 
-- ❓ (uncataloged) = inert to the auto-system
-- Cataloged = auto-interaction unlocked for that type forever
+- ❓ (UNKNOWN) = inert to the auto-system
+- ⚠️ (ENCOUNTERED) = auto-defend only (hostile fauna — player knows it's hostile but not its details)
+- ✅ (CATALOGED) = full auto-interaction (auto-gather, auto-hunt, everything unlocked)
 - No taps required for gathering, defending, or picking up items
 
 #### ResourceNode Extension (feature-001 Resource)
@@ -208,8 +211,8 @@ sessions. This is a small player-friendly bonus and avoids serializing timer sta
 |---------------------|--------|---------------|
 | `HexGrid.get_tile(coords).resource_nodes[]` | feature-001 | Resources on tile |
 | `HexGrid.get_tile(coords).fog_state` | feature-001 | For respawn pause/resume |
-| `Catalog.is_cataloged(entry_id)` | feature-003 | Catalog gate for auto-interaction. Queried per tile_entered, NOT via entry_cataloged signal. |
-| `Catalog.get_entry(entry_id).properties` | feature-003 | Flora edible/toxic, fauna hostile, mineral tool_required |
+| `Catalog.get_knowledge_state(entry_id)` | feature-003 | Knowledge gate for auto-interaction. Auto-gather requires CATALOGED. Auto-defend requires ENCOUNTERED or CATALOGED. Queried per tile_entered, NOT via signals. |
+| `Catalog.get_entry(entry_id).properties` | feature-003 | Flora edible/toxic, fauna hostile, mineral tool_required (only available for CATALOGED entries) |
 | `Inventory.get_tool(slot)` | feature-005 | Tool for can_gather + weapon for auto-defend |
 | `Inventory.add_item(type, amount)` | feature-005 | Store gathered resources |
 | FaunaManager fauna positions + species | feature-010 | Adjacent hostile check for auto-defend |
@@ -241,7 +244,7 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │         if resource_node.remaining <= 0: skip (depleted)
   │
   │         entry_id = RESOURCE_TO_ENTRY[resource_node.type]  (from feature-003)
-  │         if NOT Catalog.is_cataloged(entry_id): skip (catalog gate — ❓)
+  │         if NOT Catalog.is_cataloged(entry_id): skip (catalog gate — must be CATALOGED for auto-gather)
   │
   │         if NOT can_gather(resource_node, Inventory): skip (tool gate)
   │
@@ -345,9 +348,15 @@ FaunaManager emits fauna_moved(fauna_id, from_coords, to_coords)
   │       if HexGrid.distance(player.current_tile, fauna.coords) > AUTO_DEFEND_CONFIG.attack_range:
   │         skip (too far)
   │       entry_id = fauna.species_type  (StringName matching catalog entry)
-  │       if NOT Catalog.is_cataloged(entry_id): skip (unknown — no auto-defend)
-  │       entry = Catalog.get_entry(entry_id)
-  │       if NOT entry.properties.hostile: skip (passive creature)
+  │       var state = Catalog.get_knowledge_state(entry_id)
+  │       if state == KnowledgeState.UNKNOWN: skip (unknown — no auto-defend)
+  │       # ENCOUNTERED or CATALOGED — auto-defend activates
+  │       # For ENCOUNTERED: hostile flag is known (that's how it became ENCOUNTERED)
+  │       # For CATALOGED: full properties available
+  │       if state == KnowledgeState.CATALOGED:
+  │         entry = Catalog.get_entry(entry_id)
+  │         if NOT entry.properties.hostile: skip (passive creature)
+  │       # ENCOUNTERED fauna is always hostile (auto-registered on attack)
   │       → Found an adjacent, cataloged, hostile fauna!
   │
   ├─ if _defend_cooldown > 0: return (on cooldown from last auto-attack)
@@ -372,10 +381,11 @@ FaunaManager emits fauna_moved(fauna_id, from_coords, to_coords)
 **Cooldown tick:** `_defend_cooldown -= delta` in `_process`. Resets to 0 when expired.
 Auto-defend only fires when cooldown is 0.
 
-**Uncataloged hostile fauna:** Auto-defend does NOT fire. The fauna attacks the player
-(surprise damage, handled by feature-010). Feature-003 auto-catalogs the species on
-first hit. On the NEXT fauna_moved tick (1.0s later), auto-defend fires because the
-species is now cataloged.
+**UNKNOWN hostile fauna:** Auto-defend does NOT fire. The fauna attacks the player
+(surprise damage, handled by feature-010). Feature-003 auto-registers the species as
+ENCOUNTERED on first hit. On the NEXT fauna_moved tick (1.0s later), auto-defend fires
+because the species is now ENCOUNTERED (hostile flag known). Incentive for full CATALOGED
+state = knowing drops/details, not for auto-defend.
 
 **Passive fauna:** Auto-defend ignores them. `entry.properties.hostile == false` → skip.
 
@@ -450,7 +460,8 @@ Every frame (AutoInteractionSystem._process):
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             ← NEW (MultiMesh per resource type)
        │    ├─ MultiMeshInstance3D [wood/tree]
