@@ -8,6 +8,7 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-01 | [PIVOT] Added max_jump attribute to fauna config. Mechanic deferred, attribute defined now. | /design-pivot |
 | 2026-04-01 | I4: move_cooldown and detection_range marked [TUNING_REQUIRED] for HEX_SIZE=3.0 visual feel. Range note: detection_range transitioning to circular world-unit area (~2 inscribed hex radii). | /pivot-cascade |
+| 2026-04-02 | Scene tree + fauna icon references: ElementIconRenderer → PropRenderer + PropLabelRenderer. Fauna body mesh via PropRenderer, ❓/name label via PropLabelRenderer. | /spec-update |
 
 ## Source
 
@@ -236,9 +237,10 @@ DayNightCycle emits night()
   │
   │     Emit fauna_spawned(id, spawn_tile, species)
   │       → feature-003 (scanner): check if species cataloged
-  │         → Uncataloged: ElementIconRenderer shows ❓ at spawn_tile
-  │         → Cataloged hostile: shows red icon
-  │         → Cataloged passive: shows green icon (future chapters)
+  │         → Uncataloged: PropRenderer shows fauna mesh at spawn_tile,
+  │           PropLabelRenderer shows "❓ Unknown Fauna" label
+  │         → Cataloged hostile: PropLabelRenderer shows real name
+  │         → Cataloged passive: PropLabelRenderer shows real name (future chapters)
   │
   └─ Done
 ```
@@ -362,7 +364,8 @@ Main (Node)
        ├─ WorldEnvironment                      [feature-008]
        ├─ DirectionalLight3D                    [feature-008]
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
        ├─ StructureRenderer (Node3D)            [feature-009]
@@ -404,10 +407,11 @@ scenes/
 | `fauna_manager.gd` | Child Node of Player. Spawn on `night` signal. AI movement in `_process` (NIGHT only). Contact damage check + emit. `apply_damage()` API for auto-defend. Despawn on `dawn`. Fauna position query API. Does NOT implement player combat — emits signals consumed by feature-004. | `DayNightCycle` feature-008 (night/dawn signals, day_count, current_phase), `HexGrid` feature-001 (tile queries, distance, passability), `Player` (current_tile for proximity) |
 | `fauna_renderer.gd` | Node3D under World. Single MultiMeshInstance3D (~3 max instances, 1 draw call). Updates on `fauna_spawned` (add), `fauna_moved` (transform), `fauna_killed` (remove), `fauna_despawned` (remove). Placeholder mesh: colored sphere or simple creature shape. | `FaunaManager` (fauna signals), `HexGrid` (axial_to_world for positioning) |
 
-**Note:** Fauna ❓/identified icons are NOT owned by FaunaRenderer. They're owned
-by ElementIconRenderer (feature-003), which listens to `fauna_spawned` and checks
-catalog state to decide ❓ vs hostile/passive icon. FaunaRenderer renders the creature
-body mesh; ElementIconRenderer renders the icon above it.
+**Note:** Fauna 3D prop meshes are rendered by PropRenderer (feature-003), which
+places the fauna body mesh at spawn position. Fauna ❓/name labels are owned by
+PropLabelRenderer (feature-003), which listens to `fauna_spawned` and checks catalog
+state to decide "❓ Unknown Fauna" vs real name label. FaunaRenderer renders the
+creature body mesh; PropLabelRenderer renders the floating label above it.
 
 #### Signal Wiring — Complete
 

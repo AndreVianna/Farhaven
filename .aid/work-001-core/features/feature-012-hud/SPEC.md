@@ -9,6 +9,7 @@
 | 2026-03-31 | Fix: notification queue max depth 3, faster dismiss for queued items | /aid-specify |
 | 2026-04-01 | [PIVOT] Scene tree updated for single-mesh renderer. Draw call budget updated. | /design-pivot |
 | 2026-04-01 | M3: HexGridRenderer draw call note updated — cliff faces included in ArrayMesh (0 extra draw calls). | /pivot-cascade |
+| 2026-04-02 | Draw call budget: ElementIconRenderer ~5 → PropRenderer ~5 + PropLabelRenderer ~1. Scene tree updated. | /spec-update |
 
 ## Source
 
@@ -338,7 +339,8 @@ Main (Node)
        ├─ DirectionalLight3D                    [feature-008]
        ├─ HexGridRenderer (Node3D)              [feature-001]
        │    └─ MeshInstance3D [single ArrayMesh — per-vertex color blending]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
        ├─ StructureRenderer (Node3D)            [feature-009]
@@ -589,18 +591,19 @@ component. Tweens run independently via Godot's tween system.
 | Renderer | Feature | Draw Calls |
 |----------|---------|-----------|
 | HexGridRenderer | 001 | ~1 (includes cliff face geometry — same ArrayMesh, 0 extra draw calls) |
-| ElementIconRenderer | 003 | ~5 |
+| PropRenderer | 003 | ~5 |
+| PropLabelRenderer | 003 | ~1 |
 | ResourceRenderer | 004 | ~6 |
 | GroundItemRenderer | 007 | ~1 |
 | StructureRenderer | 009 | ~5 |
 | FaunaRenderer | 010 | ~1 |
 | ScanProgressRenderer | 003 | ~1 |
 | Player mesh | 002 | ~1 |
-| **Total 3D** | | **~21** |
+| **Total 3D** | | **~22** |
 | **Budget** | | **<100** |
-| **Remaining** | | **~79** |
+| **Remaining** | | **~78** |
 
-Well within budget. ~75 draw calls remaining for future chapters, effects, and polish.
+Well within budget. ~78 draw calls remaining for future chapters, effects, and polish.
 
 #### Touch Interaction
 

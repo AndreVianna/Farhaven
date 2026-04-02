@@ -263,7 +263,7 @@ DayNightCycle from delivery-004), not on each other.
   - `fauna_attacked_player` → ScannerSystem surprise auto-catalog (feature-003)
   - `fauna_attacked_player` → HUD `ScreenFade.flash(red)` (feature-012/007)
   - `fauna_killed` → SurvivalSystem `add_ground_item(&"meat", 1)` (feature-007)
-  - `fauna_spawned` → ElementIconRenderer (❓ or identified icon, feature-003)
+  - `fauna_spawned` → PropRenderer (prop mesh, feature-003) + PropLabelRenderer (❓ or name label, feature-003)
   - `fauna_moved` → AutoInteractionSystem auto-defend adjacency check (feature-004)
 - **F-004 stubs activate:** FaunaManager now exists → `get_fauna_adjacent_to` returns
   real data → auto-defend fires for cataloged hostile fauna
@@ -323,3 +323,4 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 7 tasks created (032-038). Two parallel chains. Highlight API redundancy eliminated. | /aid-detail |
+| 2026-04-02 | task-038: fauna_spawned signal wiring updated — ElementIconRenderer → PropRenderer + PropLabelRenderer. | /spec-update |

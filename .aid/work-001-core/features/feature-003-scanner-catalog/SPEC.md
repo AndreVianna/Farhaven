@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F13, §9 AC11 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-01 | I6: _scan_range (2 hexes) noted as [TUNING_REQUIRED] for HEX_SIZE=3.0; range transitioning to circular world-unit area. I2: Touch target estimate marked [TUNING_REQUIRED]. | /pivot-cascade |
+| 2026-04-02 | Architecture: ElementIconRenderer → PropRenderer + PropLabelRenderer. 3D prop meshes replace billboard icons; floating pill labels show ❓/name. Catalog changes label text, not mesh. | /spec-update |
 
 ## Source
 
@@ -251,7 +252,8 @@ feature-002 emits scan_hold_started(coords: Vector2i)
         Catalog.catalog_entry(_scan_target_entry_id)
         Emit scan_completed(_scan_target_entry_id)
         Emit entry_cataloged(_scan_target_entry_id, entry.category)
-        → UI: ❓ icon replaced with identified icon (bulk swap for all visible)
+        → UI: PropLabelRenderer updates label text from "❓ Unknown [category]" to real name
+             (bulk label update for all visible props of this type)
         → UI: brief "Cataloged!" feedback
         → Auto-interaction (feature-004) now unlocked for this type:
           - Cataloged edible flora → auto-gather enabled
@@ -281,7 +283,7 @@ feature-010 emits fauna_attacked_player(fauna_id, damage, species_type: StringNa
   │     Catalog.catalog_entry(species_type)
   │     Emit surprise_cataloged(species_type)
   │     Emit entry_cataloged(species_type, CatalogCategory.FAUNA)
-  │     → UI: ❓ icon on attacker changes to hostile (red) icon
+  │     → UI: PropLabelRenderer updates label on attacker from "❓ Unknown" to real name
   │     → Auto-defend (feature-004) activates immediately for this species
   │
   └─ Done — no scan progress bar, instant catalog on first hit
@@ -317,10 +319,12 @@ HexGrid emits tile_revealed(coords) or tile_visibility_changed(coords, VISIBLE)
   │       entry_id = _map_resource_to_entry(resource_node.type)
   │       if Catalog.is_cataloged(entry_id):
   │         Emit element_identified(coords, entry_id)
-  │         → Renderer: show correct icon (green plant, pickaxe rock, etc.)
+  │         → PropRenderer: show prop mesh at tile position
+  │         → PropLabelRenderer: show real name label
   │       else:
   │         Emit element_unknown(coords)
-  │         → Renderer: show ❓ icon
+  │         → PropRenderer: show prop mesh at tile position
+  │         → PropLabelRenderer: show "❓ Unknown [category]" label
   │
   │     If tile.anomaly != &"":
   │       if Catalog.is_cataloged(tile.anomaly):
@@ -334,8 +338,9 @@ HexGrid emits tile_revealed(coords) or tile_visibility_changed(coords, VISIBLE)
   └─ Done
 ```
 
-This runs once per tile when it becomes VISIBLE. The renderer subscribes and updates
-world-space icons accordingly.
+This runs once per tile when it becomes VISIBLE. PropRenderer places the 3D prop mesh
+(always the same regardless of catalog state). PropLabelRenderer subscribes and sets
+the appropriate label text (❓ or real name).
 
 #### Resource-to-Entry Mapping
 
@@ -366,7 +371,8 @@ One resource type maps to exactly one catalog entry. Future chapters can add ent
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          ← NEW (❓ and identified icons on tiles)
+       ├─ PropRenderer (Node3D)                  ← NEW (3D prop meshes on tiles)
+       ├─ PropLabelRenderer (Node3D)              ← NEW (floating pill labels: ❓/name)
        ├─ ScanProgressRenderer (Node3D)         ← NEW (scan progress bar over target)
        ├─ Player (Node3D)                       [feature-002]
        │    ├─ PlayerVisual (Node3D)
@@ -397,7 +403,8 @@ scripts/
     catalog_entry.gd         # Resource — static entry definition
 
   rendering/
-    element_icon_renderer.gd # Node3D — ❓ and identified icons on world tiles
+    prop_renderer.gd         # Node3D — 3D prop meshes on world tiles (MultiMesh per type)
+    prop_label_renderer.gd   # Node3D — floating pill-shaped labels above props (billboard)
     scan_progress_renderer.gd # Node3D — progress bar billboard over scan target
 
 scenes/
@@ -424,7 +431,8 @@ data/
 | `scanner_system.gd` | Child Node of Player. Owns `Catalog` instance. Receives `scan_hold_started`/`update`/`ended` from feature-002. Checks eligibility (`get_scannable_at`). Manages scan lifecycle (progress, complete, cancel). Handles passive identification on `tile_revealed`/`tile_visibility_changed`. Handles surprise catalog on `fauna_attacked_player`. Emits all scanner/catalog signals. | `HexGrid` (tile queries), `FaunaManager` feature-010 (fauna position queries + surprise signal), `player_input.gd` feature-002 (scan hold signals) |
 | `catalog.gd` | RefCounted owned by ScannerSystem. Discovery state (`_discovered`). All query APIs (`is_cataloged`, `get_entry`, `get_scannable_at`, counters). `catalog_entry()` mutation. `get_save_data()`/`load_save_data()`. | `catalog_entry.gd` (static definitions), `HexGrid` (for `get_scannable_at` tile queries), `FaunaManager` (for fauna position in `get_scannable_at`) |
 | `catalog_entry.gd` | Resource — static definition. Loaded from `.tres` data files. No runtime mutation. | Nothing (data only) |
-| `element_icon_renderer.gd` | Node3D under World. MultiMesh per icon type (~5 pools: ❓, flora, fauna, mineral, anomaly). Maintains tile→entry mapping for bulk swap on `entry_cataloged`. Updates on `element_identified`/`element_unknown`/`entry_cataloged`. | `ScannerSystem` (signals) |
+| `prop_renderer.gd` | Node3D under World. MultiMesh per prop type (~5 pools: flora cube, fauna sphere, mineral octahedron, anomaly tetrahedron, generic). Places 3D placeholder meshes at resource positions on hexes. Updates on `element_identified`/`element_unknown`. Props are always visible once tile is revealed — catalog state does NOT change meshes. | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
+| `prop_label_renderer.gd` | Node3D under World. Floating pill-shaped labels above props (~1 MultiMesh pool). Billboard-enabled (faces camera). Shows "❓ Unknown [category]" for uncataloged, real name for cataloged. Only renders labels for nearby/targeted props. On `entry_cataloged`: bulk label text update for all visible props of that type. | `ScannerSystem` (signals), `Catalog` (name lookups) |
 | `scan_progress_renderer.gd` | Node3D under World. Shows a progress bar billboard above the scan target tile during active scan. Updates on `scan_started`/`scan_progress_updated`/`scan_completed`/`scan_cancelled`. Single instance (only one scan at a time). | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
 | `catalog_panel.gd` | Control on CatalogPanel. Bottom drawer (same pattern as Inventory/Crafting/Build panels). 4 category tabs, entry list per category, discovery counter. Mutual exclusion with other panels. | `Catalog` (query APIs for entries and counters) |
 
@@ -446,11 +454,16 @@ HexGrid signals                              scanner_system.gd
   tile_revealed(coords)                  ──►  passive identification check
   tile_visibility_changed(coords, VISIBLE)──► passive identification check
 
-scanner_system.gd                            element_icon_renderer.gd
-  element_identified(coords, entry_id)   ──►  add instance to identified MultiMesh pool
-  element_unknown(coords)                ──►  add instance to ❓ MultiMesh pool
-  entry_cataloged(entry_id, category)    ──►  BULK SWAP: iterate all visible tiles,
-                                              move matching ❓ instances → identified pool.
+scanner_system.gd                            prop_renderer.gd
+  element_identified(coords, entry_id)   ──►  add prop mesh instance to appropriate MultiMesh pool
+  element_unknown(coords)                ──►  add prop mesh instance to appropriate MultiMesh pool
+                                              (same mesh regardless of catalog state)
+
+scanner_system.gd                            prop_label_renderer.gd
+  element_identified(coords, entry_id)   ──►  show real name label above prop
+  element_unknown(coords)                ──►  show "❓ Unknown [category]" label above prop
+  entry_cataloged(entry_id, category)    ──►  BULK LABEL UPDATE: iterate all visible props,
+                                              update matching labels from ❓ → real name.
                                               This is the "biome conquered" satisfaction moment.
 
 scanner_system.gd                            scan_progress_renderer.gd
@@ -469,38 +482,56 @@ scanner_system.gd                            catalog_panel.gd
   entry_cataloged(entry_id, category)    ──►  refresh entry list + counter
 ```
 
-#### Element Icon Rendering
+#### Prop Rendering (3D Meshes)
 
-**MultiMesh per icon type** — same proven pattern as hex tiles and resources.
+**MultiMesh per prop type** — same proven pattern as hex tiles and resources.
 
-One `MultiMeshInstance3D` per icon category:
-- ❓ unknown (shared across all uncataloged elements)
-- Flora identified (green plant icon)
-- Fauna identified (creature icon — red if hostile, green if passive)
-- Mineral identified (rock/gem icon)
-- Anomaly identified (special marker icon)
+One `MultiMeshInstance3D` per prop category:
+- Flora (green cube)
+- Fauna (red/green sphere)
+- Mineral (blue octahedron)
+- Anomaly (purple tetrahedron)
+- Generic (fallback)
 
 **~5 MultiMeshInstance3D = ~5 draw calls.** Player visibility radius 2 = ~19 tiles,
 1-3 elements each = ~20-50 instances distributed across the pools. Well within budget.
 
-**Icon positioning:** Floats above tile center at a fixed Y offset. Uses
-`HexGrid.axial_to_world(coords)` + Y offset. Billboard via shader or Godot's
-`BaseMaterial3D.billboard_mode = BILLBOARD_ENABLED`.
+**Prop positioning:** Placed on tile surface at resource position. Uses
+`HexGrid.axial_to_world(coords)` + Y offset for elevation.
 
-**Icon lifecycle:**
+**Prop lifecycle:**
 - Tile becomes VISIBLE → ScannerSystem checks catalog → emit `element_identified` or
-  `element_unknown` → renderer adds instance to appropriate MultiMesh pool
-- Tile becomes REVEALED → remove instances (dimmed tile, no icons)
+  `element_unknown` → PropRenderer adds prop mesh instance to appropriate MultiMesh pool.
+  **The same mesh is used regardless of catalog state** — the prop always looks the same.
+- Tile becomes REVEALED → remove instances (dimmed tile, no props)
 - Tile becomes HIDDEN → remove instances
-- Entry cataloged → `entry_cataloged` signal → renderer iterates ALL visible tiles,
-  swaps matching ❓ instances from the unknown pool to the correct identified pool.
-  This is the "biome conquered" moment — all ❓s for that type flip at once.
+- Entry cataloged → PropRenderer does NOT change meshes. Props stay as-is.
 
-**Swap on catalog mechanism:** `ElementIconRenderer` maintains a mapping
+#### Prop Label Rendering (Floating Pills)
+
+**Floating pill-shaped labels** above props. Billboard-enabled (faces camera).
+
+One `MultiMeshInstance3D` pool for label backgrounds (~1 draw call). Text rendered
+via Label3D or equivalent.
+
+**Label content:**
+- Uncataloged: "❓ Unknown Vegetation", "❓ Unknown Mineral", etc.
+- Cataloged: Real name ("Berry Bush", "Iron Deposit", etc.)
+
+**Label visibility:** Only shows for nearby/targeted props (not all at once).
+This keeps the screen uncluttered.
+
+**Label lifecycle:**
+- Tile becomes VISIBLE → PropLabelRenderer sets label text based on catalog state
+- Entry cataloged → `entry_cataloged` signal → PropLabelRenderer iterates ALL visible
+  props, updates matching labels from "❓ Unknown [category]" to real name.
+  This is the "biome conquered" moment — all ❓ labels for that type flip at once.
+
+**Bulk label update mechanism:** `PropLabelRenderer` maintains a mapping
 `Dictionary[Vector2i, Array[StringName]]` — tile coords → list of element entry_ids
 currently displayed. On `entry_cataloged(entry_id)`, iterate the mapping, find all
-tiles showing that entry_id as ❓, remove from unknown MultiMesh, add to identified
-MultiMesh. O(n) where n = visible tiles with that element type — typically 5-15.
+tiles showing that entry_id with ❓ label, update label text to real name.
+O(n) where n = visible tiles with that element type — typically 5-15.
 
 #### Catalog Panel UI
 
@@ -555,10 +586,11 @@ No per-frame cost when not scanning. Passive identification is event-driven
 
 | Renderer | Estimated Draw Calls | Notes |
 |----------|---------------------|-------|
-| ElementIconRenderer | ~5 | MultiMesh per icon type: ❓, flora, fauna, mineral, anomaly |
+| PropRenderer | ~5 | MultiMesh per prop type: flora, fauna, mineral, anomaly, generic |
+| PropLabelRenderer | ~1 | Floating pill labels (billboard, single pool) |
 | ScanProgressRenderer | 1 | Single billboard, only during active scan |
 | CatalogPanel (UI) | 0 | CanvasLayer, not 3D draw calls |
-| **Scanner total** | **~6** | Within remaining ~90 budget after terrain (~5) |
+| **Scanner total** | **~7** | Within remaining ~90 budget after terrain (~5) |
 
 #### Scan Hold Latency
 
@@ -586,6 +618,7 @@ responds within the same frame — timeout never fires in practice.
 
 - `Catalog._discovered`: Dictionary with ~50 entries max (Chapter 1). Negligible.
 - `CatalogEntry` resources: ~50 static definitions. <100KB total.
-- Element icons: 5 MultiMesh pools × ~50 instances each = ~250 instances max.
+- Prop meshes: 5 MultiMesh pools × ~50 instances each = ~250 instances max.
   ~64 bytes per instance (transform + custom data). Total: <100KB.
+- Prop labels: 1 MultiMesh pool for nearby props. ~20 instances max. <20KB.
 - Scan progress bar: 1 instance. Negligible.

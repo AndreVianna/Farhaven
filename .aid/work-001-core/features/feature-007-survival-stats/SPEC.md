@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F8, F11, §9 AC8 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fix: toxic_berries concrete values (hunger 10, toxic_damage 25) | /aid-specify |
+| 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 
 ## Source
 
@@ -359,7 +360,8 @@ FaunaManager does NOT access `_ground_items` — it emits, SurvivalSystem create
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
        ├─ GroundItemRenderer (Node3D)           ← THIS FEATURE (MultiMesh loot markers)

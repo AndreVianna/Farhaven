@@ -8,6 +8,7 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fixes: gather-always-completes, 7-tile check, chain from current pos, scan→check | /aid-specify |
 | 2026-04-01 | I5: Fly-to-player animation updated to ~0.5s, marked [TUNING_REQUIRED] for HEX_SIZE=3.0 scale. M2: Resource offset specified as ±15% of HEX_SIZE radius. Range note: auto-gather area transitioning to circular world-unit [TUNING_REQUIRED]. | /pivot-cascade |
+| 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 
 ## Source
 
@@ -450,7 +451,8 @@ Every frame (AutoInteractionSystem._process):
 Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             ← NEW (MultiMesh per resource type)
        │    ├─ MultiMeshInstance3D [wood/tree]

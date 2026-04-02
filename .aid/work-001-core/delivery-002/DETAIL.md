@@ -18,7 +18,7 @@ task-009 (Inventory data layer)        task-011 (Catalog data layer)
 task-010 (Inventory panel UI +         task-012 (Scanner system core)
           HUD integration)               │
   │                                      ▼
-  │                                    task-013 (Element icon + scan
+  │                                    task-013 (Prop + label + scan
   │                                              progress renderers)
   │                                      │
   │                                      ▼
@@ -40,7 +40,7 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 | 010 | Inventory panel UI + HUD integration | IMPLEMENT | 009 | 011, 012 |
 | 011 | Catalog data layer | IMPLEMENT | delivery-001 | 009 |
 | 012 | Scanner system core | IMPLEMENT | 011 | 009, 010 |
-| 013 | Element icon + scan progress renderers | IMPLEMENT | 012 | -- |
+| 013 | Prop renderer + prop label renderer + scan progress renderer | IMPLEMENT | 012 | -- |
 | 014 | Catalog panel UI | IMPLEMENT | 011 | 010 |
 | 015 | Delivery-002 integration test | TEST | all above | -- |
 
@@ -195,37 +195,47 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
 
 ---
 
-### task-013: Element Icon + Scan Progress Renderers [IMPLEMENT]
+### task-013: Prop Renderer + Prop Label Renderer + Scan Progress Renderer [IMPLEMENT]
 
 **Source:** feature-003 → Layers & Components (renderers)
 
 **Scope:**
-- `scripts/rendering/element_icon_renderer.gd` — Node3D:
-  - 5 MultiMeshInstance3D pools: unknown (❓), flora, fauna, mineral, anomaly
-  - `_tile_entries: Dictionary[Vector2i, Array[StringName]]` — tile → displayed entry IDs
-  - On `element_identified(coords, entry_id)`: add to identified pool
-  - On `element_unknown(coords)`: add to unknown (❓) pool
-  - On `entry_cataloged(entry_id, category)`: bulk swap — iterate all visible tiles,
-    move matching ❓ instances → identified pool. "Biome conquered" moment.
+- `scripts/rendering/prop_renderer.gd` — Node3D:
+  - 5 MultiMeshInstance3D pools: flora (cube), fauna (sphere), mineral (octahedron),
+    anomaly (tetrahedron), generic (fallback)
+  - On `element_identified(coords, entry_id)`: add prop mesh to appropriate pool
+  - On `element_unknown(coords)`: add prop mesh to appropriate pool
+    (same mesh regardless of catalog state — props always look the same)
   - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove instances
-  - Icon positioning: `HexGrid.axial_to_world(coords)` + Y offset, billboard
+  - Prop positioning: `HexGrid.axial_to_world(coords)` + Y offset
+- `scripts/rendering/prop_label_renderer.gd` — Node3D:
+  - ~1 MultiMeshInstance3D pool for pill-shaped label backgrounds (billboard)
+  - `_tile_entries: Dictionary[Vector2i, Array[StringName]]` — tile → displayed entry IDs
+  - On `element_identified(coords, entry_id)`: show real name label above prop
+  - On `element_unknown(coords)`: show "❓ Unknown [category]" label above prop
+  - On `entry_cataloged(entry_id, category)`: bulk label update — iterate all visible
+    props, update matching labels from ❓ → real name. "Biome conquered" moment.
+  - On `tile_visibility_changed(coords, REVEALED/HIDDEN)`: remove labels
+  - Labels only render for nearby/targeted props (not all at once)
 - `scripts/rendering/scan_progress_renderer.gd` — Node3D:
   - Single billboard progress bar above scan target
   - On `scan_started`: show at target coords
   - On `scan_progress_updated`: update fill
   - On `scan_completed`/`scan_cancelled`: hide
-- `scenes/world/element_icon_renderer.tscn`, `scan_progress_renderer.tscn`
+- `scenes/world/prop_renderer.tscn`, `prop_label_renderer.tscn`, `scan_progress_renderer.tscn`
 
 **Criteria:**
-- [ ] 5 MultiMesh pools created (unknown, flora, fauna, mineral, anomaly)
-- [ ] Unknown elements show ❓ icon at correct tile positions
-- [ ] Identified elements show category-appropriate icon
-- [ ] Bulk swap on entry_cataloged: all visible ❓ for that type → identified pool
-- [ ] Icons removed when tile goes REVEALED or HIDDEN
+- [ ] PropRenderer: 5 MultiMesh pools created (flora, fauna, mineral, anomaly, generic)
+- [ ] PropRenderer: prop meshes appear at correct tile positions (same mesh before/after catalog)
+- [ ] PropRenderer: meshes removed when tile goes REVEALED or HIDDEN
+- [ ] PropLabelRenderer: uncataloged props show "❓ Unknown [category]" label
+- [ ] PropLabelRenderer: cataloged props show real name label
+- [ ] PropLabelRenderer: bulk label update on entry_cataloged — all visible ❓ labels for that type → real name
+- [ ] PropLabelRenderer: labels billboard toward camera (pill-shaped)
+- [ ] PropLabelRenderer: labels only render for nearby/targeted props
 - [ ] ScanProgressRenderer shows/hides on scan lifecycle signals
 - [ ] Progress bar fill updates on scan_progress_updated
-- [ ] Icons billboard toward camera
-- [ ] Draw calls: ~5 for icons + 1 for progress bar = ~6
+- [ ] Draw calls: ~5 for props + ~1 for labels + 1 for progress bar = ~7
 - [ ] Build passes with zero warnings
 
 ---
@@ -269,8 +279,8 @@ Integration tests verifying delivery-002 features together:
 - Inventory: add_item with real item_config → panel displays correctly
 - Inventory full → floating "INVENTORY FULL" text via HUD
 - Scanner: scan_hold_started → eligibility check → progress → complete → catalog entry
-- Element icons: ❓ appears on reveal → scan → icon swaps to identified
-- Bulk swap: catalog one berry_bush → all visible berry_bush ❓ flip to identified
+- Prop labels: ❓ label appears on reveal → scan → label updates to real name
+- Bulk label update: catalog one berry_bush → all visible berry_bush ❓ labels flip to real name
 - Catalog panel: newly cataloged entry appears in correct tab, counter updates
 - Mutual exclusion: Inventory ↔ Catalog panels
 - Toxic berries in inventory: tap → warning dialog
@@ -279,8 +289,8 @@ Integration tests verifying delivery-002 features together:
 - AC2 completion (scan input — scan_hold fires with coords)
 
 **Criteria:**
-- [ ] Scan unknown flora → catalog entry → icon swap → catalog panel shows entry
-- [ ] Bulk swap: all visible ❓ of cataloged type flip at once
+- [ ] Scan unknown flora → catalog entry → label update → catalog panel shows entry
+- [ ] Bulk label update: all visible ❓ labels of cataloged type flip to real name at once
 - [ ] Inventory add → panel displays → inventory full → floating text
 - [ ] Mutual exclusion: open Catalog → Inventory closes, and vice versa
 - [ ] AC5 fully covered (12 slots, rejection, stacking, tool slots)
@@ -299,7 +309,8 @@ Cumulative (adds to delivery-001):
   - ScannerSystem (Node) — NEW
   - Inventory (RefCounted, not in tree — owned by Player script)
 - World
-  - ElementIconRenderer (Node3D) — NEW, 5 MultiMesh pools for ❓/identified icons
+  - PropRenderer (Node3D) — NEW, 5 MultiMesh pools for 3D prop meshes
+  - PropLabelRenderer (Node3D) — NEW, floating pill labels (❓/name) above props
   - ScanProgressRenderer (Node3D) — NEW, scan progress ring
 - HUD
   - InventoryPanel (bottom drawer ~45%) — NEW
@@ -307,15 +318,16 @@ Cumulative (adds to delivery-001):
 
 ### Bootstrap Changes
 - ScannerSystem._ready() → connects to PlayerInput scan_hold_started/update/ended
-- ElementIconRenderer receives map_generated → creates ❓ icons for all elements on revealed tiles
-- ElementIconRenderer receives entry_cataloged → swaps ❓ to identified icon
+- PropRenderer receives map_generated → creates prop meshes for all elements on revealed tiles
+- PropLabelRenderer receives map_generated → creates ❓ labels for uncataloged elements
+- PropLabelRenderer receives entry_cataloged → updates ❓ labels to real names
 - Inventory created in Player._ready() with 12 base slots + 4 tool slots (survival_knife + scanner)
 
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
 - [ ] Everything from delivery-001 still works
-- [ ] ❓ icons floating above undiscovered resources/flora on revealed tiles
-- [ ] Press-and-hold toward ❓ → scan progress ring appears → completes → ❓ becomes identified icon
+- [ ] 3D prop meshes visible on revealed tiles with "❓ Unknown [category]" floating labels
+- [ ] Press-and-hold toward prop → scan progress ring appears → completes → label updates to real name
 - [ ] Tap Inventory button → panel slides up showing 12 empty slots + 4 tool slots
 - [ ] Tap Scanner button → catalog panel shows discovered entries (after scanning something)
 - [ ] Panels are mutually exclusive — opening one closes others
@@ -328,3 +340,4 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 7 tasks created (009-015) — approved. Merged original task-003 into task-010. | /aid-detail |
+| 2026-04-02 | task-013 rewritten: ElementIconRenderer → PropRenderer + PropLabelRenderer. Scene tree, criteria, and integration contract updated. | /spec-update |

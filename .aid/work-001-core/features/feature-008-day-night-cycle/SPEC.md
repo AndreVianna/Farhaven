@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F7, F10, §9 AC7, AC10 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
+| 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 
 ## Source
 
@@ -364,7 +365,8 @@ Main (Node)
        ├─ WorldEnvironment (WorldEnvironment)   ← THIS FEATURE
        ├─ DirectionalLight3D                    ← THIS FEATURE (sun)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ElementIconRenderer (Node3D)          [feature-003]
+       ├─ PropRenderer (Node3D)                  [feature-003]
+       ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
        ├─ ResourceRenderer (Node3D)             [feature-004]
        ├─ GroundItemRenderer (Node3D)           [feature-007]
