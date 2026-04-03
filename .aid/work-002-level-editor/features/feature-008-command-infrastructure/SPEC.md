@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-04-03 | Extracted from feature-001 — undo/redo and keyboard shortcuts are cross-cutting foundation | Lola review |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: onChange signature, per-tab shortcut scoping, maxSize note, ProjectContext ref, selectTool(null) | /aid-specify review |
 
 ## Source
 
@@ -66,8 +67,8 @@ class CommandHistory {
   constructor() {
     this.undoStack = [];     // Array<Command>, most recent at end
     this.redoStack = [];     // Array<Command>, most recent at end
-    this.maxSize = 50;
-    this.onChange = null;     // callback: (command, action) => void
+    this.maxSize = 50;       // satisfies "at least 50 steps" requirement — increase if needed
+    this.onChange = null;     // callback: (action, command) => void
                              // action is 'execute' | 'undo' | 'redo'
   }
 
@@ -141,9 +142,11 @@ CommandHistory.execute(new PaintBiomeCommand(pendingBatch.hexes));
 
 | Command Class | `type` | Before State | `execute()` | `undo()` |
 |---|---|---|---|---|
+| `CreateBiomeCommand` | `create_biome` | n/a | Add new BiomeData to `ProjectContext.files.biomes` | Remove it |
 | `EditBiomeCommand` | `edit_biome` | `{ filename, oldFields }` | Update fields in BiomeData | Restore old fields |
+| `DeleteBiomeCommand` | `delete_biome` | `{ filename, fullData, raw }` | Remove from ProjectContext | Re-add with full data |
 
-Note: Biomes are not created/deleted (fixed set of 5), only edited.
+`ProjectContext` is the global singleton defined in feature-007 (File Discovery). All `.files.*` maps are populated during project discovery.
 
 ### Feature Flow
 
@@ -214,17 +217,21 @@ class KeyboardManager {
 ```js
 const keyboardManager = new KeyboardManager();
 
-// Tool shortcuts (only active when Map Editor tab is visible)
-keyboardManager.register('b', () => selectTool('biome'));
-keyboardManager.register('e', () => selectTool('elevation'));
-keyboardManager.register('r', () => selectTool('resource'));
-keyboardManager.register('s', () => selectTool('structure'));
-keyboardManager.register('a', () => selectTool('anomaly'));
-keyboardManager.register('p', () => selectTool('spawn'));
-keyboardManager.register('x', () => selectTool('eraser'));
-keyboardManager.register('d', () => selectTool('delete_hex'));
-keyboardManager.register('f', () => selectTool('flood_fill'));
-keyboardManager.register('escape', () => selectTool(null));
+// Tool shortcuts — scoped to Map Editor tab via guard check.
+// Each handler returns early if activeTab !== 'map', avoiding the need to
+// register/unregister shortcuts on tab switch. `activeTab` is a module-level
+// variable updated by the tab switching logic (feature-007 app shell).
+const mapOnly = (fn) => () => { if (activeTab !== 'map') return; fn(); };
+keyboardManager.register('b', mapOnly(() => selectTool('biome')));
+keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
+keyboardManager.register('r', mapOnly(() => selectTool('resource')));
+keyboardManager.register('s', mapOnly(() => selectTool('structure')));
+keyboardManager.register('a', mapOnly(() => selectTool('anomaly')));
+keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
+keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
+keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
+keyboardManager.register('f', mapOnly(() => selectTool('flood_fill')));
+keyboardManager.register('escape', mapOnly(() => selectTool(null)));
 
 // Global shortcuts (always active)
 keyboardManager.register('ctrl+z', () => commandHistory.undo());
@@ -245,7 +252,7 @@ keyboardManager.register('ctrl+s', () => saveAll());
 | X | Eraser tool | Map Editor tab |
 | D | Delete hex tool | Map Editor tab |
 | F | Flood fill tool | Map Editor tab |
-| Escape | Deselect current tool | Map Editor tab |
+| Escape | Deselect current tool (`selectTool(null)` — sets `toolManager.activeTool` to null, clears selection highlight in sidebar) | Map Editor tab |
 | Ctrl+Z | Undo | Global |
 | Ctrl+Shift+Z | Redo | Global |
 | Ctrl+S | Save all modified files | Global |

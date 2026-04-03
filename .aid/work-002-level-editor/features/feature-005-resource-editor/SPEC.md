@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F10, F12; §9 AC2, AC4 | /aid-interview |
 | 2026-04-03 | Updated field list to match actual resource_def.gd; added F15/AC9 references | /aid-interview (cross-reference) |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: default mesh types cube not cylinder, explicit catalog defaults, alpha handling, delete scan dual format, ProjectContext naming | /aid-specify review |
 
 ## Source
 
@@ -80,9 +81,9 @@ Must
 }
 ```
 
-**In-memory store:** `Map<string, ResourceDefModel>` keyed by `id`. Exposed as `EditorState.resources`.
+**In-memory store:** `Map<string, ResourceDefModel>` keyed by `id`. Exposed as `ProjectContext.files.resources` (see feature-007 for `ProjectContext` definition).
 
-**Color representation:** Colors are stored as `{r, g, b, a}` with values 0.0-1.0 internally. Converted to/from hex string `#rrggbb` for HTML color picker inputs. Alpha is always 1.0 for placeholder colors (color picker does not support alpha). The .tres format uses `Color(r, g, b, a)`.
+**Color representation:** Colors are stored as `{r, g, b, a}` with values 0.0-1.0 internally. Converted to/from hex string `#rrggbb` for HTML color picker inputs. The HTML color picker does not support alpha, so the UI always shows/sets alpha as 1.0 for new resources. However, the parser must read and preserve alpha from existing .tres files (write it back as-is). The .tres format uses `Color(r, g, b, a)`.
 
 **Default values for new resource:**
 ```js
@@ -99,11 +100,11 @@ Must
   category: "resource",
   catalog_entry: "",
   catalog_category: "",
-  placeholder_mesh_type: "cylinder",
-  placeholder_params: { radius: 0.2, height: 0.5 },
+  placeholder_mesh_type: "cube",
+  placeholder_params: {},
   placeholder_color: { r: 0.5, g: 0.5, b: 0.5, a: 1.0 },
-  placeholder_depleted_type: "cylinder",
-  placeholder_depleted_params: { radius: 0.25, height: 0.25 },
+  placeholder_depleted_type: "cube",
+  placeholder_depleted_params: {},
   placeholder_depleted_color: { r: 0.3, g: 0.3, b: 0.3, a: 1.0 }
 }
 ```
@@ -164,7 +165,7 @@ Must
 
 **Delete:**
 1. User clicks "Delete" button on the edit form (not available from list view to prevent accidental deletion).
-2. System scans all loaded maps' tiles for any `resources[].type` matching this resource's `id`.
+2. System scans all loaded maps' tiles for any resource referencing this id. Resources in map JSON can be either plain strings (`"wood"`) or dicts (`{ type: "wood", ... }`); the scan must handle both forms: `entry === id` or `entry.type === id`.
 3. If references found: show warning dialog: "This resource is used by {count} tile(s) in {mapNames}. Deleting it will make those tiles invalid. Continue?" with "Delete Anyway" and "Cancel" buttons.
 4. If no references or user confirms: create `ResourceDeleteCommand`, execute it. File is deleted via `FileSystemFileHandle` (or marked for deletion in fallback mode).
 
@@ -197,6 +198,8 @@ Must
 - `toTres() -> string` — delegates to TresParser for serialization.
 - `clone() -> ResourceDefModel` — deep copy for command undo snapshots.
 - `equals(other) -> boolean` — field-by-field comparison for dirty checking.
+
+**Implementation dependency:** Feature-007 (File Discovery + TresParser) must be implemented before this feature, as it provides the shared .tres parsing infrastructure.
 
 **Integration with TresParser (feature-007):**
 - `TresParser.parseResource(tresString) -> { headers, fields }` — extracts header lines and key-value pairs from `[resource]` section.

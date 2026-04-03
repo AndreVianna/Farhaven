@@ -9,7 +9,7 @@
 | # | Feature | Description | Status | Modules | Key Files | Data Entities |
 |---|---------|-------------|--------|---------|-----------|---------------|
 | 1 | Hex Grid / Map | Axial-coordinate hex grid with flat-top orientation, biomes, elevation, fog of war, hand-designed JSON maps | Implemented | Hex Grid Core, Data Layer | hex_math.gd, hex_tile.gd, hex_grid.gd, map_loader.gd, biome_data.gd | HexTile, BiomeData, ch1.json |
-| 2 | Player Movement | Tap-to-move pathfinding (A*), traversal types (WALK/JUMP/DROP/BLOCKED), slide mechanics, elevation transitions | Implemented | Player | player.gd, player_input.gd, player_pathfinder.gd, player_camera.gd | — |
+| 2 | Player Movement | Joystick continuous movement, traversal types (WALK/JUMP/DROP/BLOCKED), slide mechanics, elevation transitions | Implemented | Player | player.gd, player_input.gd, player_camera.gd | player_pathfinder.gd exists as orphan (joystick pivot removed A* for player) |
 | 3 | Resource Gathering | Proximity-based auto-gather with tool gates, yield amounts, gather radius, resource depletion and respawn timers | Implemented | Auto-Interaction | auto_interaction_system.gd | ResourceNode, ResourceDef |
 | 4 | Inventory | Slot-based inventory (12 resource slots + 4 tool slots), stack limits, StringName-keyed items | Implemented | Inventory | inventory.gd | ITEM_CONFIG dictionary |
 | 5 | Crafting | Recipe-based crafting with material requirements, workbench proximity gate, pre-discovered recipes (stone tools), discovery via materials | Implemented | Crafting | crafting_system.gd | RECIPE_CONFIG dictionary |

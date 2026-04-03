@@ -4,8 +4,9 @@
 
 | Date | Change | Source |
 |------|--------|--------|
-| 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F1, F8, F9 | /aid-interview |
+| 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F1 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: hexCorners formula, biome type note, rotation type, zoom sign, color_variations note, grid toggle AC | /aid-specify review |
 
 ## Source
 
@@ -35,6 +36,7 @@ Must
 - [ ] Given a canvas with hexes, when scrolling the mouse wheel, then the canvas zooms in/out smoothly
 - [ ] Given a canvas, when middle-click-dragging or space+dragging, then the canvas pans
 - [ ] Given a hex on the canvas, when hovering over it, then a tooltip displays coordinates (q,r), biome name, elevation, resource list, and structure (if any)
+- [ ] Given the coordinate labels toggle enabled, when viewing the canvas, then each hex displays its "q,r" label at center
 
 ---
 
@@ -56,7 +58,7 @@ const MapMeta = {
  * TileData — per-hex data, stored as value in HexGrid.tiles.
  */
 const TileData = {
-  biome: "",        // string, e.g. "forest", "crash_site"
+  biome: "",        // string key, e.g. "forest", "crash_site" — matches map JSON format. (Game's HexTile uses Biome enum int internally; MapLoader translates string↔enum.)
   elevation: 0,     // integer 0-9
   structure: null,   // string | null, e.g. "workbench", "shelter"
   anomaly: null,     // string | null, e.g. "anomaly_ch1_001"
@@ -65,13 +67,13 @@ const TileData = {
 
 /**
  * ResourceInstance — a single resource placed on a hex.
- * x, y are offsets within the hex (-1.0 to 1.0 range).
+ * x, y are offsets within the hex. Valid range: -1.0 to 1.0 (storage). Random placement uses -0.8 to 0.8 (margin from hex edge).
  */
 const ResourceInstance = {
   type: "",         // string, e.g. "wood", "stone"
   x: 0.0,          // float, position offset within hex
   y: 0.0,          // float, position offset within hex
-  rotation: 0       // integer 0-359 degrees
+  rotation: 0.0     // float, degrees (0-359). Matches map JSON "rotation" field; MapLoader reads as float.
 };
 
 /**
@@ -108,7 +110,7 @@ class HexGrid {
 
 ### HexMath Module
 
-Static utility functions matching Farhaven's `hex_math.gd`. All functions are pure, no side effects.
+Static utility functions mirroring the math from Farhaven's `hex_math.gd` (same axial coordinate system, flat-top orientation, same formulas). API names use JS camelCase; the game uses snake_case (`axial_to_world`/`world_to_axial`). All functions are pure, no side effects.
 
 ```js
 const HEX_SIZE = 40; // default visual scale in pixels
@@ -147,7 +149,8 @@ const HexMath = {
 
   /**
    * Returns the 6 corner points of a flat-top hex at pixel position (cx, cy).
-   * Corner i: cx + size * cos(60 * i), cy + size * sin(60 * i), for i = 0..5
+   * Corner i: cx + size * cos(60° * i * π/180), cy + size * sin(60° * i * π/180), for i = 0..5
+   * (Angles in degrees converted to radians for Math.cos/Math.sin.)
    */
   hexCorners(cx, cy, size) // returns Array<{x, y}> length 6
 
@@ -206,7 +209,7 @@ class HexCanvas {
   onMouseDown(event)       // left: select/tool, middle: start pan
   onMouseMove(event)       // update hoveredHex, forward to tool, handle pan drag
   onMouseUp(event)         // end pan, forward to tool
-  onWheel(event)           // adjust camera.zoom by delta * 0.001, clamp [0.2, 3.0], re-render
+  onWheel(event)           // adjust camera.zoom by event.deltaY * -0.001, clamp [0.2, 3.0], re-render
 
   // --- Resize ---
   onResize()               // update canvas dimensions to fill parent, re-render
@@ -216,6 +219,8 @@ class HexCanvas {
 ### Renderer Details
 
 **Biome color mapping:** Biome colors come from loaded BiomeData (feature-007 loads .tres files). A lookup `Map<string, string>` maps biome name to hex color string. Fallback color for unknown biomes: `#888888`.
+
+**Note on color_variations:** The game's BiomeData has a `color_variations` array (3 Color variants, hash-selected per tile for visual variety). The editor uses only the base `color` for simplicity — the editor canvas will look visually flatter than the in-game rendering. This is a deliberate simplification; implementing per-tile hash-based variation is a stretch goal.
 
 **Elevation brightness adjustment:** For a base biome color RGB, multiply each channel by `(1 + elevation * 0.05)`, clamped to 255. Elevation 0 = base color, elevation 9 = 45% brighter.
 
@@ -228,7 +233,7 @@ class HexCanvas {
 Biome: forest
 Elevation: 3
 Structure: workbench
-Resources: wood x2, stone x1
+Resources: wood ×2, stone ×1 (aggregated by type; if >5 types, show first 5 + "…and N more")
 Anomaly: anomaly_ch1_001
 ```
 

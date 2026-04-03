@@ -10,6 +10,7 @@
 | 2026-04-01 | [PIVOT] Scene tree updated for single-mesh renderer. Draw call budget updated. | /design-pivot |
 | 2026-04-01 | M3: HexGridRenderer draw call note updated — cliff faces included in ArrayMesh (0 extra draw calls). | /pivot-cascade |
 | 2026-04-02 | Draw call budget: ElementIconRenderer ~5 → PropRenderer ~5 + PropLabelRenderer ~1. Scene tree updated. | /spec-update |
+| 2026-04-03 | Review fixes: CraftButton visibility (recipe-discovery-gated in code, not workbench-only), touch targets note, design system ref | /aid-specify review |
 | 2026-04-02 | Scan redesign: scan_completed feedback still works (proximity scan). Added entry_encountered feedback for ENCOUNTERED state. Catalog display updated for 3-state entries. | /scan-redesign-apply |
 
 ## Source
@@ -92,7 +93,7 @@ shared UI infrastructure. All data flows inward via signals.
 |--------|------|-----------|---------------|
 | InventoryButton | 64×64px | Always visible | feature-005 (opens InventoryPanel) |
 | BuildButton | 64×64px | Always visible | feature-009 (opens BuildPanel) |
-| CraftButton | 64×64px | Near Workbench only | feature-006 `workbench_proximity_changed(near)` |
+| CraftButton | 64×64px | Visible after first recipe discovered | feature-006 `recipe_discovered` — becomes permanently visible. **Note:** SPEC originally said "Near Workbench only" but implementation gates on recipe discovery instead (simpler, matches MVP `requires_workbench: false`). Workbench-proximity gating deferred to when recipes require it. |
 | ScannerButton | 64×64px | Always visible | feature-003 (opens CatalogPanel) |
 | JournalButton | 64×64px | Always visible | feature-011 (opens JournalPanel) |
 
@@ -103,7 +104,7 @@ shared UI infrastructure. All data flows inward via signals.
 | Panel | Feature | Trigger |
 |-------|---------|---------|
 | InventoryPanel | feature-005 | InventoryButton tap |
-| CraftingPanel | feature-006 | CraftButton tap (near Workbench) |
+| CraftingPanel | feature-006 | CraftButton tap |
 | BuildPanel | feature-009 | BuildButton tap |
 | CatalogPanel | feature-003 | ScannerButton tap |
 | JournalPanel | feature-011 | JournalButton tap |
@@ -211,7 +212,7 @@ visual styling is decoupled.
 | `stat_changed(name, current, max)` | feature-007 | Update StatBars |
 | `day_started(day_count)` | feature-008 | Update DayCounter label |
 | `phase_changed(phase)` | feature-008 | Update DayCounter icon |
-| `workbench_proximity_changed(near)` | feature-006 | Show/hide CraftButton |
+| `recipe_discovered(recipe_id)` | feature-006 | Show CraftButton (permanent after first discovery) |
 | `auto_gather_completed(coords, type, amount)` | feature-004 | Floating "+N Type" green |
 | `auto_gather_failed(coords, reason)` | feature-004 | Floating error text red |
 | `auto_defend_triggered(fauna_id, damage)` | feature-004 | Floating "-N" red at fauna |
@@ -441,7 +442,7 @@ as children by their owning features or placed directly in the scene tree.
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `hud.gd` | Root HUD Control. Creates button slots. Connects to all source signals (see signal map). Routes signals to appropriate sub-components. Manages CraftButton visibility via `workbench_proximity_changed`. | All features (signals only — never queries feature state directly) |
+| `hud.gd` | Root HUD Control. Creates button slots. Connects to all source signals (see signal map). Routes signals to appropriate sub-components. Manages CraftButton visibility via `recipe_discovered` (permanently visible after first discovery). | All features (signals only — never queries feature state directly) |
 | `stat_bars.gd` | 3 ProgressBars with color gradients. Listens to `stat_changed`. Tween smooth updates. `mouse_filter = IGNORE`. | feature-007 (stat_changed signal) |
 | `day_counter.gd` | Day label + phase icon. Listens to `day_started` + `phase_changed`. `mouse_filter = IGNORE`. | feature-008 (signals) |
 | `floating_text_manager.gd` | Spawns Label nodes at projected screen positions. Tween upward + fade. Queue_free on complete. Stacks multiple labels. | Camera3D (for world-to-screen projection), calling features (via `show_text` API) |
@@ -514,7 +515,7 @@ No feature connects to HUD signals — HUD is a pure consumer/renderer.
 - **Size:** 64×64px each. Spacing: 8px between buttons.
 - **Style:** MVP placeholder — colored rectangles with icon text
 - **Tap:** Opens associated panel (or toggles if already open)
-- **CraftButton:** hidden by default. Shown when `workbench_proximity_changed(true)`
+- **CraftButton:** hidden by default. Shown permanently after first `recipe_discovered` signal
 
 #### Panel Drawer Design (shared pattern)
 
@@ -553,7 +554,7 @@ All 5 panels follow the same layout:
 
 | Element | Size | Notes |
 |---------|------|-------|
-| Action buttons | 64×64px | Above 48dp minimum |
+| Action buttons | 64×64px | Above 48dp minimum. **Note:** KB ui-architecture.md design system specifies 96px — consider upgrading to match design system standard. |
 | Close (X) buttons | 48×48px | Minimum |
 | Panel slot entries | ~90-100px height | Comfortable mobile tap |
 | Build/Craft entry buttons | ~80×48px | Within entries |

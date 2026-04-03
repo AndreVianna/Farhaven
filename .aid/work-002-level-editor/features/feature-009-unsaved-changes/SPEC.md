@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-04-03 | New feature — protection against accidental data loss | Lola review |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: saveAll error handling, auto-save deferral note | /aid-specify review |
 
 ## Source
 
@@ -14,6 +15,8 @@
 ## Description
 
 Protection against accidental data loss. The editor tracks dirty state across all three tabs (map, resource, biome). When unsaved changes exist: a visual indicator (asterisk in tab title or dot on tab) is shown, and attempting to close/refresh the browser triggers a `beforeunload` warning. Saving clears the dirty state and the indicator.
+
+**Deferred: periodic auto-save.** REQUIREMENTS F14 lists auto-save as optional. File System Access API file handles are retained (saving is cheap), so auto-save is technically feasible. Deferred to post-MVP — the `beforeunload` guard provides sufficient protection for an internal tool.
 
 ## User Stories
 
@@ -186,8 +189,14 @@ async function saveAll() {
   const tabs = ['map', 'resources', 'biomes'];
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
-      await saveTab(tab);
-      dirtyTracker.markClean(tab);
+      try {
+        await saveTab(tab);
+        dirtyTracker.markClean(tab);
+      } catch (err) {
+        // Dirty flag NOT cleared on failure — matches edge case table.
+        // Continue saving other tabs; don't abort on partial failure.
+        showError(`Save failed for ${tab}: ${err.message}`);
+      }
     }
   }
 }

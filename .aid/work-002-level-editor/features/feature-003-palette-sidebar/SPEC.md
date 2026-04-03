@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F3, F4 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: biome key clarification, STRUCTURE_LIST source, hasSpawn, spawn read-only note | /aid-specify review |
 
 ## Source
 
@@ -47,9 +48,9 @@ Must
  * Populated from loaded BiomeData .tres files (via feature-007).
  */
 const BiomeEntry = {
-  name: "",         // string, e.g. "forest", "desert", "crash_site"
-  color: "#000000", // hex color string from the .tres file
-  mapColor: "#000000" // map display color (may differ from game color)
+  name: "",         // string, lowercased biome_name from .tres (e.g. "forest", "crash_site"). This is the KEY used in map tile `biome` fields. The .tres has display name (e.g. "Forest"); the editor lowercases it for the key.
+  color: "#000000"  // hex color string, converted from the BiomeData.color in the .tres file.
+                    // This is the ONLY color used — both for the palette swatch and the map canvas hex fill.
 };
 
 /**
@@ -63,14 +64,17 @@ const ResourceEntry = {
 
 /**
  * StructureEntry — one entry in the structure palette.
- * Hardcoded initially, may become data-driven later.
+ * Must match WALKABLE_STRUCTURES from hex_grid.gd (scripts/hex/hex_grid.gd).
+ * Ordered alphabetically for consistent UI display.
+ * To add a new structure: add it here and in the game's hex_grid.gd WALKABLE_STRUCTURES const.
+ * Future: could be loaded from a config file or parsed from hex_grid.gd.
  */
 const STRUCTURE_LIST = [
+  "campfire",
   "shelter",
-  "torch",
-  "workbench",
   "storage_chest",
-  "campfire"
+  "torch",
+  "workbench"
 ];
 
 /**
@@ -175,7 +179,7 @@ class MapProperties {
   render(container)     // render chapter_id input, name input, spawn display
   onChapterIdChange(value)   // grid.meta.chapter_id = value
   onNameChange(value)        // grid.meta.name = value
-  getSpawnDisplay()          // returns formatted spawn coordinates string
+  getSpawnDisplay()          // returns formatted spawn coordinates string (read-only display; spawn is set via Spawn Marker tool in feature-002, not via text input)
 }
 ```
 
@@ -211,7 +215,7 @@ class Statistics {
    - `totalResources`: sum of `tile.resources.length` for all tiles.
    - `biomeCounts`: for each tile, increment `biomeCounts[tile.biome]`.
    - `structureCounts`: for each tile with a non-null structure, increment `structureCounts[tile.structure]`.
-   - `hasSpawn`: `grid.meta.spawn[0] !== null`.
+   - `hasSpawn`: `grid.meta.spawn !== null && grid.meta.spawn[0] !== undefined` — spawn is `[q, r]` when set, `null` when no spawn has been placed on a new empty map.
    Then `Statistics.render()` updates the DOM table.
 
 5. **Map properties:** `MapProperties.render()` creates two text inputs bound to `grid.meta.chapter_id` and `grid.meta.name`. On `input` event, the values are updated directly on `grid.meta`. A read-only display shows the current spawn coordinates. Changes to map properties mark the file as unsaved (feature-009).

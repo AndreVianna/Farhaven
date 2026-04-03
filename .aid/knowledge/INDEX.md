@@ -5,8 +5,8 @@ If your task touches an area covered here, read the relevant document first.
 
 ## Active Work
 
-- **work-001-core** -- Core MVP (hex grid, movement, gathering, crafting, survival, day/night, building/threats). 12 features, approved.
-- **work-002-level-editor** -- Web-based game data editor (map, resource, biome). 7 features, approved.
+- **work-001-core** -- Core MVP (hex grid, movement, gathering, crafting, survival, day/night, building/threats). 12 features (14 functional requirements), approved.
+- **work-002-level-editor** -- Web-based game data editor (map, resource, biome). 9 features, approved.
 
 | Document | Summary |
 |----------|---------|

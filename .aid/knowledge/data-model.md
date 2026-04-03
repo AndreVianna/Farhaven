@@ -72,7 +72,7 @@ Godot Resource defining per-biome configuration.
 |-------|------|---------|-------------|-------|
 | biome_name | String | "" | Display name | e.g. "Crash Site", "Forest" |
 | elevation_range | Vector2i | (0,0) | Min/max elevation | Currently all set to (0,9) |
-| resource_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount} |
+| resource_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
 | color | Color | WHITE | Base biome color | Used for terrain rendering |
 | color_variations | Array[Color] | [] | 3 color variants per biome | Hash-selected per tile for visual variety |
 
@@ -251,8 +251,8 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 | ResourceRegistry._defs | Dictionary | StringName (resource id) | ResourceDef Resource | `resource_registry.gd` line 8 |
 | Catalog._all_entries | Dictionary | StringName (entry_id) | CatalogEntry Resource | `catalog.gd` line 15 |
 | Catalog._knowledge | Dictionary | StringName (entry_id) | KnowledgeState int | `catalog.gd` line 13 |
-| PlayerPathfinder._coord_to_id | Dictionary | Vector2i | int (AStar2D point id) | `player_pathfinder.gd` line 9 |
-| PlayerPathfinder._id_to_coord_map | Dictionary | int (AStar2D point id) | Vector2i | `player_pathfinder.gd` line 10 |
+| ~~PlayerPathfinder._coord_to_id~~ | ~~Dictionary~~ | ~~Vector2i~~ | ~~int~~ | `player_pathfinder.gd` — **ORPHAN:** Player no longer uses A* pathfinding (joystick pivot). File exists but is unreferenced. May be repurposed for FaunaManager (feature-010). |
+| ~~PlayerPathfinder._id_to_coord_map~~ | ~~Dictionary~~ | ~~int~~ | ~~Vector2i~~ | See above. |
 | ResourceRenderer._pools | Dictionary | StringName (resource type) | MultiMeshInstance3D | `resource_renderer.gd` line 29 |
 | ResourceRenderer._tile_entries | Dictionary | Vector2i (coords) | Array of instance info | `resource_renderer.gd` line 43 |
 | PropLabelRenderer._tile_labels | Dictionary | Vector2i (coords) | Array of label info | `prop_label_renderer.gd` line 44 |

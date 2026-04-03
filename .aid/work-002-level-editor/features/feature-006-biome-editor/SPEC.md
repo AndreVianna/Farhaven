@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F11, F12; §9 AC2, AC5 | /aid-interview |
 | 2026-04-03 | Updated resource_table field names to match biome_data.gd; added F15/AC9 references | /aid-interview (cross-reference) |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: uid in generated header, ProjectContext naming, cancel color revert event | /aid-specify review |
 
 ## Source
 
@@ -72,7 +73,7 @@ Must
 }
 ```
 
-**In-memory store:** `Map<string, BiomeDataModel>` keyed by `biome_name` (lowercase). Exposed as `EditorState.biomes`.
+**In-memory store:** `Map<string, BiomeDataModel>` keyed by `biome_name` (lowercase). Exposed as `ProjectContext.files.biomes` (see feature-007 for `ProjectContext` definition).
 
 **Biome name as key:** The `biome_name` field is used as the biome identifier in map tiles (lowercased, e.g. tile `biome: "forest"` references biome with `biome_name: "Forest"`). The key in the store is the lowercased `biome_name`.
 
@@ -103,6 +104,8 @@ Must
 
 **biome_name:** Text input. Validated: non-empty, unique across all biomes (case-insensitive). Disabled when editing existing biome (name is immutable after creation — renaming would require updating all map tile references, which is too risky for a simple edit).
 
+**Hardcoded biome warning:** MapLoader's `BIOME_NAMES` dict only recognizes 5 biomes: `crash_site`, `grassland`, `forest`, `rocky`, `water`. Creating a new biome is valid in the editor, but maps using it will silently fall back to GRASSLAND at game runtime until MapLoader is updated. The editor should show a warning badge on custom biomes (not in the hardcoded set) to alert the author.
+
 **elevation_range:** Two number inputs side by side, labeled "Min" and "Max". Both integers, constrained to 0-9. Validation: min <= max.
 
 **color:** HTML `<input type="color">` with a 32x32 swatch preview div. Changing the picker:
@@ -118,7 +121,7 @@ Must
 - Maximum 10 variations (UI disables "Add" button at limit).
 
 **resource_table:** Editable table with columns:
-- Type: `<select>` dropdown populated from `EditorState.resources` keys (loaded resource ids). If a type references an unknown resource, show it as red text with "(unknown)" suffix.
+- Type: `<select>` dropdown populated from `ProjectContext.files.resources` keys (loaded resource ids). If a type references an unknown resource, show it as red text with "(unknown)" suffix.
 - Chance: number input, step 0.05, min 0.0, max 1.0.
 - Min Amount: number input, step 1, min 0, integer.
 - Max Amount: number input, step 1, min 0, integer. Validated: >= min_amount.
@@ -128,7 +131,7 @@ Must
 
 **Form Actions:**
 - "Save" button: validates form, creates a `BiomeEditCommand`, serializes to .tres via `TresParser.serializeBiome(model)`, writes via File System Access API. On success, updates in-memory store, returns to list view.
-- "Cancel" button: discards changes (restoring biome color if it was changed during editing), returns to list view. Confirm dialog if dirty.
+- "Cancel" button: discards changes, restores biome color if it was changed during editing by firing a `biome-color-changed` event with the original color (so the Map Editor canvas reverts), then returns to list view. Confirm dialog if dirty.
 - "Back to List" link at top.
 
 **All edits wrapped in Commands (feature-008):**
@@ -144,9 +147,9 @@ Must
 
 **Save format** — .tres file output (via TresParser from feature-007):
 - Preserve original `_headerLines` exactly.
-- For new files, generate standard header:
+- For new files, generate standard header with uid (see feature-007 `generateTresUid()`):
   ```
-  [gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+  [gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="uid://c<13-char-random>"]
   [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
   ```
 - `[resource]` section field order: `script`, `biome_name`, `elevation_range`, `resource_table`, `color`, `color_variations`.

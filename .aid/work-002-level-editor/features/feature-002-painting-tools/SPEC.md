@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F2, F5 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: rotation type, AC range, prompt→modal, undo index, WALKABLE_STRUCTURES ref, JSON field clarification | /aid-specify review |
 
 ## Source
 
@@ -33,7 +34,7 @@ Must
 - [ ] Given flood fill tool, when clicking a hex, then all contiguous hexes of the same biome change to the selected biome
 - [ ] Given elevation brush in increment mode, when clicking a hex, then elevation increases/decreases by 1 (clamped 0-9)
 - [ ] Given elevation brush in set mode, when clicking a hex, then elevation is set to the selected value
-- [ ] Given resource placer, when clicking a hex, then a resource is added with auto-randomized x, y (-1.0 to 1.0) and rotation (0-359)
+- [ ] Given resource placer, when clicking a hex, then a resource is added with auto-randomized x, y (within -0.8 to 0.8 margin; valid storage range is -1.0 to 1.0) and rotation (0-359)
 - [ ] Given a placed resource, when clicking it, then a detail panel shows x, y, rotation fields for manual editing
 - [ ] Given a hex with multiple resources, when viewed on canvas, then a count badge or visual indicator shows the number of resources
 - [ ] Given spawn marker tool, when placing a second spawn, then the first spawn is removed (exactly one enforced)
@@ -125,8 +126,8 @@ class SetElevationCommand {
 
 class AddResourceCommand {
   constructor(grid, q, r, resourceInstance)
-  execute()   // grid.getTile(q,r).resources.push(resourceInstance)
-  undo()      // grid.getTile(q,r).resources.pop() — removes last added
+  execute()   // const tile = grid.getTile(q,r); tile.resources.push(resourceInstance); this._index = tile.resources.length - 1
+  undo()      // grid.getTile(q,r).resources.splice(this._index, 1) — removes by tracked index, not .pop()
 }
 
 class EditResourceCommand {
@@ -195,12 +196,14 @@ class BatchCommand {
 - `onMouseDown(hex)`: creates a `ResourceInstance` with `type = toolManager.activeValue`, `x = random(-0.8, 0.8)`, `y = random(-0.8, 0.8)`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. Executes `AddResourceCommand`.
 - No drag support — click only.
 
+**Note on field names:** The editor's `ResourceInstance` uses `x`, `y`, `rotation` to match the map JSON format read by `map_loader.gd`. The game's internal `ResourceNode` class uses different names (`offset: Vector2`, `rotation_deg: float`); MapLoader handles the translation. The editor never uses the GDScript field names.
+
 **Structure Placer (`StructurePlacer`):**
 - `onMouseDown(hex)`: creates `SetStructureCommand(hex, oldStructure, toolManager.activeValue)`. One structure per hex; replaces any existing structure.
 - No drag support — click only.
 
 **Anomaly Marker (`AnomalyMarker`):**
-- `onMouseDown(hex)`: shows a browser `prompt("Enter anomaly ID:")` dialog. If user enters a non-empty string, creates `SetAnomalyCommand`. If user cancels, no-op.
+- `onMouseDown(hex)`: shows an inline modal dialog with a text input labeled "Enter anomaly ID:" and "OK"/"Cancel" buttons (consistent with the editor's DOM-based UI — no native browser dialogs). If user enters a non-empty string and clicks OK, creates `SetAnomalyCommand`. If user cancels, no-op.
 - No drag support — click only.
 
 **Spawn Marker (`SpawnMarker`):**
@@ -250,7 +253,7 @@ class ResourceDetailPanel {
   - Type label (read-only, e.g., "wood")
   - `x` input: number, step 0.1, range [-1.0, 1.0]
   - `y` input: number, step 0.1, range [-1.0, 1.0]
-  - `rotation` input: number, step 1, range [0, 359]
+  - `rotation` input: number, step 1, range [0, 359] (float — matches map JSON field `rotation` which MapLoader reads as float via `rotation_deg`)
   - Delete button (red X)
 - On input blur or Enter key: if value changed, create `EditResourceCommand` with old and new values.
 
@@ -266,3 +269,5 @@ class ResourceDetailPanel {
 - **feature-001 (Hex Canvas):** Tools receive hex coordinates from canvas mouse events. Canvas renders tool feedback (hover preview, drag trail).
 - **feature-003 (Palette & Sidebar):** Palette click sets `toolManager.setTool(type, value)`. Active tool indicator reads from `toolManager.activeToolType`.
 - **feature-008 (Command Infrastructure):** All commands are pushed to `CommandHistory`. Undo/redo is handled there.
+
+**Structure list source:** The editor's structure list must match `HexGrid.WALKABLE_STRUCTURES` in `scripts/hex/hex_grid.gd`. Currently: `workbench`, `storage_chest`, `campfire`, `shelter`, `torch`. When the game adds structures, update both the editor config and the game constant.

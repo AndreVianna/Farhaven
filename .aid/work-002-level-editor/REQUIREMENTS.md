@@ -8,6 +8,7 @@
 | 2026-04-03 | Vision document ingested — §1-§5, §7, §10 populated | /aid-interview |
 | 2026-04-03 | Interview complete — approved | /aid-interview |
 | 2026-04-03 | Cross-reference: fixed ResourceDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
+| 2026-04-03 | Post-spec review: unified resource position range (-1.0 to 1.0 storage, -0.8 to 0.8 random), biome CRUD confirmed dynamic, app shell added to F007 | /aid-specify review |
 
 ## 1. Objective
 
@@ -95,7 +96,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### F5: Resource Placement Detail
 - Each hex can have 0-N resources
-- Each resource: type (from palette), x/y offset (-1.0 to 1.0, auto-randomized), rotation (0-359, auto-randomized)
+- Each resource: type (from palette), x/y offset (valid range: -1.0 to 1.0, auto-randomized within -0.8 to 0.8 to avoid hex edges), rotation (0-359, auto-randomized)
 - Click resource → edit x, y, rotation in detail panel
 - Visual indicator on hexes with multiple resources (count badge or stacked dots) — clicking opens a resource list for selecting/editing individual resources
 
@@ -111,7 +112,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - All resource types valid (match known resource list)
 - All structure types valid
 - Elevation range 0-9
-- Resource positions within valid range (-1.0 to 1.0)
+- Resource positions within valid range (-1.0 to 1.0). Auto-placement uses -0.8 to 0.8 margin.
 
 ### F8: Undo/Redo
 - Ctrl+Z / Ctrl+Shift+Z, at least 50 steps

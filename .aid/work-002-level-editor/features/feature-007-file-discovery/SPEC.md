@@ -6,6 +6,7 @@
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F13; §7 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
+| 2026-04-03 | Review fixes: typed arrays in parser, dict key style clarification, PackedStringArray support | /aid-specify review |
 
 ## Source
 
@@ -89,8 +90,10 @@ Wrapper for typed .tres values to enable round-trip serialization.
 // { type: 'color', value: { r: 0.2, g: 0.7, b: 0.2, a: 1.0 } }
 // { type: 'vector2i', value: { x: 0, y: 9 } }
 // { type: 'dict', value: { 'stone_axe': 0.5 } }
-// { type: 'array', value: [...] }
-// { type: 'ext_resource', value: 'ExtResource("1_script")' }  -- preserved verbatim
+// { type: 'array', value: [...], elementType: null }                    -- untyped array [...]
+// { type: 'array', value: [...], elementType: 'Color' }                -- typed array Array[Color](...)
+// { type: 'packed_string_array', value: ['a', 'b'] }                   -- PackedStringArray("a", "b")
+// { type: 'ext_resource', value: 'ExtResource("1_script")' }           -- preserved verbatim
 ```
 
 ### Feature Flow
@@ -204,7 +207,10 @@ The `[resource]` section is parsed line by line. Each line has the form `key = v
 | `Vector2i(0, 9)` | starts with `Vector2i(` | `{ type: 'vector2i', value: { x: 0, y: 9 } }` |
 | `ExtResource("1_script")` | starts with `ExtResource(` | `{ type: 'ext_resource', value: 'ExtResource("1_script")' }` |
 | `{ &"stone_axe": 0.5 }` | starts with `{` | `{ type: 'dict', value: { 'stone_axe': 0.5 } }` |
-| `[{...}, ...]` | starts with `[` | `{ type: 'array', value: [...] }` |
+| `[{...}, ...]` | starts with `[`, no `Array[` prefix | `{ type: 'array', value: [...], elementType: null }` |
+| `Array[Color](...)` | starts with `Array[` | `{ type: 'array', value: [...], elementType: 'Color' }` — extract type from brackets, parse inner elements. Godot 4.x typed array syntax. |
+| `PackedStringArray(...)` | starts with `PackedStringArray(` | `{ type: 'packed_string_array', value: [...] }` — parse comma-separated quoted strings. |
+| `PackedColorArray(...)` | starts with `PackedColorArray(` | `{ type: 'array', value: [...], elementType: 'Color' }` — legacy/alternate syntax, same result. |
 
 #### Serialization Rules
 
@@ -215,8 +221,13 @@ The `[resource]` section is parsed line by line. Each line has the form `key = v
 - `color` -> `Color(r, g, b, a)` — preserve original precision where possible.
 - `vector2i` -> `Vector2i(x, y)`
 - `ext_resource` -> verbatim string
-- `dict` -> `{ &"key1": value1, &"key2": value2 }` — keys are always StringName in resource defs. For dictionaries inside arrays (like `resource_table`), keys are plain strings: `{"key": value}`.
-- `array` -> `[element1, element2, ...]`
+- `dict` -> key style depends on context:
+  - **Top-level resource fields** (e.g. `tool_speed`): `{ &"key1": value1, &"key2": value2 }` — keys are StringName.
+  - **Dicts inside arrays** (e.g. `resource_table` entries): `{"key": value}` — keys are plain strings.
+  - The `TresValue` dict tracks this via a `keyStyle` field: `'stringname'` or `'string'`. On parse, detect from presence of `&"` prefix on first key. On serialize, use the stored style.
+- `array` (untyped, `elementType: null`) -> `[element1, element2, ...]`
+- `array` (typed, e.g. `elementType: 'Color'`) -> `Array[Color](element1, element2, ...)` — round-trips Godot 4.x typed array syntax.
+- `packed_string_array` -> `PackedStringArray("val1", "val2", ...)`
 
 #### Header Preservation
 
@@ -243,6 +254,45 @@ function generateTresUid() {
 #### Round-Trip Safety
 
 The parser is validated by this invariant: for any well-formed .tres file in the project, `TresParser.serialize(TresParser.parse(text))` must produce output identical to the input. This is verified during discovery by comparing parse-then-serialize output against the original file text and logging warnings on mismatch.
+
+### Application Shell
+
+Feature-007 owns the HTML skeleton, tab switching, toolbar, and initialization order — it is the application entry point.
+
+**HTML structure:**
+```html
+<div id="app">
+  <header id="toolbar">
+    <!-- Tool buttons, save button, file name display -->
+  </header>
+  <nav id="tabs">
+    <button class="tab active" data-tab="map">Map Editor</button>
+    <button class="tab" data-tab="resources">Resource Editor</button>
+    <button class="tab" data-tab="biomes">Biome Editor</button>
+  </nav>
+  <main id="tab-content">
+    <div id="tab-map" class="tab-panel active">
+      <canvas id="hex-canvas"></canvas>
+      <aside id="sidebar"><!-- Palette & Sidebar (feature-003) --></aside>
+    </div>
+    <div id="tab-resources" class="tab-panel"><!-- Resource Editor (feature-005) --></div>
+    <div id="tab-biomes" class="tab-panel"><!-- Biome Editor (feature-006) --></div>
+  </main>
+  <div id="welcome" class="overlay"><!-- Shown before project is opened --></div>
+  <div id="hex-tooltip"></div>
+</div>
+```
+
+**Tab switching:** Click a tab button → hide all `.tab-panel`, show the target panel, update `active` class. Each tab's content is initialized lazily on first switch (or eagerly after project load).
+
+**Initialization order:**
+1. `App.init()` — render welcome screen, register keyboard shortcuts (feature-008)
+2. User opens project → `FileDiscovery.discoverProject()` (this feature)
+3. On success → initialize `CommandHistory` (feature-008), `DirtyTracker` (feature-009)
+4. Initialize `HexCanvas` (feature-001), `Sidebar` (feature-003), `ToolManager` (feature-002)
+5. Initialize `ResourceEditor` (feature-005), `BiomeEditor` (feature-006)
+6. Load first discovered map (or show empty canvas)
+7. Switch from welcome overlay to main app view
 
 ### Error Handling
 
