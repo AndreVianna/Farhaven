@@ -26,7 +26,7 @@ const MAX_INSTANCES: int = 128
 const HEX_SIZE: float = 3.0
 
 ## Resource type pool indices
-enum Pool { WOOD, STONE, BERRIES, FIBER, ORE, CRYSTAL }
+enum Pool { WOOD, STONE, BERRIES, FIBER, ORE, CRYSTAL, ANOMALY }
 
 ## Map resource type StringName to Pool index
 const TYPE_TO_POOL: Dictionary = {
@@ -46,6 +46,7 @@ const POOL_COLORS: Dictionary = {
 	Pool.FIBER:   Color(0.6, 0.75, 0.2, 1.0),   # Yellow-green
 	Pool.ORE:     Color(0.35, 0.35, 0.4, 1.0),  # Dark gray
 	Pool.CRYSTAL: Color(0.2, 0.8, 0.85, 1.0),   # Cyan
+	Pool.ANOMALY: Color(0.7, 0.3, 0.9, 1.0),   # Purple
 }
 
 ## Dimmed colors for REVEALED fog state (lower alpha feel via darker tint)
@@ -56,6 +57,7 @@ const POOL_COLORS_DIMMED: Dictionary = {
 	Pool.FIBER:   Color(0.35, 0.42, 0.12, 1.0),
 	Pool.ORE:     Color(0.2, 0.2, 0.22, 1.0),
 	Pool.CRYSTAL: Color(0.12, 0.45, 0.48, 1.0),
+	Pool.ANOMALY: Color(0.4, 0.18, 0.5, 1.0),
 }
 
 # --- State ---
@@ -119,6 +121,12 @@ func _create_pools() -> void:
 	_create_pool(Pool.CRYSTAL, crystal_mesh, POOL_COLORS[Pool.CRYSTAL])
 	_normal_meshes[Pool.CRYSTAL] = crystal_mesh
 	_depleted_meshes[Pool.CRYSTAL] = _make_prism_mesh(0.12, 0.25)  # broken shard
+
+	# Anomaly: purple diamond (mysterious object)
+	var anomaly_mesh := _make_octahedron_mesh(0.4)
+	_create_pool(Pool.ANOMALY, anomaly_mesh, POOL_COLORS[Pool.ANOMALY])
+	_normal_meshes[Pool.ANOMALY] = anomaly_mesh
+	_depleted_meshes[Pool.ANOMALY] = anomaly_mesh  # anomalies don't deplete
 
 
 func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:
@@ -275,6 +283,39 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 			continue
 		var is_depleted: bool = rn.remaining <= 0
 		_add_resource_instance(coords, rn, pool_idx, dimmed, is_depleted)
+
+	# Anomaly: rendered as a standalone prop at tile center
+	if tile.anomaly != &"":
+		_add_anomaly_instance(coords, tile, dimmed)
+
+
+func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
+	var mmi: MultiMeshInstance3D = _pools[Pool.ANOMALY]
+	var mm: MultiMesh = mmi.multimesh
+	var idx: int = mm.visible_instance_count
+	if idx >= MAX_INSTANCES:
+		return
+
+	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var elevation_y: float = float(tile.elevation) * 0.5
+	var pos := Vector3(world_2d.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y)
+
+	var xform := Transform3D.IDENTITY
+	xform.origin = pos
+
+	mm.visible_instance_count = idx + 1
+	mm.set_instance_transform(idx, xform)
+	mm.set_instance_custom_data(idx, Color(1.0 if dimmed else 0.0, 0.0, 0.0, 1.0))
+	_update_pool_material(Pool.ANOMALY, dimmed)
+
+	if not _tile_entries.has(coords):
+		_tile_entries[coords] = []
+	_tile_entries[coords].append({
+		"resource_type": &"anomaly",
+		"pool": Pool.ANOMALY,
+		"instance_idx": idx,
+		"depleted": false,
+	})
 
 
 func _add_resource_instance(coords: Vector2i, rn: Resource, pool_idx: int, dimmed: bool, depleted: bool) -> void:
