@@ -89,6 +89,9 @@ func connect_crafting(crafting_system: Node, inv) -> void:
 	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
 	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
 	crafting_system.craft_completed.connect(_on_craft_completed)
+	# Show craft button immediately if pre-discovered recipes exist
+	if not crafting_system.get_discovered_recipes().is_empty():
+		_craft_button.visible = true
 
 
 func _on_workbench_proximity_changed(_near: bool) -> void:

@@ -18,6 +18,7 @@ const RECIPE_CONFIG: Dictionary = {
 		"tool_slot": &"axe",
 		"discovery_material": &"stone",
 		"requires_workbench": false,
+		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
 		"ingredients": { &"wood": 3, &"stone": 2 },
@@ -25,6 +26,7 @@ const RECIPE_CONFIG: Dictionary = {
 		"tool_slot": &"pickaxe",
 		"discovery_material": &"stone",
 		"requires_workbench": false,
+		"pre_discovered": true,
 	},
 }
 
@@ -43,6 +45,7 @@ func _ready() -> void:
 	if _grid == null:
 		_grid = HexGrid
 	_connect_signals()
+	_load_pre_discovered()
 
 
 func _connect_signals() -> void:
@@ -60,6 +63,13 @@ func _connect_signals() -> void:
 
 
 # --- Discovery ---
+
+func _load_pre_discovered() -> void:
+	for recipe_name: StringName in RECIPE_CONFIG:
+		var recipe: Dictionary = RECIPE_CONFIG[recipe_name]
+		if recipe.get("pre_discovered", false) and recipe_name not in _discovered_recipes:
+			_discovered_recipes.append(recipe_name)
+
 
 func _on_item_added(type: StringName, _amount: int) -> void:
 	for recipe_name: StringName in RECIPE_CONFIG:
