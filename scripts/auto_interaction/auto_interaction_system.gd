@@ -26,6 +26,7 @@ signal ground_item_picked_up(item_name: StringName, amount: int)
 
 const RESOURCE_CONFIG: Dictionary = {
 	&"wood":             { "gather_time": 1.0, "gather_amount": 1 },
+	&"loose_rock":       { "gather_time": 1.0, "gather_amount": 2 },
 	&"stone":            { "gather_time": 1.5, "gather_amount": 1 },
 	&"berries":          { "gather_time": 0.5, "gather_amount": 2 },
 	&"fiber":            { "gather_time": 0.5, "gather_amount": 1 },
@@ -33,6 +34,12 @@ const RESOURCE_CONFIG: Dictionary = {
 	&"crystal":          { "gather_time": 2.5, "gather_amount": 1 },
 	&"toxic_berries":    { "gather_time": 0.5, "gather_amount": 2 },
 	&"anomaly_fragment": { "gather_time": 3.0, "gather_amount": 1 },
+}
+
+# Mapping from resource type to inventory item yielded on gather.
+# Resources not listed here yield their own type name.
+const GATHER_YIELD: Dictionary = {
+	&"loose_rock": &"stone",
 }
 
 # --- Tool Speed Multipliers ---
@@ -298,8 +305,11 @@ func _on_gather_tween_complete() -> void:
 	var node: Resource = tile.resource_nodes[index]
 	var amount: int = RESOURCE_CONFIG.get(node.type, {}).get("gather_amount", 1)
 
+	# Resolve yield type (e.g. loose_rock yields stone)
+	var yield_type: StringName = GATHER_YIELD.get(node.type, node.type)
+
 	# Try to add to inventory
-	var added: int = _inventory.add_item(node.type, amount)
+	var added: int = _inventory.add_item(yield_type, amount)
 
 	if added > 0:
 		node.remaining -= 1

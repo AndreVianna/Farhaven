@@ -26,16 +26,17 @@ const MAX_INSTANCES: int = 128
 const HEX_SIZE: float = 3.0
 
 ## Resource type pool indices
-enum Pool { WOOD, STONE, BERRIES, FIBER, ORE, CRYSTAL, ANOMALY }
+enum Pool { WOOD, STONE, BERRIES, FIBER, ORE, CRYSTAL, ANOMALY, LOOSE_ROCK }
 
 ## Map resource type StringName to Pool index
 const TYPE_TO_POOL: Dictionary = {
-	&"wood":    Pool.WOOD,
-	&"stone":   Pool.STONE,
-	&"berries": Pool.BERRIES,
-	&"fiber":   Pool.FIBER,
-	&"ore":     Pool.ORE,
-	&"crystal": Pool.CRYSTAL,
+	&"wood":       Pool.WOOD,
+	&"stone":      Pool.STONE,
+	&"berries":    Pool.BERRIES,
+	&"fiber":      Pool.FIBER,
+	&"ore":        Pool.ORE,
+	&"crystal":    Pool.CRYSTAL,
+	&"loose_rock": Pool.LOOSE_ROCK,
 }
 
 ## Colors per pool
@@ -46,7 +47,8 @@ const POOL_COLORS: Dictionary = {
 	Pool.FIBER:   Color(0.6, 0.75, 0.2, 1.0),   # Yellow-green
 	Pool.ORE:     Color(0.35, 0.35, 0.4, 1.0),  # Dark gray
 	Pool.CRYSTAL: Color(0.2, 0.8, 0.85, 1.0),   # Cyan
-	Pool.ANOMALY: Color(0.7, 0.3, 0.9, 1.0),   # Purple
+	Pool.ANOMALY:     Color(0.7, 0.3, 0.9, 1.0),    # Purple
+	Pool.LOOSE_ROCK:  Color(0.7, 0.65, 0.55, 1.0),  # Warm tan/beige
 }
 
 ## Dimmed colors for REVEALED fog state (lower alpha feel via darker tint)
@@ -57,7 +59,8 @@ const POOL_COLORS_DIMMED: Dictionary = {
 	Pool.FIBER:   Color(0.35, 0.42, 0.12, 1.0),
 	Pool.ORE:     Color(0.2, 0.2, 0.22, 1.0),
 	Pool.CRYSTAL: Color(0.12, 0.45, 0.48, 1.0),
-	Pool.ANOMALY: Color(0.4, 0.18, 0.5, 1.0),
+	Pool.ANOMALY:     Color(0.4, 0.18, 0.5, 1.0),
+	Pool.LOOSE_ROCK:  Color(0.4, 0.37, 0.32, 1.0),
 }
 
 # --- State ---
@@ -127,6 +130,12 @@ func _create_pools() -> void:
 	_create_pool(Pool.ANOMALY, anomaly_mesh, POOL_COLORS[Pool.ANOMALY])
 	_normal_meshes[Pool.ANOMALY] = anomaly_mesh
 	_depleted_meshes[Pool.ANOMALY] = anomaly_mesh  # anomalies don't deplete
+
+	# Loose Rock: warm tan cube (smaller than stone)
+	var loose_rock_mesh := _make_cube_mesh(0.25)
+	_create_pool(Pool.LOOSE_ROCK, loose_rock_mesh, POOL_COLORS[Pool.LOOSE_ROCK])
+	_normal_meshes[Pool.LOOSE_ROCK] = loose_rock_mesh
+	_depleted_meshes[Pool.LOOSE_ROCK] = _make_cube_mesh(0.08)  # tiny rubble
 
 
 func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:

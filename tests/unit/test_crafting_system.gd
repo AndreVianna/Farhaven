@@ -152,8 +152,10 @@ func test_both_recipes_discovery_material_stone() -> void:
 
 # === DISCOVERY ===
 
-func test_no_recipes_discovered_initially() -> void:
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(0)
+func test_recipes_pre_discovered_initially() -> void:
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_bool(&"stone_axe" in _sys.get_discovered_recipes()).is_true()
+	assert_bool(&"stone_pickaxe" in _sys.get_discovered_recipes()).is_true()
 
 
 func test_adding_stone_discovers_both_recipes() -> void:
@@ -164,9 +166,9 @@ func test_adding_stone_discovers_both_recipes() -> void:
 	assert_bool(&"stone_pickaxe" in discovered).is_true()
 
 
-func test_adding_wood_discovers_nothing() -> void:
+func test_adding_wood_does_not_change_discovery() -> void:
 	_inv.add_item(&"wood", 5)
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(0)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
 
 
 func test_adding_stone_twice_does_not_duplicate() -> void:
@@ -175,50 +177,44 @@ func test_adding_stone_twice_does_not_duplicate() -> void:
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
 
 
-func test_discovery_emits_signal() -> void:
+func test_discovery_does_not_emit_for_pre_discovered() -> void:
 	var fired: Array = []
 	_sys.recipe_discovered.connect(func(name: StringName) -> void:
 		fired.append(name)
 	)
 	_inv.add_item(&"stone", 1)
-	assert_int(fired.size()).is_equal(2)
-	assert_bool(&"stone_axe" in fired).is_true()
-	assert_bool(&"stone_pickaxe" in fired).is_true()
+	assert_int(fired.size()).is_equal(0)
 
 
 func test_is_recipe_discovered() -> void:
-	assert_bool(_sys.is_recipe_discovered(&"stone_axe")).is_false()
-	_inv.add_item(&"stone", 1)
 	assert_bool(_sys.is_recipe_discovered(&"stone_axe")).is_true()
+	assert_bool(_sys.is_recipe_discovered(&"stone_pickaxe")).is_true()
 
 
 # === CRAFT — WORKBENCH CHECK ===
 
-func test_craft_fails_without_workbench() -> void:
-	_inv.add_item(&"stone", 1)  # discover
+func test_craft_succeeds_without_workbench() -> void:
 	_give_materials_for_axe()
 	var result: bool = _sys.craft(&"stone_axe")
-	assert_bool(result).is_false()
+	assert_bool(result).is_true()
 
 
-func test_craft_fail_no_workbench_emits_reason() -> void:
-	_inv.add_item(&"stone", 1)
+func test_craft_without_workbench_emits_completed() -> void:
 	_give_materials_for_axe()
 	var fired: Array = []
-	_sys.craft_failed.connect(func(name: StringName, reason: StringName) -> void:
-		fired.append({"name": name, "reason": reason})
+	_sys.craft_completed.connect(func(name: StringName) -> void:
+		fired.append(name)
 	)
 	_sys.craft(&"stone_axe")
 	assert_int(fired.size()).is_equal(1)
-	assert_object(fired[0]["reason"]).is_equal(&"no_workbench")
+	assert_object(fired[0]).is_equal(&"stone_axe")
 
 
-func test_craft_fail_no_workbench_does_not_consume() -> void:
-	_inv.add_item(&"stone", 1)
+func test_craft_without_workbench_consumes_materials() -> void:
 	_give_materials_for_axe()
 	_sys.craft(&"stone_axe")
-	assert_int(_inv.get_count(&"wood")).is_equal(2)
-	assert_int(_inv.get_count(&"stone")).is_equal(2)  # 1 from discover + 1 from helper
+	assert_int(_inv.get_count(&"wood")).is_equal(0)
+	assert_int(_inv.get_count(&"stone")).is_equal(0)
 
 
 # === CRAFT — ALREADY OWNED ===
@@ -468,9 +464,11 @@ func test_structure_destroyed_triggers_proximity_check() -> void:
 
 # === SAVE / LOAD ===
 
-func test_save_empty() -> void:
+func test_save_pre_discovered() -> void:
 	var data: Dictionary = _sys.get_save_data()
-	assert_int(data["discovered_recipes"].size()).is_equal(0)
+	assert_int(data["discovered_recipes"].size()).is_equal(2)
+	assert_bool("stone_axe" in data["discovered_recipes"]).is_true()
+	assert_bool("stone_pickaxe" in data["discovered_recipes"]).is_true()
 
 
 func test_save_after_discovery() -> void:

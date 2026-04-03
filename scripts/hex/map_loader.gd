@@ -118,9 +118,22 @@ func load_map(path: String) -> bool:
 	return true
 
 
+# Global tool requirement per resource type (empty = bare hands).
+const TOOL_REQUIRED: Dictionary = {
+	&"wood": &"",
+	&"loose_rock": &"",
+	&"stone": &"stone_pickaxe",
+	&"fiber": &"",
+	&"berries": &"",
+	&"toxic_berries": &"",
+	&"ore": &"stone_pickaxe",
+	&"crystal": &"stone_pickaxe",
+}
+
 # Default respawn times (seconds). 0 = no respawn.
 const RESPAWN_TIMES: Dictionary = {
 	&"wood": 30.0,
+	&"loose_rock": 30.0,
 	&"stone": 30.0,
 	&"fiber": 30.0,
 	&"berries": 30.0,
@@ -136,7 +149,7 @@ func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 	rn.type = type
 	rn.remaining = 3
 	rn.max_amount = 3
-	rn.tool_required = &""
+	rn.tool_required = TOOL_REQUIRED.get(type, &"")
 	rn.respawn_time = RESPAWN_TIMES.get(type, 0.0)
 
 	var bd: Resource = _biome_data.get(biome_int, null)
@@ -145,7 +158,6 @@ func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 			if StringName(entry.get("type", "")) == type:
 				rn.max_amount = int(entry.get("max_amount", 3))
 				rn.remaining = rn.max_amount
-				rn.tool_required = StringName(entry.get("tool_required", ""))
 				break
 	return rn
 

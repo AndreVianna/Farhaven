@@ -557,32 +557,24 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 # 8. Recipe discovery: first stone gathered → recipes discovered
 # ===========================================================================
 
-func test_recipe_discovery_on_first_stone() -> void:
+func test_recipes_pre_discovered_from_start() -> void:
 	_setup_full_tree()
 
+	# Recipes are pre-discovered (pre_discovered: true in RECIPE_CONFIG)
+	assert_int(_crafting.get_discovered_recipes().size()).override_failure_message(
+		"Both recipes must be pre-discovered from the start"
+	).is_equal(2)
+	assert_bool(_crafting.is_recipe_discovered(&"stone_axe")).is_true()
+	assert_bool(_crafting.is_recipe_discovered(&"stone_pickaxe")).is_true()
+
+	# Adding stone should NOT emit discovery signal (already known)
 	var discovered: Array = []
 	_crafting.recipe_discovered.connect(func(name: StringName) -> void:
 		discovered.append(String(name))
 	)
-
-	# No recipes discovered initially
-	assert_int(_crafting.get_discovered_recipes().size()).is_equal(0)
-
-	# Add stone to inventory → triggers discovery
-	_inventory.add_item(&"stone", 1)
-
-	# Both recipes should be discovered (both have discovery_material = stone)
-	assert_int(discovered.size()).override_failure_message(
-		"Both stone_axe and stone_pickaxe must be discovered on first stone"
-	).is_equal(2)
-	assert_bool("stone_axe" in discovered).is_true()
-	assert_bool("stone_pickaxe" in discovered).is_true()
-
-	# Re-adding stone should NOT re-discover
-	discovered.clear()
 	_inventory.add_item(&"stone", 1)
 	assert_int(discovered.size()).override_failure_message(
-		"Re-adding stone must NOT re-discover recipes"
+		"No discovery signal should fire for pre-discovered recipes"
 	).is_equal(0)
 
 	_teardown_full_tree()
@@ -606,8 +598,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 	_crafting._check_workbench_proximity()
 	assert_bool(_crafting.is_near_workbench()).is_true()
 
-	# Discover recipes by adding stone
-	_inventory.add_item(&"stone", 1)
+	# Recipes are pre-discovered
 	assert_bool(_crafting.is_recipe_discovered(&"stone_axe")).is_true()
 
 	# Setup crafting panel
@@ -617,7 +608,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 	panel.set_inventory(_inventory)
 	panel.open()
 
-	# stone_axe needs 2W + 1S. We have 0W + 1S → unaffordable
+	# stone_axe needs 2W + 1S. We have 0W + 0S → unaffordable
 	var recipe_entries: Dictionary = panel._recipe_entries
 	assert_int(recipe_entries.size()).override_failure_message(
 		"Crafting panel must show discovered recipes"
@@ -629,11 +620,12 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 		if entry.get_recipe_name() == &"stone_axe":
 			entry.refresh(_inventory, _crafting)
 			assert_int(entry.get_state()).override_failure_message(
-				"stone_axe must be UNAFFORDABLE with only 1 stone, 0 wood"
+				"stone_axe must be UNAFFORDABLE with 0 stone, 0 wood"
 			).is_equal(1)  # State.UNAFFORDABLE = 1
 
-	# Add materials for stone_axe (2W + 1S, already have 1S)
+	# Add materials for stone_axe (2W + 1S)
 	_inventory.add_item(&"wood", 2)
+	_inventory.add_item(&"stone", 1)
 	panel._refresh_all()
 
 	for entry_name: StringName in recipe_entries:
@@ -667,31 +659,33 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 
 
 # ===========================================================================
-# 10. CraftButton: hidden without workbench, visible near workbench
+# 10. CraftButton: hidden by default, visible when recipes are pre-discovered
 # ===========================================================================
 
-func test_craft_button_hidden_without_workbench_visible_near() -> void:
+func test_craft_button_visibility_driven_by_recipes() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	# CraftButton starts hidden
+	# CraftButton starts hidden (no crafting system connected yet)
 	var craft_btn: Button = hud.get_node("BottomBar/CraftButton")
 	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must be hidden by default (no workbench)"
+		"CraftButton must be hidden by default (no crafting system connected)"
 	).is_false()
 
-	# Simulate workbench proximity → CraftButton visible
+	# Workbench proximity no longer drives craft button visibility
 	hud._on_workbench_proximity_changed(true)
 	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must be visible when near workbench"
-	).is_true()
-
-	# Leave workbench → hidden again
-	hud._on_workbench_proximity_changed(false)
-	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must hide when leaving workbench"
+		"CraftButton must stay hidden — workbench proximity no longer controls it"
 	).is_false()
 
+	# Connect a crafting system with pre-discovered recipes → button becomes visible
+	_setup_full_tree()
+	hud.connect_crafting(_crafting, _inventory)
+	assert_bool(craft_btn.visible).override_failure_message(
+		"CraftButton must be visible after connecting crafting system with pre-discovered recipes"
+	).is_true()
+
+	_teardown_full_tree()
 	hud.queue_free()
 
 
@@ -813,28 +807,31 @@ func test_stubs_safe_no_crash_without_fauna_or_survival() -> void:
 # Crafting validation: no workbench → craft fails
 # ===========================================================================
 
-func test_craft_fails_without_workbench() -> void:
+func test_craft_succeeds_without_workbench() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_place_player_at_tile(Vector2i.ZERO)
 
-	# Discover recipes and add materials
+	# Add materials for stone_pickaxe (3W + 2S)
 	_inventory.add_item(&"stone", 2)
 	_inventory.add_item(&"wood", 3)
 
-	# Not near workbench
+	# Not near workbench — but requires_workbench is false for current recipes
 	_crafting._check_workbench_proximity()
 	assert_bool(_crafting.is_near_workbench()).is_false()
 
-	var failed_reasons: Array = []
-	_crafting.craft_failed.connect(func(n: StringName, r: StringName) -> void:
-		failed_reasons.append(String(r))
+	var completed: Array = []
+	_crafting.craft_completed.connect(func(n: StringName) -> void:
+		completed.append(String(n))
 	)
 
-	_crafting.craft(&"stone_pickaxe")
-	assert_int(failed_reasons.size()).is_equal(1)
-	assert_str(failed_reasons[0]).is_equal("no_workbench")
+	var result: bool = _crafting.craft(&"stone_pickaxe")
+	assert_bool(result).override_failure_message(
+		"Craft must succeed without workbench when requires_workbench is false"
+	).is_true()
+	assert_int(completed.size()).is_equal(1)
+	assert_str(completed[0]).is_equal("stone_pickaxe")
 
 	_teardown_full_tree()
 

@@ -112,8 +112,19 @@ func test_resource_config_anomaly_fragment() -> void:
 	assert_int(cfg["gather_amount"]).is_equal(1)
 
 
-func test_resource_config_has_exactly_8_types() -> void:
-	assert_int(_AutoInteraction.RESOURCE_CONFIG.size()).is_equal(8)
+func test_resource_config_has_exactly_9_types() -> void:
+	assert_int(_AutoInteraction.RESOURCE_CONFIG.size()).is_equal(9)
+
+
+func test_resource_config_loose_rock() -> void:
+	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"loose_rock"]
+	assert_float(cfg["gather_time"]).is_equal(1.0)
+	assert_int(cfg["gather_amount"]).is_equal(2)
+
+
+func test_gather_yield_loose_rock_gives_stone() -> void:
+	var yield_type: StringName = _AutoInteraction.GATHER_YIELD.get(&"loose_rock", &"loose_rock")
+	assert_str(String(yield_type)).is_equal("stone")
 
 
 # --- Tool speed: stone_axe halves wood gather time ---

@@ -24,6 +24,7 @@ const RESOURCE_COLORS: Dictionary = {
 	&"crystal": Color(0.3, 0.85, 0.95),
 	&"toxic_berries": Color(0.6, 0.1, 0.6),
 	&"anomaly_fragment": Color(0.9, 0.4, 0.9),
+	&"loose_rock": Color(0.7, 0.65, 0.55),
 }
 
 var _player: Node = null

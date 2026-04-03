@@ -80,12 +80,12 @@ func after_test() -> void:
 # Pool creation tests
 # ===========================================
 
-func test_six_multimesh_pools_created() -> void:
-	assert_int(_renderer.get_pool_count()).is_equal(6)
+func test_eight_multimesh_pools_created() -> void:
+	assert_int(_renderer.get_pool_count()).is_equal(8)
 
 
 func test_pools_have_zero_visible_instances_initially() -> void:
-	for i in range(6):
+	for i in range(8):
 		assert_int(_renderer.get_pool_visible_count(i)).is_equal(0)
 
 
@@ -219,6 +219,12 @@ func test_crystal_maps_to_crystal_pool() -> void:
 	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.CRYSTAL)).is_equal(1)
 
 
+func test_loose_rock_maps_to_loose_rock_pool() -> void:
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"loose_rock")
+	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.LOOSE_ROCK)).is_equal(1)
+
+
 # ===========================================
 # Multi-resource tile tests
 # ===========================================
@@ -267,12 +273,12 @@ func test_resource_respawned_clears_depleted() -> void:
 
 
 func test_depleted_meshes_exist_for_all_pools() -> void:
-	for i in range(6):
+	for i in range(8):
 		assert_bool(_renderer.get_depleted_mesh(i) != null).is_true()
 
 
 func test_normal_meshes_exist_for_all_pools() -> void:
-	for i in range(6):
+	for i in range(8):
 		assert_bool(_renderer.get_normal_mesh(i) != null).is_true()
 
 
@@ -313,7 +319,7 @@ func test_unknown_resource_type_not_instanced() -> void:
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 
-	for i in range(6):
+	for i in range(8):
 		assert_int(_renderer.get_pool_visible_count(i)).is_equal(0)
 
 
@@ -344,8 +350,8 @@ func test_swap_and_remove_preserves_other_instances() -> void:
 # Draw calls estimate
 # ===========================================
 
-func test_draw_calls_six_resource_pools() -> void:
-	assert_int(_renderer.get_pool_count()).is_equal(6)
+func test_draw_calls_eight_resource_pools() -> void:
+	assert_int(_renderer.get_pool_count()).is_equal(8)
 
 
 # ===========================================

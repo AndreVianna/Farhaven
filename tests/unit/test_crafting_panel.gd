@@ -179,9 +179,9 @@ func test_close_does_not_emit_panel_opened() -> void:
 
 # === RECIPE RENDERING ===
 
-func test_no_recipes_when_none_discovered() -> void:
+func test_pre_discovered_recipes_shown_on_open() -> void:
 	_panel.open()
-	assert_int(_panel._recipe_list.get_child_count()).is_equal(0)
+	assert_int(_panel._recipe_list.get_child_count()).is_equal(2)
 
 
 func test_discovered_recipes_appear_on_open() -> void:
@@ -356,10 +356,8 @@ func test_refresh_on_craft_completed() -> void:
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.ALREADY_OWNED)
 
 
-func test_new_recipe_discovered_while_open() -> void:
+func test_pre_discovered_recipes_visible_on_open() -> void:
 	_panel.open()
-	assert_int(_panel._recipe_list.get_child_count()).is_equal(0)
-	_discover_recipes()
 	assert_int(_panel._recipe_list.get_child_count()).is_equal(2)
 
 

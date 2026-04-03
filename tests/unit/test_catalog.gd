@@ -251,8 +251,8 @@ func test_get_discovery_count_both_states() -> void:
 
 
 func test_get_total_count_matches_all_entries() -> void:
-	# 4 flora + 1 fauna + 3 minerals + 1 anomaly = 9
-	assert_int(_catalog.get_total_count()).is_equal(9)
+	# 4 flora + 1 fauna + 4 minerals + 1 anomaly = 10
+	assert_int(_catalog.get_total_count()).is_equal(10)
 
 
 # --- get_discovery_text returns "X entries" format ---
@@ -487,5 +487,5 @@ func test_resource_to_entry_all_seven_map_to_valid_entries() -> void:
 		).is_true()
 
 
-func test_resource_to_entry_has_seven_entries() -> void:
-	assert_int(_Catalog.RESOURCE_TO_ENTRY.size()).is_equal(7)
+func test_resource_to_entry_has_eight_entries() -> void:
+	assert_int(_Catalog.RESOURCE_TO_ENTRY.size()).is_equal(8)

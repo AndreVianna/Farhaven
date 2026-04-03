@@ -18,6 +18,7 @@ const RESOURCE_TO_ENTRY: Dictionary = {
 	&"stone":         &"stone_deposit",
 	&"ore":           &"iron_deposit",
 	&"crystal":       &"crystal_cluster",
+	&"loose_rock":    &"loose_rocks",
 }
 
 var _knowledge: Dictionary = {}           # StringName → KnowledgeState
