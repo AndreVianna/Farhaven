@@ -86,7 +86,7 @@ func load_map(path: String) -> bool:
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), 0, 9)
 		tile.fog_state = _HexTile.FogState.HIDDEN
-		tile.structure = &""
+		tile.structure = StringName(td.get("structure", ""))
 		tile.anomaly = StringName(td.get("anomaly", ""))
 
 		var rn_list: Array = []

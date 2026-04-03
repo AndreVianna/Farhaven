@@ -16,6 +16,7 @@
     "1,0": {
       "biome": "crash_site",
       "elevation": 0,
+      "structure": "workbench",
       "resources": [
         {"type": "stone", "x": -0.25, "y": 0.5, "rotation": 142}
       ]
