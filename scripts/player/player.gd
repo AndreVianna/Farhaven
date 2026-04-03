@@ -23,7 +23,7 @@ const JUMP_ARC_HEIGHT: float = 0.5
 var current_tile: Vector2i = Vector2i.ZERO
 var move_state: MoveState = MoveState.IDLE
 var facing_direction: Vector2 = Vector2.ZERO
-var inventory: _Inventory
+var inventory: _Inventory = _Inventory.new()
 
 var _grid: Node  # HexGrid reference (autoload or test substitute)
 var _joystick_dir: Vector2 = Vector2.ZERO
@@ -35,7 +35,6 @@ var _snap_tween: Tween
 
 
 func _ready() -> void:
-	inventory = _Inventory.new()
 	if _grid == null:
 		_grid = HexGrid
 	_grid.map_generated.connect(_on_map_generated)
