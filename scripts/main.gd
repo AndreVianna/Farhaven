@@ -62,6 +62,14 @@ func _wire_systems() -> void:
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
+	# Wire DayNightCycle signals to HUD day counter
+	DayNightCycle.day_started.connect(func() -> void:
+		hud.update_day(DayNightCycle.day_count)
+	)
+	DayNightCycle.phase_changed.connect(func(_old: DayNightCycle.TimePhase, new_phase: DayNightCycle.TimePhase) -> void:
+		hud.update_phase(DayNightCycle.phase_to_string(new_phase))
+	)
+
 
 func _on_gather_fly(coords: Vector2i, resource_type: StringName, _amount: int, _player: Node) -> void:
 	if _fly_to_player != null:

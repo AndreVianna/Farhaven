@@ -311,11 +311,7 @@ func _emit_tile_transition(from: Vector2i, to: Vector2i) -> void:
 	current_tile = to
 	# 3. tile_entered(B)
 	_grid.tile_entered.emit(to)
-	# 4. Reveal fog (temporary — delivery-004 DayNightCycle takes over)
-	if _grid.has_method("refresh_visibility"):
-		var sources: Array[Dictionary] = [{"coords": to, "radius": 2}]
-		_grid.refresh_visibility(sources)
-	# 5. player_moved(A, B)
+	# 4. player_moved(A, B)
 	player_moved.emit(from, to)
 
 
