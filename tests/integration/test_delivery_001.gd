@@ -259,22 +259,24 @@ func test_ac4_movement_updates_current_tile() -> void:
 # ===========================================================================
 
 func test_ac5_fog_reveals_around_new_tile_after_transition() -> void:
-	_load_map()
+	# DayNightCycle owns visibility refresh — use HexGrid autoload so the signal chain works.
+	var loader := _MapLoader.new(HexGrid)
+	loader.load_map(MAP_PATH)
 	# Find a passable neighbor of the crash site.
 	var next_tile := Vector2i(-9999, -9999)
 	for n: Variant in _HexMath.get_neighbors(Vector2i.ZERO):
 		var nv: Vector2i = n
-		if _grid._tiles.has(nv) and _grid.is_passable(Vector2i.ZERO, nv):
+		if HexGrid._tiles.has(nv) and HexGrid.is_passable(Vector2i.ZERO, nv):
 			next_tile = nv
 			break
 	assert_bool(next_tile != Vector2i(-9999, -9999)).override_failure_message(
 		"Crash Site must have a passable neighbor"
 	).is_true()
 	if next_tile == Vector2i(-9999, -9999):
+		HexGrid._tiles.clear()
 		return
 
 	var player := _Player.new()
-	player._grid = _grid
 	add_child(player)
 	player._on_map_generated()
 
@@ -283,11 +285,12 @@ func test_ac5_fog_reveals_around_new_tile_after_transition() -> void:
 	# Tiles within radius 2 of next_tile must be VISIBLE.
 	for coords: Variant in _HexMath.get_tiles_in_range(next_tile, 2):
 		var c: Vector2i = coords
-		if _grid._tiles.has(c):
-			assert_int(_grid._tiles[c].fog_state).override_failure_message(
+		if HexGrid._tiles.has(c):
+			assert_int(HexGrid._tiles[c].fog_state).override_failure_message(
 				"Tile %s within radius 2 of new position must be VISIBLE" % str(c)
 			).is_equal(_HexTile.FogState.VISIBLE)
 	player.queue_free()
+	HexGrid._tiles.clear()
 
 
 func test_ac5_player_moved_signal_fires_on_transition() -> void:
