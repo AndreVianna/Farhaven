@@ -8,7 +8,7 @@
 
 ## Source
 
-- REQUIREMENTS.md §5 F10 (Resource Editor), F12 (.tres Parser), §9 AC2, AC4
+- REQUIREMENTS.md §5 F10 (Resource Editor), F12 (.tres Parser), F15 (Import Validation), §9 AC2, AC4, AC9
 
 ## Description
 
@@ -31,6 +31,7 @@ Must
 - [ ] Given a new resource created, when saved, then a valid .tres file appears in data/resources/ and the resource shows in the Map Editor palette (AC4)
 - [ ] Given a resource in use by a map, when attempting to delete, then a warning dialog shows which map references it
 - [ ] Given a resource edit, when saved, then re-parsing the written file matches the in-memory model
+- [ ] Given a malformed .tres file in data/resources/, when loaded, then the editor shows a clear error message and skips the file without crashing (AC9)
 
 ---
 

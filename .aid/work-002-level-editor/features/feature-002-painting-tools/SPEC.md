@@ -30,10 +30,15 @@ Must
 
 - [ ] Given biome brush selected, when clicking and dragging across hexes, then all touched hexes update to the selected biome
 - [ ] Given flood fill tool, when clicking a hex, then all contiguous hexes of the same biome change to the selected biome
+- [ ] Given elevation brush in increment mode, when clicking a hex, then elevation increases/decreases by 1 (clamped 0-9)
+- [ ] Given elevation brush in set mode, when clicking a hex, then elevation is set to the selected value
 - [ ] Given resource placer, when clicking a hex, then a resource is added with auto-randomized x, y (-1.0 to 1.0) and rotation (0-359)
 - [ ] Given a placed resource, when clicking it, then a detail panel shows x, y, rotation fields for manual editing
+- [ ] Given a hex with multiple resources, when viewed on canvas, then a count badge or visual indicator shows the number of resources
 - [ ] Given spawn marker tool, when placing a second spawn, then the first spawn is removed (exactly one enforced)
+- [ ] Given anomaly marker tool, when clicking a hex, then an anomaly is placed with a string ID input
 - [ ] Given eraser tool, when clicking a hex with resources/structures, then they are removed but the hex remains
+- [ ] Given delete hex tool, when clicking a hex, then the hex is removed entirely from the map
 
 ---
 

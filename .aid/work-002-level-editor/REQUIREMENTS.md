@@ -72,7 +72,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - **Biome Brush** — paint biome type from palette
 - **Elevation Brush** — set elevation 0-9, with +/- increment mode
 - **Resource Placer** — click hex → add resource (type dropdown, position auto-randomized within hex)
-- **Structure Placer** — place structures (workbench, storage_chest, campfire, shelter, torch, wall)
+- **Structure Placer** — place structures from a configurable list (initially matching WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch). List defined once in editor config, easy to update as game adds structures.
 - **Anomaly Marker** — place anomaly points with string ID
 - **Spawn Marker** — set player spawn hex (exactly one per map)
 - **Eraser** — remove resources, structures, anomalies from a hex
@@ -96,6 +96,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Each hex can have 0-N resources
 - Each resource: type (from palette), x/y offset (-1.0 to 1.0, auto-randomized), rotation (0-359, auto-randomized)
 - Click resource → edit x, y, rotation in detail panel
+- Visual indicator on hexes with multiple resources (count badge or stacked dots) — clicking opens a resource list for selecting/editing individual resources
 
 ### F6: Import / Export
 - **Import:** Load existing chapter JSON → renders the full map
@@ -137,6 +138,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Parse Godot .tres files on load, serialize back on save
 - Preserve uid, ext_resource, script lines exactly (round-trip safe)
 - Only edit property values under [resource]
+- Handle complex Godot types: `Color(r, g, b, a)`, `Vector2i(x, y)`, `Array` (typed and untyped), `PackedStringArray`, nested structures in `resource_table` (array of dicts with type/chance/min/max). Each type needs dedicated parse/serialize logic.
 - New files get generated uid (format: uid://c + 13 lowercase alphanumeric chars)
 - Post-save validation: re-parse written file and compare to in-memory model
 
@@ -144,6 +146,16 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - User selects Farhaven project root folder on startup
 - Auto-discovers: maps from `data/maps/*.json`, resources from `data/resources/*.tres`, biomes from `data/biomes/*.tres`
 - Retains file handles via File System Access API for direct save
+
+### F14: Unsaved Changes Protection
+- `beforeunload` event warns if there are unsaved changes (any tab: map, resource, biome)
+- Visual indicator (asterisk in tab title or dot on tab) when unsaved changes exist
+- Optional: periodic auto-save via File System Access API (handle already retained — saving is cheap)
+
+### F15: Import Validation
+- On map JSON import: validate structure, check for required fields (tiles array, spawn), reject malformed data with clear error message
+- On .tres import: validate format, check for required sections (`[gd_resource]`, `[resource]`), warn on unrecognized properties
+- Graceful error handling: malformed files never crash the editor — show actionable error message with line/field info where possible
 
 ## 6. Non-Functional Requirements
 
@@ -193,10 +205,14 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 **AC7: Undo/redo** — Paint 10 hexes, undo all 10, redo 5 → canvas state is correct at each step. Minimum 50-step history.
 
+**AC8: Unsaved changes protection** — Make changes to a map without saving, attempt to close/refresh the browser tab → browser warns about unsaved changes. Visual indicator (e.g., asterisk) visible while changes are pending. Save → indicator clears.
+
+**AC9: Import validation** — Load a malformed JSON file (missing tiles, invalid structure) → editor shows clear error message, does not crash, does not load partial data. Load a malformed .tres file → editor shows clear error, does not crash.
+
 ## 10. Priority
 
 ### Must Have (MVP)
-- All F1-F13 functional requirements
+- All F1-F15 functional requirements
 - Three-tab editor (Map, Resource, Biome)
 - Import/export ch1.json
 - Export validation

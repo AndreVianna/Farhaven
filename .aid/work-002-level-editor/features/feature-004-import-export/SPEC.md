@@ -8,11 +8,11 @@
 
 ## Source
 
-- REQUIREMENTS.md §5 F6 (Import/Export), F7 (Export Validation), §9 AC1, AC3, AC6
+- REQUIREMENTS.md §5 F6 (Import/Export), F7 (Export Validation), F15 (Import Validation), §9 AC1, AC3, AC6, AC9
 
 ## Description
 
-Map JSON import, export, and new map creation. Import loads existing chapter JSON files and renders the full map on canvas. Export saves to JSON in the exact format MapLoader expects, with validation before save. New Map starts from a blank canvas. Export validation checks: exactly one spawn point, no duplicate coordinates, all biome/resource/structure names valid, elevation 0-9, resource positions within range.
+Map JSON import, export, and new map creation. Import loads existing chapter JSON files and renders the full map on canvas — with validation on import (reject malformed data with clear error, never crash or load partial data). Export saves to JSON in the exact format MapLoader expects, with validation before save. New Map starts from a blank canvas. Export validation checks: exactly one spawn point, no duplicate coordinates, all biome/resource/structure names valid, elevation 0-9, resource positions within range.
 
 ## User Stories
 
@@ -32,6 +32,8 @@ Must
 - [ ] Given a map with no spawn point, when exporting, then a clear error message is shown and save is blocked (AC6)
 - [ ] Given a map with duplicate coordinates, when exporting, then validation catches and reports the duplicates
 - [ ] Given a map with an invalid biome name, when exporting, then validation catches and reports the invalid name
+- [ ] Given a new blank map started, when painting hexes and exporting, then a valid JSON is produced
+- [ ] Given a malformed JSON file (missing tiles, invalid structure), when importing, then the editor shows a clear error message and does not crash or load partial data (AC9)
 
 ---
 

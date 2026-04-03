@@ -29,3 +29,4 @@
 |---|------|-------|--------|-------|
 | 1 | 2026-04-03 | — | /aid-interview | Interview complete — approved |
 | 2 | 2026-04-03 | — | Feature Decomposition | 7 features created |
+| 3 | 2026-04-03 | — | Lola review | Expanded to 9 features: extracted command infrastructure (F008) from canvas, added unsaved changes protection (F009). Added F14/F15 to REQUIREMENTS.md. Expanded ACs across all SPECs. |

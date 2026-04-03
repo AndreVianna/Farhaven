@@ -30,6 +30,7 @@ Must
 - [ ] Given Chrome/Edge with File System Access API, when saving, then files are written directly without download dialog
 - [ ] Given Firefox/Safari, when saving, then files are offered as downloads
 - [ ] Given a folder without project.godot, when selected, then the editor shows an error asking for the correct folder
+- [ ] Given the user cancels the folder picker dialog, then the editor shows a welcome/landing state (not an error) with a button to try again
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## Source
 
-- REQUIREMENTS.md §5 F11 (Biome Editor), F12 (.tres Parser), §9 AC2, AC5
+- REQUIREMENTS.md §5 F11 (Biome Editor), F12 (.tres Parser), F15 (Import Validation), §9 AC2, AC5, AC9
 
 ## Description
 
@@ -31,6 +31,7 @@ Must
 - [ ] Given a biome color changed in the editor, when switching to Map Editor, then all hexes of that biome show the new color immediately (AC5)
 - [ ] Given a biome in use by map tiles, when attempting to delete, then a warning dialog shows the tile count
 - [ ] Given a resource table edit, when saved, then the .tres file contains the correct resource_table array
+- [ ] Given a malformed .tres file in data/biomes/, when loaded, then the editor shows a clear error message and skips the file without crashing (AC9)
 
 ---
 
