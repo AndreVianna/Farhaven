@@ -100,7 +100,8 @@ for task-005 implementation.
   as the authoritative source of these constants (all spatial math derives from them).
 - `scripts/hex/hex_tile.gd` — Resource with all properties: coords, biome, elevation,
   fog_state, structure, resource_nodes, anomaly. Biome + FogState enums.
-- `scripts/hex/resource_node.gd` — Resource: type, remaining, max_amount, tool_required
+- `scripts/hex/resource_node.gd` — Resource: type, remaining, max_amount, tool_required,
+  respawn_time, offset (Vector2), rotation_deg (float)
 - `scripts/hex/biome_data.gd` — Resource script for .tres biome configs
 - 5 BiomeData `.tres` files: crash_site, grassland, forest, rocky, water
   with resource tables + elevation ranges from SPEC
@@ -110,7 +111,7 @@ for task-005 implementation.
 - [ ] HexMath unit tests pass: all 6 neighbor directions, distance calculations,
       ring generation, axial↔cube↔world conversions verified against Red Blob Games
 - [ ] HexTile instantiates with all typed properties (including anomaly: StringName)
-- [ ] ResourceNode instantiates with all typed properties
+- [ ] ResourceNode instantiates with all typed properties (including offset, rotation_deg)
 - [ ] BiomeData .tres files load without error, contain correct resource tables
 - [ ] Biome enum: CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER
 - [ ] FogState enum: HIDDEN, REVEALED, VISIBLE
@@ -308,8 +309,8 @@ A* pathfinding preserved for fauna (feature-010, delivery-005).
 - `scripts/player/player_input.gd` — child Node of Player, `_unhandled_input`:
   - Single-outcome classification (tap is no longer movement, scanning is proximity-based):
     - TAP: touch UP <300ms, drag <20px → no-op in delivery-001
-      (future: emit `tap_world(coords)` for building/interaction)
-    - JOYSTICK: drag ≥20px (any time) → emit `joystick_start/move/stop`
+      (future: emit `tap_tile(coords)` for building/interaction)
+    - JOYSTICK: drag ≥20px (any time) → emit `joystick_started/joystick_moved/joystick_stopped`
   - No scan hold classification — scanning is proximity-based (feature-003 owns entirely)
   - No `scan_hold_started/update/ended` signals
   - No `scan_rejected` fallback path

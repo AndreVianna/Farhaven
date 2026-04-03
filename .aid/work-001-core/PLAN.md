@@ -2,7 +2,7 @@
 
 **Status:** Approved
 **Created:** 2026-03-31
-**Features:** 12 (all SPECs Ready)
+**Features:** 12 SPECs (14 functional requirements, all Ready)
 **Replaces:** Pre-redesign plan (8 features, 4 deliveries — invalidated)
 
 ## Dependency Map
@@ -111,7 +111,7 @@ Build order:
 When this lands:
 - F-004 auto-defend activates (FaunaManager now exists, returns real fauna data)
 - F-004 auto-pickup activates (ground items from meat drops + death drops now exist)
-- Building gives crafting its workbench (F-006 CraftButton now shows near workbenches)
+- Building gives crafting its workbench (F-006 workbench proximity gate deferred; CraftButton is recipe-discovery-gated instead — shows permanently after first recipe discovered. MVP: pre-discovered at startup.)
 - Shelter protects player, walls redirect fauna, torches extend visibility
 - Meat drops give survival a new food source
 
@@ -151,7 +151,7 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 ## Notes
 
 - F-004 stubs: auto-defend and auto-pickup activate naturally when F-010/F-007 arrive. No code changes needed — just "feature not present = empty query results = no-op."
-- F-006 (Crafting) needs a Workbench to demo, but F-009 (Building) isn't until delivery-005. For testing, manually place a Workbench via debug command or test fixture.
+- F-006 (Crafting) MVP recipes are `pre_discovered: true` and `requires_workbench: false` — craftable anywhere, no Workbench needed for testing. Workbench gate activates when post-MVP recipes are added.
 - Old PLAN.md (4 deliveries, 8 features) is replaced. Old delivery DETAIL.md files in delivery-001 through delivery-004 are invalidated.
 
 ## Change Log
@@ -160,3 +160,4 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 |------|--------|--------|
 | 2026-03-31 | Plan created — 6 deliveries, 12 features (post-redesign) | /aid-plan |
 | 2026-04-02 | Scan redesign: delivery-002 description updated (proximity scan, not press-hold). Delivery progression language updated. | /scan-redesign-apply |
+| 2026-04-03 | Review cascade: F006 pre_discovered/requires_workbench, F009 6 structures (campfire added, only Wall blocks), F012 CraftButton recipe-discovery-gated, signal names synced | /aid-specify review |
