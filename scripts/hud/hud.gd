@@ -1,6 +1,8 @@
 class_name HUD
 extends Control
 
+const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
+
 @onready var _stat_bars := $TopBar/StatBars
 @onready var _day_counter := $TopBar/DayCounter
 @onready var _floating_text := $FloatingTextContainer
@@ -14,6 +16,8 @@ extends Control
 @onready var _crafting_panel = $CraftingPanel  # CraftingPanel
 
 var _panels: Array = []
+var _craft_flash: ColorRect = null
+var _gather_sound: Node = null  # GatherSound (set via connect_sound)
 
 
 func _ready() -> void:
@@ -26,6 +30,9 @@ func _ready() -> void:
 	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
 	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
 	_crafting_panel.panel_opened.connect(_on_panel_opened.bind(_crafting_panel))
+	# Craft flash overlay (fullscreen, on top)
+	_craft_flash = _CraftFlash.new()
+	add_child(_craft_flash)
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
@@ -108,6 +115,11 @@ func _on_recipe_discovered(recipe_name: StringName) -> void:
 func _on_craft_completed(recipe_name: StringName) -> void:
 	var display_name: String = recipe_name.replace("_", " ").capitalize()
 	show_notification("Crafted %s!" % display_name)
+	# Flash + sound feedback
+	if _craft_flash != null:
+		_craft_flash.flash()
+	if _gather_sound != null and _gather_sound.has_method("play_craft_success"):
+		_gather_sound.play_craft_success()
 
 
 # --- Auto-gather feedback integration ---
@@ -124,6 +136,9 @@ func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amo
 	var player: Node = _get_player()
 	if player:
 		show_text(player.position, text, Color.GREEN)
+	# Sound hook
+	if _gather_sound != null and _gather_sound.has_method("play_gather_ding"):
+		_gather_sound.play_gather_ding()
 
 
 func _on_auto_gather_failed(_coords: Vector2i, reason: StringName) -> void:
@@ -150,6 +165,12 @@ func _get_player() -> Node:
 	if main:
 		return main.get_node_or_null("World/Player")
 	return null
+
+
+# --- Sound integration ---
+
+func connect_sound(sound_node: Node) -> void:
+	_gather_sound = sound_node
 
 
 # --- Mutual exclusion: closing other panels when one opens ---

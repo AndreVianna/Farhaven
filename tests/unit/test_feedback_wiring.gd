@@ -7,6 +7,8 @@ class_name TestFeedbackWiring
 const _FloatingTextManager = preload("res://scripts/hud/floating_text_manager.gd")
 const _NotificationManager = preload("res://scripts/hud/notification_manager.gd")
 const _FlyToPlayer = preload("res://scripts/rendering/fly_to_player.gd")
+const _GatherSound = preload("res://scripts/audio/gather_sound.gd")
+const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
 
 
 # --- Lightweight fakes ---
@@ -300,6 +302,126 @@ func test_hud_craft_completed_shows_notification() -> void:
 	assert_str(hud.notification_calls[0]).is_equal("Crafted Stone Pickaxe!")
 
 	hud.queue_free()
+	crafting.queue_free()
+
+
+# --- GatherSound tests ---
+
+
+func test_gather_sound_emits_ding_signal() -> void:
+	var sound := _GatherSound.new()
+	add_child(sound)
+
+	var counter: Array = [0]
+	sound.gather_ding_played.connect(func() -> void: counter[0] += 1)
+
+	sound.play_gather_ding()
+
+	assert_int(counter[0]).is_equal(1)
+
+	sound.queue_free()
+
+
+func test_gather_sound_emits_craft_signal() -> void:
+	var sound := _GatherSound.new()
+	add_child(sound)
+
+	var counter: Array = [0]
+	sound.craft_success_played.connect(func() -> void: counter[0] += 1)
+
+	sound.play_craft_success()
+
+	assert_int(counter[0]).is_equal(1)
+
+	sound.queue_free()
+
+
+func test_gather_sound_has_audio_players() -> void:
+	var sound := _GatherSound.new()
+	add_child(sound)
+
+	# Should have two AudioStreamPlayer children
+	var gather_player := sound.get_node_or_null("GatherPlayer")
+	var craft_player := sound.get_node_or_null("CraftPlayer")
+	assert_object(gather_player).is_not_null()
+	assert_object(craft_player).is_not_null()
+
+	sound.queue_free()
+
+
+# --- CraftFlash tests ---
+
+
+func test_craft_flash_starts_hidden() -> void:
+	var flash := _CraftFlash.new()
+	add_child(flash)
+
+	assert_bool(flash.visible).is_false()
+	assert_float(flash.color.a).is_equal(0.0)
+
+	flash.queue_free()
+
+
+func test_craft_flash_becomes_visible_on_flash() -> void:
+	var flash := _CraftFlash.new()
+	add_child(flash)
+
+	flash.flash()
+
+	assert_bool(flash.visible).is_true()
+	assert_float(flash.color.a).is_greater(0.0)
+
+	flash.queue_free()
+
+
+# --- Sound wiring integration ---
+
+
+func test_gather_ding_fires_on_auto_gather_completed() -> void:
+	var sound := _GatherSound.new()
+	add_child(sound)
+
+	var auto := FakeAutoInteraction.new()
+	add_child(auto)
+
+	var counter: Array = [0]
+	sound.gather_ding_played.connect(func() -> void: counter[0] += 1)
+
+	# Wire like HUD does: auto_gather_completed → sound.play_gather_ding
+	auto.auto_gather_completed.connect(
+		func(_c: Vector2i, _t: StringName, _a: int) -> void:
+			sound.play_gather_ding()
+	)
+
+	auto.auto_gather_completed.emit(Vector2i.ZERO, &"wood", 1)
+
+	assert_int(counter[0]).is_equal(1)
+
+	sound.queue_free()
+	auto.queue_free()
+
+
+func test_craft_success_sound_fires_on_craft_completed() -> void:
+	var sound := _GatherSound.new()
+	add_child(sound)
+
+	var crafting := FakeCraftingSystem.new()
+	add_child(crafting)
+
+	var counter: Array = [0]
+	sound.craft_success_played.connect(func() -> void: counter[0] += 1)
+
+	# Wire like HUD does: craft_completed → sound.play_craft_success
+	crafting.craft_completed.connect(
+		func(_r: StringName) -> void:
+			sound.play_craft_success()
+	)
+
+	crafting.craft_completed.emit(&"stone_axe")
+
+	assert_int(counter[0]).is_equal(1)
+
+	sound.queue_free()
 	crafting.queue_free()
 
 

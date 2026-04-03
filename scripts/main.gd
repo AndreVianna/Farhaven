@@ -3,8 +3,10 @@ extends Node
 ## Bootstrap: loads the world map on game start and wires all systems together.
 
 const _FlyToPlayer = preload("res://scripts/rendering/fly_to_player.gd")
+const _GatherSound = preload("res://scripts/audio/gather_sound.gd")
 
 var _fly_to_player: Node3D = null
+var _gather_sound: Node = null
 
 
 func _ready() -> void:
@@ -53,6 +55,12 @@ func _wire_systems() -> void:
 		_fly_to_player.setup(player)
 		$World.add_child(_fly_to_player)
 		auto_interaction.auto_gather_completed.connect(_on_gather_fly.bind(player))
+
+	# Setup sound hooks (gather ding + craft success)
+	_gather_sound = _GatherSound.new()
+	add_child(_gather_sound)
+	if hud.has_method("connect_sound"):
+		hud.connect_sound(_gather_sound)
 
 
 func _on_gather_fly(coords: Vector2i, resource_type: StringName, _amount: int, _player: Node) -> void:
