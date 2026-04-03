@@ -111,10 +111,7 @@ State 2: INTERVIEW-STATE has Pending Q&A entries                   → Q&A mode
 State 3: INTERVIEW-STATE Status: In Progress, sections incomplete  → CONTINUE INTERVIEW
 State 4: INTERVIEW-STATE Status: In Progress, all sections done    → COMPLETION & APPROVAL
 State 5: INTERVIEW-STATE Status: Approved, no feature folders      → FEATURE DECOMPOSITION
-State 6: INTERVIEW-STATE Status: Approved, feature folders exist,
-         cross-reference not yet done                              → CROSS-REFERENCE
-State 7: INTERVIEW-STATE Status: Approved, features + cross-ref
-         already complete                                          → DONE
+State 6: INTERVIEW-STATE Status: Approved, feature folders exist   → CROSS-REFERENCE
 ```
 
 **Detection logic:**
@@ -134,13 +131,9 @@ State 7: INTERVIEW-STATE Status: Approved, features + cross-ref
       - If `--features` flag provided → **State 5: FEATURE DECOMPOSITION**
       - Check if `features/` directory exists and contains `feature-*` subdirectories
       - If no feature folders → **State 5: FEATURE DECOMPOSITION**
-      - If feature folders exist:
-        - Check INTERVIEW-STATE.md `## Cross-Reference` section for `**Status:** Complete`
-          (or check if cross-reference entries exist from a prior run)
-        - If cross-reference not yet done → **State 6: CROSS-REFERENCE**
-        - If cross-reference already complete → **State 7: DONE**
+      - If feature folders exist → **State 6: CROSS-REFERENCE**
 
-Print the detected state: `[{work}: {FIRST RUN|Q&A|CONTINUE|COMPLETION|FEATURES|CROSS-REFERENCE|DONE}]`
+Print the detected state: `[{work}: {FIRST RUN|Q&A|CONTINUE|COMPLETION|FEATURES|CROSS-REFERENCE}]`
 
 ---
 
@@ -325,29 +318,7 @@ Before presenting for approval, verify:
 
 If issues found, ask the user to clarify instead of approving.
 
-### Step 2: KB Hydration
-
-The interview captured project knowledge that belongs in the Knowledge Base — not just
-in REQUIREMENTS.md. Before approval, populate KB docs from what was learned.
-
-Read `references/kb-hydration.md` for the full process.
-
-In summary:
-1. **Extract** — scan REQUIREMENTS.md and write substantive content into each KB document
-   (technology-stack.md, coding-standards.md, architecture.md, infrastructure.md, etc.)
-2. **Gap check** — identify KB docs still empty where the user likely has answers
-3. **Ask** — for each gap the user would reasonably know, ask ONE question at a time
-   (same interactive pattern as the interview). If the user says "skip", respect it.
-4. **Update meta** — refresh README.md completeness table, INDEX.md summaries,
-   DISCOVERY-STATE.md, and REQUIREMENTS.md change log
-
-**This step is mandatory.** Do not skip it even if the user seems eager to approve.
-The KB is consumed by all downstream phases — empty KB docs force specify/detail/execute
-to guess.
-
-After hydration is complete, proceed to the summary.
-
-### Step 3: Present Summary
+### Step 2: Present Summary
 
 ```
 I believe I have enough information. Here's a summary:
@@ -364,7 +335,7 @@ Is there anything else we should consider, or are the requirements ready?
 [2] Additional consideration: ___
 ```
 
-### Step 4: Process Response
+### Step 3: Process Response
 
 - **[1] Approved:**
   - Set `**Status:** Approved` in INTERVIEW-STATE.md
@@ -400,36 +371,6 @@ documents and codebase, grades findings, and creates Q&A entries for issues.
 
 Read `references/cross-reference.md` for the full cross-reference validation process
 (load context, cross-reference, grade, present findings, create Q&A, wrap up).
-
----
-
-## State 7: DONE
-
-Interview is complete, approved, features decomposed, and cross-references validated.
-
-Print:
-
-```
-Interview for {work} is complete and approved.
-
-[1] Add more information — reopen for additional input
-[2] Re-run cross-reference validation
-[3] Done — nothing to add
-```
-
-- **[1] Add more information:**
-  - Ask: _"What would you like to add or change?"_
-  - Record the user's input into the relevant REQUIREMENTS.md section
-  - Update INTERVIEW-STATE.md section statuses if needed
-  - Update affected feature SPEC.md files if the change impacts a feature
-  - Update KB documents if the new info is KB-relevant
-  - Print: `✅ Updated. Run /aid-interview {work} again to re-validate.`
-
-- **[2] Re-run cross-reference:**
-  - Proceed to State 6 (CROSS-REFERENCE) for a fresh validation pass
-
-- **[3] Done:**
-  - Print: `✅ Interview complete. Requirements approved. Ready for /aid-specify.`
 
 ---
 

@@ -85,6 +85,7 @@ mesh = SubResource("box")
 
 ### Autoload initialization order
 Godot processes autoloads in the order listed in project.godot. If systems depend on each other during _ready(), order matters:
-1. HexGrid (no dependencies)
-2. DayNightCycle (depends on HexGrid for visibility)
-3. SaveManager (depends on all other systems for get_save_data)
+1. ResourceRegistry (no dependencies — scans data/resources/ at startup, project.godot line 25)
+2. HexGrid (depends on ResourceRegistry for resource definitions, project.godot line 26)
+3. DayNightCycle (depends on HexGrid for visibility — stubbed)
+4. SaveManager (depends on all other systems for get_save_data — stubbed)
