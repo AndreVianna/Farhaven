@@ -17,7 +17,7 @@ const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 # Structures that do NOT block movement (walkable)
-const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch"]
+const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
