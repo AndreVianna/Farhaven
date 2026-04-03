@@ -39,7 +39,7 @@ func _ready() -> void:
 	if parent and parent.has_method(&"get_inventory"):
 		_inventory = parent.get_inventory()
 	if _day_night_cycle == null:
-		_day_night_cycle = get_node_or_null(&"/root/DayNightCycle")
+		_day_night_cycle = get_node_or_null("/root/DayNightCycle")
 	if _inventory:
 		_inventory.item_used.connect(_on_item_used)
 
