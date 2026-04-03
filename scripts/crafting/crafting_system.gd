@@ -17,12 +17,14 @@ const RECIPE_CONFIG: Dictionary = {
 		"output_type": &"tool",
 		"tool_slot": &"axe",
 		"discovery_material": &"stone",
+		"requires_workbench": false,
 	},
 	&"stone_pickaxe": {
 		"ingredients": { &"wood": 3, &"stone": 2 },
 		"output_type": &"tool",
 		"tool_slot": &"pickaxe",
 		"discovery_material": &"stone",
+		"requires_workbench": false,
 	},
 }
 
@@ -84,8 +86,8 @@ func craft(recipe_name: StringName) -> bool:
 
 	var recipe: Dictionary = RECIPE_CONFIG[recipe_name]
 
-	# 1. Workbench proximity
-	if not _near_workbench:
+	# 1. Workbench proximity (only for recipes that require it)
+	if recipe.get("requires_workbench", true) and not _near_workbench:
 		craft_failed.emit(recipe_name, &"no_workbench")
 		return false
 

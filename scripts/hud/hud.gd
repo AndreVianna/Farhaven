@@ -91,13 +91,13 @@ func connect_crafting(crafting_system: Node, inv) -> void:
 	crafting_system.craft_completed.connect(_on_craft_completed)
 
 
-func _on_workbench_proximity_changed(near: bool) -> void:
-	_craft_button.visible = near
-	if not near and _crafting_panel.visible:
-		_crafting_panel.close()
+func _on_workbench_proximity_changed(_near: bool) -> void:
+	# Craft button visible whenever recipes are discovered (not just near workbench)
+	pass
 
 
 func _on_recipe_discovered(recipe_name: StringName) -> void:
+	_craft_button.visible = true
 	var display_name: String = recipe_name.replace("_", " ").capitalize()
 	show_notification("New recipe: %s!" % display_name)
 
