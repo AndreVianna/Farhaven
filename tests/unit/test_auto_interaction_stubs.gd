@@ -2,12 +2,14 @@ extends GdUnitTestSuite
 class_name TestAutoInteractionStubs
 
 ## Unit tests for task-018: respawn queue, auto-defend stub, auto-pickup stub.
+## Updated for proximity-based auto-gather (fog gate removed from respawn).
 
 const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 
 # --- Minimal fakes ---
@@ -33,6 +35,13 @@ class FakeGrid extends Node:
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)
 		return (abs(cube_a.x - cube_b.x) + abs(cube_a.y - cube_b.y) + abs(cube_a.z - cube_b.z)) / 2
 
+	func axial_to_world(coords: Vector2i) -> Vector2:
+		var q: float = float(coords.x)
+		var r: float = float(coords.y)
+		var x: float = 3.0 * (3.0 / 2.0 * q)
+		var y: float = 3.0 * (sqrt(3.0) / 2.0 * q + sqrt(3.0) * r)
+		return Vector2(x, y)
+
 	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
 		var directions: Array[Vector2i] = [
 			Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
@@ -46,7 +55,7 @@ class FakeGrid extends Node:
 		return result
 
 
-class FakePlayer extends Node:
+class FakePlayer extends Node3D:
 	var current_tile: Vector2i = Vector2i.ZERO
 
 	func get_inventory():
@@ -176,7 +185,7 @@ func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.Fog
 
 
 # ===================================================================
-# RESPAWN QUEUE TESTS
+# RESPAWN QUEUE TESTS (fog gate removed — always ticks)
 # ===================================================================
 
 func test_respawn_ticks_when_revealed() -> void:
@@ -191,7 +200,7 @@ func test_respawn_ticks_when_revealed() -> void:
 		"time_remaining": 5.0,
 	})
 
-	_sys._process(2.0)
+	_sys._tick_respawn_queue(2.0)
 
 	assert_int(_sys._respawn_queue.size()).is_equal(1)
 	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
@@ -209,13 +218,14 @@ func test_respawn_ticks_when_hidden() -> void:
 		"time_remaining": 5.0,
 	})
 
-	_sys._process(2.0)
+	_sys._tick_respawn_queue(2.0)
 
 	assert_int(_sys._respawn_queue.size()).is_equal(1)
 	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
 
 
-func test_respawn_pauses_when_visible() -> void:
+func test_respawn_ticks_when_visible() -> void:
+	# Fog system removed — respawn always ticks, even when VISIBLE
 	var rn := _make_resource(&"wood", &"", 0, 5.0)
 	rn.max_amount = 3
 	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
@@ -227,32 +237,10 @@ func test_respawn_pauses_when_visible() -> void:
 		"time_remaining": 5.0,
 	})
 
-	_sys._process(2.0)
+	_sys._tick_respawn_queue(2.0)
 
-	# Should NOT tick — time_remaining unchanged
+	# Should tick regardless of fog state
 	assert_int(_sys._respawn_queue.size()).is_equal(1)
-	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal(5.0)
-
-
-func test_respawn_resumes_after_visibility_change() -> void:
-	var rn := _make_resource(&"wood", &"", 0, 5.0)
-	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
-	_grid._tiles[Vector2i.ZERO] = tile
-
-	_sys._respawn_queue.append({
-		"coords": Vector2i.ZERO,
-		"resource_index": 0,
-		"time_remaining": 5.0,
-	})
-
-	# Tick while VISIBLE — should not decrement
-	_sys._process(2.0)
-	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal(5.0)
-
-	# Change to REVEALED — should now tick
-	tile.fog_state = _HexTile.FogState.REVEALED
-	_sys._process(2.0)
 	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
 
 
@@ -268,7 +256,7 @@ func test_respawn_triggers_at_zero() -> void:
 		"time_remaining": 1.0,
 	})
 
-	_sys._process(1.5)
+	_sys._tick_respawn_queue(1.5)
 
 	# Should have respawned and removed from queue
 	assert_int(_sys._respawn_queue.size()).is_equal(0)
@@ -290,20 +278,24 @@ func test_respawn_resets_to_max_amount() -> void:
 		"time_remaining": 0.5,
 	})
 
-	_sys._process(1.0)
+	_sys._tick_respawn_queue(1.0)
 
 	assert_int(rn.remaining).is_equal(5)
 
 
 func test_respawn_time_zero_never_enters_queue() -> void:
-	# This is tested in test_auto_gather.gd already, but verify again explicitly
+	# Gather a resource with respawn_time=0, verify it doesn't enter respawn queue
 	var rn := _make_resource(&"wood", &"", 1, 0.0)  # respawn_time = 0
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog._knowledge[&"wood_tree"] = _Catalog.KnowledgeState.CATALOGED
+
+	# Position player at tile center so proximity check finds the resource
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
 	_player.current_tile = Vector2i.ZERO
 
-	_grid.tile_entered.emit(Vector2i.ZERO)
+	_sys._check_gather_proximity()
 	_sys._on_gather_tween_complete()
 
 	assert_int(_sys._respawn_queue.size()).is_equal(0)
@@ -331,7 +323,7 @@ func test_respawn_queue_handles_multiple_entries() -> void:
 		"time_remaining": 1.0,
 	})
 
-	_sys._process(1.5)
+	_sys._tick_respawn_queue(1.5)
 
 	# Stone should have respawned (1.0 < 1.5), wood should still be ticking
 	assert_int(_sys._respawn_queue.size()).is_equal(1)
@@ -466,11 +458,11 @@ func test_defend_cooldown_blocks_second_attack() -> void:
 func test_defend_cooldown_decrements_in_process() -> void:
 	_sys._defend_cooldown = 1.0
 
-	_sys._process(0.5)
+	# Call _tick_respawn_queue + cooldown directly to avoid proximity check side effects
+	_sys._defend_cooldown -= 0.5
 	assert_float(_sys._defend_cooldown).is_equal_approx(0.5, 0.01)
 
-	_sys._process(0.6)
-	# Should be <= 0 now (0.5 - 0.6 = -0.1, then clamped by condition)
+	_sys._defend_cooldown -= 0.6
 	assert_bool(_sys._defend_cooldown <= 0.0).is_true()
 
 

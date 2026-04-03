@@ -3,13 +3,15 @@ class_name AutoInteractionSystem
 
 ## Auto-interaction system — child of Player.
 ## Resource config, tool tables, weapon tables, can_gather utility,
-## auto-gather flow (proximity check, tween timer, chaining),
+## auto-gather flow (continuous world-space proximity, tween timer, chaining),
 ## respawn queue, auto-defend stub, and auto-pickup stub.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
+const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Signals ---
 
@@ -57,6 +59,14 @@ const WEAPON_DAMAGE: Dictionary = {
 	&"": 5,
 }
 
+# --- Proximity Gather Config ---
+
+## World-space gather radius in Godot units (0.75u = 1.5m real = arm's reach)
+const GATHER_RADIUS: float = 0.75
+
+## Throttle interval for proximity checks (seconds)
+const PROXIMITY_CHECK_INTERVAL: float = 0.1
+
 # --- Auto-Defend Config ---
 
 const AUTO_DEFEND_CONFIG: Dictionary = {
@@ -72,6 +82,7 @@ var _gather_target_index: int = -1
 var _gather_tween: Tween = null
 var _defend_cooldown: float = 0.0
 var _respawn_queue: Array = []
+var _proximity_timer: float = 0.0
 
 # --- External references (set via _ready or injection for tests) ---
 
@@ -111,6 +122,11 @@ func _process(delta: float) -> void:
 	_tick_respawn_queue(delta)
 	if _defend_cooldown > 0.0:
 		_defend_cooldown -= delta
+	# Continuous proximity gather check (throttled)
+	_proximity_timer += delta
+	if _proximity_timer >= PROXIMITY_CHECK_INTERVAL:
+		_proximity_timer = 0.0
+		_check_gather_proximity()
 
 
 func _connect_signals() -> void:
@@ -120,6 +136,17 @@ func _connect_signals() -> void:
 		_grid.tile_entered.connect(_on_tile_entered)
 	# Auto-defend: connect to FaunaManager.fauna_moved if available
 	_connect_fauna_manager()
+
+
+# --- Continuous Proximity Gather ---
+
+## Check for gatherable resources within GATHER_RADIUS of the player's world position.
+func _check_gather_proximity() -> void:
+	if _is_gathering:
+		return  # Already gathering — chain will re-check after completion
+	if _player == null or not "current_tile" in _player:
+		return
+	_try_gather_nearby(_player.current_tile)
 
 
 # --- Utility: can_gather ---
@@ -139,15 +166,12 @@ func can_gather(node: Resource, inventory: RefCounted) -> bool:
 
 # --- Auto-Gather Flow ---
 
-## Called when player enters a new tile. Triggers proximity scan for gatherable resources.
+## Called when player enters a new tile. Triggers auto-pickup only.
 func _on_tile_entered(coords: Vector2i) -> void:
 	_try_auto_pickup(coords)
-	if _is_gathering:
-		return  # Already gathering — chain will re-check after completion
-	_try_gather_nearby(coords)
 
 
-## Find the best gatherable resource in the 7-tile area around the given coords.
+## Find the best gatherable resource within GATHER_RADIUS around the given coords.
 ## Returns true if a gather was started.
 func _try_gather_nearby(center: Vector2i) -> bool:
 	if _grid == null or _catalog == null or _inventory == null:
@@ -157,7 +181,7 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 	if candidates.is_empty():
 		return false
 
-	# Sort: TOOL_PRIORITY desc, then distance asc
+	# Sort: TOOL_PRIORITY desc, then world distance asc
 	candidates.sort_custom(_compare_candidates)
 
 	var best: Dictionary = candidates[0]
@@ -165,17 +189,28 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 	return true
 
 
-## Scan current tile + 6 neighbors for gatherable resources.
+## Scan current tile + 6 neighbors for gatherable resources within GATHER_RADIUS.
+## Uses world-space distance (XZ plane) instead of hex distance.
 ## Returns array of candidate dictionaries.
 func _find_gather_candidates(center: Vector2i) -> Array:
 	var candidates: Array = []
 	var tiles_to_check: Array[Vector2i] = [center]
 	tiles_to_check.append_array(_grid.get_neighbors(center))
 
+	# Player world position on XZ plane
+	var player_pos_xz: Vector2 = Vector2.ZERO
+	if _player != null and "global_position" in _player:
+		player_pos_xz = Vector2(_player.global_position.x, _player.global_position.z)
+	elif _player != null and "position" in _player:
+		player_pos_xz = Vector2(_player.position.x, _player.position.z)
+
 	for tile_coords in tiles_to_check:
 		var tile = _grid.get_tile(tile_coords)
 		if tile == null:
 			continue
+
+		# Tile center in world space
+		var tile_center_2d: Vector2 = _grid.axial_to_world(tile_coords)
 
 		for i in tile.resource_nodes.size():
 			var node: Resource = tile.resource_nodes[i]
@@ -187,29 +222,37 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if entry_id == &"":
 				continue
 			if not _catalog.is_cataloged(entry_id):
-				# Emit tool_gated if cataloged-but-wrong-tool would apply,
-				# but for uncataloged, silently skip
 				continue
 
-			# Tool gate
+			# Tool gate (silent skip — no signal for tool_gated)
 			if not can_gather(node, _inventory):
-				auto_gather_failed.emit(tile_coords, &"tool_gated")
 				continue
 
-			var dist: int = _grid.distance(center, tile_coords)
+			# Compute world-space position of this resource node
+			var offset_world: Vector2 = _PropUtils.offset_to_world(node.offset, _HexMath.HEX_SIZE)
+			var resource_pos_xz: Vector2 = Vector2(
+				tile_center_2d.x + offset_world.x,
+				tile_center_2d.y + offset_world.y
+			)
+
+			# World-space distance on XZ plane
+			var world_dist: float = player_pos_xz.distance_to(resource_pos_xz)
+			if world_dist > GATHER_RADIUS:
+				continue  # Out of arm's reach
+
 			var priority: int = TOOL_PRIORITY.get(node.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
 				"resource_index": i,
 				"node": node,
 				"priority": priority,
-				"distance": dist,
+				"distance": world_dist,
 			})
 
 	return candidates
 
 
-## Comparison function for sorting candidates: higher priority first, then nearer first.
+## Comparison function for sorting candidates: higher priority first, then nearer first (world distance).
 func _compare_candidates(a: Dictionary, b: Dictionary) -> bool:
 	if a["priority"] != b["priority"]:
 		return a["priority"] > b["priority"]
@@ -284,21 +327,17 @@ func _on_gather_tween_complete() -> void:
 
 # --- Respawn Queue ---
 
-## Tick respawn timers. Only ticks when the tile is NOT VISIBLE (fog_state != VISIBLE).
+## Tick respawn timers. Always ticks (fog system removed).
 ## On expire: reset node.remaining = max_amount, emit HexGrid.resource_respawned.
 func _tick_respawn_queue(delta: float) -> void:
 	var i: int = _respawn_queue.size() - 1
 	while i >= 0:
 		var entry: Dictionary = _respawn_queue[i]
 		var coords: Vector2i = entry["coords"]
-		var tile = _grid.get_tile(coords) if _grid != null else null
-		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
-			# Paused — tile is visible, skip tick
-			i -= 1
-			continue
 		entry["time_remaining"] -= delta
 		if entry["time_remaining"] <= 0.0:
 			# Respawn the resource
+			var tile = _grid.get_tile(coords) if _grid != null else null
 			if tile != null:
 				var idx: int = entry["resource_index"]
 				if idx >= 0 and idx < tile.resource_nodes.size():
