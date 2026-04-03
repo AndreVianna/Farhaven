@@ -5,6 +5,7 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F2, F5 | /aid-interview |
+| 2026-04-03 | Technical specification written | /aid-specify |
 
 ## Source
 
@@ -44,4 +45,224 @@ Must
 
 ## Technical Specification
 
-{Added by /aid-specify — do not fill during interview.}
+### Data Model
+
+**Tool types enum:**
+
+```js
+const ToolType = {
+  BIOME: "biome",
+  ELEVATION: "elevation",
+  RESOURCE: "resource",
+  STRUCTURE: "structure",
+  ANOMALY: "anomaly",
+  SPAWN: "spawn",
+  ERASER: "eraser",
+  DELETE_HEX: "delete_hex",
+  FLOOD_FILL: "flood_fill"
+};
+```
+
+**Elevation brush modes:**
+
+```js
+const ElevationMode = {
+  SET: "set",           // set elevation to a specific value
+  INCREMENT: "increment" // +1 or -1 from current
+};
+```
+
+**`ToolManager` class** — singleton that tracks active tool and delegates canvas mouse events.
+
+```js
+class ToolManager {
+  constructor(hexGrid, commandHistory) {
+    this.grid = hexGrid;
+    this.commandHistory = commandHistory;
+    this.activeTool = null;       // BaseTool instance
+    this.activeToolType = null;   // ToolType value
+    this.activeValue = null;      // string — the selected biome/resource/structure name
+    this.elevationMode = ElevationMode.SET;
+    this.elevationValue = 0;      // target value for SET mode
+    this.elevationDelta = 1;      // +1 or -1 for INCREMENT mode
+  }
+
+  setTool(toolType, value)    // creates and activates the appropriate tool instance
+  getActiveTool()             // returns current BaseTool
+  onMouseDown(hex)            // delegates to activeTool.onMouseDown(hex)
+  onMouseMove(hex)            // delegates to activeTool.onMouseMove(hex)
+  onMouseUp(hex)              // delegates to activeTool.onMouseUp(hex)
+}
+```
+
+**`BaseTool` interface** — all tools implement:
+
+```js
+class BaseTool {
+  constructor(grid, commandHistory, toolManager) { ... }
+  onMouseDown(hex)   // hex = { q, r }
+  onMouseMove(hex)   // hex = { q, r }
+  onMouseUp(hex)     // hex = { q, r }
+}
+```
+
+### Command Classes
+
+Each tool produces Command objects that are pushed to the `CommandHistory` (feature-008). Every command implements `execute()` and `undo()`.
+
+```js
+class SetBiomeCommand {
+  constructor(grid, q, r, oldBiome, newBiome)
+  execute()   // grid.getTile(q,r).biome = newBiome; if tile doesn't exist, create it
+  undo()      // grid.getTile(q,r).biome = oldBiome
+}
+
+class SetElevationCommand {
+  constructor(grid, q, r, oldElevation, newElevation)
+  execute()   // grid.getTile(q,r).elevation = newElevation
+  undo()      // grid.getTile(q,r).elevation = oldElevation
+}
+
+class AddResourceCommand {
+  constructor(grid, q, r, resourceInstance)
+  execute()   // grid.getTile(q,r).resources.push(resourceInstance)
+  undo()      // grid.getTile(q,r).resources.pop() — removes last added
+}
+
+class EditResourceCommand {
+  constructor(grid, q, r, resourceIndex, oldValues, newValues)
+  execute()   // Object.assign(grid.getTile(q,r).resources[index], newValues)
+  undo()      // Object.assign(grid.getTile(q,r).resources[index], oldValues)
+}
+
+class DeleteResourceCommand {
+  constructor(grid, q, r, resourceIndex, removedResource)
+  execute()   // grid.getTile(q,r).resources.splice(index, 1)
+  undo()      // grid.getTile(q,r).resources.splice(index, 0, removedResource)
+}
+
+class SetStructureCommand {
+  constructor(grid, q, r, oldStructure, newStructure)
+  execute()   // grid.getTile(q,r).structure = newStructure
+  undo()      // grid.getTile(q,r).structure = oldStructure
+}
+
+class SetAnomalyCommand {
+  constructor(grid, q, r, oldAnomaly, newAnomaly)
+  execute()   // grid.getTile(q,r).anomaly = newAnomaly
+  undo()      // grid.getTile(q,r).anomaly = oldAnomaly
+}
+
+class SetSpawnCommand {
+  constructor(grid, oldSpawn, newSpawn)  // oldSpawn/newSpawn = [q, r]
+  execute()   // grid.meta.spawn = newSpawn
+  undo()      // grid.meta.spawn = oldSpawn
+}
+
+class EraseContentCommand {
+  constructor(grid, q, r, oldTile)   // snapshot of tile before erase
+  execute()   // tile.resources = []; tile.structure = null; tile.anomaly = null
+  undo()      // restore resources, structure, anomaly from oldTile snapshot
+}
+
+class DeleteHexCommand {
+  constructor(grid, q, r, oldTileData)  // full tile snapshot
+  execute()   // grid.deleteTile(q, r)
+  undo()      // grid.setTile(q, r, deepClone(oldTileData))
+}
+
+class BatchCommand {
+  constructor(commands)   // Array<Command> — for flood fill and drag operations
+  execute()   // commands.forEach(c => c.execute())
+  undo()      // commands.reverse().forEach(c => c.undo()), then re-reverse to preserve order
+}
+```
+
+### Feature Flow Per Tool
+
+**Biome Brush (`BiomeBrush`):**
+- `onMouseDown(hex)`: record the hex, create `SetBiomeCommand` for it, execute via `commandHistory`. Track `paintedHexes = new Set()` to avoid repainting the same hex during a drag. Add hex key to set.
+- `onMouseMove(hex)`: if mouse is held down and hex not in `paintedHexes`, create and execute `SetBiomeCommand`. Add to set. Each individual command is grouped into a `BatchCommand` on mouse-up for undo purposes.
+- `onMouseUp(hex)`: wrap all commands from this drag into a single `BatchCommand` and replace the individual entries in history with it.
+
+**Elevation Brush (`ElevationBrush`):**
+- Two modes controlled by `toolManager.elevationMode`:
+  - **SET mode:** `onMouseDown(hex)` sets the tile elevation to `toolManager.elevationValue`. Clamp to [0, 9].
+  - **INCREMENT mode:** `onMouseDown(hex)` adds `toolManager.elevationDelta` (+1 or -1) to current elevation. Clamp to [0, 9].
+- Supports drag painting like Biome Brush (tracks `paintedHexes`).
+
+**Resource Placer (`ResourcePlacer`):**
+- `onMouseDown(hex)`: creates a `ResourceInstance` with `type = toolManager.activeValue`, `x = random(-0.8, 0.8)`, `y = random(-0.8, 0.8)`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. Executes `AddResourceCommand`.
+- No drag support — click only.
+
+**Structure Placer (`StructurePlacer`):**
+- `onMouseDown(hex)`: creates `SetStructureCommand(hex, oldStructure, toolManager.activeValue)`. One structure per hex; replaces any existing structure.
+- No drag support — click only.
+
+**Anomaly Marker (`AnomalyMarker`):**
+- `onMouseDown(hex)`: shows a browser `prompt("Enter anomaly ID:")` dialog. If user enters a non-empty string, creates `SetAnomalyCommand`. If user cancels, no-op.
+- No drag support — click only.
+
+**Spawn Marker (`SpawnMarker`):**
+- `onMouseDown(hex)`: creates `SetSpawnCommand(grid.meta.spawn, [hex.q, hex.r])`. Exactly one spawn per map; the command replaces the old spawn.
+- No drag support — click only.
+
+**Eraser (`EraserTool`):**
+- `onMouseDown(hex)`: if tile exists and has any content (resources, structure, or anomaly), snapshot the tile, execute `EraseContentCommand`. The hex and its biome/elevation remain.
+- Supports drag (tracks `erasedHexes` set).
+
+**Delete Hex (`DeleteHexTool`):**
+- `onMouseDown(hex)`: if tile exists, snapshot entire `TileData`, execute `DeleteHexCommand`. The hex is removed from `HexGrid.tiles` entirely.
+- No drag support — click only (destructive operation, intentional friction).
+
+**Flood Fill (`FloodFillTool`):**
+- `onMouseDown(hex)`: BFS from clicked hex. Starting biome = current tile's biome. Target biome = `toolManager.activeValue`. If starting biome equals target biome, no-op.
+  - Queue: `[startHex]`. Visited: `Set<string>`.
+  - For each hex in queue: if tile exists and tile.biome === startingBiome, create `SetBiomeCommand`, add to batch, mark visited, enqueue all 6 neighbors.
+  - Safety limit: max 10,000 tiles to prevent runaway fills.
+  - Execute all as a single `BatchCommand`.
+
+### Resource Detail Panel
+
+A DOM panel that appears when the user clicks a resource indicator on a hex (or selects a hex that has resources while using the resource tool).
+
+```js
+class ResourceDetailPanel {
+  constructor(container, hexGrid, commandHistory) {
+    this.container = container;   // DOM element for the panel
+    this.grid = hexGrid;
+    this.commandHistory = commandHistory;
+    this.currentHex = null;       // { q, r }
+  }
+
+  show(q, r)          // populate and display the panel for the given hex
+  hide()              // hide the panel
+  renderRows()        // render one row per resource on the hex
+  onFieldChange(index, field, value)  // create EditResourceCommand
+  onDeleteResource(index)             // create DeleteResourceCommand
+}
+```
+
+**Panel UI:**
+- Positioned as a floating panel or sidebar sub-panel.
+- Header: "Resources on (q, r)" with a close button.
+- Each resource row:
+  - Type label (read-only, e.g., "wood")
+  - `x` input: number, step 0.1, range [-1.0, 1.0]
+  - `y` input: number, step 0.1, range [-1.0, 1.0]
+  - `rotation` input: number, step 1, range [0, 359]
+  - Delete button (red X)
+- On input blur or Enter key: if value changed, create `EditResourceCommand` with old and new values.
+
+### Layers & Components
+
+- `ToolManager` — singleton, instantiated by the application. Holds reference to `HexGrid` and `CommandHistory`. Canvas mouse events from `HexCanvas` are forwarded here.
+- Tool classes (`BiomeBrush`, `ElevationBrush`, `ResourcePlacer`, `StructurePlacer`, `AnomalyMarker`, `SpawnMarker`, `EraserTool`, `DeleteHexTool`, `FloodFillTool`) — each extends `BaseTool`.
+- `ResourceDetailPanel` — DOM-based panel for fine-tuning resource placement.
+- `BatchCommand` — groups multiple commands into one undo/redo unit.
+
+### Dependencies
+
+- **feature-001 (Hex Canvas):** Tools receive hex coordinates from canvas mouse events. Canvas renders tool feedback (hover preview, drag trail).
+- **feature-003 (Palette & Sidebar):** Palette click sets `toolManager.setTool(type, value)`. Active tool indicator reads from `toolManager.activeToolType`.
+- **feature-008 (Command Infrastructure):** All commands are pushed to `CommandHistory`. Undo/redo is handled there.

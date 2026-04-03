@@ -5,6 +5,7 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F13; §7 | /aid-interview |
+| 2026-04-03 | Technical specification written | /aid-specify |
 
 ## Source
 
@@ -36,4 +37,221 @@ Must
 
 ## Technical Specification
 
-{Added by /aid-specify — do not fill during interview.}
+### Data Model
+
+#### `ProjectContext`
+
+Global singleton object holding all project state after discovery.
+
+```js
+const ProjectContext = {
+  rootHandle: null,          // FileSystemDirectoryHandle — project root
+  hasFileSystemAccess: false, // true if showDirectoryPicker is available
+  files: {
+    maps: new Map(),         // filename -> { handle: FileSystemFileHandle, data: Object }
+    resources: new Map(),    // filename -> { handle: FileSystemFileHandle, data: Object, raw: TresFile }
+    biomes: new Map(),       // filename -> { handle: FileSystemFileHandle, data: Object, raw: TresFile }
+  },
+};
+```
+
+- `handle` — retained `FileSystemFileHandle` for direct save via `createWritable()`.
+- `data` — parsed JS object (map JSON or parsed .tres resource section).
+- `raw` — `TresFile` object preserving full .tres structure for round-trip safety.
+
+#### `TresFile`
+
+Intermediate representation preserving the full .tres file structure.
+
+```js
+class TresFile {
+  constructor() {
+    this.headerLine = '';      // e.g. '[gd_resource type="Resource" ...]'
+    this.extResources = [];    // array of raw ext_resource lines (strings)
+    this.resourceFields = {};  // ordered Map<string, TresValue> of [resource] key-value pairs
+    this.uid = null;           // extracted uid string or null
+    this.scriptClass = '';     // e.g. 'ResourceDef', 'BiomeData'
+  }
+}
+```
+
+#### `TresValue`
+
+Wrapper for typed .tres values to enable round-trip serialization.
+
+```js
+// TresValue is a tagged union:
+// { type: 'string', value: 'Forest' }
+// { type: 'stringname', value: 'wood' }
+// { type: 'int', value: 1 }
+// { type: 'float', value: 1.0 }
+// { type: 'bool', value: true }
+// { type: 'color', value: { r: 0.2, g: 0.7, b: 0.2, a: 1.0 } }
+// { type: 'vector2i', value: { x: 0, y: 9 } }
+// { type: 'dict', value: { 'stone_axe': 0.5 } }
+// { type: 'array', value: [...] }
+// { type: 'ext_resource', value: 'ExtResource("1_script")' }  -- preserved verbatim
+```
+
+### Feature Flow
+
+1. **Startup** — Editor loads and checks `typeof window.showDirectoryPicker === 'function'`. Sets `ProjectContext.hasFileSystemAccess` accordingly. Shows welcome/landing state with "Open Project" button.
+
+2. **Open Project (File System Access API path)**
+   - User clicks "Open Project" button.
+   - Call `window.showDirectoryPicker()`. If user cancels (throws `AbortError`), remain on welcome state — no error shown.
+   - Store returned `FileSystemDirectoryHandle` in `ProjectContext.rootHandle`.
+
+3. **Validate Project Root**
+   - Attempt `rootHandle.getFileHandle('project.godot')`.
+   - If not found, show error: "Not a Godot project. Please select the folder containing project.godot."
+   - Clear `rootHandle`, return to welcome state.
+
+4. **Scan Directories**
+   - `FileDiscovery.scanDirectory(rootHandle, 'data/maps', '.json')` — discovers map files.
+   - `FileDiscovery.scanDirectory(rootHandle, 'data/resources', '.tres')` — discovers resource files.
+   - `FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres')` — discovers biome files.
+   - Each scan: navigate subdirectories via `getDirectoryHandle()`, iterate entries via `for await (const [name, handle] of dirHandle)`, filter by extension, retain `FileSystemFileHandle`.
+
+5. **Parse Discovered Files**
+   - For each map `.json`: read text via `handle.getFile()` then `file.text()`, call `JSON.parse()`. On parse error, log warning and skip file.
+   - For each resource `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'ResourceDef'`. On parse error, log warning and skip file.
+   - For each biome `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'BiomeData'`. On parse error, log warning and skip file.
+   - Populate `ProjectContext.files.maps`, `.resources`, `.biomes` with `{ handle, data, raw }`.
+
+6. **Post-Discovery**
+   - Emit/call a callback to notify the UI that project data is loaded.
+   - Switch from welcome state to the editor workspace (Map Editor tab active, palette populated from loaded biomes/resources).
+
+7. **Fallback Path (no File System Access API)**
+   - "Open Project" renders `<input type="file" webkitdirectory>` instead of calling `showDirectoryPicker()`.
+   - On `change` event, read `input.files` — a flat `FileList` with `webkitRelativePath` on each entry.
+   - Validate: at least one file has a relative path containing `project.godot` at the root level.
+   - Filter files by path prefix (`data/maps/`, `data/resources/`, `data/biomes/`) and extension.
+   - Parse each file via `FileReader.readAsText()`.
+   - `ProjectContext.hasFileSystemAccess` remains `false` — save operations will use download (Blob + `<a download>`).
+   - No `FileSystemFileHandle` stored; `handle` fields are `null`.
+
+### Layers & Components
+
+#### `FileDiscovery` class
+
+```js
+class FileDiscovery {
+  // Navigate from root to a subdirectory path like 'data/maps'
+  // Returns FileSystemDirectoryHandle or null
+  static async getSubdirectory(rootHandle, path)
+
+  // Scan a directory for files matching the given extension
+  // Returns Array<{ name: string, handle: FileSystemFileHandle }>
+  static async scanDirectory(rootHandle, path, extension)
+
+  // Full discovery flow: validate root, scan all three dirs, parse files
+  // Returns { success: boolean, error?: string }
+  static async discoverProject(rootHandle)
+
+  // Fallback: process FileList from <input webkitdirectory>
+  // Returns { success: boolean, error?: string }
+  static async discoverFromFileList(fileList)
+
+  // Save a single file. Uses FileSystemFileHandle if available, else downloads.
+  // content: string (serialized JSON or .tres)
+  // filename: string (for download fallback)
+  // handle: FileSystemFileHandle | null
+  static async saveFile(handle, content, filename)
+}
+```
+
+#### `TresParser` class (shared infrastructure)
+
+Parses and serializes Godot `.tres` resource files. Used by features 005 (Resource Editor), 006 (Biome Editor), and 007 (File Discovery).
+
+```js
+class TresParser {
+  // Parse a .tres file string into a TresFile object.
+  // Throws on malformed input with a descriptive error message.
+  static parse(text) -> TresFile
+
+  // Serialize a TresFile back to a .tres string.
+  // Preserves header, ext_resource lines, and field order.
+  static serialize(tresFile) -> string
+
+  // Parse a single .tres value string into a TresValue.
+  // Handles: &"...", "...", int, float, bool,
+  //          Color(...), Vector2i(...), ExtResource("..."),
+  //          {...} dictionaries, [...] arrays.
+  static parseValue(valueStr) -> TresValue
+
+  // Serialize a TresValue back to its .tres string representation.
+  static serializeValue(tresValue) -> string
+}
+```
+
+### .tres Parser Details
+
+#### Parsing Rules
+
+The `[resource]` section is parsed line by line. Each line has the form `key = value`.
+
+| Godot Syntax | Detection | JS Representation |
+|---|---|---|
+| `&"wood"` | starts with `&"` | `{ type: 'stringname', value: 'wood' }` |
+| `"Forest"` | starts with `"`, no `&` prefix | `{ type: 'string', value: 'Forest' }` |
+| `1.0` | contains `.`, parseable as float | `{ type: 'float', value: 1.0 }` |
+| `1` | integer, no decimal | `{ type: 'int', value: 1 }` |
+| `true` / `false` | literal | `{ type: 'bool', value: true }` |
+| `Color(0.2, 0.7, 0.2, 1.0)` | starts with `Color(` | `{ type: 'color', value: { r: 0.2, g: 0.7, b: 0.2, a: 1.0 } }` |
+| `Vector2i(0, 9)` | starts with `Vector2i(` | `{ type: 'vector2i', value: { x: 0, y: 9 } }` |
+| `ExtResource("1_script")` | starts with `ExtResource(` | `{ type: 'ext_resource', value: 'ExtResource("1_script")' }` |
+| `{ &"stone_axe": 0.5 }` | starts with `{` | `{ type: 'dict', value: { 'stone_axe': 0.5 } }` |
+| `[{...}, ...]` | starts with `[` | `{ type: 'array', value: [...] }` |
+
+#### Serialization Rules
+
+- `stringname` -> `&"value"`
+- `string` -> `"value"`
+- `int` -> value with no decimal (e.g. `1`)
+- `float` -> value with decimal (e.g. `1.0`). If value is whole number, append `.0`.
+- `color` -> `Color(r, g, b, a)` — preserve original precision where possible.
+- `vector2i` -> `Vector2i(x, y)`
+- `ext_resource` -> verbatim string
+- `dict` -> `{ &"key1": value1, &"key2": value2 }` — keys are always StringName in resource defs. For dictionaries inside arrays (like `resource_table`), keys are plain strings: `{"key": value}`.
+- `array` -> `[element1, element2, ...]`
+
+#### Header Preservation
+
+- The `[gd_resource ...]` line is stored verbatim in `TresFile.headerLine` and written back unchanged.
+- All `[ext_resource ...]` lines are stored in `TresFile.extResources` array and written back in order.
+- The `uid` attribute is extracted from the header for display/reference but never modified for existing files.
+- Blank lines between sections are preserved (one blank line between header, ext_resource block, and resource block).
+
+#### UID Generation (new files only)
+
+When creating a new .tres file (feature 005 or 006), generate a uid:
+
+```js
+function generateTresUid() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = 'uid://c';
+  for (let i = 0; i < 13; i++) {
+    id += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return id;
+}
+```
+
+#### Round-Trip Safety
+
+The parser is validated by this invariant: for any well-formed .tres file in the project, `TresParser.serialize(TresParser.parse(text))` must produce output identical to the input. This is verified during discovery by comparing parse-then-serialize output against the original file text and logging warnings on mismatch.
+
+### Error Handling
+
+| Scenario | Behavior |
+|---|---|
+| User cancels folder picker | Stay on welcome state, no error message |
+| Selected folder missing `project.godot` | Show error banner: "Not a Godot project. Select the folder containing project.godot." Return to welcome state. |
+| `data/maps/` directory missing | Log warning, `ProjectContext.files.maps` stays empty. Editor still loads. |
+| `data/resources/` directory missing | Log warning, `ProjectContext.files.resources` stays empty. |
+| `data/biomes/` directory missing | Log warning, `ProjectContext.files.biomes` stays empty. |
+| Individual file parse error | Log warning with filename and error. Skip file. Other files still load. |
+| File System Access API unavailable | Fallback to `<input webkitdirectory>`. Save uses download. |
