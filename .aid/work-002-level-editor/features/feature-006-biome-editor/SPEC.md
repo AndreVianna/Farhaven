@@ -5,6 +5,7 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F11, F12; §9 AC2, AC5 | /aid-interview |
+| 2026-04-03 | Updated resource_table field names to match biome_data.gd; added F15/AC9 references | /aid-interview (cross-reference) |
 
 ## Source
 
@@ -12,7 +13,11 @@
 
 ## Description
 
-The Biome Editor tab for managing `data/biomes/*.tres` BiomeData files. Provides a list view with color swatches and resource summaries, create/edit/delete operations, color picker for base color and variations, resource table editor (add/remove rows with chance/min/max per resource, dropdown populated from Resource Editor), and deletion validation (warns if any map tile uses the biome). Editing biome color updates the Map Editor canvas in real-time.
+The Biome Editor tab for managing `data/biomes/*.tres` BiomeData files. Provides a list view with color swatches and resource summaries, create/edit/delete operations, color picker for base color and variations, resource table editor, and deletion validation (warns if any map tile uses the biome). Editing biome color updates the Map Editor canvas in real-time.
+
+**Editable fields** (from `biome_data.gd`): `biome_name` (String), `elevation_range` (Vector2i), `color` (Color — with color picker), `color_variations` (Array[Color]).
+
+**Resource table editor:** Each entry has `type` (String — dropdown from Resource Editor), `chance` (float), `min_amount` (int), `max_amount` (int), `tool_required` (String). Add/remove rows.
 
 ## User Stories
 

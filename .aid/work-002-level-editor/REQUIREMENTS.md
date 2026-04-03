@@ -7,6 +7,7 @@
 | 2026-04-03 | Initial interview started | /aid-interview |
 | 2026-04-03 | Vision document ingested — §1-§5, §7, §10 populated | /aid-interview |
 | 2026-04-03 | Interview complete — approved | /aid-interview |
+| 2026-04-03 | Cross-reference: fixed ResourceDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
 
 ## 1. Objective
 
@@ -40,8 +41,8 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 **Three editor tabs, each managing a different layer of game data:**
 
 1. **Map Editor** — hex canvas for painting biomes, placing resources/structures, setting elevation, managing spawn/anomaly markers. Import/export JSON in MapLoader format.
-2. **Resource Editor** — CRUD for `data/resources/*.tres` ResourceDef files (resource_name, category, gather_time, tool_required, respawn_time, max_stack, mesh_type, mesh_color, label_color, catalog_description, discovered_by_default).
-3. **Biome Editor** — CRUD for `data/biomes/*.tres` BiomeData files (biome_name, elevation_range, resource_table, color, color_variations).
+2. **Resource Editor** — CRUD for `data/resources/*.tres` ResourceDef files. Editable fields: `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color). Read-only fields: `mesh`, `depleted_mesh`, `material` (Godot resource references — cannot be authored in a web editor).
+3. **Biome Editor** — CRUD for `data/biomes/*.tres` BiomeData files (`biome_name`: String, `elevation_range`: Vector2i, `resource_table`: Array of `{type: String, chance: float, min_amount: int, max_amount: int, tool_required: String}`, `color`: Color, `color_variations`: Array[Color]).
 
 **Cross-tab integration:** Creating a resource in the Resource Editor makes it available in the Map Editor palette. Editing a biome color updates the map canvas immediately.
 
@@ -130,7 +131,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - List view of all biomes with color swatch and resource summary
 - Create new → generates .tres file with defaults
 - Edit → form with all fields, color picker for base color and variations
-- Resource table editor — add/remove rows, set chance/min/max per resource (dropdown from Resource Editor)
+- Resource table editor — add/remove rows, set `type` (dropdown from Resource Editor), `chance` (float), `min_amount` (int), `max_amount` (int), `tool_required` (StringName) per entry
 - Delete → removes .tres file (with confirmation + validation no map tile uses it)
 - Live preview — editing biome color updates Map Editor canvas in real-time
 

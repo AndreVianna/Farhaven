@@ -5,6 +5,7 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F10, F12; §9 AC2, AC4 | /aid-interview |
+| 2026-04-03 | Updated field list to match actual resource_def.gd; added F15/AC9 references | /aid-interview (cross-reference) |
 
 ## Source
 
@@ -12,7 +13,11 @@
 
 ## Description
 
-The Resource Editor tab for managing `data/resources/*.tres` ResourceDef files. Provides a list view of all resources with key properties, create/edit/delete operations with form UI, live mesh color swatch preview, and deletion validation (warns if any map references the resource). Reads and writes .tres files with round-trip safety — preserving uid, ext_resource, and script lines.
+The Resource Editor tab for managing `data/resources/*.tres` ResourceDef files. Provides a list view of all resources with key properties, create/edit/delete operations with form UI, and deletion validation (warns if any map references the resource). Reads and writes .tres files with round-trip safety — preserving uid, ext_resource, and script lines.
+
+**Editable fields** (from `resource_def.gd`): `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color — with color picker + swatch preview), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color).
+
+**Read-only fields:** `mesh`, `depleted_mesh`, `material` (Godot resource references — displayed as path or "not set", cannot be authored in a web editor).
 
 ## User Stories
 
