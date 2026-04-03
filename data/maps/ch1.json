@@ -10,7 +10,12 @@
       "biome": "crash_site",
       "elevation": 0,
       "resources": [
-        {"type": "wood", "x": 0.35, "y": -0.45, "rotation": 18}
+        {
+          "type": "wood",
+          "x": 0.35,
+          "y": -0.45,
+          "rotation": 18
+        }
       ]
     },
     "1,0": {
@@ -18,14 +23,24 @@
       "elevation": 0,
       "structure": "workbench",
       "resources": [
-        {"type": "stone", "x": -0.25, "y": 0.5, "rotation": 142}
+        {
+          "type": "stone",
+          "x": -0.25,
+          "y": 0.5,
+          "rotation": 142
+        }
       ]
     },
     "-1,0": {
       "biome": "crash_site",
       "elevation": 0,
       "resources": [
-        {"type": "fiber", "x": 0.6, "y": 0.15, "rotation": 273}
+        {
+          "type": "fiber",
+          "x": 0.6,
+          "y": 0.15,
+          "rotation": 273
+        }
       ]
     },
     "0,1": {
@@ -48,7 +63,12 @@
       "biome": "grassland",
       "elevation": 0,
       "resources": [
-        {"type": "berries", "x": -0.4, "y": -0.3, "rotation": 67}
+        {
+          "type": "berries",
+          "x": -0.4,
+          "y": -0.3,
+          "rotation": 67
+        }
       ]
     },
     "2,-1": {
@@ -63,7 +83,12 @@
       "biome": "grassland",
       "elevation": 1,
       "resources": [
-        {"type": "fiber", "x": 0.2, "y": -0.65, "rotation": 195}
+        {
+          "type": "fiber",
+          "x": 0.2,
+          "y": -0.65,
+          "rotation": 195
+        }
       ]
     },
     "0,-2": {
@@ -78,7 +103,12 @@
       "biome": "grassland",
       "elevation": 0,
       "resources": [
-        {"type": "berries", "x": 0.55, "y": 0.3, "rotation": 312}
+        {
+          "type": "berries",
+          "x": 0.55,
+          "y": 0.3,
+          "rotation": 312
+        }
       ]
     },
     "-2,1": {
@@ -93,7 +123,12 @@
       "biome": "grassland",
       "elevation": 1,
       "resources": [
-        {"type": "fiber", "x": -0.7, "y": 0.45, "rotation": 88}
+        {
+          "type": "fiber",
+          "x": -0.7,
+          "y": 0.45,
+          "rotation": 88
+        }
       ]
     },
     "0,2": {
@@ -152,7 +187,12 @@
       "biome": "forest",
       "elevation": 2,
       "resources": [
-        {"type": "wood", "x": -0.5, "y": -0.2, "rotation": 237}
+        {
+          "type": "wood",
+          "x": -0.5,
+          "y": -0.2,
+          "rotation": 237
+        }
       ]
     },
     "3,-3": {
@@ -163,7 +203,12 @@
       "biome": "forest",
       "elevation": 3,
       "resources": [
-        {"type": "wood", "x": 0.15, "y": 0.7, "rotation": 54}
+        {
+          "type": "wood",
+          "x": 0.15,
+          "y": 0.7,
+          "rotation": 54
+        }
       ]
     },
     "4,-2": {
@@ -182,7 +227,12 @@
       "biome": "forest",
       "elevation": 2,
       "resources": [
-        {"type": "wood", "x": -0.3, "y": 0.55, "rotation": 161}
+        {
+          "type": "wood",
+          "x": -0.3,
+          "y": 0.55,
+          "rotation": 161
+        }
       ]
     },
     "2,2": {
@@ -201,7 +251,12 @@
       "biome": "forest",
       "elevation": 3,
       "resources": [
-        {"type": "wood", "x": 0.45, "y": -0.6, "rotation": 329}
+        {
+          "type": "wood",
+          "x": 0.45,
+          "y": -0.6,
+          "rotation": 329
+        }
       ]
     },
     "-2,4": {
@@ -220,28 +275,73 @@
       "biome": "rocky",
       "elevation": 4,
       "resources": [
-        {"type": "stone", "x": 0.7, "y": -0.35, "rotation": 102}
+        {
+          "type": "stone",
+          "x": 0.7,
+          "y": -0.35,
+          "rotation": 102
+        }
       ]
     },
     "5,-2": {
       "biome": "rocky",
-      "elevation": 5
+      "elevation": 5,
+      "resources": [
+        {
+          "type": "ore",
+          "x": 0.14,
+          "y": -0.47,
+          "rotation": 140
+        }
+      ]
     },
     "5,-1": {
       "biome": "rocky",
-      "elevation": 4
+      "elevation": 4,
+      "resources": [
+        {
+          "type": "stone",
+          "x": 0.06,
+          "y": 0.22,
+          "rotation": 359
+        }
+      ]
     },
     "5,0": {
       "biome": "rocky",
-      "elevation": 5
+      "elevation": 5,
+      "resources": [
+        {
+          "type": "ore",
+          "x": -0.26,
+          "y": -0.36,
+          "rotation": 52
+        }
+      ]
     },
     "4,1": {
       "biome": "rocky",
-      "elevation": 4
+      "elevation": 4,
+      "resources": [
+        {
+          "type": "stone",
+          "x": 0.04,
+          "y": -0.28,
+          "rotation": 301
+        }
+      ]
     },
     "2,3": {
       "biome": "rocky",
-      "elevation": 4
+      "elevation": 4,
+      "resources": [
+        {
+          "type": "ore",
+          "x": 0.18,
+          "y": 0.39,
+          "rotation": 44
+        }
+      ]
     },
     "1,4": {
       "biome": "rocky",
@@ -253,16 +353,40 @@
     },
     "-2,5": {
       "biome": "rocky",
-      "elevation": 6
+      "elevation": 6,
+      "resources": [
+        {
+          "type": "ore",
+          "x": 0.09,
+          "y": -0.47,
+          "rotation": 47
+        }
+      ]
     },
     "-3,5": {
       "biome": "rocky",
       "elevation": 6,
-      "anomaly": "anomaly_ch1_001"
+      "anomaly": "anomaly_ch1_001",
+      "resources": [
+        {
+          "type": "stone",
+          "x": -0.22,
+          "y": 0.37,
+          "rotation": 81
+        }
+      ]
     },
     "-4,4": {
       "biome": "rocky",
-      "elevation": 5
+      "elevation": 5,
+      "resources": [
+        {
+          "type": "ore",
+          "x": -0.28,
+          "y": 0.01,
+          "rotation": 13
+        }
+      ]
     },
     "-5,4": {
       "biome": "rocky",

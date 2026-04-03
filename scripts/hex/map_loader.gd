@@ -118,12 +118,26 @@ func load_map(path: String) -> bool:
 	return true
 
 
+# Default respawn times (seconds). 0 = no respawn.
+const RESPAWN_TIMES: Dictionary = {
+	&"wood": 30.0,
+	&"stone": 30.0,
+	&"fiber": 30.0,
+	&"berries": 30.0,
+	&"toxic_berries": 30.0,
+	&"ore": 60.0,
+	&"crystal": 60.0,
+	&"anomaly_fragment": 0.0,
+}
+
+
 func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 	var rn: Resource = _ResourceNode.new()
 	rn.type = type
 	rn.remaining = 3
 	rn.max_amount = 3
 	rn.tool_required = &""
+	rn.respawn_time = RESPAWN_TIMES.get(type, 0.0)
 
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:
