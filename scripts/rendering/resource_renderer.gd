@@ -1,8 +1,7 @@
 extends Node3D
 
-## ResourceRenderer — 6 MultiMeshInstance3D pools for 3D resource meshes.
-## Pools: wood (green cylinder), stone (gray cube), berries (red sphere),
-##        fiber (yellow-green box), ore (dark gray octahedron), crystal (cyan prism).
+## ResourceRenderer — MultiMeshInstance3D pools for 3D resource meshes.
+## One pool per ResourceDef from ResourceRegistry, keyed by StringName (resource type id).
 ## Signal-driven: subscribes to HexGrid map_generated, tile_visibility_changed,
 ## resource_depleted, resource_respawned signals.
 ## Fog: HIDDEN=not instanced, REVEALED=dimmed (0.4 alpha), VISIBLE=full.
@@ -12,7 +11,6 @@ extends Node3D
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
-const _Catalog = preload("res://scripts/scanner/catalog.gd")
 
 # --- Constants ---
 
@@ -25,56 +23,24 @@ const MAX_INSTANCES: int = 128
 ## HEX_SIZE for offset calculation
 const HEX_SIZE: float = 3.0
 
-## Resource type pool indices
-enum Pool { WOOD, STONE, BERRIES, FIBER, ORE, CRYSTAL, ANOMALY, LOOSE_ROCK }
-
-## Map resource type StringName to Pool index
-const TYPE_TO_POOL: Dictionary = {
-	&"wood":       Pool.WOOD,
-	&"stone":      Pool.STONE,
-	&"berries":    Pool.BERRIES,
-	&"fiber":      Pool.FIBER,
-	&"ore":        Pool.ORE,
-	&"crystal":    Pool.CRYSTAL,
-	&"loose_rock": Pool.LOOSE_ROCK,
-}
-
-## Colors per pool
-const POOL_COLORS: Dictionary = {
-	Pool.WOOD:    Color(0.2, 0.7, 0.2, 1.0),   # Green
-	Pool.STONE:   Color(0.6, 0.6, 0.6, 1.0),   # Gray
-	Pool.BERRIES: Color(0.8, 0.15, 0.15, 1.0),  # Red
-	Pool.FIBER:   Color(0.6, 0.75, 0.2, 1.0),   # Yellow-green
-	Pool.ORE:     Color(0.35, 0.35, 0.4, 1.0),  # Dark gray
-	Pool.CRYSTAL: Color(0.2, 0.8, 0.85, 1.0),   # Cyan
-	Pool.ANOMALY:     Color(0.7, 0.3, 0.9, 1.0),    # Purple
-	Pool.LOOSE_ROCK:  Color(0.7, 0.65, 0.55, 1.0),  # Warm tan/beige
-}
-
-## Dimmed colors for REVEALED fog state (lower alpha feel via darker tint)
-const POOL_COLORS_DIMMED: Dictionary = {
-	Pool.WOOD:    Color(0.12, 0.4, 0.12, 1.0),
-	Pool.STONE:   Color(0.35, 0.35, 0.35, 1.0),
-	Pool.BERRIES: Color(0.45, 0.1, 0.1, 1.0),
-	Pool.FIBER:   Color(0.35, 0.42, 0.12, 1.0),
-	Pool.ORE:     Color(0.2, 0.2, 0.22, 1.0),
-	Pool.CRYSTAL: Color(0.12, 0.45, 0.48, 1.0),
-	Pool.ANOMALY:     Color(0.4, 0.18, 0.5, 1.0),
-	Pool.LOOSE_ROCK:  Color(0.4, 0.37, 0.32, 1.0),
-}
-
 # --- State ---
 
-## MultiMeshInstance3D nodes indexed by Pool enum
-var _pools: Array = []  # Array of MultiMeshInstance3D
+## MultiMeshInstance3D nodes keyed by StringName (resource type id)
+var _pools: Dictionary = {}
 
-## Depleted mesh variants per pool (stump, rubble, etc.)
-var _depleted_meshes: Dictionary = {}
-
-## Normal mesh variants per pool (originals)
+## Normal mesh variants per resource type id
 var _normal_meshes: Dictionary = {}
 
-## Tile coords -> Array of {resource_type: StringName, pool: int, instance_idx: int, depleted: bool}
+## Depleted mesh variants per resource type id
+var _depleted_meshes: Dictionary = {}
+
+## Normal colors per resource type id (for undimmed state)
+var _pool_colors: Dictionary = {}
+
+## Dimmed colors per resource type id (for REVEALED fog state)
+var _pool_colors_dimmed: Dictionary = {}
+
+## Tile coords -> Array of {resource_type: StringName, pool: StringName, instance_idx: int, depleted: bool}
 var _tile_entries: Dictionary = {}
 
 ## Reference to HexGrid (allows override in tests)
@@ -89,56 +55,41 @@ func _ready() -> void:
 
 
 func _create_pools() -> void:
-	# Wood: green cylinder (tree)
-	var wood_mesh := _make_cylinder_mesh(0.2, 0.8)
-	_create_pool(Pool.WOOD, wood_mesh, POOL_COLORS[Pool.WOOD])
-	_normal_meshes[Pool.WOOD] = wood_mesh
-	_depleted_meshes[Pool.WOOD] = _make_cylinder_mesh(0.25, 0.25)  # stump
+	for def in ResourceRegistry.get_all():
+		var normal_mesh: Mesh
+		var depleted_mesh_res: Mesh
 
-	# Stone: gray cube (rock)
-	var stone_mesh := _make_cube_mesh(0.35)
-	_create_pool(Pool.STONE, stone_mesh, POOL_COLORS[Pool.STONE])
-	_normal_meshes[Pool.STONE] = stone_mesh
-	_depleted_meshes[Pool.STONE] = _make_cube_mesh(0.15)  # rubble
+		if def.mesh != null:
+			normal_mesh = def.mesh
+		else:
+			normal_mesh = _build_placeholder_mesh(def.placeholder_mesh_type, def.placeholder_params)
 
-	# Berries: red sphere (bush)
-	var berry_mesh := _make_sphere_mesh(0.3)
-	_create_pool(Pool.BERRIES, berry_mesh, POOL_COLORS[Pool.BERRIES])
-	_normal_meshes[Pool.BERRIES] = berry_mesh
-	_depleted_meshes[Pool.BERRIES] = _make_sphere_mesh(0.15)  # picked bush
+		if def.depleted_mesh != null:
+			depleted_mesh_res = def.depleted_mesh
+		else:
+			depleted_mesh_res = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
 
-	# Fiber: yellow-green low box (grass)
-	var fiber_mesh := _make_box_mesh(Vector3(0.5, 0.15, 0.5))
-	_create_pool(Pool.FIBER, fiber_mesh, POOL_COLORS[Pool.FIBER])
-	_normal_meshes[Pool.FIBER] = fiber_mesh
-	_depleted_meshes[Pool.FIBER] = _make_box_mesh(Vector3(0.4, 0.05, 0.4))  # cut grass
-
-	# Ore: dark gray octahedron (vein)
-	var ore_mesh := _make_octahedron_mesh(0.35)
-	_create_pool(Pool.ORE, ore_mesh, POOL_COLORS[Pool.ORE])
-	_normal_meshes[Pool.ORE] = ore_mesh
-	_depleted_meshes[Pool.ORE] = _make_cube_mesh(0.12)  # rubble
-
-	# Crystal: cyan prism (cluster)
-	var crystal_mesh := _make_prism_mesh(0.2, 0.7)
-	_create_pool(Pool.CRYSTAL, crystal_mesh, POOL_COLORS[Pool.CRYSTAL])
-	_normal_meshes[Pool.CRYSTAL] = crystal_mesh
-	_depleted_meshes[Pool.CRYSTAL] = _make_prism_mesh(0.12, 0.25)  # broken shard
-
-	# Anomaly: purple diamond (mysterious object)
-	var anomaly_mesh := _make_octahedron_mesh(0.4)
-	_create_pool(Pool.ANOMALY, anomaly_mesh, POOL_COLORS[Pool.ANOMALY])
-	_normal_meshes[Pool.ANOMALY] = anomaly_mesh
-	_depleted_meshes[Pool.ANOMALY] = anomaly_mesh  # anomalies don't deplete
-
-	# Loose Rock: warm tan cube (smaller than stone)
-	var loose_rock_mesh := _make_cube_mesh(0.25)
-	_create_pool(Pool.LOOSE_ROCK, loose_rock_mesh, POOL_COLORS[Pool.LOOSE_ROCK])
-	_normal_meshes[Pool.LOOSE_ROCK] = loose_rock_mesh
-	_depleted_meshes[Pool.LOOSE_ROCK] = _make_cube_mesh(0.08)  # tiny rubble
+		_normal_meshes[def.id] = normal_mesh
+		_depleted_meshes[def.id] = depleted_mesh_res
+		var color: Color = def.placeholder_color if def.mesh == null else Color.WHITE
+		var dimmed_color := Color(color.r * 0.57, color.g * 0.57, color.b * 0.57, 1.0)
+		_pool_colors[def.id] = color
+		_pool_colors_dimmed[def.id] = dimmed_color
+		_create_pool(def.id, normal_mesh, color)
 
 
-func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:
+func _build_placeholder_mesh(type: StringName, params: Dictionary) -> Mesh:
+	match type:
+		&"cylinder": return _make_cylinder_mesh(params.get("radius", 0.2), params.get("height", 0.8))
+		&"cube":     return _make_cube_mesh(params.get("half_size", 0.3))
+		&"box":      return _make_box_mesh(params.get("size", Vector3(0.5, 0.15, 0.5)))
+		&"sphere":   return _make_sphere_mesh(params.get("radius", 0.3))
+		&"octahedron": return _make_octahedron_mesh(params.get("radius", 0.35))
+		&"prism":    return _make_prism_mesh(params.get("radius", 0.2), params.get("height", 0.7))
+		_:           return _make_cube_mesh(0.3)
+
+
+func _create_pool(pool_id: StringName, mesh: Mesh, color: Color) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
@@ -148,7 +99,7 @@ func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	mmi.name = "ResourcePool_%d" % pool_idx
+	mmi.name = "ResourcePool_%s" % pool_id
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
@@ -156,7 +107,7 @@ func _create_pool(pool_idx: int, mesh: Mesh, color: Color) -> void:
 	mmi.material_override = mat
 
 	add_child(mmi)
-	_pools.append(mmi)
+	_pools[pool_id] = mmi
 
 
 # --- Mesh factories (placeholder meshes, <500 tris each) ---
@@ -287,11 +238,11 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 		return
 
 	for rn in tile.resource_nodes:
-		var pool_idx: int = TYPE_TO_POOL.get(rn.type, -1)
-		if pool_idx < 0:
+		var pool_id: StringName = rn.type
+		if not _pools.has(pool_id):
 			continue
 		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_idx, dimmed, is_depleted)
+		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
 
 	# Anomaly: rendered as a standalone prop at tile center
 	if tile.anomaly != &"":
@@ -299,7 +250,11 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 
 
 func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
-	var mmi: MultiMeshInstance3D = _pools[Pool.ANOMALY]
+	# Find the anomaly pool — use anomaly_fragment type if it exists, otherwise skip
+	var anomaly_pool_id: StringName = &"anomaly_fragment"
+	if not _pools.has(anomaly_pool_id):
+		return
+	var mmi: MultiMeshInstance3D = _pools[anomaly_pool_id]
 	var mm: MultiMesh = mmi.multimesh
 	var idx: int = mm.visible_instance_count
 	if idx >= MAX_INSTANCES:
@@ -315,23 +270,23 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> vo
 	mm.visible_instance_count = idx + 1
 	mm.set_instance_transform(idx, xform)
 	mm.set_instance_custom_data(idx, Color(1.0 if dimmed else 0.0, 0.0, 0.0, 1.0))
-	_update_pool_material(Pool.ANOMALY, dimmed)
+	_update_pool_material(anomaly_pool_id, dimmed)
 
 	if not _tile_entries.has(coords):
 		_tile_entries[coords] = []
 	_tile_entries[coords].append({
 		"resource_type": &"anomaly",
-		"pool": Pool.ANOMALY,
+		"pool": anomaly_pool_id,
 		"instance_idx": idx,
 		"depleted": false,
 	})
 
 
-func _add_resource_instance(coords: Vector2i, rn: Resource, pool_idx: int, dimmed: bool, depleted: bool) -> void:
-	if pool_idx < 0 or pool_idx >= _pools.size():
+func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dimmed: bool, depleted: bool) -> void:
+	if not _pools.has(pool_id):
 		return
 
-	var mmi: MultiMeshInstance3D = _pools[pool_idx]
+	var mmi: MultiMeshInstance3D = _pools[pool_id]
 	var mm: MultiMesh = mmi.multimesh
 	var idx: int = mm.visible_instance_count
 
@@ -361,13 +316,13 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_idx: int, dimme
 	mm.set_instance_custom_data(idx, custom)
 
 	# Update material color based on dimmed state
-	_update_pool_material(pool_idx, dimmed)
+	_update_pool_material(pool_id, dimmed)
 
 	if not _tile_entries.has(coords):
 		_tile_entries[coords] = []
 	_tile_entries[coords].append({
 		"resource_type": rn.type,
-		"pool": pool_idx,
+		"pool": pool_id,
 		"instance_idx": idx,
 		"depleted": depleted,
 	})
@@ -384,10 +339,10 @@ func _remove_all_resources_at(coords: Vector2i) -> void:
 	_tile_entries.erase(coords)
 
 
-func _hide_instance(pool_idx: int, instance_idx: int) -> void:
-	if pool_idx < 0 or pool_idx >= _pools.size():
+func _hide_instance(pool_id: StringName, instance_idx: int) -> void:
+	if not _pools.has(pool_id):
 		return
-	var mmi: MultiMeshInstance3D = _pools[pool_idx]
+	var mmi: MultiMeshInstance3D = _pools[pool_id]
 	var mm: MultiMesh = mmi.multimesh
 	if instance_idx >= mm.visible_instance_count:
 		return
@@ -397,15 +352,15 @@ func _hide_instance(pool_idx: int, instance_idx: int) -> void:
 		var last_custom: Color = mm.get_instance_custom_data(last_idx)
 		mm.set_instance_transform(instance_idx, last_xform)
 		mm.set_instance_custom_data(instance_idx, last_custom)
-		_update_instance_index(pool_idx, last_idx, instance_idx)
+		_update_instance_index(pool_id, last_idx, instance_idx)
 	mm.visible_instance_count = last_idx
 
 
-func _update_instance_index(pool_idx: int, old_idx: int, new_idx: int) -> void:
+func _update_instance_index(pool_id: StringName, old_idx: int, new_idx: int) -> void:
 	for coords in _tile_entries:
 		var entries_list: Array = _tile_entries[coords]
 		for info in entries_list:
-			if info.pool == pool_idx and info.instance_idx == old_idx:
+			if info.pool == pool_id and info.instance_idx == old_idx:
 				info.instance_idx = new_idx
 				return
 
@@ -429,33 +384,42 @@ func _rebuild_tile(coords: Vector2i) -> void:
 	var dimmed: bool = tile.fog_state == _HexTile.FogState.REVEALED
 	_remove_all_resources_at(coords)
 	for rn in tile.resource_nodes:
-		var pool_idx: int = TYPE_TO_POOL.get(rn.type, -1)
-		if pool_idx < 0:
+		var pool_id: StringName = rn.type
+		if not _pools.has(pool_id):
 			continue
 		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_idx, dimmed, is_depleted)
+		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
 
 
-func _update_pool_material(pool_idx: int, dimmed: bool) -> void:
+func _update_pool_material(pool_id: StringName, dimmed: bool) -> void:
 	# Material reflects the most recent add — in practice, tiles at the same
 	# fog level share a pool, so this works for placeholder rendering.
 	# Full per-instance coloring would use custom_data in a shader.
-	var mmi: MultiMeshInstance3D = _pools[pool_idx]
+	if not _pools.has(pool_id):
+		return
+	var mmi: MultiMeshInstance3D = _pools[pool_id]
 	var mat: StandardMaterial3D = mmi.material_override as StandardMaterial3D
 	if mat == null:
 		return
 	if dimmed:
-		mat.albedo_color = POOL_COLORS_DIMMED.get(pool_idx, POOL_COLORS[pool_idx])
+		mat.albedo_color = _pool_colors_dimmed.get(pool_id, _pool_colors.get(pool_id, Color.WHITE))
 	else:
-		mat.albedo_color = POOL_COLORS[pool_idx]
+		mat.albedo_color = _pool_colors.get(pool_id, Color.WHITE)
 
 
 # --- Public API (for testing) ---
 
-func get_pool_visible_count(pool_idx: int) -> int:
-	if pool_idx < 0 or pool_idx >= _pools.size():
+func get_pool_visible_count(pool_id) -> int:
+	# Accept both StringName and int for backward compatibility with tests
+	if pool_id is int:
+		# Legacy int index — convert to StringName by iterating pools
+		var keys: Array = _pools.keys()
+		if pool_id < 0 or pool_id >= keys.size():
+			return 0
+		return _pools[keys[pool_id]].multimesh.visible_instance_count
+	if not _pools.has(pool_id):
 		return 0
-	return _pools[pool_idx].multimesh.visible_instance_count
+	return _pools[pool_id].multimesh.visible_instance_count
 
 
 func get_tile_entries() -> Dictionary:
@@ -466,24 +430,44 @@ func get_pool_count() -> int:
 	return _pools.size()
 
 
-func get_pool_mesh(pool_idx: int) -> Mesh:
-	if pool_idx < 0 or pool_idx >= _pools.size():
+func get_pool_mesh(pool_id) -> Mesh:
+	if pool_id is int:
+		var keys: Array = _pools.keys()
+		if pool_id < 0 or pool_id >= keys.size():
+			return null
+		return _pools[keys[pool_id]].multimesh.mesh
+	if not _pools.has(pool_id):
 		return null
-	return _pools[pool_idx].multimesh.mesh
+	return _pools[pool_id].multimesh.mesh
 
 
-func get_normal_mesh(pool_idx: int) -> Mesh:
-	return _normal_meshes.get(pool_idx, null)
+func get_normal_mesh(pool_id) -> Mesh:
+	if pool_id is int:
+		var keys: Array = _normal_meshes.keys()
+		if pool_id < 0 or pool_id >= keys.size():
+			return null
+		return _normal_meshes[keys[pool_id]]
+	return _normal_meshes.get(pool_id, null)
 
 
-func get_depleted_mesh(pool_idx: int) -> Mesh:
-	return _depleted_meshes.get(pool_idx, null)
+func get_depleted_mesh(pool_id) -> Mesh:
+	if pool_id is int:
+		var keys: Array = _depleted_meshes.keys()
+		if pool_id < 0 or pool_id >= keys.size():
+			return null
+		return _depleted_meshes[keys[pool_id]]
+	return _depleted_meshes.get(pool_id, null)
 
 
-func get_pool_material_color(pool_idx: int) -> Color:
-	if pool_idx < 0 or pool_idx >= _pools.size():
+func get_pool_material_color(pool_id) -> Color:
+	if pool_id is int:
+		var keys: Array = _pools.keys()
+		if pool_id < 0 or pool_id >= keys.size():
+			return Color.BLACK
+		pool_id = keys[pool_id]
+	if not _pools.has(pool_id):
 		return Color.BLACK
-	var mat: StandardMaterial3D = _pools[pool_idx].material_override as StandardMaterial3D
+	var mat: StandardMaterial3D = _pools[pool_id].material_override as StandardMaterial3D
 	if mat == null:
 		return Color.BLACK
 	return mat.albedo_color

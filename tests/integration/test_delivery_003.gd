@@ -346,7 +346,7 @@ func test_resource_depletion_signal_and_visual_change() -> void:
 
 	# Show resource in renderer
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 	# Verify the resource is NOT depleted initially
 	var entries: Dictionary = _resource_renderer.get_tile_entries()

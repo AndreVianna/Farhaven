@@ -21,35 +21,6 @@ signal auto_gather_failed(coords: Vector2i, reason: StringName)
 signal auto_defend_triggered(fauna_id: int, damage: int)
 signal ground_item_picked_up(item_name: StringName, amount: int)
 
-# --- Resource Config Table ---
-# gather_time (seconds) + gather_amount per resource type
-
-const RESOURCE_CONFIG: Dictionary = {
-	&"wood":             { "gather_time": 1.0, "gather_amount": 1 },
-	&"loose_rock":       { "gather_time": 1.0, "gather_amount": 2 },
-	&"stone":            { "gather_time": 1.5, "gather_amount": 1 },
-	&"berries":          { "gather_time": 0.5, "gather_amount": 2 },
-	&"fiber":            { "gather_time": 0.5, "gather_amount": 1 },
-	&"ore":              { "gather_time": 2.0, "gather_amount": 1 },
-	&"crystal":          { "gather_time": 2.5, "gather_amount": 1 },
-	&"toxic_berries":    { "gather_time": 0.5, "gather_amount": 2 },
-	&"anomaly_fragment": { "gather_time": 3.0, "gather_amount": 1 },
-}
-
-# Mapping from resource type to inventory item yielded on gather.
-# Resources not listed here yield their own type name.
-const GATHER_YIELD: Dictionary = {
-	&"loose_rock": &"stone",
-}
-
-# --- Tool Speed Multipliers ---
-# Multiplies gather_time for specific resource types when tool is equipped
-
-const TOOL_SPEED: Dictionary = {
-	&"stone_axe":     { &"wood": 0.5 },
-	&"stone_pickaxe": { &"stone": 0.5, &"ore": 0.5, &"crystal": 0.5 },
-}
-
 # --- Tool Priority ---
 # Higher = gathered first when multiple candidates exist
 
@@ -225,7 +196,7 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 				continue  # Depleted
 
 			# Catalog gate: must be CATALOGED
-			var entry_id: StringName = _Catalog.RESOURCE_TO_ENTRY.get(node.type, &"")
+			var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
 			if entry_id == &"":
 				continue
 			if not _catalog.is_cataloged(entry_id):
@@ -273,10 +244,10 @@ func _begin_gather(coords: Vector2i, resource_index: int, node: Resource) -> voi
 	_gather_target_index = resource_index
 
 	# Compute effective gather time
-	var base_time: float = RESOURCE_CONFIG.get(node.type, {}).get("gather_time", 1.0)
+	var base_time: float = ResourceRegistry.get_def(node.type).gather_time if ResourceRegistry.has_def(node.type) else 1.0
 	var tool_slot: StringName = _Inventory.ITEM_CONFIG.get(node.tool_required, {}).get("tool_slot", &"")
 	var equipped: StringName = _inventory.get_tool(tool_slot) if tool_slot != &"" else &""
-	var multiplier: float = TOOL_SPEED.get(equipped, {}).get(node.type, 1.0)
+	var multiplier: float = ResourceRegistry.get_tool_speed(node.type, equipped)
 	var effective_time: float = base_time * multiplier
 
 	auto_gather_started.emit(coords, node.type)
@@ -303,10 +274,10 @@ func _on_gather_tween_complete() -> void:
 		return
 
 	var node: Resource = tile.resource_nodes[index]
-	var amount: int = RESOURCE_CONFIG.get(node.type, {}).get("gather_amount", 1)
+	var amount: int = ResourceRegistry.get_def(node.type).gather_amount if ResourceRegistry.has_def(node.type) else 1
 
 	# Resolve yield type (e.g. loose_rock yields stone)
-	var yield_type: StringName = GATHER_YIELD.get(node.type, node.type)
+	var yield_type: StringName = ResourceRegistry.get_yield_type(node.type)
 
 	# Try to add to inventory
 	var added: int = _inventory.add_item(yield_type, amount)

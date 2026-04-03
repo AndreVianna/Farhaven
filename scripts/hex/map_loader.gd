@@ -118,39 +118,14 @@ func load_map(path: String) -> bool:
 	return true
 
 
-# Global tool requirement per resource type (empty = bare hands).
-const TOOL_REQUIRED: Dictionary = {
-	&"wood": &"",
-	&"loose_rock": &"",
-	&"stone": &"stone_pickaxe",
-	&"fiber": &"",
-	&"berries": &"",
-	&"toxic_berries": &"",
-	&"ore": &"stone_pickaxe",
-	&"crystal": &"stone_pickaxe",
-}
-
-# Default respawn times (seconds). 0 = no respawn.
-const RESPAWN_TIMES: Dictionary = {
-	&"wood": 30.0,
-	&"loose_rock": 30.0,
-	&"stone": 30.0,
-	&"fiber": 30.0,
-	&"berries": 30.0,
-	&"toxic_berries": 30.0,
-	&"ore": 60.0,
-	&"crystal": 60.0,
-	&"anomaly_fragment": 0.0,
-}
-
 
 func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 	var rn: Resource = _ResourceNode.new()
 	rn.type = type
 	rn.remaining = 3
 	rn.max_amount = 3
-	rn.tool_required = TOOL_REQUIRED.get(type, &"")
-	rn.respawn_time = RESPAWN_TIMES.get(type, 0.0)
+	rn.tool_required = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
+	rn.respawn_time = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
 
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:

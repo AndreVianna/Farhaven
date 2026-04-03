@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"wood"
+display_name = "Wood"
+gather_time = 1.0
+gather_amount = 1
+tool_required = &""
+respawn_time = 30.0
+yield_type = &""
+tool_speed = { &"stone_axe": 0.5 }
+max_stack = 99
+category = &"resource"
+catalog_entry = &"wood_tree"
+catalog_category = &"flora"
+placeholder_mesh_type = &"cylinder"
+placeholder_params = { "radius": 0.2, "height": 0.8 }
+placeholder_color = Color(0.2, 0.7, 0.2, 1.0)
+placeholder_depleted_type = &"cylinder"
+placeholder_depleted_params = { "radius": 0.25, "height": 0.25 }
+placeholder_depleted_color = Color(0.2, 0.7, 0.2, 1.0)

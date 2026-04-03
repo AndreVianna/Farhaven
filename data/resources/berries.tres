@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"berries"
+display_name = "Berries"
+gather_time = 0.5
+gather_amount = 2
+tool_required = &""
+respawn_time = 30.0
+yield_type = &""
+tool_speed = {}
+max_stack = 20
+category = &"consumable"
+catalog_entry = &"berry_bush"
+catalog_category = &"flora"
+placeholder_mesh_type = &"sphere"
+placeholder_params = { "radius": 0.3 }
+placeholder_color = Color(0.8, 0.15, 0.15, 1.0)
+placeholder_depleted_type = &"sphere"
+placeholder_depleted_params = { "radius": 0.15 }
+placeholder_depleted_color = Color(0.8, 0.15, 0.15, 1.0)

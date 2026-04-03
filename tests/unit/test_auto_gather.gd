@@ -188,7 +188,7 @@ func _make_tile(coords: Vector2i, resources: Array = []) -> Resource:
 
 
 func _catalog_resource(type: StringName) -> void:
-	var entry_id: StringName = _Catalog.RESOURCE_TO_ENTRY.get(type, &"")
+	var entry_id: StringName = ResourceRegistry.get_def(type).catalog_entry if ResourceRegistry.has_def(type) else &""
 	if entry_id != &"":
 		_catalog._knowledge[entry_id] = _Catalog.KnowledgeState.CATALOGED
 

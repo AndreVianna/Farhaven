@@ -62,94 +62,94 @@ func test_can_gather_empty_slot_rejects_gated() -> void:
 	assert_bool(_sys.can_gather(rn, _inv)).is_false()
 
 
-# --- Resource config: all 8 types present with correct values ---
+# --- Resource config: values match ResourceRegistry ---
 
 func test_resource_config_wood() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"wood"]
-	assert_float(cfg["gather_time"]).is_equal(1.0)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"wood")
+	assert_float(def.gather_time).is_equal(1.0)
+	assert_int(def.gather_amount).is_equal(1)
 
 
 func test_resource_config_stone() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"stone"]
-	assert_float(cfg["gather_time"]).is_equal(1.5)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"stone")
+	assert_float(def.gather_time).is_equal(1.5)
+	assert_int(def.gather_amount).is_equal(1)
 
 
 func test_resource_config_berries() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"berries"]
-	assert_float(cfg["gather_time"]).is_equal(0.5)
-	assert_int(cfg["gather_amount"]).is_equal(2)
+	var def = ResourceRegistry.get_def(&"berries")
+	assert_float(def.gather_time).is_equal(0.5)
+	assert_int(def.gather_amount).is_equal(2)
 
 
 func test_resource_config_fiber() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"fiber"]
-	assert_float(cfg["gather_time"]).is_equal(0.5)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"fiber")
+	assert_float(def.gather_time).is_equal(0.5)
+	assert_int(def.gather_amount).is_equal(1)
 
 
 func test_resource_config_ore() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"ore"]
-	assert_float(cfg["gather_time"]).is_equal(2.0)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"ore")
+	assert_float(def.gather_time).is_equal(2.0)
+	assert_int(def.gather_amount).is_equal(1)
 
 
 func test_resource_config_crystal() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"crystal"]
-	assert_float(cfg["gather_time"]).is_equal(2.5)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"crystal")
+	assert_float(def.gather_time).is_equal(2.5)
+	assert_int(def.gather_amount).is_equal(1)
 
 
 func test_resource_config_toxic_berries() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"toxic_berries"]
-	assert_float(cfg["gather_time"]).is_equal(0.5)
-	assert_int(cfg["gather_amount"]).is_equal(2)
+	var def = ResourceRegistry.get_def(&"toxic_berries")
+	assert_float(def.gather_time).is_equal(0.5)
+	assert_int(def.gather_amount).is_equal(2)
 
 
 func test_resource_config_anomaly_fragment() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"anomaly_fragment"]
-	assert_float(cfg["gather_time"]).is_equal(3.0)
-	assert_int(cfg["gather_amount"]).is_equal(1)
+	var def = ResourceRegistry.get_def(&"anomaly_fragment")
+	assert_float(def.gather_time).is_equal(3.0)
+	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_has_exactly_9_types() -> void:
-	assert_int(_AutoInteraction.RESOURCE_CONFIG.size()).is_equal(9)
+func test_resource_registry_has_9_types() -> void:
+	assert_int(ResourceRegistry.get_all().size()).is_equal(9)
 
 
 func test_resource_config_loose_rock() -> void:
-	var cfg: Dictionary = _AutoInteraction.RESOURCE_CONFIG[&"loose_rock"]
-	assert_float(cfg["gather_time"]).is_equal(1.0)
-	assert_int(cfg["gather_amount"]).is_equal(2)
+	var def = ResourceRegistry.get_def(&"loose_rock")
+	assert_float(def.gather_time).is_equal(1.0)
+	assert_int(def.gather_amount).is_equal(2)
 
 
 func test_gather_yield_loose_rock_gives_stone() -> void:
-	var yield_type: StringName = _AutoInteraction.GATHER_YIELD.get(&"loose_rock", &"loose_rock")
+	var yield_type: StringName = ResourceRegistry.get_yield_type(&"loose_rock")
 	assert_str(String(yield_type)).is_equal("stone")
 
 
 # --- Tool speed: stone_axe halves wood gather time ---
 
 func test_tool_speed_stone_axe_halves_wood() -> void:
-	var base_time: float = _AutoInteraction.RESOURCE_CONFIG[&"wood"]["gather_time"]
-	var multiplier: float = _AutoInteraction.TOOL_SPEED[&"stone_axe"][&"wood"]
+	var base_time: float = ResourceRegistry.get_def(&"wood").gather_time
+	var multiplier: float = ResourceRegistry.get_tool_speed(&"wood", &"stone_axe")
 	assert_float(base_time * multiplier).is_equal(0.5)
 
 
 func test_tool_speed_stone_pickaxe_halves_stone() -> void:
-	var base_time: float = _AutoInteraction.RESOURCE_CONFIG[&"stone"]["gather_time"]
-	var multiplier: float = _AutoInteraction.TOOL_SPEED[&"stone_pickaxe"][&"stone"]
+	var base_time: float = ResourceRegistry.get_def(&"stone").gather_time
+	var multiplier: float = ResourceRegistry.get_tool_speed(&"stone", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(0.75)
 
 
 func test_tool_speed_stone_pickaxe_halves_ore() -> void:
-	var base_time: float = _AutoInteraction.RESOURCE_CONFIG[&"ore"]["gather_time"]
-	var multiplier: float = _AutoInteraction.TOOL_SPEED[&"stone_pickaxe"][&"ore"]
+	var base_time: float = ResourceRegistry.get_def(&"ore").gather_time
+	var multiplier: float = ResourceRegistry.get_tool_speed(&"ore", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(1.0)
 
 
 func test_tool_speed_stone_pickaxe_halves_crystal() -> void:
-	var base_time: float = _AutoInteraction.RESOURCE_CONFIG[&"crystal"]["gather_time"]
-	var multiplier: float = _AutoInteraction.TOOL_SPEED[&"stone_pickaxe"][&"crystal"]
+	var base_time: float = ResourceRegistry.get_def(&"crystal").gather_time
+	var multiplier: float = ResourceRegistry.get_tool_speed(&"crystal", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(1.25)
 
 

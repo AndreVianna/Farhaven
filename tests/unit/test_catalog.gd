@@ -476,16 +476,17 @@ func test_load_save_data_backwards_compatible_with_discovered_format() -> void:
 	assert_int(_catalog.get_discovery_count()).is_equal(2)
 
 
-# --- RESOURCE_TO_ENTRY mapping ---
+# --- ResourceRegistry catalog_entry mapping ---
 
-func test_resource_to_entry_all_seven_map_to_valid_entries() -> void:
-	for resource_type in _Catalog.RESOURCE_TO_ENTRY:
-		var entry_id: StringName = _Catalog.RESOURCE_TO_ENTRY[resource_type]
-		var entry = _catalog.get_entry(entry_id)
+func test_resource_defs_map_to_valid_catalog_entries() -> void:
+	for def in ResourceRegistry.get_all():
+		if def.catalog_entry == &"":
+			continue  # anomaly_fragment has no catalog entry
+		var entry = _catalog.get_entry(def.catalog_entry)
 		assert_bool(entry != null).override_failure_message(
-			"RESOURCE_TO_ENTRY[%s] = %s — no matching CatalogEntry loaded" % [resource_type, entry_id]
+			"ResourceDef[%s].catalog_entry = %s — no matching CatalogEntry loaded" % [def.id, def.catalog_entry]
 		).is_true()
 
 
-func test_resource_to_entry_has_eight_entries() -> void:
-	assert_int(_Catalog.RESOURCE_TO_ENTRY.size()).is_equal(8)
+func test_resource_registry_has_nine_defs() -> void:
+	assert_int(ResourceRegistry.get_all().size()).is_equal(9)

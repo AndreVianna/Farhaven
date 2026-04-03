@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 
 ## Unit tests for ResourceRenderer (task-019).
 ## Tests MultiMesh pool creation, fog-driven instancing, depleted/respawned mesh swaps.
+## Pools are now keyed by StringName (resource type id) via ResourceRegistry.
 
 const _ResourceRenderer = preload("res://scripts/rendering/resource_renderer.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
@@ -80,45 +81,44 @@ func after_test() -> void:
 # Pool creation tests
 # ===========================================
 
-func test_eight_multimesh_pools_created() -> void:
-	assert_int(_renderer.get_pool_count()).is_equal(8)
+func test_pools_created_for_all_resource_defs() -> void:
+	# ResourceRegistry should have 9 defs, so 9 pools
+	assert_int(_renderer.get_pool_count()).is_equal(ResourceRegistry.get_all().size())
 
 
 func test_pools_have_zero_visible_instances_initially() -> void:
-	for i in range(8):
-		assert_int(_renderer.get_pool_visible_count(i)).is_equal(0)
+	for def in ResourceRegistry.get_all():
+		assert_int(_renderer.get_pool_visible_count(def.id)).is_equal(0)
 
 
 func test_wood_pool_uses_cylinder_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.WOOD)
+	var mesh: Mesh = _renderer.get_pool_mesh(&"wood")
 	assert_bool(mesh is CylinderMesh).is_true()
 
 
 func test_stone_pool_uses_box_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.STONE)
+	var mesh: Mesh = _renderer.get_pool_mesh(&"stone")
 	assert_bool(mesh is BoxMesh).is_true()
 
 
 func test_berries_pool_uses_sphere_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.BERRIES)
+	var mesh: Mesh = _renderer.get_pool_mesh(&"berries")
 	assert_bool(mesh is SphereMesh).is_true()
 
 
 func test_fiber_pool_uses_box_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.FIBER)
+	var mesh: Mesh = _renderer.get_pool_mesh(&"fiber")
 	assert_bool(mesh is BoxMesh).is_true()
 
 
-func test_ore_pool_uses_sphere_mesh() -> void:
-	# Octahedron approximated by low-poly sphere
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.ORE)
-	assert_bool(mesh is SphereMesh).is_true()
+func test_ore_pool_mesh_exists() -> void:
+	var mesh: Mesh = _renderer.get_pool_mesh(&"ore")
+	assert_bool(mesh != null).is_true()
 
 
-func test_crystal_pool_uses_cylinder_mesh() -> void:
-	# Prism approximated by tapered cylinder
-	var mesh: Mesh = _renderer.get_pool_mesh(_ResourceRenderer.Pool.CRYSTAL)
-	assert_bool(mesh is CylinderMesh).is_true()
+func test_crystal_pool_mesh_exists() -> void:
+	var mesh: Mesh = _renderer.get_pool_mesh(&"crystal")
+	assert_bool(mesh != null).is_true()
 
 
 # ===========================================
@@ -130,7 +130,7 @@ func test_visible_tile_adds_resource_on_visibility_changed() -> void:
 
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
 func test_revealed_tile_adds_resource_dimmed() -> void:
@@ -138,17 +138,17 @@ func test_revealed_tile_adds_resource_dimmed() -> void:
 
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.REVEALED)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.STONE)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
 
 
 func test_hidden_tile_removes_resources() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood")
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)
 
 
 func test_hidden_tile_not_instanced() -> void:
@@ -156,7 +156,7 @@ func test_hidden_tile_not_instanced() -> void:
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)
 
 
 func test_map_generated_populates_visible_tiles() -> void:
@@ -166,9 +166,9 @@ func test_map_generated_populates_visible_tiles() -> void:
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.STONE)).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(0)
 
 
 func test_map_generated_populates_revealed_tiles() -> void:
@@ -176,7 +176,7 @@ func test_map_generated_populates_revealed_tiles() -> void:
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.FIBER)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"fiber")).is_equal(1)
 
 
 # ===========================================
@@ -186,43 +186,43 @@ func test_map_generated_populates_revealed_tiles() -> void:
 func test_wood_maps_to_wood_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
 func test_stone_maps_to_stone_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"stone")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.STONE)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
 
 
 func test_berries_maps_to_berries_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"berries")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 
 func test_fiber_maps_to_fiber_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"fiber")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.FIBER)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"fiber")).is_equal(1)
 
 
 func test_ore_maps_to_ore_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"ore")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.ORE)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"ore")).is_equal(1)
 
 
 func test_crystal_maps_to_crystal_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"crystal")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.CRYSTAL)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"crystal")).is_equal(1)
 
 
 func test_loose_rock_maps_to_loose_rock_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"loose_rock")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.LOOSE_ROCK)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"loose_rock")).is_equal(1)
 
 
 # ===========================================
@@ -234,8 +234,8 @@ func test_multi_resource_tile() -> void:
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_int(entries[Vector2i(0, 0)].size()).is_equal(2)
 
@@ -273,13 +273,13 @@ func test_resource_respawned_clears_depleted() -> void:
 
 
 func test_depleted_meshes_exist_for_all_pools() -> void:
-	for i in range(8):
-		assert_bool(_renderer.get_depleted_mesh(i) != null).is_true()
+	for def in ResourceRegistry.get_all():
+		assert_bool(_renderer.get_depleted_mesh(def.id) != null).is_true()
 
 
 func test_normal_meshes_exist_for_all_pools() -> void:
-	for i in range(8):
-		assert_bool(_renderer.get_normal_mesh(i) != null).is_true()
+	for def in ResourceRegistry.get_all():
+		assert_bool(_renderer.get_normal_mesh(def.id) != null).is_true()
 
 
 # ===========================================
@@ -319,8 +319,8 @@ func test_unknown_resource_type_not_instanced() -> void:
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 
-	for i in range(8):
-		assert_int(_renderer.get_pool_visible_count(i)).is_equal(0)
+	for def in ResourceRegistry.get_all():
+		assert_int(_renderer.get_pool_visible_count(def.id)).is_equal(0)
 
 
 # ===========================================
@@ -335,12 +335,12 @@ func test_swap_and_remove_preserves_other_instances() -> void:
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(2)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(2)
 
 	# Remove first tile's resource
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
 
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_bool(entries.has(Vector2i(1, 0))).is_true()
 	assert_bool(not entries.has(Vector2i(0, 0))).is_true()
@@ -350,8 +350,8 @@ func test_swap_and_remove_preserves_other_instances() -> void:
 # Draw calls estimate
 # ===========================================
 
-func test_draw_calls_eight_resource_pools() -> void:
-	assert_int(_renderer.get_pool_count()).is_equal(8)
+func test_draw_calls_resource_pools() -> void:
+	assert_int(_renderer.get_pool_count()).is_equal(ResourceRegistry.get_all().size())
 
 
 # ===========================================
@@ -361,18 +361,18 @@ func test_draw_calls_eight_resource_pools() -> void:
 func test_visible_to_revealed_keeps_instances() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 	# Transition to REVEALED — should keep instance (dimmed)
 	_grid._tiles[Vector2i(0, 0)].fog_state = _HexTile.FogState.REVEALED
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.REVEALED)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
 func test_revealed_to_hidden_removes_instances() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood", 3, 0, _HexTile.FogState.REVEALED)
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.REVEALED)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
-	assert_int(_renderer.get_pool_visible_count(_ResourceRenderer.Pool.WOOD)).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)

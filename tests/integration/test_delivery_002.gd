@@ -212,7 +212,7 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 	_scanner._check_passive_identification(Vector2i(1, 0))
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 	# Proximity scan starts automatically
 	_scanner._process(0.016)
@@ -535,7 +535,7 @@ func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_scanner._on_tile_revealed(Vector2i(1, 0))
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 	_teardown_scanner_tree()
 
@@ -805,10 +805,10 @@ func test_resource_removed_on_tile_hidden() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(1)
+	assert_int(_resource_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-	assert_int(_resource_renderer.get_pool_visible_count(_ResourceRenderer.Pool.BERRIES)).is_equal(0)
+	assert_int(_resource_renderer.get_pool_visible_count(&"berries")).is_equal(0)
 
 	_teardown_scanner_tree()
 

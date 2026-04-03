@@ -4,21 +4,17 @@ extends RefCounted
 ## Shared utilities for ResourceRenderer and PropLabelRenderer.
 ## Provides resource type → entry_id reverse lookup and tile offset calculation.
 
-const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 ## Offset scale factor: maps normalized [-1,1] to world units
 const OFFSET_SCALE: float = 0.4
 
-## Cached reverse lookup: resource type → catalog entry_id
-static var _type_to_entry: Dictionary = {}
-
-## Reverse lookup: resource type → catalog entry_id.
+## Reverse lookup: resource type → catalog entry_id via ResourceRegistry.
 static func get_entry_id_for_type(type: StringName) -> StringName:
-	if _type_to_entry.is_empty():
-		for res_type in _Catalog.RESOURCE_TO_ENTRY:
-			_type_to_entry[res_type] = _Catalog.RESOURCE_TO_ENTRY[res_type]
-	return _type_to_entry.get(type, &"")
+	var def = ResourceRegistry.get_def(type)
+	if def != null:
+		return def.catalog_entry
+	return &""
 
 ## Look up the offset and rotation for a specific entry on a tile.
 ## Returns [Vector2 offset, float rotation_deg]. Falls back to zero.
