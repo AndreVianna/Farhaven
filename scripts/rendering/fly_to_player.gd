@@ -53,7 +53,7 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 	if tile != null:
 		for rn in tile.resource_nodes:
 			if rn.type == resource_type:
-				prop_offset = _PropUtils.offset_to_world(rn.offset, 3.0)
+				prop_offset = _PropUtils.offset_to_world(rn.offset, _HexMath.HEX_SIZE)
 				break
 
 	var start_pos := Vector3(world_2d.x + prop_offset.x, elevation_y + 0.6, world_2d.y + prop_offset.y)

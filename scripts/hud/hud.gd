@@ -38,7 +38,7 @@ func _ready() -> void:
 # --- Placement label API (called by BuildingSystem feature-009) ---
 
 func show_placement_label(structure_type: StringName) -> void:
-	_placement_label.text = "TAP TO PLACE %s" % structure_type.to_upper()
+	_placement_label.text = "TAP TO PLACE %s" % String(structure_type).to_upper()
 	_placement_label.show()
 
 
@@ -108,12 +108,12 @@ func _on_workbench_proximity_changed(_near: bool) -> void:
 
 func _on_recipe_discovered(recipe_name: StringName) -> void:
 	_craft_button.visible = true
-	var display_name: String = recipe_name.replace("_", " ").capitalize()
+	var display_name: String = String(recipe_name).replace("_", " ").capitalize()
 	show_notification("New recipe: %s!" % display_name)
 
 
 func _on_craft_completed(recipe_name: StringName) -> void:
-	var display_name: String = recipe_name.replace("_", " ").capitalize()
+	var display_name: String = String(recipe_name).replace("_", " ").capitalize()
 	show_notification("Crafted %s!" % display_name)
 	# Flash + sound feedback
 	if _craft_flash != null:
@@ -131,7 +131,7 @@ func connect_auto_interaction(auto_interaction: Node) -> void:
 
 
 func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
-	var display_name: String = resource_type.replace("_", " ").capitalize()
+	var display_name: String = String(resource_type).replace("_", " ").capitalize()
 	var text: String = "+%d %s" % [amount, display_name]
 	var player: Node = _get_player()
 	if player:
