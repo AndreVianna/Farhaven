@@ -105,7 +105,7 @@ Death has consequences. Progress saves. The world feels alive.
 **Cumulative state:** Place structures, fauna at night, auto-defend + auto-pickup activate
 
 Build order:
-1. feature-009 (Building) — structures, walls, shelter, torch, workbench
+1. feature-009 (Building) — structures as props with sub-hex footprints, walls, shelter, torch, workbench
 2. feature-010 (Night Threats) — fauna spawn, AI, contact damage, surprise catalog
 
 When this lands:
@@ -114,6 +114,7 @@ When this lands:
 - Building gives crafting its workbench (F-006 workbench proximity gate deferred; CraftButton is recipe-discovery-gated instead — shows permanently after first recipe discovered. MVP: pre-discovered at startup.)
 - Shelter protects player, walls redirect fauna, torches extend visibility
 - Meat drops give survival a new food source
+- **Sub-hex architecture:** Structures placed at specific sub-hex positions within a tile. Multiple structures per hex allowed if footprints don't overlap. Torch tracking uses props[] query instead of dedicated structure field.
 
 **AC coverage:** AC6 (building), AC9 (night threats)
 
@@ -161,3 +162,4 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 | 2026-03-31 | Plan created — 6 deliveries, 12 features (post-redesign) | /aid-plan |
 | 2026-04-02 | Scan redesign: delivery-002 description updated (proximity scan, not press-hold). Delivery progression language updated. | /scan-redesign-apply |
 | 2026-04-03 | Review cascade: F006 pre_discovered/requires_workbench, F009 6 structures (campfire added, only Wall blocks), F012 CraftButton recipe-discovery-gated, signal names synced | /aid-specify review |
+| 2026-04-04 | Architecture: sub-hex grid + unified props[]. Impacts delivery-005 (building uses props + footprints), delivery-001 (HexTile data model). See docs/design/sub-hex-grid-impact.md | Architecture decision |

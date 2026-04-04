@@ -358,3 +358,4 @@ No additional requirements beyond delivery-001.
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (024-031). DayCounter and StatBars wired to existing shells from delivery-001. | /aid-detail |
+| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. DayNightCycle torch tracking queries structure props from tile.props[] instead of tile.structure. Tasks already implemented — this note is for future reference. | /arch-update |

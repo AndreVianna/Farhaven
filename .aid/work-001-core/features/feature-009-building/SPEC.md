@@ -188,7 +188,7 @@ structure persistence.
 |-----------------------------|----------|-----------------|
 | feature-002 (movement) | AStar2D edge disconnect on blocking structures |
 | feature-005 (inventory) | `structure_placed(&"storage_chest")` → expand(12) |
-| feature-006 (crafting) | Workbench proximity check reads `tile.structure` |
+| feature-006 (crafting) | Workbench proximity check queries `tile.props` for structure props |
 | feature-007 (survival) | `structure_placed(&"shelter")` → respawn point |
 | feature-008 (day/night) | `structure_placed(&"torch")` → torch tracking |
 | feature-010 (threats) | Wall blocks fauna pathing, shelter protects player, torch deters spawn |
