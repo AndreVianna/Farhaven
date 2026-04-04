@@ -2,66 +2,23 @@
  * Unit tests for delivery-001 classes: CommandHistory, DirtyTracker, TresParser, KeyboardManager.
  * Run: node tools/level-editor/test-unit.mjs
  */
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// DOM mocks — imported first so globalThis.document/window exist before any other module evaluates
+import './test-dom-mocks.mjs';
 
-// Extract JS from index.html and eval with mocks
-const html = readFileSync(join(__dirname, 'index.html'), 'utf-8');
-const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-const script = scriptMatch[1];
+// ES module imports
+import { HEX_SIZE, HexMath } from './js/hex-math.js';
+import { HexGrid, createTileData, createResourceInstance, loadMapIntoGrid, serializeGridToMapJson } from './js/hex-grid.js';
+import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
+import { ProjectContext } from './js/file-discovery.js';
+import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddResourceCommand, EditResourceCommand, DeleteResourceCommand, SetStructureCommand, SetAnomalyCommand, SetSpawnCommand } from './js/commands.js';
+import { KeyboardManager } from './js/keyboard.js';
+import { DirtyTracker } from './js/dirty-tracker.js';
+import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
-let keydownHandler = null;
-const mockDocument = {
-  querySelectorAll: () => [],
-  getElementById: () => ({
-    addEventListener: () => {},
-    classList: { add: () => {}, remove: () => {} },
-    textContent: '',
-    value: '',
-    click: () => {},
-  }),
-  activeElement: null,
-  addEventListener: (event, handler) => { if (event === 'keydown') keydownHandler = handler; },
-  createElement: () => ({ click: () => {}, href: '', download: '' }),
-  body: { appendChild: () => {}, removeChild: () => {} },
-};
-const mockWindow = {
-  addEventListener: () => {},
-  showDirectoryPicker: undefined,
-};
-
-const fn = new Function('mockDocument', 'mockWindow', `
-  const document = mockDocument;
-  const window = mockWindow;
-  const URL = { createObjectURL: () => '', revokeObjectURL: () => {} };
-  const requestAnimationFrame = (cb) => setTimeout(cb, 0);
-  ${script}
-  return { TresParser, TresFile, CommandHistory, KeyboardManager, DirtyTracker, generateTresUid, ProjectContext,
-    HexMath, HexGrid, HexCanvas, ToolManager, ToolType, ElevationMode,
-    SetBiomeCommand, SetElevationCommand, BatchCommand, EraseContentCommand, DeleteHexCommand,
-    FloodFillTool, BiomeBrush, ElevationBrush, EraserTool,
-    SetStructureCommand, SetAnomalyCommand, SetSpawnCommand,
-    AddResourceCommand, EditResourceCommand, DeleteResourceCommand,
-    ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool,
-    createTileData, createResourceInstance, loadMapIntoGrid, serializeGridToMapJson,
-    hexGrid, camera, biomeColorMap,
-    toolManager, commandHistory: commandHistory };
-`);
-const exported = fn(mockDocument, mockWindow);
-const { TresParser, TresFile, CommandHistory, KeyboardManager, DirtyTracker, generateTresUid, ProjectContext,
-  HexMath, HexGrid: HexGridClass, HexCanvas, ToolManager, ToolType, ElevationMode,
-  SetBiomeCommand, SetElevationCommand, BatchCommand, EraseContentCommand, DeleteHexCommand,
-  FloodFillTool, BiomeBrush, ElevationBrush, EraserTool,
-  SetStructureCommand, SetAnomalyCommand, SetSpawnCommand,
-  AddResourceCommand, EditResourceCommand, DeleteResourceCommand,
-  ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool,
-  createTileData, createResourceInstance, loadMapIntoGrid, serializeGridToMapJson,
-  toolManager, biomeColorMap } = exported;
-// Note: hexGrid and camera are the global singletons from the module
+// Alias HexGrid as HexGridClass to match existing test usage
+const HexGridClass = HexGrid;
 
 let passed = 0;
 let failed = 0;
@@ -520,22 +477,17 @@ test('loadMapIntoGrid — loads map JSON correctly', () => {
       '1,-1': { biome: 'water', elevation: 0, structure: 'campfire', resources: [] },
     },
   };
-  // Temporarily swap global hexGrid
-  const origOnChange = grid.onChange;
-  grid.onChange = null;
-
-  // Use the actual function on the global hexGrid
-  loadMapIntoGrid(mapData);
-  const globalGrid = exported.hexGrid;
-  assert(globalGrid.meta.chapter_id === 'ch1', 'chapter_id should match');
-  assert(globalGrid.meta.name === 'Test Map', 'name should match');
-  assert(globalGrid.meta.spawn[0] === 2 && globalGrid.meta.spawn[1] === 3, 'spawn should match');
-  assert(globalGrid.hasTile(0, 0), 'should have tile 0,0');
-  assert(globalGrid.getTile(0, 0).biome === 'forest', 'biome should be forest');
-  assert(globalGrid.getTile(0, 0).elevation === 2, 'elevation should be 2');
-  assert(globalGrid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
-  assert(globalGrid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
-  assert(globalGrid.getTile(1, -1).structure === 'campfire', 'structure should be campfire');
+  // Load map data into the test grid
+  loadMapIntoGrid(grid, mapData);
+  assert(grid.meta.chapter_id === 'ch1', 'chapter_id should match');
+  assert(grid.meta.name === 'Test Map', 'name should match');
+  assert(grid.meta.spawn[0] === 2 && grid.meta.spawn[1] === 3, 'spawn should match');
+  assert(grid.hasTile(0, 0), 'should have tile 0,0');
+  assert(grid.getTile(0, 0).biome === 'forest', 'biome should be forest');
+  assert(grid.getTile(0, 0).elevation === 2, 'elevation should be 2');
+  assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
+  assert(grid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
+  assert(grid.getTile(1, -1).structure === 'campfire', 'structure should be campfire');
 });
 
 // ============================================================

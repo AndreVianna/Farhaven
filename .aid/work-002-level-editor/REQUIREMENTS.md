@@ -9,6 +9,7 @@
 | 2026-04-03 | Interview complete — approved | /aid-interview |
 | 2026-04-03 | Cross-reference: fixed ResourceDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
 | 2026-04-03 | Post-spec review: unified resource position range (-1.0 to 1.0 storage, -0.8 to 0.8 random), biome CRUD confirmed dynamic, app shell added to F007 | /aid-specify review |
+| 2026-04-04 | Added ghost grid and empty-cell painting to F1/F2. New AC10 for map expansion. | code review |
 
 ## 1. Objective
 
@@ -65,14 +66,15 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Each hex colored by biome using actual biome colors from .tres files
 - Elevation shown as number overlay and/or brightness gradient (higher = lighter)
 - Cliff indicators on edges between hexes with elevation difference ≥ 2
+- **Ghost grid** — faint hex outlines rendered at all empty positions adjacent to existing tiles, providing visual affordance for map expansion. Ghost hexes respond to hover and tool interactions (painting a ghost cell creates a real tile).
 - Click to select hex, click-drag to paint (biome brush, elevation brush)
 - Hover tooltip showing hex coordinates, biome, elevation, resources, structure
 - Zoom (scroll wheel) + pan (middle-click drag or space+drag)
 - Grid coordinates toggle (show q,r labels on hexes)
 
 ### F2: Painting Tools
-- **Biome Brush** — paint biome type from palette
-- **Elevation Brush** — set elevation 0-9, with +/- increment mode
+- **Biome Brush** — paint biome type from palette. Painting on an empty (ghost) cell creates a new tile with the selected biome.
+- **Elevation Brush** — set elevation 0-9, with +/- increment mode. Painting on an empty cell creates a new tile.
 - **Resource Placer** — click hex → add resource (type dropdown, position auto-randomized within hex)
 - **Structure Placer** — place structures from a configurable list (initially matching WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch). List defined once in editor config, easy to update as game adds structures.
 - **Anomaly Marker** — place anomaly points with string ID
@@ -210,6 +212,8 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 **AC8: Unsaved changes protection** — Make changes to a map without saving, attempt to close/refresh the browser tab → browser warns about unsaved changes. Visual indicator (e.g., asterisk) visible while changes are pending. Save → indicator clears.
 
 **AC9: Import validation** — Load a malformed JSON file (missing tiles, invalid structure) → editor shows clear error message, does not crash, does not load partial data. Load a malformed .tres file → editor shows clear error, does not crash.
+
+**AC10: Map expansion** — Given an existing map, when hovering the canvas near map edges, then faint ghost hex outlines are visible at empty adjacent positions. When painting (biome brush or any tool) on a ghost cell, a new tile is created at that position and the ghost grid updates to include the new tile's empty neighbors.
 
 ## 10. Priority
 

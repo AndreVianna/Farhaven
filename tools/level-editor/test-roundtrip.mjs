@@ -1,59 +1,20 @@
 /**
  * Offline round-trip test for TresParser.
- * Extracts the parser from index.html and tests against all .tres files.
+ * Tests against all .tres files in the project.
  * Run: node tools/level-editor/test-roundtrip.mjs
  */
+
+// DOM mocks — imported first so globalThis.document/window exist before any other module evaluates
+import './test-dom-mocks.mjs';
+
 import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { TresParser } from './js/tres-parser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '..', '..');
-
-// Extract and eval the JS from index.html
-const html = readFileSync(join(__dirname, 'index.html'), 'utf-8');
-const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-if (!scriptMatch) {
-  console.error('Could not extract script from index.html');
-  process.exit(1);
-}
-
-// We need to eval in a context that has document and window stubs
-const mockDocument = {
-  querySelectorAll: () => [],
-  getElementById: () => ({ addEventListener: () => {}, classList: { add: () => {}, remove: () => {} } }),
-  activeElement: null,
-  addEventListener: () => {},
-  createElement: () => ({ click: () => {} }),
-  body: { appendChild: () => {}, removeChild: () => {} },
-};
-const mockWindow = {
-  addEventListener: () => {},
-  showDirectoryPicker: undefined,
-};
-
-// Create a function scope with mocks
-const script = scriptMatch[1];
-const wrappedScript = `
-  const document = mockDocument;
-  const window = mockWindow;
-  const URL = { createObjectURL: () => '', revokeObjectURL: () => {} };
-  ${script}
-  return { TresParser, TresFile };
-`;
-
-let TresParser, TresFile;
-try {
-  const fn = new Function('mockDocument', 'mockWindow', wrappedScript);
-  const result = fn(mockDocument, mockWindow);
-  TresParser = result.TresParser;
-  TresFile = result.TresFile;
-} catch (err) {
-  console.error('Failed to eval parser:', err.message);
-  process.exit(1);
-}
 
 // Test all .tres files
 const dirs = [

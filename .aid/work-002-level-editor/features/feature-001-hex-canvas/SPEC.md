@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F1 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: hexCorners formula, biome type note, rotation type, zoom sign, color_variations note, grid toggle AC | /aid-specify review |
+| 2026-04-04 | Added ghost grid rendering and empty-cell hover/interaction | code review |
 
 ## Source
 
@@ -37,6 +38,9 @@ Must
 - [ ] Given a canvas, when middle-click-dragging or space+dragging, then the canvas pans
 - [ ] Given a hex on the canvas, when hovering over it, then a tooltip displays coordinates (q,r), biome name, elevation, resource list, and structure (if any)
 - [ ] Given the coordinate labels toggle enabled, when viewing the canvas, then each hex displays its "q,r" label at center
+- [ ] Given a loaded map, when rendered, then all empty hex positions adjacent to existing tiles are shown as faint ghost outlines
+- [ ] Given a ghost hex, when hovering over it, then it highlights and shows a tooltip with coordinates
+- [ ] Given a ghost hex, when a painting tool is used on it, then a new tile is created and the ghost grid updates to include the new tile's empty neighbors
 
 ---
 
@@ -196,6 +200,7 @@ class HexCanvas {
   drawSelection(q, r)           // draw highlight border on selected hex
   drawHoverHighlight(q, r)      // draw subtle highlight on hovered hex
   drawCoordinateLabel(q, r)     // draw "q,r" text at hex center (when showCoordinates enabled)
+  drawGhostHex(q, r)            // draw faint outline for empty adjacent position
   drawSpawnMarker(q, r)         // draw spawn indicator icon/marker
   drawResourceIndicator(q, r, count) // draw resource count badge on hex
   drawStructureIcon(q, r, type) // draw structure indicator on hex
@@ -224,7 +229,9 @@ class HexCanvas {
 
 **Elevation brightness adjustment:** For a base biome color RGB, multiply each channel by `(1 + elevation * 0.05)`, clamped to 255. Elevation 0 = base color, elevation 9 = 45% brighter.
 
-**Cliff edge rendering:** For each of the 6 edges of a hex, check the neighbor. If the neighbor exists and `|tile.elevation - neighbor.elevation| >= 2`, draw that edge segment with a 3px wide stroke in `#8B4513` (brown) to indicate a cliff.
+**Cliff edge rendering:** For each of the 6 edges of a hex, check the neighbor. If the neighbor exists and `|tile.elevation - neighbor.elevation| >= 2`, draw that edge segment with a 3px wide stroke in `#8B4513` (brown) to indicate a cliff. Edge-to-neighbor mapping for flat-top hexes with corners at 0°,60°,...,300° clockwise: edge `i` → `DIRECTIONS[(6-i) % 6]`, i.e. lookup `[0, 5, 4, 3, 2, 1]`.
+
+**Ghost grid rendering:** After rendering all existing tiles, compute the set of empty positions adjacent to any existing tile. For each ghost position, draw a faint hex outline (`rgba(255,255,255,0.08)` fill with `rgba(255,255,255,0.15)` 1px stroke). Ghost hexes participate in hover detection and tool interactions — painting on a ghost cell creates a real tile. The ghost set is recomputed on each render (it depends on the current tile set, which changes as tiles are added/removed).
 
 **Tooltip:** A `<div>` element positioned near the cursor (offset +15px x, +15px y). Updated on `onMouseMove` when `hoveredHex` changes. Contents:
 
@@ -242,8 +249,8 @@ Hidden when cursor leaves the canvas.
 ### Feature Flow
 
 1. **Initialization:** `HexCanvas.init()` attaches mouse/wheel/resize listeners to the canvas. Subscribes to `hexGrid.onChange` to call `requestRender()`.
-2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, and optionally `drawCoordinateLabel`. After all tiles, draws selection highlight and spawn marker. Finally draws the tooltip div if a hex is hovered.
-3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex`, positions the tooltip div, populates tooltip content from `grid.getTile(q, r)`, and calls `requestRender()` for hover highlight.
+2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, then: (a) computes the ghost set — all empty positions adjacent to existing tiles, (b) draws ghost hex outlines for each position in the ghost set, (c) iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, and optionally `drawCoordinateLabel`, (d) draws selection highlight, spawn marker, hover highlight. Finally draws the tooltip div if a hex is hovered.
+3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex`, positions the tooltip div, populates tooltip content from `grid.getTile(q, r)` (for real tiles) or minimal "(q,r) — empty" for ghost cells, and calls `requestRender()` for hover highlight. Ghost cells also highlight on hover.
 4. **Selection:** `onMouseDown` (left button, no space held) converts to hex, sets `selectedHex = { q, r }`, calls `requestRender()`. If a `toolManager` is set, forwards the event to the active tool.
 5. **Zoom:** `onWheel` adjusts `camera.zoom += event.deltaY * -0.001`, clamped to `[0.2, 3.0]`. Zoom is centered on the mouse cursor position: before zoom, record the world-space point under the cursor; after zoom, adjust `offsetX/Y` so that same world point stays under the cursor. Calls `requestRender()`.
 6. **Pan:** `onMouseDown` (middle button, or left button with space held) sets `isPanning = true`, records `panStart = { x: event.clientX, y: event.clientY }`. `onMouseMove` while panning: `camera.offsetX += dx`, `camera.offsetY += dy`, updates `panStart`, calls `requestRender()`. `onMouseUp` sets `isPanning = false`.

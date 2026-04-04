@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F2, F5 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: rotation type, AC range, prompt→modal, undo index, WALKABLE_STRUCTURES ref, JSON field clarification | /aid-specify review |
+| 2026-04-04 | Tools now work on ghost (empty) cells — BiomeBrush, ElevationBrush, FloodFill create new tiles | code review |
 
 ## Source
 
@@ -41,6 +42,8 @@ Must
 - [ ] Given anomaly marker tool, when clicking a hex, then an anomaly is placed with a string ID input
 - [ ] Given eraser tool, when clicking a hex with resources/structures, then they are removed but the hex remains
 - [ ] Given delete hex tool, when clicking a hex, then the hex is removed entirely from the map
+- [ ] Given biome brush, when painting on an empty (ghost) cell, then a new tile is created with the selected biome
+- [ ] Given elevation brush, when painting on an empty (ghost) cell, then a new tile is created with the target elevation
 
 ---
 

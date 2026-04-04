@@ -68,7 +68,7 @@ Build order:
 
 This is the visual payoff. After this delivery, the user can see a hex map rendered with correct biome colors, elevation overlays, cliff indicators, and can paint/edit it with all tools.
 
-**AC coverage:** AC7 (undo/redo), partial AC3 (authoring)
+**AC coverage:** AC7 (undo/redo), partial AC3 (authoring), AC10 (map expansion via ghost grid)
 
 #### Execution Graph
 
@@ -79,10 +79,13 @@ This is the visual payoff. After this delivery, the user can see a hex map rende
 | task-009 | task-008, task-004 |
 | task-010 | task-009 |
 | task-011 | task-008, task-009, task-010 |
+| task-011b | task-008, task-009 |
+
+task-011b (Ghost Grid & Empty-Cell Interaction) can run in parallel with task-011 since both depend on task-008/009/010 being complete.
 
 | Can Be Done In Parallel |
 |------------------------|
-| (none — linear chain) |
+| task-011, task-011b |
 
 ### delivery-003: Data Editors — Resource + Biome
 
