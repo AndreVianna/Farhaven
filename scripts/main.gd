@@ -62,6 +62,16 @@ func _wire_systems() -> void:
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
+	# Wire SurvivalSystem signals
+	var survival: Node = player.get_node_or_null("SurvivalSystem")
+	if survival != null:
+		# Stat bars wiring: SurvivalSystem.stat_changed → HUD.update_stat
+		survival.stat_changed.connect(hud.update_stat)
+		# GroundItemRenderer wiring
+		var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
+		if ground_renderer != null and ground_renderer.has_method("connect_survival"):
+			ground_renderer.connect_survival(survival)
+
 	# Wire DayNightCycle signals to HUD day counter
 	DayNightCycle.day_started.connect(func() -> void:
 		hud.update_day(DayNightCycle.day_count)

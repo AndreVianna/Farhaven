@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://d4grnditscn30"]
+
+[ext_resource type="Script" path="res://scripts/survival/ground_item_renderer.gd" id="1_script"]
+
+[node name="GroundItemRenderer" type="Node3D"]
+script = ExtResource("1_script")
