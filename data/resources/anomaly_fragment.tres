@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"anomaly_fragment"
+display_name = "Anomaly Fragment"
+gather_time = 3.0
+gather_amount = 1
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 99
+category = &"resource"
+catalog_entry = &""
+catalog_category = &"anomalies"
+placeholder_mesh_type = &"octahedron"
+placeholder_params = { "radius": 0.4 }
+placeholder_color = Color(0.7, 0.3, 0.9, 1.0)
+placeholder_depleted_type = &"octahedron"
+placeholder_depleted_params = { "radius": 0.4 }
+placeholder_depleted_color = Color(0.7, 0.3, 0.9, 1.0)

@@ -44,9 +44,8 @@ func test_starting_tool_pickaxe_empty() -> void:
 
 # --- item_config coverage ---
 
-func test_item_config_has_all_resources() -> void:
-	for name in [&"wood", &"stone", &"berries", &"toxic_berries", &"fiber", &"ore", &"crystal", &"meat"]:
-		assert_bool(_Inventory.ITEM_CONFIG.has(name)).is_true()
+func test_item_config_has_meat() -> void:
+	assert_bool(_Inventory.ITEM_CONFIG.has(&"meat")).is_true()
 
 
 func test_item_config_has_all_tools() -> void:
@@ -54,10 +53,13 @@ func test_item_config_has_all_tools() -> void:
 		assert_bool(_Inventory.ITEM_CONFIG.has(name)).is_true()
 
 
-func test_item_config_resources_have_max_stack() -> void:
-	for name in [&"wood", &"stone", &"berries", &"toxic_berries", &"fiber", &"ore", &"crystal", &"meat"]:
-		var cfg: Dictionary = _Inventory.ITEM_CONFIG[name]
-		assert_bool(cfg.has("max_stack")).is_true()
+func test_resource_defs_have_max_stack() -> void:
+	for name in [&"wood", &"stone", &"berries", &"toxic_berries", &"fiber", &"ore", &"crystal"]:
+		var def = ResourceRegistry.get_def(name)
+		assert_bool(def != null).override_failure_message(
+			"ResourceRegistry must have def for %s" % name
+		).is_true()
+		assert_bool(def.max_stack > 0).is_true()
 
 
 func test_item_config_tools_have_tool_slot() -> void:

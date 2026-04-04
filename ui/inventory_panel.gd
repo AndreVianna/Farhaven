@@ -144,7 +144,7 @@ func _on_toxic_confirmed() -> void:
 func _is_toxic_flora(type: StringName) -> bool:
 	if _catalog == null:
 		return false
-	var entry_id: StringName = _CatalogScript.RESOURCE_TO_ENTRY.get(type, &"")
+	var entry_id: StringName = ResourceRegistry.get_def(type).catalog_entry if ResourceRegistry.has_def(type) else &""
 	if entry_id == &"":
 		return false
 	var entry = _catalog.get_entry(entry_id)

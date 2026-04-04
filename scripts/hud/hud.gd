@@ -1,6 +1,8 @@
 class_name HUD
 extends Control
 
+const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
+
 @onready var _stat_bars := $TopBar/StatBars
 @onready var _day_counter := $TopBar/DayCounter
 @onready var _floating_text := $FloatingTextContainer
@@ -11,8 +13,11 @@ extends Control
 @onready var _scanner_button: Button = $BottomBar/ScannerButton
 @onready var _inventory_panel = $InventoryPanel  # InventoryPanel
 @onready var _catalog_panel = $CatalogPanel  # CatalogPanel
+@onready var _crafting_panel = $CraftingPanel  # CraftingPanel
 
 var _panels: Array = []
+var _craft_flash: ColorRect = null
+var _gather_sound: Node = null  # GatherSound (set via connect_sound)
 
 
 func _ready() -> void:
@@ -20,15 +25,20 @@ func _ready() -> void:
 	_craft_button.hide()
 	_inventory_button.pressed.connect(_inventory_panel.toggle)
 	_scanner_button.pressed.connect(_catalog_panel.toggle)
-	_panels = [_inventory_panel, _catalog_panel]
+	_craft_button.pressed.connect(_crafting_panel.toggle)
+	_panels = [_inventory_panel, _catalog_panel, _crafting_panel]
 	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
 	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
+	_crafting_panel.panel_opened.connect(_on_panel_opened.bind(_crafting_panel))
+	# Craft flash overlay (fullscreen, on top)
+	_craft_flash = _CraftFlash.new()
+	add_child(_craft_flash)
 
 
 # --- Placement label API (called by BuildingSystem feature-009) ---
 
 func show_placement_label(structure_type: StringName) -> void:
-	_placement_label.text = "TAP TO PLACE %s" % structure_type.to_upper()
+	_placement_label.text = "TAP TO PLACE %s" % String(structure_type).to_upper()
 	_placement_label.show()
 
 
@@ -76,6 +86,91 @@ func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 
 func connect_catalog(cat) -> void:
 	_catalog_panel.set_catalog(cat)
+
+
+# --- Crafting integration ---
+
+func connect_crafting(crafting_system: Node, inv) -> void:
+	_crafting_panel.set_crafting_system(crafting_system)
+	_crafting_panel.set_inventory(inv)
+	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
+	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
+	crafting_system.craft_completed.connect(_on_craft_completed)
+	# Show craft button immediately if pre-discovered recipes exist
+	if not crafting_system.get_discovered_recipes().is_empty():
+		_craft_button.visible = true
+
+
+func _on_workbench_proximity_changed(_near: bool) -> void:
+	# Craft button visible whenever recipes are discovered (not just near workbench)
+	pass
+
+
+func _on_recipe_discovered(recipe_name: StringName) -> void:
+	_craft_button.visible = true
+	var display_name: String = String(recipe_name).replace("_", " ").capitalize()
+	show_notification("New recipe: %s!" % display_name)
+
+
+func _on_craft_completed(recipe_name: StringName) -> void:
+	var display_name: String = String(recipe_name).replace("_", " ").capitalize()
+	show_notification("Crafted %s!" % display_name)
+	# Flash + sound feedback
+	if _craft_flash != null:
+		_craft_flash.flash()
+	if _gather_sound != null and _gather_sound.has_method("play_craft_success"):
+		_gather_sound.play_craft_success()
+
+
+# --- Auto-gather feedback integration ---
+
+func connect_auto_interaction(auto_interaction: Node) -> void:
+	auto_interaction.auto_gather_completed.connect(_on_auto_gather_completed)
+	auto_interaction.auto_gather_failed.connect(_on_auto_gather_failed)
+	auto_interaction.auto_defend_triggered.connect(_on_auto_defend_triggered)
+
+
+func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
+	var display_name: String = String(resource_type).replace("_", " ").capitalize()
+	var text: String = "+%d %s" % [amount, display_name]
+	var player: Node = _get_player()
+	if player:
+		show_text(player.position, text, Color.GREEN)
+	# Sound hook
+	if _gather_sound != null and _gather_sound.has_method("play_gather_ding"):
+		_gather_sound.play_gather_ding()
+
+
+func _on_auto_gather_failed(_coords: Vector2i, reason: StringName) -> void:
+	var player: Node = _get_player()
+	var pos: Vector3 = player.position if player else Vector3.ZERO
+	if reason == &"inventory_full":
+		show_text(pos, "INVENTORY FULL", Color.RED)
+	elif reason == &"tool_gated":
+		show_text(pos, "REQUIRES TOOL", Color.RED)
+
+
+func _on_auto_defend_triggered(_fauna_id: int, damage: int) -> void:
+	# Stub: show damage at player position until fauna positions are available.
+	var player: Node = _get_player()
+	if player:
+		show_text(player.position, "-%d" % damage, Color.RED)
+
+
+func _get_player() -> Node:
+	# Walk up to find the Main node, then locate Player
+	var main: Node = get_parent()  # CanvasLayer "HUD"
+	if main:
+		main = main.get_parent()  # Main node
+	if main:
+		return main.get_node_or_null("World/Player")
+	return null
+
+
+# --- Sound integration ---
+
+func connect_sound(sound_node: Node) -> void:
+	_gather_sound = sound_node
 
 
 # --- Mutual exclusion: closing other panels when one opens ---

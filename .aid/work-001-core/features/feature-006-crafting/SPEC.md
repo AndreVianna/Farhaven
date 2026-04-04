@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F4, §9 AC4 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
+| 2026-04-03 | Review fixes: document pre_discovered and requires_workbench fields (MVP simplification) | /aid-specify review |
 
 ## Source
 
@@ -15,7 +16,9 @@
 
 ## Description
 
-Crafting requires a Workbench structure. Recipes are discovered progressively when the player gathers a new material type. Recipes with sufficient materials are selectable; insufficient recipes are greyed out. Crafting consumes materials and produces tools in the player's tool slots. MVP recipes: Stone Axe (2 Wood + 1 Stone), Stone Pickaxe (3 Wood + 2 Stone).
+Crafting system with recipe discovery and workbench proximity checks. Recipes with sufficient materials are selectable; insufficient recipes are greyed out. Crafting consumes materials and produces tools in the player's tool slots. MVP recipes: Stone Axe (2 Wood + 1 Stone), Stone Pickaxe (3 Wood + 2 Stone).
+
+**MVP simplification (implemented):** Both MVP recipes have `pre_discovered: true` (available at startup, no discovery trigger needed) and `requires_workbench: false` (can be crafted anywhere). The Workbench proximity gate and item-triggered discovery are implemented in the crafting system but not active for current recipes — they will become relevant when post-MVP recipes are added that require a Workbench and are discovered through gathering.
 
 ## User Stories
 
@@ -92,9 +95,7 @@ material is consumed.
 
 #### Workbench Proximity — Cross-Feature Dependency
 
-Crafting requires a Workbench on an adjacent tile. **This feature does NOT own
-Workbench placement** — feature-009 (building) handles that via the Build button.
-Crafting performs a read-only proximity check:
+Crafting can optionally require a Workbench on an adjacent tile (per-recipe `requires_workbench` flag). **This feature does NOT own Workbench placement** — feature-009 (building) handles that via the Build button. Crafting performs a read-only proximity check. **Note:** Both MVP recipes have `requires_workbench: false`, so this gate is inactive until post-MVP recipes are added.
 
 ```gdscript
 func is_near_workbench(player_tile: Vector2i) -> bool:

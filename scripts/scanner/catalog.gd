@@ -10,16 +10,6 @@ signal entry_cataloged(entry_id: StringName, category: int)
 signal entry_encountered(entry_id: StringName, label: String)
 signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: int)
 
-const RESOURCE_TO_ENTRY: Dictionary = {
-	&"wood":          &"wood_tree",
-	&"berries":       &"berry_bush",
-	&"toxic_berries": &"toxic_berry_bush",
-	&"fiber":         &"fiber_grass",
-	&"stone":         &"stone_deposit",
-	&"ore":           &"iron_deposit",
-	&"crystal":       &"crystal_cluster",
-}
-
 var _knowledge: Dictionary = {}           # StringName → KnowledgeState
 var _encounter_labels: Dictionary = {}    # StringName → String ("Hostile" or "Shy")
 var _all_entries: Dictionary = {}         # StringName → CatalogEntry
@@ -158,7 +148,7 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 
 	# Check resource nodes (flora + mineral)
 	for node in tile.resource_nodes:
-		var entry_id: StringName = RESOURCE_TO_ENTRY.get(node.type, &"")
+		var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
 		if entry_id == &"":
 			continue
 		if not is_cataloged(entry_id) and _all_entries.has(entry_id):

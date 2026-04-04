@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash([ -f \".aid/knowledge/$f\" ])",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)"
+    ]
+  }
+}

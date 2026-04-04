@@ -19,6 +19,7 @@
 | 2026-04-01 | [PIVOT] Joystick-only movement. Tap-to-move removed. Continuous position. current_tile derived. A* pathfinder removed (fauna uses it in F-010). | /design-pivot |
 | 2026-04-01 | C3: Camera offset updated to Vector3(0, 12, 8) for HEX_SIZE=3.0. C4: move_speed default 5.0 units/sec (deliberate exploration pace, not tripled). I2: Touch target estimate marked [TUNING_REQUIRED]. I3: Jump arc peak now proportional to gap_height × ELEVATION_STEP, marked [TUNING_REQUIRED]. I8: Snap tween updated to ~0.2s, marked [TUNING_REQUIRED]. I10: Flow diagram labels updated (TAP = no-op path, SCAN = Outcome 1, JOYSTICK = Outcome 2). | /pivot-cascade |
 | 2026-04-02 | Scan redesign: removed scan hold input classification, scan_hold signals, scan_rejected fallback. Input is now single-outcome: TAP (no-op) or JOYSTICK. Scanning is proximity-based (feature-003 owns entirely). | /scan-redesign-apply |
+| 2026-04-03 | Review fixes: signal names (tap_tile, joystick_started), move_speed 4.0, orphan pathfinder note | /aid-specify review |
 
 ## Source
 
@@ -66,7 +67,7 @@ Adds player position (current tile coordinates) to save data.
 |----------|------|-------------|
 | `current_tile` | `Vector2i` | Axial coords of tile the player is on — **derived** from `HexMath.world_to_axial(position)`, updated when hex boundary crossed |
 | `move_state` | `MoveState` | Current movement mode |
-| `move_speed` | `float` | World units/sec — default `5.0` (exported, tunable). Calibrated for HEX_SIZE=3.0 as a deliberate exploration pace (NOT tripled from a HEX_SIZE=1.0 baseline — slower crossing feels right for the curiosity/story genre). |
+| `move_speed` | `float` | World units/sec — default `4.0` (exported, tunable). Tuned down from initial 5.0 during implementation for better exploration pacing at HEX_SIZE=3.0. |
 | `facing_direction` | `Vector2` | Normalized, for character orientation |
 
 **[PIVOT] Removed:** `target_tile`, `move_path` — no pathfinding. Position is continuous Vector3 on the Node3D. `current_tile` is computed, not set directly.
@@ -81,7 +82,7 @@ enum MoveState { IDLE, WALKING, JUMPING }
 - `WALKING` — joystick held, continuous movement frame-by-frame
 - `JUMPING` — auto-jump/drop in progress (~0.2-0.3s). Joystick input buffered, movement resumes on land.
 
-**[PIVOT] Removed:** `PATHFINDING` — no tap-to-move, no A* pathfinding for the player.
+**[PIVOT] Removed:** `PATHFINDING` — no tap-to-move, no A* pathfinding for the player. **Note:** `player_pathfinder.gd` still exists in the codebase as an orphan — it is not referenced by `player.gd`. It may be reused by FaunaManager (feature-010) for fauna A* pathfinding. Delete or repurpose during feature-010 implementation.
 **[PIVOT] Added:** `JUMPING` — triggered by 2-3 elevation difference at tile boundary.
 
 #### Movement Architecture: Node3D + Continuous Position
@@ -179,7 +180,7 @@ Touch DOWN received
   ├─ NO-OP PATH: TAP (interaction — NOT movement)
   │     Touch UP before 300ms AND drag distance < 20px
   │     → In delivery-001: no-op on world (no interactable objects yet)
-  │     → Future: emit tap_world(coords: Vector2i) for building placement,
+  │     → Future: emit tap_tile(coords: Vector2i) for building placement,
   │       object inspection, etc.
   │     → UI buttons: consumed by Godot _gui_input before reaching player_input
   │
@@ -222,7 +223,7 @@ Touch DOWN + UP (duration < 300ms, drag < 20px)
   ├─ Future deliveries:
   │     Screen coords → Camera3D.project_position() → world_pos
   │     HexGrid.world_to_axial(world_pos) → coords
-  │     Emit tap_world(coords: Vector2i)
+  │     Emit tap_tile(coords: Vector2i)
   │     → feature-009 (building): place structure on tapped tile
   │     → future: inspect object, select target
   │
@@ -376,8 +377,8 @@ joystick_overlay.gd                     player_input.gd
   signal joystick_released()        ──►
 
 player_input.gd                         player.gd (movement)
-  signal tap_world(coords: Vector2i)         ──►  no-op in delivery-001 (future: building, inspect)
-  signal joystick_start(dir: Vector2)        ──►  begin walking
+  signal tap_tile(coords: Vector2i)           ──►  no-op in delivery-001 (future: building, inspect)
+  signal joystick_started(direction: Vector2) ──►  begin walking
   signal joystick_move(dir: Vector2, m: float) ──►  continue walking
   signal joystick_stop()                     ──►  snap to tile center, IDLE
 

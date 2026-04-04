@@ -59,9 +59,10 @@ DayNightCycle from delivery-004), not on each other.
 
 **Scope:**
 - `scripts/building/building_system.gd` — Node (child of Player):
-  - `structure_config` data: 5 structures with recipes, `blocks_movement`, effects
-    (workbench 5W+3S blocking, storage_chest 8W+4S blocking, shelter 10W+5S+3F walkable,
-    wall 3W blocking, torch 2W+1F walkable)
+  - `structure_config` data: 6 structures with recipes, `blocks_movement`, effects.
+    Only Wall blocks movement — all others are in WALKABLE_STRUCTURES:
+    (workbench 5W+3S walkable, storage_chest 8W+4S walkable, shelter 10W+5S+3F walkable,
+    campfire 3W+2F walkable, wall 3W blocking, torch 2W+1F walkable)
   - Placement validation: adjacent, passable, no existing structure, sufficient materials
   - On valid placement: `Inventory.remove_item` per ingredient,
     `HexGrid.get_tile(coords).structure = type`, emit `HexGrid.structure_placed`
@@ -72,14 +73,14 @@ DayNightCycle from delivery-004), not on each other.
 - `data/structure_config.tres` (or static Dictionary)
 
 **Criteria:**
-- [ ] All 5 structure recipes correct (values from SPEC)
+- [ ] All 6 structure recipes correct (values from SPEC, including campfire)
 - [ ] Placement rejects: occupied, non-adjacent, water/cliff, insufficient materials
 - [ ] Materials consumed on successful placement
 - [ ] `structure_placed` emitted with correct coords + type
 - [ ] `structure_build_failed` emitted with reason on rejection
 - [ ] Storage Chest placement calls `Inventory.expand(12)` — inventory grows to 24 slots
-- [ ] Shelter `blocks_movement: false`, Torch `blocks_movement: false`
-- [ ] Workbench, Storage Chest, Wall `blocks_movement: true`
+- [ ] Only Wall has `blocks_movement: true`
+- [ ] All others (workbench, storage_chest, shelter, campfire, torch) in WALKABLE_STRUCTURES
 - [ ] Unit tests for all validation paths
 - [ ] Build passes with zero warnings
 
@@ -121,19 +122,19 @@ DayNightCycle from delivery-004), not on each other.
 
 **Scope:**
 - `scripts/building/structure_renderer.gd` — Node3D
-- `scenes/world/structure_renderer.tscn` — 5 MultiMeshInstance3D children
-  (workbench, storage_chest, shelter, wall, torch)
+- `scenes/world/structure_renderer.tscn` — 6 MultiMeshInstance3D children
+  (workbench, storage_chest, shelter, campfire, wall, torch)
 - On `structure_placed`: add instance at tile world position + elevation Y
 - Placeholder meshes: colored boxes/shapes per structure type (<500 tris)
 - Fog-aware: structures on HIDDEN tiles not visible
 - Signal-driven (no per-frame queries)
 
 **Criteria:**
-- [ ] 5 MultiMeshInstance3D children (one per structure type)
+- [ ] 6 MultiMeshInstance3D children (one per structure type, including campfire)
 - [ ] Structures render at correct tile positions
 - [ ] Each type visually distinct (different color/shape)
 - [ ] Fog-aware (HIDDEN = not visible)
-- [ ] Draw calls: ~5
+- [ ] Draw calls: ~6
 - [ ] Signal-driven updates only
 - [ ] Build passes with zero warnings
 
@@ -149,7 +150,7 @@ DayNightCycle from delivery-004), not on each other.
 - `ui/build_panel.gd` — bottom drawer (~45% height)
 - `ui/structure_entry_ui.gd` — single row: icon + name + ingredients + BUILD button
 - BuildButton (64×64px) in HUD — always visible
-- 5 structure entries with recipe costs (owned/needed, green/red)
+- 6 structure entries with recipe costs (owned/needed, green/red)
 - Affordable = bright + active BUILD; unaffordable = greyed
 - BUILD tap → `building_system.enter_placement_mode(type)`, close panel
 - `panel_opened` signal for mutual exclusion (5-panel list)
@@ -158,7 +159,7 @@ DayNightCycle from delivery-004), not on each other.
 **Criteria:**
 - [ ] BuildButton always visible in HUD
 - [ ] Panel opens/closes on BuildButton tap
-- [ ] 5 structures with correct recipes displayed
+- [ ] 6 structures with correct recipes displayed
 - [ ] Affordable = bright/active, unaffordable = dimmed/greyed
 - [ ] BUILD tap enters placement mode and closes panel
 - [ ] `panel_opened` signal; mutual exclusion with other panels
@@ -179,8 +180,8 @@ DayNightCycle from delivery-004), not on each other.
   - Shelter → `_respawn_tile` updates in SurvivalSystem
   - Torch → `_torch_tiles` in DayNightCycle (NIGHT visibility extension)
   - Workbench → CraftButton visible (crafting proximity)
-  - Blocking structures (Workbench, Storage Chest, Wall) → AStar2D edges disconnected
-  - Walkable structures (Shelter, Torch) → player can stand on them
+  - Wall (only blocking structure) → AStar2D edges disconnected
+  - Walkable structures (Workbench, Storage Chest, Shelter, Campfire, Torch) → player can stand on them
 - AC6 full coverage: place on empty hex, reject occupied, shelter protection, wall redirects
 - Panel mutual exclusion with all 4 other panels
 - Placement mode cancel verified
@@ -290,7 +291,7 @@ Cumulative (adds to delivery-004):
   - BuildingSystem (Node) — NEW
   - FaunaManager (Node) — NEW
 - World
-  - StructureRenderer (Node3D) — NEW, ~5 MultiMesh for structure types
+  - StructureRenderer (Node3D) — NEW, ~6 MultiMesh for structure types
   - FaunaRenderer (Node3D) — NEW, 1 MultiMesh for fauna bodies
 
 ### Bootstrap Changes

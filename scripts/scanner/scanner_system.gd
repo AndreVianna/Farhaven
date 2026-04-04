@@ -193,7 +193,7 @@ func _check_passive_identification(coords: Vector2i) -> void:
 
 	# Check resource nodes (flora + mineral)
 	for node in tile.resource_nodes:
-		var entry_id: StringName = _Catalog.RESOURCE_TO_ENTRY.get(node.type, &"")
+		var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
 		if entry_id == &"":
 			continue
 		var state: int = _catalog.get_knowledge_state(entry_id)

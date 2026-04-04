@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F6, §9 AC6 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
+| 2026-04-03 | Review fixes: reconciled WALKABLE_STRUCTURES (workbench/storage_chest→walkable, campfire added), structure_destroyed signal acknowledged | /aid-specify review |
 
 ## Source
 
@@ -60,18 +61,23 @@ difference is origin (MapLoader vs BuildingSystem). See `docs/design/prop-taxono
 {
   &"workbench": {
     "recipe": { &"wood": 5, &"stone": 3 },
-    "blocks_movement": true,
+    "blocks_movement": false,   # Changed: walkable per WALKABLE_STRUCTURES in hex_grid.gd
     "effect": &"crafting_station",
   },
   &"storage_chest": {
     "recipe": { &"wood": 8, &"stone": 4 },
-    "blocks_movement": true,
+    "blocks_movement": false,   # Changed: walkable per WALKABLE_STRUCTURES in hex_grid.gd
     "effect": &"expand_inventory",
   },
   &"shelter": {
     "recipe": { &"wood": 10, &"stone": 5, &"fiber": 3 },
     "blocks_movement": false,
     "effect": &"respawn_point",
+  },
+  &"campfire": {
+    "recipe": { &"wood": 3, &"fiber": 2 },
+    "blocks_movement": false,
+    "effect": &"cooking_station",  # Future: enables cooking consumables
   },
   &"wall": {
     "recipe": { &"wood": 3 },
@@ -93,7 +99,7 @@ Lives in `data/structure_config.tres` or static Dictionary.
 - **One structure per tile** (`HexTile.structure: StringName`, feature-001).
 - **All Raw-tier recipes.** No Metal, no Furnace — MVP constraint.
 - **`blocks_movement: true`** → `HexGrid.is_passable()` returns false for that tile.
-  **Shelter and Torch are `blocks_movement: false`** — player can stand on them.
+  **Only Wall blocks movement.** All other structures (workbench, storage_chest, shelter, campfire, torch) are in `WALKABLE_STRUCTURES` — player can stand on them. This matches `hex_grid.gd`.
 - **Shelter protection:** Player on Shelter tile at night takes 0 fauna contact damage.
   Fauna still approach but deal no damage. (Feature-010 checks this.)
 - **Indestructible.** No HP, no damage, no destruction. Walls are permanent.

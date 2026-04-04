@@ -19,6 +19,7 @@
 | 2026-04-01 | [PIVOT] §5 F1: hand-crafted maps (MapLoader replaces WorldGenerator). Elevation 0-9, 3-tier traversal. §9 AC1+AC2 updated. | /design-pivot |
 | 2026-04-01 | C1+C6: HEX_SIZE=3.0 and ELEVATION_STEP=0.5 added to §5 F1 Spatial Constants. Player occupancy ~30% noted. C2: Cliff faces added as current scope. | /pivot-cascade |
 | 2026-04-02 | Scan redesign: F2 removed press-and-hold reference, F13 rewritten for proximity auto-scan + 3-state knowledge, AC2 removed scan hold criterion, AC11 rewritten for proximity scan + ENCOUNTERED state. §4 updated. | /scan-redesign-apply |
+| 2026-04-03 | Review fixes: Grassland resources (Grass→Wood), build order notes updated | /aid-specify review |
 
 ## 1. Objective
 
@@ -125,7 +126,7 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 ### F1. Hex Grid & World
 - **[PIVOT] Hand-crafted hex maps** loaded from JSON level files. Each chapter has a designed map (~200–300 tiles). MapLoader replaces WorldGenerator.
 - Biome types: Grassland, Forest, Rocky, Crash Site, Water
-  - **Grassland:** Open, safe starter biome. Resources: Grass, Berries, Fiber. No hazards.
+  - **Grassland:** Open, safe starter biome. Resources: Wood, Berries, Fiber. No hazards.
   - **Forest:** Dense, more wood. Resources: Wood, Fiber, Berries (thick trees tool-gated). Hazard: Thorns (damage).
   - **Rocky:** Stone, Ore, Crystals. Hazard: Rockslide (blocks path).
 - Natural progression curve: Crash Site → Grassland → Forest → Rocky
@@ -514,8 +515,8 @@ Each delivery that adds systems MUST document how it extends this sequence:
 - **Scanner/Catalog is P0 Core Loop** — it's the central mechanic, not a nice-to-have
 - Journal is P0 Story Hook — without it, Chapter 1 has no narrative cliffhanger
 - Auto-interaction simplifies F3 (no tap disambiguation) but adds proximity detection
-- Existing feature SPECs (001-008) need reconciliation with this redesign
-- Two new features (Scanner/Catalog, Journal) need decomposition and specification
+- Feature SPECs (001-012) reconciled with redesign. 14 functional requirements (F1-F14) across 12 feature SPECs.
+- Scanner/Catalog (F13) and Journal (F14) decomposed and specified.
 
 ## §13 Prop Taxonomy
 

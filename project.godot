@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+ResourceRegistry="*res://scripts/data/resource_registry.gd"
 HexGrid="*res://scripts/hex/hex_grid.gd"
 
 [debug]

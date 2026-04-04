@@ -96,11 +96,9 @@ func _apply_empty_style() -> void:
 
 func _apply_occupied_style() -> void:
 	_icon_rect.color = SLOT_COLORS.get(_type, Color(0.5, 0.5, 0.5))
-	if _quantity > 1:
-		_quantity_label.text = "x%d" % _quantity
-		_quantity_label.visible = true
-	else:
-		_quantity_label.visible = false
+	var display_name: String = (_type as String).replace("_", " ").capitalize()
+	_quantity_label.text = "%s (%d)" % [display_name, _quantity]
+	_quantity_label.visible = true
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.18, 0.18, 0.22, 0.85)
 	style.border_width_left = 2

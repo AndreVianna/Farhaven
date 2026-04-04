@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"loose_rock"
+display_name = "Loose Rock"
+gather_time = 1.0
+gather_amount = 2
+tool_required = &""
+respawn_time = 30.0
+yield_type = &"stone"
+tool_speed = {}
+max_stack = 99
+category = &"resource"
+catalog_entry = &"loose_rocks"
+catalog_category = &"minerals"
+placeholder_mesh_type = &"cube"
+placeholder_params = { "half_size": 0.25 }
+placeholder_color = Color(0.7, 0.65, 0.55, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = { "half_size": 0.08 }
+placeholder_depleted_color = Color(0.7, 0.65, 0.55, 1.0)

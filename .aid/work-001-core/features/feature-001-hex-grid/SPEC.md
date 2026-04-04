@@ -23,6 +23,7 @@
 | 2026-04-01 | [PIVOT] Renderer: 5 MultiMesh per biome → single ArrayMesh with per-vertex color blending. 1 draw call. Scatter props deferred. | /design-pivot |
 | 2026-04-01 | [PIVOT] Elevation 0-9 all biomes. 3-tier traversal (walk/jump/blocked). Hand-crafted maps via MapLoader (replaces WorldGenerator). | /design-pivot |
 | 2026-04-01 | C1: HEX_SIZE=3.0 added to Constants table. C6: ELEVATION_STEP=0.5 added to Constants table. C2: Cliff faces moved from deferred to current scope — flat vertical quads, higher tile biome color × 0.6, same ArrayMesh (0 extra draw calls). I7: Elevation lightening (+5%/level) marked [TUNING_REQUIRED]. I2: Touch pixel estimate marked [TUNING_REQUIRED] for HEX_SIZE=3.0. M3: Cliff faces noted as 0 extra draw calls. Fog of War range: transitioning to circular world-unit area [TUNING_REQUIRED]. | /pivot-cascade |
+| 2026-04-03 | Review fixes: HEX_SIZE/ELEVATION_STEP ownership notes, ResourceNode fields (offset, rotation_deg) added | /aid-specify review |
 
 ## Source
 
@@ -119,8 +120,11 @@ knows about them. No dual tracking, no leaked responsibilities.
 | `remaining` | `int` | Gathers left before depletion |
 | `max_amount` | `int` | For respawn reset |
 | `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` |
+| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn) |
+| `offset` | `Vector2` | Normalized -1 to 1, position relative to hex center |
+| `rotation_deg` | `float` | Degrees, converted to radians at render time |
 
-Feature-004 (auto-interaction) extends with `respawn_time: float`.
+`respawn_time` is set from `ResourceRegistry` during map load. `offset` and `rotation_deg` are set from map JSON (or randomized by MapLoader for string-form resources).
 
 #### Elevation
 
@@ -183,8 +187,8 @@ Map container and sole public API. All cross-feature interaction goes through He
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `HEX_SIZE` | `3.0` | World-space radius of one hex (center to corner). All spatial calculations derive from this constant. Drives `axial_to_world`, `world_to_axial`, camera calibration, and player scale. |
-| `ELEVATION_STEP` | `0.5` | World units of Y offset per elevation level. Total height range: 9 × 0.5 = 4.5 units. Drives cliff face heights, jump arc parameters, and vertical camera framing. |
+| `HEX_SIZE` | `3.0` | World-space radius of one hex (center to corner). All spatial calculations derive from this constant. Drives `axial_to_world`, `world_to_axial`, camera calibration, and player scale. **Note:** Lives on `HexMath` (not HexGrid) in the actual codebase — HexMath is the coordinate engine. |
+| `ELEVATION_STEP` | `0.5` | World units of Y offset per elevation level. Total height range: 9 × 0.5 = 4.5 units. Drives cliff face heights, jump arc parameters, and vertical camera framing. **Note:** In code, `player.gd` uses `ELEVATION_SCALE` (same value, different name). |
 | `WALK_MAX_DIFF` | `1` | Walk: smooth mesh, normal movement |
 | `JUMP_MAX_DIFF` | `3` | Jump/Drop: gap, auto-animation. 4+ = BLOCKED (cliff) |
 

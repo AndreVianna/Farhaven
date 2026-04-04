@@ -86,7 +86,7 @@ func load_map(path: String) -> bool:
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), 0, 9)
 		tile.fog_state = _HexTile.FogState.HIDDEN
-		tile.structure = &""
+		tile.structure = StringName(td.get("structure", ""))
 		tile.anomaly = StringName(td.get("anomaly", ""))
 
 		var rn_list: Array = []
@@ -118,12 +118,14 @@ func load_map(path: String) -> bool:
 	return true
 
 
+
 func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 	var rn: Resource = _ResourceNode.new()
 	rn.type = type
 	rn.remaining = 3
 	rn.max_amount = 3
-	rn.tool_required = &""
+	rn.tool_required = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
+	rn.respawn_time = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
 
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:
@@ -131,7 +133,6 @@ func _make_resource_node(type: StringName, biome_int: int) -> Resource:
 			if StringName(entry.get("type", "")) == type:
 				rn.max_amount = int(entry.get("max_amount", 3))
 				rn.remaining = rn.max_amount
-				rn.tool_required = StringName(entry.get("tool_required", ""))
 				break
 	return rn
 

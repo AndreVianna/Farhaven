@@ -10,6 +10,7 @@
 | 2026-04-01 | I5: Fly-to-player animation updated to ~0.5s, marked [TUNING_REQUIRED] for HEX_SIZE=3.0 scale. M2: Resource offset specified as ±15% of HEX_SIZE radius. Range note: auto-gather area transitioning to circular world-unit [TUNING_REQUIRED]. | /pivot-cascade |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 | 2026-04-02 | Scan redesign: auto-defend gate changed from CATALOGED to ENCOUNTERED (hostile fauna). Auto-gather gate remains CATALOGED. Catalog query updated to `get_knowledge_state`. | /scan-redesign-apply |
+| 2026-04-03 | Review fixes: proximity model now world-space radius (GATHER_RADIUS=0.75), signal signature updates, resource config via ResourceRegistry | /aid-specify review |
 
 ## Source
 
@@ -511,7 +512,9 @@ data/
 
 ```
 HexGrid signals                              auto_interaction_system.gd
-  tile_entered(coords)                   ──►  check current + adjacent for auto-gather + auto-pickup
+  tile_entered(coords)                   ──►  triggers proximity check (world-space radius, not 7-tile)
+  # IMPLEMENTATION NOTE: actual proximity uses GATHER_RADIUS = 0.75 world units
+  # with _process throttle (PROXIMITY_CHECK_INTERVAL = 0.1s), not tile_entered alone.
 
 FaunaManager (feature-010)                   auto_interaction_system.gd
   fauna_moved(id, from, to)              ──►  check if now adjacent for auto-defend

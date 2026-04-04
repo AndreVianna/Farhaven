@@ -12,14 +12,7 @@ signal item_used(type: StringName)
 signal tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)
 
 const ITEM_CONFIG: Dictionary = {
-	# Resources
-	&"wood":           { "max_stack": 99, "category": &"resource" },
-	&"stone":          { "max_stack": 99, "category": &"resource" },
-	&"berries":        { "max_stack": 20, "category": &"consumable" },
-	&"toxic_berries":  { "max_stack": 20, "category": &"consumable" },
-	&"fiber":          { "max_stack": 99, "category": &"resource" },
-	&"ore":            { "max_stack": 99, "category": &"resource" },
-	&"crystal":        { "max_stack": 50, "category": &"resource" },
+	# Non-resource items (meat is a fauna drop, not a gatherable resource)
 	&"meat":           { "max_stack": 20, "category": &"consumable" },
 	# Tools
 	&"stone_axe":      { "tool_slot": &"axe",      "category": &"tool" },
@@ -49,9 +42,13 @@ func _init() -> void:
 # --- Resource/Consumable API ---
 
 func add_item(type: StringName, amount: int = 1) -> int:
-	if not ITEM_CONFIG.has(type):
-		return 0
-	var cfg: Dictionary = ITEM_CONFIG[type]
+	var cfg: Dictionary = ITEM_CONFIG.get(type, {})
+	# Check ResourceRegistry as fallback for resource types
+	if cfg.is_empty():
+		var def = ResourceRegistry.get_def(type)
+		if def == null:
+			return 0
+		cfg = { "max_stack": def.max_stack, "category": def.category }
 	if cfg.has(&"tool_slot"):
 		# Tools must use set_tool — reject from resource slots
 		return 0
@@ -128,13 +125,17 @@ func get_slots() -> Array[Dictionary]:
 
 
 func is_full() -> bool:
-	if not ITEM_CONFIG.is_empty():
-		for slot in _slots:
-			if slot["type"] == &"":
+	for slot in _slots:
+		if slot["type"] == &"":
+			return false
+		# Check for partial stack — ITEM_CONFIG first, then ResourceRegistry
+		var cfg: Dictionary = ITEM_CONFIG.get(slot["type"], {})
+		if cfg.has("max_stack"):
+			if slot["quantity"] < cfg["max_stack"]:
 				return false
-			# Check for partial stack
-			var cfg: Dictionary = ITEM_CONFIG.get(slot["type"], {})
-			if cfg.has("max_stack") and slot["quantity"] < cfg["max_stack"]:
+		else:
+			var def = ResourceRegistry.get_def(slot["type"])
+			if def != null and slot["quantity"] < def.max_stack:
 				return false
 	return true
 

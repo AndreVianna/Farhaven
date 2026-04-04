@@ -91,7 +91,8 @@ task-023 depends on everything.
 **Source:** feature-004 → Feature Flow (auto-gather)
 
 **Scope:**
-- On `tile_entered`: check current tile + 6 neighbors (7 tiles total)
+- On `tile_entered`: check current tile + 6 neighbors (7 tiles total).
+  **Implementation note:** Actual implementation uses world-space radius (`GATHER_RADIUS = 0.75`) with `_process` throttle (`PROXIMITY_CHECK_INTERVAL = 0.1s`) instead of pure tile-based checks. The 7-tile conceptual model is the same but the proximity geometry is circular, not hexagonal.
 - Catalog gate: `Catalog.is_cataloged(RESOURCE_TO_ENTRY[node.type])` (CATALOGED state required for auto-gather; flora/mineral go UNKNOWN→CATALOGED directly so this works)
 - Tool gate: `can_gather(node, Inventory)`
 - Candidate sorting: TOOL_PRIORITY desc, then nearest to player
@@ -128,8 +129,7 @@ task-023 depends on everything.
 
 **Scope:**
 - **Respawn queue** in `_process`:
-  - Tick `time_remaining` only when tile `fog_state != VISIBLE`
-  - Pause on VISIBLE, resume on REVEALED/HIDDEN
+  - Tick `time_remaining` always (fog-based pausing removed in implementation — world heals steadily regardless of player position)
   - On expire: `node.remaining = max_amount`, emit `HexGrid.resource_respawned`
     (HexGrid owns the canonical signal — ResourceRenderer listens there)
   - `respawn_time == 0` → never enters queue
@@ -146,8 +146,7 @@ task-023 depends on everything.
   - Pick up via `Inventory.add_item`, partial pickup, emit `ground_item_picked_up`
 
 **Criteria:**
-- [ ] Respawn timer ticks when REVEALED or HIDDEN
-- [ ] Respawn pauses when VISIBLE
+- [ ] Respawn timer always ticks (fog-based pausing removed)
 - [ ] Respawn triggers at time_remaining ≤ 0, resets to max_amount
 - [ ] `respawn_time == 0` → never enters queue
 - [ ] Auto-defend cooldown decrements, blocks when > 0
@@ -200,12 +199,12 @@ task-023 depends on everything.
 
 **Scope:**
 - `scripts/crafting/crafting_system.gd` — Node (child of Player):
-  - Recipe config: stone_axe (2W+1S, discovery_material=stone, tool_slot=axe),
-    stone_pickaxe (3W+2S, discovery_material=stone, tool_slot=pickaxe)
+  - Recipe config: stone_axe (2W+1S, discovery_material=stone, tool_slot=axe, pre_discovered=true, requires_workbench=false),
+    stone_pickaxe (3W+2S, discovery_material=stone, tool_slot=pickaxe, pre_discovered=true, requires_workbench=false)
   - `_discovered_recipes: Array[StringName]`
-  - Discovery: on `Inventory.item_added` → check discovery_material match → append,
-    emit `recipe_discovered`
-  - Craft action: validate workbench proximity → already-owned block → ingredient check →
+  - **MVP simplification:** Both recipes are `pre_discovered: true` (loaded at `_ready()`) and `requires_workbench: false` (craftable anywhere). Workbench gate and item-triggered discovery exist in code but are inactive for current recipes — they activate when post-MVP recipes are added.
+  - Discovery: `_load_pre_discovered()` at startup. For future recipes: `Inventory.item_added` → check discovery_material match → append, emit `recipe_discovered`
+  - Craft action: check `requires_workbench` flag → workbench proximity (if required) → already-owned block → ingredient check →
     consume → produce (`Inventory.set_tool`) → emit `craft_completed`
   - `is_near_workbench(player_tile)`: read-only check on 6 neighbors' `tile.structure`
   - `workbench_proximity_changed(near)` signal on tile_entered/exited/structure signals
@@ -239,14 +238,14 @@ task-023 depends on everything.
 - `ui/crafting_panel.gd` — open/close, recipe rendering, craft trigger
 - `ui/recipe_entry_ui.gd` — 3 states: affordable, unaffordable, already-owned
 - Ingredient display: owned/needed, green/red color coding
-- CraftButton (64×64px) in HUD — hidden by default, visible on
-  `workbench_proximity_changed(true)`
+- CraftButton (64×64px) in HUD — hidden by default, visible permanently after first
+  `recipe_discovered` signal (MVP: both recipes pre-discovered, so CraftButton shows at startup)
 - `panel_opened` for mutual exclusion (5-panel list)
 - Refreshes on `inventory_changed`, `craft_completed`, `recipe_discovered`
 
 **Criteria:**
 - [ ] CraftingPanel opens/closes on CraftButton tap
-- [ ] CraftButton visible only near Workbench, hidden by default
+- [ ] CraftButton visible after first recipe discovered (permanently), hidden by default
 - [ ] Recipe entries: affordable (bright/green/active), unaffordable (dim/red/grey),
       already-owned (dim/"Owned")
 - [ ] Ingredient owned/needed correct and color-coded
@@ -304,7 +303,7 @@ Integration tests verifying the complete core loop:
 - Tool gating round-trip: craft pickaxe → ore now auto-gatherable
 - Respawn: depleted off-screen → timer → resource restored
 - Stubs: no crash when FaunaManager / SurvivalSystem absent
-- CraftButton: hidden without workbench, visible with workbench (test fixture)
+- CraftButton: hidden by default, visible after recipe_discovered (MVP: pre-discovered at startup)
 - Panel mutual exclusion: Crafting + Inventory + Catalog
 - Fly-to-player visual fires and cleans up
 - Resource depletion → visual change in ResourceRenderer
@@ -316,7 +315,7 @@ Integration tests verifying the complete core loop:
 - [ ] Tool gating round-trip: craft pickaxe → ore auto-gatherable
 - [ ] Respawn: off-screen depleted → timer → restored
 - [ ] Stubs safe: no crash without FaunaManager / SurvivalSystem
-- [ ] CraftButton hidden/visible based on workbench proximity
+- [ ] CraftButton hidden/visible based on recipe_discovered signal
 - [ ] Panel mutual exclusion: 3 panels tested
 - [ ] Tests deterministic, clean setup/teardown
 - [ ] All tests pass
@@ -337,7 +336,7 @@ Cumulative (adds to delivery-002):
 - AutoInteractionSystem._ready() → connects to HexGrid.tile_entered for proximity checks
 - AutoInteractionSystem queries Catalog.is_cataloged() before any auto-gather
 - CraftingSystem._ready() → connects to Inventory.item_added for recipe discovery
-- CraftButton becomes visible when player is adjacent to workbench (workbench_proximity_changed signal)
+- CraftButton becomes visible on first `recipe_discovered` signal (permanently). MVP: both recipes pre-discovered at startup.
 
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
