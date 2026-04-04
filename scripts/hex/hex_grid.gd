@@ -6,7 +6,7 @@ extends Node
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 const WALK_MAX_DIFF: int = 1
 const JUMP_MAX_DIFF: int = 3
@@ -16,7 +16,8 @@ const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
 
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
-# Structures that do NOT block movement (walkable)
+# Legacy: Structures that do NOT block movement (walkable).
+# Kept for backward compat in load_save_data with old save format.
 const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
@@ -84,8 +85,9 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 		return TraversalType.BLOCKED
 	if tile_to.biome == _HexTile.Biome.WATER:
 		return TraversalType.BLOCKED
-	if tile_to.structure != &"":
-		if not (tile_to.structure as StringName) in WALKABLE_STRUCTURES:
+	# Check if any prop blocks movement
+	for prop in tile_to.props:
+		if prop.blocks_movement:
 			return TraversalType.BLOCKED
 	var diff: int = get_elevation_diff(from, to)
 	if diff <= WALK_MAX_DIFF:
@@ -166,13 +168,19 @@ func get_save_data() -> Dictionary:
 	var tiles_data: Array = []
 	for coords in _tiles:
 		var tile: Resource = _tiles[coords]
-		var resources_data: Array = []
-		for rn in tile.resource_nodes:
-			resources_data.append({
-				"type": String(rn.type),
-				"remaining": rn.remaining,
-				"max": rn.max_amount,
-				"tool": String(rn.tool_required),
+		var props_data: Array = []
+		for prop in tile.props:
+			props_data.append({
+				"type": String(prop.type),
+				"category": prop.category,
+				"sub_hex_q": prop.sub_hex.x,
+				"sub_hex_r": prop.sub_hex.y,
+				"remaining": prop.remaining,
+				"max_amount": prop.max_amount,
+				"tool_required": String(prop.tool_required),
+				"respawn_time": prop.respawn_time,
+				"rotation": prop.rotation_deg,
+				"blocks_movement": prop.blocks_movement,
 			})
 		tiles_data.append({
 			"tile_col": coords.x,
@@ -180,9 +188,7 @@ func get_save_data() -> Dictionary:
 			"biome": tile.biome,
 			"elevation": tile.elevation,
 			"fog": tile.fog_state,
-			"structure": String(tile.structure),
-			"anomaly": String(tile.anomaly),
-			"resources": resources_data,
+			"props": props_data,
 		})
 	return {
 		"seed": _seed,
@@ -206,15 +212,83 @@ func load_save_data(data: Dictionary) -> void:
 		tile.biome = td["biome"]
 		tile.elevation = td["elevation"]
 		tile.fog_state = td["fog"]
-		tile.structure = StringName(td.get("structure", ""))
-		tile.anomaly = StringName(td.get("anomaly", ""))
-		var rn_array: Array = []
-		for rd in td.get("resources", []):
-			var rn: Resource = _ResourceNode.new()
-			rn.type = StringName(rd["type"])
-			rn.remaining = rd["remaining"]
-			rn.max_amount = rd["max"]
-			rn.tool_required = StringName(rd["tool"])
-			rn_array.append(rn)
-		tile.resource_nodes = rn_array
+
+		if td.has("props"):
+			# New save format: unified props array
+			for pd in td["props"]:
+				var prop: Resource = _Prop.new()
+				prop.type = StringName(pd["type"])
+				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
+				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
+				prop.remaining = int(pd.get("remaining", 0))
+				prop.max_amount = int(pd.get("max_amount", 0))
+				prop.tool_required = StringName(pd.get("tool_required", ""))
+				prop.respawn_time = float(pd.get("respawn_time", 0.0))
+				prop.rotation_deg = float(pd.get("rotation", 0.0))
+				prop.blocks_movement = bool(pd.get("blocks_movement", false))
+				tile.props.append(prop)
+		else:
+			# Legacy save format: "resources" + "structure" + "anomaly"
+			for rd in td.get("resources", []):
+				var prop: Resource = _Prop.new()
+				prop.type = StringName(rd["type"])
+				prop.category = _Prop.Category.RESOURCE
+				prop.remaining = int(rd["remaining"])
+				prop.max_amount = int(rd["max"])
+				prop.tool_required = StringName(rd.get("tool", ""))
+				tile.props.append(prop)
+
+			var structure_str: String = td.get("structure", "")
+			if structure_str != "":
+				var sp: Resource = _Prop.new()
+				sp.type = StringName(structure_str)
+				sp.category = _Prop.Category.STRUCTURE
+				sp.sub_hex = Vector2i.ZERO
+				sp.blocks_movement = not (StringName(structure_str) in WALKABLE_STRUCTURES)
+				tile.props.append(sp)
+
+			var anomaly_str: String = td.get("anomaly", "")
+			if anomaly_str != "":
+				var ap: Resource = _Prop.new()
+				ap.type = StringName(anomaly_str)
+				ap.category = _Prop.Category.ANOMALY
+				ap.sub_hex = Vector2i.ZERO
+				tile.props.append(ap)
+
 		_tiles[coords] = tile
+
+
+# --- Prop helpers ---
+
+## Return all props of a given category on the tile at coords.
+func get_props_by_category(coords: Vector2i, category: int) -> Array:
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return []
+	var result: Array = []
+	for prop in tile.props:
+		if prop.category == category:
+			result.append(prop)
+	return result
+
+
+## Return true if the tile at coords has a structure prop of the given type.
+func has_structure(coords: Vector2i, type: StringName) -> bool:
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return false
+	for prop in tile.props:
+		if prop.category == _Prop.Category.STRUCTURE and prop.type == type:
+			return true
+	return false
+
+
+## Return the first anomaly prop on the tile at coords, or null.
+func get_anomaly(coords: Vector2i) -> Resource:
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return null
+	for prop in tile.props:
+		if prop.category == _Prop.Category.ANOMALY:
+			return prop
+	return null

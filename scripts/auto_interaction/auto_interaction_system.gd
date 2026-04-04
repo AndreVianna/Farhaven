@@ -7,10 +7,9 @@ class_name AutoInteractionSystem
 ## respawn queue, auto-defend stub, and auto-pickup stub.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Signals ---
@@ -129,7 +128,7 @@ func _check_gather_proximity() -> void:
 
 # --- Utility: can_gather ---
 
-## Returns true if the player can gather the given resource node.
+## Returns true if the player can gather the given resource prop.
 ## Bare-hands resources (tool_required == "") always pass.
 ## Tool-gated resources require an exact match in the corresponding inventory slot.
 func can_gather(node: Resource, inventory: RefCounted) -> bool:
@@ -190,27 +189,29 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 		# Tile center in world space
 		var tile_center_2d: Vector2 = _grid.axial_to_world(tile_coords)
 
-		for i in tile.resource_nodes.size():
-			var node: Resource = tile.resource_nodes[i]
-			if node.remaining <= 0:
+		for i in tile.props.size():
+			var prop: Resource = tile.props[i]
+			if prop.category != _Prop.Category.RESOURCE:
+				continue
+			if prop.remaining <= 0:
 				continue  # Depleted
 
 			# Catalog gate: must be CATALOGED
-			var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
+			var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
 			if entry_id == &"":
 				continue
 			if not _catalog.is_cataloged(entry_id):
 				continue
 
 			# Tool gate (silent skip — no signal for tool_gated)
-			if not can_gather(node, _inventory):
+			if not can_gather(prop, _inventory):
 				continue
 
-			# Compute world-space position of this resource node
-			var offset_world: Vector2 = _PropUtils.offset_to_world(node.offset, _HexMath.HEX_SIZE)
+			# Compute world-space position of this resource prop
+			var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
 			var resource_pos_xz: Vector2 = Vector2(
-				tile_center_2d.x + offset_world.x,
-				tile_center_2d.y + offset_world.y
+				tile_center_2d.x + sub_hex_offset.x,
+				tile_center_2d.y + sub_hex_offset.y
 			)
 
 			# World-space distance on XZ plane
@@ -218,11 +219,11 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if world_dist > GATHER_RADIUS:
 				continue  # Out of arm's reach
 
-			var priority: int = TOOL_PRIORITY.get(node.tool_required, 0)
+			var priority: int = TOOL_PRIORITY.get(prop.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
 				"resource_index": i,
-				"node": node,
+				"node": prop,
 				"priority": priority,
 				"distance": world_dist,
 			})
@@ -237,7 +238,7 @@ func _compare_candidates(a: Dictionary, b: Dictionary) -> bool:
 	return a["distance"] < b["distance"]
 
 
-## Begin gathering a specific resource node. Creates the tween timer.
+## Begin gathering a specific resource prop. Creates the tween timer.
 func _begin_gather(coords: Vector2i, resource_index: int, node: Resource) -> void:
 	_is_gathering = true
 	_gather_target_coords = coords
@@ -267,13 +268,13 @@ func _on_gather_tween_complete() -> void:
 	var index: int = _gather_target_index
 	_gather_tween = null
 
-	# Get the resource node
+	# Get the resource prop
 	var tile = _grid.get_tile(coords)
-	if tile == null or index < 0 or index >= tile.resource_nodes.size():
+	if tile == null or index < 0 or index >= tile.props.size():
 		_is_gathering = false
 		return
 
-	var node: Resource = tile.resource_nodes[index]
+	var node: Resource = tile.props[index]
 	var amount: int = ResourceRegistry.get_def(node.type).gather_amount if ResourceRegistry.has_def(node.type) else 1
 
 	# Resolve yield type (e.g. loose_rock yields stone)
@@ -321,8 +322,8 @@ func _tick_respawn_queue(delta: float) -> void:
 			var tile = _grid.get_tile(coords) if _grid != null else null
 			if tile != null:
 				var idx: int = entry["resource_index"]
-				if idx >= 0 and idx < tile.resource_nodes.size():
-					var node: Resource = tile.resource_nodes[idx]
+				if idx >= 0 and idx < tile.props.size():
+					var node: Resource = tile.props[idx]
 					node.remaining = node.max_amount
 					_grid.resource_respawned.emit(coords, node.type)
 			_respawn_queue.remove_at(i)

@@ -10,7 +10,7 @@ extends Node3D
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Constants ---
 
@@ -237,16 +237,15 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 	if tile == null:
 		return
 
-	for rn in tile.resource_nodes:
-		var pool_id: StringName = rn.type
-		if not _pools.has(pool_id):
-			continue
-		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
-
-	# Anomaly: rendered as a standalone prop at tile center
-	if tile.anomaly != &"":
-		_add_anomaly_instance(coords, tile, dimmed)
+	for prop in tile.props:
+		if prop.category == _Prop.Category.RESOURCE:
+			var pool_id: StringName = prop.type
+			if not _pools.has(pool_id):
+				continue
+			var is_depleted: bool = prop.remaining <= 0
+			_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
+		elif prop.category == _Prop.Category.ANOMALY:
+			_add_anomaly_instance(coords, tile, dimmed)
 
 
 func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
@@ -293,15 +292,15 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 	if idx >= MAX_INSTANCES:
 		return
 
-	# Position: tile center + resource offset + elevation
+	# Position: tile center + sub-hex offset + elevation
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	var elevation_y: float = 0.0
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 
-	var world_offset: Vector2 = _PropUtils.offset_to_world(rn.offset, HEX_SIZE)
-	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y + world_offset.y)
+	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
+	var pos := Vector3(world_2d.x + sub_hex_offset.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y + sub_hex_offset.y)
 
 	# Apply rotation
 	var xform := Transform3D.IDENTITY
@@ -383,12 +382,14 @@ func _rebuild_tile(coords: Vector2i) -> void:
 		return
 	var dimmed: bool = tile.fog_state == _HexTile.FogState.REVEALED
 	_remove_all_resources_at(coords)
-	for rn in tile.resource_nodes:
-		var pool_id: StringName = rn.type
+	for prop in tile.props:
+		if prop.category != _Prop.Category.RESOURCE:
+			continue
+		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue
-		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
+		var is_depleted: bool = prop.remaining <= 0
+		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
 
 
 func _update_pool_material(pool_id: StringName, dimmed: bool) -> void:

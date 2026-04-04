@@ -11,6 +11,7 @@ class_name ScannerSystem
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Scan duration per category (seconds) ---
 
@@ -191,32 +192,32 @@ func _check_passive_identification(coords: Vector2i) -> void:
 	if tile == null:
 		return
 
-	# Check resource nodes (flora + mineral)
-	for node in tile.resource_nodes:
-		var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
-		if entry_id == &"":
-			continue
-		var state: int = _catalog.get_knowledge_state(entry_id)
-		match state:
-			_Catalog.KnowledgeState.CATALOGED:
-				element_identified.emit(coords, entry_id)
-			_Catalog.KnowledgeState.ENCOUNTERED:
-				var label: String = _catalog.get_encounter_label(entry_id)
-				element_encountered.emit(coords, entry_id, label)
-			_Catalog.KnowledgeState.UNKNOWN:
-				var entry = _catalog.get_entry(entry_id)
-				var cat: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
-				element_unknown.emit(coords, entry_id, cat)
-
-	# Check anomaly
-	if tile.anomaly != &"":
-		var anomaly_id: StringName = tile.anomaly
-		var state: int = _catalog.get_knowledge_state(anomaly_id)
-		match state:
-			_Catalog.KnowledgeState.CATALOGED:
-				element_identified.emit(coords, anomaly_id)
-			_:
-				element_unknown.emit(coords, anomaly_id, _Catalog.CatalogCategory.ANOMALY)
+	for prop in tile.props:
+		if prop.category == _Prop.Category.RESOURCE:
+			# Check resource props (flora + mineral)
+			var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
+			if entry_id == &"":
+				continue
+			var state: int = _catalog.get_knowledge_state(entry_id)
+			match state:
+				_Catalog.KnowledgeState.CATALOGED:
+					element_identified.emit(coords, entry_id)
+				_Catalog.KnowledgeState.ENCOUNTERED:
+					var label: String = _catalog.get_encounter_label(entry_id)
+					element_encountered.emit(coords, entry_id, label)
+				_Catalog.KnowledgeState.UNKNOWN:
+					var entry = _catalog.get_entry(entry_id)
+					var cat: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+					element_unknown.emit(coords, entry_id, cat)
+		elif prop.category == _Prop.Category.ANOMALY:
+			# Check anomaly props
+			var anomaly_id: StringName = prop.type
+			var state: int = _catalog.get_knowledge_state(anomaly_id)
+			match state:
+				_Catalog.KnowledgeState.CATALOGED:
+					element_identified.emit(coords, anomaly_id)
+				_:
+					element_unknown.emit(coords, anomaly_id, _Catalog.CatalogCategory.ANOMALY)
 
 
 # --- Public accessors ---
