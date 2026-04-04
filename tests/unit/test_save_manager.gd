@@ -120,13 +120,19 @@ func test_load_missing_file_returns_false() -> void:
 
 # --- Missing systems at runtime ---
 
-func test_save_with_no_systems_produces_empty_dict() -> void:
+func test_save_with_no_scene_systems_skips_player_children() -> void:
+	# Autoloads (HexGrid, DayNightCycle) are present in test env, but player children are not.
+	# Verify the save dict does NOT contain player-child keys (inventory, crafting, etc.)
 	var sm: Node = _make_save_manager()
 	sm.save_game()
 	var text: String = _read_save_file()
 	var parsed: Variant = JSON.parse_string(text)
 	assert_bool(parsed is Dictionary).is_true()
-	assert_int((parsed as Dictionary).size()).is_equal(0)
+	var data: Dictionary = parsed as Dictionary
+	assert_bool(data.has("inventory")).is_false()
+	assert_bool(data.has("crafting")).is_false()
+	assert_bool(data.has("survival")).is_false()
+	assert_bool(data.has("journal")).is_false()
 
 
 # --- Load with extra/missing keys ---

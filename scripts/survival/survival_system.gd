@@ -188,11 +188,21 @@ func _drop_items(death_tile: Vector2i) -> void:
 
 
 func _start_death_sequence() -> void:
-	if _screen_fade and _screen_fade.has_method("fade_out"):
+	if _screen_fade != null and _screen_fade.has_method("fade_out"):
 		_screen_fade.fade_out()
 		if _screen_fade.has_signal("fade_out_completed"):
 			await _screen_fade.fade_out_completed
-	_try_respawn()
+		_try_respawn()
+	else:
+		# No screen fade (test/headless) — set night-death state but don't
+		# auto-respawn synchronously. Night deaths wait for dawn via _on_dawn().
+		# Day deaths in production always have ScreenFade; in tests, call
+		# respawn() explicitly if needed.
+		var is_day: bool = true
+		if _day_night_cycle != null:
+			is_day = _day_night_cycle.is_daytime
+		if not is_day:
+			_waiting_for_dawn = true
 
 
 func _try_respawn() -> void:
@@ -200,7 +210,7 @@ func _try_respawn() -> void:
 	if _day_night_cycle != null:
 		is_daytime = _day_night_cycle.is_daytime
 	if is_daytime:
-		_respawn()
+		respawn()
 	else:
 		_waiting_for_dawn = true
 
@@ -208,10 +218,10 @@ func _try_respawn() -> void:
 func _on_dawn() -> void:
 	if _waiting_for_dawn:
 		_waiting_for_dawn = false
-		_respawn()
+		respawn()
 
 
-func _respawn() -> void:
+func respawn() -> void:
 	hp = hp_max
 	hunger = hunger_max * 0.5
 	thirst = thirst_max * 0.5

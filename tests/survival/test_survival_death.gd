@@ -223,28 +223,28 @@ func test_ground_item_dropped_signal_emits() -> void:
 func test_respawn_sets_hp_to_max() -> void:
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	assert_float(_sys.hp).is_equal(100.0)
 
 
 func test_respawn_sets_hunger_to_50_percent() -> void:
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	assert_float(_sys.hunger).is_equal(50.0)
 
 
 func test_respawn_sets_thirst_to_50_percent() -> void:
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	assert_float(_sys.thirst).is_equal(50.0)
 
 
 func test_respawn_clears_is_dead() -> void:
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	assert_bool(_sys.is_dead).is_false()
 
 
@@ -255,7 +255,7 @@ func test_respawn_emits_player_respawned() -> void:
 	)
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	assert_int(fired.size()).is_equal(1)
 
 
@@ -263,7 +263,7 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 	_sys._respawn_tile = Vector2i(3, 4)
 	_sys.hp = 0.0
 	_sys.is_dead = true
-	_sys._respawn()
+	_sys.respawn()
 	var player: MockPlayer = _sys.get_parent() as MockPlayer
 	assert_object(player.current_tile).is_equal(Vector2i(3, 4))
 
