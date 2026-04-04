@@ -168,71 +168,6 @@ html, body {
   gap: 12px;
 }
 
-/* ---- Welcome Overlay ---- */
-#welcome {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  background: var(--bg-primary);
-  z-index: 100;
-}
-
-#welcome.hidden {
-  display: none;
-}
-
-#welcome h1 {
-  font-size: 28px;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-#welcome p {
-  color: var(--text-secondary);
-  font-size: 16px;
-  max-width: 480px;
-  text-align: center;
-  line-height: 1.6;
-}
-
-#welcome button {
-  background: var(--accent);
-  color: var(--bg-primary);
-  border: none;
-  border-radius: 6px;
-  padding: 12px 32px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-#welcome button:hover {
-  background: var(--accent-hover);
-}
-
-#error-banner {
-  display: none;
-  color: var(--danger);
-  font-size: 14px;
-  padding: 8px 16px;
-  background: rgba(240, 96, 96, 0.1);
-  border: 1px solid var(--danger);
-  border-radius: 4px;
-  max-width: 480px;
-  text-align: center;
-}
-
-#error-banner.visible {
-  display: block;
-}
 
 /* ---- Resource Detail Panel ---- */
 #resource-detail-panel {
@@ -268,13 +203,9 @@ html, body {
 
 /* ---- Editor Workspace ---- */
 #editor-workspace {
-  display: none;
+  display: flex;
   flex-direction: column;
   flex: 1;
-}
-
-#editor-workspace.visible {
-  display: flex;
 }
 
 /* ---- Status Bar ---- */
@@ -290,24 +221,11 @@ html, body {
   min-height: 24px;
 }
 
-/* ---- Fallback file input (hidden, used for non-FSA browsers) ---- */
-#fallback-file-input {
-  display: none;
-}
 </style>
 </head>
 <body>
 <div id="app">
-  <!-- Welcome Overlay — visible on load -->
-  <div id="welcome">
-    <h1>Farhaven Level Editor</h1>
-    <p>Open your Farhaven project folder to begin editing maps, resources, and biomes.</p>
-    <button id="btn-open-project" type="button">Open Project</button>
-    <div id="error-banner"></div>
-    <input type="file" id="fallback-file-input" webkitdirectory>
-  </div>
-
-  <!-- Editor Workspace — hidden until project is opened -->
+  <!-- Editor Workspace -->
   <div id="editor-workspace">
     <header id="toolbar">
       <span class="toolbar-title">Farhaven Level Editor</span>
@@ -1016,10 +934,16 @@ class FileDiscovery {
    * @returns {Promise<{success: boolean, error?: string}>}
    */
   static async discoverProject(rootHandle) {
+    console.group('FileDiscovery.discoverProject');
+    console.log(`Root directory: "${rootHandle.name}"`);
+
     // Validate project root
     try {
       await rootHandle.getFileHandle('project.godot');
+      console.log('project.godot found — valid Godot project.');
     } catch (err) {
+      console.error('project.godot NOT found. Aborting.');
+      console.groupEnd();
       return { success: false, error: 'Not a Godot project. Please select the folder containing project.godot.' };
     }
 
@@ -1029,6 +953,7 @@ class FileDiscovery {
     const mapFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/maps', '.json');
     const resourceFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/resources', '.tres');
     const biomeFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres');
+    console.log(`Scan results — maps: ${mapFiles.length}, resources: ${resourceFiles.length}, biomes: ${biomeFiles.length}`);
 
     // Parse map files
     for (const { name, handle } of mapFiles) {
@@ -1037,8 +962,10 @@ class FileDiscovery {
         const text = await file.text();
         const data = JSON.parse(text);
         ProjectContext.files.maps.set(name, { handle, data });
+        const tileCount = data.tiles ? Object.keys(data.tiles).length : 0;
+        console.log(`  Map "${name}" loaded — ${tileCount} tiles.`);
       } catch (err) {
-        console.warn(`FileDiscovery: Failed to parse map "${name}": ${err.message}. Skipping.`);
+        console.warn(`  Map "${name}" FAILED: ${err.message}. Skipping.`);
       }
     }
 
@@ -1049,14 +976,14 @@ class FileDiscovery {
         const text = await file.text();
         const raw = TresParser.parse(text);
         if (raw.scriptClass !== 'ResourceDef') {
-          console.warn(`FileDiscovery: "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
+          console.warn(`  Resource "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
           continue;
         }
 
         // Round-trip validation
         const roundTrip = TresParser.serialize(raw);
         if (roundTrip !== text) {
-          console.warn(`FileDiscovery: Round-trip mismatch for "${name}". Parser output differs from original.`);
+          console.warn(`  Resource "${name}" round-trip MISMATCH. Parser output differs from original.`);
         }
 
         // Build data object from resource fields
@@ -1065,8 +992,9 @@ class FileDiscovery {
           data[key] = tv.value;
         }
         ProjectContext.files.resources.set(name, { handle, data, raw });
+        console.log(`  Resource "${name}" loaded — scriptClass: ${raw.scriptClass}`);
       } catch (err) {
-        console.warn(`FileDiscovery: Failed to parse resource "${name}": ${err.message}. Skipping.`);
+        console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
       }
     }
 
@@ -1077,14 +1005,14 @@ class FileDiscovery {
         const text = await file.text();
         const raw = TresParser.parse(text);
         if (raw.scriptClass !== 'BiomeData') {
-          console.warn(`FileDiscovery: "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
+          console.warn(`  Biome "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
           continue;
         }
 
         // Round-trip validation
         const roundTrip = TresParser.serialize(raw);
         if (roundTrip !== text) {
-          console.warn(`FileDiscovery: Round-trip mismatch for "${name}". Parser output differs from original.`);
+          console.warn(`  Biome "${name}" round-trip MISMATCH. Parser output differs from original.`);
         }
 
         // Build data object from resource fields
@@ -1093,11 +1021,14 @@ class FileDiscovery {
           data[key] = tv.value;
         }
         ProjectContext.files.biomes.set(name, { handle, data, raw });
+        console.log(`  Biome "${name}" loaded — scriptClass: ${raw.scriptClass}`);
       } catch (err) {
-        console.warn(`FileDiscovery: Failed to parse biome "${name}": ${err.message}. Skipping.`);
+        console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
       }
     }
 
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
+    console.groupEnd();
     return { success: true };
   }
 
@@ -1194,30 +1125,112 @@ class FileDiscovery {
   }
 
   /**
-   * Save a single file. Uses FileSystemFileHandle if available, else downloads.
-   * @param {FileSystemFileHandle|null} handle
+   * Save a file via the dev server API.
+   * @param {string} dir - Directory prefix e.g. 'data/maps'
    * @param {string} content - Serialized JSON or .tres
-   * @param {string} filename - For download fallback
+   * @param {string} filename - File name e.g. 'ch1.json'
    * @returns {Promise<void>}
    */
-  static async saveFile(handle, content, filename) {
-    if (handle && typeof handle.createWritable === 'function') {
-      // File System Access API path
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
-    } else {
-      // Fallback: Blob + <a download>
-      const blob = new Blob([content], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+  static async saveFile(dir, content, filename) {
+    const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + filename)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: content,
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || `Save failed: ${resp.status}`);
     }
+  }
+
+  /**
+   * Auto-discover and load project files via the dev server API.
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  static async discoverViaApi() {
+    console.group('FileDiscovery.discoverViaApi');
+
+    // Discover available files
+    let manifest;
+    try {
+      const resp = await fetch('/api/discover');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      manifest = await resp.json();
+    } catch (err) {
+      console.error(`Discovery API failed: ${err.message}`);
+      console.groupEnd();
+      return { success: false, error: `Server API unavailable: ${err.message}` };
+    }
+
+    console.log(`Manifest — maps: ${manifest.maps.files.length}, resources: ${manifest.resources.files.length}, biomes: ${manifest.biomes.files.length}`);
+
+    // Load map files
+    for (const name of manifest.maps.files) {
+      try {
+        const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.maps.dir + '/' + name)}`);
+        const text = await resp.text();
+        const data = JSON.parse(text);
+        ProjectContext.files.maps.set(name, { handle: null, dir: manifest.maps.dir, data });
+        const tileCount = data.tiles ? Object.keys(data.tiles).length : 0;
+        console.log(`  Map "${name}" loaded — ${tileCount} tiles.`);
+      } catch (err) {
+        console.warn(`  Map "${name}" FAILED: ${err.message}. Skipping.`);
+      }
+    }
+
+    // Load resource files
+    for (const name of manifest.resources.files) {
+      try {
+        const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.resources.dir + '/' + name)}`);
+        const text = await resp.text();
+        const raw = TresParser.parse(text);
+        if (raw.scriptClass !== 'ResourceDef') {
+          console.warn(`  Resource "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
+          continue;
+        }
+        const roundTrip = TresParser.serialize(raw);
+        if (roundTrip !== text) {
+          console.warn(`  Resource "${name}" round-trip MISMATCH.`);
+        }
+        const data = {};
+        for (const [key, tv] of raw.resourceFields) {
+          data[key] = tv.value;
+        }
+        ProjectContext.files.resources.set(name, { handle: null, dir: manifest.resources.dir, data, raw });
+        console.log(`  Resource "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+      } catch (err) {
+        console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
+      }
+    }
+
+    // Load biome files
+    for (const name of manifest.biomes.files) {
+      try {
+        const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.biomes.dir + '/' + name)}`);
+        const text = await resp.text();
+        const raw = TresParser.parse(text);
+        if (raw.scriptClass !== 'BiomeData') {
+          console.warn(`  Biome "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
+          continue;
+        }
+        const roundTrip = TresParser.serialize(raw);
+        if (roundTrip !== text) {
+          console.warn(`  Biome "${name}" round-trip MISMATCH.`);
+        }
+        const data = {};
+        for (const [key, tv] of raw.resourceFields) {
+          data[key] = tv.value;
+        }
+        ProjectContext.files.biomes.set(name, { handle: null, dir: manifest.biomes.dir, data, raw });
+        console.log(`  Biome "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+      } catch (err) {
+        console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
+      }
+    }
+
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
+    console.groupEnd();
+    return { success: true };
   }
 }
 
@@ -1294,6 +1307,25 @@ class CommandHistory {
    */
   canRedo() {
     return this.redoStack.length > 0;
+  }
+
+  /**
+   * Replace individual commands on the undo stack with a single BatchCommand.
+   * Used by drag tools to collapse per-hex commands into one undo step.
+   * @param {Array<Object>} commands - Commands to remove and batch
+   * @returns {void}
+   */
+  batchReplace(commands) {
+    if (commands.length <= 1) return;
+    for (const cmd of commands) {
+      const idx = this.undoStack.indexOf(cmd);
+      if (idx !== -1) this.undoStack.splice(idx, 1);
+    }
+    const batch = new BatchCommand(commands);
+    this.undoStack.push(batch);
+    if (this.onChange) {
+      this.onChange('execute', batch);
+    }
   }
 
   /**
@@ -1923,8 +1955,12 @@ class HexCanvas {
     const size = HEX_SIZE * camera.zoom;
     const corners = HexMath.hexCorners(screen.x, screen.y, size);
 
+    // For flat-top hexes (corners at 0°,60°,…,300° clockwise in screen space):
+    // Edge i→(i+1) midpoint points at angle (30+60*i)°, which aligns with
+    // DIRECTIONS at index (6-i)%6. Lookup avoids modular arithmetic errors.
+    const EDGE_TO_NEIGHBOR = [0, 5, 4, 3, 2, 1];
     for (let i = 0; i < 6; i++) {
-      const n = neighbors[i];
+      const n = neighbors[EDGE_TO_NEIGHBOR[i]];
       const neighbor = this.grid.getTile(n.q, n.r);
       if (!neighbor) continue;
       if (Math.abs(tile.elevation - neighbor.elevation) >= 2) {
@@ -2268,6 +2304,55 @@ class HexCanvas {
     this.requestRender();
   }
 
+  /**
+   * Center the camera so all tiles fit in view with some padding.
+   * @param {number} [padding=40] - Pixels of padding around the map
+   * @returns {void}
+   */
+  fitToView(padding = 40) {
+    if (this.grid.tiles.size === 0) return;
+
+    // Compute world-space bounding box of all tile centers
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const key of this.grid.tiles.keys()) {
+      const parts = key.split(',');
+      const q = parseInt(parts[0], 10);
+      const r = parseInt(parts[1], 10);
+      const world = HexMath.axialToPixel(q, r);
+      if (world.x < minX) minX = world.x;
+      if (world.y < minY) minY = world.y;
+      if (world.x > maxX) maxX = world.x;
+      if (world.y > maxY) maxY = world.y;
+    }
+
+    // Expand by hex size so edges aren't clipped
+    minX -= HEX_SIZE;
+    minY -= HEX_SIZE;
+    maxX += HEX_SIZE;
+    maxY += HEX_SIZE;
+
+    const worldW = maxX - minX;
+    const worldH = maxY - minY;
+    const canvasW = this.canvas.width;
+    const canvasH = this.canvas.height;
+
+    if (canvasW === 0 || canvasH === 0) return;
+
+    // Zoom to fit
+    const scaleX = (canvasW - padding * 2) / worldW;
+    const scaleY = (canvasH - padding * 2) / worldH;
+    camera.zoom = Math.min(scaleX, scaleY, 3.0);
+    camera.zoom = Math.max(camera.zoom, 0.2);
+
+    // Center the map
+    const worldCenterX = (minX + maxX) / 2;
+    const worldCenterY = (minY + maxY) / 2;
+    camera.offsetX = canvasW / 2 - worldCenterX * camera.zoom;
+    camera.offsetY = canvasH / 2 - worldCenterY * camera.zoom;
+
+    this.requestRender();
+  }
+
   // --- Tooltip ---
 
   /**
@@ -2438,21 +2523,28 @@ class SetElevationCommand {
     this.r = r;
     this.oldElevation = oldElevation;
     this.newElevation = newElevation;
+    this._created = false;
     this.tab = 'map';
     this.type = 'SetElevation';
   }
   execute() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.elevation = this.newElevation;
-      this.grid.setTile(this.q, this.r, tile);
+    let tile = this.grid.getTile(this.q, this.r);
+    if (!tile) {
+      tile = createTileData('');
+      this._created = true;
     }
+    tile.elevation = this.newElevation;
+    this.grid.setTile(this.q, this.r, tile);
   }
   undo() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.elevation = this.oldElevation;
-      this.grid.setTile(this.q, this.r, tile);
+    if (this._created) {
+      this.grid.deleteTile(this.q, this.r);
+    } else {
+      const tile = this.grid.getTile(this.q, this.r);
+      if (tile) {
+        tile.elevation = this.oldElevation;
+        this.grid.setTile(this.q, this.r, tile);
+      }
     }
   }
 }
@@ -2754,54 +2846,67 @@ class BaseTool {
   onMouseUp(hex) {}
 }
 
-class BiomeBrush extends BaseTool {
+/**
+ * Base class for drag-based brush tools. Handles drag state,
+ * dedup via visited set, and batching individual commands into
+ * a single undo step on mouse-up.
+ */
+class DragBrushTool extends BaseTool {
   constructor(grid, cmdHistory, toolManager) {
     super(grid, cmdHistory, toolManager);
-    this.paintedHexes = new Set();
-    this.dragCommands = [];
+    /** @type {Set<string>} */
+    this._visited = new Set();
+    /** @type {Array<Object>} */
+    this._dragCommands = [];
+    /** @type {boolean} */
     this._isDragging = false;
   }
 
   onMouseDown(hex) {
     if (!hex) return;
     this._isDragging = true;
-    this.paintedHexes.clear();
-    this.dragCommands = [];
-    this._paintHex(hex);
+    this._visited.clear();
+    this._dragCommands = [];
+    this._applyAt(hex);
   }
 
   onMouseMove(hex) {
     if (!this._isDragging || !hex) return;
-    this._paintHex(hex);
+    this._applyAt(hex);
   }
 
   onMouseUp(hex) {
     if (!this._isDragging) return;
     this._isDragging = false;
-    // Wrap all drag commands into a BatchCommand for single undo
-    if (this.dragCommands.length > 1) {
-      // Remove individual commands from history
-      for (let i = 0; i < this.dragCommands.length; i++) {
-        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
-        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
-      }
-      // Push batch
-      const batch = new BatchCommand(this.dragCommands);
-      this.commandHistory.undoStack.push(batch);
-      if (this.commandHistory.onChange) {
-        this.commandHistory.onChange('execute', batch);
-      }
-    }
-    this.paintedHexes.clear();
-    this.dragCommands = [];
+    this.commandHistory.batchReplace(this._dragCommands);
+    this._visited.clear();
+    this._dragCommands = [];
   }
 
-  /** @param {{ q: number, r: number }} hex */
-  _paintHex(hex) {
+  /**
+   * Try to apply the tool at the given hex. Deduplicates by coordinate.
+   * @param {{ q: number, r: number }} hex
+   * @returns {void}
+   */
+  _applyAt(hex) {
     const key = `${hex.q},${hex.r}`;
-    if (this.paintedHexes.has(key)) return;
-    this.paintedHexes.add(key);
+    if (this._visited.has(key)) return;
+    this._visited.add(key);
+    this._applyToHex(hex);
+  }
 
+  /**
+   * Subclass hook: create and execute the command for this hex.
+   * Push to this._dragCommands if a command was executed.
+   * @param {{ q: number, r: number }} hex
+   * @returns {void}
+   */
+  _applyToHex(hex) {}
+}
+
+class BiomeBrush extends DragBrushTool {
+  /** @param {{ q: number, r: number }} hex */
+  _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     const oldBiome = tile ? tile.biome : '';
     const newBiome = this.toolManager.activeValue || '';
@@ -2809,55 +2914,13 @@ class BiomeBrush extends BaseTool {
 
     const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, oldBiome, newBiome);
     this.commandHistory.execute(cmd);
-    this.dragCommands.push(cmd);
+    this._dragCommands.push(cmd);
   }
 }
 
-class ElevationBrush extends BaseTool {
-  constructor(grid, cmdHistory, toolManager) {
-    super(grid, cmdHistory, toolManager);
-    this.paintedHexes = new Set();
-    this.dragCommands = [];
-    this._isDragging = false;
-  }
-
-  onMouseDown(hex) {
-    if (!hex) return;
-    this._isDragging = true;
-    this.paintedHexes.clear();
-    this.dragCommands = [];
-    this._paintHex(hex);
-  }
-
-  onMouseMove(hex) {
-    if (!this._isDragging || !hex) return;
-    this._paintHex(hex);
-  }
-
-  onMouseUp(hex) {
-    if (!this._isDragging) return;
-    this._isDragging = false;
-    if (this.dragCommands.length > 1) {
-      for (let i = 0; i < this.dragCommands.length; i++) {
-        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
-        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
-      }
-      const batch = new BatchCommand(this.dragCommands);
-      this.commandHistory.undoStack.push(batch);
-      if (this.commandHistory.onChange) {
-        this.commandHistory.onChange('execute', batch);
-      }
-    }
-    this.paintedHexes.clear();
-    this.dragCommands = [];
-  }
-
+class ElevationBrush extends DragBrushTool {
   /** @param {{ q: number, r: number }} hex */
-  _paintHex(hex) {
-    const key = `${hex.q},${hex.r}`;
-    if (this.paintedHexes.has(key)) return;
-    this.paintedHexes.add(key);
-
+  _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
 
@@ -2875,7 +2938,7 @@ class ElevationBrush extends BaseTool {
 
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
     this.commandHistory.execute(cmd);
-    this.dragCommands.push(cmd);
+    this._dragCommands.push(cmd);
   }
 }
 
@@ -2919,61 +2982,24 @@ class FloodFillTool extends BaseTool {
       const batch = new BatchCommand(commands);
       this.commandHistory.execute(batch);
     }
+
+    if (commands.length >= SAFETY_LIMIT) {
+      console.warn(`FloodFill: safety limit of ${SAFETY_LIMIT} tiles reached. Some tiles may not have been filled.`);
+      setStatus(`Warning: flood fill stopped at ${SAFETY_LIMIT} tile limit.`);
+    }
   }
 }
 
-class EraserTool extends BaseTool {
-  constructor(grid, cmdHistory, toolManager) {
-    super(grid, cmdHistory, toolManager);
-    this.erasedHexes = new Set();
-    this.dragCommands = [];
-    this._isDragging = false;
-  }
-
-  onMouseDown(hex) {
-    if (!hex) return;
-    this._isDragging = true;
-    this.erasedHexes.clear();
-    this.dragCommands = [];
-    this._eraseHex(hex);
-  }
-
-  onMouseMove(hex) {
-    if (!this._isDragging || !hex) return;
-    this._eraseHex(hex);
-  }
-
-  onMouseUp(hex) {
-    if (!this._isDragging) return;
-    this._isDragging = false;
-    if (this.dragCommands.length > 1) {
-      for (let i = 0; i < this.dragCommands.length; i++) {
-        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
-        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
-      }
-      const batch = new BatchCommand(this.dragCommands);
-      this.commandHistory.undoStack.push(batch);
-      if (this.commandHistory.onChange) {
-        this.commandHistory.onChange('execute', batch);
-      }
-    }
-    this.erasedHexes.clear();
-    this.dragCommands = [];
-  }
-
+class EraserTool extends DragBrushTool {
   /** @param {{ q: number, r: number }} hex */
-  _eraseHex(hex) {
-    const key = `${hex.q},${hex.r}`;
-    if (this.erasedHexes.has(key)) return;
-    this.erasedHexes.add(key);
-
+  _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
     if ((!tile.resources || tile.resources.length === 0) && !tile.structure && !tile.anomaly) return;
 
     const cmd = new EraseContentCommand(this.grid, hex.q, hex.r, tile);
     this.commandHistory.execute(cmd);
-    this.dragCommands.push(cmd);
+    this._dragCommands.push(cmd);
   }
 }
 
@@ -3547,20 +3573,19 @@ async function saveTab(tab) {
     // Serialize from the live HexGrid model
     const mapData = serializeGridToMapJson();
     for (const [filename, entry] of ProjectContext.files.maps) {
-      // Update entry.data to reflect current grid state
       entry.data = mapData;
       const json = JSON.stringify(entry.data, null, '\t');
-      await FileDiscovery.saveFile(entry.handle, json, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/maps', json, filename);
     }
   } else if (tab === 'resources') {
     for (const [filename, entry] of ProjectContext.files.resources) {
       const text = TresParser.serialize(entry.raw);
-      await FileDiscovery.saveFile(entry.handle, text, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/resources', text, filename);
     }
   } else if (tab === 'biomes') {
     for (const [filename, entry] of ProjectContext.files.biomes) {
       const text = TresParser.serialize(entry.raw);
-      await FileDiscovery.saveFile(entry.handle, text, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/biomes', text, filename);
     }
   }
 }
@@ -3584,29 +3609,12 @@ window.addEventListener('beforeunload', (event) => {
 // ============================================================
 
 /**
- * Show an error message in the welcome overlay or status bar.
+ * Show an error message in the status bar.
  * @param {string} message
  * @returns {void}
  */
 function showError(message) {
-  const banner = document.getElementById('error-banner');
-  if (banner) {
-    banner.textContent = message;
-    banner.classList.add('visible');
-  }
   setStatus('Error: ' + message);
-}
-
-/**
- * Hide the error banner.
- * @returns {void}
- */
-function hideError() {
-  const banner = document.getElementById('error-banner');
-  if (banner) {
-    banner.textContent = '';
-    banner.classList.remove('visible');
-  }
 }
 
 /**
@@ -3619,117 +3627,87 @@ function setStatus(text) {
   if (el) el.textContent = text;
 }
 
+// ============================================================
+// Auto-load Project (replaces manual directory picker)
+// ============================================================
+
 /**
- * Transition from welcome overlay to editor workspace.
- * @returns {void}
+ * Auto-discover and load project files via the dev server API on page load.
+ * @returns {Promise<void>}
  */
-function showEditorWorkspace() {
-  document.getElementById('welcome').classList.add('hidden');
-  document.getElementById('editor-workspace').classList.add('visible');
+async function autoLoadProject() {
+  console.log('autoLoadProject: starting...');
+  setStatus('Loading project...');
+
+  const result = await FileDiscovery.discoverViaApi();
+  if (!result.success) {
+    console.error(`autoLoadProject: Discovery failed — ${result.error}`);
+    setStatus('Error: ' + result.error);
+    return;
+  }
+
+  console.log('autoLoadProject: Discovery succeeded. Initializing...');
+  dirtyTracker.markAllClean();
+  commandHistory.clear();
+  initializeAfterLoad();
+
   const mapCount = ProjectContext.files.maps.size;
   const resCount = ProjectContext.files.resources.size;
   const biomeCount = ProjectContext.files.biomes.size;
   setStatus(`Project loaded: ${mapCount} map(s), ${resCount} resource(s), ${biomeCount} biome(s)`);
+  console.log('autoLoadProject: Workspace ready.');
 }
 
-// ============================================================
-// Open Project Flow (task-002)
-// ============================================================
-
-/**
- * Handle the "Open Project" button click.
- * @returns {Promise<void>}
- */
-async function openProject() {
-  hideError();
-
-  if (ProjectContext.hasFileSystemAccess) {
-    // File System Access API path
-    try {
-      const handle = await window.showDirectoryPicker();
-      const result = await FileDiscovery.discoverProject(handle);
-      if (!result.success) {
-        showError(result.error);
-        ProjectContext.rootHandle = null;
-        return;
-      }
-    } catch (err) {
-      // User cancelled the picker — AbortError
-      if (err.name === 'AbortError') return;
-      showError('Failed to open project: ' + err.message);
-      return;
-    }
-  } else {
-    // Fallback path — trigger file input
-    const input = /** @type {HTMLInputElement} */ (document.getElementById('fallback-file-input'));
-    input.value = '';
-    input.click();
-    return; // The change event handler will complete the flow
-  }
-
-  // Success — transition to workspace
-  dirtyTracker.markAllClean();
-  commandHistory.clear();
-  initializeAfterLoad();
-  showEditorWorkspace();
-}
-
-// Wire Open Project button
-document.getElementById('btn-open-project').addEventListener('click', openProject);
-
-// Wire fallback file input
-document.getElementById('fallback-file-input').addEventListener('change', async (event) => {
-  const input = /** @type {HTMLInputElement} */ (event.target);
-  if (!input.files || input.files.length === 0) return;
-
-  const result = await FileDiscovery.discoverFromFileList(input.files);
-  if (!result.success) {
-    showError(result.error);
-    return;
-  }
-
-  dirtyTracker.markAllClean();
-  commandHistory.clear();
-  initializeAfterLoad();
-  showEditorWorkspace();
-});
+autoLoadProject();
 
 /**
  * Post-load initialization: load first map into grid, build biome color map.
  * @returns {void}
  */
 function initializeAfterLoad() {
+  console.group('initializeAfterLoad');
+
   // Build biome color map from loaded .tres data
   biomeColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.biomes) {
     const colorField = entry.raw.resourceFields.get('color');
     if (colorField && colorField.type === 'color') {
-      // Use filename stem as biome key (e.g. "crash_site.tres" -> "crash_site")
-      // This matches the map JSON format where biome = "crash_site", "forest", etc.
       const biomeName = filename.replace('.tres', '');
       const c = colorField.value;
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
+      console.log(`  Biome color: "${biomeName}" -> rgb(${r},${g},${b})`);
+    } else {
+      console.warn(`  Biome "${filename}" has no valid color field.`);
     }
   }
+  console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
   if (!firstMap.done) {
-    loadMapIntoGrid(firstMap.value[1].data);
+    const [mapName, mapEntry] = firstMap.value;
+    const tileCount = mapEntry.data.tiles ? Object.keys(mapEntry.data.tiles).length : 0;
+    console.log(`Loading map "${mapName}" into grid — ${tileCount} tiles.`);
+    loadMapIntoGrid(mapEntry.data);
+    console.log(`Grid loaded — ${hexGrid.tiles.size} tiles in HexGrid.`);
+  } else {
+    console.warn('No maps found in ProjectContext. Grid will be empty.');
   }
 
-  // Reset camera
-  camera.offsetX = 0;
-  camera.offsetY = 0;
-  camera.zoom = 1.0;
-
-  // Initialize canvas if not done
+  // Resize and center map — must happen after workspace is visible
+  // so the canvas gets correct dimensions from its parent.
   if (hexCanvas) {
-    hexCanvas.requestRender();
+    hexCanvas._onResize();
+    hexCanvas.fitToView();
+    console.log('Canvas resized and map centered.');
+  } else {
+    console.warn('hexCanvas is null — canvas not initialized.');
   }
+
+  console.groupEnd();
 }
 
 // ============================================================
