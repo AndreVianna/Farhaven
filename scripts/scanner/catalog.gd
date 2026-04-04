@@ -147,23 +147,20 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 	if tile == null:
 		return &""
 
-	for prop in tile.props:
-		if prop.category == _Prop.Category.RESOURCE:
-			# Check resource props (flora + mineral)
-			var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
-			if entry_id == &"":
+	for prop in tile.get_resources():
+		var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
+		if entry_id == &"":
+			continue
+		if not is_cataloged(entry_id) and _all_entries.has(entry_id):
+			# Skip ENCOUNTERED fauna (needs Trap/Sneak, not proximity scan)
+			var entry: CatalogEntry = _all_entries[entry_id]
+			if entry.category == CatalogCategory.FAUNA and is_encountered(entry_id):
 				continue
-			if not is_cataloged(entry_id) and _all_entries.has(entry_id):
-				# Skip ENCOUNTERED fauna (needs Trap/Sneak, not proximity scan)
-				var entry: CatalogEntry = _all_entries[entry_id]
-				if entry.category == CatalogCategory.FAUNA and is_encountered(entry_id):
-					continue
-				return entry_id
-		elif prop.category == _Prop.Category.ANOMALY:
-			# Check anomaly props
-			var anomaly_id: StringName = prop.type
-			if not is_cataloged(anomaly_id) and _all_entries.has(anomaly_id):
-				return anomaly_id
+			return entry_id
+	for prop in tile.get_anomalies():
+		var anomaly_id: StringName = prop.type
+		if not is_cataloged(anomaly_id) and _all_entries.has(anomaly_id):
+			return anomaly_id
 
 	# Fauna handled by ScannerSystem via FaunaManager; not queried here at data layer
 

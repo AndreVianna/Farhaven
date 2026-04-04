@@ -119,20 +119,14 @@ func load_map(path: String) -> bool:
 
 			var structure_str: String = td.get("structure", "")
 			if structure_str != "":
-				var sp: Resource = _Prop.new()
-				sp.type = StringName(structure_str)
-				sp.category = _Prop.Category.STRUCTURE
-				sp.sub_hex = Vector2i.ZERO
-				sp.blocks_movement = not (StringName(structure_str) in _WALKABLE_STRUCTURES)
-				tile.props.append(sp)
+				tile.props.append(_Prop.create_structure(
+					StringName(structure_str),
+					not (StringName(structure_str) in _WALKABLE_STRUCTURES),
+				))
 
 			var anomaly_str: String = td.get("anomaly", "")
 			if anomaly_str != "":
-				var ap: Resource = _Prop.new()
-				ap.type = StringName(anomaly_str)
-				ap.category = _Prop.Category.ANOMALY
-				ap.sub_hex = Vector2i.ZERO
-				tile.props.append(ap)
+				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
 
 		_grid._tiles[coords] = tile
 
@@ -154,22 +148,20 @@ func load_map(path: String) -> bool:
 
 
 func _make_resource_prop(type: StringName, biome_int: int) -> Resource:
-	var prop: Resource = _Prop.new()
-	prop.type = type
-	prop.category = _Prop.Category.RESOURCE
-	prop.remaining = 3
-	prop.max_amount = 3
-	prop.tool_required = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
-	prop.respawn_time = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
+	var tool_req: StringName = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
+	var respawn: float = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
+	var remaining: int = 3
+	var max_amount: int = 3
 
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:
-		for entry in bd.resource_table:
-			if StringName(entry.get("type", "")) == type:
-				prop.max_amount = int(entry.get("max_amount", 3))
-				prop.remaining = prop.max_amount
+		for entry_data in bd.resource_table:
+			if StringName(entry_data.get("type", "")) == type:
+				max_amount = int(entry_data.get("max_amount", 3))
+				remaining = max_amount
 				break
-	return prop
+
+	return _Prop.create_resource(type, remaining, max_amount, tool_req, respawn)
 
 
 func _validate(spawn: Vector2i) -> void:

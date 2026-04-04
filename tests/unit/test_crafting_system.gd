@@ -31,8 +31,8 @@ class MockHexGrid extends Node:
 		var tile: Resource = _tiles.get(coords, null)
 		if tile == null:
 			return false
-		for prop in tile.props:
-			if prop.category == Prop.Category.STRUCTURE and prop.type == type:
+		for prop in tile.get_structures():
+			if prop.type == type:
 				return true
 		return false
 
@@ -94,12 +94,7 @@ func after_test() -> void:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	var wb: Prop = _Prop.new()
-	wb.type = &"workbench"
-	wb.category = Prop.Category.STRUCTURE
-	wb.sub_hex = Vector2i.ZERO
-	wb.blocks_movement = false
-	tile.props = [wb]
+	tile.props = [_Prop.create_structure(&"workbench")]
 	_grid.set_tile(coords, tile)
 
 

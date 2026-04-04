@@ -136,11 +136,7 @@ func _on_element_encountered(c: Vector2i, eid: StringName, label: String) -> voi
 
 func _make_tile_with_resource(resource_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	var prop: Prop = _Prop.new()
-	prop.type = resource_type
-	prop.category = Prop.Category.RESOURCE
-	prop.sub_hex = Vector2i.ZERO
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 
@@ -367,11 +363,7 @@ func test_scan_duration_mineral_is_2s() -> void:
 
 func test_scan_duration_anomaly_is_3s() -> void:
 	var tile: HexTile = _HexTile.new()
-	var anomaly_prop: Prop = _Prop.new()
-	anomaly_prop.type = &"anomaly_ch1_001"
-	anomaly_prop.category = Prop.Category.ANOMALY
-	anomaly_prop.sub_hex = Vector2i.ZERO
-	tile.props = [anomaly_prop]
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = tile
 	_player.current_tile = Vector2i.ZERO
@@ -462,11 +454,7 @@ func test_passive_id_encountered_emits_element_encountered() -> void:
 
 func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 	var tile: HexTile = _HexTile.new()
-	var anomaly_prop: Prop = _Prop.new()
-	anomaly_prop.type = &"anomaly_ch1_001"
-	anomaly_prop.category = Prop.Category.ANOMALY
-	anomaly_prop.sub_hex = Vector2i.ZERO
-	tile.props = [anomaly_prop]
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
@@ -477,11 +465,7 @@ func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
 	_system._catalog.catalog_entry(&"anomaly_ch1_001")
 	var tile: HexTile = _HexTile.new()
-	var anomaly_prop: Prop = _Prop.new()
-	anomaly_prop.type = &"anomaly_ch1_001"
-	anomaly_prop.category = Prop.Category.ANOMALY
-	anomaly_prop.sub_hex = Vector2i.ZERO
-	tile.props = [anomaly_prop]
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))

@@ -167,15 +167,7 @@ func _on_depleted(coords: Vector2i, resource_type: StringName) -> void:
 # --- Helpers ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0, sub_hex: Vector2i = Vector2i.ZERO) -> Resource:
-	var prop: Resource = _Prop.new()
-	prop.type = type
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = remaining
-	prop.max_amount = remaining
-	prop.tool_required = tool_req
-	prop.respawn_time = respawn
-	prop.sub_hex = sub_hex
-	return prop
+	return _Prop.create_resource(type, remaining, remaining, tool_req, respawn, 0.0, sub_hex)
 
 
 func _make_tile(coords: Vector2i, resources: Array = []) -> Resource:

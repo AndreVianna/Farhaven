@@ -64,11 +64,7 @@ func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTi
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var prop: Prop = _Prop.new()
-	prop.type = resource_type
-	prop.category = Prop.Category.RESOURCE
-	prop.sub_hex = Vector2i.ZERO
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 

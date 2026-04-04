@@ -33,13 +33,7 @@ func _make_tile(resource_type: StringName, remaining: int = 3, elev: int = 0, fo
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = fog
-	var prop: Prop = _Prop.new()
-	prop.type = resource_type
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = remaining
-	prop.max_amount = 3
-	prop.sub_hex = Vector2i.ZERO
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(resource_type, remaining, 3)]
 	return tile
 
 
@@ -49,13 +43,7 @@ func _make_tile_multi(types: Array, fog: int = _HexTile.FogState.VISIBLE) -> Hex
 	tile.fog_state = fog
 	var props_arr: Array = []
 	for t in types:
-		var prop: Prop = _Prop.new()
-		prop.type = t
-		prop.category = Prop.Category.RESOURCE
-		prop.remaining = 3
-		prop.max_amount = 3
-		prop.sub_hex = Vector2i.ZERO
-		props_arr.append(prop)
+		props_arr.append(_Prop.create_resource(t, 3, 3))
 	tile.props = props_arr
 	return tile
 
@@ -294,14 +282,7 @@ func test_resource_with_offset_creates_entry() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var prop: Prop = _Prop.new()
-	prop.type = &"berries"
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = 3
-	prop.max_amount = 3
-	prop.sub_hex = Vector2i(1, -1)
-	prop.rotation_deg = 45.0
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(&"berries", 3, 3, &"", 0.0, 45.0, Vector2i(1, -1))]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
@@ -315,13 +296,7 @@ func test_unknown_resource_type_not_instanced() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var prop: Prop = _Prop.new()
-	prop.type = &"unknown_thing"
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = 3
-	prop.max_amount = 3
-	prop.sub_hex = Vector2i.ZERO
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(&"unknown_thing", 3, 3)]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)

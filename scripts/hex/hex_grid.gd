@@ -230,30 +230,23 @@ func load_save_data(data: Dictionary) -> void:
 		else:
 			# Legacy save format: "resources" + "structure" + "anomaly"
 			for rd in td.get("resources", []):
-				var prop: Resource = _Prop.new()
-				prop.type = StringName(rd["type"])
-				prop.category = _Prop.Category.RESOURCE
-				prop.remaining = int(rd["remaining"])
-				prop.max_amount = int(rd["max"])
-				prop.tool_required = StringName(rd.get("tool", ""))
-				tile.props.append(prop)
+				tile.props.append(_Prop.create_resource(
+					StringName(rd["type"]),
+					int(rd["remaining"]),
+					int(rd["max"]),
+					StringName(rd.get("tool", "")),
+				))
 
 			var structure_str: String = td.get("structure", "")
 			if structure_str != "":
-				var sp: Resource = _Prop.new()
-				sp.type = StringName(structure_str)
-				sp.category = _Prop.Category.STRUCTURE
-				sp.sub_hex = Vector2i.ZERO
-				sp.blocks_movement = not (StringName(structure_str) in WALKABLE_STRUCTURES)
-				tile.props.append(sp)
+				tile.props.append(_Prop.create_structure(
+					StringName(structure_str),
+					not (StringName(structure_str) in WALKABLE_STRUCTURES),
+				))
 
 			var anomaly_str: String = td.get("anomaly", "")
 			if anomaly_str != "":
-				var ap: Resource = _Prop.new()
-				ap.type = StringName(anomaly_str)
-				ap.category = _Prop.Category.ANOMALY
-				ap.sub_hex = Vector2i.ZERO
-				tile.props.append(ap)
+				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
 
 		_tiles[coords] = tile
 
@@ -265,11 +258,7 @@ func get_props_by_category(coords: Vector2i, category: int) -> Array:
 	var tile: Resource = _tiles.get(coords, null)
 	if tile == null:
 		return []
-	var result: Array = []
-	for prop in tile.props:
-		if prop.category == category:
-			result.append(prop)
-	return result
+	return tile.get_props_by_category(category)
 
 
 ## Return true if the tile at coords has a structure prop of the given type.
@@ -277,8 +266,8 @@ func has_structure(coords: Vector2i, type: StringName) -> bool:
 	var tile: Resource = _tiles.get(coords, null)
 	if tile == null:
 		return false
-	for prop in tile.props:
-		if prop.category == _Prop.Category.STRUCTURE and prop.type == type:
+	for prop in tile.get_structures():
+		if prop.type == type:
 			return true
 	return false
 
@@ -288,7 +277,7 @@ func get_anomaly(coords: Vector2i) -> Resource:
 	var tile: Resource = _tiles.get(coords, null)
 	if tile == null:
 		return null
-	for prop in tile.props:
-		if prop.category == _Prop.Category.ANOMALY:
-			return prop
-	return null
+	var anomalies: Array = tile.get_anomalies()
+	if anomalies.is_empty():
+		return null
+	return anomalies[0]

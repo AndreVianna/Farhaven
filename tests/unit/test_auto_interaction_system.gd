@@ -23,14 +23,7 @@ func after_test() -> void:
 # --- Helper ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"") -> Resource:
-	var prop: Resource = _Prop.new()
-	prop.type = type
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = 3
-	prop.max_amount = 3
-	prop.tool_required = tool_req
-	prop.sub_hex = Vector2i.ZERO
-	return prop
+	return _Prop.create_resource(type, 3, 3, tool_req)
 
 
 # --- can_gather: bare hands gathers wood ---

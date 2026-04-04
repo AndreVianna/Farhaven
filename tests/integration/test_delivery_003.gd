@@ -56,8 +56,8 @@ class FakeGrid extends Node:
 		var tile = _tiles.get(coords, null)
 		if tile == null:
 			return false
-		for prop in tile.props:
-			if prop.category == Prop.Category.STRUCTURE and prop.type == type:
+		for prop in tile.get_structures():
+			if prop.type == type:
 				return true
 		return false
 
@@ -110,15 +110,7 @@ var _world: Node3D
 # --- Helpers ---
 
 func _make_resource_prop(type: StringName, remaining: int = 3, tool_req: StringName = &"", respawn: float = 0.0) -> Prop:
-	var prop: Prop = _Prop.new()
-	prop.type = type
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = remaining
-	prop.max_amount = remaining
-	prop.tool_required = tool_req
-	prop.respawn_time = respawn
-	prop.sub_hex = Vector2i.ZERO
-	return prop
+	return _Prop.create_resource(type, remaining, remaining, tool_req, respawn)
 
 
 func _make_tile(resource_type: StringName = &"", remaining: int = 3, tool_req: StringName = &"", fog: int = _HexTile.FogState.VISIBLE, respawn: float = 0.0) -> HexTile:
@@ -513,12 +505,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	# Add a workbench neighbor for crafting
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Position player at the ore resource
 	_place_player_near_resource(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -606,12 +593,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 
 	# Workbench adjacent
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -865,12 +847,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -908,12 +885,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -1048,12 +1020,7 @@ func test_workbench_proximity_signal_on_change() -> void:
 
 	# Add workbench neighbor
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 
 	_crafting._check_workbench_proximity()
@@ -1114,12 +1081,7 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 3)
 	_grid._tiles[Vector2i(0, 1)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	var wb_tile: HexTile = _make_empty_tile()
-	var wb_prop: Prop = _Prop.new()
-	wb_prop.type = &"workbench"
-	wb_prop.category = Prop.Category.STRUCTURE
-	wb_prop.sub_hex = Vector2i.ZERO
-	wb_prop.blocks_movement = false
-	wb_tile.props = [wb_prop]
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Extra wood tile for crafting materials
 	_grid._tiles[Vector2i(0, -1)] = _make_tile(&"wood", 5)

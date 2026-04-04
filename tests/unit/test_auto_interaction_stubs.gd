@@ -165,15 +165,7 @@ func _on_respawned(coords: Vector2i, resource_type: StringName) -> void:
 # --- Helpers ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0) -> Resource:
-	var prop: Resource = _Prop.new()
-	prop.type = type
-	prop.category = Prop.Category.RESOURCE
-	prop.remaining = remaining
-	prop.max_amount = remaining
-	prop.tool_required = tool_req
-	prop.respawn_time = respawn
-	prop.sub_hex = Vector2i.ZERO
-	return prop
+	return _Prop.create_resource(type, remaining, remaining, tool_req, respawn)
 
 
 func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.FogState.VISIBLE) -> Resource:

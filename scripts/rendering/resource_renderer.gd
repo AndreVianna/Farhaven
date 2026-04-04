@@ -237,15 +237,14 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 	if tile == null:
 		return
 
-	for prop in tile.props:
-		if prop.category == _Prop.Category.RESOURCE:
-			var pool_id: StringName = prop.type
-			if not _pools.has(pool_id):
-				continue
-			var is_depleted: bool = prop.remaining <= 0
-			_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
-		elif prop.category == _Prop.Category.ANOMALY:
-			_add_anomaly_instance(coords, tile, dimmed)
+	for prop in tile.get_resources():
+		var pool_id: StringName = prop.type
+		if not _pools.has(pool_id):
+			continue
+		var is_depleted: bool = prop.remaining <= 0
+		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
+	for _anomaly in tile.get_anomalies():
+		_add_anomaly_instance(coords, tile, dimmed)
 
 
 func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
@@ -382,9 +381,7 @@ func _rebuild_tile(coords: Vector2i) -> void:
 		return
 	var dimmed: bool = tile.fog_state == _HexTile.FogState.REVEALED
 	_remove_all_resources_at(coords)
-	for prop in tile.props:
-		if prop.category != _Prop.Category.RESOURCE:
-			continue
+	for prop in tile.get_resources():
 		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue

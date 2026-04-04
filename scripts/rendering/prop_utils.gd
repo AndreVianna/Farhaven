@@ -23,9 +23,7 @@ static func get_entry_id_for_type(type: StringName) -> StringName:
 static func get_prop_placement(tile: Resource, entry_id: StringName) -> Array:
 	if tile == null:
 		return [Vector2.ZERO, 0.0]
-	for prop in tile.props:
-		if prop.category != _Prop.Category.RESOURCE:
-			continue
+	for prop in tile.get_resources():
 		var prop_entry_id: StringName = get_entry_id_for_type(prop.type)
 		if prop_entry_id == entry_id:
 			return [_HexMath.sub_axial_to_world(prop.sub_hex), prop.rotation_deg]

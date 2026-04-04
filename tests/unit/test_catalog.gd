@@ -331,11 +331,7 @@ func test_encounter_entry_does_not_emit_twice() -> void:
 
 func _make_tile_with_resource(resource_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	var prop: Prop = _Prop.new()
-	prop.type = resource_type
-	prop.category = Prop.Category.RESOURCE
-	prop.sub_hex = Vector2i.ZERO
-	tile.props = [prop]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 
@@ -384,11 +380,7 @@ func test_get_scannable_at_returns_empty_when_no_hex_grid() -> void:
 func test_get_scannable_at_anomaly_uncataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
 	var tile: HexTile = _HexTile.new()
-	var anomaly_prop: Prop = _Prop.new()
-	anomaly_prop.type = &"anomaly_ch1_001"
-	anomaly_prop.category = Prop.Category.ANOMALY
-	anomaly_prop.sub_hex = Vector2i.ZERO
-	tile.props = [anomaly_prop]
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	fake._tiles[Vector2i(1, 0)] = tile
 
 	_catalog._hex_grid = fake
@@ -399,11 +391,7 @@ func test_get_scannable_at_anomaly_uncataloged() -> void:
 func test_get_scannable_at_anomaly_cataloged_returns_empty() -> void:
 	var fake: FakeGrid = FakeGrid.new()
 	var tile: HexTile = _HexTile.new()
-	var anomaly_prop: Prop = _Prop.new()
-	anomaly_prop.type = &"anomaly_ch1_001"
-	anomaly_prop.category = Prop.Category.ANOMALY
-	anomaly_prop.sub_hex = Vector2i.ZERO
-	tile.props = [anomaly_prop]
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	fake._tiles[Vector2i(1, 0)] = tile
 
 	_catalog._hex_grid = fake

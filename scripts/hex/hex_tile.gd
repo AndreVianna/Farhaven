@@ -22,3 +22,23 @@ enum FogState {
 @export var elevation: int = 0
 @export var fog_state: FogState = FogState.HIDDEN
 @export var props: Array = []  # Array of Prop
+
+
+func get_props_by_category(category: int) -> Array:
+	var result: Array = []
+	for prop in props:
+		if prop.category == category:
+			result.append(prop)
+	return result
+
+
+func get_resources() -> Array:
+	return get_props_by_category(_Prop.Category.RESOURCE)
+
+
+func get_structures() -> Array:
+	return get_props_by_category(_Prop.Category.STRUCTURE)
+
+
+func get_anomalies() -> Array:
+	return get_props_by_category(_Prop.Category.ANOMALY)

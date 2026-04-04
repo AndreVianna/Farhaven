@@ -51,8 +51,8 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 	# Find the resource prop's sub-hex offset to start from prop position (not hex center)
 	var prop_offset := Vector2.ZERO
 	if tile != null:
-		for prop in tile.props:
-			if prop.category == _Prop.Category.RESOURCE and prop.type == resource_type:
+		for prop in tile.get_resources():
+			if prop.type == resource_type:
 				prop_offset = _HexMath.sub_axial_to_world(prop.sub_hex)
 				break
 
