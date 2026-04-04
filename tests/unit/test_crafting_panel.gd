@@ -10,6 +10,7 @@ const _RecipeEntryUI = preload("res://ui/recipe_entry_ui.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _panel: PanelContainer = null
 var _inv: RefCounted = null
@@ -65,14 +66,18 @@ class MockPlayer extends Node:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &"workbench"
+	var wb: Prop = _Prop.new()
+	wb.type = &"workbench"
+	wb.category = Prop.Category.STRUCTURE
+	wb.sub_hex = Vector2i.ZERO
+	wb.blocks_movement = false
+	tile.props = [wb]
 	_grid.set_tile(coords, tile)
 
 
 func _place_empty_tile(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &""
 	_grid.set_tile(coords, tile)
 
 

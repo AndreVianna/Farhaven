@@ -4,6 +4,7 @@ class_name TestCraftingSystem
 const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _sys: Node
 var _inv: RefCounted
@@ -84,14 +85,18 @@ func after_test() -> void:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &"workbench"
+	var wb: Prop = _Prop.new()
+	wb.type = &"workbench"
+	wb.category = Prop.Category.STRUCTURE
+	wb.sub_hex = Vector2i.ZERO
+	wb.blocks_movement = false
+	tile.props = [wb]
 	_grid.set_tile(coords, tile)
 
 
 func _place_empty_tile(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &""
 	_grid.set_tile(coords, tile)
 
 
@@ -457,7 +462,7 @@ func test_structure_destroyed_triggers_proximity_check() -> void:
 	assert_bool(_sys.is_near_workbench()).is_true()
 	# Remove the workbench
 	var tile: Resource = _grid.get_tile(Vector2i(1, 0))
-	tile.structure = &""
+	tile.props = []
 	_grid.structure_destroyed.emit(Vector2i(1, 0), &"workbench")
 	assert_bool(_sys.is_near_workbench()).is_false()
 

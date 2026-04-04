@@ -8,7 +8,7 @@ const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 
 
@@ -64,9 +64,11 @@ func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTi
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	tile.resource_nodes = [node]
+	var prop: Prop = _Prop.new()
+	prop.type = resource_type
+	prop.category = Prop.Category.RESOURCE
+	prop.sub_hex = Vector2i.ZERO
+	tile.props = [prop]
 	return tile
 
 

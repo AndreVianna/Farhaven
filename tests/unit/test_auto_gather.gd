@@ -10,7 +10,7 @@ class_name TestAutoGather
 const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
@@ -166,15 +166,16 @@ func _on_depleted(coords: Vector2i, resource_type: StringName) -> void:
 
 # --- Helpers ---
 
-func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0, offset: Vector2 = Vector2.ZERO) -> Resource:
-	var rn: Resource = _ResourceNode.new()
-	rn.type = type
-	rn.remaining = remaining
-	rn.max_amount = remaining
-	rn.tool_required = tool_req
-	rn.respawn_time = respawn
-	rn.offset = offset
-	return rn
+func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0, sub_hex: Vector2i = Vector2i.ZERO) -> Resource:
+	var prop: Resource = _Prop.new()
+	prop.type = type
+	prop.category = Prop.Category.RESOURCE
+	prop.remaining = remaining
+	prop.max_amount = remaining
+	prop.tool_required = tool_req
+	prop.respawn_time = respawn
+	prop.sub_hex = sub_hex
+	return prop
 
 
 func _make_tile(coords: Vector2i, resources: Array = []) -> Resource:
@@ -183,7 +184,7 @@ func _make_tile(coords: Vector2i, resources: Array = []) -> Resource:
 	tile.biome = _HexTile.Biome.FOREST
 	tile.elevation = 0
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	tile.resource_nodes = resources
+	tile.props = resources
 	return tile
 
 
@@ -309,11 +310,10 @@ func test_resource_at_tile_center_gathered_by_centered_player() -> void:
 
 
 func test_resource_with_offset_distance_computed_correctly() -> void:
-	# Resource at tile (0,0) with offset (1.0, 0.0).
-	# offset_to_world(Vector2(1,0), 3.0) = Vector2(1.2, 0.0)
-	# Resource world pos = (0 + 1.2, 0 + 0) = (1.2, 0)
-	# Player at (0, 0, 0) → distance = 1.2 > GATHER_RADIUS (0.75) → not gathered
-	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2(1.0, 0.0))
+	# Resource at tile (0,0) with sub_hex (2, 0) — far from center.
+	# sub_hex_to_world places it well beyond GATHER_RADIUS from tile center.
+	# Player at (0, 0, 0) → distance > GATHER_RADIUS (0.75) → not gathered
+	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2i(2, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog_resource(&"wood")
@@ -324,10 +324,9 @@ func test_resource_with_offset_distance_computed_correctly() -> void:
 
 
 func test_resource_with_small_offset_within_radius() -> void:
-	# Resource at tile (0,0) with offset (0.5, 0.0).
-	# offset_to_world(Vector2(0.5,0), 3.0) = Vector2(0.6, 0.0)
-	# Player at (0, 0, 0) → distance = 0.6 < 0.75 → gathered
-	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2(0.5, 0.0))
+	# Resource at tile (0,0) with sub_hex (0, 0) — at tile center.
+	# Player at (0, 0, 0) → distance = 0 < 0.75 → gathered
+	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2i(0, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog_resource(&"wood")
@@ -338,27 +337,21 @@ func test_resource_with_small_offset_within_radius() -> void:
 
 
 func test_gathers_from_neighbor_tile_when_close_enough() -> void:
-	# Player tile empty. Neighbor tile (1,0) has resource with offset toward player.
-	# Tile (1,0) center = axial_to_world(1,0) = (4.5, ~2.598)
-	# Resource offset (-1.0, 0.0) → offset_to_world = (-1.2, 0.0)
-	# Resource world pos = (4.5 - 1.2, 2.598) = (3.3, 2.598)
-	# Place player at (3.0, 0, 2.598) → distance ~0.3 < 0.75 → gathered
+	# Player tile empty. Neighbor tile (1,0) has resource at sub_hex (0,0) (center).
+	# Place player right at the neighbor tile center so distance is 0 < 0.75.
 	var player_tile := _make_tile(Vector2i.ZERO)
 	_grid._tiles[Vector2i.ZERO] = player_tile
 
-	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2(-1.0, 0.0))
+	var rn := _make_resource(&"wood", &"", 3, 0.0, Vector2i.ZERO)
 	var neighbor_coords := Vector2i(1, 0)
 	var neighbor_tile := _make_tile(neighbor_coords, [rn])
 	_grid._tiles[neighbor_coords] = neighbor_tile
 
 	_catalog_resource(&"wood")
 
-	# Compute the resource's world position
+	# Place player right at the neighbor tile center
 	var tile_center: Vector2 = _grid.axial_to_world(neighbor_coords)
-	var offset_w: Vector2 = _PropUtils.offset_to_world(Vector2(-1.0, 0.0), _HexMath.HEX_SIZE)
-	var resource_world: Vector2 = tile_center + offset_w
-	# Place player right at the resource
-	_place_player_at(resource_world.x, resource_world.y, Vector2i.ZERO)
+	_place_player_at(tile_center.x, tile_center.y, Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
@@ -400,12 +393,12 @@ func test_higher_priority_resource_gathered_first() -> void:
 
 
 func test_nearer_resource_gathered_first_at_same_priority() -> void:
-	# Two wood resources on same tile but different offsets.
-	# Near one at offset (0.1, 0) → world offset = (0.12, 0) → world pos (0.12, 0)
-	# Far one at offset (0.5, 0) → world offset = (0.6, 0) → world pos (0.6, 0)
-	# Player at (0, 0, 0) → near dist = 0.12, far dist = 0.6
-	var rn_near := _make_resource(&"wood", &"", 3, 0.0, Vector2(0.1, 0.0))
-	var rn_far := _make_resource(&"wood", &"", 3, 0.0, Vector2(0.5, 0.0))
+	# Two wood resources on same tile but different sub_hexes.
+	# Near one at sub_hex (0, 0) — at tile center.
+	# Far one at sub_hex (1, 0) — offset from center.
+	# Player at tile center → near dist = 0, far dist > 0
+	var rn_near := _make_resource(&"wood", &"", 3, 0.0, Vector2i.ZERO)
+	var rn_far := _make_resource(&"wood", &"", 3, 0.0, Vector2i(1, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn_far, rn_near])  # far first in array
 	_grid._tiles[Vector2i.ZERO] = tile
 
@@ -604,8 +597,8 @@ func test_chain_uses_player_current_position() -> void:
 	_grid._tiles[Vector2i.ZERO] = tile1
 
 	# Resource on neighbor of (1,0): tile (2,0)
-	# Place resource with offset toward the left edge
-	var rn2 := _make_resource(&"stone", &"", 3, 0.0, Vector2(-1.0, 0.0))
+	# Place resource at sub_hex (0, 0) — center of tile (2,0)
+	var rn2 := _make_resource(&"stone", &"", 3, 0.0, Vector2i.ZERO)
 	var tile2 := _make_tile(Vector2i(2, 0), [rn2])
 	_grid._tiles[Vector2i(2, 0)] = tile2
 
@@ -622,9 +615,7 @@ func test_chain_uses_player_current_position() -> void:
 
 	# Player moves to position near the stone resource during gather
 	var stone_tile_center: Vector2 = _grid.axial_to_world(Vector2i(2, 0))
-	var stone_offset_w: Vector2 = _PropUtils.offset_to_world(Vector2(-1.0, 0.0), _HexMath.HEX_SIZE)
-	var stone_world: Vector2 = stone_tile_center + stone_offset_w
-	_place_player_at(stone_world.x, stone_world.y, Vector2i(1, 0))
+	_place_player_at(stone_tile_center.x, stone_tile_center.y, Vector2i(1, 0))
 
 	# Complete first gather — chain should check from new position
 	_sys._on_gather_tween_complete()

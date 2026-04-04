@@ -7,7 +7,7 @@ extends GdUnitTestSuite
 const _ResourceRenderer = preload("res://scripts/rendering/resource_renderer.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 
 # --- Minimal fakes ---
@@ -33,11 +33,13 @@ func _make_tile(resource_type: StringName, remaining: int = 3, elev: int = 0, fo
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = fog
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	node.remaining = remaining
-	node.max_amount = 3
-	tile.resource_nodes = [node]
+	var prop: Prop = _Prop.new()
+	prop.type = resource_type
+	prop.category = Prop.Category.RESOURCE
+	prop.remaining = remaining
+	prop.max_amount = 3
+	prop.sub_hex = Vector2i.ZERO
+	tile.props = [prop]
 	return tile
 
 
@@ -45,14 +47,16 @@ func _make_tile_multi(types: Array, fog: int = _HexTile.FogState.VISIBLE) -> Hex
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
 	tile.fog_state = fog
-	var nodes: Array = []
+	var props_arr: Array = []
 	for t in types:
-		var node: ResourceNode = _ResourceNode.new()
-		node.type = t
-		node.remaining = 3
-		node.max_amount = 3
-		nodes.append(node)
-	tile.resource_nodes = nodes
+		var prop: Prop = _Prop.new()
+		prop.type = t
+		prop.category = Prop.Category.RESOURCE
+		prop.remaining = 3
+		prop.max_amount = 3
+		prop.sub_hex = Vector2i.ZERO
+		props_arr.append(prop)
+	tile.props = props_arr
 	return tile
 
 
@@ -250,7 +254,7 @@ func test_resource_depleted_marks_entry() -> void:
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 
 	# Deplete the resource
-	tile.resource_nodes[0].remaining = 0
+	tile.props[0].remaining = 0
 	_grid.resource_depleted.emit(Vector2i(0, 0), &"wood")
 
 	var entries: Dictionary = _renderer.get_tile_entries()
@@ -262,10 +266,10 @@ func test_resource_respawned_clears_depleted() -> void:
 	_grid._tiles[Vector2i(0, 0)] = tile
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
 
-	tile.resource_nodes[0].remaining = 0
+	tile.props[0].remaining = 0
 	_grid.resource_depleted.emit(Vector2i(0, 0), &"stone")
 
-	tile.resource_nodes[0].remaining = 3
+	tile.props[0].remaining = 3
 	_grid.resource_respawned.emit(Vector2i(0, 0), &"stone")
 
 	var entries: Dictionary = _renderer.get_tile_entries()
@@ -290,13 +294,14 @@ func test_resource_with_offset_creates_entry() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = &"berries"
-	node.remaining = 3
-	node.max_amount = 3
-	node.offset = Vector2(0.5, -0.3)
-	node.rotation_deg = 45.0
-	tile.resource_nodes = [node]
+	var prop: Prop = _Prop.new()
+	prop.type = &"berries"
+	prop.category = Prop.Category.RESOURCE
+	prop.remaining = 3
+	prop.max_amount = 3
+	prop.sub_hex = Vector2i(1, -1)
+	prop.rotation_deg = 45.0
+	tile.props = [prop]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
@@ -310,11 +315,13 @@ func test_unknown_resource_type_not_instanced() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = &"unknown_thing"
-	node.remaining = 3
-	node.max_amount = 3
-	tile.resource_nodes = [node]
+	var prop: Prop = _Prop.new()
+	prop.type = &"unknown_thing"
+	prop.category = Prop.Category.RESOURCE
+	prop.remaining = 3
+	prop.max_amount = 3
+	prop.sub_hex = Vector2i.ZERO
+	tile.props = [prop]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)

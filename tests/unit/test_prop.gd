@@ -1,5 +1,5 @@
-extends GdUnitTestSuite
 class_name TestProp
+extends GdUnitTestSuite
 
 const PropClass = preload("res://scripts/hex/prop.gd")
 

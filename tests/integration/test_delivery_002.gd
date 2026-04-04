@@ -19,7 +19,7 @@ const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _ResourceRenderer = preload("res://scripts/rendering/resource_renderer.gd")
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
@@ -126,9 +126,11 @@ func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTi
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	tile.resource_nodes = [node]
+	var prop: Prop = _Prop.new()
+	prop.type = resource_type
+	prop.category = Prop.Category.RESOURCE
+	prop.sub_hex = Vector2i.ZERO
+	tile.props = [prop]
 	return tile
 
 
@@ -136,7 +138,11 @@ func _make_tile_with_anomaly(anomaly_id: StringName, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	tile.anomaly = anomaly_id
+	var anomaly_prop: Prop = _Prop.new()
+	anomaly_prop.type = anomaly_id
+	anomaly_prop.category = Prop.Category.ANOMALY
+	anomaly_prop.sub_hex = Vector2i.ZERO
+	tile.props = [anomaly_prop]
 	return tile
 
 

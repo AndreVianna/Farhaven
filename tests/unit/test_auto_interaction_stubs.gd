@@ -7,7 +7,7 @@ class_name TestAutoInteractionStubs
 const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
@@ -165,13 +165,15 @@ func _on_respawned(coords: Vector2i, resource_type: StringName) -> void:
 # --- Helpers ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0) -> Resource:
-	var rn: Resource = _ResourceNode.new()
-	rn.type = type
-	rn.remaining = remaining
-	rn.max_amount = remaining
-	rn.tool_required = tool_req
-	rn.respawn_time = respawn
-	return rn
+	var prop: Resource = _Prop.new()
+	prop.type = type
+	prop.category = Prop.Category.RESOURCE
+	prop.remaining = remaining
+	prop.max_amount = remaining
+	prop.tool_required = tool_req
+	prop.respawn_time = respawn
+	prop.sub_hex = Vector2i.ZERO
+	return prop
 
 
 func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.FogState.VISIBLE) -> Resource:
@@ -180,7 +182,7 @@ func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.Fog
 	tile.biome = _HexTile.Biome.FOREST
 	tile.elevation = 0
 	tile.fog_state = fog
-	tile.resource_nodes = resources
+	tile.props = resources
 	return tile
 
 

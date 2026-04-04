@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 const _ScanProgressRenderer = preload("res://scripts/rendering/scan_progress_renderer.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 
 # --- Minimal fakes ---

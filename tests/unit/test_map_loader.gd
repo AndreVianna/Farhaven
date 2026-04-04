@@ -6,6 +6,7 @@ class_name TestMapLoader
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _grid: Node
 
@@ -72,8 +73,11 @@ func test_anomaly_exists() -> void:
 	_load_ch1()
 	var found: bool = false
 	for c in _grid._tiles:
-		if _grid._tiles[c].anomaly != &"":
-			found = true
+		for prop in _grid._tiles[c].props:
+			if prop.category == Prop.Category.ANOMALY:
+				found = true
+				break
+		if found:
 			break
 	assert_bool(found).override_failure_message("No anomaly tile found").is_true()
 
@@ -202,7 +206,12 @@ func test_get_traversal_blocked_structure() -> void:
 	_grid._tiles[Vector2i(0, 0)] = a
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
-	b.structure = &"wall"
+	var wall: Prop = _Prop.new()
+	wall.type = &"wall"
+	wall.category = Prop.Category.STRUCTURE
+	wall.sub_hex = Vector2i.ZERO
+	wall.blocks_movement = true
+	b.props = [wall]
 	_grid._tiles[Vector2i(1, 0)] = b
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 
@@ -327,7 +336,7 @@ func test_serialization_round_trip() -> void:
 		assert_int(loaded.biome).is_equal(orig.biome)
 		assert_int(loaded.elevation).is_equal(orig.elevation)
 		assert_int(loaded.fog_state).is_equal(orig.fog_state)
-		assert_str(String(loaded.anomaly)).is_equal(String(orig.anomaly))
+		assert_int(loaded.props.size()).is_equal(orig.props.size())
 
 	grid2.queue_free()
 
