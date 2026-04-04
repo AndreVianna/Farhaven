@@ -234,6 +234,23 @@ html, body {
   display: block;
 }
 
+/* ---- Resource Detail Panel ---- */
+#resource-detail-panel {
+  display: none;
+  position: absolute;
+  right: 290px;
+  top: 40px;
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  z-index: 150;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
 /* ---- Hex Tooltip ---- */
 #hex-tooltip {
   display: none;
@@ -294,6 +311,10 @@ html, body {
   <div id="editor-workspace">
     <header id="toolbar">
       <span class="toolbar-title">Farhaven Level Editor</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+        <input type="checkbox" id="chk-coordinates"> Coords
+      </label>
+      <span id="tool-indicator" style="font-size:12px;color:var(--text-secondary);"></span>
       <button id="btn-save" type="button" title="Save All (Ctrl+S)">Save</button>
     </header>
     <nav id="tabs">
@@ -319,6 +340,7 @@ html, body {
   </div>
 
   <div id="hex-tooltip"></div>
+  <div id="resource-detail-panel"></div>
 </div>
 
 <script>
@@ -1374,12 +1396,1990 @@ class KeyboardManager {
 /** @type {KeyboardManager} */
 const keyboardManager = new KeyboardManager();
 
+// ============================================================
+// HexMath Module (task-007)
+// ============================================================
+
+const HEX_SIZE = 40; // default visual scale in pixels
+
 /**
- * Stub selectTool function — actual ToolManager comes in delivery-002.
+ * Pure static hex math utilities. Flat-top axial coordinate system
+ * matching Farhaven's hex_math.gd (same formulas, JS camelCase names).
+ */
+const HexMath = {
+  /** Flat-top axial neighbor directions: E, NE, NW, W, SW, SE */
+  DIRECTIONS: [
+    { q: 1, r: 0 },
+    { q: 1, r: -1 },
+    { q: 0, r: -1 },
+    { q: -1, r: 0 },
+    { q: -1, r: 1 },
+    { q: 0, r: 1 },
+  ],
+
+  /**
+   * Axial to pixel (flat-top hex).
+   * @param {number} q
+   * @param {number} r
+   * @returns {{ x: number, y: number }}
+   */
+  axialToPixel(q, r) {
+    const x = HEX_SIZE * (3 / 2 * q);
+    const y = HEX_SIZE * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
+    return { x, y };
+  },
+
+  /**
+   * Pixel to axial (flat-top hex). Uses fractional axial -> cube round.
+   * @param {number} x
+   * @param {number} y
+   * @returns {{ q: number, r: number }}
+   */
+  pixelToAxial(x, y) {
+    const fq = (2 / 3 * x) / HEX_SIZE;
+    const fr = (-1 / 3 * x + Math.sqrt(3) / 3 * y) / HEX_SIZE;
+    return HexMath.cubeRound(fq, fr);
+  },
+
+  /**
+   * Cube rounding for pixel-to-hex snapping.
+   * @param {number} fq - fractional q
+   * @param {number} fr - fractional r
+   * @returns {{ q: number, r: number }}
+   */
+  cubeRound(fq, fr) {
+    const fs = -fq - fr;
+    let q = Math.round(fq);
+    let r = Math.round(fr);
+    let s = Math.round(fs);
+    const qDiff = Math.abs(q - fq);
+    const rDiff = Math.abs(r - fr);
+    const sDiff = Math.abs(s - fs);
+    if (qDiff > rDiff && qDiff > sDiff) {
+      q = -r - s;
+    } else if (rDiff > sDiff) {
+      r = -q - s;
+    }
+    return { q, r };
+  },
+
+  /**
+   * Returns the 6 neighbor coordinates of a hex.
+   * @param {number} q
+   * @param {number} r
+   * @returns {Array<{ q: number, r: number }>}
+   */
+  getNeighbors(q, r) {
+    return HexMath.DIRECTIONS.map(d => ({ q: q + d.q, r: r + d.r }));
+  },
+
+  /**
+   * Hex distance (axial).
+   * @param {number} q1
+   * @param {number} r1
+   * @param {number} q2
+   * @param {number} r2
+   * @returns {number}
+   */
+  distance(q1, r1, q2, r2) {
+    const dq = q1 - q2;
+    const dr = r1 - r2;
+    const ds = (-q1 - r1) - (-q2 - r2);
+    return (Math.abs(dq) + Math.abs(dr) + Math.abs(ds)) / 2;
+  },
+
+  /**
+   * Returns the 6 corner points of a flat-top hex at pixel position (cx, cy).
+   * @param {number} cx
+   * @param {number} cy
+   * @param {number} size
+   * @returns {Array<{ x: number, y: number }>}
+   */
+  hexCorners(cx, cy, size) {
+    const corners = [];
+    for (let i = 0; i < 6; i++) {
+      const angleDeg = 60 * i;
+      const angleRad = angleDeg * Math.PI / 180;
+      corners.push({
+        x: cx + size * Math.cos(angleRad),
+        y: cy + size * Math.sin(angleRad),
+      });
+    }
+    return corners;
+  },
+
+  /**
+   * Returns the edge index (0-5) between two adjacent hexes.
+   * @param {number} q1
+   * @param {number} r1
+   * @param {number} q2
+   * @param {number} r2
+   * @returns {number} 0-5 or -1 if not adjacent
+   */
+  getEdgeIndex(q1, r1, q2, r2) {
+    const dq = q2 - q1;
+    const dr = r2 - r1;
+    for (let i = 0; i < HexMath.DIRECTIONS.length; i++) {
+      if (HexMath.DIRECTIONS[i].q === dq && HexMath.DIRECTIONS[i].r === dr) {
+        return i;
+      }
+    }
+    return -1;
+  },
+};
+
+// ============================================================
+// HexGrid Model (task-007)
+// ============================================================
+
+/**
+ * Creates a default TileData object.
+ * @param {string} [biome='']
+ * @returns {{ biome: string, elevation: number, structure: string|null, anomaly: string|null, resources: Array<Object> }}
+ */
+function createTileData(biome = '') {
+  return {
+    biome: biome,
+    elevation: 0,
+    structure: null,
+    anomaly: null,
+    resources: [],
+  };
+}
+
+/**
+ * Creates a ResourceInstance.
+ * @param {string} type
+ * @param {number} x
+ * @param {number} y
+ * @param {number} rotation
+ * @returns {{ type: string, x: number, y: number, rotation: number }}
+ */
+function createResourceInstance(type, x, y, rotation) {
+  return { type, x, y, rotation };
+}
+
+/**
+ * In-memory map model. Key = "q,r", Value = TileData.
+ */
+class HexGrid {
+  constructor() {
+    /** @type {{ chapter_id: string, name: string, spawn: number[] }} */
+    this.meta = { chapter_id: '', name: '', spawn: [0, 0] };
+    /** @type {Map<string, Object>} */
+    this.tiles = new Map();
+    /** @type {function():void|null} */
+    this.onChange = null;
+  }
+
+  /**
+   * @param {number} q
+   * @param {number} r
+   * @returns {string}
+   */
+  getKey(q, r) {
+    return `${q},${r}`;
+  }
+
+  /**
+   * @param {number} q
+   * @param {number} r
+   * @returns {Object|undefined}
+   */
+  getTile(q, r) {
+    return this.tiles.get(this.getKey(q, r));
+  }
+
+  /**
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} data
+   * @returns {void}
+   */
+  setTile(q, r, data) {
+    this.tiles.set(this.getKey(q, r), data);
+    if (this.onChange) this.onChange();
+  }
+
+  /**
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  deleteTile(q, r) {
+    this.tiles.delete(this.getKey(q, r));
+    if (this.onChange) this.onChange();
+  }
+
+  /**
+   * @param {number} q
+   * @param {number} r
+   * @returns {boolean}
+   */
+  hasTile(q, r) {
+    return this.tiles.has(this.getKey(q, r));
+  }
+
+  /**
+   * @returns {IterableIterator<[string, Object]>}
+   */
+  getAllTiles() {
+    return this.tiles.entries();
+  }
+
+  /**
+   * Remove all tiles.
+   * @returns {void}
+   */
+  clear() {
+    this.tiles.clear();
+    if (this.onChange) this.onChange();
+  }
+}
+
+/** @type {HexGrid} Global hex grid model instance */
+const hexGrid = new HexGrid();
+
+/**
+ * Camera state for pan and zoom.
+ * @type {{ offsetX: number, offsetY: number, zoom: number }}
+ */
+const camera = { offsetX: 0, offsetY: 0, zoom: 1.0 };
+
+/** @type {Map<string, string>} Biome name -> CSS color string, populated from .tres data */
+const biomeColorMap = new Map();
+
+/** @type {string} Fallback color for unknown biomes */
+const BIOME_FALLBACK_COLOR = '#888888';
+
+/**
+ * Load map JSON data into the HexGrid model.
+ * @param {Object} mapData - parsed ch1.json
+ * @returns {void}
+ */
+function loadMapIntoGrid(mapData) {
+  hexGrid.clear();
+  hexGrid.meta.chapter_id = mapData.chapter_id || '';
+  hexGrid.meta.name = mapData.name || '';
+  hexGrid.meta.spawn = Array.isArray(mapData.spawn) ? [...mapData.spawn] : [0, 0];
+
+  if (mapData.tiles && typeof mapData.tiles === 'object') {
+    for (const [key, tileJson] of Object.entries(mapData.tiles)) {
+      const parts = key.split(',');
+      const q = parseInt(parts[0], 10);
+      const r = parseInt(parts[1], 10);
+      const tile = createTileData(tileJson.biome || '');
+      tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
+      tile.structure = tileJson.structure || null;
+      tile.anomaly = tileJson.anomaly || null;
+      tile.resources = Array.isArray(tileJson.resources)
+        ? tileJson.resources.map(res => createResourceInstance(
+            res.type || '',
+            typeof res.x === 'number' ? res.x : 0,
+            typeof res.y === 'number' ? res.y : 0,
+            typeof res.rotation === 'number' ? res.rotation : 0
+          ))
+        : [];
+      hexGrid.setTile(q, r, tile);
+    }
+  }
+}
+
+/**
+ * Serialize the HexGrid model back to map JSON format.
+ * @returns {Object}
+ */
+function serializeGridToMapJson() {
+  const tiles = {};
+  for (const [key, tile] of hexGrid.getAllTiles()) {
+    const entry = {
+      biome: tile.biome,
+      elevation: tile.elevation,
+      resources: tile.resources.map(r => ({
+        type: r.type,
+        x: r.x,
+        y: r.y,
+        rotation: r.rotation,
+      })),
+    };
+    if (tile.structure) entry.structure = tile.structure;
+    if (tile.anomaly) entry.anomaly = tile.anomaly;
+    tiles[key] = entry;
+  }
+  return {
+    chapter_id: hexGrid.meta.chapter_id,
+    name: hexGrid.meta.name,
+    spawn: [...hexGrid.meta.spawn],
+    tiles: tiles,
+  };
+}
+
+// ============================================================
+// HexCanvas — Rendering and Interaction (task-008)
+// ============================================================
+
+class HexCanvas {
+  /**
+   * @param {HTMLCanvasElement} canvasElement
+   * @param {HexGrid} grid
+   */
+  constructor(canvasElement, grid) {
+    this.canvas = canvasElement;
+    this.ctx = canvasElement && typeof canvasElement.getContext === 'function'
+      ? canvasElement.getContext('2d') : null;
+    this.grid = grid;
+    this.selectedHex = null;
+    this.hoveredHex = null;
+    this.showCoordinates = false;
+    this.isPanning = false;
+    this.panStart = null;
+    this.spaceHeld = false;
+    this.toolManager = null;
+    this._renderRequested = false;
+    this._mouseDown = false;
+
+    this._onMouseDown = this._onMouseDown.bind(this);
+    this._onMouseMove = this._onMouseMove.bind(this);
+    this._onMouseUp = this._onMouseUp.bind(this);
+    this._onWheel = this._onWheel.bind(this);
+    this._onResize = this._onResize.bind(this);
+    this._onKeyDown = this._onKeyDown.bind(this);
+    this._onKeyUp = this._onKeyUp.bind(this);
+    this._onMouseLeave = this._onMouseLeave.bind(this);
+    this._onContextMenu = this._onContextMenu.bind(this);
+  }
+
+  /**
+   * Attach event listeners and subscribe to grid changes.
+   * @returns {void}
+   */
+  init() {
+    if (!this.ctx) return;
+    this.canvas.addEventListener('mousedown', this._onMouseDown);
+    this.canvas.addEventListener('mousemove', this._onMouseMove);
+    this.canvas.addEventListener('mouseup', this._onMouseUp);
+    this.canvas.addEventListener('mouseleave', this._onMouseLeave);
+    this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
+    this.canvas.addEventListener('contextmenu', this._onContextMenu);
+    window.addEventListener('resize', this._onResize);
+    document.addEventListener('keydown', this._onKeyDown);
+    document.addEventListener('keyup', this._onKeyUp);
+
+    this.grid.onChange = () => this.requestRender();
+
+    this._onResize();
+    this.requestRender();
+  }
+
+  /**
+   * Detach event listeners.
+   * @returns {void}
+   */
+  destroy() {
+    this.canvas.removeEventListener('mousedown', this._onMouseDown);
+    this.canvas.removeEventListener('mousemove', this._onMouseMove);
+    this.canvas.removeEventListener('mouseup', this._onMouseUp);
+    this.canvas.removeEventListener('mouseleave', this._onMouseLeave);
+    this.canvas.removeEventListener('wheel', this._onWheel);
+    this.canvas.removeEventListener('contextmenu', this._onContextMenu);
+    window.removeEventListener('resize', this._onResize);
+    document.removeEventListener('keydown', this._onKeyDown);
+    document.removeEventListener('keyup', this._onKeyUp);
+  }
+
+  /**
+   * Schedule a render on the next animation frame.
+   * @returns {void}
+   */
+  requestRender() {
+    if (!this.ctx || this._renderRequested) return;
+    this._renderRequested = true;
+    requestAnimationFrame(() => {
+      this._renderRequested = false;
+      this.render();
+    });
+  }
+
+  /**
+   * Full redraw of the canvas.
+   * @returns {void}
+   */
+  render() {
+    const ctx = this.ctx;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    // Clear with background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, w, h);
+
+    if (this.grid.tiles.size === 0) return;
+
+    // Draw all hexes
+    for (const [key, tile] of this.grid.getAllTiles()) {
+      const parts = key.split(',');
+      const q = parseInt(parts[0], 10);
+      const r = parseInt(parts[1], 10);
+      this._drawHex(q, r, tile);
+      this._drawElevationOverlay(q, r, tile);
+      this._drawCliffEdges(q, r, tile);
+      if (tile.resources && tile.resources.length > 0) {
+        this._drawResourceIndicator(q, r, tile.resources.length);
+      }
+      if (tile.structure) {
+        this._drawStructureIcon(q, r, tile.structure);
+      }
+      if (this.showCoordinates) {
+        this._drawCoordinateLabel(q, r);
+      }
+    }
+
+    // Draw spawn marker
+    const spawn = this.grid.meta.spawn;
+    if (spawn && this.grid.hasTile(spawn[0], spawn[1])) {
+      this._drawSpawnMarker(spawn[0], spawn[1]);
+    }
+
+    // Draw hover highlight
+    if (this.hoveredHex && this.grid.hasTile(this.hoveredHex.q, this.hoveredHex.r)) {
+      this._drawHoverHighlight(this.hoveredHex.q, this.hoveredHex.r);
+    }
+
+    // Draw selection
+    if (this.selectedHex && this.grid.hasTile(this.selectedHex.q, this.selectedHex.r)) {
+      this._drawSelection(this.selectedHex.q, this.selectedHex.r);
+    }
+  }
+
+  /**
+   * Draw a hex polygon filled with biome color, adjusted for elevation.
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} tile
+   * @returns {void}
+   */
+  _drawHex(q, r, tile) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = HEX_SIZE * camera.zoom;
+    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+
+    // Get biome color
+    let color = biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
+
+    // Apply elevation brightness
+    if (tile.elevation > 0) {
+      color = this._adjustBrightness(color, 1 + tile.elevation * 0.05);
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) {
+      ctx.lineTo(corners[i].x, corners[i].y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Thin border
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  /**
+   * Draw elevation number overlay.
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} tile
+   * @returns {void}
+   */
+  _drawElevationOverlay(q, r, tile) {
+    if (tile.elevation <= 0) return;
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const fontSize = Math.max(8, 12 * camera.zoom);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(tile.elevation), screen.x, screen.y);
+  }
+
+  /**
+   * Draw cliff edges where elevation diff >= 2.
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} tile
+   * @returns {void}
+   */
+  _drawCliffEdges(q, r, tile) {
+    const ctx = this.ctx;
+    const neighbors = HexMath.getNeighbors(q, r);
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = HEX_SIZE * camera.zoom;
+    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+
+    for (let i = 0; i < 6; i++) {
+      const n = neighbors[i];
+      const neighbor = this.grid.getTile(n.q, n.r);
+      if (!neighbor) continue;
+      if (Math.abs(tile.elevation - neighbor.elevation) >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(corners[i].x, corners[i].y);
+        ctx.lineTo(corners[(i + 1) % 6].x, corners[(i + 1) % 6].y);
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 3 * camera.zoom;
+        ctx.stroke();
+      }
+    }
+  }
+
+  /**
+   * Draw selection highlight.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _drawSelection(q, r) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = HEX_SIZE * camera.zoom;
+    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) {
+      ctx.lineTo(corners[i].x, corners[i].y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5 * camera.zoom;
+    ctx.stroke();
+  }
+
+  /**
+   * Draw hover highlight.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _drawHoverHighlight(q, r) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = HEX_SIZE * camera.zoom;
+    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) {
+      ctx.lineTo(corners[i].x, corners[i].y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+  }
+
+  /**
+   * Draw coordinate label at hex center.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _drawCoordinateLabel(q, r) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const fontSize = Math.max(7, 10 * camera.zoom);
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.fillStyle = 'rgba(180,180,180,0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${q},${r}`, screen.x, screen.y - 2 * camera.zoom);
+  }
+
+  /**
+   * Draw spawn marker.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _drawSpawnMarker(q, r) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = 8 * camera.zoom;
+
+    ctx.beginPath();
+    ctx.arc(screen.x, screen.y - HEX_SIZE * camera.zoom * 0.3, size, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // "S" label
+    const fontSize = Math.max(6, 10 * camera.zoom);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', screen.x, screen.y - HEX_SIZE * camera.zoom * 0.3);
+  }
+
+  /**
+   * Draw resource count badge.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} count
+   * @returns {void}
+   */
+  _drawResourceIndicator(q, r, count) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const offsetY = HEX_SIZE * camera.zoom * 0.35;
+    const badgeSize = Math.max(5, 7 * camera.zoom);
+
+    ctx.beginPath();
+    ctx.arc(screen.x + HEX_SIZE * camera.zoom * 0.3, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
+    ctx.fillStyle = '#4488ff';
+    ctx.fill();
+
+    const fontSize = Math.max(5, 8 * camera.zoom);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(count), screen.x + HEX_SIZE * camera.zoom * 0.3, screen.y + offsetY);
+  }
+
+  /**
+   * Draw structure indicator.
+   * @param {number} q
+   * @param {number} r
+   * @param {string} type
+   * @returns {void}
+   */
+  _drawStructureIcon(q, r, type) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const offsetY = HEX_SIZE * camera.zoom * 0.35;
+
+    const fontSize = Math.max(5, 8 * camera.zoom);
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.fillStyle = '#ffaa44';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Abbreviation
+    const abbrev = type.substring(0, 3).toUpperCase();
+    ctx.fillText(abbrev, screen.x - HEX_SIZE * camera.zoom * 0.25, screen.y + offsetY);
+  }
+
+  // --- Coordinate transforms ---
+
+  /**
+   * @param {number} wx
+   * @param {number} wy
+   * @returns {{ x: number, y: number }}
+   */
+  worldToScreen(wx, wy) {
+    return {
+      x: wx * camera.zoom + camera.offsetX,
+      y: wy * camera.zoom + camera.offsetY,
+    };
+  }
+
+  /**
+   * @param {number} sx
+   * @param {number} sy
+   * @returns {{ x: number, y: number }}
+   */
+  screenToWorld(sx, sy) {
+    return {
+      x: (sx - camera.offsetX) / camera.zoom,
+      y: (sy - camera.offsetY) / camera.zoom,
+    };
+  }
+
+  /**
+   * @param {number} sx
+   * @param {number} sy
+   * @returns {{ q: number, r: number }}
+   */
+  screenToHex(sx, sy) {
+    const world = this.screenToWorld(sx, sy);
+    return HexMath.pixelToAxial(world.x, world.y);
+  }
+
+  // --- Mouse event handlers ---
+
+  /** @param {MouseEvent} event */
+  _onMouseDown(event) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+
+    // Middle-click or space+left-click: start pan
+    if (event.button === 1 || (event.button === 0 && this.spaceHeld)) {
+      this.isPanning = true;
+      this.panStart = { x: event.clientX, y: event.clientY };
+      event.preventDefault();
+      return;
+    }
+
+    // Left click
+    if (event.button === 0) {
+      this._mouseDown = true;
+      const hex = this.screenToHex(mx, my);
+      this.selectedHex = { q: hex.q, r: hex.r };
+
+      if (this.toolManager) {
+        this.toolManager.onMouseDown(hex);
+      }
+      this.requestRender();
+    }
+  }
+
+  /** @param {MouseEvent} event */
+  _onMouseMove(event) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+
+    // Handle pan drag
+    if (this.isPanning && this.panStart) {
+      const dx = event.clientX - this.panStart.x;
+      const dy = event.clientY - this.panStart.y;
+      camera.offsetX += dx;
+      camera.offsetY += dy;
+      this.panStart = { x: event.clientX, y: event.clientY };
+      this.requestRender();
+      return;
+    }
+
+    // Update hovered hex
+    const hex = this.screenToHex(mx, my);
+    const prevHover = this.hoveredHex;
+    if (!prevHover || prevHover.q !== hex.q || prevHover.r !== hex.r) {
+      this.hoveredHex = { q: hex.q, r: hex.r };
+      this._updateTooltip(hex, event.clientX, event.clientY);
+      this.requestRender();
+    }
+
+    // Forward to tool during drag
+    if (this._mouseDown && this.toolManager) {
+      this.toolManager.onMouseMove(hex);
+    }
+  }
+
+  /** @param {MouseEvent} event */
+  _onMouseUp(event) {
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.panStart = null;
+      return;
+    }
+
+    if (this._mouseDown) {
+      this._mouseDown = false;
+      const rect = this.canvas.getBoundingClientRect();
+      const mx = event.clientX - rect.left;
+      const my = event.clientY - rect.top;
+      const hex = this.screenToHex(mx, my);
+      if (this.toolManager) {
+        this.toolManager.onMouseUp(hex);
+      }
+    }
+  }
+
+  /** @param {MouseEvent} event */
+  _onMouseLeave(event) {
+    this.hoveredHex = null;
+    this._hideTooltip();
+    if (this._mouseDown) {
+      this._mouseDown = false;
+      if (this.toolManager) {
+        this.toolManager.onMouseUp(null);
+      }
+    }
+    this.requestRender();
+  }
+
+  /** @param {WheelEvent} event */
+  _onWheel(event) {
+    event.preventDefault();
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+
+    // Record world point under cursor before zoom
+    const worldBefore = this.screenToWorld(mx, my);
+
+    // Adjust zoom
+    const delta = event.deltaY * -0.001;
+    camera.zoom = Math.max(0.2, Math.min(3.0, camera.zoom + delta));
+
+    // Adjust offsets so world point stays under cursor
+    camera.offsetX = mx - worldBefore.x * camera.zoom;
+    camera.offsetY = my - worldBefore.y * camera.zoom;
+
+    this.requestRender();
+  }
+
+  /** @param {KeyboardEvent} event */
+  _onKeyDown(event) {
+    if (event.key === ' ') {
+      this.spaceHeld = true;
+    }
+  }
+
+  /** @param {KeyboardEvent} event */
+  _onKeyUp(event) {
+    if (event.key === ' ') {
+      this.spaceHeld = false;
+    }
+  }
+
+  /** @param {Event} event */
+  _onContextMenu(event) {
+    event.preventDefault();
+  }
+
+  /**
+   * Update canvas dimensions to fill parent.
+   * @returns {void}
+   */
+  _onResize() {
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    // Account for sidebar
+    const sidebar = parent.querySelector('#sidebar');
+    const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
+    this.canvas.width = parent.clientWidth - sidebarWidth;
+    this.canvas.height = parent.clientHeight;
+    this.requestRender();
+  }
+
+  // --- Tooltip ---
+
+  /**
+   * @param {{ q: number, r: number }} hex
+   * @param {number} clientX
+   * @param {number} clientY
+   * @returns {void}
+   */
+  _updateTooltip(hex, clientX, clientY) {
+    const tile = this.grid.getTile(hex.q, hex.r);
+    const tooltip = document.getElementById('hex-tooltip');
+    if (!tooltip) return;
+
+    if (!tile) {
+      this._hideTooltip();
+      return;
+    }
+
+    const lines = [`(${hex.q}, ${hex.r})`];
+    lines.push(`Biome: ${tile.biome || 'none'}`);
+    lines.push(`Elevation: ${tile.elevation}`);
+    if (tile.structure) {
+      lines.push(`Structure: ${tile.structure}`);
+    }
+    if (tile.resources && tile.resources.length > 0) {
+      // Aggregate by type
+      const counts = {};
+      for (const res of tile.resources) {
+        counts[res.type] = (counts[res.type] || 0) + 1;
+      }
+      const parts = Object.entries(counts).map(([t, c]) => `${t} x${c}`);
+      if (parts.length > 5) {
+        const extra = parts.length - 5;
+        lines.push(`Resources: ${parts.slice(0, 5).join(', ')}... and ${extra} more`);
+      } else {
+        lines.push(`Resources: ${parts.join(', ')}`);
+      }
+    }
+    if (tile.anomaly) {
+      lines.push(`Anomaly: ${tile.anomaly}`);
+    }
+
+    tooltip.textContent = lines.join('\n');
+    tooltip.style.display = 'block';
+    tooltip.style.whiteSpace = 'pre-line';
+    tooltip.style.left = (clientX + 15) + 'px';
+    tooltip.style.top = (clientY + 15) + 'px';
+  }
+
+  /**
+   * @returns {void}
+   */
+  _hideTooltip() {
+    const tooltip = document.getElementById('hex-tooltip');
+    if (tooltip) tooltip.style.display = 'none';
+  }
+
+  /**
+   * Adjust brightness of a CSS color string.
+   * @param {string} color - rgb(...) or hex color
+   * @param {number} factor - multiplier
+   * @returns {string}
+   */
+  _adjustBrightness(color, factor) {
+    let r, g, b;
+    if (color.startsWith('rgb(')) {
+      const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (match) {
+        r = parseInt(match[1], 10);
+        g = parseInt(match[2], 10);
+        b = parseInt(match[3], 10);
+      } else {
+        return color;
+      }
+    } else if (color.startsWith('#')) {
+      const hex = color.slice(1);
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    } else {
+      return color;
+    }
+    r = Math.min(255, Math.round(r * factor));
+    g = Math.min(255, Math.round(g * factor));
+    b = Math.min(255, Math.round(b * factor));
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+/** @type {HexCanvas|null} */
+let hexCanvas = null;
+
+// ============================================================
+// Tool Types and Enums (task-009)
+// ============================================================
+
+const ToolType = {
+  BIOME: 'biome',
+  ELEVATION: 'elevation',
+  RESOURCE: 'resource',
+  STRUCTURE: 'structure',
+  ANOMALY: 'anomaly',
+  SPAWN: 'spawn',
+  ERASER: 'eraser',
+  DELETE_HEX: 'delete_hex',
+  FLOOD_FILL: 'flood_fill',
+};
+
+const ElevationMode = {
+  SET: 'set',
+  INCREMENT: 'increment',
+};
+
+/** @type {string[]} Known structure types matching game's WALKABLE_STRUCTURES */
+const STRUCTURE_TYPES = ['workbench', 'storage_chest', 'campfire', 'shelter', 'torch'];
+
+// ============================================================
+// Command Classes (task-009 + task-010)
+// ============================================================
+
+class SetBiomeCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {string} oldBiome
+   * @param {string} newBiome
+   */
+  constructor(grid, q, r, oldBiome, newBiome) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldBiome = oldBiome;
+    this.newBiome = newBiome;
+    this.tab = 'map';
+    this.type = 'SetBiome';
+  }
+  execute() {
+    let tile = this.grid.getTile(this.q, this.r);
+    if (!tile) {
+      tile = createTileData(this.newBiome);
+      this.grid.setTile(this.q, this.r, tile);
+    } else {
+      tile.biome = this.newBiome;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.biome = this.oldBiome;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class SetElevationCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {number} oldElevation
+   * @param {number} newElevation
+   */
+  constructor(grid, q, r, oldElevation, newElevation) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldElevation = oldElevation;
+    this.newElevation = newElevation;
+    this.tab = 'map';
+    this.type = 'SetElevation';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.elevation = this.newElevation;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.elevation = this.oldElevation;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class AddResourceCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} resourceInstance
+   */
+  constructor(grid, q, r, resourceInstance) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.resource = resourceInstance;
+    this._index = -1;
+    this.tab = 'map';
+    this.type = 'AddResource';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.resources.push(this.resource);
+      this._index = tile.resources.length - 1;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile && this._index >= 0) {
+      tile.resources.splice(this._index, 1);
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class EditResourceCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {number} resourceIndex
+   * @param {Object} oldValues
+   * @param {Object} newValues
+   */
+  constructor(grid, q, r, resourceIndex, oldValues, newValues) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.resourceIndex = resourceIndex;
+    this.oldValues = oldValues;
+    this.newValues = newValues;
+    this.tab = 'map';
+    this.type = 'EditResource';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile && tile.resources[this.resourceIndex]) {
+      Object.assign(tile.resources[this.resourceIndex], this.newValues);
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile && tile.resources[this.resourceIndex]) {
+      Object.assign(tile.resources[this.resourceIndex], this.oldValues);
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class DeleteResourceCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {number} resourceIndex
+   * @param {Object} removedResource
+   */
+  constructor(grid, q, r, resourceIndex, removedResource) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.resourceIndex = resourceIndex;
+    this.removedResource = removedResource;
+    this.tab = 'map';
+    this.type = 'DeleteResource';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.resources.splice(this.resourceIndex, 1);
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.resources.splice(this.resourceIndex, 0, { ...this.removedResource });
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class SetStructureCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {string|null} oldStructure
+   * @param {string|null} newStructure
+   */
+  constructor(grid, q, r, oldStructure, newStructure) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldStructure = oldStructure;
+    this.newStructure = newStructure;
+    this.tab = 'map';
+    this.type = 'SetStructure';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.structure = this.newStructure;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.structure = this.oldStructure;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class SetAnomalyCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {string|null} oldAnomaly
+   * @param {string|null} newAnomaly
+   */
+  constructor(grid, q, r, oldAnomaly, newAnomaly) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldAnomaly = oldAnomaly;
+    this.newAnomaly = newAnomaly;
+    this.tab = 'map';
+    this.type = 'SetAnomaly';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.anomaly = this.newAnomaly;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.anomaly = this.oldAnomaly;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class SetSpawnCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number[]} oldSpawn
+   * @param {number[]} newSpawn
+   */
+  constructor(grid, oldSpawn, newSpawn) {
+    this.grid = grid;
+    this.oldSpawn = [...oldSpawn];
+    this.newSpawn = [...newSpawn];
+    this.tab = 'map';
+    this.type = 'SetSpawn';
+  }
+  execute() {
+    this.grid.meta.spawn = [...this.newSpawn];
+    if (this.grid.onChange) this.grid.onChange();
+  }
+  undo() {
+    this.grid.meta.spawn = [...this.oldSpawn];
+    if (this.grid.onChange) this.grid.onChange();
+  }
+}
+
+class EraseContentCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} oldTile - snapshot of resources, structure, anomaly
+   */
+  constructor(grid, q, r, oldTile) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldResources = oldTile.resources ? oldTile.resources.map(r => ({ ...r })) : [];
+    this.oldStructure = oldTile.structure;
+    this.oldAnomaly = oldTile.anomaly;
+    this.tab = 'map';
+    this.type = 'EraseContent';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.resources = [];
+      tile.structure = null;
+      tile.anomaly = null;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile) {
+      tile.resources = this.oldResources.map(r => ({ ...r }));
+      tile.structure = this.oldStructure;
+      tile.anomaly = this.oldAnomaly;
+      this.grid.setTile(this.q, this.r, tile);
+    }
+  }
+}
+
+class DeleteHexCommand {
+  /**
+   * @param {HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} oldTileData
+   */
+  constructor(grid, q, r, oldTileData) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldTileData = JSON.parse(JSON.stringify(oldTileData));
+    this.tab = 'map';
+    this.type = 'DeleteHex';
+  }
+  execute() {
+    this.grid.deleteTile(this.q, this.r);
+  }
+  undo() {
+    this.grid.setTile(this.q, this.r, JSON.parse(JSON.stringify(this.oldTileData)));
+  }
+}
+
+class BatchCommand {
+  /**
+   * @param {Array<Object>} commands
+   */
+  constructor(commands) {
+    this.commands = commands;
+    this.tab = commands.length > 0 ? commands[0].tab : 'map';
+    this.type = 'Batch';
+  }
+  execute() {
+    for (const cmd of this.commands) {
+      cmd.execute();
+    }
+  }
+  undo() {
+    for (let i = this.commands.length - 1; i >= 0; i--) {
+      this.commands[i].undo();
+    }
+  }
+}
+
+// ============================================================
+// Tool Classes (task-009)
+// ============================================================
+
+/**
+ * Base tool interface.
+ */
+class BaseTool {
+  /**
+   * @param {HexGrid} grid
+   * @param {CommandHistory} cmdHistory
+   * @param {Object} toolManager
+   */
+  constructor(grid, cmdHistory, toolManager) {
+    this.grid = grid;
+    this.commandHistory = cmdHistory;
+    this.toolManager = toolManager;
+  }
+  /** @param {{ q: number, r: number }} hex */
+  onMouseDown(hex) {}
+  /** @param {{ q: number, r: number }} hex */
+  onMouseMove(hex) {}
+  /** @param {{ q: number, r: number }|null} hex */
+  onMouseUp(hex) {}
+}
+
+class BiomeBrush extends BaseTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    this.paintedHexes = new Set();
+    this.dragCommands = [];
+    this._isDragging = false;
+  }
+
+  onMouseDown(hex) {
+    if (!hex) return;
+    this._isDragging = true;
+    this.paintedHexes.clear();
+    this.dragCommands = [];
+    this._paintHex(hex);
+  }
+
+  onMouseMove(hex) {
+    if (!this._isDragging || !hex) return;
+    this._paintHex(hex);
+  }
+
+  onMouseUp(hex) {
+    if (!this._isDragging) return;
+    this._isDragging = false;
+    // Wrap all drag commands into a BatchCommand for single undo
+    if (this.dragCommands.length > 1) {
+      // Remove individual commands from history
+      for (let i = 0; i < this.dragCommands.length; i++) {
+        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
+        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
+      }
+      // Push batch
+      const batch = new BatchCommand(this.dragCommands);
+      this.commandHistory.undoStack.push(batch);
+      if (this.commandHistory.onChange) {
+        this.commandHistory.onChange('execute', batch);
+      }
+    }
+    this.paintedHexes.clear();
+    this.dragCommands = [];
+  }
+
+  /** @param {{ q: number, r: number }} hex */
+  _paintHex(hex) {
+    const key = `${hex.q},${hex.r}`;
+    if (this.paintedHexes.has(key)) return;
+    this.paintedHexes.add(key);
+
+    const tile = this.grid.getTile(hex.q, hex.r);
+    const oldBiome = tile ? tile.biome : '';
+    const newBiome = this.toolManager.activeValue || '';
+    if (oldBiome === newBiome) return;
+
+    const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, oldBiome, newBiome);
+    this.commandHistory.execute(cmd);
+    this.dragCommands.push(cmd);
+  }
+}
+
+class ElevationBrush extends BaseTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    this.paintedHexes = new Set();
+    this.dragCommands = [];
+    this._isDragging = false;
+  }
+
+  onMouseDown(hex) {
+    if (!hex) return;
+    this._isDragging = true;
+    this.paintedHexes.clear();
+    this.dragCommands = [];
+    this._paintHex(hex);
+  }
+
+  onMouseMove(hex) {
+    if (!this._isDragging || !hex) return;
+    this._paintHex(hex);
+  }
+
+  onMouseUp(hex) {
+    if (!this._isDragging) return;
+    this._isDragging = false;
+    if (this.dragCommands.length > 1) {
+      for (let i = 0; i < this.dragCommands.length; i++) {
+        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
+        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
+      }
+      const batch = new BatchCommand(this.dragCommands);
+      this.commandHistory.undoStack.push(batch);
+      if (this.commandHistory.onChange) {
+        this.commandHistory.onChange('execute', batch);
+      }
+    }
+    this.paintedHexes.clear();
+    this.dragCommands = [];
+  }
+
+  /** @param {{ q: number, r: number }} hex */
+  _paintHex(hex) {
+    const key = `${hex.q},${hex.r}`;
+    if (this.paintedHexes.has(key)) return;
+    this.paintedHexes.add(key);
+
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+
+    const oldElevation = tile.elevation;
+    let newElevation;
+
+    if (this.toolManager.elevationMode === ElevationMode.SET) {
+      newElevation = this.toolManager.elevationValue;
+    } else {
+      newElevation = oldElevation + this.toolManager.elevationDelta;
+    }
+    newElevation = Math.max(0, Math.min(9, newElevation));
+
+    if (oldElevation === newElevation) return;
+
+    const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
+    this.commandHistory.execute(cmd);
+    this.dragCommands.push(cmd);
+  }
+}
+
+class FloodFillTool extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+
+    const startBiome = tile.biome;
+    const targetBiome = this.toolManager.activeValue || '';
+    if (startBiome === targetBiome) return;
+
+    const visited = new Set();
+    const queue = [{ q: hex.q, r: hex.r }];
+    const commands = [];
+    const SAFETY_LIMIT = 10000;
+
+    while (queue.length > 0 && commands.length < SAFETY_LIMIT) {
+      const current = queue.shift();
+      const key = `${current.q},${current.r}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const t = this.grid.getTile(current.q, current.r);
+      if (!t || t.biome !== startBiome) continue;
+
+      const cmd = new SetBiomeCommand(this.grid, current.q, current.r, startBiome, targetBiome);
+      commands.push(cmd);
+
+      const neighbors = HexMath.getNeighbors(current.q, current.r);
+      for (const n of neighbors) {
+        const nKey = `${n.q},${n.r}`;
+        if (!visited.has(nKey)) {
+          queue.push(n);
+        }
+      }
+    }
+
+    if (commands.length > 0) {
+      const batch = new BatchCommand(commands);
+      this.commandHistory.execute(batch);
+    }
+  }
+}
+
+class EraserTool extends BaseTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    this.erasedHexes = new Set();
+    this.dragCommands = [];
+    this._isDragging = false;
+  }
+
+  onMouseDown(hex) {
+    if (!hex) return;
+    this._isDragging = true;
+    this.erasedHexes.clear();
+    this.dragCommands = [];
+    this._eraseHex(hex);
+  }
+
+  onMouseMove(hex) {
+    if (!this._isDragging || !hex) return;
+    this._eraseHex(hex);
+  }
+
+  onMouseUp(hex) {
+    if (!this._isDragging) return;
+    this._isDragging = false;
+    if (this.dragCommands.length > 1) {
+      for (let i = 0; i < this.dragCommands.length; i++) {
+        const idx = this.commandHistory.undoStack.indexOf(this.dragCommands[i]);
+        if (idx !== -1) this.commandHistory.undoStack.splice(idx, 1);
+      }
+      const batch = new BatchCommand(this.dragCommands);
+      this.commandHistory.undoStack.push(batch);
+      if (this.commandHistory.onChange) {
+        this.commandHistory.onChange('execute', batch);
+      }
+    }
+    this.erasedHexes.clear();
+    this.dragCommands = [];
+  }
+
+  /** @param {{ q: number, r: number }} hex */
+  _eraseHex(hex) {
+    const key = `${hex.q},${hex.r}`;
+    if (this.erasedHexes.has(key)) return;
+    this.erasedHexes.add(key);
+
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+    if ((!tile.resources || tile.resources.length === 0) && !tile.structure && !tile.anomaly) return;
+
+    const cmd = new EraseContentCommand(this.grid, hex.q, hex.r, tile);
+    this.commandHistory.execute(cmd);
+    this.dragCommands.push(cmd);
+  }
+}
+
+// ============================================================
+// Placement Tools (task-010)
+// ============================================================
+
+class ResourcePlacer extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    let tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) {
+      // Create tile with default biome
+      tile = createTileData('');
+      this.grid.setTile(hex.q, hex.r, tile);
+    }
+
+    const resource = createResourceInstance(
+      this.toolManager.activeValue || '',
+      Math.random() * 1.6 - 0.8,  // -0.8 to 0.8
+      Math.random() * 1.6 - 0.8,
+      Math.floor(Math.random() * 360)  // 0-359
+    );
+
+    const cmd = new AddResourceCommand(this.grid, hex.q, hex.r, resource);
+    this.commandHistory.execute(cmd);
+
+    // Show resource detail panel if available
+    if (resourceDetailPanel) {
+      resourceDetailPanel.show(hex.q, hex.r);
+    }
+  }
+}
+
+class StructurePlacer extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+
+    const oldStructure = tile.structure;
+    const newStructure = this.toolManager.activeValue || null;
+    if (oldStructure === newStructure) return;
+
+    const cmd = new SetStructureCommand(this.grid, hex.q, hex.r, oldStructure, newStructure);
+    this.commandHistory.execute(cmd);
+  }
+}
+
+class AnomalyMarker extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+
+    showInlineModal('Enter anomaly ID:', tile.anomaly || '', (value) => {
+      if (value === null || value.trim() === '') return;
+      const oldAnomaly = tile.anomaly;
+      const cmd = new SetAnomalyCommand(this.grid, hex.q, hex.r, oldAnomaly, value.trim());
+      this.commandHistory.execute(cmd);
+    });
+  }
+}
+
+class SpawnMarker extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    if (!this.grid.hasTile(hex.q, hex.r)) return;
+    const oldSpawn = [...this.grid.meta.spawn];
+    const newSpawn = [hex.q, hex.r];
+    if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]) return;
+
+    const cmd = new SetSpawnCommand(this.grid, oldSpawn, newSpawn);
+    this.commandHistory.execute(cmd);
+  }
+}
+
+class DeleteHexTool extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex) return;
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+
+    const cmd = new DeleteHexCommand(this.grid, hex.q, hex.r, tile);
+    this.commandHistory.execute(cmd);
+  }
+}
+
+// ============================================================
+// ToolManager (task-009)
+// ============================================================
+
+class ToolManager {
+  /**
+   * @param {HexGrid} grid
+   * @param {CommandHistory} cmdHistory
+   */
+  constructor(grid, cmdHistory) {
+    this.grid = grid;
+    this.commandHistory = cmdHistory;
+    /** @type {BaseTool|null} */
+    this.activeTool = null;
+    /** @type {string|null} */
+    this.activeToolType = null;
+    /** @type {string|null} */
+    this.activeValue = null;
+    this.elevationMode = ElevationMode.SET;
+    this.elevationValue = 0;
+    this.elevationDelta = 1;
+  }
+
+  /**
+   * Set the active tool.
+   * @param {string|null} toolType
+   * @param {string|null} [value=null]
+   * @returns {void}
+   */
+  setTool(toolType, value = null) {
+    this.activeToolType = toolType;
+    this.activeValue = value;
+
+    if (!toolType) {
+      this.activeTool = null;
+      return;
+    }
+
+    switch (toolType) {
+      case ToolType.BIOME:
+        this.activeTool = new BiomeBrush(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.ELEVATION:
+        this.activeTool = new ElevationBrush(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.RESOURCE:
+        this.activeTool = new ResourcePlacer(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.STRUCTURE:
+        this.activeTool = new StructurePlacer(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.ANOMALY:
+        this.activeTool = new AnomalyMarker(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.SPAWN:
+        this.activeTool = new SpawnMarker(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.ERASER:
+        this.activeTool = new EraserTool(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.DELETE_HEX:
+        this.activeTool = new DeleteHexTool(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.FLOOD_FILL:
+        this.activeTool = new FloodFillTool(this.grid, this.commandHistory, this);
+        break;
+      default:
+        this.activeTool = null;
+    }
+  }
+
+  /** @param {{ q: number, r: number }} hex */
+  onMouseDown(hex) {
+    if (this.activeTool) this.activeTool.onMouseDown(hex);
+  }
+
+  /** @param {{ q: number, r: number }} hex */
+  onMouseMove(hex) {
+    if (this.activeTool) this.activeTool.onMouseMove(hex);
+  }
+
+  /** @param {{ q: number, r: number }|null} hex */
+  onMouseUp(hex) {
+    if (this.activeTool) this.activeTool.onMouseUp(hex);
+  }
+}
+
+/** @type {ToolManager} */
+const toolManager = new ToolManager(hexGrid, commandHistory);
+
+// ============================================================
+// Inline Modal Dialog (task-010)
+// ============================================================
+
+/**
+ * Show an inline modal dialog with a text input.
+ * @param {string} label
+ * @param {string} defaultValue
+ * @param {function(string|null):void} callback
+ * @returns {void}
+ */
+function showInlineModal(label, defaultValue, callback) {
+  // Remove existing modal if any
+  const existing = document.getElementById('inline-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'inline-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:320px;color:var(--text-primary);';
+
+  const labelEl = document.createElement('div');
+  labelEl.textContent = label;
+  labelEl.style.cssText = 'margin-bottom:8px;font-size:14px;';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = defaultValue;
+  input.style.cssText = 'width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;margin-bottom:12px;box-sizing:border-box;';
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+
+  const btnOk = document.createElement('button');
+  btnOk.textContent = 'OK';
+  btnOk.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+
+  const cleanup = () => overlay.remove();
+
+  btnCancel.addEventListener('click', () => { cleanup(); callback(null); });
+  btnOk.addEventListener('click', () => { cleanup(); callback(input.value); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { cleanup(); callback(input.value); }
+    if (e.key === 'Escape') { cleanup(); callback(null); }
+  });
+
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnOk);
+  dialog.appendChild(labelEl);
+  dialog.appendChild(input);
+  dialog.appendChild(btnRow);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  input.focus();
+  input.select();
+}
+
+// ============================================================
+// ResourceDetailPanel (task-010)
+// ============================================================
+
+class ResourceDetailPanel {
+  /**
+   * @param {HTMLElement} container
+   * @param {HexGrid} grid
+   * @param {CommandHistory} cmdHistory
+   */
+  constructor(container, grid, cmdHistory) {
+    this.container = container;
+    this.grid = grid;
+    this.commandHistory = cmdHistory;
+    this.currentHex = null;
+  }
+
+  /**
+   * Show panel for a hex.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  show(q, r) {
+    this.currentHex = { q, r };
+    this.container.style.display = 'block';
+    this._renderContent();
+  }
+
+  /**
+   * Hide the panel.
+   * @returns {void}
+   */
+  hide() {
+    this.currentHex = null;
+    this.container.style.display = 'none';
+    this.container.innerHTML = '';
+  }
+
+  /**
+   * Re-render panel content.
+   * @returns {void}
+   */
+  _renderContent() {
+    if (!this.currentHex) return;
+    const { q, r } = this.currentHex;
+    const tile = this.grid.getTile(q, r);
+    this.container.innerHTML = '';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+    const title = document.createElement('strong');
+    title.textContent = `Resources on (${q}, ${r})`;
+    title.style.fontSize = '13px';
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'X';
+    closeBtn.style.cssText = 'background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px;padding:2px 6px;';
+    closeBtn.addEventListener('click', () => this.hide());
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    this.container.appendChild(header);
+
+    if (!tile || !tile.resources || tile.resources.length === 0) {
+      const empty = document.createElement('div');
+      empty.textContent = 'No resources on this hex.';
+      empty.style.cssText = 'color:var(--text-secondary);font-size:12px;';
+      this.container.appendChild(empty);
+      return;
+    }
+
+    tile.resources.forEach((res, index) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
+
+      // Type label
+      const typeLabel = document.createElement('div');
+      typeLabel.textContent = res.type;
+      typeLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:4px;color:var(--accent);';
+      row.appendChild(typeLabel);
+
+      // Input fields
+      const fields = [
+        { name: 'x', value: res.x, min: -1.0, max: 1.0, step: 0.1 },
+        { name: 'y', value: res.y, min: -1.0, max: 1.0, step: 0.1 },
+        { name: 'rotation', value: res.rotation, min: 0, max: 359, step: 1 },
+      ];
+
+      const fieldsRow = document.createElement('div');
+      fieldsRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+
+      for (const field of fields) {
+        const label = document.createElement('label');
+        label.style.cssText = 'font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:2px;';
+        label.textContent = field.name + ':';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = field.name === 'rotation' ? String(Math.round(field.value)) : String(parseFloat(field.value.toFixed(2)));
+        input.min = String(field.min);
+        input.max = String(field.max);
+        input.step = String(field.step);
+        input.style.cssText = 'width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;';
+        input.dataset.resourceIndex = String(index);
+        input.dataset.field = field.name;
+
+        const origValue = field.value;
+        const handleChange = () => {
+          const newVal = parseFloat(input.value);
+          if (isNaN(newVal)) return;
+          const clamped = Math.max(field.min, Math.min(field.max, newVal));
+          if (clamped === origValue) return;
+          const oldValues = { [field.name]: origValue };
+          const newValues = { [field.name]: clamped };
+          const cmd = new EditResourceCommand(this.grid, q, r, index, oldValues, newValues);
+          this.commandHistory.execute(cmd);
+          this._renderContent(); // refresh
+        };
+
+        input.addEventListener('blur', handleChange);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChange(); });
+        label.appendChild(input);
+        fieldsRow.appendChild(label);
+      }
+
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'X';
+      delBtn.title = 'Delete resource';
+      delBtn.style.cssText = 'background:var(--danger);color:white;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:auto;';
+      delBtn.addEventListener('click', () => {
+        const removed = { ...tile.resources[index] };
+        const cmd = new DeleteResourceCommand(this.grid, q, r, index, removed);
+        this.commandHistory.execute(cmd);
+        this._renderContent(); // refresh
+      });
+      fieldsRow.appendChild(delBtn);
+
+      row.appendChild(fieldsRow);
+      this.container.appendChild(row);
+    });
+  }
+}
+
+/** @type {ResourceDetailPanel|null} */
+let resourceDetailPanel = null;
+
+// ============================================================
+// selectTool — wires keyboard shortcuts to ToolManager (task-009)
+// ============================================================
+
+/**
+ * Set the active tool via keyboard shortcut or UI.
  * @param {string|null} toolName
  * @returns {void}
  */
 function selectTool(toolName) {
+  toolManager.setTool(toolName);
+  if (hexCanvas) {
+    hexCanvas.toolManager = toolManager;
+  }
+  // Update tool indicator
+  const indicator = document.getElementById('tool-indicator');
+  if (indicator) {
+    indicator.textContent = toolName ? `Tool: ${toolName}` : '';
+  }
   setStatus(toolName ? `Tool: ${toolName}` : 'No tool selected');
 }
 
@@ -1544,7 +3544,11 @@ async function saveAll() {
  */
 async function saveTab(tab) {
   if (tab === 'map') {
+    // Serialize from the live HexGrid model
+    const mapData = serializeGridToMapJson();
     for (const [filename, entry] of ProjectContext.files.maps) {
+      // Update entry.data to reflect current grid state
+      entry.data = mapData;
       const json = JSON.stringify(entry.data, null, '\t');
       await FileDiscovery.saveFile(entry.handle, json, filename);
     }
@@ -1666,6 +3670,7 @@ async function openProject() {
   // Success — transition to workspace
   dirtyTracker.markAllClean();
   commandHistory.clear();
+  initializeAfterLoad();
   showEditorWorkspace();
 }
 
@@ -1685,8 +3690,77 @@ document.getElementById('fallback-file-input').addEventListener('change', async 
 
   dirtyTracker.markAllClean();
   commandHistory.clear();
+  initializeAfterLoad();
   showEditorWorkspace();
 });
+
+/**
+ * Post-load initialization: load first map into grid, build biome color map.
+ * @returns {void}
+ */
+function initializeAfterLoad() {
+  // Build biome color map from loaded .tres data
+  biomeColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.biomes) {
+    const colorField = entry.raw.resourceFields.get('color');
+    if (colorField && colorField.type === 'color') {
+      // Use filename stem as biome key (e.g. "crash_site.tres" -> "crash_site")
+      // This matches the map JSON format where biome = "crash_site", "forest", etc.
+      const biomeName = filename.replace('.tres', '');
+      const c = colorField.value;
+      const r = Math.round(c.r * 255);
+      const g = Math.round(c.g * 255);
+      const b = Math.round(c.b * 255);
+      biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
+    }
+  }
+
+  // Load first map into grid
+  const firstMap = ProjectContext.files.maps.entries().next();
+  if (!firstMap.done) {
+    loadMapIntoGrid(firstMap.value[1].data);
+  }
+
+  // Reset camera
+  camera.offsetX = 0;
+  camera.offsetY = 0;
+  camera.zoom = 1.0;
+
+  // Initialize canvas if not done
+  if (hexCanvas) {
+    hexCanvas.requestRender();
+  }
+}
+
+// ============================================================
+// Canvas Initialization (task-008)
+// ============================================================
+
+{
+  const canvasEl = document.getElementById('hex-canvas');
+  if (canvasEl && typeof canvasEl.getContext === 'function') {
+    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid);
+    hexCanvas.toolManager = toolManager;
+    hexCanvas.init();
+  }
+
+  // Wire coordinates toggle
+  const chkCoords = document.getElementById('chk-coordinates');
+  if (chkCoords) {
+    chkCoords.addEventListener('change', (e) => {
+      if (hexCanvas) {
+        hexCanvas.showCoordinates = /** @type {HTMLInputElement} */ (e.target).checked;
+        hexCanvas.requestRender();
+      }
+    });
+  }
+
+  // Initialize ResourceDetailPanel
+  const rdpContainer = document.getElementById('resource-detail-panel');
+  if (rdpContainer) {
+    resourceDetailPanel = new ResourceDetailPanel(rdpContainer, hexGrid, commandHistory);
+  }
+}
 
 </script>
 </body>
