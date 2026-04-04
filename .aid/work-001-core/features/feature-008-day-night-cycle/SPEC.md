@@ -7,6 +7,7 @@
 | 2026-03-31 | Feature identified from REQUIREMENTS.md §5 F7, F10, §9 AC7, AC10 | /aid-interview |
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
+| 2026-04-04 | Sub-hex + unified props: torch tracking queries `tile.props` for torches instead of `tile.structure`. Torch visibility sources use sub-hex position as origin. `structure_placed`/`structure_destroyed` signals replaced by `prop_placed`/`prop_removed`. | /spec-update |
 
 ## Source
 
@@ -100,11 +101,14 @@ Daytime: radius 2. Night: radius 1. Torch at night: radius 2 around torch.
 #### Torch Tracking
 
 ```gdscript
-var _torch_tiles: Array[Vector2i] = []
+var _torch_positions: Array[Dictionary] = []
+# Each entry: { "coords": Vector2i, "sub_hex": Vector2i }
 ```
 
-Maintained by DayNightCycle. Updated on `structure_placed`/`structure_destroyed`
-with type `&"torch"`. Only used as visibility sources during NIGHT.
+Maintained by DayNightCycle. Updated on `prop_placed`/`prop_removed` with
+`category == &"structure"` and `type == &"torch"`. Only used as visibility sources
+during NIGHT. Sub-hex position determines the torch's world-space origin for
+visibility radius calculations.
 
 #### refresh_visibility API (feature-001)
 
@@ -189,7 +193,7 @@ Phase saved as int (enum ordinal). `chapter_id` for future extensibility.
 | What | Source |
 |------|--------|
 | `tile_entered(coords)` — trigger visibility refresh | feature-002 via HexGrid |
-| `structure_placed`/`destroyed` — torch tracking | feature-009 via HexGrid |
+| `prop_placed`/`prop_removed` — torch tracking (filter category=structure, type=torch) | feature-009 via HexGrid |
 | `refresh_visibility(sources)` — fog API | feature-001 (HexGrid) |
 
 | What | Consumer |
@@ -264,8 +268,8 @@ HexGrid emits tile_entered(coords)
   ├─ Build sources:
   │     sources = [{ "coords": coords, "radius": VISIBILITY_RADIUS[current_phase] }]
   │     if current_phase == TimePhase.NIGHT:
-  │       For each torch in _torch_tiles:
-  │         sources.append({ "coords": torch, "radius": TORCH_VISIBILITY_RADIUS })
+  │       For each torch in _torch_positions:
+  │         sources.append({ "coords": torch.coords, "sub_hex": torch.sub_hex, "radius": TORCH_VISIBILITY_RADIUS })
   │
   └─ HexGrid.refresh_visibility(sources)
 ```
@@ -280,15 +284,16 @@ DAWN→DAY don't (radius unchanged).
 **3. Torch placed/destroyed:**
 
 ```
-HexGrid emits structure_placed(coords, &"torch")
+HexGrid emits prop_placed(coords, sub_hex, category, type)
+  │  (where category == &"structure" and type == &"torch")
   │
-  ├─ _torch_tiles.append(coords)
+  ├─ _torch_positions.append({ "coords": coords, "sub_hex": sub_hex })
   ├─ if current_phase == TimePhase.NIGHT:
   │     Rebuild sources, call refresh_visibility()
   └─ else: no-op
 ```
 
-Same for `structure_destroyed` (remove from `_torch_tiles`).
+Same for `prop_removed` (remove matching entry from `_torch_positions`).
 
 #### Save/Load — SaveManager (separate autoload)
 
@@ -415,7 +420,7 @@ ui/
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `day_night_cycle.gd` | Autoload. Phase timer in `_process`, transitions + signals, centralized `refresh_visibility` calls, `_torch_tiles` tracking, lighting registration + tweens, `get_save_data`/`load_save_data`. | `HexGrid` (refresh_visibility, structure signals), `Player` (current_tile via tile_entered) |
+| `day_night_cycle.gd` | Autoload. Phase timer in `_process`, transitions + signals, centralized `refresh_visibility` calls, `_torch_positions` tracking (queries `tile.props` for torches via `prop_placed`/`prop_removed` signals), lighting registration + tweens, `get_save_data`/`load_save_data`. | `HexGrid` (refresh_visibility, prop signals), `Player` (current_tile via tile_entered) |
 | `save_manager.gd` | Autoload. Listens to `day_started` for auto-save. Collects `get_save_data()` from all registered systems. Writes JSON. Loads on startup, distributes to systems. Handles corrupt/missing gracefully. | All systems (get_save_data / load_save_data contract) |
 | `day_counter.gd` | HBoxContainer in HUD top-right. "DAY 07" label + phase icon. Updates on `day_started` and `phase_changed`. `mouse_filter = IGNORE`. | `DayNightCycle` (signals) |
 
@@ -424,8 +429,8 @@ ui/
 ```
 HexGrid signals                          day_night_cycle.gd
   tile_entered(coords)               ──►  refresh visibility (build sources per phase)
-  structure_placed(coords, type)     ──►  update _torch_tiles if torch
-  structure_destroyed(coords, type)  ──►  update _torch_tiles if torch
+  prop_placed(coords, sub_hex, cat, type) ──► update _torch_positions if torch
+  prop_removed(coords, sub_hex, cat, type)──► update _torch_positions if torch
 
 day_night_cycle.gd                       save_manager.gd
   day_started(day_count)             ──►  auto-save
@@ -527,6 +532,6 @@ None. Phase timer, FileAccess, and Godot lighting work identically on iOS/Androi
 #### Memory
 
 - DayNightCycle state: 4 properties = negligible
-- `_torch_tiles`: ~10 entries max = negligible
+- `_torch_positions`: ~10 entries max = negligible
 - Lighting references: 2 node refs = negligible
 - Save file: ~100KB JSON (all systems combined) = negligible
