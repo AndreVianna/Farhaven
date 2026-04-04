@@ -1,12 +1,16 @@
 extends Node
 
-## SurvivalSystem — stat tick, consume, take_damage.
+## SurvivalSystem — stat tick, consume, take_damage, death, respawn, ground items.
 ## Child of Player. Reads DayNightCycle.is_daytime for HP regen condition.
 ## task-029 adds death, respawn, ground items, and scene wiring.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
 signal stat_changed(stat_name: StringName, current: float, max_val: float)
+signal player_died()
+signal player_respawned()
+signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int)
+signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int)
 
 const STAT_CONFIG: Dictionary = {
 	"hunger_rate": 1.0,
@@ -22,6 +26,11 @@ const CONSUMABLE_CONFIG: Dictionary = {
 	&"meat":          {"hunger": 25.0, "thirst": 0.0,  "toxic": 0.0},
 }
 
+## Tools are never dropped on death.
+const TOOL_TYPES: Array[StringName] = [
+	&"stone_axe", &"stone_pickaxe", &"survival_knife", &"scanner",
+]
+
 var hp: float = 100.0
 var hunger: float = 100.0
 var thirst: float = 100.0
@@ -32,6 +41,11 @@ var is_dead: bool = false
 
 var _inventory: _Inventory
 var _day_night_cycle: Node  # DayNightCycle autoload or test substitute
+var _hex_grid: Node  # HexGrid autoload or test substitute
+var _screen_fade: Node  # ScreenFade CanvasLayer or null
+var _respawn_tile: Vector2i = Vector2i.ZERO
+var _ground_items: Array[Dictionary] = []
+var _waiting_for_dawn: bool = false
 
 
 func _ready() -> void:
@@ -40,8 +54,23 @@ func _ready() -> void:
 		_inventory = parent.get_inventory()
 	if _day_night_cycle == null:
 		_day_night_cycle = get_node_or_null("/root/DayNightCycle")
+	if _hex_grid == null:
+		_hex_grid = get_node_or_null("/root/HexGrid")
 	if _inventory:
 		_inventory.item_used.connect(_on_item_used)
+	# Connect shelter signals for respawn tile updates
+	if _hex_grid:
+		if _hex_grid.has_signal("structure_placed"):
+			_hex_grid.structure_placed.connect(_on_structure_placed)
+		if _hex_grid.has_signal("structure_destroyed"):
+			_hex_grid.structure_destroyed.connect(_on_structure_destroyed)
+	# Connect dawn signal for deferred night-death respawn
+	if _day_night_cycle:
+		if _day_night_cycle.has_signal("dawn"):
+			_day_night_cycle.dawn.connect(_on_dawn)
+	# Look for ScreenFade in tree
+	if _screen_fade == null:
+		_screen_fade = get_node_or_null("/root/Main/ScreenFade")
 
 
 func _process(delta: float) -> void:
@@ -99,7 +128,197 @@ func take_damage(amount: float) -> void:
 func _check_death() -> void:
 	if hp <= 0.0 and not is_dead:
 		is_dead = true
+		_execute_death()
 
 
 func _on_item_used(item_type: StringName) -> void:
 	consume(item_type)
+
+
+# --- Death sequence ---
+
+func _execute_death() -> void:
+	var death_tile: Vector2i = _get_player_tile()
+	_drop_items(death_tile)
+	player_died.emit()
+	_start_death_sequence()
+
+
+func _get_player_tile() -> Vector2i:
+	var parent: Node = get_parent()
+	if parent and "current_tile" in parent:
+		return parent.current_tile
+	return Vector2i.ZERO
+
+
+func _drop_items(death_tile: Vector2i) -> void:
+	if _inventory == null:
+		return
+	# Calculate passable neighbors for drop targets
+	var drop_tiles: Array[Vector2i] = []
+	if _hex_grid:
+		var neighbors: Array[Vector2i] = _hex_grid.get_neighbors(death_tile)
+		for n: Vector2i in neighbors:
+			var tile: Resource = _hex_grid.get_tile(n)
+			if tile != null and tile.biome != 4:  # 4 = WATER
+				drop_tiles.append(n)
+	if drop_tiles.is_empty():
+		drop_tiles.append(death_tile)
+
+	var drop_idx: int = 0
+	var slots: Array[Dictionary] = _inventory.get_slots()
+	for slot: Dictionary in slots:
+		var item_type: StringName = slot["type"]
+		if item_type == &"":
+			continue
+		# Skip tools — they are not dropped
+		if item_type in TOOL_TYPES:
+			continue
+		var count: int = slot["quantity"]
+		var to_drop: int = int(floorf(float(count) / 2.0))
+		if to_drop <= 0:
+			continue
+		# Remove from inventory
+		_inventory.remove_item(item_type, to_drop)
+		# Place on ground — round-robin across passable tiles
+		var target_tile: Vector2i = drop_tiles[drop_idx % drop_tiles.size()]
+		drop_idx += 1
+		add_ground_item(target_tile, item_type, to_drop)
+		ground_item_dropped.emit(target_tile, item_type, to_drop)
+
+
+func _start_death_sequence() -> void:
+	if _screen_fade and _screen_fade.has_method("fade_out"):
+		_screen_fade.fade_out()
+		if _screen_fade.has_signal("fade_out_completed"):
+			await _screen_fade.fade_out_completed
+	_try_respawn()
+
+
+func _try_respawn() -> void:
+	var is_daytime: bool = true
+	if _day_night_cycle != null:
+		is_daytime = _day_night_cycle.is_daytime
+	if is_daytime:
+		_respawn()
+	else:
+		_waiting_for_dawn = true
+
+
+func _on_dawn() -> void:
+	if _waiting_for_dawn:
+		_waiting_for_dawn = false
+		_respawn()
+
+
+func _respawn() -> void:
+	hp = hp_max
+	hunger = hunger_max * 0.5
+	thirst = thirst_max * 0.5
+	is_dead = false
+	# Teleport player to respawn tile
+	var parent: Node = get_parent()
+	if parent and parent.has_method("_snap_to_tile"):
+		parent.current_tile = _respawn_tile
+		parent._snap_to_tile(_respawn_tile)
+	player_respawned.emit()
+	# Fade in
+	if _screen_fade and _screen_fade.has_method("fade_in"):
+		_screen_fade.fade_in()
+
+
+# --- Shelter / Respawn tile ---
+
+func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
+	if structure_type == &"shelter":
+		_respawn_tile = coords
+
+
+func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
+	if structure_type == &"shelter" and _respawn_tile == coords:
+		_respawn_tile = Vector2i.ZERO
+
+
+# --- Ground items API ---
+
+func get_ground_items_at(tile: Vector2i) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for entry: Dictionary in _ground_items:
+		if entry["tile"] == tile:
+			result.append(entry)
+	return result
+
+
+func add_ground_item(tile: Vector2i, item_type: StringName, count: int) -> void:
+	# Try to merge with existing entry on same tile and type
+	for entry: Dictionary in _ground_items:
+		if entry["tile"] == tile and entry["item_type"] == item_type:
+			entry["count"] += count
+			return
+	_ground_items.append({"tile": tile, "item_type": item_type, "count": count})
+
+
+func remove_ground_item(tile: Vector2i, item_type: StringName, count: int) -> int:
+	for i in range(_ground_items.size() - 1, -1, -1):
+		var entry: Dictionary = _ground_items[i]
+		if entry["tile"] == tile and entry["item_type"] == item_type:
+			var removed: int = mini(entry["count"], count)
+			entry["count"] -= removed
+			if entry["count"] <= 0:
+				_ground_items.remove_at(i)
+			ground_item_picked_up.emit(tile, item_type, removed)
+			return removed
+	return 0
+
+
+func get_all_ground_items() -> Array[Dictionary]:
+	return _ground_items.duplicate()
+
+
+# --- Fauna meat stub (activates with F-010) ---
+
+func _on_fauna_killed(_coords: Vector2i, _fauna_type: StringName) -> void:
+	# Stub: will add meat to ground items when fauna system arrives.
+	pass
+
+
+# --- Save / Load ---
+
+func get_save_data() -> Dictionary:
+	var ground_data: Array = []
+	for entry: Dictionary in _ground_items:
+		ground_data.append({
+			"tile_col": entry["tile"].x,
+			"tile_row": entry["tile"].y,
+			"item_type": String(entry["item_type"]),
+			"count": entry["count"],
+		})
+	return {
+		"hp": hp,
+		"hunger": hunger,
+		"thirst": thirst,
+		"respawn_tile_col": _respawn_tile.x,
+		"respawn_tile_row": _respawn_tile.y,
+		"ground_items": ground_data,
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	hp = data.get("hp", 100.0)
+	hunger = data.get("hunger", 100.0)
+	thirst = data.get("thirst", 100.0)
+	# is_dead is never saved — always respawn on load
+	is_dead = false
+	_waiting_for_dawn = false
+	_respawn_tile = Vector2i(
+		int(data.get("respawn_tile_col", 0)),
+		int(data.get("respawn_tile_row", 0)),
+	)
+	_ground_items.clear()
+	var ground_data: Array = data.get("ground_items", [])
+	for entry in ground_data:
+		_ground_items.append({
+			"tile": Vector2i(int(entry["tile_col"]), int(entry["tile_row"])),
+			"item_type": StringName(entry["item_type"]),
+			"count": int(entry["count"]),
+		})
