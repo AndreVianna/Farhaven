@@ -2,6 +2,8 @@
 // HexGrid Model (task-007)
 // ============================================================
 
+import { HEX_SIZE, HexMath } from './hex-math.js';
+
 /**
  * Creates a default TileData object.
  * @param {string} [biome='']
@@ -18,15 +20,15 @@ export function createTileData(biome = '') {
 }
 
 /**
- * Creates a ResourceInstance.
+ * Creates a ResourceInstance using sub-hex axial coordinates.
  * @param {string} type
- * @param {number} x
- * @param {number} y
- * @param {number} rotation
- * @returns {{ type: string, x: number, y: number, rotation: number }}
+ * @param {number} [sq=0] - Sub-hex q coordinate
+ * @param {number} [sr=0] - Sub-hex r coordinate
+ * @param {number} [rotation=0]
+ * @returns {{ type: string, sq: number, sr: number, rotation: number }}
  */
-export function createResourceInstance(type, x, y, rotation) {
-  return { type, x, y, rotation };
+export function createResourceInstance(type, sq = 0, sr = 0, rotation = 0) {
+  return { type, sq, sr, rotation };
 }
 
 /**
@@ -126,15 +128,42 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       const r = parseInt(parts[1], 10);
       const tile = createTileData(tileJson.biome || '');
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
-      tile.structure = tileJson.structure || null;
       tile.anomaly = tileJson.anomaly || null;
+
+      // Handle structure — new format is {type, sub_hexes}, old format is just a string
+      if (tileJson.structure) {
+        if (typeof tileJson.structure === 'string') {
+          // Legacy: string -> convert to object with center sub-hex
+          tile.structure = { type: tileJson.structure, sub_hexes: [{ sq: 0, sr: 0 }] };
+        } else {
+          tile.structure = tileJson.structure;
+        }
+      } else {
+        tile.structure = null;
+      }
+
+      // Handle resources — support legacy (x, y) and new (sq, sr) formats
       tile.resources = Array.isArray(tileJson.resources)
-        ? tileJson.resources.map(res => createResourceInstance(
-            res.type || '',
-            typeof res.x === 'number' ? res.x : 0,
-            typeof res.y === 'number' ? res.y : 0,
-            typeof res.rotation === 'number' ? res.rotation : 0
-          ))
+        ? tileJson.resources.map(res => {
+            if ('x' in res && !('sq' in res)) {
+              // Legacy format: convert continuous (x, y) to nearest sub-hex
+              const subHex = HexMath.pixelToSubHex(
+                (typeof res.x === 'number' ? res.x : 0) * HEX_SIZE,
+                (typeof res.y === 'number' ? res.y : 0) * HEX_SIZE
+              );
+              return createResourceInstance(
+                res.type || '',
+                subHex.q, subHex.r,
+                typeof res.rotation === 'number' ? res.rotation : 0
+              );
+            }
+            return createResourceInstance(
+              res.type || '',
+              typeof res.sq === 'number' ? res.sq : 0,
+              typeof res.sr === 'number' ? res.sr : 0,
+              typeof res.rotation === 'number' ? res.rotation : 0
+            );
+          })
         : [];
       hexGrid.setTile(q, r, tile);
     }
@@ -154,12 +183,12 @@ export function serializeGridToMapJson(hexGrid) {
       elevation: tile.elevation,
       resources: tile.resources.map(r => ({
         type: r.type,
-        x: r.x,
-        y: r.y,
+        sq: r.sq,
+        sr: r.sr,
         rotation: r.rotation,
       })),
     };
-    if (tile.structure) entry.structure = tile.structure;
+    if (tile.structure) entry.structure = tile.structure;  // Already an object {type, sub_hexes} or null
     if (tile.anomaly) entry.anomaly = tile.anomaly;
     tiles[key] = entry;
   }

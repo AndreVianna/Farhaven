@@ -3,6 +3,7 @@
 // ============================================================
 
 import { EditResourceCommand, DeleteResourceCommand } from './commands.js';
+import { HexMath } from './hex-math.js';
 
 /**
  * Show an inline modal dialog with a text input.
@@ -144,10 +145,10 @@ export class ResourceDetailPanel {
       typeLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:4px;color:var(--accent);';
       row.appendChild(typeLabel);
 
-      // Input fields
+      // Input fields — sub-hex coordinates (sq, sr) and rotation
       const fields = [
-        { name: 'x', value: res.x, min: -1.0, max: 1.0, step: 0.1 },
-        { name: 'y', value: res.y, min: -1.0, max: 1.0, step: 0.1 },
+        { name: 'sq', value: res.sq, min: -2, max: 2, step: 1 },
+        { name: 'sr', value: res.sr, min: -2, max: 2, step: 1 },
         { name: 'rotation', value: res.rotation, min: 0, max: 359, step: 1 },
       ];
 
@@ -160,7 +161,7 @@ export class ResourceDetailPanel {
         label.textContent = field.name + ':';
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = field.name === 'rotation' ? String(Math.round(field.value)) : String(parseFloat(field.value.toFixed(2)));
+        input.value = String(Math.round(field.value));
         input.min = String(field.min);
         input.max = String(field.max);
         input.step = String(field.step);
@@ -170,9 +171,17 @@ export class ResourceDetailPanel {
 
         const origValue = field.value;
         const handleChange = () => {
-          const newVal = parseFloat(input.value);
+          const newVal = parseInt(input.value, 10);
           if (isNaN(newVal)) return;
           const clamped = Math.max(field.min, Math.min(field.max, newVal));
+
+          // Validate sub-hex position when sq or sr changes
+          if (field.name === 'sq' || field.name === 'sr') {
+            const testSq = field.name === 'sq' ? clamped : res.sq;
+            const testSr = field.name === 'sr' ? clamped : res.sr;
+            if (!HexMath.isValidSubHex(testSq, testSr)) return;
+          }
+
           if (clamped === origValue) return;
           const oldValues = { [field.name]: origValue };
           const newValues = { [field.name]: clamped };

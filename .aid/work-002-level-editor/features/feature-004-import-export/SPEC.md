@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F6, F7; §9 AC1, AC3, AC6 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: string resource normalization, MapLoader validation scope, spawn checks, anomaly null handling, .tres scope note | /aid-specify review |
+| 2026-04-04 | Sub-hex grid system: resource serialization uses (sq, sr) instead of (x, y), structure uses footprint model, legacy format migration, sub-hex validation rules | design change |
 
 ## Source
 
@@ -59,10 +60,10 @@ Must
   r: number,            // axial coordinate
   biome: string,        // biome_name key, e.g. "forest"
   elevation: number,    // integer 0-9
-  structure: string|null,   // structure id or null
+  structure: null,          // { type: string, sub_hexes: [{sq: int, sr: int}, ...] } | null
   anomaly: string|null,     // anomaly id or null
   resources: [          // array of placed resources
-    { type: string, x: number, y: number, rotation: number }
+    { type: string, sq: int, sr: int, rotation: number }
   ]
 }
 ```
@@ -93,7 +94,7 @@ Must
    - Validate `biome` exists in `knownBiomes`. Error: `"Tile (q,r): unknown biome '{value}'"`.
    - Validate `elevation` is integer 0-9. Error: `"Tile (q,r): elevation {value} out of range 0-9"`.
    - Validate `structure` (if present) exists in `knownStructures`. Error: `"Tile (q,r): unknown structure '{value}'"`.
-   - For each resource in `resources[]`: if the entry is a plain string (e.g. `"wood"`), normalize it to dict form `{ type: "wood", x: random(-0.8, 0.8), y: random(-0.8, 0.8), rotation: random(0, 359) }`. If it's a dict, use as-is. Then validate: `type` exists in `knownResources`. Error: `"Tile (q,r): unknown resource type '{value}'"`. (MapLoader supports both forms — see `map_loader.gd` lines 93-100.)
+   - For each resource in `resources[]`: if the entry is a plain string (e.g. `"wood"`), normalize it to dict form `{ type: "wood", sq: 0, sr: 0, rotation: random(0, 359) }`. If it's a dict with `x` and `y` fields (legacy format), convert the continuous position to the nearest sub-hex using `pixelToSubHex()` — this provides backwards compatibility with ch1.json. If it's a dict with `sq` and `sr` fields, use as-is. Then validate: `type` exists in `knownResources`. Error: `"Tile (q,r): unknown resource type '{value}'"`. (MapLoader supports both forms — see `map_loader.gd` lines 93-100.)
 4. If `valid === true`: populate `HexGrid` map and `MapMeta`, fire `map-loaded` event, `HexCanvas.repaint()`.
 5. If `valid === false`: show error dialog listing all errors. Reject import entirely — no partial load. The previous map state (if any) remains unchanged.
 
@@ -106,7 +107,9 @@ Must
    - All tile `elevation` values are integers 0-9.
    - All tile `structure` values (when non-null) exist in `knownStructures`.
    - All resource `type` values exist in `knownResources`.
-   - Resource positions `x` and `y` are within range [-1.0, 1.0]. Error if outside.
+   - Resource sub-hex positions (sq, sr) must be valid (distance ≤ 2). Error if invalid.
+   - No duplicate sub-hex occupancy within a tile (resources and structures share the sub-hex space). Error if duplicates found.
+   - Structure footprints must reference valid sub-hex positions. Error if invalid.
    - Resource `rotation` is a number. Warning if outside [0, 360).
 **MapLoader-level validation (advisory):** MapLoader (`scripts/hex/map_loader.gd`) performs additional checks that are logged as warnings but do not block loading: tile count in [200, 300], required biomes (CRASH_SITE, GRASSLAND, FOREST, ROCKY) all present, at least one anomaly tile, all non-water tiles reachable from spawn via BFS, spawn tile is CRASH_SITE. These are **not** enforced as hard errors in the editor's export validator — they are game-design constraints that may not apply during early authoring. Instead, the editor could surface them as warnings in a future "Validate Map" action.
 
@@ -128,14 +131,17 @@ Must
       // "structure" key omitted if null
       // "anomaly" key omitted if null
       // "resources" key omitted if empty array
+      "structure": { "type": "workbench", "sub_hexes": [{"sq": 0, "sr": 0}, {"sq": 1, "sr": 0}] },
       "resources": [
-        { "type": "wood", "x": 0.35, "y": -0.45, "rotation": 18 }
+        { "type": "wood", "sq": 1, "sr": 0, "rotation": 18 }
       ]
     }
   }
 }
 ```
 Optional fields (`structure`, `anomaly`, `resources`) are omitted from output when empty/null to keep JSON clean. On import, missing optional fields default to `null` / `[]`. Note: the game's `HexTile` uses empty StringName (`&""`) as the null sentinel for `structure` and `anomaly`; the editor's `null` maps to that on export (omitted from JSON) and on import (JSON `null`, missing field, or empty string all map to editor `null`).
+
+**Legacy format support:** If a resource entry has `x` and `y` fields instead of `sq` and `sr`, convert the continuous position to the nearest sub-hex using `pixelToSubHex()`. If a `structure` field is a plain string (legacy format), convert it to `{ type: string, sub_hexes: [{sq: 0, sr: 0}] }` (single center sub-hex). This provides backwards compatibility with ch1.json.
 
 **New Map:**
 1. User clicks "New Map" in toolbar.
@@ -182,7 +188,11 @@ All validation errors are collected (not fail-fast) so the user sees every issue
 | Unknown resource type | `"Tile ({q},{r}): unknown resource type '{value}'"` |
 | Resource missing type | `"Tile ({q},{r}): resource entry missing 'type' field"` |
 
-| Resource entry is plain string | Normalize to dict: `{ type: string, x: random, y: random, rotation: random }` |
+| Resource entry is plain string | Normalize to dict: `{ type: string, sq: 0, sr: 0, rotation: random }` |
+| Resource entry has `x`/`y` fields (legacy) | Convert to nearest sub-hex via `pixelToSubHex(x, y)` |
+| Resource sub-hex position invalid | `"Tile ({q},{r}): resource sub-hex ({sq},{sr}) is not a valid position (distance > 2)"` |
+| Structure footprint has invalid sub-hex | `"Tile ({q},{r}): structure footprint contains invalid sub-hex ({sq},{sr})"` |
+| Duplicate sub-hex occupancy | `"Tile ({q},{r}): sub-hex ({sq},{sr}) is occupied by multiple props"` |
 
 The editor never crashes on bad input. The editor never loads partial data.
 

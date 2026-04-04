@@ -232,11 +232,19 @@ export class ResourcePlacer extends BaseTool {
       this.grid.setTile(hex.q, hex.r, tile);
     }
 
+    // Use sub-hex from hex object (set by canvas when placement tool is active)
+    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
+    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
+
+    // Check if sub-hex is occupied
+    const occupied = tile.resources.some(r => r.sq === sq && r.sr === sr) ||
+      (tile.structure && tile.structure.sub_hexes && tile.structure.sub_hexes.some(sh => sh.sq === sq && sh.sr === sr));
+    if (occupied) return;
+
     const resource = createResourceInstance(
       this.toolManager.activeValue || '',
-      Math.random() * 1.6 - 0.8,  // -0.8 to 0.8
-      Math.random() * 1.6 - 0.8,
-      Math.floor(Math.random() * 360)  // 0-359
+      sq, sr,
+      Math.floor(Math.random() * 360)
     );
 
     const cmd = new AddResourceCommand(this.grid, hex.q, hex.r, resource);
@@ -255,10 +263,15 @@ export class StructurePlacer extends BaseTool {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
 
-    const oldStructure = tile.structure;
-    const newStructure = this.toolManager.activeValue || null;
-    if (oldStructure === newStructure) return;
+    const structureType = this.toolManager.activeValue || null;
+    if (!structureType) return;
 
+    // Use sub-hex as anchor point; footprint is just the anchor for now
+    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
+    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
+    const newStructure = { type: structureType, sub_hexes: [{ sq, sr }] };
+
+    const oldStructure = tile.structure;
     const cmd = new SetStructureCommand(this.grid, hex.q, hex.r, oldStructure, newStructure);
     this.commandHistory.execute(cmd);
   }

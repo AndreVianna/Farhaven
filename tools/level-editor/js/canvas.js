@@ -26,6 +26,8 @@ export class HexCanvas {
     /** @type {Set<string>} Ghost hex positions (recomputed each render) */
     this._ghostSet = new Set();
     this.showCoordinates = false;
+    /** @type {{ q: number, r: number }|null} Sub-hex within hovered hex */
+    this.hoveredSubHex = null;
     this.isPanning = false;
     this.panStart = null;
     this.spaceHeld = false;
@@ -151,6 +153,22 @@ export class HexCanvas {
       const hKey = `${this.hoveredHex.q},${this.hoveredHex.r}`;
       if (this.grid.hasTile(this.hoveredHex.q, this.hoveredHex.r) || (this._ghostSet && this._ghostSet.has(hKey))) {
         this._drawHoverHighlight(this.hoveredHex.q, this.hoveredHex.r);
+      }
+    }
+
+    // Draw sub-hex grid on hovered hex when placement tool is active
+    if (this.hoveredHex && this.toolManager && this._isPlacementTool()) {
+      const hq = this.hoveredHex.q;
+      const hr = this.hoveredHex.r;
+      if (this.grid.hasTile(hq, hr) || (this._ghostSet && this._ghostSet.has(`${hq},${hr}`))) {
+        this._drawSubHexGrid(hq, hr);
+        const tile = this.grid.getTile(hq, hr);
+        if (tile) {
+          this._drawSubHexOccupancy(hq, hr, tile);
+        }
+        if (this.hoveredSubHex) {
+          this._drawSubHexHover(hq, hr, this.hoveredSubHex.q, this.hoveredSubHex.r);
+        }
       }
     }
 
@@ -376,10 +394,10 @@ export class HexCanvas {
    * Draw structure indicator.
    * @param {number} q
    * @param {number} r
-   * @param {string} type
+   * @param {Object} structure - {type, sub_hexes} or legacy string
    * @returns {void}
    */
-  _drawStructureIcon(q, r, type) {
+  _drawStructureIcon(q, r, structure) {
     const ctx = this.ctx;
     const world = HexMath.axialToPixel(q, r);
     const screen = this.worldToScreen(world.x, world.y);
@@ -391,9 +409,125 @@ export class HexCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Abbreviation
-    const abbrev = type.substring(0, 3).toUpperCase();
+    // Extract type string from object or legacy string
+    const typeName = typeof structure === 'string' ? structure : (structure.type || '');
+    const abbrev = typeName.substring(0, 3).toUpperCase();
     ctx.fillText(abbrev, screen.x - HEX_SIZE * this.camera.zoom * 0.25, screen.y + offsetY);
+  }
+
+  // --- Sub-hex rendering ---
+
+  /**
+   * Check if the active tool is a placement tool (resource or structure).
+   * @returns {boolean}
+   */
+  _isPlacementTool() {
+    if (!this.toolManager) return false;
+    const t = this.toolManager.activeToolType;
+    return t === 'resource' || t === 'structure';
+  }
+
+  /**
+   * Draw sub-hex grid outlines inside a hex (shown when placement tool is active).
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _drawSubHexGrid(q, r) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
+
+    for (const sh of HexMath.VALID_SUB_HEXES) {
+      const offset = HexMath.subHexToPixel(sh.q, sh.r);
+      const cx = screen.x + offset.x * this.camera.zoom;
+      const cy = screen.y + offset.y * this.camera.zoom;
+      const corners = HexMath.hexCorners(cx, cy, subSize);
+
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 6; i++) {
+        ctx.lineTo(corners[i].x, corners[i].y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Draw occupancy highlights for sub-hexes that contain resources or structures.
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} tile
+   * @returns {void}
+   */
+  _drawSubHexOccupancy(q, r, tile) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
+
+    // Resources
+    for (const res of tile.resources) {
+      const offset = HexMath.subHexToPixel(res.sq, res.sr);
+      const cx = screen.x + offset.x * this.camera.zoom;
+      const cy = screen.y + offset.y * this.camera.zoom;
+      const corners = HexMath.hexCorners(cx, cy, subSize);
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(68,136,255,0.3)';
+      ctx.fill();
+    }
+
+    // Structure footprint
+    if (tile.structure && tile.structure.sub_hexes) {
+      for (const sh of tile.structure.sub_hexes) {
+        const offset = HexMath.subHexToPixel(sh.sq, sh.sr);
+        const cx = screen.x + offset.x * this.camera.zoom;
+        const cy = screen.y + offset.y * this.camera.zoom;
+        const corners = HexMath.hexCorners(cx, cy, subSize);
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,170,68,0.3)';
+        ctx.fill();
+      }
+    }
+  }
+
+  /**
+   * Draw highlight on the hovered sub-hex.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} sq
+   * @param {number} sr
+   * @returns {void}
+   */
+  _drawSubHexHover(q, r, sq, sr) {
+    const ctx = this.ctx;
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
+    const offset = HexMath.subHexToPixel(sq, sr);
+    const cx = screen.x + offset.x * this.camera.zoom;
+    const cy = screen.y + offset.y * this.camera.zoom;
+    const corners = HexMath.hexCorners(cx, cy, subSize);
+
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
   // --- Coordinate transforms ---
@@ -455,7 +589,13 @@ export class HexCanvas {
       this.selectedHex = { q: hex.q, r: hex.r };
 
       if (this.toolManager) {
-        this.toolManager.onMouseDown(hex);
+        // Pass sub-hex info for placement tools
+        const hexWithSub = { q: hex.q, r: hex.r };
+        if (this.hoveredSubHex && this._isPlacementTool()) {
+          hexWithSub.sq = this.hoveredSubHex.q;
+          hexWithSub.sr = this.hoveredSubHex.r;
+        }
+        this.toolManager.onMouseDown(hexWithSub);
       }
       this.requestRender();
     }
@@ -485,6 +625,24 @@ export class HexCanvas {
       this.hoveredHex = { q: hex.q, r: hex.r };
       this._updateTooltip(hex, event.clientX, event.clientY);
       this.requestRender();
+    }
+
+    // Compute sub-hex when placement tool active
+    if (this._isPlacementTool() && this.grid.hasTile(hex.q, hex.r)) {
+      const world = HexMath.axialToPixel(hex.q, hex.r);
+      const mouseWorld = this.screenToWorld(mx, my);
+      const offsetX = mouseWorld.x - world.x;
+      const offsetY = mouseWorld.y - world.y;
+      const newSubHex = HexMath.pixelToSubHex(offsetX, offsetY);
+      if (!this.hoveredSubHex || this.hoveredSubHex.q !== newSubHex.q || this.hoveredSubHex.r !== newSubHex.r) {
+        this.hoveredSubHex = newSubHex;
+        this.requestRender();
+      }
+    } else {
+      if (this.hoveredSubHex !== null) {
+        this.hoveredSubHex = null;
+        this.requestRender();
+      }
     }
 
     // Forward to tool during drag
@@ -710,20 +868,17 @@ export class HexCanvas {
     lines.push(`Biome: ${tile.biome || 'none'}`);
     lines.push(`Elevation: ${tile.elevation}`);
     if (tile.structure) {
-      lines.push(`Structure: ${tile.structure}`);
+      const structName = typeof tile.structure === 'string' ? tile.structure : (tile.structure.type || '');
+      lines.push(`Structure: ${structName}`);
     }
     if (tile.resources && tile.resources.length > 0) {
-      // Aggregate by type
-      const counts = {};
-      for (const res of tile.resources) {
-        counts[res.type] = (counts[res.type] || 0) + 1;
-      }
-      const parts = Object.entries(counts).map(([t, c]) => `${t} x${c}`);
-      if (parts.length > 5) {
-        const extra = parts.length - 5;
-        lines.push(`Resources: ${parts.slice(0, 5).join(', ')}... and ${extra} more`);
+      // Show resource type with sub-hex position
+      const entries = tile.resources.map(res => `${res.type} at (${res.sq},${res.sr})`);
+      if (entries.length > 5) {
+        const extra = entries.length - 5;
+        lines.push(`Resources: ${entries.slice(0, 5).join(', ')}... and ${extra} more`);
       } else {
-        lines.push(`Resources: ${parts.join(', ')}`);
+        lines.push(`Resources: ${entries.join(', ')}`);
       }
     }
     if (tile.anomaly) {

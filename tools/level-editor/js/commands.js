@@ -293,29 +293,29 @@ export class SetStructureCommand {
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {number} q
    * @param {number} r
-   * @param {string|null} oldStructure
-   * @param {string|null} newStructure
+   * @param {Object|null} oldStructure - {type, sub_hexes} or null
+   * @param {Object|null} newStructure - {type, sub_hexes} or null
    */
   constructor(grid, q, r, oldStructure, newStructure) {
     this.grid = grid;
     this.q = q;
     this.r = r;
-    this.oldStructure = oldStructure;
-    this.newStructure = newStructure;
+    this.oldStructure = oldStructure ? JSON.parse(JSON.stringify(oldStructure)) : null;
+    this.newStructure = newStructure ? JSON.parse(JSON.stringify(newStructure)) : null;
     this.tab = 'map';
     this.type = 'SetStructure';
   }
   execute() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.structure = this.newStructure;
+      tile.structure = this.newStructure ? JSON.parse(JSON.stringify(this.newStructure)) : null;
       this.grid.setTile(this.q, this.r, tile);
     }
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.structure = this.oldStructure;
+      tile.structure = this.oldStructure ? JSON.parse(JSON.stringify(this.oldStructure)) : null;
       this.grid.setTile(this.q, this.r, tile);
     }
   }
@@ -389,7 +389,7 @@ export class EraseContentCommand {
     this.q = q;
     this.r = r;
     this.oldResources = oldTile.resources ? oldTile.resources.map(r => ({ ...r })) : [];
-    this.oldStructure = oldTile.structure;
+    this.oldStructure = oldTile.structure ? JSON.parse(JSON.stringify(oldTile.structure)) : null;
     this.oldAnomaly = oldTile.anomaly;
     this.tab = 'map';
     this.type = 'EraseContent';
@@ -407,7 +407,7 @@ export class EraseContentCommand {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
       tile.resources = this.oldResources.map(r => ({ ...r }));
-      tile.structure = this.oldStructure;
+      tile.structure = this.oldStructure ? JSON.parse(JSON.stringify(this.oldStructure)) : null;
       tile.anomaly = this.oldAnomaly;
       this.grid.setTile(this.q, this.r, tile);
     }

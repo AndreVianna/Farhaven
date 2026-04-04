@@ -128,4 +128,73 @@ export const HexMath = {
     }
     return -1;
   },
+
+  // ---- Sub-hex grid ----
+
+  /** Scale factor: sub-hex size relative to main hex (1.2m / 6.0m) */
+  SUB_HEX_SCALE: 0.2,
+
+  /** All 19 valid sub-hex positions (center + ring 1 + ring 2) */
+  VALID_SUB_HEXES: [
+    {q:0, r:0},
+    {q:-1, r:0}, {q:0, r:-1}, {q:1, r:-1}, {q:1, r:0}, {q:0, r:1}, {q:-1, r:1},
+    {q:-2, r:0}, {q:-1, r:-1}, {q:0, r:-2}, {q:1, r:-2}, {q:2, r:-2}, {q:2, r:-1},
+    {q:2, r:0}, {q:1, r:1}, {q:0, r:2}, {q:-1, r:2}, {q:-2, r:2}, {q:-2, r:1},
+  ],
+
+  /**
+   * Check if (sq, sr) is a valid sub-hex position (distance from center <= 2).
+   * @param {number} sq
+   * @param {number} sr
+   * @returns {boolean}
+   */
+  isValidSubHex(sq, sr) {
+    return HexMath.distance(0, 0, sq, sr) <= 2;
+  },
+
+  /**
+   * Convert pixel offset from hex center to sub-hex coordinates.
+   * Uses the same axialToPixel/pixelToAxial math at sub-hex scale.
+   * @param {number} offsetX
+   * @param {number} offsetY
+   * @returns {{ q: number, r: number }}
+   */
+  pixelToSubHex(offsetX, offsetY) {
+    const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE;
+    const fq = (2 / 3 * offsetX) / subSize;
+    const fr = (-1 / 3 * offsetX + Math.sqrt(3) / 3 * offsetY) / subSize;
+    const rounded = HexMath.cubeRound(fq, fr);
+    // Clamp to valid sub-hex (distance <= 2)
+    if (HexMath.distance(0, 0, rounded.q, rounded.r) > 2) {
+      // Find nearest valid sub-hex
+      let best = { q: 0, r: 0 };
+      let bestDist = Infinity;
+      for (const sh of HexMath.VALID_SUB_HEXES) {
+        const d = Math.hypot(
+          (sh.q - fq),
+          (sh.r - fr)
+        );
+        if (d < bestDist) {
+          bestDist = d;
+          best = sh;
+        }
+      }
+      return best;
+    }
+    return rounded;
+  },
+
+  /**
+   * Convert sub-hex coordinates to pixel offset from hex center.
+   * @param {number} sq
+   * @param {number} sr
+   * @returns {{ x: number, y: number }}
+   */
+  subHexToPixel(sq, sr) {
+    const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE;
+    return {
+      x: subSize * (3 / 2 * sq),
+      y: subSize * (Math.sqrt(3) / 2 * sq + Math.sqrt(3) * sr),
+    };
+  },
 };

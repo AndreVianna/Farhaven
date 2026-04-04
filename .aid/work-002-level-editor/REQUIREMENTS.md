@@ -10,6 +10,7 @@
 | 2026-04-03 | Cross-reference: fixed ResourceDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
 | 2026-04-03 | Post-spec review: unified resource position range (-1.0 to 1.0 storage, -0.8 to 0.8 random), biome CRUD confirmed dynamic, app shell added to F007 | /aid-specify review |
 | 2026-04-04 | Added ghost grid and empty-cell painting to F1/F2. New AC10 for map expansion. | code review |
+| 2026-04-04 | Sub-hex grid system: resources use discrete (sq, sr) positions, structures use footprints, canvas shows sub-hex overlay for placement tools. Updated F1, F2, F5, F7, §9. | design change |
 
 ## 1. Objective
 
@@ -71,17 +72,19 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Hover tooltip showing hex coordinates, biome, elevation, resources, structure
 - Zoom (scroll wheel) + pan (middle-click drag or space+drag)
 - Grid coordinates toggle (show q,r labels on hexes)
+- **Sub-hex grid overlay:** when a placement tool (resource, structure) is active, the hovered/selected hex shows its 19 sub-hex positions as a fine grid overlay. Occupied sub-hexes are highlighted. Available sub-hexes respond to clicks.
 
 ### F2: Painting Tools
 - **Biome Brush** — paint biome type from palette. Painting on an empty (ghost) cell creates a new tile with the selected biome.
 - **Elevation Brush** — set elevation 0-9, with +/- increment mode. Painting on an empty cell creates a new tile.
-- **Resource Placer** — click hex → add resource (type dropdown, position auto-randomized within hex)
-- **Structure Placer** — place structures from a configurable list (initially matching WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch). List defined once in editor config, easy to update as game adds structures.
+- **Resource Placer** — click sub-hex within a hex → add resource at that sub-hex position (sq, sr). Rotation auto-randomized (0-359).
+- **Structure Placer** — place structures with footprint — each structure type occupies a defined set of sub-hex positions. The footprint is previewed on hover before placement. Structure list initially matches WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch. List defined once in editor config, easy to update as game adds structures.
 - **Anomaly Marker** — place anomaly points with string ID
 - **Spawn Marker** — set player spawn hex (exactly one per map)
 - **Eraser** — remove resources, structures, anomalies from a hex
 - **Delete Hex** — remove hex entirely from map
 - **Flood Fill** — paint contiguous same-biome hexes (adapted from Iterate)
+- **Note:** Biome Brush, Elevation Brush, Flood Fill, Eraser, Delete Hex, Spawn Marker, Anomaly Marker operate on main hexes only — unaffected by sub-hex system.
 
 ### F3: Palette / Sidebar
 - Biome palette — swatches showing each biome's actual color + name (from loaded .tres files)
@@ -98,8 +101,8 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### F5: Resource Placement Detail
 - Each hex can have 0-N resources
-- Each resource: type (from palette), x/y offset (valid range: -1.0 to 1.0, auto-randomized within -0.8 to 0.8 to avoid hex edges), rotation (0-359, auto-randomized)
-- Click resource → edit x, y, rotation in detail panel
+- Each resource occupies a specific sub-hex position (sq, sr) within the hex. Valid positions: 19 sub-hexes (center + ring-1 + ring-2, distance ≤ 2 from center). Rotation (0-359 degrees) remains for visual orientation.
+- Click resource in detail panel → highlight its sub-hex on canvas
 - Visual indicator on hexes with multiple resources (count badge or stacked dots) — clicking opens a resource list for selecting/editing individual resources
 
 ### F6: Import / Export
@@ -114,7 +117,9 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - All resource types valid (match known resource list)
 - All structure types valid
 - Elevation range 0-9
-- Resource positions within valid range (-1.0 to 1.0). Auto-placement uses -0.8 to 0.8 margin.
+- Resource sub-hex positions (sq, sr) must be valid (hex distance from (0,0) ≤ 2)
+- Structure footprints must reference valid sub-hex positions
+- No two props may occupy the same sub-hex within a tile (resources and structures share the sub-hex space)
 
 ### F8: Undo/Redo
 - Ctrl+Z / Ctrl+Shift+Z, at least 50 steps
@@ -214,6 +219,8 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 **AC9: Import validation** — Load a malformed JSON file (missing tiles, invalid structure) → editor shows clear error message, does not crash, does not load partial data. Load a malformed .tres file → editor shows clear error, does not crash.
 
 **AC10: Map expansion** — Given an existing map, when hovering the canvas near map edges, then faint ghost hex outlines are visible at empty adjacent positions. When painting (biome brush or any tool) on a ghost cell, a new tile is created at that position and the ghost grid updates to include the new tile's empty neighbors.
+
+**AC11: Sub-hex placement** — Given a resource tool active, when hovering a hex, then the 19 sub-hex positions are shown as a grid overlay. Clicking an available sub-hex places the resource there. Occupied sub-hexes show as blocked. Structure placement previews the footprint before confirming.
 
 ## 10. Priority
 

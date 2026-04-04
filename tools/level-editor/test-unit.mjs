@@ -466,7 +466,7 @@ test('HexGrid — clear removes all tiles', () => {
   assert(grid.tiles.size === 0, 'tiles should be empty after clear');
 });
 
-test('loadMapIntoGrid — loads map JSON correctly', () => {
+test('loadMapIntoGrid — loads legacy map JSON correctly (x,y resources, string structure)', () => {
   const grid = new HexGridClass();
   const mapData = {
     chapter_id: 'ch1',
@@ -477,7 +477,6 @@ test('loadMapIntoGrid — loads map JSON correctly', () => {
       '1,-1': { biome: 'water', elevation: 0, structure: 'campfire', resources: [] },
     },
   };
-  // Load map data into the test grid
   loadMapIntoGrid(grid, mapData);
   assert(grid.meta.chapter_id === 'ch1', 'chapter_id should match');
   assert(grid.meta.name === 'Test Map', 'name should match');
@@ -487,7 +486,31 @@ test('loadMapIntoGrid — loads map JSON correctly', () => {
   assert(grid.getTile(0, 0).elevation === 2, 'elevation should be 2');
   assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
   assert(grid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
-  assert(grid.getTile(1, -1).structure === 'campfire', 'structure should be campfire');
+  assert(typeof grid.getTile(0, 0).resources[0].sq === 'number', 'resource should have sq');
+  assert(typeof grid.getTile(0, 0).resources[0].sr === 'number', 'resource should have sr');
+  // Legacy string structure should be converted to object
+  assert(grid.getTile(1, -1).structure !== null, 'structure should exist');
+  assert(grid.getTile(1, -1).structure.type === 'campfire', 'structure type should be campfire');
+  assert(Array.isArray(grid.getTile(1, -1).structure.sub_hexes), 'structure should have sub_hexes');
+});
+
+test('loadMapIntoGrid — loads new format (sq,sr resources, object structure)', () => {
+  const grid = new HexGridClass();
+  const mapData = {
+    chapter_id: 'ch2',
+    name: 'New Map',
+    spawn: [0, 0],
+    tiles: {
+      '0,0': { biome: 'forest', elevation: 1, resources: [{ type: 'stone', sq: 1, sr: -1, rotation: 90 }],
+               structure: { type: 'workbench', sub_hexes: [{ sq: 0, sr: 0 }] } },
+    },
+  };
+  loadMapIntoGrid(grid, mapData);
+  const tile = grid.getTile(0, 0);
+  assert(tile.resources[0].sq === 1, 'sq should be 1');
+  assert(tile.resources[0].sr === -1, 'sr should be -1');
+  assert(tile.structure.type === 'workbench', 'structure type should be workbench');
+  assert(tile.structure.sub_hexes[0].sq === 0, 'structure sub_hex sq should be 0');
 });
 
 // ============================================================
@@ -542,9 +565,9 @@ test('EraseContentCommand — erases resources/structure/anomaly but preserves h
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.elevation = 5;
-  tile.structure = 'workbench';
+  tile.structure = { type: 'workbench', sub_hexes: [{ sq: 0, sr: 0 }] };
   tile.anomaly = 'test_anomaly';
-  tile.resources = [createResourceInstance('wood', 0.1, 0.2, 45)];
+  tile.resources = [createResourceInstance('wood', 0, 0, 45)];
   grid.setTile(0, 0, tile);
 
   const cmd = new EraseContentCommand(grid, 0, 0, tile);
@@ -559,7 +582,7 @@ test('EraseContentCommand — erases resources/structure/anomaly but preserves h
   cmd.undo();
   const restored = grid.getTile(0, 0);
   assert(restored.resources.length === 1, 'resources should be restored');
-  assert(restored.structure === 'workbench', 'structure should be restored');
+  assert(restored.structure !== null && restored.structure.type === 'workbench', 'structure should be restored');
   assert(restored.anomaly === 'test_anomaly', 'anomaly should be restored');
 });
 
@@ -581,9 +604,11 @@ test('DeleteHexCommand — deletes and restores hex', () => {
 test('SetStructureCommand — execute and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const cmd = new SetStructureCommand(grid, 0, 0, null, 'campfire');
+  const newStruct = { type: 'campfire', sub_hexes: [{ sq: 0, sr: 0 }] };
+  const cmd = new SetStructureCommand(grid, 0, 0, null, newStruct);
   cmd.execute();
-  assert(grid.getTile(0, 0).structure === 'campfire', 'structure should be campfire');
+  assert(grid.getTile(0, 0).structure !== null, 'structure should exist');
+  assert(grid.getTile(0, 0).structure.type === 'campfire', 'structure type should be campfire');
   cmd.undo();
   assert(grid.getTile(0, 0).structure === null, 'structure should be null after undo');
 });
@@ -611,11 +636,13 @@ test('SetSpawnCommand — execute and undo', () => {
 test('AddResourceCommand — execute and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const res = createResourceInstance('wood', 0.1, 0.2, 90);
+  const res = createResourceInstance('wood', 1, -1, 90);
   const cmd = new AddResourceCommand(grid, 0, 0, res);
   cmd.execute();
   assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
   assert(grid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
+  assert(grid.getTile(0, 0).resources[0].sq === 1, 'sq should be 1');
+  assert(grid.getTile(0, 0).resources[0].sr === -1, 'sr should be -1');
   cmd.undo();
   assert(grid.getTile(0, 0).resources.length === 0, 'should have 0 resources after undo');
 });
@@ -623,21 +650,21 @@ test('AddResourceCommand — execute and undo', () => {
 test('EditResourceCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
-  tile.resources = [createResourceInstance('wood', 0.1, 0.2, 90)];
+  tile.resources = [createResourceInstance('wood', 1, 0, 90)];
   grid.setTile(0, 0, tile);
-  const cmd = new EditResourceCommand(grid, 0, 0, 0, { x: 0.1 }, { x: 0.5 });
+  const cmd = new EditResourceCommand(grid, 0, 0, 0, { sq: 1 }, { sq: -1 });
   cmd.execute();
-  assert(grid.getTile(0, 0).resources[0].x === 0.5, 'x should be 0.5');
+  assert(grid.getTile(0, 0).resources[0].sq === -1, 'sq should be -1');
   cmd.undo();
-  assert(grid.getTile(0, 0).resources[0].x === 0.1, 'x should be 0.1 after undo');
+  assert(grid.getTile(0, 0).resources[0].sq === 1, 'sq should be 1 after undo');
 });
 
 test('DeleteResourceCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.resources = [
-    createResourceInstance('wood', 0.1, 0.2, 90),
-    createResourceInstance('stone', 0.3, 0.4, 180),
+    createResourceInstance('wood', 0, 0, 90),
+    createResourceInstance('stone', 1, 0, 180),
   ];
   grid.setTile(0, 0, tile);
   const removed = { ...tile.resources[0] };
@@ -839,7 +866,7 @@ test('DeleteHexTool — removes tile, undo restores', () => {
   const grid = new HexGridClass();
   const tile = createTileData('water');
   tile.elevation = 4;
-  tile.structure = 'torch';
+  tile.structure = { type: 'torch', sub_hexes: [{ sq: 0, sr: 0 }] };
   grid.setTile(1, 1, tile);
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
@@ -849,7 +876,7 @@ test('DeleteHexTool — removes tile, undo restores', () => {
   ch.undo();
   assert(grid.hasTile(1, 1), 'tile should be restored');
   assert(grid.getTile(1, 1).biome === 'water', 'biome should be restored');
-  assert(grid.getTile(1, 1).structure === 'torch', 'structure should be restored');
+  assert(grid.getTile(1, 1).structure !== null && grid.getTile(1, 1).structure.type === 'torch', 'structure should be restored');
 });
 
 // ============================================================

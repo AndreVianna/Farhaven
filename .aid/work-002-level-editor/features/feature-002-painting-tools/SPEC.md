@@ -8,6 +8,7 @@
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: rotation type, AC range, prompt→modal, undo index, WALKABLE_STRUCTURES ref, JSON field clarification | /aid-specify review |
 | 2026-04-04 | Tools now work on ghost (empty) cells — BiomeBrush, ElevationBrush, FloodFill create new tiles | code review |
+| 2026-04-04 | Sub-hex grid system: AddResourceCommand uses (sq, sr), SetStructureCommand uses footprint model, ResourceDetailPanel updated for sub-hex fields, ResourcePlacer and StructurePlacer rewritten for sub-hex placement | design change |
 
 ## Source
 
@@ -128,13 +129,13 @@ class SetElevationCommand {
 }
 
 class AddResourceCommand {
-  constructor(grid, q, r, resourceInstance)
+  constructor(grid, q, r, resourceInstance)  // resourceInstance now has sq, sr instead of x, y
   execute()   // const tile = grid.getTile(q,r); tile.resources.push(resourceInstance); this._index = tile.resources.length - 1
   undo()      // grid.getTile(q,r).resources.splice(this._index, 1) — removes by tracked index, not .pop()
 }
 
 class EditResourceCommand {
-  constructor(grid, q, r, resourceIndex, oldValues, newValues)
+  constructor(grid, q, r, resourceIndex, oldValues, newValues)  // values include sq, sr, rotation
   execute()   // Object.assign(grid.getTile(q,r).resources[index], newValues)
   undo()      // Object.assign(grid.getTile(q,r).resources[index], oldValues)
 }
@@ -147,6 +148,7 @@ class DeleteResourceCommand {
 
 class SetStructureCommand {
   constructor(grid, q, r, oldStructure, newStructure)
+  // oldStructure/newStructure = { type: string, sub_hexes: [{sq, sr}, ...] } | null
   execute()   // grid.getTile(q,r).structure = newStructure
   undo()      // grid.getTile(q,r).structure = oldStructure
 }
@@ -196,13 +198,11 @@ class BatchCommand {
 - Supports drag painting like Biome Brush (tracks `paintedHexes`).
 
 **Resource Placer (`ResourcePlacer`):**
-- `onMouseDown(hex)`: creates a `ResourceInstance` with `type = toolManager.activeValue`, `x = random(-0.8, 0.8)`, `y = random(-0.8, 0.8)`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. Executes `AddResourceCommand`.
+- `onMouseDown(hex, subHex)`: creates a `ResourceInstance` with `type = toolManager.activeValue`, `sq = subHex.q`, `sr = subHex.r`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. If sub-hex is already occupied (by resource or structure), no-op. Executes `AddResourceCommand`.
 - No drag support — click only.
 
-**Note on field names:** The editor's `ResourceInstance` uses `x`, `y`, `rotation` to match the map JSON format read by `map_loader.gd`. The game's internal `ResourceNode` class uses different names (`offset: Vector2`, `rotation_deg: float`); MapLoader handles the translation. The editor never uses the GDScript field names.
-
 **Structure Placer (`StructurePlacer`):**
-- `onMouseDown(hex)`: creates `SetStructureCommand(hex, oldStructure, toolManager.activeValue)`. One structure per hex; replaces any existing structure.
+- `onMouseDown(hex, subHex)`: gets the active structure type's footprint (list of sub-hex offsets). Checks if all required sub-hexes are available. If yes, creates `SetStructureCommand` with `{ type, sub_hexes }`. If any sub-hex is occupied, no-op (show warning). One structure per hex; replaces any existing structure.
 - No drag support — click only.
 
 **Anomaly Marker (`AnomalyMarker`):**
@@ -254,9 +254,10 @@ class ResourceDetailPanel {
 - Header: "Resources on (q, r)" with a close button.
 - Each resource row:
   - Type label (read-only, e.g., "wood")
-  - `x` input: number, step 0.1, range [-1.0, 1.0]
-  - `y` input: number, step 0.1, range [-1.0, 1.0]
-  - `rotation` input: number, step 1, range [0, 359] (float — matches map JSON field `rotation` which MapLoader reads as float via `rotation_deg`)
+  - `sq` input: integer, range [-2, 2]
+  - `sr` input: integer, range [-2, 2]
+  - Validation: `isValidSubHex(sq, sr)` must be true (distance from center ≤ 2)
+  - `rotation` input: number, step 1, range [0, 359]
   - Delete button (red X)
 - On input blur or Enter key: if value changed, create `EditResourceCommand` with old and new values.
 
