@@ -52,6 +52,15 @@ class FakeGrid extends Node:
 	func get_tile(coords: Vector2i):
 		return _tiles.get(coords, null)
 
+	func has_structure(coords: Vector2i, type: StringName) -> bool:
+		var tile = _tiles.get(coords, null)
+		if tile == null:
+			return false
+		for prop in tile.props:
+			if prop.category == Prop.Category.STRUCTURE and prop.type == type:
+				return true
+		return false
+
 	func distance(a: Vector2i, b: Vector2i) -> int:
 		var cube_a: Vector3i = Vector3i(a.x, -a.x - a.y, a.y)
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)

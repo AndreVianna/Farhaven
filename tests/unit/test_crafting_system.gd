@@ -27,6 +27,15 @@ class MockHexGrid extends Node:
 	func get_tile(coords: Vector2i) -> Resource:
 		return _tiles.get(coords, null)
 
+	func has_structure(coords: Vector2i, type: StringName) -> bool:
+		var tile: Resource = _tiles.get(coords, null)
+		if tile == null:
+			return false
+		for prop in tile.props:
+			if prop.category == Prop.Category.STRUCTURE and prop.type == type:
+				return true
+		return false
+
 	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
 		var dirs: Array[Vector2i] = [
 			Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
