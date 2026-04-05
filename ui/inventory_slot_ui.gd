@@ -113,12 +113,10 @@ func _apply_occupied_style() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	var pressed := false
 	if event is InputEventScreenTouch and event.pressed:
-		pressed = true
+		pass  # Handled by emulated mouse event below
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		pressed = true
-	if pressed and _type != &"" and _is_consumable:
-		play_highlight()
-		slot_tapped.emit(_type)
-		accept_event()
+		if _type != &"" and _is_consumable:
+			play_highlight()
+			slot_tapped.emit(_type)
+			accept_event()
