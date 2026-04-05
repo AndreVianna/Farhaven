@@ -7,10 +7,10 @@ extends Node
 enum TimePhase { DAY, DUSK, NIGHT, DAWN }
 
 const PHASE_DURATIONS: Dictionary = {
-	TimePhase.DAY: 180.0,
-	TimePhase.DUSK: 30.0,
-	TimePhase.NIGHT: 90.0,
-	TimePhase.DAWN: 10.0,
+	TimePhase.DAY: 105.0,
+	TimePhase.DUSK: 15.0,
+	TimePhase.NIGHT: 105.0,
+	TimePhase.DAWN: 15.0,
 }
 
 const VISIBILITY_RADIUS: Dictionary = {

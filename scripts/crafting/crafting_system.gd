@@ -125,7 +125,24 @@ func craft(recipe_name: StringName) -> bool:
 		_inventory.set_tool(recipe["tool_slot"], recipe_name)
 
 	craft_completed.emit(recipe_name)
+	# Apply crafting survival cost
+	var survival: Node = _get_survival_system()
+	if survival and survival.has_method("apply_activity_cost"):
+		survival.apply_activity_cost(&"crafting")
 	return true
+
+
+# --- Survival System Helper ---
+
+
+func _get_survival_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child in parent.get_children():
+		if child != self and child.has_method("apply_activity_cost"):
+			return child
+	return null
 
 
 # --- Workbench Proximity ---

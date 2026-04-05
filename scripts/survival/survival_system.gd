@@ -13,17 +13,44 @@ signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int)
 signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int)
 
 const STAT_CONFIG: Dictionary = {
-	"hunger_rate": 1.0,
-	"thirst_rate": 1.5,
-	"hp_drain_no_hunger": 2.0,
-	"hp_drain_no_thirst": 3.0,
+	"hunger_rate": 0.4,
+	"thirst_rate": 0.8,
+	"hp_drain_no_hunger": 0.1,
+	"hp_drain_no_thirst": 0.2,
 	"hp_regen_day": 0.5,
 }
 
 const CONSUMABLE_CONFIG: Dictionary = {
-	&"berries":       {"hunger": 15.0, "thirst": 5.0,  "toxic": 0.0},
+	&"berries":       {"hunger": 5.0, "thirst": 10.0,  "toxic": 0.0},
 	&"toxic_berries": {"hunger": 10.0, "thirst": 0.0,  "toxic": 25.0},
 	&"meat":          {"hunger": 25.0, "thirst": 0.0,  "toxic": 0.0},
+}
+
+const ACTIVITY_CONFIG: Dictionary = {
+	&"gathering": {
+		"cost": {"health": 0.0, "thirst": 0.2, "hunger": 0.1},
+		"drain": {"health": 0.0, "thirst": 0.0, "hunger": 0.0},
+	},
+	&"crafting": {
+		"cost": {"health": 0.0, "thirst": 0.5, "hunger": 0.2},
+		"drain": {"health": 0.0, "thirst": 0.0, "hunger": 0.0},
+	},
+	&"scanning": {
+		"cost": {"health": 0.0, "thirst": 0.1, "hunger": 0.05},
+		"drain": {"health": 0.0, "thirst": 0.05, "hunger": 0.02},
+	},
+	&"building": {
+		"cost": {"health": 0.0, "thirst": 1.0, "hunger": 0.5},
+		"drain": {"health": 0.0, "thirst": 0.1, "hunger": 0.05},
+	},
+	&"attacking": {
+		"cost": {"health": 0.0, "thirst": 0.3, "hunger": 0.2},
+		"drain": {"health": 0.0, "thirst": 0.0, "hunger": 0.0},
+	},
+	&"moving": {
+		"cost": {"health": 0.0, "thirst": 0.0, "hunger": 0.0},
+		"drain": {"health": 0.0, "thirst": 0.05, "hunger": 0.02},
+	},
 }
 
 ## Tools are never dropped on death.
@@ -46,6 +73,7 @@ var _screen_fade: Node  # ScreenFade CanvasLayer or null
 var _respawn_tile: Vector2i = Vector2i.ZERO
 var _ground_items: Array[Dictionary] = []
 var _waiting_for_dawn: bool = false
+var _active_drains: Dictionary = {}  # StringName → drain dict
 
 
 func _ready() -> void:
@@ -82,6 +110,12 @@ func _process(delta: float) -> void:
 func _tick(delta: float) -> void:
 	hunger -= STAT_CONFIG["hunger_rate"] * delta
 	thirst -= STAT_CONFIG["thirst_rate"] * delta
+
+	# Activity drains (on top of passive drain)
+	for drain: Dictionary in _active_drains.values():
+		hunger -= drain["hunger"] * delta
+		thirst -= drain["thirst"] * delta
+		hp -= drain["health"] * delta
 
 	var hp_drain: float = 0.0
 	if hunger <= 0.0:
@@ -133,6 +167,36 @@ func _check_death() -> void:
 
 func _on_item_used(item_type: StringName) -> void:
 	consume(item_type)
+
+
+# --- Activity costs ---
+
+
+## Apply the one-time cost of an activity. Called when activity starts or completes.
+func apply_activity_cost(activity: StringName) -> void:
+	if is_dead:
+		return
+	if not ACTIVITY_CONFIG.has(activity):
+		return
+	var cost: Dictionary = ACTIVITY_CONFIG[activity]["cost"]
+	hp = clampf(hp - cost["health"], 0.0, hp_max)
+	hunger = clampf(hunger - cost["hunger"], 0.0, hunger_max)
+	thirst = clampf(thirst - cost["thirst"], 0.0, thirst_max)
+	stat_changed.emit(&"hp", hp, hp_max)
+	stat_changed.emit(&"hunger", hunger, hunger_max)
+	stat_changed.emit(&"thirst", thirst, thirst_max)
+	_check_death()
+
+
+## Start continuous drain for a duration-based activity (scanning, building, moving).
+func start_activity_drain(activity: StringName) -> void:
+	if ACTIVITY_CONFIG.has(activity):
+		_active_drains[activity] = ACTIVITY_CONFIG[activity]["drain"]
+
+
+## Stop continuous drain when the activity ends.
+func stop_activity_drain(activity: StringName) -> void:
+	_active_drains.erase(activity)
 
 
 # --- Death sequence ---

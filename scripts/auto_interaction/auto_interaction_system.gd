@@ -274,6 +274,11 @@ func _on_gather_tween_complete() -> void:
 		_is_gathering = false
 		return
 
+	# Apply gathering survival cost
+	var survival: Node = _get_survival_system()
+	if survival and survival.has_method("apply_activity_cost"):
+		survival.apply_activity_cost(&"gathering")
+
 	var node: Resource = tile.props[index]
 	var amount: int = ResourceRegistry.get_def(node.type).gather_amount if ResourceRegistry.has_def(node.type) else 1
 
@@ -383,14 +388,31 @@ func _on_fauna_moved(fauna_id: int, coords: Vector2i) -> void:
 			weapon = equipped
 	var damage: int = WEAPON_DAMAGE.get(weapon, WEAPON_DAMAGE.get(&"", 5))
 	_defend_cooldown = AUTO_DEFEND_CONFIG["attack_cooldown"]
+	# Apply attacking survival cost
+	var survival_atk: Node = _get_survival_system()
+	if survival_atk and survival_atk.has_method("apply_activity_cost"):
+		survival_atk.apply_activity_cost(&"attacking")
 	auto_defend_triggered.emit(fauna_id, damage)
+
+
+# --- Survival System Helper ---
+
+
+func _get_survival_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child in parent.get_children():
+		if child != self and child.has_method("apply_activity_cost"):
+			return child
+	return null
 
 
 # --- Auto-Pickup Stub ---
 
 ## On tile_entered: query SurvivalSystem for ground items and pick them up.
 func _try_auto_pickup(coords: Vector2i) -> void:
-	var survival: Node = get_node_or_null("/root/SurvivalSystem")
+	var survival: Node = _get_survival_system()
 	if survival == null:
 		return
 	if not survival.has_method("get_ground_items_at"):
@@ -401,10 +423,11 @@ func _try_auto_pickup(coords: Vector2i) -> void:
 	if _inventory == null:
 		return
 	for item in items:
-		var item_name: StringName = item.get("name", &"")
-		var amount: int = item.get("amount", 1)
+		var item_name: StringName = item.get("item_type", &"")
+		var amount: int = item.get("count", 1)
 		if item_name == &"":
 			continue
 		var added: int = _inventory.add_item(item_name, amount)
 		if added > 0:
+			survival.remove_ground_item(coords, item_name, added)
 			ground_item_picked_up.emit(item_name, added)

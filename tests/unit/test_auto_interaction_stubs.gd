@@ -79,7 +79,26 @@ class FakeSurvivalSystem extends Node:
 	var _ground_items: Dictionary = {}  # coords -> Array[Dictionary]
 
 	func get_ground_items_at(coords: Vector2i) -> Array:
-		return _ground_items.get(coords, [])
+		var source: Array = _ground_items.get(coords, [])
+		var result: Array = []
+		for entry in source:
+			result.append(entry.duplicate())
+		return result
+
+	func remove_ground_item(coords: Vector2i, item_type: StringName, count: int) -> int:
+		var items: Array = _ground_items.get(coords, [])
+		for i in range(items.size()):
+			if items[i].get("item_type", &"") == item_type:
+				var available: int = items[i].get("count", 0)
+				var removed: int = min(available, count)
+				items[i]["count"] -= removed
+				if items[i]["count"] <= 0:
+					items.remove_at(i)
+				return removed
+		return 0
+
+	func apply_activity_cost(_activity: StringName) -> void:
+		pass
 
 
 # --- Test state ---
@@ -520,17 +539,10 @@ func test_no_crash_without_fauna_manager() -> void:
 func test_pickup_collects_ground_items() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"wood", "amount": 3},
+		{"item_type": &"wood", "count": 3},
 	]
 	survival.name = "SurvivalSystem"
-	# We need to make it findable via get_node_or_null("/root/SurvivalSystem")
-	# Since _try_auto_pickup uses get_node_or_null, we inject by calling directly
-	# Instead, we override _try_auto_pickup behavior by calling it through a helper
-
-	# For testability, we'll directly test the pickup logic
-	# The function queries SurvivalSystem via get_node_or_null("/root/SurvivalSystem")
-	# In test environment, let's add it to the root
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_player.current_tile = Vector2i.ZERO
 	_sys._try_auto_pickup(Vector2i.ZERO)
@@ -546,11 +558,11 @@ func test_pickup_collects_ground_items() -> void:
 func test_pickup_multiple_items() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"wood", "amount": 2},
-		{"name": &"stone", "amount": 1},
+		{"item_type": &"wood", "count": 2},
+		{"item_type": &"stone", "count": 1},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_sys._try_auto_pickup(Vector2i.ZERO)
 
@@ -571,7 +583,7 @@ func test_pickup_empty_ground_items() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = []
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_sys._try_auto_pickup(Vector2i.ZERO)
 
@@ -583,10 +595,10 @@ func test_pickup_empty_ground_items() -> void:
 func test_pickup_skips_empty_name() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"", "amount": 5},
+		{"item_type": &"", "count": 5},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_sys._try_auto_pickup(Vector2i.ZERO)
 
@@ -598,10 +610,10 @@ func test_pickup_skips_empty_name() -> void:
 func test_pickup_emits_ground_item_picked_up() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i(2, 1)] = [
-		{"name": &"berries", "amount": 4},
+		{"item_type": &"berries", "count": 4},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_sys._try_auto_pickup(Vector2i(2, 1))
 
@@ -616,10 +628,10 @@ func test_pickup_called_on_tile_entered() -> void:
 	# Verify _on_tile_entered calls _try_auto_pickup
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"fiber", "amount": 1},
+		{"item_type": &"fiber", "count": 1},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
 	_player.current_tile = Vector2i.ZERO
 	var tile := _make_tile(Vector2i.ZERO)

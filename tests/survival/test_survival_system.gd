@@ -88,19 +88,19 @@ func test_max_values() -> void:
 # --- STAT_CONFIG constants ---
 
 func test_stat_config_hunger_rate() -> void:
-	assert_float(_SurvivalSystem.STAT_CONFIG["hunger_rate"]).is_equal(1.0)
+	assert_float(_SurvivalSystem.STAT_CONFIG["hunger_rate"]).is_equal(0.4)
 
 
 func test_stat_config_thirst_rate() -> void:
-	assert_float(_SurvivalSystem.STAT_CONFIG["thirst_rate"]).is_equal(1.5)
+	assert_float(_SurvivalSystem.STAT_CONFIG["thirst_rate"]).is_equal(0.8)
 
 
 func test_stat_config_hp_drain_no_hunger() -> void:
-	assert_float(_SurvivalSystem.STAT_CONFIG["hp_drain_no_hunger"]).is_equal(2.0)
+	assert_float(_SurvivalSystem.STAT_CONFIG["hp_drain_no_hunger"]).is_equal(0.1)
 
 
 func test_stat_config_hp_drain_no_thirst() -> void:
-	assert_float(_SurvivalSystem.STAT_CONFIG["hp_drain_no_thirst"]).is_equal(3.0)
+	assert_float(_SurvivalSystem.STAT_CONFIG["hp_drain_no_thirst"]).is_equal(0.2)
 
 
 func test_stat_config_hp_regen_day() -> void:
@@ -110,11 +110,11 @@ func test_stat_config_hp_regen_day() -> void:
 # --- CONSUMABLE_CONFIG constants ---
 
 func test_consumable_berries_hunger() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["hunger"]).is_equal(15.0)
+	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["hunger"]).is_equal(5.0)
 
 
 func test_consumable_berries_thirst() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["thirst"]).is_equal(5.0)
+	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["thirst"]).is_equal(10.0)
 
 
 func test_consumable_berries_toxic() -> void:
@@ -137,31 +137,31 @@ func test_consumable_meat_hunger() -> void:
 
 func test_hunger_depletes_at_1_per_second() -> void:
 	_tick(1.0)
-	assert_float(_sys.hunger).is_equal(99.0)
+	assert_float(_sys.hunger).is_equal(99.6)
 
 
 func test_thirst_depletes_at_1_5_per_second() -> void:
 	_tick(1.0)
-	assert_float(_sys.thirst).is_equal(98.5)
+	assert_float(_sys.thirst).is_equal(99.2)
 
 
 func test_hunger_depletes_proportional_to_delta() -> void:
 	_tick(10.0)
-	assert_float(_sys.hunger).is_equal(90.0)
+	assert_float(_sys.hunger).is_equal(96.0)
 
 
 func test_thirst_depletes_proportional_to_delta() -> void:
 	_tick(10.0)
-	assert_float(_sys.thirst).is_equal(85.0)
+	assert_float(_sys.thirst).is_equal(92.0)
 
 
 func test_hunger_clamps_at_zero() -> void:
-	_tick(200.0)
+	_tick(300.0)
 	assert_float(_sys.hunger).is_equal(0.0)
 
 
 func test_thirst_clamps_at_zero() -> void:
-	_tick(200.0)
+	_tick(300.0)
 	assert_float(_sys.thirst).is_equal(0.0)
 
 
@@ -171,37 +171,37 @@ func test_hp_drains_2_per_second_when_hunger_zero() -> void:
 	_sys.hunger = 0.0
 	_sys.thirst = 100.0
 	_tick(1.0)
-	# thirst depletes 1.5 in 1s, still > 0; hunger already 0 so no thirst drain
-	# HP drain: 2.0/s from hunger=0
+	# thirst depletes 0.8 in 1s, still > 0; hunger already 0 so no thirst drain
+	# HP drain: 0.1/s from hunger=0
 	# HP regen: no (hunger=0)
-	assert_float(_sys.hp).is_equal_approx(98.0, 0.001)
+	assert_float(_sys.hp).is_equal_approx(99.9, 0.001)
 
 
 func test_hp_drains_3_per_second_when_thirst_zero() -> void:
 	_sys.hunger = 100.0
 	_sys.thirst = 0.0
 	_tick(1.0)
-	# hunger depletes 1.0 → 99.0; thirst already 0
-	# HP drain: 3.0/s from thirst=0
+	# hunger depletes 0.4 → 99.6; thirst already 0
+	# HP drain: 0.2/s from thirst=0
 	# HP regen: no (thirst=0)
-	assert_float(_sys.hp).is_equal_approx(97.0, 0.001)
+	assert_float(_sys.hp).is_equal_approx(99.8, 0.001)
 
 
 func test_hp_drains_5_per_second_when_both_zero() -> void:
 	_sys.hunger = 0.0
 	_sys.thirst = 0.0
 	_tick(1.0)
-	# HP drain: 2.0 + 3.0 = 5.0/s
+	# HP drain: 0.1 + 0.2 = 0.3/s
 	# HP regen: no (both zero)
-	assert_float(_sys.hp).is_equal_approx(95.0, 0.001)
+	assert_float(_sys.hp).is_equal_approx(99.7, 0.001)
 
 
 func test_hp_drain_stacks_no_regen_when_starving() -> void:
 	_sys.hunger = 0.0
 	_sys.thirst = 0.0
 	_tick(10.0)
-	# 5.0 * 10 = 50 drain
-	assert_float(_sys.hp).is_equal_approx(50.0, 0.001)
+	# 0.3 * 10 = 3.0 drain
+	assert_float(_sys.hp).is_equal_approx(97.0, 0.001)
 
 
 # --- HP regen ---
@@ -212,7 +212,7 @@ func test_hp_regens_half_per_second_daytime_when_fed() -> void:
 	_sys.hunger = 100.0
 	_sys.thirst = 100.0
 	_tick(1.0)
-	# hunger: 99.0, thirst: 98.5 (both > 0)
+	# hunger: 99.6, thirst: 99.2 (both > 0)
 	# no drain; regen 0.5
 	assert_float(_sys.hp).is_equal_approx(50.5, 0.001)
 
@@ -233,8 +233,8 @@ func test_no_regen_when_hunger_zero() -> void:
 	_sys.hunger = 0.0
 	_sys.thirst = 100.0
 	_tick(1.0)
-	# HP drain from hunger=0: 2.0; no regen (hunger=0)
-	assert_float(_sys.hp).is_equal_approx(78.0, 0.001)
+	# HP drain from hunger=0: 0.1; no regen (hunger=0)
+	assert_float(_sys.hp).is_equal_approx(79.9, 0.001)
 
 
 func test_no_regen_when_thirst_zero() -> void:
@@ -243,8 +243,8 @@ func test_no_regen_when_thirst_zero() -> void:
 	_sys.hunger = 100.0
 	_sys.thirst = 0.0
 	_tick(1.0)
-	# HP drain from thirst=0: 3.0; no regen (thirst=0)
-	assert_float(_sys.hp).is_equal_approx(77.0, 0.001)
+	# HP drain from thirst=0: 0.2; no regen (thirst=0)
+	assert_float(_sys.hp).is_equal_approx(79.8, 0.001)
 
 
 func test_hp_regen_clamps_at_max() -> void:
@@ -261,13 +261,13 @@ func test_hp_regen_clamps_at_max() -> void:
 func test_consume_berries_increases_hunger() -> void:
 	_sys.hunger = 50.0
 	_sys.consume(&"berries")
-	assert_float(_sys.hunger).is_equal_approx(65.0, 0.001)
+	assert_float(_sys.hunger).is_equal_approx(55.0, 0.001)
 
 
 func test_consume_berries_increases_thirst() -> void:
 	_sys.thirst = 80.0
 	_sys.consume(&"berries")
-	assert_float(_sys.thirst).is_equal_approx(85.0, 0.001)
+	assert_float(_sys.thirst).is_equal_approx(90.0, 0.001)
 
 
 func test_consume_berries_clamps_thirst_at_max() -> void:
@@ -277,7 +277,7 @@ func test_consume_berries_clamps_thirst_at_max() -> void:
 
 
 func test_consume_berries_clamps_hunger_at_max() -> void:
-	_sys.hunger = 90.0
+	_sys.hunger = 97.0
 	_sys.consume(&"berries")
 	assert_float(_sys.hunger).is_equal_approx(100.0, 0.001)
 
@@ -403,7 +403,7 @@ func test_stat_changed_carries_correct_values() -> void:
 	)
 	_tick(1.0)
 	assert_int(hp_emit.size()).is_equal(1)
-	assert_float(hp_emit[0]["current"]).is_equal_approx(99.0, 0.001)
+	assert_float(hp_emit[0]["current"]).is_equal_approx(99.6, 0.001)
 	assert_float(hp_emit[0]["max_val"]).is_equal_approx(100.0, 0.001)
 
 
@@ -448,8 +448,8 @@ func test_hp_reaching_zero_sets_is_dead() -> void:
 	_sys.hunger = 0.0
 	_sys.thirst = 0.0
 	_sys.hp = 1.0
-	_tick(1.0)
-	# 5.0/s drain for 1.0s kills immediately
+	_tick(10.0)
+	# 0.3/s drain for 10.0s = 3.0 drain, kills at hp=1
 	assert_bool(_sys.is_dead).is_true()
 
 
@@ -473,7 +473,7 @@ func test_inventory_item_used_triggers_consume() -> void:
 	_sys.hunger = 50.0
 	_inv.add_item(&"berries", 1)
 	_inv.use_item(&"berries")
-	assert_float(_sys.hunger).is_equal_approx(65.0, 0.001)
+	assert_float(_sys.hunger).is_equal_approx(55.0, 0.001)
 
 
 func test_inventory_toxic_berries_used_deals_damage() -> void:

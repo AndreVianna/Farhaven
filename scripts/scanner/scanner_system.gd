@@ -90,6 +90,10 @@ func _update_active_scan(player_tile: Vector2i, delta: float) -> bool:
 	if dist > SCAN_RANGE:
 		_is_scanning = false
 		_scan_progress = 0.0
+		# Stop scanning drain on interrupt
+		var survival_int: Node = _get_survival_system()
+		if survival_int and survival_int.has_method("stop_activity_drain"):
+			survival_int.stop_activity_drain(&"scanning")
 		scan_interrupted.emit()
 		return false  # Interrupted, check for new target
 	_scan_progress += delta / _scan_duration
@@ -128,6 +132,13 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		var entry = _catalog.get_entry(best_entry_id)
 		var category: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
 		_scan_duration = SCAN_DURATIONS.get(category, 2.0)
+		# Apply scanning survival cost + start drain
+		var survival: Node = _get_survival_system()
+		if survival:
+			if survival.has_method("apply_activity_cost"):
+				survival.apply_activity_cost(&"scanning")
+			if survival.has_method("start_activity_drain"):
+				survival.start_activity_drain(&"scanning")
 		scan_started.emit(best_entry_id, best_coords)
 
 
@@ -137,6 +148,11 @@ func _complete_scan() -> void:
 	var entry_id: StringName = _scan_target_entry_id
 	_is_scanning = false
 	_scan_progress = 0.0
+
+	# Stop scanning drain on completion
+	var survival: Node = _get_survival_system()
+	if survival and survival.has_method("stop_activity_drain"):
+		survival.stop_activity_drain(&"scanning")
 
 	var old_state: int = _catalog.get_knowledge_state(entry_id)
 	_catalog.catalog_entry(entry_id)
@@ -215,6 +231,19 @@ func _check_passive_identification(coords: Vector2i) -> void:
 				element_identified.emit(coords, anomaly_id)
 			_:
 				element_unknown.emit(coords, anomaly_id, _Catalog.CatalogCategory.ANOMALY)
+
+
+# --- Survival System Helper ---
+
+
+func _get_survival_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child in parent.get_children():
+		if child != self and child.has_method("apply_activity_cost"):
+			return child
+	return null
 
 
 # --- Public accessors ---
