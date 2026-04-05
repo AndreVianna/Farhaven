@@ -363,10 +363,10 @@ func test_shelter_destroy_resets_respawn_tile() -> void:
 
 
 # ===========================================================================
-# Item dropping on death (50% each stack, tools safe)
+# Item dropping on death (100% each stack, tools safe)
 # ===========================================================================
 
-func test_death_drops_50_percent_of_stacks() -> void:
+func test_death_drops_100_percent_of_stacks() -> void:
 	# Manually set up inventory slots with berries
 	# Use item_used to bypass ResourceRegistry, but for drop testing
 	# we need actual slots. Directly manipulate _inv._slots.
@@ -375,18 +375,18 @@ func test_death_drops_50_percent_of_stacks() -> void:
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
-		func(tile: Vector2i, item_type: StringName, count: int) -> void:
+		func(tile: Vector2i, item_type: StringName, count: int, _sub_hex: Vector2i) -> void:
 			dropped.append({"tile": tile, "type": item_type, "count": count})
 	)
 
 	_ss.take_damage(100.0)
 
-	# berries: floor(10/2) = 5 dropped, meat: floor(6/2) = 3 dropped
+	# berries: 10 dropped, meat: 6 dropped
 	assert_int(dropped.size()).is_equal(2)
 	var berry_drop: Dictionary = dropped[0]
 	var meat_drop: Dictionary = dropped[1]
-	assert_int(berry_drop["count"]).is_equal(5)
-	assert_int(meat_drop["count"]).is_equal(3)
+	assert_int(berry_drop["count"]).is_equal(10)
+	assert_int(meat_drop["count"]).is_equal(6)
 
 
 func test_death_does_not_drop_tools() -> void:
@@ -396,7 +396,7 @@ func test_death_does_not_drop_tools() -> void:
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
-		func(_tile: Vector2i, item_type: StringName, _count: int) -> void:
+		func(_tile: Vector2i, item_type: StringName, _count: int, _sub_hex: Vector2i) -> void:
 			dropped.append(item_type)
 	)
 
@@ -408,32 +408,33 @@ func test_death_does_not_drop_tools() -> void:
 		assert_bool(item in _SurvivalSystem.TOOL_TYPES).is_false()
 
 
-func test_death_odd_stack_rounds_down() -> void:
+func test_death_drops_all_items() -> void:
 	_inv._slots[0] = {"type": &"berries", "quantity": 7}
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
-		func(_tile: Vector2i, _item_type: StringName, count: int) -> void:
+		func(_tile: Vector2i, _item_type: StringName, count: int, _sub_hex: Vector2i) -> void:
 			dropped.append(count)
 	)
 
 	_ss.take_damage(100.0)
-	# floor(7/2) = 3
-	assert_int(dropped[0]).is_equal(3)
+	# 100% drop: all 7
+	assert_int(dropped[0]).is_equal(7)
 
 
-func test_death_single_item_drops_zero() -> void:
+func test_death_single_item_drops_one() -> void:
 	_inv._slots[0] = {"type": &"berries", "quantity": 1}
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
-		func(_tile: Vector2i, _item_type: StringName, count: int) -> void:
+		func(_tile: Vector2i, _item_type: StringName, count: int, _sub_hex: Vector2i) -> void:
 			dropped.append(count)
 	)
 
 	_ss.take_damage(100.0)
-	# floor(1/2) = 0, nothing dropped
-	assert_int(dropped.size()).is_equal(0)
+	# 100% drop: 1 item dropped
+	assert_int(dropped.size()).is_equal(1)
+	assert_int(dropped[0]).is_equal(1)
 
 
 # ===========================================================================
@@ -533,11 +534,11 @@ func test_get_all_ground_items() -> void:
 func test_death_creates_ground_items() -> void:
 	_inv._slots[0] = {"type": &"berries", "quantity": 10}
 	_ss.take_damage(100.0)
-	# Items should now exist on the ground near death tile
+	# Items should now exist on the ground at death tile
 	var all_items: Array[Dictionary] = _ss.get_all_ground_items()
 	assert_int(all_items.size()).is_greater(0)
 	assert_str(all_items[0]["item_type"]).is_equal("berries")
-	assert_int(all_items[0]["count"]).is_equal(5)
+	assert_int(all_items[0]["count"]).is_equal(10)
 
 
 # ===========================================================================
@@ -724,7 +725,7 @@ func test_full_lifecycle_deplete_die_respawn() -> void:
 	_ss.player_died.connect(func() -> void: events.append("died"))
 	_ss.player_respawned.connect(func() -> void: events.append("respawned"))
 	_ss.ground_item_dropped.connect(
-		func(_t: Vector2i, _i: StringName, _c: int) -> void:
+		func(_t: Vector2i, _i: StringName, _c: int, _sh: Vector2i) -> void:
 			if events.is_empty() or events[-1] != "item_dropped":
 				events.append("item_dropped")
 	)

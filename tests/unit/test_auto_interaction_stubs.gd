@@ -85,7 +85,7 @@ class FakeSurvivalSystem extends Node:
 			result.append(entry.duplicate())
 		return result
 
-	func remove_ground_item(coords: Vector2i, item_type: StringName, count: int) -> int:
+	func remove_ground_item(coords: Vector2i, item_type: StringName, count: int, _sub_hex: Vector2i = Vector2i.ZERO) -> int:
 		var items: Array = _ground_items.get(coords, [])
 		for i in range(items.size()):
 			if items[i].get("item_type", &"") == item_type:
@@ -533,19 +533,22 @@ func test_no_crash_without_fauna_manager() -> void:
 
 
 # ===================================================================
-# AUTO-PICKUP STUB TESTS
+# AUTO-PICKUP PROXIMITY TESTS
 # ===================================================================
 
-func test_pickup_collects_ground_items() -> void:
+func test_pickup_collects_ground_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"wood", "count": 3},
+		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
 
+	# Position player at tile center (within GATHER_RADIUS of sub_hex ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
 	_player.current_tile = Vector2i.ZERO
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
 	assert_str(_pickup_name).is_equal(&"wood")
@@ -555,16 +558,19 @@ func test_pickup_collects_ground_items() -> void:
 	survival.queue_free()
 
 
-func test_pickup_multiple_items() -> void:
+func test_pickup_multiple_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"wood", "count": 2},
-		{"item_type": &"stone", "count": 1},
+		{"item_type": &"wood", "count": 2, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"stone", "count": 1, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(2)
 	assert_int(_inv.get_count(&"wood")).is_equal(2)
@@ -575,7 +581,8 @@ func test_pickup_multiple_items() -> void:
 
 func test_pickup_no_crash_without_survival_system() -> void:
 	# SurvivalSystem not present — should be safe no-op
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 	assert_int(_pickup_count).is_equal(0)
 
 
@@ -585,7 +592,8 @@ func test_pickup_empty_ground_items() -> void:
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(0)
 
@@ -595,12 +603,15 @@ func test_pickup_empty_ground_items() -> void:
 func test_pickup_skips_empty_name() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"", "count": 5},
+		{"item_type": &"", "count": 5, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(0)
 
@@ -609,13 +620,16 @@ func test_pickup_skips_empty_name() -> void:
 
 func test_pickup_emits_ground_item_picked_up() -> void:
 	var survival := FakeSurvivalSystem.new()
-	survival._ground_items[Vector2i(2, 1)] = [
-		{"item_type": &"berries", "count": 4},
+	survival._ground_items[Vector2i.ZERO] = [
+		{"item_type": &"berries", "count": 4, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i(2, 1))
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
 	assert_str(_pickup_name).is_equal(&"berries")
@@ -624,11 +638,31 @@ func test_pickup_emits_ground_item_picked_up() -> void:
 	survival.queue_free()
 
 
-func test_pickup_called_on_tile_entered() -> void:
-	# Verify _on_tile_entered calls _try_auto_pickup
+func test_pickup_not_triggered_when_out_of_range() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"fiber", "count": 1},
+		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i(2, 0)},
+	]
+	survival.name = "SurvivalSystem"
+	_player.add_child(survival)
+
+	# Position player at tile center — sub_hex (2,0) is far from center
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
+
+	# Sub-hex (2,0) offset > GATHER_RADIUS from tile center
+	assert_int(_pickup_count).is_equal(0)
+
+	survival.queue_free()
+
+
+func test_tile_entered_no_longer_triggers_pickup() -> void:
+	# Verify _on_tile_entered does NOT trigger pickup (now proximity-based)
+	var survival := FakeSurvivalSystem.new()
+	survival._ground_items[Vector2i.ZERO] = [
+		{"item_type": &"fiber", "count": 1, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
@@ -639,7 +673,7 @@ func test_pickup_called_on_tile_entered() -> void:
 
 	_grid.tile_entered.emit(Vector2i.ZERO)
 
-	assert_int(_pickup_count).is_equal(1)
-	assert_str(_pickup_name).is_equal(&"fiber")
+	# tile_entered no longer triggers auto-pickup
+	assert_int(_pickup_count).is_equal(0)
 
 	survival.queue_free()

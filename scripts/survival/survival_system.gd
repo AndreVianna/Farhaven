@@ -5,11 +5,12 @@ extends Node
 ## task-029 adds death, respawn, ground items, and scene wiring.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
+const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 signal stat_changed(stat_name: StringName, current: float, max_val: float)
 signal player_died()
 signal player_respawned()
-signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int)
+signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i)
 signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int)
 
 const STAT_CONFIG: Dictionary = {
@@ -218,18 +219,14 @@ func _get_player_tile() -> Vector2i:
 func _drop_items(death_tile: Vector2i) -> void:
 	if _inventory == null:
 		return
-	# Calculate passable neighbors for drop targets
-	var drop_tiles: Array[Vector2i] = []
-	if _hex_grid:
-		var neighbors: Array[Vector2i] = _hex_grid.get_neighbors(death_tile)
-		for n: Vector2i in neighbors:
-			var tile: Resource = _hex_grid.get_tile(n)
-			if tile != null and tile.biome != 4:  # 4 = WATER
-				drop_tiles.append(n)
-	if drop_tiles.is_empty():
-		drop_tiles.append(death_tile)
+	# Get sub-hex position from player world position
+	var sub_hex: Vector2i = Vector2i.ZERO
+	var parent: Node = get_parent()
+	if parent and "global_position" in parent:
+		var hex_center: Vector2 = _HexMath.axial_to_world(death_tile)
+		var offset: Vector2 = Vector2(parent.global_position.x, parent.global_position.z) - hex_center
+		sub_hex = _HexMath.world_to_sub_axial(offset)
 
-	var drop_idx: int = 0
 	var slots: Array[Dictionary] = _inventory.get_slots()
 	for slot: Dictionary in slots:
 		var item_type: StringName = slot["type"]
@@ -239,16 +236,9 @@ func _drop_items(death_tile: Vector2i) -> void:
 		if item_type in TOOL_TYPES:
 			continue
 		var count: int = slot["quantity"]
-		var to_drop: int = int(floorf(float(count) / 2.0))
-		if to_drop <= 0:
-			continue
-		# Remove from inventory
-		_inventory.remove_item(item_type, to_drop)
-		# Place on ground — round-robin across passable tiles
-		var target_tile: Vector2i = drop_tiles[drop_idx % drop_tiles.size()]
-		drop_idx += 1
-		add_ground_item(target_tile, item_type, to_drop)
-		ground_item_dropped.emit(target_tile, item_type, to_drop)
+		_inventory.remove_item(item_type, count)
+		add_ground_item(death_tile, item_type, count, sub_hex)
+		ground_item_dropped.emit(death_tile, item_type, count, sub_hex)
 
 
 func _start_death_sequence() -> void:
@@ -320,19 +310,19 @@ func get_ground_items_at(tile: Vector2i) -> Array[Dictionary]:
 	return result
 
 
-func add_ground_item(tile: Vector2i, item_type: StringName, count: int) -> void:
-	# Try to merge with existing entry on same tile and type
+func add_ground_item(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i = Vector2i.ZERO) -> void:
+	# Try to merge with existing entry on same tile, type, and sub_hex
 	for entry: Dictionary in _ground_items:
-		if entry["tile"] == tile and entry["item_type"] == item_type:
+		if entry["tile"] == tile and entry["item_type"] == item_type and entry["sub_hex"] == sub_hex:
 			entry["count"] += count
 			return
-	_ground_items.append({"tile": tile, "item_type": item_type, "count": count})
+	_ground_items.append({"tile": tile, "sub_hex": sub_hex, "item_type": item_type, "count": count})
 
 
-func remove_ground_item(tile: Vector2i, item_type: StringName, count: int) -> int:
+func remove_ground_item(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i = Vector2i.ZERO) -> int:
 	for i in range(_ground_items.size() - 1, -1, -1):
 		var entry: Dictionary = _ground_items[i]
-		if entry["tile"] == tile and entry["item_type"] == item_type:
+		if entry["tile"] == tile and entry["item_type"] == item_type and entry["sub_hex"] == sub_hex:
 			var removed: int = mini(entry["count"], count)
 			entry["count"] -= removed
 			if entry["count"] <= 0:
@@ -361,6 +351,8 @@ func get_save_data() -> Dictionary:
 		ground_data.append({
 			"tile_col": entry["tile"].x,
 			"tile_row": entry["tile"].y,
+			"sub_hex_q": entry["sub_hex"].x,
+			"sub_hex_r": entry["sub_hex"].y,
 			"item_type": String(entry["item_type"]),
 			"count": entry["count"],
 		})
@@ -390,6 +382,7 @@ func load_save_data(data: Dictionary) -> void:
 	for entry in ground_data:
 		_ground_items.append({
 			"tile": Vector2i(int(entry["tile_col"]), int(entry["tile_row"])),
+			"sub_hex": Vector2i(int(entry.get("sub_hex_q", 0)), int(entry.get("sub_hex_r", 0))),
 			"item_type": StringName(entry["item_type"]),
 			"count": int(entry["count"]),
 		})

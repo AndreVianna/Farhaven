@@ -119,30 +119,30 @@ func after_test() -> void:
 	_grid = null
 
 
-# --- Drop calculation ---
+# --- Drop calculation (100% drop on death) ---
 
-func test_drop_50_percent_floor_of_10_is_5() -> void:
+func test_drop_100_percent_of_10() -> void:
 	_inv.add_item(&"berries", 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
-	# 10 berries → drop floor(10/2) = 5
-	assert_int(_inv.get_count(&"berries")).is_equal(5)
+	# 10 berries → drop all 10, keep 0
+	assert_int(_inv.get_count(&"berries")).is_equal(0)
 
 
-func test_drop_50_percent_floor_of_7_is_3() -> void:
+func test_drop_100_percent_of_7() -> void:
 	_inv.add_item(&"berries", 7)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
-	# 7 berries → drop floor(7/2) = 3, keep 4
-	assert_int(_inv.get_count(&"berries")).is_equal(4)
+	# 7 berries → drop all 7, keep 0
+	assert_int(_inv.get_count(&"berries")).is_equal(0)
 
 
-func test_drop_50_percent_floor_of_1_is_0() -> void:
+func test_drop_100_percent_of_1() -> void:
 	_inv.add_item(&"berries", 1)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
-	# 1 berry → drop floor(1/2) = 0, keep 1
-	assert_int(_inv.get_count(&"berries")).is_equal(1)
+	# 1 berry → drop 1, keep 0
+	assert_int(_inv.get_count(&"berries")).is_equal(0)
 
 
 func test_tools_are_not_dropped() -> void:
@@ -168,35 +168,17 @@ func test_dropped_items_appear_on_ground() -> void:
 	for entry: Dictionary in all_items:
 		if entry["item_type"] == &"berries":
 			total_ground += entry["count"]
-	assert_int(total_ground).is_equal(5)
+	assert_int(total_ground).is_equal(10)
 
 
-func test_dropped_items_on_passable_neighbors() -> void:
+func test_dropped_items_at_death_tile() -> void:
 	_inv.add_item(&"berries", 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	var all_items: Array[Dictionary] = _sys.get_all_ground_items()
-	# All drop tiles should be neighbors, not the death tile (0,0) since neighbors exist
+	# All items drop at death tile (0,0)
 	for entry: Dictionary in all_items:
-		assert_bool(entry["tile"] != Vector2i(0, 0) or _grid.get_neighbors(Vector2i(0, 0)).is_empty()).is_true()
-
-
-func test_no_drop_when_water_only_neighbors_falls_back_to_death_tile() -> void:
-	# Create isolated tile surrounded by water
-	var isolated: Vector2i = Vector2i(5, 5)
-	_grid.add_tile(isolated)
-	_grid.add_tile(Vector2i(6, 5), 4)  # WATER
-	_grid.add_tile(Vector2i(4, 5), 4)  # WATER
-
-	var player: MockPlayer = _sys.get_parent() as MockPlayer
-	player.current_tile = isolated
-
-	_inv.add_item(&"berries", 10)
-	_sys.hp = 1.0
-	_sys.take_damage(10.0)
-
-	var items_at_isolated: Array[Dictionary] = _sys.get_ground_items_at(isolated)
-	assert_int(items_at_isolated.size()).is_greater(0)
+		assert_object(entry["tile"]).is_equal(Vector2i(0, 0))
 
 
 func test_player_died_signal_emits() -> void:
@@ -211,14 +193,14 @@ func test_player_died_signal_emits() -> void:
 
 func test_ground_item_dropped_signal_emits() -> void:
 	var fired: Array = []
-	_sys.ground_item_dropped.connect(func(tile: Vector2i, item_type: StringName, count: int) -> void:
-		fired.append({"tile": tile, "item_type": item_type, "count": count})
+	_sys.ground_item_dropped.connect(func(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i) -> void:
+		fired.append({"tile": tile, "item_type": item_type, "count": count, "sub_hex": sub_hex})
 	)
 	_inv.add_item(&"berries", 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	assert_int(fired.size()).is_greater(0)
-	assert_int(fired[0]["count"]).is_equal(5)
+	assert_int(fired[0]["count"]).is_equal(10)
 
 
 # --- Respawn stats ---

@@ -99,11 +99,12 @@ func _process(delta: float) -> void:
 	_tick_respawn_queue(delta)
 	if _defend_cooldown > 0.0:
 		_defend_cooldown -= delta
-	# Continuous proximity gather check (throttled)
+	# Continuous proximity gather + pickup check (throttled)
 	_proximity_timer += delta
 	if _proximity_timer >= PROXIMITY_CHECK_INTERVAL:
 		_proximity_timer = 0.0
 		_check_gather_proximity()
+		_check_pickup_proximity()
 
 
 func _connect_signals() -> void:
@@ -143,9 +144,9 @@ func can_gather(node: Resource, inventory: RefCounted) -> bool:
 
 # --- Auto-Gather Flow ---
 
-## Called when player enters a new tile. Triggers auto-pickup only.
-func _on_tile_entered(coords: Vector2i) -> void:
-	_try_auto_pickup(coords)
+## Called when player enters a new tile. Reserved for future use.
+func _on_tile_entered(_coords: Vector2i) -> void:
+	pass
 
 
 ## Find the best gatherable resource within GATHER_RADIUS around the given coords.
@@ -408,26 +409,47 @@ func _get_survival_system() -> Node:
 	return null
 
 
-# --- Auto-Pickup Stub ---
+# --- Auto-Pickup (Proximity-Based) ---
 
-## On tile_entered: query SurvivalSystem for ground items and pick them up.
-func _try_auto_pickup(coords: Vector2i) -> void:
+## Check for ground items within GATHER_RADIUS of the player's world position.
+## Picks up all items at a sub-hex when the player is close enough.
+func _check_pickup_proximity() -> void:
+	if _player == null or not "current_tile" in _player:
+		return
 	var survival: Node = _get_survival_system()
-	if survival == null:
-		return
-	if not survival.has_method("get_ground_items_at"):
-		return
-	var items: Array = survival.get_ground_items_at(coords)
-	if items.is_empty():
+	if survival == null or not survival.has_method("get_ground_items_at"):
 		return
 	if _inventory == null:
 		return
+
+	# Player world position on XZ plane
+	var player_pos_xz: Vector2 = Vector2.ZERO
+	if "global_position" in _player:
+		player_pos_xz = Vector2(_player.global_position.x, _player.global_position.z)
+	elif "position" in _player:
+		player_pos_xz = Vector2(_player.position.x, _player.position.z)
+
+	var current_tile: Vector2i = _player.current_tile
+	var items: Array = survival.get_ground_items_at(current_tile)
+	if items.is_empty():
+		return
+
+	# Check each ground item's sub-hex distance to player
 	for item in items:
 		var item_name: StringName = item.get("item_type", &"")
-		var amount: int = item.get("count", 1)
-		if item_name == &"":
+		var amount: int = item.get("count", 0)
+		var sub_hex: Vector2i = item.get("sub_hex", Vector2i.ZERO)
+		if item_name == &"" or amount <= 0:
 			continue
+
+		# Compute world position of this ground item
+		var item_world_pos: Vector2 = _HexMath.prop_world_position(current_tile, sub_hex)
+		var dist: float = player_pos_xz.distance_to(item_world_pos)
+		if dist > GATHER_RADIUS:
+			continue
+
+		# Pick up all items at this sub-hex
 		var added: int = _inventory.add_item(item_name, amount)
 		if added > 0:
-			survival.remove_ground_item(coords, item_name, added)
+			survival.remove_ground_item(current_tile, item_name, added, sub_hex)
 			ground_item_picked_up.emit(item_name, added)
