@@ -29,6 +29,9 @@ class MockDayNightCycle extends Node:
 	var is_daytime: bool = true
 	var current_phase: int = 0  # DAY
 
+	func skip_to_dawn() -> void:
+		is_daytime = true
+
 
 class MockHexGrid extends Node:
 	signal structure_placed(coords: Vector2i, structure_type: StringName)
@@ -273,10 +276,14 @@ func test_consume_unknown_item_does_nothing() -> void:
 
 
 func test_toxic_berries_can_kill() -> void:
+	var died: Array = []
+	_ss.player_died.connect(func() -> void: died.append(true))
 	_ss.hp = 20.0
 	_ss.consume(&"toxic_berries")
-	assert_float(_ss.hp).is_equal(0.0)
-	assert_bool(_ss.is_dead).is_true()
+	# Death triggers then auto-respawn restores stats
+	assert_int(died.size()).is_equal(1)
+	assert_float(_ss.hp).is_equal(100.0)
+	assert_bool(_ss.is_dead).is_false()
 
 
 # ===========================================================================
@@ -298,24 +305,31 @@ func test_inventory_use_item_triggers_consume() -> void:
 
 func test_death_at_hp_zero() -> void:
 	var died: Array = []
+	var respawned: Array = []
 	_ss.player_died.connect(func() -> void: died.append(true))
+	_ss.player_respawned.connect(func() -> void: respawned.append(true))
 	_ss.take_damage(100.0)
-	assert_bool(_ss.is_dead).is_true()
+	# Death fires then auto-respawn
 	assert_int(died.size()).is_equal(1)
+	assert_int(respawned.size()).is_equal(1)
+	assert_bool(_ss.is_dead).is_false()
+	assert_float(_ss.hp).is_equal(100.0)
 
 
 func test_death_stops_stat_ticking() -> void:
-	_ss.take_damage(100.0)
-	assert_bool(_ss.is_dead).is_true()
-	var hp_after_death: float = _ss.hp
+	# Manually set is_dead to verify the gate works
+	_ss.is_dead = true
+	_ss.hp = 50.0
+	_ss.hunger = 50.0
 	_simulate(10.0)
 	# Stats should NOT change while dead
-	assert_float(_ss.hp).is_equal(hp_after_death)
+	assert_float(_ss.hp).is_equal(50.0)
+	assert_float(_ss.hunger).is_equal(50.0)
 
 
 func test_respawn_restores_stats() -> void:
 	_ss.take_damage(100.0)
-	_ss.respawn()
+	# Auto-respawn fires immediately
 	assert_float(_ss.hp).is_equal(100.0)
 	assert_float(_ss.hunger).is_equal(50.0)
 	assert_float(_ss.thirst).is_equal(50.0)
@@ -326,14 +340,14 @@ func test_respawn_emits_signal() -> void:
 	var respawned: Array = []
 	_ss.player_respawned.connect(func() -> void: respawned.append(true))
 	_ss.take_damage(100.0)
-	_ss.respawn()
+	# Auto-respawn fires the signal immediately
 	assert_int(respawned.size()).is_equal(1)
 
 
 func test_respawn_teleports_to_respawn_tile() -> void:
 	_ss._respawn_tile = Vector2i(5, 3)
 	_ss.take_damage(100.0)
-	_ss.respawn()
+	# Auto-respawn teleports to respawn tile
 	assert_object(_player._snapped_to).is_equal(Vector2i(5, 3))
 
 
@@ -426,26 +440,22 @@ func test_death_single_item_drops_zero() -> void:
 # Night death deferred to dawn
 # ===========================================================================
 
-func test_night_death_deferred_to_dawn() -> void:
+func test_night_death_skips_to_dawn_and_respawns() -> void:
 	_dnc.is_daytime = false
 	_ss.take_damage(100.0)
-	assert_bool(_ss.is_dead).is_true()
-	assert_bool(_ss._waiting_for_dawn).is_true()
-
-	# Dawn signal triggers respawn
-	_dnc.dawn.emit()
+	# New behavior: skip_to_dawn called, then immediate respawn
+	assert_bool(_dnc.is_daytime).is_true()
 	assert_bool(_ss.is_dead).is_false()
-	assert_bool(_ss._waiting_for_dawn).is_false()
 	assert_float(_ss.hp).is_equal(100.0)
 
 
-func test_day_death_no_dawn_wait() -> void:
+func test_day_death_respawns_immediately() -> void:
 	_dnc.is_daytime = true
 	_ss.take_damage(100.0)
-	assert_bool(_ss.is_dead).is_true()
-	# Without ScreenFade, daytime death doesn't auto-respawn in headless mode
-	# But _waiting_for_dawn should be false
-	assert_bool(_ss._waiting_for_dawn).is_false()
+	# Daytime death: immediate respawn, no skip_to_dawn needed
+	assert_bool(_ss.is_dead).is_false()
+	assert_float(_ss.hp).is_equal(100.0)
+	assert_bool(_dnc.is_daytime).is_true()
 
 
 # ===========================================================================
@@ -605,12 +615,14 @@ func test_save_load_round_trip_after_depletion() -> void:
 
 
 func test_load_clears_dead_state() -> void:
-	_ss.take_damage(100.0)
-	assert_bool(_ss.is_dead).is_true()
+	# Manually set dead state to test that load clears it
+	_ss.is_dead = true
+	_ss._waiting_for_dawn = true
 	var data: Dictionary = {"hp": 80.0, "hunger": 60.0, "thirst": 50.0}
 	_ss.load_save_data(data)
 	assert_bool(_ss.is_dead).is_false()
 	assert_bool(_ss._waiting_for_dawn).is_false()
+	assert_float(_ss.hp).is_equal(80.0)
 
 
 # ===========================================================================
@@ -724,23 +736,21 @@ func test_full_lifecycle_deplete_die_respawn() -> void:
 	# Both zero: 0.3/s drain. At 100 HP, death in ~334s
 	_simulate(334.0)
 
-	assert_bool(_ss.is_dead).is_true()
+	# Auto-respawn fires immediately after death
+	assert_bool(_ss.is_dead).is_false()
 	assert_bool(events.has("stat_changed")).is_true()
 	assert_bool(events.has("died")).is_true()
+	assert_bool(events.has("respawned")).is_true()
 	assert_bool(events.has("item_dropped")).is_true()
 
-	# Phase 2: Verify ground items created
+	# Phase 2: Verify ground items created and stats restored
 	var ground: Array[Dictionary] = _ss.get_all_ground_items()
 	assert_int(ground.size()).is_greater(0)
-
-	# Phase 3: Respawn
-	_ss.respawn()
-	assert_bool(events.has("respawned")).is_true()
 	assert_float(_ss.hp).is_equal(100.0)
 	assert_float(_ss.hunger).is_equal(50.0)
 	assert_float(_ss.thirst).is_equal(50.0)
 
-	# Phase 4: Pickup ground items
+	# Phase 3: Pickup ground items
 	for item: Dictionary in ground:
 		_ss.remove_ground_item(item["tile"], item["item_type"], item["count"])
 	assert_int(_ss.get_all_ground_items().size()).is_equal(0)

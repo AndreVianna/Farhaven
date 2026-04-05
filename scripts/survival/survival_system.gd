@@ -258,25 +258,22 @@ func _start_death_sequence() -> void:
 			await _screen_fade.fade_out_completed
 		_try_respawn()
 	else:
-		# No screen fade (test/headless) — set night-death state but don't
-		# auto-respawn synchronously. Night deaths wait for dawn via _on_dawn().
-		# Day deaths in production always have ScreenFade; in tests, call
-		# respawn() explicitly if needed.
+		# No screen fade (test/headless) — skip to dawn if night, then respawn.
 		var is_day: bool = true
 		if _day_night_cycle != null:
 			is_day = _day_night_cycle.is_daytime
-		if not is_day:
-			_waiting_for_dawn = true
+		if not is_day and _day_night_cycle != null and _day_night_cycle.has_method("skip_to_dawn"):
+			_day_night_cycle.skip_to_dawn()
+		respawn()
 
 
 func _try_respawn() -> void:
 	var is_daytime: bool = true
 	if _day_night_cycle != null:
 		is_daytime = _day_night_cycle.is_daytime
-	if is_daytime:
-		respawn()
-	else:
-		_waiting_for_dawn = true
+	if not is_daytime and _day_night_cycle != null and _day_night_cycle.has_method("skip_to_dawn"):
+		_day_night_cycle.skip_to_dawn()
+	respawn()
 
 
 func _on_dawn() -> void:

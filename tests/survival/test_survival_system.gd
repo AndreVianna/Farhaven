@@ -14,6 +14,9 @@ var _dnc: MockDayNightCycle
 class MockDayNightCycle extends Node:
 	var is_daytime: bool = true
 
+	func skip_to_dawn() -> void:
+		is_daytime = true
+
 
 # --- Mock Player ---
 
@@ -309,10 +312,17 @@ func test_consume_toxic_berries_deals_25_damage() -> void:
 
 
 func test_consume_toxic_berries_can_kill() -> void:
+	var died: Array = []
+	var respawned: Array = []
+	_sys.player_died.connect(func() -> void: died.append(true))
+	_sys.player_respawned.connect(func() -> void: respawned.append(true))
 	_sys.hp = 20.0
 	_sys.consume(&"toxic_berries")
-	assert_float(_sys.hp).is_equal_approx(0.0, 0.001)
-	assert_bool(_sys.is_dead).is_true()
+	# Death triggers then auto-respawn restores stats
+	assert_int(died.size()).is_equal(1)
+	assert_int(respawned.size()).is_equal(1)
+	assert_float(_sys.hp).is_equal(100.0)
+	assert_bool(_sys.is_dead).is_false()
 
 
 # --- consume: meat ---
@@ -352,7 +362,9 @@ func test_take_damage_reduces_hp() -> void:
 func test_take_damage_clamps_hp_at_zero() -> void:
 	_sys.hp = 20.0
 	_sys.take_damage(50.0)
-	assert_float(_sys.hp).is_equal_approx(0.0, 0.001)
+	# Lethal damage triggers auto-respawn, hp restored to max
+	assert_float(_sys.hp).is_equal(100.0)
+	assert_bool(_sys.is_dead).is_false()
 
 
 func test_take_damage_emits_stat_changed() -> void:
@@ -367,10 +379,17 @@ func test_take_damage_emits_stat_changed() -> void:
 	assert_float(fired[0]["max_val"]).is_equal_approx(100.0, 0.001)
 
 
-func test_take_damage_triggers_death() -> void:
+func test_take_damage_triggers_death_and_respawn() -> void:
+	var died: Array = []
+	var respawned: Array = []
+	_sys.player_died.connect(func() -> void: died.append(true))
+	_sys.player_respawned.connect(func() -> void: respawned.append(true))
 	_sys.hp = 5.0
 	_sys.take_damage(10.0)
-	assert_bool(_sys.is_dead).is_true()
+	# Death fires then auto-respawn
+	assert_int(died.size()).is_equal(1)
+	assert_int(respawned.size()).is_equal(1)
+	assert_bool(_sys.is_dead).is_false()
 
 
 # --- stat_changed signal ---
@@ -444,27 +463,37 @@ func test_is_dead_stops_stat_changed_emission() -> void:
 
 # --- death trigger ---
 
-func test_hp_reaching_zero_sets_is_dead() -> void:
+func test_hp_reaching_zero_triggers_death_and_respawn() -> void:
+	var died: Array = []
+	_sys.player_died.connect(func() -> void: died.append(true))
 	_sys.hunger = 0.0
 	_sys.thirst = 0.0
 	_sys.hp = 1.0
 	_tick(10.0)
-	# 0.3/s drain for 10.0s = 3.0 drain, kills at hp=1
-	assert_bool(_sys.is_dead).is_true()
+	# 0.3/s drain for 10.0s = 3.0 drain, kills at hp=1, then auto-respawns
+	assert_int(died.size()).is_equal(1)
+	assert_bool(_sys.is_dead).is_false()
+	assert_float(_sys.hp).is_equal(100.0)
 
 
-func test_hp_below_zero_clamped_to_zero() -> void:
+func test_hp_below_zero_triggers_respawn() -> void:
 	_sys.take_damage(200.0)
-	assert_float(_sys.hp).is_equal_approx(0.0, 0.001)
+	# Lethal damage triggers auto-respawn
+	assert_float(_sys.hp).is_equal(100.0)
+	assert_bool(_sys.is_dead).is_false()
 
 
 func test_death_only_triggers_once() -> void:
+	var died_count: Array = []
+	_sys.player_died.connect(func() -> void: died_count.append(true))
 	_sys.hp = 0.5
 	_sys.take_damage(10.0)
-	assert_bool(_sys.is_dead).is_true()
-	# Ensure is_dead stays true after further damage
+	# First death triggers respawn (is_dead becomes false again)
+	assert_int(died_count.size()).is_equal(1)
+	assert_bool(_sys.is_dead).is_false()
+	# Non-lethal damage after respawn should not trigger death again
 	_sys.take_damage(10.0)
-	assert_bool(_sys.is_dead).is_true()
+	assert_int(died_count.size()).is_equal(1)
 
 
 # --- inventory item_used connection ---

@@ -18,6 +18,9 @@ class MockDayNightCycle extends Node:
 	signal dawn()
 	var is_daytime: bool = true
 
+	func skip_to_dawn() -> void:
+		is_daytime = true
+
 
 # --- Mock HexTile ---
 
@@ -296,21 +299,21 @@ func test_destroy_different_shelter_does_not_reset() -> void:
 
 # --- Night death deferred to dawn ---
 
-func test_night_death_sets_waiting_for_dawn() -> void:
+func test_night_death_skips_to_dawn_and_respawns() -> void:
 	_dnc.is_daytime = false
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
-	assert_bool(_sys._waiting_for_dawn).is_true()
+	# New behavior: skip_to_dawn called, then immediate respawn
+	assert_bool(_dnc.is_daytime).is_true()
+	assert_bool(_sys.is_dead).is_false()
+	assert_float(_sys.hp).is_equal(100.0)
 
 
-func test_dawn_triggers_deferred_respawn() -> void:
-	_dnc.is_daytime = false
-	_sys.hp = 1.0
-	_sys.take_damage(10.0)
-	assert_bool(_sys.is_dead).is_true()
-	# Simulate dawn
+func test_day_death_respawns_immediately() -> void:
 	_dnc.is_daytime = true
-	_dnc.dawn.emit()
+	_sys.hp = 1.0
+	_sys.take_damage(10.0)
+	# Daytime death: immediate respawn, no skip_to_dawn needed
 	assert_bool(_sys.is_dead).is_false()
 	assert_float(_sys.hp).is_equal(100.0)
 

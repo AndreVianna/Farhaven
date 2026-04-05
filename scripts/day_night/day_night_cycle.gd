@@ -145,7 +145,7 @@ func _start_lighting_tween() -> void:
 	if _lighting_tween != null and _lighting_tween.is_valid():
 		_lighting_tween.kill()
 	var params: Dictionary = LIGHTING_PARAMS[current_phase]
-	var duration: float = PHASE_DURATIONS[current_phase]
+	var duration: float = minf(PHASE_DURATIONS[current_phase], 5.0)
 	_lighting_tween = create_tween()
 	_lighting_tween.set_parallel(true)
 	_lighting_tween.tween_property(_env.environment, "ambient_light_color", params["ambient_color"], duration)
@@ -185,6 +185,19 @@ func _refresh_visibility() -> void:
 		for torch_coords: Vector2i in _torch_tiles:
 			sources.append({"coords": torch_coords, "radius": TORCH_VISIBILITY_RADIUS})
 	HexGrid.refresh_visibility(sources)
+
+
+## Skip directly to dawn phase. Used for night-death respawn.
+func skip_to_dawn() -> void:
+	var old_phase: TimePhase = current_phase
+	current_phase = TimePhase.DAWN
+	phase_elapsed = 0.0
+	day_count += 1
+	is_daytime = true
+	phase_changed.emit(old_phase, current_phase)
+	dawn.emit()
+	_apply_lighting_immediate()
+	_refresh_visibility()
 
 
 # --- Helpers ---
