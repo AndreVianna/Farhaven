@@ -131,11 +131,8 @@ export class HexCanvas {
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
-      if (tile.resources && tile.resources.length > 0) {
-        this._drawResourceIndicator(q, r, tile.resources.length);
-      }
-      if (tile.structure) {
-        this._drawStructureIcon(q, r, tile.structure);
+      if (tile.props && tile.props.length > 0) {
+        this._drawPropIndicators(q, r, tile);
       }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
@@ -364,55 +361,64 @@ export class HexCanvas {
   }
 
   /**
-   * Draw resource count badge.
+   * Draw prop indicators (resource badge, structure abbreviation, anomaly marker).
    * @param {number} q
    * @param {number} r
-   * @param {number} count
+   * @param {Object} tile
    * @returns {void}
    */
-  _drawResourceIndicator(q, r, count) {
-    const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const offsetY = HEX_SIZE * this.camera.zoom * 0.35;
-    const badgeSize = Math.max(5, 7 * this.camera.zoom);
-
-    ctx.beginPath();
-    ctx.arc(screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
-    ctx.fillStyle = '#4488ff';
-    ctx.fill();
-
-    const fontSize = Math.max(5, 8 * this.camera.zoom);
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(count), screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY);
-  }
-
-  /**
-   * Draw structure indicator.
-   * @param {number} q
-   * @param {number} r
-   * @param {Object} structure - {type, sub_hexes} or legacy string
-   * @returns {void}
-   */
-  _drawStructureIcon(q, r, structure) {
+  _drawPropIndicators(q, r, tile) {
     const ctx = this.ctx;
     const world = HexMath.axialToPixel(q, r);
     const screen = this.worldToScreen(world.x, world.y);
     const offsetY = HEX_SIZE * this.camera.zoom * 0.35;
 
-    const fontSize = Math.max(5, 8 * this.camera.zoom);
-    ctx.font = `${fontSize}px sans-serif`;
-    ctx.fillStyle = '#ffaa44';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    const resources = tile.props.filter(p => p.category === 'resource');
+    const structures = tile.props.filter(p => p.category === 'structure');
+    const anomalies = tile.props.filter(p => p.category === 'anomaly');
 
-    // Extract type string from object or legacy string
-    const typeName = typeof structure === 'string' ? structure : (structure.type || '');
-    const abbrev = typeName.substring(0, 3).toUpperCase();
-    ctx.fillText(abbrev, screen.x - HEX_SIZE * this.camera.zoom * 0.25, screen.y + offsetY);
+    // Draw resource count badge (blue)
+    if (resources.length > 0) {
+      const badgeSize = Math.max(5, 7 * this.camera.zoom);
+      ctx.beginPath();
+      ctx.arc(screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
+      ctx.fillStyle = '#4488ff';
+      ctx.fill();
+
+      const fontSize = Math.max(5, 8 * this.camera.zoom);
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(resources.length), screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY);
+    }
+
+    // Draw structure abbreviation (orange)
+    if (structures.length > 0) {
+      const fontSize = Math.max(5, 8 * this.camera.zoom);
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.fillStyle = '#ffaa44';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const abbrev = (structures[0].type || '').substring(0, 3).toUpperCase();
+      ctx.fillText(abbrev, screen.x - HEX_SIZE * this.camera.zoom * 0.25, screen.y + offsetY);
+    }
+
+    // Draw anomaly marker (purple)
+    if (anomalies.length > 0) {
+      const badgeSize = Math.max(4, 5 * this.camera.zoom);
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
+      ctx.fillStyle = '#b444ff';
+      ctx.fill();
+
+      const fontSize = Math.max(4, 6 * this.camera.zoom);
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('!', screen.x, screen.y + offsetY);
+    }
   }
 
   // --- Sub-hex rendering ---
@@ -424,7 +430,7 @@ export class HexCanvas {
   _isPlacementTool() {
     if (!this.toolManager) return false;
     const t = this.toolManager.activeToolType;
-    return t === 'resource' || t === 'structure';
+    return t === 'resource' || t === 'structure' || t === 'anomaly';
   }
 
   /**
@@ -458,7 +464,7 @@ export class HexCanvas {
   }
 
   /**
-   * Draw occupancy highlights for sub-hexes that contain resources or structures.
+   * Draw occupancy highlights for sub-hexes that contain props.
    * @param {number} q
    * @param {number} r
    * @param {Object} tile
@@ -470,24 +476,29 @@ export class HexCanvas {
     const screen = this.worldToScreen(world.x, world.y);
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
 
-    // Resources
-    for (const res of tile.resources) {
-      const offset = HexMath.subHexToPixel(res.sq, res.sr);
-      const cx = screen.x + offset.x * this.camera.zoom;
-      const cy = screen.y + offset.y * this.camera.zoom;
-      const corners = HexMath.hexCorners(cx, cy, subSize);
-      ctx.beginPath();
-      ctx.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(68,136,255,0.3)';
-      ctx.fill();
-    }
+    if (!tile.props) return;
 
-    // Structure footprint
-    if (tile.structure && tile.structure.sub_hexes) {
-      for (const sh of tile.structure.sub_hexes) {
-        const offset = HexMath.subHexToPixel(sh.sq, sh.sr);
+    for (const prop of tile.props) {
+      const color = prop.category === 'resource' ? 'rgba(68,136,255,0.3)' :
+                    prop.category === 'structure' ? 'rgba(255,170,68,0.3)' :
+                    'rgba(180,68,255,0.3)';
+
+      // For structures with footprint, draw all footprint hexes
+      if (prop.footprint) {
+        for (const f of prop.footprint) {
+          const offset = HexMath.subHexToPixel(f.q, f.r);
+          const cx = screen.x + offset.x * this.camera.zoom;
+          const cy = screen.y + offset.y * this.camera.zoom;
+          const corners = HexMath.hexCorners(cx, cy, subSize);
+          ctx.beginPath();
+          ctx.moveTo(corners[0].x, corners[0].y);
+          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+      } else {
+        const offset = HexMath.subHexToPixel(prop.sq, prop.sr);
         const cx = screen.x + offset.x * this.camera.zoom;
         const cy = screen.y + offset.y * this.camera.zoom;
         const corners = HexMath.hexCorners(cx, cy, subSize);
@@ -495,7 +506,7 @@ export class HexCanvas {
         ctx.moveTo(corners[0].x, corners[0].y);
         for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(255,170,68,0.3)';
+        ctx.fillStyle = color;
         ctx.fill();
       }
     }
@@ -867,22 +878,24 @@ export class HexCanvas {
     const lines = [`(${hex.q}, ${hex.r})`];
     lines.push(`Biome: ${tile.biome || 'none'}`);
     lines.push(`Elevation: ${tile.elevation}`);
-    if (tile.structure) {
-      const structName = typeof tile.structure === 'string' ? tile.structure : (tile.structure.type || '');
-      lines.push(`Structure: ${structName}`);
-    }
-    if (tile.resources && tile.resources.length > 0) {
-      // Show resource type with sub-hex position
-      const entries = tile.resources.map(res => `${res.type} at (${res.sq},${res.sr})`);
-      if (entries.length > 5) {
-        const extra = entries.length - 5;
-        lines.push(`Resources: ${entries.slice(0, 5).join(', ')}... and ${extra} more`);
-      } else {
-        lines.push(`Resources: ${entries.join(', ')}`);
+    if (tile.props && tile.props.length > 0) {
+      const byCategory = {};
+      for (const p of tile.props) {
+        if (!byCategory[p.category]) byCategory[p.category] = [];
+        byCategory[p.category].push(p);
       }
-    }
-    if (tile.anomaly) {
-      lines.push(`Anomaly: ${tile.anomaly}`);
+      for (const [cat, props] of Object.entries(byCategory)) {
+        if (cat === 'resource') {
+          const counts = {};
+          for (const p of props) counts[p.type] = (counts[p.type] || 0) + 1;
+          const parts = Object.entries(counts).map(([t, c]) => `${t} x${c}`);
+          lines.push(`Resources: ${parts.join(', ')}`);
+        } else if (cat === 'structure') {
+          lines.push(`Structures: ${props.map(p => p.type).join(', ')}`);
+        } else if (cat === 'anomaly') {
+          lines.push(`Anomalies: ${props.map(p => p.type).join(', ')}`);
+        }
+      }
     }
 
     tooltip.textContent = lines.join('\n');

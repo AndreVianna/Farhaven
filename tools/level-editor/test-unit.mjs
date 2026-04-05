@@ -8,10 +8,10 @@ import './test-dom-mocks.mjs';
 
 // ES module imports
 import { HEX_SIZE, HexMath } from './js/hex-math.js';
-import { HexGrid, createTileData, createResourceInstance, loadMapIntoGrid, serializeGridToMapJson } from './js/hex-grid.js';
+import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson } from './js/hex-grid.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
-import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddResourceCommand, EditResourceCommand, DeleteResourceCommand, SetStructureCommand, SetAnomalyCommand, SetSpawnCommand } from './js/commands.js';
+import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
 import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
@@ -484,33 +484,39 @@ test('loadMapIntoGrid — loads legacy map JSON correctly (x,y resources, string
   assert(grid.hasTile(0, 0), 'should have tile 0,0');
   assert(grid.getTile(0, 0).biome === 'forest', 'biome should be forest');
   assert(grid.getTile(0, 0).elevation === 2, 'elevation should be 2');
-  assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
-  assert(grid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
-  assert(typeof grid.getTile(0, 0).resources[0].sq === 'number', 'resource should have sq');
-  assert(typeof grid.getTile(0, 0).resources[0].sr === 'number', 'resource should have sr');
-  // Legacy string structure should be converted to object
-  assert(grid.getTile(1, -1).structure !== null, 'structure should exist');
-  assert(grid.getTile(1, -1).structure.type === 'campfire', 'structure type should be campfire');
-  assert(Array.isArray(grid.getTile(1, -1).structure.sub_hexes), 'structure should have sub_hexes');
+  const resources00 = grid.getTile(0, 0).props.filter(p => p.category === 'resource');
+  assert(resources00.length === 1, 'should have 1 resource prop');
+  assert(resources00[0].type === 'wood', 'resource type should be wood');
+  assert(typeof resources00[0].sq === 'number', 'resource should have sq');
+  assert(typeof resources00[0].sr === 'number', 'resource should have sr');
+  // Legacy string structure should be converted to structure prop
+  const struct1 = grid.getTile(1, -1).props.find(p => p.category === 'structure');
+  assert(struct1 !== undefined, 'structure prop should exist');
+  assert(struct1.type === 'campfire', 'structure type should be campfire');
+  assert(Array.isArray(struct1.footprint), 'structure should have footprint');
 });
 
-test('loadMapIntoGrid — loads new format (sq,sr resources, object structure)', () => {
+test('loadMapIntoGrid — loads new props format', () => {
   const grid = new HexGridClass();
   const mapData = {
     chapter_id: 'ch2',
     name: 'New Map',
     spawn: [0, 0],
     tiles: {
-      '0,0': { biome: 'forest', elevation: 1, resources: [{ type: 'stone', sq: 1, sr: -1, rotation: 90 }],
-               structure: { type: 'workbench', sub_hexes: [{ sq: 0, sr: 0 }] } },
+      '0,0': { biome: 'forest', elevation: 1, props: [
+        { type: 'stone', sq: 1, sr: -1, category: 'resource', rotation: 90 },
+        { type: 'workbench', sq: 0, sr: 0, category: 'structure', footprint: [{ q: 0, r: 0 }] },
+      ] },
     },
   };
   loadMapIntoGrid(grid, mapData);
   const tile = grid.getTile(0, 0);
-  assert(tile.resources[0].sq === 1, 'sq should be 1');
-  assert(tile.resources[0].sr === -1, 'sr should be -1');
-  assert(tile.structure.type === 'workbench', 'structure type should be workbench');
-  assert(tile.structure.sub_hexes[0].sq === 0, 'structure sub_hex sq should be 0');
+  const resources = tile.props.filter(p => p.category === 'resource');
+  assert(resources[0].sq === 1, 'sq should be 1');
+  assert(resources[0].sr === -1, 'sr should be -1');
+  const struct = tile.props.find(p => p.category === 'structure');
+  assert(struct.type === 'workbench', 'structure type should be workbench');
+  assert(struct.footprint[0].q === 0, 'structure footprint q should be 0');
 });
 
 // ============================================================
@@ -561,29 +567,30 @@ test('BatchCommand — execute and undo in correct order', () => {
   assert(grid.getTile(1, 0).biome === 'b', '1,0 should be b after undo');
 });
 
-test('EraseContentCommand — erases resources/structure/anomaly but preserves hex', () => {
+test('EraseContentCommand — erases all props but preserves hex biome/elevation', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.elevation = 5;
-  tile.structure = { type: 'workbench', sub_hexes: [{ sq: 0, sr: 0 }] };
-  tile.anomaly = 'test_anomaly';
-  tile.resources = [createResourceInstance('wood', 0, 0, 45)];
+  tile.props = [
+    createProp('wood', 0, 0, 'resource', { rotation: 45 }),
+    createProp('workbench', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] }),
+    createProp('test_anomaly', 0, 0, 'anomaly'),
+  ];
   grid.setTile(0, 0, tile);
 
   const cmd = new EraseContentCommand(grid, 0, 0, tile);
   cmd.execute();
   const after = grid.getTile(0, 0);
-  assert(after.resources.length === 0, 'resources should be empty');
-  assert(after.structure === null, 'structure should be null');
-  assert(after.anomaly === null, 'anomaly should be null');
+  assert(after.props.length === 0, 'props should be empty');
   assert(after.biome === 'forest', 'biome should be preserved');
   assert(after.elevation === 5, 'elevation should be preserved');
 
   cmd.undo();
   const restored = grid.getTile(0, 0);
-  assert(restored.resources.length === 1, 'resources should be restored');
-  assert(restored.structure !== null && restored.structure.type === 'workbench', 'structure should be restored');
-  assert(restored.anomaly === 'test_anomaly', 'anomaly should be restored');
+  assert(restored.props.length === 3, 'props should be restored');
+  assert(restored.props.find(p => p.category === 'resource').type === 'wood', 'resource should be restored');
+  assert(restored.props.find(p => p.category === 'structure').type === 'workbench', 'structure should be restored');
+  assert(restored.props.find(p => p.category === 'anomaly').type === 'test_anomaly', 'anomaly should be restored');
 });
 
 test('DeleteHexCommand — deletes and restores hex', () => {
@@ -601,26 +608,30 @@ test('DeleteHexCommand — deletes and restores hex', () => {
   assert(grid.getTile(2, 2).elevation === 3, 'elevation should be 3');
 });
 
-test('SetStructureCommand — execute and undo', () => {
+test('AddPropCommand — add structure prop and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const newStruct = { type: 'campfire', sub_hexes: [{ sq: 0, sr: 0 }] };
-  const cmd = new SetStructureCommand(grid, 0, 0, null, newStruct);
+  const structProp = createProp('campfire', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] });
+  const cmd = new AddPropCommand(grid, 0, 0, structProp);
   cmd.execute();
-  assert(grid.getTile(0, 0).structure !== null, 'structure should exist');
-  assert(grid.getTile(0, 0).structure.type === 'campfire', 'structure type should be campfire');
+  const struct = grid.getTile(0, 0).props.find(p => p.category === 'structure');
+  assert(struct !== undefined, 'structure prop should exist');
+  assert(struct.type === 'campfire', 'structure type should be campfire');
   cmd.undo();
-  assert(grid.getTile(0, 0).structure === null, 'structure should be null after undo');
+  assert(grid.getTile(0, 0).props.find(p => p.category === 'structure') === undefined, 'structure prop should be removed after undo');
 });
 
-test('SetAnomalyCommand — execute and undo', () => {
+test('AddPropCommand — add anomaly prop and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const cmd = new SetAnomalyCommand(grid, 0, 0, null, 'anomaly_01');
+  const anomalyProp = createProp('anomaly_01', 0, 0, 'anomaly');
+  const cmd = new AddPropCommand(grid, 0, 0, anomalyProp);
   cmd.execute();
-  assert(grid.getTile(0, 0).anomaly === 'anomaly_01', 'anomaly should be set');
+  const anomaly = grid.getTile(0, 0).props.find(p => p.category === 'anomaly');
+  assert(anomaly !== undefined, 'anomaly prop should exist');
+  assert(anomaly.type === 'anomaly_01', 'anomaly type should be anomaly_01');
   cmd.undo();
-  assert(grid.getTile(0, 0).anomaly === null, 'anomaly should be null after undo');
+  assert(grid.getTile(0, 0).props.find(p => p.category === 'anomaly') === undefined, 'anomaly prop should be removed after undo');
 });
 
 test('SetSpawnCommand — execute and undo', () => {
@@ -633,48 +644,49 @@ test('SetSpawnCommand — execute and undo', () => {
   assert(grid.meta.spawn[0] === 0 && grid.meta.spawn[1] === 0, 'spawn should be [0,0] after undo');
 });
 
-test('AddResourceCommand — execute and undo', () => {
+test('AddPropCommand — add resource and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const res = createResourceInstance('wood', 1, -1, 90);
-  const cmd = new AddResourceCommand(grid, 0, 0, res);
+  const res = createProp('wood', 1, -1, 'resource', { rotation: 90 });
+  const cmd = new AddPropCommand(grid, 0, 0, res);
   cmd.execute();
-  assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
-  assert(grid.getTile(0, 0).resources[0].type === 'wood', 'resource type should be wood');
-  assert(grid.getTile(0, 0).resources[0].sq === 1, 'sq should be 1');
-  assert(grid.getTile(0, 0).resources[0].sr === -1, 'sr should be -1');
+  const resources = grid.getTile(0, 0).props.filter(p => p.category === 'resource');
+  assert(resources.length === 1, 'should have 1 resource');
+  assert(resources[0].type === 'wood', 'resource type should be wood');
+  assert(resources[0].sq === 1, 'sq should be 1');
+  assert(resources[0].sr === -1, 'sr should be -1');
   cmd.undo();
-  assert(grid.getTile(0, 0).resources.length === 0, 'should have 0 resources after undo');
+  assert(grid.getTile(0, 0).props.filter(p => p.category === 'resource').length === 0, 'should have 0 resources after undo');
 });
 
-test('EditResourceCommand — execute and undo', () => {
+test('EditPropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
-  tile.resources = [createResourceInstance('wood', 1, 0, 90)];
+  tile.props = [createProp('wood', 1, 0, 'resource', { rotation: 90 })];
   grid.setTile(0, 0, tile);
-  const cmd = new EditResourceCommand(grid, 0, 0, 0, { sq: 1 }, { sq: -1 });
+  const cmd = new EditPropCommand(grid, 0, 0, 0, { sq: 1 }, { sq: -1 });
   cmd.execute();
-  assert(grid.getTile(0, 0).resources[0].sq === -1, 'sq should be -1');
+  assert(grid.getTile(0, 0).props[0].sq === -1, 'sq should be -1');
   cmd.undo();
-  assert(grid.getTile(0, 0).resources[0].sq === 1, 'sq should be 1 after undo');
+  assert(grid.getTile(0, 0).props[0].sq === 1, 'sq should be 1 after undo');
 });
 
-test('DeleteResourceCommand — execute and undo', () => {
+test('DeletePropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
-  tile.resources = [
-    createResourceInstance('wood', 0, 0, 90),
-    createResourceInstance('stone', 1, 0, 180),
+  tile.props = [
+    createProp('wood', 0, 0, 'resource', { rotation: 90 }),
+    createProp('stone', 1, 0, 'resource', { rotation: 180 }),
   ];
   grid.setTile(0, 0, tile);
-  const removed = { ...tile.resources[0] };
-  const cmd = new DeleteResourceCommand(grid, 0, 0, 0, removed);
+  const removed = { ...tile.props[0] };
+  const cmd = new DeletePropCommand(grid, 0, 0, 0, removed);
   cmd.execute();
-  assert(grid.getTile(0, 0).resources.length === 1, 'should have 1 resource');
-  assert(grid.getTile(0, 0).resources[0].type === 'stone', 'remaining should be stone');
+  assert(grid.getTile(0, 0).props.length === 1, 'should have 1 prop');
+  assert(grid.getTile(0, 0).props[0].type === 'stone', 'remaining should be stone');
   cmd.undo();
-  assert(grid.getTile(0, 0).resources.length === 2, 'should have 2 resources after undo');
-  assert(grid.getTile(0, 0).resources[0].type === 'wood', 'first should be wood again');
+  assert(grid.getTile(0, 0).props.length === 2, 'should have 2 props after undo');
+  assert(grid.getTile(0, 0).props[0].type === 'wood', 'first should be wood again');
 });
 
 // ============================================================
@@ -866,7 +878,7 @@ test('DeleteHexTool — removes tile, undo restores', () => {
   const grid = new HexGridClass();
   const tile = createTileData('water');
   tile.elevation = 4;
-  tile.structure = { type: 'torch', sub_hexes: [{ sq: 0, sr: 0 }] };
+  tile.props = [createProp('torch', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] })];
   grid.setTile(1, 1, tile);
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
@@ -876,7 +888,8 @@ test('DeleteHexTool — removes tile, undo restores', () => {
   ch.undo();
   assert(grid.hasTile(1, 1), 'tile should be restored');
   assert(grid.getTile(1, 1).biome === 'water', 'biome should be restored');
-  assert(grid.getTile(1, 1).structure !== null && grid.getTile(1, 1).structure.type === 'torch', 'structure should be restored');
+  const struct = grid.getTile(1, 1).props.find(p => p.category === 'structure');
+  assert(struct !== undefined && struct.type === 'torch', 'structure should be restored');
 });
 
 // ============================================================

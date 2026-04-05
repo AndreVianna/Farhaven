@@ -3,19 +3,36 @@
 // ============================================================
 
 import { HexMath } from './hex-math.js';
-import { createTileData, createResourceInstance } from './hex-grid.js';
+import { createTileData, createProp } from './hex-grid.js';
 import {
   SetBiomeCommand,
   SetElevationCommand,
-  AddResourceCommand,
-  SetStructureCommand,
-  SetAnomalyCommand,
+  AddPropCommand,
   SetSpawnCommand,
   EraseContentCommand,
   DeleteHexCommand,
   BatchCommand,
 } from './commands.js';
 import { showInlineModal } from './panels.js';
+
+/**
+ * Check if a sub-hex position is occupied by any prop on the tile.
+ * @param {Object} tile
+ * @param {number} sq
+ * @param {number} sr
+ * @returns {boolean}
+ */
+function isSubHexOccupied(tile, sq, sr) {
+  if (!tile.props) return false;
+  return tile.props.some(p => {
+    if (p.sq === sq && p.sr === sr) return true;
+    // Check structure footprints
+    if (p.footprint) {
+      return p.footprint.some(f => f.q === sq && f.r === sr);
+    }
+    return false;
+  });
+}
 
 export const ToolType = {
   BIOME: 'biome',
@@ -210,7 +227,7 @@ export class EraserTool extends DragBrushTool {
   _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
-    if ((!tile.resources || tile.resources.length === 0) && !tile.structure && !tile.anomaly) return;
+    if (!tile.props || tile.props.length === 0) return;
 
     const cmd = new EraseContentCommand(this.grid, hex.q, hex.r, tile);
     this.commandHistory.execute(cmd);
@@ -236,23 +253,19 @@ export class ResourcePlacer extends BaseTool {
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
 
-    // Check if sub-hex is occupied
-    const occupied = tile.resources.some(r => r.sq === sq && r.sr === sr) ||
-      (tile.structure && tile.structure.sub_hexes && tile.structure.sub_hexes.some(sh => sh.sq === sq && sh.sr === sr));
-    if (occupied) return;
+    // Check if sub-hex is occupied by any prop
+    if (isSubHexOccupied(tile, sq, sr)) return;
 
-    const resource = createResourceInstance(
-      this.toolManager.activeValue || '',
-      sq, sr,
-      Math.floor(Math.random() * 360)
-    );
+    const prop = createProp(this.toolManager.activeValue || '', sq, sr, 'resource', {
+      rotation: Math.floor(Math.random() * 360),
+    });
 
-    const cmd = new AddResourceCommand(this.grid, hex.q, hex.r, resource);
+    const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
     this.commandHistory.execute(cmd);
 
-    // Show resource detail panel if available
-    if (this.toolManager.resourceDetailPanel) {
-      this.toolManager.resourceDetailPanel.show(hex.q, hex.r);
+    // Show prop detail panel if available
+    if (this.toolManager.propDetailPanel) {
+      this.toolManager.propDetailPanel.show(hex.q, hex.r);
     }
   }
 }
@@ -270,13 +283,13 @@ export class StructurePlacer extends BaseTool {
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
 
-    // Check if sub-hex is occupied by a resource
-    const occupied = tile.resources.some(r => r.sq === sq && r.sr === sr);
-    if (occupied) return;
+    // Check occupancy
+    if (isSubHexOccupied(tile, sq, sr)) return;
 
-    const newStructure = { type: structureType, sub_hexes: [{ sq, sr }] };
-    const oldStructure = tile.structure;
-    const cmd = new SetStructureCommand(this.grid, hex.q, hex.r, oldStructure, newStructure);
+    const prop = createProp(structureType, sq, sr, 'structure', {
+      footprint: [{ q: sq, r: sr }],
+    });
+    const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
     this.commandHistory.execute(cmd);
   }
 }
@@ -287,10 +300,14 @@ class AnomalyMarker extends BaseTool {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
 
-    showInlineModal('Enter anomaly ID:', tile.anomaly || '', (value) => {
+    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
+    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
+
+    showInlineModal('Enter anomaly ID:', '', (value) => {
       if (value === null || value.trim() === '') return;
-      const oldAnomaly = tile.anomaly;
-      const cmd = new SetAnomalyCommand(this.grid, hex.q, hex.r, oldAnomaly, value.trim());
+      if (isSubHexOccupied(tile, sq, sr)) return;
+      const prop = createProp(value.trim(), sq, sr, 'anomaly');
+      const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
       this.commandHistory.execute(cmd);
     });
   }
@@ -343,8 +360,8 @@ export class ToolManager {
     this.elevationDelta = 1;
     /** @type {function(string):void|null} */
     this.onStatus = null;
-    /** @type {import('./panels.js').ResourceDetailPanel|null} */
-    this.resourceDetailPanel = null;
+    /** @type {import('./panels.js').PropDetailPanel|null} */
+    this.propDetailPanel = null;
   }
 
   /**

@@ -68,6 +68,8 @@ Build order:
 
 **2026-04-04 retrofit:** Sub-hex grid system added. Resources use discrete (sq, sr) positions instead of continuous (x, y). Structures use footprint (list of sub-hexes). Canvas shows sub-hex overlay for placement tools.
 
+**2026-04-04 retrofit:** Unified props model -- resources/structures/anomalies collapsed into single props[] array per tile. Each prop: {type, sq, sr, category, rotation?, footprint?}. Commands unified: AddProp/EditProp/DeleteProp replace per-category commands. Spawn stays in grid.meta (not a prop). EraseContentCommand clears all props. ResourceDetailPanel renamed PropDetailPanel. Legacy import converts old format to props[].
+
 This is the visual payoff. After this delivery, the user can see a hex map rendered with correct biome colors, elevation overlays, cliff indicators, and can paint/edit it with all tools.
 
 **AC coverage:** AC7 (undo/redo), partial AC3 (authoring), AC10 (map expansion via ghost grid)
@@ -170,3 +172,4 @@ Each delivery is testable standalone. Delivery-002 and delivery-003 can be built
 | 2026-04-03 | Plan created — 4 deliveries, 9 features. Proposal 1 (infra-first) selected over Proposal 2 (infra+canvas). | /aid-plan |
 | 2026-04-03 | Task breakdown complete — 20 tasks across 4 deliveries. Execution graphs added. | /aid-detail |
 | 2026-04-04 | Sub-hex grid retrofit note added to delivery-002 section. Task list and execution graph unchanged. | design change |
+| 2026-04-04 | Unified props model retrofit note added to delivery-002 section. | design change |

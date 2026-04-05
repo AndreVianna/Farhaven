@@ -9,6 +9,7 @@
 | 2026-04-03 | Review fixes: hexCorners formula, biome type note, rotation type, zoom sign, color_variations note, grid toggle AC | /aid-specify review |
 | 2026-04-04 | Added ghost grid rendering and empty-cell hover/interaction | code review |
 | 2026-04-04 | Sub-hex grid system: ResourceInstance uses (sq, sr) instead of (x, y), structure uses footprint model, HexMath sub-hex functions, canvas sub-hex overlay rendering | design change |
+| 2026-04-04 | Unified props model: ResourceInstance/structure/anomaly replaced with PropInstance. TileData uses props[] instead of separate fields. Canvas rendering iterates props by category. Tooltip shows props grouped by category. | design change |
 
 ## Source
 
@@ -60,26 +61,26 @@ const MapMeta = {
 };
 
 /**
+ * PropInstance — a single prop placed on a hex (resource, structure, or anomaly).
+ * sq, sr are sub-hex axial coordinates within the hex. Valid range: distance from (0,0) ≤ 2.
+ * 19 valid positions: center (0,0), ring-1 (6 neighbors), ring-2 (12 outer).
+ */
+const PropInstance = {
+  type: "",           // string, e.g. "wood", "workbench", "anomaly_ch1_001"
+  sq: 0,              // int, sub-hex axial q (-2 to 2)
+  sr: 0,              // int, sub-hex axial r (-2 to 2)
+  category: "",       // "resource" | "structure" | "anomaly"
+  rotation: 0.0,      // float, degrees (0-359) — resources only
+  footprint: null,    // Array<{q,r}> | null — structures only (sub-hex offsets they occupy)
+};
+
+/**
  * TileData — per-hex data, stored as value in HexGrid.tiles.
  */
 const TileData = {
   biome: "",        // string key, e.g. "forest", "crash_site" — matches map JSON format. (Game's HexTile uses Biome enum int internally; MapLoader translates string↔enum.)
   elevation: 0,     // integer 0-9
-  structure: null,   // { type: string, sub_hexes: [{sq: int, sr: int}, ...] } | null
-  anomaly: null,     // string | null, e.g. "anomaly_ch1_001"
-  resources: []      // Array<ResourceInstance>
-};
-
-/**
- * ResourceInstance — a single resource placed on a hex.
- * sq, sr are sub-hex axial coordinates within the hex. Valid range: distance from (0,0) ≤ 2.
- * 19 valid positions: center (0,0), ring-1 (6 neighbors), ring-2 (12 outer).
- */
-const ResourceInstance = {
-  type: "",         // string, e.g. "wood", "stone"
-  sq: 0,            // int, sub-hex axial q (-2 to 2)
-  sr: 0,            // int, sub-hex axial r (-2 to 2)
-  rotation: 0.0     // float, degrees (0-359)
+  props: []         // Array<PropInstance>
 };
 
 /**
@@ -219,8 +220,7 @@ class HexCanvas {
   drawCoordinateLabel(q, r)     // draw "q,r" text at hex center (when showCoordinates enabled)
   drawGhostHex(q, r)            // draw faint outline for empty adjacent position
   drawSpawnMarker(q, r)         // draw spawn indicator icon/marker
-  drawResourceIndicator(q, r, count) // draw resource count badge on hex
-  drawStructureIcon(q, r, type) // draw structure indicator on hex
+  drawPropIndicators(q, r, tile) // iterate tile.props, draw by category: blue badge for resources, orange for structures, purple for anomalies
   drawSubHexGrid(q, r)           // draw 19 sub-hex outlines inside a hex
   drawSubHexOccupancy(q, r, tile) // highlight occupied sub-hexes
   drawSubHexHover(q, r, sq, sr)   // highlight hovered sub-hex
@@ -251,7 +251,7 @@ class HexCanvas {
 
 **Cliff edge rendering:** For each of the 6 edges of a hex, check the neighbor. If the neighbor exists and `|tile.elevation - neighbor.elevation| >= 2`, draw that edge segment with a 3px wide stroke in `#8B4513` (brown) to indicate a cliff. Edge-to-neighbor mapping for flat-top hexes with corners at 0°,60°,...,300° clockwise: edge `i` → `DIRECTIONS[(6-i) % 6]`, i.e. lookup `[0, 5, 4, 3, 2, 1]`.
 
-**Sub-hex grid rendering:** When a placement tool (resource or structure) is active, the hovered hex shows its 19 sub-hex positions as fine outlines. Occupied sub-hexes (by resources or structure footprint) are filled with a semi-transparent indicator. The currently hovered sub-hex has a bright highlight. Sub-hexes use the same flat-top orientation as main hexes, scaled by SUB_HEX_SCALE (0.2).
+**Sub-hex grid rendering:** When a placement tool (prop placer) is active, the hovered hex shows its 19 sub-hex positions as fine outlines. Occupied sub-hexes (by any prop in `tile.props`) are filled with a semi-transparent indicator colored by category. The currently hovered sub-hex has a bright highlight. Sub-hexes use the same flat-top orientation as main hexes, scaled by SUB_HEX_SCALE (0.2).
 
 **Ghost grid rendering:** After rendering all existing tiles, compute the set of empty positions adjacent to any existing tile. For each ghost position, draw a faint hex outline (`rgba(255,255,255,0.08)` fill with `rgba(255,255,255,0.15)` 1px stroke). Ghost hexes participate in hover detection and tool interactions — painting on a ghost cell creates a real tile. The ghost set is recomputed on each render (it depends on the current tile set, which changes as tiles are added/removed).
 
@@ -261,10 +261,13 @@ class HexCanvas {
 (q, r)
 Biome: forest
 Elevation: 3
-Structure: workbench
-Resources: wood ×2, stone ×1 (aggregated by type; if >5 types, show first 5 + "…and N more")
-Anomaly: anomaly_ch1_001
+Props:
+  Resources: wood ×2, stone ×1
+  Structures: workbench
+  Anomalies: anomaly_ch1_001
 ```
+
+Props are grouped by category. If >5 total props, show first 5 + "...and N more".
 
 Hidden when cursor leaves the canvas.
 

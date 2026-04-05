@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js'
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { ResourceDetailPanel } from './panels.js';
+import { PropDetailPanel } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -48,8 +48,8 @@ const dirtyTracker = new DirtyTracker();
 /** @type {HexCanvas|null} */
 let hexCanvas = null;
 
-/** @type {ResourceDetailPanel|null} */
-let resourceDetailPanel = null;
+/** @type {PropDetailPanel|null} */
+let propDetailPanel = null;
 
 // ============================================================
 // Tab Switching (task-001)
@@ -386,10 +386,10 @@ function initializeAfterLoad() {
     });
   }
 
-  // Initialize ResourceDetailPanel
+  // Initialize PropDetailPanel
   const rdpContainer = document.getElementById('resource-detail-panel');
   if (rdpContainer) {
-    resourceDetailPanel = new ResourceDetailPanel(rdpContainer, hexGrid, commandHistory);
-    toolManager.resourceDetailPanel = resourceDetailPanel;
+    propDetailPanel = new PropDetailPanel(rdpContainer, hexGrid, commandHistory);
+    toolManager.propDetailPanel = propDetailPanel;
   }
 }

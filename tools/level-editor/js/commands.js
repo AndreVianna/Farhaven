@@ -187,168 +187,102 @@ export class SetElevationCommand {
   }
 }
 
-export class AddResourceCommand {
+export class AddPropCommand {
   /**
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {number} q
    * @param {number} r
-   * @param {Object} resourceInstance
+   * @param {Object} propInstance
    */
-  constructor(grid, q, r, resourceInstance) {
+  constructor(grid, q, r, propInstance) {
     this.grid = grid;
     this.q = q;
     this.r = r;
-    this.resource = resourceInstance;
+    this.prop = propInstance;
     this._index = -1;
     this.tab = 'map';
-    this.type = 'AddResource';
+    this.type = 'AddProp';
   }
   execute() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.resources.push(this.resource);
-      this._index = tile.resources.length - 1;
+      tile.props.push(this.prop);
+      this._index = tile.props.length - 1;
       this.grid.setTile(this.q, this.r, tile);
     }
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile && this._index >= 0) {
-      tile.resources.splice(this._index, 1);
+      tile.props.splice(this._index, 1);
       this.grid.setTile(this.q, this.r, tile);
     }
   }
 }
 
-export class EditResourceCommand {
+export class EditPropCommand {
   /**
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {number} q
    * @param {number} r
-   * @param {number} resourceIndex
+   * @param {number} propIndex
    * @param {Object} oldValues
    * @param {Object} newValues
    */
-  constructor(grid, q, r, resourceIndex, oldValues, newValues) {
+  constructor(grid, q, r, propIndex, oldValues, newValues) {
     this.grid = grid;
     this.q = q;
     this.r = r;
-    this.resourceIndex = resourceIndex;
+    this.propIndex = propIndex;
     this.oldValues = oldValues;
     this.newValues = newValues;
     this.tab = 'map';
-    this.type = 'EditResource';
+    this.type = 'EditProp';
   }
   execute() {
     const tile = this.grid.getTile(this.q, this.r);
-    if (tile && tile.resources[this.resourceIndex]) {
-      Object.assign(tile.resources[this.resourceIndex], this.newValues);
+    if (tile && tile.props[this.propIndex]) {
+      Object.assign(tile.props[this.propIndex], this.newValues);
       this.grid.setTile(this.q, this.r, tile);
     }
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
-    if (tile && tile.resources[this.resourceIndex]) {
-      Object.assign(tile.resources[this.resourceIndex], this.oldValues);
+    if (tile && tile.props[this.propIndex]) {
+      Object.assign(tile.props[this.propIndex], this.oldValues);
       this.grid.setTile(this.q, this.r, tile);
     }
   }
 }
 
-export class DeleteResourceCommand {
+export class DeletePropCommand {
   /**
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {number} q
    * @param {number} r
-   * @param {number} resourceIndex
-   * @param {Object} removedResource
+   * @param {number} propIndex
+   * @param {Object} removedProp
    */
-  constructor(grid, q, r, resourceIndex, removedResource) {
+  constructor(grid, q, r, propIndex, removedProp) {
     this.grid = grid;
     this.q = q;
     this.r = r;
-    this.resourceIndex = resourceIndex;
-    this.removedResource = removedResource;
+    this.propIndex = propIndex;
+    this.removedProp = JSON.parse(JSON.stringify(removedProp));
     this.tab = 'map';
-    this.type = 'DeleteResource';
+    this.type = 'DeleteProp';
   }
   execute() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.resources.splice(this.resourceIndex, 1);
+      tile.props.splice(this.propIndex, 1);
       this.grid.setTile(this.q, this.r, tile);
     }
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.resources.splice(this.resourceIndex, 0, { ...this.removedResource });
-      this.grid.setTile(this.q, this.r, tile);
-    }
-  }
-}
-
-export class SetStructureCommand {
-  /**
-   * @param {import('./hex-grid.js').HexGrid} grid
-   * @param {number} q
-   * @param {number} r
-   * @param {Object|null} oldStructure - {type, sub_hexes} or null
-   * @param {Object|null} newStructure - {type, sub_hexes} or null
-   */
-  constructor(grid, q, r, oldStructure, newStructure) {
-    this.grid = grid;
-    this.q = q;
-    this.r = r;
-    this.oldStructure = oldStructure ? JSON.parse(JSON.stringify(oldStructure)) : null;
-    this.newStructure = newStructure ? JSON.parse(JSON.stringify(newStructure)) : null;
-    this.tab = 'map';
-    this.type = 'SetStructure';
-  }
-  execute() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.structure = this.newStructure ? JSON.parse(JSON.stringify(this.newStructure)) : null;
-      this.grid.setTile(this.q, this.r, tile);
-    }
-  }
-  undo() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.structure = this.oldStructure ? JSON.parse(JSON.stringify(this.oldStructure)) : null;
-      this.grid.setTile(this.q, this.r, tile);
-    }
-  }
-}
-
-export class SetAnomalyCommand {
-  /**
-   * @param {import('./hex-grid.js').HexGrid} grid
-   * @param {number} q
-   * @param {number} r
-   * @param {string|null} oldAnomaly
-   * @param {string|null} newAnomaly
-   */
-  constructor(grid, q, r, oldAnomaly, newAnomaly) {
-    this.grid = grid;
-    this.q = q;
-    this.r = r;
-    this.oldAnomaly = oldAnomaly;
-    this.newAnomaly = newAnomaly;
-    this.tab = 'map';
-    this.type = 'SetAnomaly';
-  }
-  execute() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.anomaly = this.newAnomaly;
-      this.grid.setTile(this.q, this.r, tile);
-    }
-  }
-  undo() {
-    const tile = this.grid.getTile(this.q, this.r);
-    if (tile) {
-      tile.anomaly = this.oldAnomaly;
+      tile.props.splice(this.propIndex, 0, JSON.parse(JSON.stringify(this.removedProp)));
       this.grid.setTile(this.q, this.r, tile);
     }
   }
@@ -382,33 +316,27 @@ export class EraseContentCommand {
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {number} q
    * @param {number} r
-   * @param {Object} oldTile - snapshot of resources, structure, anomaly
+   * @param {Object} oldTile - snapshot of tile with props
    */
   constructor(grid, q, r, oldTile) {
     this.grid = grid;
     this.q = q;
     this.r = r;
-    this.oldResources = oldTile.resources ? oldTile.resources.map(r => ({ ...r })) : [];
-    this.oldStructure = oldTile.structure ? JSON.parse(JSON.stringify(oldTile.structure)) : null;
-    this.oldAnomaly = oldTile.anomaly;
+    this.oldProps = oldTile.props ? JSON.parse(JSON.stringify(oldTile.props)) : [];
     this.tab = 'map';
     this.type = 'EraseContent';
   }
   execute() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.resources = [];
-      tile.structure = null;
-      tile.anomaly = null;
+      tile.props = [];
       this.grid.setTile(this.q, this.r, tile);
     }
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
-      tile.resources = this.oldResources.map(r => ({ ...r }));
-      tile.structure = this.oldStructure ? JSON.parse(JSON.stringify(this.oldStructure)) : null;
-      tile.anomaly = this.oldAnomaly;
+      tile.props = JSON.parse(JSON.stringify(this.oldProps));
       this.grid.setTile(this.q, this.r, tile);
     }
   }

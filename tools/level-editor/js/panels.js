@@ -2,7 +2,7 @@
 // Inline Modal Dialog (task-010)
 // ============================================================
 
-import { EditResourceCommand, DeleteResourceCommand } from './commands.js';
+import { EditPropCommand, DeletePropCommand } from './commands.js';
 import { HexMath } from './hex-math.js';
 
 /**
@@ -65,10 +65,10 @@ export function showInlineModal(label, defaultValue, callback) {
 }
 
 // ============================================================
-// ResourceDetailPanel (task-010)
+// PropDetailPanel (task-010)
 // ============================================================
 
-export class ResourceDetailPanel {
+export class PropDetailPanel {
   /**
    * @param {HTMLElement} container
    * @param {import('./hex-grid.js').HexGrid} grid
@@ -117,7 +117,7 @@ export class ResourceDetailPanel {
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
     const title = document.createElement('strong');
-    title.textContent = `Resources on (${q}, ${r})`;
+    title.textContent = `Props on (${q}, ${r})`;
     title.style.fontSize = '13px';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'X';
@@ -127,30 +127,36 @@ export class ResourceDetailPanel {
     header.appendChild(closeBtn);
     this.container.appendChild(header);
 
-    if (!tile || !tile.resources || tile.resources.length === 0) {
+    if (!tile || !tile.props || tile.props.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = 'No resources on this hex.';
+      empty.textContent = 'No props on this hex.';
       empty.style.cssText = 'color:var(--text-secondary);font-size:12px;';
       this.container.appendChild(empty);
       return;
     }
 
-    tile.resources.forEach((res, index) => {
+    tile.props.forEach((prop, index) => {
       const row = document.createElement('div');
       row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
 
-      // Type label
+      // Type label with category badge
       const typeLabel = document.createElement('div');
-      typeLabel.textContent = res.type;
-      typeLabel.style.cssText = 'font-weight:600;font-size:12px;margin-bottom:4px;color:var(--accent);';
+      const categoryColor = prop.category === 'resource' ? 'var(--accent)' :
+                            prop.category === 'structure' ? '#ffaa44' : '#b444ff';
+      typeLabel.innerHTML = `<span style="color:${categoryColor};font-weight:600;font-size:12px;">${prop.type}</span> <span style="color:var(--text-secondary);font-size:10px;">[${prop.category}]</span>`;
+      typeLabel.style.cssText = 'margin-bottom:4px;';
       row.appendChild(typeLabel);
 
-      // Input fields — sub-hex coordinates (sq, sr) and rotation
+      // Build fields based on category
       const fields = [
-        { name: 'sq', value: res.sq, min: -2, max: 2, step: 1 },
-        { name: 'sr', value: res.sr, min: -2, max: 2, step: 1 },
-        { name: 'rotation', value: res.rotation, min: 0, max: 359, step: 1 },
+        { name: 'sq', value: prop.sq, min: -2, max: 2, step: 1 },
+        { name: 'sr', value: prop.sr, min: -2, max: 2, step: 1 },
       ];
+
+      // Resources have rotation
+      if (prop.category === 'resource') {
+        fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
+      }
 
       const fieldsRow = document.createElement('div');
       fieldsRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
@@ -166,7 +172,7 @@ export class ResourceDetailPanel {
         input.max = String(field.max);
         input.step = String(field.step);
         input.style.cssText = 'width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;';
-        input.dataset.resourceIndex = String(index);
+        input.dataset.propIndex = String(index);
         input.dataset.field = field.name;
 
         const origValue = field.value;
@@ -177,15 +183,15 @@ export class ResourceDetailPanel {
 
           // Validate sub-hex position when sq or sr changes
           if (field.name === 'sq' || field.name === 'sr') {
-            const testSq = field.name === 'sq' ? clamped : res.sq;
-            const testSr = field.name === 'sr' ? clamped : res.sr;
+            const testSq = field.name === 'sq' ? clamped : prop.sq;
+            const testSr = field.name === 'sr' ? clamped : prop.sr;
             if (!HexMath.isValidSubHex(testSq, testSr)) return;
           }
 
           if (clamped === origValue) return;
           const oldValues = { [field.name]: origValue };
           const newValues = { [field.name]: clamped };
-          const cmd = new EditResourceCommand(this.grid, q, r, index, oldValues, newValues);
+          const cmd = new EditPropCommand(this.grid, q, r, index, oldValues, newValues);
           this.commandHistory.execute(cmd);
           this._renderContent(); // refresh
         };
@@ -199,11 +205,11 @@ export class ResourceDetailPanel {
       // Delete button
       const delBtn = document.createElement('button');
       delBtn.textContent = 'X';
-      delBtn.title = 'Delete resource';
+      delBtn.title = 'Delete prop';
       delBtn.style.cssText = 'background:var(--danger);color:white;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:auto;';
       delBtn.addEventListener('click', () => {
-        const removed = { ...tile.resources[index] };
-        const cmd = new DeleteResourceCommand(this.grid, q, r, index, removed);
+        const removed = tile.props[index];
+        const cmd = new DeletePropCommand(this.grid, q, r, index, removed);
         this.commandHistory.execute(cmd);
         this._renderContent(); // refresh
       });

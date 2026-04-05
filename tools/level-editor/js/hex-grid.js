@@ -7,28 +7,32 @@ import { HEX_SIZE, HexMath } from './hex-math.js';
 /**
  * Creates a default TileData object.
  * @param {string} [biome='']
- * @returns {{ biome: string, elevation: number, structure: string|null, anomaly: string|null, resources: Array<Object> }}
+ * @returns {{ biome: string, elevation: number, props: Array<Object> }}
  */
 export function createTileData(biome = '') {
-  return {
-    biome: biome,
-    elevation: 0,
-    structure: null,
-    anomaly: null,
-    resources: [],
-  };
+  return { biome, elevation: 0, props: [] };
 }
 
 /**
- * Creates a ResourceInstance using sub-hex axial coordinates.
+ * Creates a PropInstance.
  * @param {string} type
  * @param {number} [sq=0] - Sub-hex q coordinate
  * @param {number} [sr=0] - Sub-hex r coordinate
- * @param {number} [rotation=0]
- * @returns {{ type: string, sq: number, sr: number, rotation: number }}
+ * @param {string} [category='resource'] - 'resource' | 'structure' | 'anomaly'
+ * @param {Object} [options={}]
+ * @param {number} [options.rotation] - Rotation in degrees (resources only)
+ * @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets (structures only)
+ * @returns {Object}
  */
-export function createResourceInstance(type, sq = 0, sr = 0, rotation = 0) {
-  return { type, sq, sr, rotation };
+export function createProp(type, sq = 0, sr = 0, category = 'resource', options = {}) {
+  const prop = { type, sq, sr, category };
+  if (category === 'resource') {
+    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
+  }
+  if (category === 'structure' && options.footprint) {
+    prop.footprint = options.footprint;
+  }
+  return prop;
 }
 
 /**
@@ -128,43 +132,64 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       const r = parseInt(parts[1], 10);
       const tile = createTileData(tileJson.biome || '');
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
-      tile.anomaly = tileJson.anomaly || null;
 
-      // Handle structure — new format is {type, sub_hexes}, old format is just a string
-      if (tileJson.structure) {
-        if (typeof tileJson.structure === 'string') {
-          // Legacy: string -> convert to object with center sub-hex
-          tile.structure = { type: tileJson.structure, sub_hexes: [{ sq: 0, sr: 0 }] };
-        } else {
-          tile.structure = tileJson.structure;
-        }
+      // New format: props array present
+      if (Array.isArray(tileJson.props)) {
+        tile.props = tileJson.props.map(p => {
+          const prop = { type: p.type, sq: p.sq, sr: p.sr, category: p.category };
+          if (p.category === 'resource' && typeof p.rotation === 'number') prop.rotation = p.rotation;
+          if (p.category === 'structure' && p.footprint) prop.footprint = p.footprint;
+          return prop;
+        });
       } else {
-        tile.structure = null;
-      }
+        // Legacy format: merge resources, structure, anomaly into props
+        tile.props = [];
 
-      // Handle resources — support legacy (x, y) and new (sq, sr) formats
-      tile.resources = Array.isArray(tileJson.resources)
-        ? tileJson.resources.map(res => {
+        // Legacy resources
+        if (Array.isArray(tileJson.resources)) {
+          for (const res of tileJson.resources) {
+            let sq, sr;
             if ('x' in res && !('sq' in res)) {
               // Legacy format: convert continuous (x, y) to nearest sub-hex
               const subHex = HexMath.pixelToSubHex(
                 (typeof res.x === 'number' ? res.x : 0) * HEX_SIZE,
                 (typeof res.y === 'number' ? res.y : 0) * HEX_SIZE
               );
-              return createResourceInstance(
-                res.type || '',
-                subHex.q, subHex.r,
-                typeof res.rotation === 'number' ? res.rotation : 0
-              );
+              sq = subHex.q;
+              sr = subHex.r;
+            } else {
+              sq = typeof res.sq === 'number' ? res.sq : 0;
+              sr = typeof res.sr === 'number' ? res.sr : 0;
             }
-            return createResourceInstance(
-              res.type || '',
-              typeof res.sq === 'number' ? res.sq : 0,
-              typeof res.sr === 'number' ? res.sr : 0,
-              typeof res.rotation === 'number' ? res.rotation : 0
-            );
-          })
-        : [];
+            tile.props.push(createProp(
+              res.type || '', sq, sr, 'resource',
+              { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
+            ));
+          }
+        }
+
+        // Legacy structure
+        if (tileJson.structure) {
+          if (typeof tileJson.structure === 'string') {
+            tile.props.push(createProp(tileJson.structure, 0, 0, 'structure', {
+              footprint: [{ q: 0, r: 0 }],
+            }));
+          } else {
+            const st = tileJson.structure;
+            const anchorSq = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sq || 0) : 0;
+            const anchorSr = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sr || 0) : 0;
+            tile.props.push(createProp(st.type || '', anchorSq, anchorSr, 'structure', {
+              footprint: st.sub_hexes || [{ q: 0, r: 0 }],
+            }));
+          }
+        }
+
+        // Legacy anomaly
+        if (tileJson.anomaly) {
+          tile.props.push(createProp(tileJson.anomaly, 0, 0, 'anomaly'));
+        }
+      }
+
       hexGrid.setTile(q, r, tile);
     }
   }
@@ -181,15 +206,15 @@ export function serializeGridToMapJson(hexGrid) {
     const entry = {
       biome: tile.biome,
       elevation: tile.elevation,
-      resources: tile.resources.map(r => ({
-        type: r.type,
-        sq: r.sq,
-        sr: r.sr,
-        rotation: r.rotation,
-      })),
     };
-    if (tile.structure) entry.structure = tile.structure;  // Already an object {type, sub_hexes} or null
-    if (tile.anomaly) entry.anomaly = tile.anomaly;
+    if (tile.props && tile.props.length > 0) {
+      entry.props = tile.props.map(p => {
+        const obj = { type: p.type, sq: p.sq, sr: p.sr, category: p.category };
+        if (p.category === 'resource' && typeof p.rotation === 'number') obj.rotation = p.rotation;
+        if (p.category === 'structure' && p.footprint) obj.footprint = p.footprint;
+        return obj;
+      });
+    }
     tiles[key] = entry;
   }
   return {

@@ -11,6 +11,7 @@
 | 2026-04-03 | Post-spec review: unified resource position range (-1.0 to 1.0 storage, -0.8 to 0.8 random), biome CRUD confirmed dynamic, app shell added to F007 | /aid-specify review |
 | 2026-04-04 | Added ghost grid and empty-cell painting to F1/F2. New AC10 for map expansion. | code review |
 | 2026-04-04 | Sub-hex grid system: resources use discrete (sq, sr) positions, structures use footprints, canvas shows sub-hex overlay for placement tools. Updated F1, F2, F5, F7, §9. | design change |
+| 2026-04-04 | Unified props model: resources/structures/anomalies collapsed into single props[] array per tile. Separate placement fields replaced with per-prop {type, sq, sr, category, rotation?, footprint?}. Commands unified to AddProp/EditProp/DeleteProp. Spawn stays in grid.meta. Updated F1, F2, F5, F7, §9. | design change |
 
 ## 1. Objective
 
@@ -65,26 +66,26 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 ### F1: Hex Canvas (Map Editor)
 - Flat-top hex grid matching Farhaven's axial coordinate system (q, r)
 - Each hex colored by biome using actual biome colors from .tres files
+- Each hex stores a list of props (resources, structures, anomalies) -- all items placed on the tile
 - Elevation shown as number overlay and/or brightness gradient (higher = lighter)
 - Cliff indicators on edges between hexes with elevation difference ≥ 2
-- **Ghost grid** — faint hex outlines rendered at all empty positions adjacent to existing tiles, providing visual affordance for map expansion. Ghost hexes respond to hover and tool interactions (painting a ghost cell creates a real tile).
+- **Ghost grid** -- faint hex outlines rendered at all empty positions adjacent to existing tiles, providing visual affordance for map expansion. Ghost hexes respond to hover and tool interactions (painting a ghost cell creates a real tile).
 - Click to select hex, click-drag to paint (biome brush, elevation brush)
-- Hover tooltip showing hex coordinates, biome, elevation, resources, structure
+- Hover tooltip showing hex coordinates, biome, elevation, props (grouped by category)
 - Zoom (scroll wheel) + pan (middle-click drag or space+drag)
 - Grid coordinates toggle (show q,r labels on hexes)
-- **Sub-hex grid overlay:** when a placement tool (resource, structure) is active, the hovered/selected hex shows its 19 sub-hex positions as a fine grid overlay. Occupied sub-hexes are highlighted. Available sub-hexes respond to clicks.
+- **Sub-hex grid overlay:** when a placement tool (prop placer) is active, the hovered/selected hex shows its 19 sub-hex positions as a fine grid overlay. Occupied sub-hexes are highlighted. Available sub-hexes respond to clicks.
+- **Canvas rendering:** iterates `tile.props` and renders each by category -- blue badge for resources, orange for structures, purple for anomalies.
 
 ### F2: Painting Tools
-- **Biome Brush** — paint biome type from palette. Painting on an empty (ghost) cell creates a new tile with the selected biome.
-- **Elevation Brush** — set elevation 0-9, with +/- increment mode. Painting on an empty cell creates a new tile.
-- **Resource Placer** — click sub-hex within a hex → add resource at that sub-hex position (sq, sr). Rotation auto-randomized (0-359).
-- **Structure Placer** — place structures with footprint — each structure type occupies a defined set of sub-hex positions. The footprint is previewed on hover before placement. Structure list initially matches WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch. List defined once in editor config, easy to update as game adds structures.
-- **Anomaly Marker** — place anomaly points with string ID
-- **Spawn Marker** — set player spawn hex (exactly one per map)
-- **Eraser** — remove resources, structures, anomalies from a hex
-- **Delete Hex** — remove hex entirely from map
-- **Flood Fill** — paint contiguous same-biome hexes (adapted from Iterate)
-- **Note:** Biome Brush, Elevation Brush, Flood Fill, Eraser, Delete Hex, Spawn Marker, Anomaly Marker operate on main hexes only — unaffected by sub-hex system.
+- **Biome Brush** -- paint biome type from palette. Painting on an empty (ghost) cell creates a new tile with the selected biome.
+- **Elevation Brush** -- set elevation 0-9, with +/- increment mode. Painting on an empty cell creates a new tile.
+- **Prop Placer** -- place props on sub-hexes within a hex. Tool mode determines category (resource, structure, anomaly). Resources get auto-randomized rotation (0-359). Structures preview their footprint before placement. Structure list initially matches WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch. List defined once in editor config, easy to update as game adds structures.
+- **Spawn Marker** -- set player spawn hex (exactly one per map). Operates on meta, not a prop.
+- **Eraser** -- click a sub-hex to remove the prop at that position. Click hex without sub-hex target to clear all props from the tile.
+- **Delete Hex** -- remove hex entirely from map
+- **Flood Fill** -- paint contiguous same-biome hexes (adapted from Iterate)
+- **Note:** Biome Brush, Elevation Brush, Flood Fill, Delete Hex, Spawn Marker operate on main hexes only -- unaffected by sub-hex system. Eraser operates at sub-hex level when targeting a specific prop.
 
 ### F3: Palette / Sidebar
 - Biome palette — swatches showing each biome's actual color + name (from loaded .tres files)
@@ -99,11 +100,11 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Chapter Name (display name, e.g., "Crash Landing")
 - Spawn point — highlighted hex on canvas
 
-### F5: Resource Placement Detail
-- Each hex can have 0-N resources
-- Each resource occupies a specific sub-hex position (sq, sr) within the hex. Valid positions: 19 sub-hexes (center + ring-1 + ring-2, distance ≤ 2 from center). Rotation (0-359 degrees) remains for visual orientation.
-- Click resource in detail panel → highlight its sub-hex on canvas
-- Visual indicator on hexes with multiple resources (count badge or stacked dots) — clicking opens a resource list for selecting/editing individual resources
+### F5: Prop Placement Detail
+- Each hex has 0-N props. Each prop has: type (string), sub-hex position (sq, sr), category (resource|structure|anomaly). Resources additionally have rotation (0-359). Structures have a footprint (list of sub-hex offsets they occupy).
+- Click prop in detail panel → highlight its sub-hex on canvas
+- Visual indicator on hexes with props (category-colored badges) -- clicking opens a prop list for selecting/editing individual props
+- One prop per sub-hex (occupancy check across all categories). Structures may occupy multiple sub-hexes via footprint.
 
 ### F6: Import / Export
 - **Import:** Load existing chapter JSON → renders the full map
@@ -111,15 +112,14 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - **New Map:** Start from blank canvas
 
 ### F7: Export Validation
-- Exactly one spawn point exists
+- Exactly one spawn point exists (from meta)
 - No duplicate coordinates
 - All biome names valid (match known biome list)
-- All resource types valid (match known resource list)
-- All structure types valid
+- All prop types must exist in known definitions for their category
 - Elevation range 0-9
-- Resource sub-hex positions (sq, sr) must be valid (hex distance from (0,0) ≤ 2)
+- Prop sub-hex positions (sq, sr) must be valid (hex distance from (0,0) ≤ 2)
 - Structure footprints must reference valid sub-hex positions
-- No two props may occupy the same sub-hex within a tile (resources and structures share the sub-hex space)
+- No overlapping props on same sub-hex within a tile (all categories share the sub-hex space)
 
 ### F8: Undo/Redo
 - Ctrl+Z / Ctrl+Shift+Z, at least 50 steps
@@ -204,7 +204,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 **AC2: .tres round-trip** — Load a resource/biome .tres → make no changes → save → file preserves uid, ext_resource, script lines exactly. Property values match original.
 
-**AC3: Map authoring** — Create a new map from blank canvas, paint 50+ hexes with biomes, set elevations, place resources and structures, set spawn → export valid JSON that MapLoader loads without errors.
+**AC3: Map authoring** -- Create a new map from blank canvas, paint 50+ hexes with biomes, set elevations, place props (resources, structures, anomalies) on sub-hexes, set spawn → export valid JSON that MapLoader loads without errors.
 
 **AC4: Resource CRUD** — Create a new ResourceDef, edit its fields, see it appear in map palette, place it on a hex, export. Delete a resource → confirmation dialog, in-use validation warns if any map references it.
 
@@ -220,7 +220,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 **AC10: Map expansion** — Given an existing map, when hovering the canvas near map edges, then faint ghost hex outlines are visible at empty adjacent positions. When painting (biome brush or any tool) on a ghost cell, a new tile is created at that position and the ghost grid updates to include the new tile's empty neighbors.
 
-**AC11: Sub-hex placement** — Given a resource tool active, when hovering a hex, then the 19 sub-hex positions are shown as a grid overlay. Clicking an available sub-hex places the resource there. Occupied sub-hexes show as blocked. Structure placement previews the footprint before confirming.
+**AC11: Sub-hex placement** -- Given a prop placer tool active, when hovering a hex, then the 19 sub-hex positions are shown as a grid overlay. Clicking an available sub-hex places the prop there (resource, structure, or anomaly depending on tool mode). Occupied sub-hexes show as blocked. Structure placement previews the footprint before confirming.
 
 ## 10. Priority
 
