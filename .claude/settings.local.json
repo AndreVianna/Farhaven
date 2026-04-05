@@ -3,7 +3,7 @@
     "allow": [
       "Bash([ -f \".aid/knowledge/$f\" ])",
       "Bash(rm:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)settings.json"
     ]
   }
 }
