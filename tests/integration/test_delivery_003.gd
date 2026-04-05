@@ -792,8 +792,8 @@ func test_stubs_safe_no_crash_without_fauna_or_survival() -> void:
 	# FaunaManager and SurvivalSystem are both absent (not in tree)
 	# These calls should NOT crash:
 
-	# auto-pickup stub queries SurvivalSystem
-	_auto_interaction._try_auto_pickup(Vector2i.ZERO)
+	# auto-pickup proximity check queries SurvivalSystem (safe when absent)
+	_auto_interaction._check_pickup_proximity()
 
 	# auto-defend stub tries to connect FaunaManager
 	_auto_interaction._connect_fauna_manager()
