@@ -82,7 +82,7 @@ func test_torch_visibility_radius() -> void:
 # --- Phase transition: DAY → DUSK ---
 
 func _simulate_delta(dnc: _DayNightCycle, delta: float) -> void:
-	dnc._process(delta)
+	dnc._process(delta / 20.0)  # TEMP: accounts for 20x speed multiplier
 
 
 func test_day_to_dusk_transition() -> void:

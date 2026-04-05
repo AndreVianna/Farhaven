@@ -27,28 +27,36 @@ const TORCH_VISIBILITY_RADIUS: int = 2
 const LIGHTING_PARAMS: Dictionary = {
 	TimePhase.DAY: {
 		"ambient_color": Color(0.9, 0.85, 0.75),
-		"ambient_energy": 0.3,
+		"ambient_energy": 0.4,
 		"sun_color": Color(1.0, 0.95, 0.8),
-		"sun_energy": 1.2,
+		"sun_energy": 1.4,
 	},
 	TimePhase.DUSK: {
-		"ambient_color": Color(0.85, 0.45, 0.15),
-		"ambient_energy": 0.2,
-		"sun_color": Color(1.0, 0.6, 0.3),
-		"sun_energy": 0.6,
+		"ambient_color": Color(0.9, 0.4, 0.1),
+		"ambient_energy": 0.15,
+		"sun_color": Color(1.0, 0.5, 0.2),
+		"sun_energy": 0.4,
 	},
 	TimePhase.NIGHT: {
-		"ambient_color": Color(0.25, 0.18, 0.40),
-		"ambient_energy": 0.08,
-		"sun_color": Color(0.2, 0.15, 0.35),
-		"sun_energy": 0.05,
+		"ambient_color": Color(0.1, 0.08, 0.2),
+		"ambient_energy": 0.03,
+		"sun_color": Color(0.1, 0.08, 0.2),
+		"sun_energy": 0.02,
 	},
 	TimePhase.DAWN: {
-		"ambient_color": Color(0.95, 0.65, 0.5),
+		"ambient_color": Color(0.95, 0.55, 0.35),
 		"ambient_energy": 0.2,
-		"sun_color": Color(1.0, 0.7, 0.55),
+		"sun_color": Color(1.0, 0.6, 0.4),
 		"sun_energy": 0.5,
 	},
+}
+
+## Hex shader darkness per phase (0.0 = bright, 1.0 = pitch black).
+const DARKNESS_VALUES: Dictionary = {
+	TimePhase.DAY: 0.0,
+	TimePhase.DUSK: 0.7,
+	TimePhase.NIGHT: 0.7,
+	TimePhase.DAWN: 0.0,
 }
 
 # --- Signals ---
@@ -67,6 +75,7 @@ var is_daytime: bool = true
 # --- Lighting ---
 var _env: WorldEnvironment = null
 var _sun: DirectionalLight3D = null
+var _hex_material: ShaderMaterial = null
 var _lighting_tween: Tween = null
 
 # --- Visibility ---
@@ -81,7 +90,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	phase_elapsed += delta
+	phase_elapsed += delta * 20.0  # TEMP: 20x speed for testing
 	var duration: float = PHASE_DURATIONS[current_phase]
 	while phase_elapsed >= duration:
 		phase_elapsed -= duration
@@ -125,6 +134,11 @@ func register_lighting(env: WorldEnvironment, sun: DirectionalLight3D) -> void:
 	_apply_lighting_immediate()
 
 
+## Register the hex grid ShaderMaterial for darkness transitions.
+func register_hex_material(mat: ShaderMaterial) -> void:
+	_hex_material = mat
+
+
 func _apply_lighting_immediate() -> void:
 	if _env == null or _sun == null:
 		return
@@ -135,6 +149,8 @@ func _apply_lighting_immediate() -> void:
 	_env.environment.ambient_light_energy = params["ambient_energy"]
 	_sun.light_color = params["sun_color"]
 	_sun.light_energy = params["sun_energy"]
+	if _hex_material != null:
+		_hex_material.set_shader_parameter("darkness", DARKNESS_VALUES[current_phase])
 
 
 func _start_lighting_tween() -> void:
@@ -152,12 +168,23 @@ func _start_lighting_tween() -> void:
 	_lighting_tween.tween_property(_env.environment, "ambient_light_energy", params["ambient_energy"], duration)
 	_lighting_tween.tween_property(_sun, "light_color", params["sun_color"], duration)
 	_lighting_tween.tween_property(_sun, "light_energy", params["sun_energy"], duration)
+	if _hex_material != null:
+		var target_darkness: float = DARKNESS_VALUES[current_phase]
+		_lighting_tween.tween_method(_set_hex_darkness, _hex_material.get_shader_parameter("darkness"), target_darkness, duration)
+
+
+func _set_hex_darkness(value: float) -> void:
+	if _hex_material != null:
+		_hex_material.set_shader_parameter("darkness", value)
 
 
 # --- Visibility management ---
 
 func _on_tile_entered(coords: Vector2i) -> void:
 	_player_tile = coords
+	if _hex_material != null:
+		var world_pos: Vector2 = HexMath.axial_to_world(coords)
+		_hex_material.set_shader_parameter("player_world_pos", world_pos)
 	_refresh_visibility()
 
 
@@ -197,6 +224,8 @@ func skip_to_dawn() -> void:
 	phase_changed.emit(old_phase, current_phase)
 	dawn.emit()
 	_apply_lighting_immediate()
+	if _hex_material != null:
+		_hex_material.set_shader_parameter("darkness", 0.0)
 	_refresh_visibility()
 
 

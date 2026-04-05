@@ -51,6 +51,7 @@ func _ready() -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = preload("res://shaders/hex_tile.gdshader")
 	_mesh_instance.material_override = _material
+	DayNightCycle.register_hex_material(_material)
 
 	_biome_data.resize(5)
 	for i: int in range(5):
