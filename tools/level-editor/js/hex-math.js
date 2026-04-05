@@ -166,14 +166,13 @@ export const HexMath = {
     const rounded = HexMath.cubeRound(fq, fr);
     // Clamp to valid sub-hex (distance <= 2)
     if (HexMath.distance(0, 0, rounded.q, rounded.r) > 2) {
-      // Find nearest valid sub-hex
+      // Find nearest valid sub-hex using pixel-space distance
+      // (axial axes are 60° apart, so Euclidean in axial space is wrong)
       let best = { q: 0, r: 0 };
       let bestDist = Infinity;
       for (const sh of HexMath.VALID_SUB_HEXES) {
-        const d = Math.hypot(
-          (sh.q - fq),
-          (sh.r - fr)
-        );
+        const shPx = HexMath.subHexToPixel(sh.q, sh.r);
+        const d = Math.hypot(shPx.x - offsetX, shPx.y - offsetY);
         if (d < bestDist) {
           bestDist = d;
           best = sh;

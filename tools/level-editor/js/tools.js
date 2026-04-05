@@ -269,8 +269,12 @@ export class StructurePlacer extends BaseTool {
     // Use sub-hex as anchor point; footprint is just the anchor for now
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
-    const newStructure = { type: structureType, sub_hexes: [{ sq, sr }] };
 
+    // Check if sub-hex is occupied by a resource
+    const occupied = tile.resources.some(r => r.sq === sq && r.sr === sr);
+    if (occupied) return;
+
+    const newStructure = { type: structureType, sub_hexes: [{ sq, sr }] };
     const oldStructure = tile.structure;
     const cmd = new SetStructureCommand(this.grid, hex.q, hex.r, oldStructure, newStructure);
     this.commandHistory.execute(cmd);
