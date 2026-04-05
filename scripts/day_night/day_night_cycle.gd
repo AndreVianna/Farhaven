@@ -89,8 +89,10 @@ func _ready() -> void:
 	HexGrid.structure_destroyed.connect(_on_structure_destroyed)
 
 
+const TIME_SCALE: float = 20.0  # TEMP: 20x speed for testing (set to 1.0 for release)
+
 func _process(delta: float) -> void:
-	phase_elapsed += delta * 20.0  # TEMP: 20x speed for testing
+	phase_elapsed += delta * TIME_SCALE
 	var duration: float = PHASE_DURATIONS[current_phase]
 	while phase_elapsed >= duration:
 		phase_elapsed -= duration
@@ -161,7 +163,7 @@ func _start_lighting_tween() -> void:
 	if _lighting_tween != null and _lighting_tween.is_valid():
 		_lighting_tween.kill()
 	var params: Dictionary = LIGHTING_PARAMS[current_phase]
-	var duration: float = minf(PHASE_DURATIONS[current_phase], 5.0)
+	var duration: float = minf(PHASE_DURATIONS[current_phase], 5.0) / TIME_SCALE
 	_lighting_tween = create_tween()
 	_lighting_tween.set_parallel(true)
 	_lighting_tween.tween_property(_env.environment, "ambient_light_color", params["ambient_color"], duration)
