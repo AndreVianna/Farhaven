@@ -48,6 +48,62 @@ function _parseTresFile(name, text, expectedClass) {
   return { data, raw };
 }
 
+/**
+ * Load .tres files from FSA handles into a storage map using _parseTresFile.
+ * Used by discoverProject to avoid duplicating the resource/biome parse loop.
+ * @param {Array<{name: string, handle: FileSystemFileHandle}>} files
+ * @param {string} expectedClass - Expected scriptClass for _parseTresFile
+ * @param {Map<string, Object>} storageMap - Target map in ProjectContext.files
+ * @param {string} labelPrefix - Label for console logging (e.g. "Resource", "Biome")
+ * @returns {Promise<void>}
+ */
+async function _loadTresFilesFromHandles(files, expectedClass, storageMap, labelPrefix) {
+  for (const { name, handle } of files) {
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      const result = _parseTresFile(name, text, expectedClass);
+      if (!result) continue;
+      storageMap.set(name, { handle, data: result.data, raw: result.raw });
+      console.log(`  ${labelPrefix} "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
+    } catch (err) {
+      console.warn(`  ${labelPrefix} "${name}" FAILED: ${err.message}. Skipping.`);
+    }
+  }
+}
+
+/**
+ * Load .tres files via fetch into a storage map using _parseTresFile.
+ * Used by discoverViaApi to avoid duplicating the resource/biome parse loop.
+ * @param {string[]} fileNames
+ * @param {string} dir - Directory path for API URL
+ * @param {string} expectedClass
+ * @param {Map<string, Object>} storageMap
+ * @param {string} labelPrefix
+ * @returns {Promise<void>}
+ */
+async function _loadTresFilesViaApi(fileNames, dir, expectedClass, storageMap, labelPrefix) {
+  for (const name of fileNames) {
+    try {
+      const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + name)}`);
+      const text = await resp.text();
+      const result = _parseTresFile(name, text, expectedClass);
+      if (!result) continue;
+      storageMap.set(name, { handle: null, dir, data: result.data, raw: result.raw });
+      console.log(`  ${labelPrefix} "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
+    } catch (err) {
+      console.warn(`  ${labelPrefix} "${name}" FAILED: ${err.message}. Skipping.`);
+    }
+  }
+}
+
+// Note on D3 duplication: The three discovery methods (discoverProject, discoverFromFileList,
+// discoverViaApi) each use fundamentally different file-access strategies (FSA handles, FileList
+// with FileReader, and fetch API). The .tres parse-and-store loops for resources/biomes have been
+// extracted into _loadTresFilesFromHandles and _loadTresFilesViaApi. The FileList method inlines
+// its logic because it intermixes path-based file categorization with parsing, making extraction
+// impractical without over-engineering.
+
 export class FileDiscovery {
   /**
    * Navigate from root to a subdirectory path like 'data/maps'.
@@ -131,33 +187,9 @@ export class FileDiscovery {
       }
     }
 
-    // Parse resource files
-    for (const { name, handle } of resourceFiles) {
-      try {
-        const file = await handle.getFile();
-        const text = await file.text();
-        const result = _parseTresFile(name, text, 'ResourceDef');
-        if (!result) continue;
-        ProjectContext.files.resources.set(name, { handle, data: result.data, raw: result.raw });
-        console.log(`  Resource "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
-      } catch (err) {
-        console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
-      }
-    }
-
-    // Parse biome files
-    for (const { name, handle } of biomeFiles) {
-      try {
-        const file = await handle.getFile();
-        const text = await file.text();
-        const result = _parseTresFile(name, text, 'BiomeData');
-        if (!result) continue;
-        ProjectContext.files.biomes.set(name, { handle, data: result.data, raw: result.raw });
-        console.log(`  Biome "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
-      } catch (err) {
-        console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
-      }
-    }
+    // Parse resource and biome .tres files
+    await _loadTresFilesFromHandles(resourceFiles, 'ResourceDef', ProjectContext.files.resources, 'Resource');
+    await _loadTresFilesFromHandles(biomeFiles, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
     console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
     console.groupEnd();
@@ -305,33 +337,9 @@ export class FileDiscovery {
       }
     }
 
-    // Load resource files
-    for (const name of manifest.resources.files) {
-      try {
-        const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.resources.dir + '/' + name)}`);
-        const text = await resp.text();
-        const result = _parseTresFile(name, text, 'ResourceDef');
-        if (!result) continue;
-        ProjectContext.files.resources.set(name, { handle: null, dir: manifest.resources.dir, data: result.data, raw: result.raw });
-        console.log(`  Resource "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
-      } catch (err) {
-        console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
-      }
-    }
-
-    // Load biome files
-    for (const name of manifest.biomes.files) {
-      try {
-        const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.biomes.dir + '/' + name)}`);
-        const text = await resp.text();
-        const result = _parseTresFile(name, text, 'BiomeData');
-        if (!result) continue;
-        ProjectContext.files.biomes.set(name, { handle: null, dir: manifest.biomes.dir, data: result.data, raw: result.raw });
-        console.log(`  Biome "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
-      } catch (err) {
-        console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
-      }
-    }
+    // Load resource and biome .tres files
+    await _loadTresFilesViaApi(manifest.resources.files, manifest.resources.dir, 'ResourceDef', ProjectContext.files.resources, 'Resource');
+    await _loadTresFilesViaApi(manifest.biomes.files, manifest.biomes.dir, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
     console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
     console.groupEnd();

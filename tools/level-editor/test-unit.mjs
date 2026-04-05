@@ -8,7 +8,8 @@ import './test-dom-mocks.mjs';
 
 // ES module imports
 import { HEX_SIZE, HexMath } from './js/hex-math.js';
-import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson } from './js/hex-grid.js';
+import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORY_COLORS } from './js/hex-grid.js';
+import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
@@ -890,6 +891,122 @@ test('DeleteHexTool — removes tile, undo restores', () => {
   assert(grid.getTile(1, 1).biome === 'water', 'biome should be restored');
   const struct = grid.getTile(1, 1).props.find(p => p.category === 'structure');
   assert(struct !== undefined && struct.type === 'torch', 'structure should be restored');
+});
+
+// ============================================================
+// Validator tests (CO3)
+// ============================================================
+
+test('validateMap — valid map passes', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  const tile = createTileData('forest');
+  tile.props = [createProp('wood', 0, 0, 'resource', { rotation: 45 })];
+  grid.setTile(0, 0, tile);
+
+  const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
+  assert(result.valid === true, 'valid map should pass');
+  assert(result.errors.length === 0, 'no errors expected');
+});
+
+test('validateMap — missing spawn fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [5, 5] };
+  grid.setTile(0, 0, createTileData('forest'));
+
+  const result = validateMap(grid, new Set(['forest']), new Set());
+  assert(result.valid === false, 'should fail with missing spawn tile');
+  assert(result.errors.length > 0, 'should have errors');
+  assert(result.errors[0].field === 'spawn', 'error field should be spawn');
+});
+
+test('validateMap — invalid biome fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  grid.setTile(0, 0, createTileData('unknown_biome'));
+
+  const result = validateMap(grid, new Set(['forest', 'water']), new Set());
+  assert(result.valid === false, 'should fail with unknown biome');
+  assert(result.errors.some(e => e.field === 'biome'), 'should have biome error');
+});
+
+test('validateMap — overlapping props fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  const tile = createTileData('forest');
+  tile.props = [
+    createProp('wood', 0, 0, 'resource', { rotation: 0 }),
+    createProp('stone', 0, 0, 'resource', { rotation: 90 }),
+  ];
+  grid.setTile(0, 0, tile);
+
+  const result = validateMap(grid, new Set(['forest']), new Set(['wood', 'stone']));
+  assert(result.valid === false, 'should fail with overlapping props');
+  assert(result.errors.some(e => e.message.includes('overlapping')), 'should mention overlapping');
+});
+
+test('validateMap — invalid sub-hex fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  const tile = createTileData('forest');
+  // (2, 2) is distance 4 from origin in axial, which is > 2
+  tile.props = [{ type: 'wood', sq: 2, sr: 2, category: 'resource', rotation: 0 }];
+  grid.setTile(0, 0, tile);
+
+  const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
+  assert(result.valid === false, 'should fail with invalid sub-hex');
+  assert(result.errors.some(e => e.message.includes('invalid')), 'should mention invalid sub-hex');
+});
+
+test('validateMap — invalid rotation range fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  const tile = createTileData('forest');
+  tile.props = [{ type: 'wood', sq: 0, sr: 0, category: 'resource', rotation: 400 }];
+  grid.setTile(0, 0, tile);
+
+  const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
+  assert(result.valid === false, 'should fail with invalid rotation');
+  assert(result.errors.some(e => e.message.includes('rotation')), 'should mention rotation');
+});
+
+test('validateMap — unknown structure type fails', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  const tile = createTileData('forest');
+  tile.props = [createProp('nonexistent_structure', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] })];
+  grid.setTile(0, 0, tile);
+
+  const result = validateMap(grid, new Set(['forest']), new Set());
+  assert(result.valid === false, 'should fail with unknown structure');
+  assert(result.errors.some(e => e.message.includes('unknown structure')), 'should mention unknown structure');
+});
+
+test('validateMap — structured error format', () => {
+  const grid = new HexGridClass();
+  grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
+  grid.setTile(0, 0, createTileData('bad_biome'));
+
+  const result = validateMap(grid, new Set(['forest']), new Set());
+  assert(result.valid === false, 'should fail');
+  const err = result.errors[0];
+  assert(Array.isArray(err.hex), 'error.hex should be an array');
+  assert(typeof err.field === 'string', 'error.field should be a string');
+  assert(typeof err.message === 'string', 'error.message should be a string');
+});
+
+test('HexGrid.parseKey — parses key correctly', () => {
+  const result = HexGrid.parseKey('3,-2');
+  assert(result.q === 3, 'q should be 3');
+  assert(result.r === -2, 'r should be -2');
+});
+
+test('CATEGORY_COLORS — has expected categories', () => {
+  assert(CATEGORY_COLORS.resource !== undefined, 'should have resource');
+  assert(CATEGORY_COLORS.structure !== undefined, 'should have structure');
+  assert(CATEGORY_COLORS.anomaly !== undefined, 'should have anomaly');
+  assert(typeof CATEGORY_COLORS.resource.badge === 'string', 'resource should have badge color');
+  assert(typeof CATEGORY_COLORS.resource.fill === 'string', 'resource should have fill color');
 });
 
 // ============================================================

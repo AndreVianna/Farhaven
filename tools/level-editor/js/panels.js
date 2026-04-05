@@ -4,6 +4,7 @@
 
 import { EditPropCommand, DeletePropCommand } from './commands.js';
 import { HexMath } from './hex-math.js';
+import { CATEGORY_COLORS } from './hex-grid.js';
 
 /**
  * Show an inline modal dialog with a text input.
@@ -113,7 +114,25 @@ export class PropDetailPanel {
     const tile = this.grid.getTile(q, r);
     this.container.innerHTML = '';
 
-    // Header
+    this.container.appendChild(this._renderHeader(q, r));
+
+    if (!tile || !tile.props || tile.props.length === 0) {
+      this.container.appendChild(this._renderEmptyState());
+      return;
+    }
+
+    tile.props.forEach((prop, index) => {
+      this.container.appendChild(this._renderPropRow(prop, index, q, r, tile));
+    });
+  }
+
+  /**
+   * Render the panel header with title and close button.
+   * @param {number} q
+   * @param {number} r
+   * @returns {HTMLElement}
+   */
+  _renderHeader(q, r) {
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
     const title = document.createElement('strong');
@@ -125,107 +144,119 @@ export class PropDetailPanel {
     closeBtn.addEventListener('click', () => this.hide());
     header.appendChild(title);
     header.appendChild(closeBtn);
-    this.container.appendChild(header);
+    return header;
+  }
 
-    if (!tile || !tile.props || tile.props.length === 0) {
-      const empty = document.createElement('div');
-      empty.textContent = 'No props on this hex.';
-      empty.style.cssText = 'color:var(--text-secondary);font-size:12px;';
-      this.container.appendChild(empty);
-      return;
+  /**
+   * Render the "No props" empty state message.
+   * @returns {HTMLElement}
+   */
+  _renderEmptyState() {
+    const empty = document.createElement('div');
+    empty.textContent = 'No props on this hex.';
+    empty.style.cssText = 'color:var(--text-secondary);font-size:12px;';
+    return empty;
+  }
+
+  /**
+   * Render a single prop row with inputs and delete button.
+   * @param {Object} prop
+   * @param {number} index
+   * @param {number} q
+   * @param {number} r
+   * @param {Object} tile
+   * @returns {HTMLElement}
+   */
+  _renderPropRow(prop, index, q, r, tile) {
+    const row = document.createElement('div');
+    row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
+
+    // Type label with category badge
+    const typeLabel = document.createElement('div');
+    const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.resource;
+    const categoryColor = catColors.badge;
+    typeLabel.innerHTML = `<span style="color:${categoryColor};font-weight:600;font-size:12px;">${prop.type}</span> <span style="color:var(--text-secondary);font-size:10px;">[${prop.category}]</span>`;
+    typeLabel.style.cssText = 'margin-bottom:4px;';
+    row.appendChild(typeLabel);
+
+    // Build fields based on category
+    const fields = [
+      { name: 'sq', value: prop.sq, min: -2, max: 2, step: 1 },
+      { name: 'sr', value: prop.sr, min: -2, max: 2, step: 1 },
+    ];
+
+    // Resources have rotation
+    if (prop.category === 'resource') {
+      fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
     }
 
-    tile.props.forEach((prop, index) => {
-      const row = document.createElement('div');
-      row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
+    const fieldsRow = document.createElement('div');
+    fieldsRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
 
-      // Type label with category badge
-      const typeLabel = document.createElement('div');
-      const categoryColor = prop.category === 'resource' ? 'var(--accent)' :
-                            prop.category === 'structure' ? '#ffaa44' : '#b444ff';
-      typeLabel.innerHTML = `<span style="color:${categoryColor};font-weight:600;font-size:12px;">${prop.type}</span> <span style="color:var(--text-secondary);font-size:10px;">[${prop.category}]</span>`;
-      typeLabel.style.cssText = 'margin-bottom:4px;';
-      row.appendChild(typeLabel);
+    for (const field of fields) {
+      const label = document.createElement('label');
+      label.style.cssText = 'font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:2px;';
+      label.textContent = field.name + ':';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = String(Math.round(field.value));
+      input.min = String(field.min);
+      input.max = String(field.max);
+      input.step = String(field.step);
+      input.style.cssText = 'width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;';
+      input.dataset.propIndex = String(index);
+      input.dataset.field = field.name;
 
-      // Build fields based on category
-      const fields = [
-        { name: 'sq', value: prop.sq, min: -2, max: 2, step: 1 },
-        { name: 'sr', value: prop.sr, min: -2, max: 2, step: 1 },
-      ];
+      const origValue = field.value;
+      const handleChange = () => {
+        const newVal = parseInt(input.value, 10);
+        if (isNaN(newVal)) return;
+        const clamped = Math.max(field.min, Math.min(field.max, newVal));
 
-      // Resources have rotation
-      if (prop.category === 'resource') {
-        fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
-      }
+        // Validate sub-hex position when sq or sr changes
+        if (field.name === 'sq' || field.name === 'sr') {
+          const testSq = field.name === 'sq' ? clamped : prop.sq;
+          const testSr = field.name === 'sr' ? clamped : prop.sr;
+          if (!HexMath.isValidSubHex(testSq, testSr)) return;
+        }
 
-      const fieldsRow = document.createElement('div');
-      fieldsRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
-
-      for (const field of fields) {
-        const label = document.createElement('label');
-        label.style.cssText = 'font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:2px;';
-        label.textContent = field.name + ':';
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.value = String(Math.round(field.value));
-        input.min = String(field.min);
-        input.max = String(field.max);
-        input.step = String(field.step);
-        input.style.cssText = 'width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;';
-        input.dataset.propIndex = String(index);
-        input.dataset.field = field.name;
-
-        const origValue = field.value;
-        const handleChange = () => {
-          const newVal = parseInt(input.value, 10);
-          if (isNaN(newVal)) return;
-          const clamped = Math.max(field.min, Math.min(field.max, newVal));
-
-          // Validate sub-hex position when sq or sr changes
-          if (field.name === 'sq' || field.name === 'sr') {
-            const testSq = field.name === 'sq' ? clamped : prop.sq;
-            const testSr = field.name === 'sr' ? clamped : prop.sr;
-            if (!HexMath.isValidSubHex(testSq, testSr)) return;
-          }
-
-          if (clamped === origValue) return;
-          const oldValues = { [field.name]: origValue };
-          const newValues = { [field.name]: clamped };
-          const cmd = new EditPropCommand(this.grid, q, r, index, oldValues, newValues);
-          this.commandHistory.execute(cmd);
-          this._renderContent(); // refresh
-        };
-
-        input.addEventListener('blur', handleChange);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChange(); });
-        label.appendChild(input);
-        fieldsRow.appendChild(label);
-      }
-
-      // Delete button
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'X';
-      delBtn.title = 'Delete prop';
-      delBtn.style.cssText = 'background:var(--danger);color:white;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:auto;';
-      delBtn.addEventListener('click', () => {
-        const removed = tile.props[index];
-        const cmd = new DeletePropCommand(this.grid, q, r, index, removed);
+        if (clamped === origValue) return;
+        const oldValues = { [field.name]: origValue };
+        const newValues = { [field.name]: clamped };
+        const cmd = new EditPropCommand(this.grid, q, r, index, oldValues, newValues);
         this.commandHistory.execute(cmd);
         this._renderContent(); // refresh
-      });
-      fieldsRow.appendChild(delBtn);
+      };
 
-      row.appendChild(fieldsRow);
+      input.addEventListener('blur', handleChange);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChange(); });
+      label.appendChild(input);
+      fieldsRow.appendChild(label);
+    }
 
-      // Footprint display for structures (G7)
-      if (prop.category === 'structure' && prop.footprint) {
-        const fpLabel = document.createElement('div');
-        fpLabel.textContent = 'Footprint: ' + prop.footprint.map(f => `(${f.q},${f.r})`).join(' ');
-        fpLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);margin-top:2px;';
-        row.appendChild(fpLabel);
-      }
-
-      this.container.appendChild(row);
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'X';
+    delBtn.title = 'Delete prop';
+    delBtn.style.cssText = 'background:var(--danger);color:white;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:auto;';
+    delBtn.addEventListener('click', () => {
+      const removed = tile.props[index];
+      const cmd = new DeletePropCommand(this.grid, q, r, index, removed);
+      this.commandHistory.execute(cmd);
+      this._renderContent(); // refresh
     });
+    fieldsRow.appendChild(delBtn);
+
+    row.appendChild(fieldsRow);
+
+    // Footprint display for structures (G7)
+    if (prop.category === 'structure' && prop.footprint) {
+      const fpLabel = document.createElement('div');
+      fpLabel.textContent = 'Footprint: ' + prop.footprint.map(f => `(${f.q},${f.r})`).join(' ');
+      fpLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);margin-top:2px;';
+      row.appendChild(fpLabel);
+    }
+
+    return row;
   }
 }

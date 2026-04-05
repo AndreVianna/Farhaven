@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js'
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { PropDetailPanel } from './panels.js';
+import { PropDetailPanel, showInlineModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -219,19 +219,25 @@ function updateUndoRedoButtons() {
 // ============================================================
 
 /**
- * Clear the grid and start a new map.
+ * Clear the grid and start a new map, prompting for chapter ID and map name.
  * @returns {void}
  */
 function newMap() {
   if (dirtyTracker.hasUnsavedChanges()) {
     if (!confirm('Unsaved changes will be lost. Continue?')) return;
   }
-  hexGrid.clear();
-  hexGrid.meta = { chapter_id: 'new', name: 'New Map', spawn: [0, 0] };
-  commandHistory.clear();
-  dirtyTracker.markAllClean();
-  if (hexCanvas) hexCanvas.requestRender();
-  setStatus('New map created.');
+  showInlineModal('Chapter ID:', 'ch1', (chapterId) => {
+    if (chapterId === null) return;
+    showInlineModal('Map Name:', 'New Map', (mapName) => {
+      if (mapName === null) return;
+      hexGrid.clear();
+      hexGrid.meta = { chapter_id: chapterId.trim() || 'ch1', name: mapName.trim() || 'New Map', spawn: [0, 0] };
+      commandHistory.clear();
+      dirtyTracker.markAllClean();
+      if (hexCanvas) hexCanvas.requestRender();
+      setStatus(`New map "${hexGrid.meta.name}" created.`);
+    });
+  });
 }
 
 // ============================================================
@@ -248,7 +254,9 @@ async function saveAll() {
   const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
   const validation = validateMap(hexGrid, knownBiomes, knownResources);
   if (!validation.valid) {
-    showError('Validation: ' + validation.errors[0]);
+    const firstError = validation.errors[0];
+    const prefix = firstError.hex.length > 0 ? `Tile (${firstError.hex.join(',')}): ` : '';
+    showError(`Validation: ${prefix}${firstError.message}`);
     return;
   }
 
@@ -326,7 +334,7 @@ async function autoLoadProject() {
   const result = await FileDiscovery.discoverViaApi();
   if (!result.success) {
     console.error(`autoLoadProject: Discovery failed — ${result.error}`);
-    setStatus('Error: ' + result.error);
+    showError(result.error);
     return;
   }
 
@@ -378,7 +386,7 @@ function initializeAfterLoad() {
     const loadResult = loadMapIntoGrid(hexGrid, mapEntry.data);
     if (!loadResult.success) {
       console.error(`Failed to load map "${mapName}": ${loadResult.error}`);
-      setStatus(`Error loading map: ${loadResult.error}`);
+      showError(`Loading map: ${loadResult.error}`);
     } else {
       console.log(`Grid loaded — ${hexGrid.tiles.size} tiles in HexGrid.`);
     }

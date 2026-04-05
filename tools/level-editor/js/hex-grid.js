@@ -5,6 +5,16 @@
 import { HEX_SIZE, HexMath } from './hex-math.js';
 
 /**
+ * Shared category color definitions used by canvas rendering and UI panels.
+ * @type {Object<string, { fill: string, badge: string, label: string }>}
+ */
+export const CATEGORY_COLORS = {
+  resource: { fill: 'rgba(68,136,255,0.3)', badge: '#4488ff', label: 'blue' },
+  structure: { fill: 'rgba(255,170,68,0.3)', badge: '#ffaa44', label: 'orange' },
+  anomaly: { fill: 'rgba(180,68,255,0.3)', badge: '#b444ff', label: 'purple' },
+};
+
+/**
  * Creates a default TileData object.
  * @param {string} [biome='']
  * @returns {{ biome: string, elevation: number, props: Array<Object> }}
@@ -51,6 +61,16 @@ export class HexGrid {
      * @type {function():void|null}
      */
     this.onChange = null;
+  }
+
+  /**
+   * Parse a "q,r" key string into { q, r } integers.
+   * @param {string} key
+   * @returns {{ q: number, r: number }}
+   */
+  static parseKey(key) {
+    const parts = key.split(',');
+    return { q: parseInt(parts[0], 10), r: parseInt(parts[1], 10) };
   }
 
   /**
@@ -119,6 +139,72 @@ export class HexGrid {
 }
 
 /**
+ * Parse legacy tile JSON (pre-props-array format) into a props array.
+ * Handles resources (string, x/y, sq/sr), structure (string or object), and anomaly.
+ * @param {Object} tileJson
+ * @returns {Array<Object>}
+ */
+function _parseLegacyTile(tileJson) {
+  const props = [];
+
+  // Legacy resources
+  if (Array.isArray(tileJson.resources)) {
+    for (const res of tileJson.resources) {
+      // B5/Q5: Handle plain-string resource format
+      if (typeof res === 'string') {
+        props.push(createProp(res, 0, 0, 'resource', {
+          rotation: Math.floor(Math.random() * 360),
+        }));
+      } else if ('x' in res && !('sq' in res)) {
+        // Legacy x,y format: convert continuous (x, y) to nearest sub-hex
+        const subHex = HexMath.pixelToSubHex(
+          (typeof res.x === 'number' ? res.x : 0) * HEX_SIZE,
+          (typeof res.y === 'number' ? res.y : 0) * HEX_SIZE
+        );
+        props.push(createProp(
+          res.type || '', subHex.q, subHex.r, 'resource',
+          { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
+        ));
+      } else {
+        // New sq,sr format
+        const sq = typeof res.sq === 'number' ? res.sq : 0;
+        const sr = typeof res.sr === 'number' ? res.sr : 0;
+        props.push(createProp(
+          res.type || '', sq, sr, 'resource',
+          { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
+        ));
+      }
+    }
+  }
+
+  // Legacy structure
+  if (tileJson.structure) {
+    if (typeof tileJson.structure === 'string') {
+      props.push(createProp(tileJson.structure, 0, 0, 'structure', {
+        footprint: [{ q: 0, r: 0 }],
+      }));
+    } else {
+      const st = tileJson.structure;
+      const anchorSq = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sq || 0) : 0;
+      const anchorSr = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sr || 0) : 0;
+      props.push(createProp(st.type || '', anchorSq, anchorSr, 'structure', {
+        footprint: st.sub_hexes || [{ q: 0, r: 0 }],
+      }));
+    }
+  }
+
+  // B6: Legacy anomaly — handle both string and object form
+  if (tileJson.anomaly) {
+    const anomalyType = typeof tileJson.anomaly === 'string'
+      ? tileJson.anomaly
+      : (tileJson.anomaly.type || '');
+    props.push(createProp(anomalyType, 0, 0, 'anomaly'));
+  }
+
+  return props;
+}
+
+/**
  * Load map JSON data into the HexGrid model.
  * @param {HexGrid} hexGrid
  * @param {Object} mapData - parsed ch1.json
@@ -140,9 +226,7 @@ export function loadMapIntoGrid(hexGrid, mapData) {
 
   if (mapData.tiles && typeof mapData.tiles === 'object') {
     for (const [key, tileJson] of Object.entries(mapData.tiles)) {
-      const parts = key.split(',');
-      const q = parseInt(parts[0], 10);
-      const r = parseInt(parts[1], 10);
+      const { q, r } = HexGrid.parseKey(key);
       const tile = createTileData(tileJson.biome || '');
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
 
@@ -155,62 +239,7 @@ export function loadMapIntoGrid(hexGrid, mapData) {
           return prop;
         });
       } else {
-        // Legacy format: merge resources, structure, anomaly into props
-        tile.props = [];
-
-        // Legacy resources
-        if (Array.isArray(tileJson.resources)) {
-          for (const res of tileJson.resources) {
-            // B5/Q5: Handle plain-string resource format
-            if (typeof res === 'string') {
-              tile.props.push(createProp(res, 0, 0, 'resource', {
-                rotation: Math.floor(Math.random() * 360),
-              }));
-            } else if ('x' in res && !('sq' in res)) {
-              // Legacy x,y format: convert continuous (x, y) to nearest sub-hex
-              const subHex = HexMath.pixelToSubHex(
-                (typeof res.x === 'number' ? res.x : 0) * HEX_SIZE,
-                (typeof res.y === 'number' ? res.y : 0) * HEX_SIZE
-              );
-              tile.props.push(createProp(
-                res.type || '', subHex.q, subHex.r, 'resource',
-                { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
-              ));
-            } else {
-              // New sq,sr format
-              const sq = typeof res.sq === 'number' ? res.sq : 0;
-              const sr = typeof res.sr === 'number' ? res.sr : 0;
-              tile.props.push(createProp(
-                res.type || '', sq, sr, 'resource',
-                { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
-              ));
-            }
-          }
-        }
-
-        // Legacy structure
-        if (tileJson.structure) {
-          if (typeof tileJson.structure === 'string') {
-            tile.props.push(createProp(tileJson.structure, 0, 0, 'structure', {
-              footprint: [{ q: 0, r: 0 }],
-            }));
-          } else {
-            const st = tileJson.structure;
-            const anchorSq = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sq || 0) : 0;
-            const anchorSr = (st.sub_hexes && st.sub_hexes.length > 0) ? (st.sub_hexes[0].sr || 0) : 0;
-            tile.props.push(createProp(st.type || '', anchorSq, anchorSr, 'structure', {
-              footprint: st.sub_hexes || [{ q: 0, r: 0 }],
-            }));
-          }
-        }
-
-        // B6: Legacy anomaly — handle both string and object form
-        if (tileJson.anomaly) {
-          const anomalyType = typeof tileJson.anomaly === 'string'
-            ? tileJson.anomaly
-            : (tileJson.anomaly.type || '');
-          tile.props.push(createProp(anomalyType, 0, 0, 'anomaly'));
-        }
+        tile.props = _parseLegacyTile(tileJson);
       }
 
       hexGrid.setTile(q, r, tile);

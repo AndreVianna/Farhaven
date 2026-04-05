@@ -3,7 +3,15 @@
 // ============================================================
 
 import { HexMath } from './hex-math.js';
+import { HexGrid } from './hex-grid.js';
 import { STRUCTURE_FOOTPRINTS } from './tools.js';
+
+/**
+ * @typedef {Object} ValidationError
+ * @property {number[]} hex - [q, r] coordinates of the tile (empty for global errors)
+ * @property {string} field - Field name that failed validation
+ * @property {string} message - Human-readable error message
+ */
 
 /**
  * Validate a HexGrid map before export/save.
@@ -11,36 +19,34 @@ import { STRUCTURE_FOOTPRINTS } from './tools.js';
  * @param {Set<string>} knownBiomes - Set of known biome names (without .tres extension)
  * @param {Set<string>} knownResources - Set of known resource names (without .tres extension)
  * @param {Set<string>} [knownStructures] - Set of known structure types (optional, defaults to STRUCTURE_FOOTPRINTS keys)
- * @returns {{ valid: boolean, errors: string[] }}
+ * @returns {{ valid: boolean, errors: ValidationError[] }}
  */
 export function validateMap(hexGrid, knownBiomes, knownResources, knownStructures) {
   if (!knownStructures) {
     knownStructures = new Set(Object.keys(STRUCTURE_FOOTPRINTS));
   }
+  /** @type {ValidationError[]} */
   const errors = [];
 
   // Check spawn point exists and references an existing tile
   const spawn = hexGrid.meta.spawn;
   if (!Array.isArray(spawn) || spawn.length < 2) {
-    errors.push('Spawn point is not defined.');
+    errors.push({ hex: [], field: 'spawn', message: 'Spawn point is not defined.' });
   } else if (!hexGrid.hasTile(spawn[0], spawn[1])) {
-    errors.push(`Spawn point (${spawn[0]}, ${spawn[1]}) does not reference an existing tile.`);
+    errors.push({ hex: [spawn[0], spawn[1]], field: 'spawn', message: `spawn point does not reference an existing tile.` });
   }
 
   for (const [key, tile] of hexGrid.getAllTiles()) {
-    const parts = key.split(',');
-    const q = parseInt(parts[0], 10);
-    const r = parseInt(parts[1], 10);
-    const prefix = `Tile (${q},${r})`;
+    const { q, r } = HexGrid.parseKey(key);
 
     // Validate biome is known (allow empty biome for ghost/unset tiles)
     if (tile.biome && knownBiomes.size > 0 && !knownBiomes.has(tile.biome)) {
-      errors.push(`${prefix}: unknown biome "${tile.biome}".`);
+      errors.push({ hex: [q, r], field: 'biome', message: `unknown biome "${tile.biome}".` });
     }
 
     // Validate elevation range
     if (typeof tile.elevation !== 'number' || tile.elevation < 0 || tile.elevation > 9) {
-      errors.push(`${prefix}: elevation ${tile.elevation} out of range 0-9.`);
+      errors.push({ hex: [q, r], field: 'elevation', message: `elevation ${tile.elevation} out of range 0-9.` });
     }
 
     if (!tile.props) continue;
@@ -51,26 +57,25 @@ export function validateMap(hexGrid, knownBiomes, knownResources, knownStructure
 
     for (let i = 0; i < tile.props.length; i++) {
       const prop = tile.props[i];
-      const propLabel = `${prefix} prop[${i}] "${prop.type}"`;
 
       // Validate prop type exists in known definitions for its category
       if (prop.category === 'resource' && knownResources.size > 0 && !knownResources.has(prop.type)) {
-        errors.push(`${propLabel}: unknown resource type.`);
+        errors.push({ hex: [q, r], field: `props[${i}].type`, message: `unknown resource type "${prop.type}".` });
       }
       if (prop.category === 'structure' && knownStructures.size > 0 && !knownStructures.has(prop.type)) {
-        errors.push(`${propLabel}: unknown structure type.`);
+        errors.push({ hex: [q, r], field: `props[${i}].type`, message: `unknown structure type "${prop.type}".` });
       }
 
       // Validate rotation range for resources
       if (prop.category === 'resource' && typeof prop.rotation === 'number') {
         if (prop.rotation < 0 || prop.rotation >= 360) {
-          errors.push(`${propLabel}: rotation ${prop.rotation} outside range [0, 360).`);
+          errors.push({ hex: [q, r], field: `props[${i}].rotation`, message: `rotation ${prop.rotation} outside range [0, 360).` });
         }
       }
 
       // Validate sub-hex position
       if (!HexMath.isValidSubHex(prop.sq, prop.sr)) {
-        errors.push(`${propLabel}: sub-hex (${prop.sq},${prop.sr}) is invalid (distance > 2).`);
+        errors.push({ hex: [q, r], field: `props[${i}].subhex`, message: `sub-hex (${prop.sq},${prop.sr}) is invalid (distance > 2).` });
       }
 
       // Check for overlapping props on same sub-hex
@@ -78,11 +83,11 @@ export function validateMap(hexGrid, knownBiomes, knownResources, knownStructure
         for (const cell of prop.footprint) {
           // Validate each footprint cell is a valid sub-hex
           if (!HexMath.isValidSubHex(cell.q, cell.r)) {
-            errors.push(`${propLabel}: footprint cell (${cell.q},${cell.r}) is invalid (distance > 2).`);
+            errors.push({ hex: [q, r], field: `props[${i}].footprint`, message: `footprint cell (${cell.q},${cell.r}) is invalid (distance > 2).` });
           }
           const cellKey = `${cell.q},${cell.r}`;
           if (occupiedSubHexes.has(cellKey)) {
-            errors.push(`${propLabel}: overlapping prop at sub-hex (${cell.q},${cell.r}).`);
+            errors.push({ hex: [q, r], field: `props[${i}].footprint`, message: `overlapping prop at sub-hex (${cell.q},${cell.r}).` });
           }
           occupiedSubHexes.add(cellKey);
         }
@@ -90,7 +95,7 @@ export function validateMap(hexGrid, knownBiomes, knownResources, knownStructure
         // Single-cell prop: use anchor position
         const cellKey = `${prop.sq},${prop.sr}`;
         if (occupiedSubHexes.has(cellKey)) {
-          errors.push(`${propLabel}: overlapping prop at sub-hex (${prop.sq},${prop.sr}).`);
+          errors.push({ hex: [q, r], field: `props[${i}].subhex`, message: `overlapping prop at sub-hex (${prop.sq},${prop.sr}).` });
         }
         occupiedSubHexes.add(cellKey);
       }

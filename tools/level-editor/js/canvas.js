@@ -3,9 +3,42 @@
 // ============================================================
 
 import { HEX_SIZE, HexMath } from './hex-math.js';
+import { HexGrid, CATEGORY_COLORS } from './hex-grid.js';
 
 /** @type {string} Fallback color for unknown biomes */
 export const BIOME_FALLBACK_COLOR = '#888888';
+
+// ============================================================
+// Named color constants (M1)
+// ============================================================
+
+const CANVAS_BG = '#1a1a2e';
+const CLIFF_COLOR = '#8B4513';
+const SELECTION_COLOR = '#ffffff';
+const SPAWN_COLOR = '#ffcc00';
+const GHOST_FILL = 'rgba(255,255,255,0.04)';
+const GHOST_STROKE = 'rgba(255,255,255,0.12)';
+const HOVER_FILL = 'rgba(255,255,255,0.15)';
+const SUB_HEX_STROKE = 'rgba(255,255,255,0.2)';
+const SUB_HEX_HOVER_FILL = 'rgba(255,255,255,0.25)';
+const SUB_HEX_HOVER_STROKE = 'rgba(255,255,255,0.5)';
+
+// ============================================================
+// Rendering constants (M3)
+// ============================================================
+// Font sizes: scaled by camera.zoom, with a minimum floor for readability.
+//   - Elevation label: bold, min 8px, base 12px
+//   - Coordinate label: regular, min 7px, base 10px
+//   - Spawn "S" label: bold, min 6px, base 10px
+//   - Prop badges: bold, min 5px, base 8px (resource count), min 4px base 6px (anomaly "!")
+// Position offsets (fractions of HEX_SIZE * zoom):
+//   - Spawn marker: 0.3 above center
+//   - Prop indicators: 0.35 below center
+//   - Resource badge: 0.3 right of center
+//   - Structure text: 0.25 left of center
+//   - Coordinate label: 2px above center
+// Cliff edge line width: 3 * zoom
+// Selection line width: 2.5 * zoom
 
 export class HexCanvas {
   /**
@@ -97,6 +130,35 @@ export class HexCanvas {
     });
   }
 
+  // --- Hex path and screen helpers (D1, D4) ---
+
+  /**
+   * Trace a hex polygon path from pre-computed corners.
+   * @param {Array<{x: number, y: number}>} corners
+   * @returns {void}
+   */
+  _traceHexPath(corners) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) {
+      this.ctx.lineTo(corners[i].x, corners[i].y);
+    }
+    this.ctx.closePath();
+  }
+
+  /**
+   * Convert axial (q, r) to screen coords and compute hex corners.
+   * @param {number} q
+   * @param {number} r
+   * @returns {{ screen: { x: number, y: number }, size: number, corners: Array<{x: number, y: number}> }}
+   */
+  _getHexScreen(q, r) {
+    const world = HexMath.axialToPixel(q, r);
+    const screen = this.worldToScreen(world.x, world.y);
+    const size = HEX_SIZE * this.camera.zoom;
+    return { screen, size, corners: HexMath.hexCorners(screen.x, screen.y, size) };
+  }
+
   /**
    * Full redraw of the canvas.
    * @returns {void}
@@ -106,28 +168,22 @@ export class HexCanvas {
     const w = this.canvas.width;
     const h = this.canvas.height;
 
-    // Clear with background
-    ctx.fillStyle = '#1a1a2e';
+    // --- Phase 1: Clear background ---
+    ctx.fillStyle = CANVAS_BG;
     ctx.fillRect(0, 0, w, h);
 
     if (this.grid.tiles.size === 0) return;
 
-    // Compute ghost set — empty positions adjacent to existing tiles
+    // --- Phase 2: Ghost grid (behind real tiles) ---
     this._ghostSet = this._computeGhostSet();
-
-    // Draw ghost hexes (behind real tiles)
     for (const key of this._ghostSet) {
-      const parts = key.split(',');
-      const q = parseInt(parts[0], 10);
-      const r = parseInt(parts[1], 10);
+      const { q, r } = HexGrid.parseKey(key);
       this._drawGhostHex(q, r);
     }
 
-    // Draw all real hexes
+    // --- Phase 3: Real hexes with overlays ---
     for (const [key, tile] of this.grid.getAllTiles()) {
-      const parts = key.split(',');
-      const q = parseInt(parts[0], 10);
-      const r = parseInt(parts[1], 10);
+      const { q, r } = HexGrid.parseKey(key);
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
@@ -139,13 +195,13 @@ export class HexCanvas {
       }
     }
 
-    // Draw spawn marker
+    // --- Phase 4: Spawn marker ---
     const spawn = this.grid.meta.spawn;
     if (spawn && this.grid.hasTile(spawn[0], spawn[1])) {
       this._drawSpawnMarker(spawn[0], spawn[1]);
     }
 
-    // Draw hover highlight (works on both real tiles and ghost cells)
+    // --- Phase 5: Hover highlight (real tiles and ghost cells) ---
     if (this.hoveredHex) {
       const hKey = `${this.hoveredHex.q},${this.hoveredHex.r}`;
       if (this.grid.hasTile(this.hoveredHex.q, this.hoveredHex.r) || (this._ghostSet && this._ghostSet.has(hKey))) {
@@ -153,7 +209,7 @@ export class HexCanvas {
       }
     }
 
-    // Draw sub-hex grid on hovered hex when placement tool is active
+    // --- Phase 6: Sub-hex grid for placement tools ---
     if (this.hoveredHex && this.toolManager && this._isPlacementTool()) {
       const hq = this.hoveredHex.q;
       const hr = this.hoveredHex.r;
@@ -169,7 +225,7 @@ export class HexCanvas {
       }
     }
 
-    // Draw selection
+    // --- Phase 7: Selection highlight ---
     if (this.selectedHex && this.grid.hasTile(this.selectedHex.q, this.selectedHex.r)) {
       this._drawSelection(this.selectedHex.q, this.selectedHex.r);
     }
@@ -184,10 +240,7 @@ export class HexCanvas {
    */
   _drawHex(q, r, tile) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const size = HEX_SIZE * this.camera.zoom;
-    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+    const { corners } = this._getHexScreen(q, r);
 
     // Get biome color
     let color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
@@ -197,12 +250,7 @@ export class HexCanvas {
       color = this._adjustBrightness(color, 1 + tile.elevation * 0.05);
     }
 
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < 6; i++) {
-      ctx.lineTo(corners[i].x, corners[i].y);
-    }
-    ctx.closePath();
+    this._traceHexPath(corners);
     ctx.fillStyle = color;
     ctx.fill();
 
@@ -222,8 +270,7 @@ export class HexCanvas {
   _drawElevationOverlay(q, r, tile) {
     if (tile.elevation <= 0) return;
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(8, 12 * this.camera.zoom);
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
@@ -242,10 +289,7 @@ export class HexCanvas {
   _drawCliffEdges(q, r, tile) {
     const ctx = this.ctx;
     const neighbors = HexMath.getNeighbors(q, r);
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const size = HEX_SIZE * this.camera.zoom;
-    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+    const { corners } = this._getHexScreen(q, r);
 
     // For flat-top hexes (corners at 0°,60°,…,300° clockwise in screen space):
     // Edge i→(i+1) midpoint points at angle (30+60*i)°, which aligns with
@@ -259,7 +303,7 @@ export class HexCanvas {
         ctx.beginPath();
         ctx.moveTo(corners[i].x, corners[i].y);
         ctx.lineTo(corners[(i + 1) % 6].x, corners[(i + 1) % 6].y);
-        ctx.strokeStyle = '#8B4513';
+        ctx.strokeStyle = CLIFF_COLOR;
         ctx.lineWidth = 3 * this.camera.zoom;
         ctx.stroke();
       }
@@ -274,18 +318,10 @@ export class HexCanvas {
    */
   _drawSelection(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const size = HEX_SIZE * this.camera.zoom;
-    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+    const { corners } = this._getHexScreen(q, r);
 
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < 6; i++) {
-      ctx.lineTo(corners[i].x, corners[i].y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = '#ffffff';
+    this._traceHexPath(corners);
+    ctx.strokeStyle = SELECTION_COLOR;
     ctx.lineWidth = 2.5 * this.camera.zoom;
     ctx.stroke();
   }
@@ -298,18 +334,10 @@ export class HexCanvas {
    */
   _drawHoverHighlight(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const size = HEX_SIZE * this.camera.zoom;
-    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+    const { corners } = this._getHexScreen(q, r);
 
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < 6; i++) {
-      ctx.lineTo(corners[i].x, corners[i].y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    this._traceHexPath(corners);
+    ctx.fillStyle = HOVER_FILL;
     ctx.fill();
   }
 
@@ -321,8 +349,7 @@ export class HexCanvas {
    */
   _drawCoordinateLabel(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(7, 10 * this.camera.zoom);
     ctx.font = `${fontSize}px sans-serif`;
     ctx.fillStyle = 'rgba(180,180,180,0.7)';
@@ -339,13 +366,12 @@ export class HexCanvas {
    */
   _drawSpawnMarker(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const size = 8 * this.camera.zoom;
 
     ctx.beginPath();
     ctx.arc(screen.x, screen.y - HEX_SIZE * this.camera.zoom * 0.3, size, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = SPAWN_COLOR;
     ctx.fill();
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
@@ -369,8 +395,7 @@ export class HexCanvas {
    */
   _drawPropIndicators(q, r, tile) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const offsetY = HEX_SIZE * this.camera.zoom * 0.35;
 
     const resources = tile.props.filter(p => p.category === 'resource');
@@ -382,7 +407,7 @@ export class HexCanvas {
       const badgeSize = Math.max(5, 7 * this.camera.zoom);
       ctx.beginPath();
       ctx.arc(screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
-      ctx.fillStyle = '#4488ff';
+      ctx.fillStyle = CATEGORY_COLORS.resource.badge;
       ctx.fill();
 
       const fontSize = Math.max(5, 8 * this.camera.zoom);
@@ -397,7 +422,7 @@ export class HexCanvas {
     if (structures.length > 0) {
       const fontSize = Math.max(5, 8 * this.camera.zoom);
       ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = '#ffaa44';
+      ctx.fillStyle = CATEGORY_COLORS.structure.badge;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const abbrev = (structures[0].type || '').substring(0, 3).toUpperCase();
@@ -409,7 +434,7 @@ export class HexCanvas {
       const badgeSize = Math.max(4, 5 * this.camera.zoom);
       ctx.beginPath();
       ctx.arc(screen.x, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
-      ctx.fillStyle = '#b444ff';
+      ctx.fillStyle = CATEGORY_COLORS.anomaly.badge;
       ctx.fill();
 
       const fontSize = Math.max(4, 6 * this.camera.zoom);
@@ -441,8 +466,7 @@ export class HexCanvas {
    */
   _drawSubHexGrid(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
 
     for (const sh of HexMath.VALID_SUB_HEXES) {
@@ -451,13 +475,8 @@ export class HexCanvas {
       const cy = screen.y + offset.y * this.camera.zoom;
       const corners = HexMath.hexCorners(cx, cy, subSize);
 
-      ctx.beginPath();
-      ctx.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < 6; i++) {
-        ctx.lineTo(corners[i].x, corners[i].y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      this._traceHexPath(corners);
+      ctx.strokeStyle = SUB_HEX_STROKE;
       ctx.lineWidth = 0.5;
       ctx.stroke();
     }
@@ -472,16 +491,15 @@ export class HexCanvas {
    */
   _drawSubHexOccupancy(q, r, tile) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
 
     if (!tile.props) return;
 
     for (const prop of tile.props) {
-      const color = prop.category === 'resource' ? 'rgba(68,136,255,0.3)' :
-                    prop.category === 'structure' ? 'rgba(255,170,68,0.3)' :
-                    'rgba(180,68,255,0.3)';
+      const color = CATEGORY_COLORS[prop.category]
+        ? CATEGORY_COLORS[prop.category].fill
+        : CATEGORY_COLORS.resource.fill;
 
       // For structures with footprint, draw all footprint hexes
       if (prop.footprint) {
@@ -490,10 +508,7 @@ export class HexCanvas {
           const cx = screen.x + offset.x * this.camera.zoom;
           const cy = screen.y + offset.y * this.camera.zoom;
           const corners = HexMath.hexCorners(cx, cy, subSize);
-          ctx.beginPath();
-          ctx.moveTo(corners[0].x, corners[0].y);
-          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
-          ctx.closePath();
+          this._traceHexPath(corners);
           ctx.fillStyle = color;
           ctx.fill();
         }
@@ -502,10 +517,7 @@ export class HexCanvas {
         const cx = screen.x + offset.x * this.camera.zoom;
         const cy = screen.y + offset.y * this.camera.zoom;
         const corners = HexMath.hexCorners(cx, cy, subSize);
-        ctx.beginPath();
-        ctx.moveTo(corners[0].x, corners[0].y);
-        for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
-        ctx.closePath();
+        this._traceHexPath(corners);
         ctx.fillStyle = color;
         ctx.fill();
       }
@@ -522,21 +534,17 @@ export class HexCanvas {
    */
   _drawSubHexHover(q, r, sq, sr) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
+    const { screen } = this._getHexScreen(q, r);
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
     const offset = HexMath.subHexToPixel(sq, sr);
     const cx = screen.x + offset.x * this.camera.zoom;
     const cy = screen.y + offset.y * this.camera.zoom;
     const corners = HexMath.hexCorners(cx, cy, subSize);
 
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    this._traceHexPath(corners);
+    ctx.fillStyle = SUB_HEX_HOVER_FILL;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.strokeStyle = SUB_HEX_HOVER_STROKE;
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
@@ -744,9 +752,7 @@ export class HexCanvas {
   _computeGhostSet() {
     const ghosts = new Set();
     for (const key of this.grid.tiles.keys()) {
-      const parts = key.split(',');
-      const q = parseInt(parts[0], 10);
-      const r = parseInt(parts[1], 10);
+      const { q, r } = HexGrid.parseKey(key);
       const neighbors = HexMath.getNeighbors(q, r);
       for (const n of neighbors) {
         if (!this.grid.hasTile(n.q, n.r)) {
@@ -765,20 +771,12 @@ export class HexCanvas {
    */
   _drawGhostHex(q, r) {
     const ctx = this.ctx;
-    const world = HexMath.axialToPixel(q, r);
-    const screen = this.worldToScreen(world.x, world.y);
-    const size = HEX_SIZE * this.camera.zoom;
-    const corners = HexMath.hexCorners(screen.x, screen.y, size);
+    const { corners } = this._getHexScreen(q, r);
 
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < 6; i++) {
-      ctx.lineTo(corners[i].x, corners[i].y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    this._traceHexPath(corners);
+    ctx.fillStyle = GHOST_FILL;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = GHOST_STROKE;
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -810,9 +808,7 @@ export class HexCanvas {
     // Compute world-space bounding box of all tile centers
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const key of this.grid.tiles.keys()) {
-      const parts = key.split(',');
-      const q = parseInt(parts[0], 10);
-      const r = parseInt(parts[1], 10);
+      const { q, r } = HexGrid.parseKey(key);
       const world = HexMath.axialToPixel(q, r);
       if (world.x < minX) minX = world.x;
       if (world.y < minY) minY = world.y;

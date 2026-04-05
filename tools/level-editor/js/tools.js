@@ -14,6 +14,9 @@ import {
   DeleteHexCommand,
   BatchCommand,
 } from './commands.js';
+// S1 coupling note: AnomalyMarker imports showInlineModal from panels.js for
+// type-name prompts. This is a pragmatic coupling for an internal tool — a full
+// event/callback system would be over-engineered given the small module count.
 import { showInlineModal } from './panels.js';
 
 /**
