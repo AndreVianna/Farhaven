@@ -213,9 +213,12 @@ export class AddPropCommand {
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
-    if (tile && this._index >= 0) {
-      tile.props.splice(this._index, 1);
-      this.grid.setTile(this.q, this.r, tile);
+    if (tile) {
+      const idx = tile.props.indexOf(this.prop);
+      if (idx !== -1) {
+        tile.props.splice(idx, 1);
+        this.grid.setTile(this.q, this.r, tile);
+      }
     }
   }
 }

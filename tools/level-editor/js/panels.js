@@ -216,6 +216,15 @@ export class PropDetailPanel {
       fieldsRow.appendChild(delBtn);
 
       row.appendChild(fieldsRow);
+
+      // Footprint display for structures (G7)
+      if (prop.category === 'structure' && prop.footprint) {
+        const fpLabel = document.createElement('div');
+        fpLabel.textContent = 'Footprint: ' + prop.footprint.map(f => `(${f.q},${f.r})`).join(' ');
+        fpLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);margin-top:2px;';
+        row.appendChild(fpLabel);
+      }
+
       this.container.appendChild(row);
     });
   }

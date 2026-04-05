@@ -44,7 +44,12 @@ export class HexGrid {
     this.meta = { chapter_id: '', name: '', spawn: [0, 0] };
     /** @type {Map<string, Object>} */
     this.tiles = new Map();
-    /** @type {function():void|null} */
+    /**
+     * Single callback slot for change notifications. Only one listener
+     * can be registered at a time. If multiple listeners are needed in
+     * the future, consider switching to an array-based observer pattern.
+     * @type {function():void|null}
+     */
     this.onChange = null;
   }
 
@@ -117,9 +122,17 @@ export class HexGrid {
  * Load map JSON data into the HexGrid model.
  * @param {HexGrid} hexGrid
  * @param {Object} mapData - parsed ch1.json
- * @returns {void}
+ * @returns {{ success: true } | { success: false, error: string }}
  */
 export function loadMapIntoGrid(hexGrid, mapData) {
+  // G2: Validate input before modifying grid
+  if (!mapData || typeof mapData !== 'object') {
+    return { success: false, error: 'mapData must be a non-null object.' };
+  }
+  if (mapData.tiles !== undefined && (typeof mapData.tiles !== 'object' || mapData.tiles === null)) {
+    return { success: false, error: 'mapData.tiles must be an object if present.' };
+  }
+
   hexGrid.clear();
   hexGrid.meta.chapter_id = mapData.chapter_id || '';
   hexGrid.meta.name = mapData.name || '';
@@ -148,23 +161,30 @@ export function loadMapIntoGrid(hexGrid, mapData) {
         // Legacy resources
         if (Array.isArray(tileJson.resources)) {
           for (const res of tileJson.resources) {
-            let sq, sr;
-            if ('x' in res && !('sq' in res)) {
-              // Legacy format: convert continuous (x, y) to nearest sub-hex
+            // B5/Q5: Handle plain-string resource format
+            if (typeof res === 'string') {
+              tile.props.push(createProp(res, 0, 0, 'resource', {
+                rotation: Math.floor(Math.random() * 360),
+              }));
+            } else if ('x' in res && !('sq' in res)) {
+              // Legacy x,y format: convert continuous (x, y) to nearest sub-hex
               const subHex = HexMath.pixelToSubHex(
                 (typeof res.x === 'number' ? res.x : 0) * HEX_SIZE,
                 (typeof res.y === 'number' ? res.y : 0) * HEX_SIZE
               );
-              sq = subHex.q;
-              sr = subHex.r;
+              tile.props.push(createProp(
+                res.type || '', subHex.q, subHex.r, 'resource',
+                { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
+              ));
             } else {
-              sq = typeof res.sq === 'number' ? res.sq : 0;
-              sr = typeof res.sr === 'number' ? res.sr : 0;
+              // New sq,sr format
+              const sq = typeof res.sq === 'number' ? res.sq : 0;
+              const sr = typeof res.sr === 'number' ? res.sr : 0;
+              tile.props.push(createProp(
+                res.type || '', sq, sr, 'resource',
+                { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
+              ));
             }
-            tile.props.push(createProp(
-              res.type || '', sq, sr, 'resource',
-              { rotation: typeof res.rotation === 'number' ? res.rotation : 0 }
-            ));
           }
         }
 
@@ -184,15 +204,20 @@ export function loadMapIntoGrid(hexGrid, mapData) {
           }
         }
 
-        // Legacy anomaly
+        // B6: Legacy anomaly — handle both string and object form
         if (tileJson.anomaly) {
-          tile.props.push(createProp(tileJson.anomaly, 0, 0, 'anomaly'));
+          const anomalyType = typeof tileJson.anomaly === 'string'
+            ? tileJson.anomaly
+            : (tileJson.anomaly.type || '');
+          tile.props.push(createProp(anomalyType, 0, 0, 'anomaly'));
         }
       }
 
       hexGrid.setTile(q, r, tile);
     }
   }
+
+  return { success: true };
 }
 
 /**

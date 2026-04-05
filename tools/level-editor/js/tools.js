@@ -8,6 +8,7 @@ import {
   SetBiomeCommand,
   SetElevationCommand,
   AddPropCommand,
+  DeletePropCommand,
   SetSpawnCommand,
   EraseContentCommand,
   DeleteHexCommand,
@@ -53,6 +54,19 @@ export const ElevationMode = {
 
 /** @type {string[]} Known structure types matching game's WALKABLE_STRUCTURES */
 export const STRUCTURE_TYPES = ['workbench', 'storage_chest', 'campfire', 'shelter', 'torch'];
+
+/**
+ * Per-type footprint offsets from anchor sub-hex position.
+ * Each entry is an array of {q, r} offsets relative to the anchor.
+ * @type {Object<string, Array<{q: number, r: number}>>}
+ */
+export const STRUCTURE_FOOTPRINTS = {
+  workbench: [{ q: 0, r: 0 }, { q: 1, r: 0 }],       // 2-cell
+  storage_chest: [{ q: 0, r: 0 }],                     // 1-cell
+  campfire: [{ q: 0, r: 0 }],                          // 1-cell
+  shelter: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }], // 3-cell
+  torch: [{ q: 0, r: 0 }],                             // 1-cell
+};
 
 // ============================================================
 // Tool Classes (task-009)
@@ -223,12 +237,27 @@ export class FloodFillTool extends BaseTool {
 }
 
 export class EraserTool extends DragBrushTool {
-  /** @param {{ q: number, r: number }} hex */
+  /** @param {{ q: number, r: number, sq?: number, sr?: number }} hex */
   _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
-    if (!tile.props || tile.props.length === 0) return;
+    if (!tile || !tile.props || tile.props.length === 0) return;
 
+    // If sub-hex specified, try to delete the specific prop at that position
+    if (typeof hex.sq === 'number' && typeof hex.sr === 'number') {
+      const idx = tile.props.findIndex(p => {
+        if (p.sq === hex.sq && p.sr === hex.sr) return true;
+        if (p.footprint) return p.footprint.some(f => f.q === hex.sq && f.r === hex.sr);
+        return false;
+      });
+      if (idx !== -1) {
+        const cmd = new DeletePropCommand(this.grid, hex.q, hex.r, idx, tile.props[idx]);
+        this.commandHistory.execute(cmd);
+        this._dragCommands.push(cmd);
+        return;
+      }
+    }
+
+    // Fallback: erase all props
     const cmd = new EraseContentCommand(this.grid, hex.q, hex.r, tile);
     this.commandHistory.execute(cmd);
     this._dragCommands.push(cmd);
@@ -279,22 +308,29 @@ export class StructurePlacer extends BaseTool {
     const structureType = this.toolManager.activeValue || null;
     if (!structureType) return;
 
-    // Use sub-hex as anchor point; footprint is just the anchor for now
+    // Use sub-hex as anchor point
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
 
-    // Check occupancy
-    if (isSubHexOccupied(tile, sq, sr)) return;
+    // Compute absolute footprint from per-type offsets
+    const offsets = STRUCTURE_FOOTPRINTS[structureType] || [{ q: 0, r: 0 }];
+    const absoluteFootprint = offsets.map(o => ({ q: sq + o.q, r: sr + o.r }));
+
+    // Check ALL footprint cells for validity and occupancy
+    for (const cell of absoluteFootprint) {
+      if (!HexMath.isValidSubHex(cell.q, cell.r)) return;
+      if (isSubHexOccupied(tile, cell.q, cell.r)) return;
+    }
 
     const prop = createProp(structureType, sq, sr, 'structure', {
-      footprint: [{ q: sq, r: sr }],
+      footprint: absoluteFootprint,
     });
     const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
     this.commandHistory.execute(cmd);
   }
 }
 
-class AnomalyMarker extends BaseTool {
+export class AnomalyMarker extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
     const tile = this.grid.getTile(hex.q, hex.r);

@@ -24,6 +24,30 @@ export const ProjectContext = {
 // FileDiscovery (task-002)
 // ============================================================
 
+/**
+ * Parse a single .tres file, validating scriptClass and round-trip integrity.
+ * @param {string} name - Filename for logging
+ * @param {string} text - Raw .tres file content
+ * @param {string} expectedClass - Expected scriptClass value
+ * @returns {{ data: Object, raw: import('./tres-parser.js').TresFile } | null}
+ */
+function _parseTresFile(name, text, expectedClass) {
+  const raw = TresParser.parse(text);
+  if (raw.scriptClass !== expectedClass) {
+    console.warn(`FileDiscovery: "${name}" has scriptClass "${raw.scriptClass}", expected "${expectedClass}". Skipping.`);
+    return null;
+  }
+  const roundTrip = TresParser.serialize(raw);
+  if (roundTrip !== text) {
+    console.warn(`FileDiscovery: "${name}" round-trip MISMATCH.`);
+  }
+  const data = {};
+  for (const [key, tv] of raw.resourceFields) {
+    data[key] = tv.value;
+  }
+  return { data, raw };
+}
+
 export class FileDiscovery {
   /**
    * Navigate from root to a subdirectory path like 'data/maps'.
@@ -112,25 +136,10 @@ export class FileDiscovery {
       try {
         const file = await handle.getFile();
         const text = await file.text();
-        const raw = TresParser.parse(text);
-        if (raw.scriptClass !== 'ResourceDef') {
-          console.warn(`  Resource "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
-          continue;
-        }
-
-        // Round-trip validation
-        const roundTrip = TresParser.serialize(raw);
-        if (roundTrip !== text) {
-          console.warn(`  Resource "${name}" round-trip MISMATCH. Parser output differs from original.`);
-        }
-
-        // Build data object from resource fields
-        const data = {};
-        for (const [key, tv] of raw.resourceFields) {
-          data[key] = tv.value;
-        }
-        ProjectContext.files.resources.set(name, { handle, data, raw });
-        console.log(`  Resource "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+        const result = _parseTresFile(name, text, 'ResourceDef');
+        if (!result) continue;
+        ProjectContext.files.resources.set(name, { handle, data: result.data, raw: result.raw });
+        console.log(`  Resource "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
       } catch (err) {
         console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
       }
@@ -141,25 +150,10 @@ export class FileDiscovery {
       try {
         const file = await handle.getFile();
         const text = await file.text();
-        const raw = TresParser.parse(text);
-        if (raw.scriptClass !== 'BiomeData') {
-          console.warn(`  Biome "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
-          continue;
-        }
-
-        // Round-trip validation
-        const roundTrip = TresParser.serialize(raw);
-        if (roundTrip !== text) {
-          console.warn(`  Biome "${name}" round-trip MISMATCH. Parser output differs from original.`);
-        }
-
-        // Build data object from resource fields
-        const data = {};
-        for (const [key, tv] of raw.resourceFields) {
-          data[key] = tv.value;
-        }
-        ProjectContext.files.biomes.set(name, { handle, data, raw });
-        console.log(`  Biome "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+        const result = _parseTresFile(name, text, 'BiomeData');
+        if (!result) continue;
+        ProjectContext.files.biomes.set(name, { handle, data: result.data, raw: result.raw });
+        console.log(`  Biome "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
       } catch (err) {
         console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
       }
@@ -221,37 +215,15 @@ export class FileDiscovery {
         } else if (relPath.startsWith('data/resources/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
-          const raw = TresParser.parse(text);
-          if (raw.scriptClass !== 'ResourceDef') {
-            console.warn(`FileDiscovery: "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
-            continue;
-          }
-          const roundTrip = TresParser.serialize(raw);
-          if (roundTrip !== text) {
-            console.warn(`FileDiscovery: Round-trip mismatch for "${name}".`);
-          }
-          const data = {};
-          for (const [key, tv] of raw.resourceFields) {
-            data[key] = tv.value;
-          }
-          ProjectContext.files.resources.set(name, { handle: null, data, raw });
+          const result = _parseTresFile(name, text, 'ResourceDef');
+          if (!result) continue;
+          ProjectContext.files.resources.set(name, { handle: null, data: result.data, raw: result.raw });
         } else if (relPath.startsWith('data/biomes/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
-          const raw = TresParser.parse(text);
-          if (raw.scriptClass !== 'BiomeData') {
-            console.warn(`FileDiscovery: "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
-            continue;
-          }
-          const roundTrip = TresParser.serialize(raw);
-          if (roundTrip !== text) {
-            console.warn(`FileDiscovery: Round-trip mismatch for "${name}".`);
-          }
-          const data = {};
-          for (const [key, tv] of raw.resourceFields) {
-            data[key] = tv.value;
-          }
-          ProjectContext.files.biomes.set(name, { handle: null, data, raw });
+          const result = _parseTresFile(name, text, 'BiomeData');
+          if (!result) continue;
+          ProjectContext.files.biomes.set(name, { handle: null, data: result.data, raw: result.raw });
         }
       } catch (err) {
         const name = file.webkitRelativePath.split('/').pop();
@@ -270,14 +242,31 @@ export class FileDiscovery {
    * @returns {Promise<void>}
    */
   static async saveFile(dir, content, filename) {
-    const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + filename)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: content,
-    });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: resp.statusText }));
-      throw new Error(err.error || `Save failed: ${resp.status}`);
+    try {
+      const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: content,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(err.error || `Save failed: ${resp.status}`);
+      }
+    } catch (err) {
+      // Fallback: download via Blob when server is unavailable (e.g. network error)
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        const blob = new Blob([content], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        throw err;
+      }
     }
   }
 
@@ -321,21 +310,10 @@ export class FileDiscovery {
       try {
         const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.resources.dir + '/' + name)}`);
         const text = await resp.text();
-        const raw = TresParser.parse(text);
-        if (raw.scriptClass !== 'ResourceDef') {
-          console.warn(`  Resource "${name}" has scriptClass "${raw.scriptClass}", expected "ResourceDef". Skipping.`);
-          continue;
-        }
-        const roundTrip = TresParser.serialize(raw);
-        if (roundTrip !== text) {
-          console.warn(`  Resource "${name}" round-trip MISMATCH.`);
-        }
-        const data = {};
-        for (const [key, tv] of raw.resourceFields) {
-          data[key] = tv.value;
-        }
-        ProjectContext.files.resources.set(name, { handle: null, dir: manifest.resources.dir, data, raw });
-        console.log(`  Resource "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+        const result = _parseTresFile(name, text, 'ResourceDef');
+        if (!result) continue;
+        ProjectContext.files.resources.set(name, { handle: null, dir: manifest.resources.dir, data: result.data, raw: result.raw });
+        console.log(`  Resource "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
       } catch (err) {
         console.warn(`  Resource "${name}" FAILED: ${err.message}. Skipping.`);
       }
@@ -346,21 +324,10 @@ export class FileDiscovery {
       try {
         const resp = await fetch(`/api/file?path=${encodeURIComponent(manifest.biomes.dir + '/' + name)}`);
         const text = await resp.text();
-        const raw = TresParser.parse(text);
-        if (raw.scriptClass !== 'BiomeData') {
-          console.warn(`  Biome "${name}" has scriptClass "${raw.scriptClass}", expected "BiomeData". Skipping.`);
-          continue;
-        }
-        const roundTrip = TresParser.serialize(raw);
-        if (roundTrip !== text) {
-          console.warn(`  Biome "${name}" round-trip MISMATCH.`);
-        }
-        const data = {};
-        for (const [key, tv] of raw.resourceFields) {
-          data[key] = tv.value;
-        }
-        ProjectContext.files.biomes.set(name, { handle: null, dir: manifest.biomes.dir, data, raw });
-        console.log(`  Biome "${name}" loaded — scriptClass: ${raw.scriptClass}`);
+        const result = _parseTresFile(name, text, 'BiomeData');
+        if (!result) continue;
+        ProjectContext.files.biomes.set(name, { handle: null, dir: manifest.biomes.dir, data: result.data, raw: result.raw });
+        console.log(`  Biome "${name}" loaded — scriptClass: ${result.raw.scriptClass}`);
       } catch (err) {
         console.warn(`  Biome "${name}" FAILED: ${err.message}. Skipping.`);
       }

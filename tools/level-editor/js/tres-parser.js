@@ -56,8 +56,6 @@ export class TresParser {
 
     /** @type {'header'|'between_header_ext'|'ext_resources'|'between_ext_resource'|'resource'} */
     let section = 'header';
-    let sawBlankAfterHeader = false;
-    let sawBlankAfterExt = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -90,7 +88,6 @@ export class TresParser {
       // Between header and ext_resource / [resource] section
       if (section === 'between_header_ext') {
         if (line.trim() === '') {
-          sawBlankAfterHeader = true;
           continue;
         }
         if (line.startsWith('[ext_resource')) {

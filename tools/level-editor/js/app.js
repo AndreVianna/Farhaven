@@ -13,6 +13,7 @@ import { PropDetailPanel } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
+import { validateMap } from './validator.js';
 
 // ============================================================
 // Module-level state
@@ -168,6 +169,7 @@ keyboardManager.register('escape', mapOnly(() => selectTool(null)));
 keyboardManager.register('ctrl+z', () => commandHistory.undo());
 keyboardManager.register('ctrl+shift+z', () => commandHistory.redo());
 keyboardManager.register('ctrl+s', () => saveAll());
+keyboardManager.register('ctrl+n', () => newMap());
 
 // ============================================================
 // Wire DirtyTracker to CommandHistory
@@ -213,6 +215,26 @@ function updateUndoRedoButtons() {
 }
 
 // ============================================================
+// New Map (G3)
+// ============================================================
+
+/**
+ * Clear the grid and start a new map.
+ * @returns {void}
+ */
+function newMap() {
+  if (dirtyTracker.hasUnsavedChanges()) {
+    if (!confirm('Unsaved changes will be lost. Continue?')) return;
+  }
+  hexGrid.clear();
+  hexGrid.meta = { chapter_id: 'new', name: 'New Map', spawn: [0, 0] };
+  commandHistory.clear();
+  dirtyTracker.markAllClean();
+  if (hexCanvas) hexCanvas.requestRender();
+  setStatus('New map created.');
+}
+
+// ============================================================
 // Save Functions (task-005)
 // ============================================================
 
@@ -221,6 +243,15 @@ function updateUndoRedoButtons() {
  * @returns {Promise<void>}
  */
 async function saveAll() {
+  // Validate map before saving
+  const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
+  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  if (!validation.valid) {
+    showError('Validation: ' + validation.errors[0]);
+    return;
+  }
+
   const tabs = ['map', 'resources', 'biomes'];
   let hadError = false;
   for (const tab of tabs) {
