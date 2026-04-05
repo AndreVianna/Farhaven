@@ -375,8 +375,13 @@ function initializeAfterLoad() {
     const [mapName, mapEntry] = firstMap.value;
     const tileCount = mapEntry.data.tiles ? Object.keys(mapEntry.data.tiles).length : 0;
     console.log(`Loading map "${mapName}" into grid — ${tileCount} tiles.`);
-    loadMapIntoGrid(hexGrid, mapEntry.data);
-    console.log(`Grid loaded — ${hexGrid.tiles.size} tiles in HexGrid.`);
+    const loadResult = loadMapIntoGrid(hexGrid, mapEntry.data);
+    if (!loadResult.success) {
+      console.error(`Failed to load map "${mapName}": ${loadResult.error}`);
+      setStatus(`Error loading map: ${loadResult.error}`);
+    } else {
+      console.log(`Grid loaded — ${hexGrid.tiles.size} tiles in HexGrid.`);
+    }
   } else {
     console.warn('No maps found in ProjectContext. Grid will be empty.');
   }

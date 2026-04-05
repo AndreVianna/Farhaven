@@ -424,13 +424,13 @@ export class HexCanvas {
   // --- Sub-hex rendering ---
 
   /**
-   * Check if the active tool is a placement tool (resource or structure).
+   * Check if the active tool needs sub-hex resolution (placement or eraser).
    * @returns {boolean}
    */
   _isPlacementTool() {
     if (!this.toolManager) return false;
     const t = this.toolManager.activeToolType;
-    return t === 'resource' || t === 'structure' || t === 'anomaly';
+    return t === 'resource' || t === 'structure' || t === 'anomaly' || t === 'eraser';
   }
 
   /**
