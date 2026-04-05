@@ -2,7 +2,7 @@ extends Node3D
 
 ## GroundItemRenderer — single MultiMeshInstance3D for ground item loot markers.
 ## Signal-driven: subscribes to SurvivalSystem ground_item_dropped/picked_up.
-## Fog-aware: hidden if tile is HIDDEN, visible if REVEALED or VISIBLE.
+## Fog-aware: hidden if tile is HIDDEN, visible if VISIBLE.
 ## One draw call via single MultiMesh pool (~10 max instances).
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -121,7 +121,7 @@ func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 	match state:
 		_HexTile.FogState.HIDDEN:
 			_remove_marker(coords)
-		_HexTile.FogState.REVEALED, _HexTile.FogState.VISIBLE:
+		_HexTile.FogState.VISIBLE:
 			# Re-add marker if ground items exist on this tile
 			if _survival != null and not _tile_instances.has(coords):
 				var items: Array = _survival.get_ground_items_at(coords)

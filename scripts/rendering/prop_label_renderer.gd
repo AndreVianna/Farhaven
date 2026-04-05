@@ -144,7 +144,7 @@ func _on_entry_encountered(entry_id: StringName, _label: String) -> void:
 
 
 func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	if state == _HexTile.FogState.REVEALED or state == _HexTile.FogState.HIDDEN:
+	if state == _HexTile.FogState.HIDDEN:
 		_remove_all_labels_at(coords)
 
 

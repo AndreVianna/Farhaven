@@ -204,7 +204,7 @@ func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.Fog
 func test_respawn_ticks_when_revealed() -> void:
 	var rn := _make_resource(&"wood", &"", 0, 5.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.REVEALED)
+	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -260,7 +260,7 @@ func test_respawn_ticks_when_visible() -> void:
 func test_respawn_triggers_at_zero() -> void:
 	var rn := _make_resource(&"wood", &"", 0, 1.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.REVEALED)
+	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -317,7 +317,7 @@ func test_respawn_time_zero_never_enters_queue() -> void:
 func test_respawn_queue_handles_multiple_entries() -> void:
 	var rn1 := _make_resource(&"wood", &"", 0, 3.0)
 	rn1.max_amount = 2
-	var tile1 := _make_tile(Vector2i.ZERO, [rn1], _HexTile.FogState.REVEALED)
+	var tile1 := _make_tile(Vector2i.ZERO, [rn1], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile1
 
 	var rn2 := _make_resource(&"stone", &"", 0, 1.0)

@@ -11,14 +11,12 @@ extends Node3D
 ##   - Different elevation = each hex owns its own corner vertices → hard cliff edge.
 ##   - Y position = elevation * ELEVATION_STEP.
 ##   - HIDDEN tiles: excluded from mesh (no geometry).
-##   - REVEALED tiles: vertex colors darkened (* FOG_REVEALED_FACTOR).
-##   - VISIBLE tiles: full vertex colors.
+##   - VISIBLE tiles: full vertex colors. Darkness handled by shader.
 ##   - Highlights: vertex color override, cleared on clear_highlights().
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 const ELEVATION_STEP: float = 0.5
-const FOG_REVEALED_FACTOR: float = 0.4
 
 ## BiomeData .tres paths indexed by HexTile.Biome enum value.
 const BIOME_PATHS: Array[String] = [
@@ -135,8 +133,6 @@ func _rebuild_mesh() -> void:
 		if data.fog_state == _HexTile.FogState.HIDDEN:
 			continue  # Hidden tiles produce no geometry.
 		var c: Color = data.base_color
-		if data.fog_state == _HexTile.FogState.REVEALED:
-			c = Color(c.r * FOG_REVEALED_FACTOR, c.g * FOG_REVEALED_FACTOR, c.b * FOG_REVEALED_FACTOR, c.a)
 		if (data.highlight as Color).a > 0.0:
 			c = data.highlight
 		tile_colors[coords] = c

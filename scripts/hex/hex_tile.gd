@@ -13,7 +13,6 @@ enum Biome {
 
 enum FogState {
 	HIDDEN,
-	REVEALED,
 	VISIBLE,
 }
 

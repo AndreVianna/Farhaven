@@ -203,14 +203,14 @@ func test_label_update_on_entry_encountered() -> void:
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
 
 
-func test_labels_removed_when_tile_becomes_revealed() -> void:
+func test_labels_not_removed_when_tile_visible() -> void:
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
 	assert_int(_label_renderer.get_label_count()).is_equal(1)
 
-	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_label_renderer.get_label_count()).is_equal(0)
+	assert_int(_label_renderer.get_label_count()).is_equal(1)
 
 
 func test_labels_removed_when_tile_becomes_hidden() -> void:

@@ -125,14 +125,6 @@ func test_visible_tile_adds_resource_on_visibility_changed() -> void:
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
-func test_revealed_tile_adds_resource_dimmed() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone")
-
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.REVEALED)
-
-	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
-
-
 func test_hidden_tile_removes_resources() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood")
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
@@ -161,14 +153,6 @@ func test_map_generated_populates_visible_tiles() -> void:
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
 	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(0)
-
-
-func test_map_generated_populates_revealed_tiles() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"fiber", 3, 0, _HexTile.FogState.REVEALED)
-
-	_grid.map_generated.emit()
-
-	assert_int(_renderer.get_pool_visible_count(&"fiber")).is_equal(1)
 
 
 # ===========================================
@@ -340,20 +324,9 @@ func test_draw_calls_resource_pools() -> void:
 # Visibility transition tests
 # ===========================================
 
-func test_visible_to_revealed_keeps_instances() -> void:
+func test_visible_to_hidden_removes_instances() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-
-	# Transition to REVEALED — should keep instance (dimmed)
-	_grid._tiles[Vector2i(0, 0)].fog_state = _HexTile.FogState.REVEALED
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.REVEALED)
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-
-
-func test_revealed_to_hidden_removes_instances() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood", 3, 0, _HexTile.FogState.REVEALED)
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.REVEALED)
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)

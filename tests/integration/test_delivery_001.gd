@@ -11,7 +11,7 @@ class_name TestDelivery001
 ##   - Joystick overlay appears at touch origin and disappears on release
 ##   - Floating text rises and fades smoothly (tween quality)
 ##   - Day counter warm color palette renders correctly
-##   - HIDDEN tiles invisible, REVEALED dimmed, VISIBLE full brightness
+##   - HIDDEN tiles invisible, VISIBLE full brightness (darkness via shader)
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")

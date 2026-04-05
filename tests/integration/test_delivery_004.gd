@@ -217,11 +217,11 @@ func test_visibility_night_radius_1_neighbors_visible() -> void:
 			).is_equal(_HexTile.FogState.VISIBLE)
 
 
-func test_visibility_night_radius_2_not_visible() -> void:
+func test_visibility_night_radius_2_stays_visible() -> void:
 	_build_small_grid()
 	_dnc._player_tile = Vector2i.ZERO
 	_simulate(120.0)  # → NIGHT (radius 1)
-	# Tiles at exactly distance 2 should NOT be VISIBLE (radius is 1 during NIGHT).
+	# Ring-2 tiles promoted during DAY stay VISIBLE — darkness handled by shader.
 	var ring2_tiles: Array[Vector2i] = _HexMath.get_tiles_in_range(Vector2i.ZERO, 2)
 	var ring1_tiles: Array[Vector2i] = _HexMath.get_tiles_in_range(Vector2i.ZERO, 1)
 	for coords: Vector2i in ring2_tiles:
@@ -229,8 +229,8 @@ func test_visibility_night_radius_2_not_visible() -> void:
 			continue
 		if HexGrid._tiles.has(coords):
 			assert_int(HexGrid._tiles[coords].fog_state).override_failure_message(
-				"Tile %s at distance 2 must NOT be VISIBLE during NIGHT" % str(coords)
-			).is_not_equal(_HexTile.FogState.VISIBLE)
+				"Tile %s at distance 2 should stay VISIBLE (darkness via shader)" % str(coords)
+			).is_equal(_HexTile.FogState.VISIBLE)
 
 
 func test_visibility_day_radius_2_neighbors_visible() -> void:

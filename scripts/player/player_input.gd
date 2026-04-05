@@ -138,7 +138,7 @@ func _emit_tap() -> void:
 	var tile: Resource = _grid.get_tile(coords)
 	if tile == null:
 		return
-	# Only tap on REVEALED or VISIBLE tiles.
+	# Only tap on VISIBLE tiles.
 	if tile.fog_state == _HexTile.FogState.HIDDEN:
 		return
 	tap_tile.emit(coords)

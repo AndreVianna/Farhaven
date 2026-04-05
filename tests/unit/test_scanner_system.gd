@@ -486,10 +486,10 @@ func test_passive_id_visibility_changed_to_visible_triggers_check() -> void:
 	assert_int(_unknown_count).is_equal(1)
 
 
-func test_passive_id_visibility_changed_to_revealed_does_not_trigger() -> void:
+func test_passive_id_visibility_changed_to_hidden_does_not_trigger() -> void:
 	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_resource(&"wood")
 
-	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.REVEALED)
+	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.HIDDEN)
 	assert_int(_unknown_count).is_equal(0)
 
 

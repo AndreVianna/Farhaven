@@ -795,7 +795,7 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 
 
 # ===========================================================================
-# Prop removed on tile visibility REVEALED/HIDDEN
+# Prop removed on tile visibility HIDDEN
 # ===========================================================================
 
 func test_resource_removed_on_tile_hidden() -> void:

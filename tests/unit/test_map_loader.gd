@@ -82,15 +82,14 @@ func test_anomaly_exists() -> void:
 	assert_bool(found).override_failure_message("No anomaly tile found").is_true()
 
 
-# --- Fog initialized: spawn + ring 1 are VISIBLE ---
+# --- Fog initialized: all tiles VISIBLE ---
 
-func test_fog_initialized_spawn_visible() -> void:
+func test_fog_initialized_all_visible() -> void:
 	_load_ch1()
-	for coords in _HexMath.get_tiles_in_range(Vector2i.ZERO, 1):
-		if _grid._tiles.has(coords):
-			assert_int(_grid._tiles[coords].fog_state).override_failure_message(
-				"Tile %s should be VISIBLE after load" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
+	for c in _grid._tiles:
+		assert_int(_grid._tiles[c].fog_state).override_failure_message(
+			"Tile %s should be VISIBLE after load" % str(c)
+		).is_equal(_HexTile.FogState.VISIBLE)
 
 
 # --- get_traversal: WALK for elevation diff 0 ---

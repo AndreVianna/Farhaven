@@ -174,8 +174,8 @@ func test_hidden_tile_no_marker_on_drop() -> void:
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
 
-func test_revealed_tile_shows_marker() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(_HexTile.FogState.REVEALED)
+func test_visible_tile_shows_marker() -> void:
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(_HexTile.FogState.VISIBLE)
 	_survival.add_item(Vector2i(1, 0), &"berries", 5)
 
 	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5)
@@ -205,13 +205,13 @@ func test_visibility_visible_restores_marker() -> void:
 	assert_int(_renderer.get_visible_count()).is_equal(1)
 
 
-func test_visibility_revealed_restores_marker() -> void:
+func test_visibility_visible_restores_marker_from_hidden() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(_HexTile.FogState.HIDDEN)
 	_survival.add_item(Vector2i(1, 0), &"berries", 5)
 	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5)
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
 	assert_int(_renderer.get_visible_count()).is_equal(1)
 

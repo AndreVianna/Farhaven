@@ -105,24 +105,15 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 
 # --- Fog of War ---
 
-## Demote all VISIBLE→REVEALED, then promote tiles within each source radius
-## to VISIBLE. Emits tile_revealed for HIDDEN→non-HIDDEN and
-## tile_visibility_changed for all fog state changes.
+## Promote HIDDEN tiles within each source radius to VISIBLE.
+## Emits tile_revealed and tile_visibility_changed for HIDDEN→VISIBLE transitions.
 ## sources: Array of {coords: Vector2i, radius: int}
 func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]:
 	var changed: Array[Vector2i] = []
 	var VISIBLE: int = _HexTile.FogState.VISIBLE
-	var REVEALED: int = _HexTile.FogState.REVEALED
 	var HIDDEN: int = _HexTile.FogState.HIDDEN
 
-	# Demote VISIBLE → REVEALED
-	for coords in _tiles:
-		var tile: Resource = _tiles[coords]
-		if tile.fog_state == VISIBLE:
-			tile.fog_state = REVEALED
-			changed.append(coords)
-
-	# Promote tiles within each source radius
+	# Promote HIDDEN tiles within each source radius to VISIBLE
 	for source in sources:
 		var center: Vector2i = source["coords"]
 		var radius: int = source["radius"]
@@ -131,13 +122,10 @@ func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]:
 			var tile: Resource = _tiles.get(coords, null)
 			if tile == null:
 				continue
-			var was_hidden: bool = tile.fog_state == HIDDEN
-			if tile.fog_state != VISIBLE:
+			if tile.fog_state == HIDDEN:
 				tile.fog_state = VISIBLE
-				if was_hidden:
-					tile_revealed.emit(coords)
-				if not coords in changed:
-					changed.append(coords)
+				tile_revealed.emit(coords)
+				changed.append(coords)
 
 	# Emit visibility changed for all affected tiles
 	for coords in changed:
