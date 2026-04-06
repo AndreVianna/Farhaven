@@ -39,6 +39,7 @@ function isSubHexOccupied(tile, sq, sr) {
 }
 
 export const ToolType = {
+  SELECT: 'select',
   BIOME: 'biome',
   ELEVATION: 'elevation',
   RESOURCE: 'resource',
@@ -420,6 +421,9 @@ export class ToolManager {
     }
 
     switch (toolType) {
+      case ToolType.SELECT:
+        this.activeTool = null;
+        break;
       case ToolType.BIOME:
         this.activeTool = new BiomeBrush(this.grid, this.commandHistory, this);
         break;

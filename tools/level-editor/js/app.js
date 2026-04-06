@@ -36,6 +36,9 @@ const camera = { offsetX: 0, offsetY: 0, zoom: 1.0 };
 /** @type {Map<string, string>} Biome name -> CSS color string, populated from .tres data */
 const biomeColorMap = new Map();
 
+/** @type {Map<string, string>} Resource type -> CSS color string, from placeholder_color */
+const resourceColorMap = new Map();
+
 /** @type {CommandHistory} */
 const commandHistory = new CommandHistory();
 
@@ -159,6 +162,7 @@ function selectTool(toolName) {
 const mapOnly = (fn) => () => { if (activeTab !== 'map') return; fn(); };
 
 // Register tool shortcuts (map-only)
+keyboardManager.register('v', mapOnly(() => selectTool('select')));
 keyboardManager.register('b', mapOnly(() => selectTool('biome')));
 keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
 keyboardManager.register('r', mapOnly(() => selectTool('resource')));
@@ -168,7 +172,7 @@ keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
 keyboardManager.register('f', mapOnly(() => selectTool('flood_fill')));
-keyboardManager.register('escape', mapOnly(() => selectTool(null)));
+keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
 keyboardManager.register('ctrl+z', () => commandHistory.undo());
@@ -382,6 +386,24 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
+  // Build resource color map from loaded .tres data
+  resourceColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.resources) {
+    const colorField = entry.raw.resourceFields.get('placeholder_color');
+    if (colorField && colorField.type === 'color') {
+      const resourceName = filename.replace('.tres', '');
+      const c = colorField.value;
+      const r = Math.round(c.r * 255);
+      const g = Math.round(c.g * 255);
+      const b = Math.round(c.b * 255);
+      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      console.log(`  Resource color: "${resourceName}" -> rgb(${r},${g},${b})`);
+    } else {
+      console.warn(`  Resource "${filename}" has no valid placeholder_color field.`);
+    }
+  }
+  console.log(`Resource color map built — ${resourceColorMap.size} entries.`);
+
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
   if (!firstMap.done) {
@@ -443,7 +465,7 @@ function initializeAfterLoad() {
 {
   const canvasEl = document.getElementById('hex-canvas');
   if (canvasEl && typeof canvasEl.getContext === 'function') {
-    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap);
+    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, resourceColorMap);
     hexCanvas.toolManager = toolManager;
     hexCanvas.init();
   }
@@ -485,6 +507,7 @@ let activeMapFilename = null;
  * @type {Array<{type: string, label: string, shortcut: string}>}
  */
 const TOOL_DEFS = [
+  { type: 'select',     label: 'Select',     shortcut: 'V' },
   { type: 'biome',      label: 'Biome',      shortcut: 'B' },
   { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
   { type: 'resource',   label: 'Resource',    shortcut: 'R' },

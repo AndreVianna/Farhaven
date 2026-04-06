@@ -127,12 +127,21 @@ export class HexInspector {
       biomeCounts.set(biome, (biomeCounts.get(biome) || 0) + 1);
     }
 
+    // Map identity
+    if (this.grid.meta.chapter_id) {
+      this.mapStatsEl.appendChild(this._createStatRow('Map ID', this.grid.meta.chapter_id));
+    }
+    if (this.grid.meta.name) {
+      this.mapStatsEl.appendChild(this._createStatRow('Name', this.grid.meta.name));
+    }
     // Total hexes
     this.mapStatsEl.appendChild(this._createStatRow('Total hexes', String(totalHexes)));
-    // Q range
-    this.mapStatsEl.appendChild(this._createStatRow('Q range', `${minQ} to ${maxQ}`));
-    // R range
-    this.mapStatsEl.appendChild(this._createStatRow('R range', `${minR} to ${maxR}`));
+    // Q range with distance in meters (each hex = 6m)
+    const qSpan = (maxQ - minQ + 1) * 6;
+    this.mapStatsEl.appendChild(this._createStatRow('Q range', `${minQ} to ${maxQ} (${qSpan}m)`));
+    // R range with distance in meters
+    const rSpan = (maxR - minR + 1) * 6;
+    this.mapStatsEl.appendChild(this._createStatRow('R range', `${minR} to ${maxR} (${rSpan}m)`));
 
     // Biome distribution header
     const biomeHeader = document.createElement('div');

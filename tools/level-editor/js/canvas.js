@@ -47,13 +47,15 @@ export class HexCanvas {
    * @param {{ offsetX: number, offsetY: number, zoom: number }} camera
    * @param {Map<string, string>} biomeColorMap
    */
-  constructor(canvasElement, grid, camera, biomeColorMap) {
+  constructor(canvasElement, grid, camera, biomeColorMap, resourceColorMap) {
     this.canvas = canvasElement;
     this.ctx = canvasElement && typeof canvasElement.getContext === 'function'
       ? canvasElement.getContext('2d') : null;
     this.grid = grid;
     this.camera = camera;
     this.biomeColorMap = biomeColorMap;
+    /** @type {Map<string, string>} Resource type -> CSS color string */
+    this.resourceColorMap = resourceColorMap || new Map();
     this.selectedHex = null;
     this.hoveredHex = null;
     /** @type {Set<string>} Ghost hex positions (recomputed each render) */
@@ -436,9 +438,15 @@ export class HexCanvas {
     if (!tile.props) return;
 
     for (const prop of tile.props) {
-      const color = CATEGORY_COLORS[prop.category]
-        ? CATEGORY_COLORS[prop.category].fill
-        : CATEGORY_COLORS.resource.fill;
+      // Use per-resource color from resourceColorMap when available, else fall back to category color
+      let color;
+      if (prop.category === 'resource' && this.resourceColorMap.has(prop.type)) {
+        color = this.resourceColorMap.get(prop.type);
+      } else {
+        color = CATEGORY_COLORS[prop.category]
+          ? CATEGORY_COLORS[prop.category].fill
+          : CATEGORY_COLORS.resource.fill;
+      }
 
       // For structures with footprint, draw all footprint hexes
       if (prop.footprint) {
