@@ -15,6 +15,7 @@ import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
 import { validateMap } from './validator.js';
 import { renderResourceList } from './resource-editor.js';
+import { renderBiomeList } from './biome-editor.js';
 
 // ============================================================
 // Module-level state
@@ -406,11 +407,18 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
-  // Render resource list in the Resources tab (task-012)
+  // Render resource list in the Resources tab (task-012/013)
   const resourceTabEl = document.getElementById('tab-resources');
   if (resourceTabEl) {
-    renderResourceList(resourceTabEl);
+    renderResourceList(resourceTabEl, { commandHistory });
     console.log('Resource list rendered.');
+  }
+
+  // Render biome list in the Biomes tab (task-014)
+  const biomeTabEl = document.getElementById('tab-biomes');
+  if (biomeTabEl) {
+    renderBiomeList(biomeTabEl);
+    console.log('Biome list rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)
