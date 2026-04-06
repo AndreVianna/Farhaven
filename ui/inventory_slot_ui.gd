@@ -112,11 +112,18 @@ func _apply_occupied_style() -> void:
 	_bg_panel.add_theme_stylebox_override("panel", style)
 
 
+var _last_tap_frame: int = -1
+
 func _gui_input(event: InputEvent) -> void:
+	if _type == &"" or not _is_consumable:
+		return
+	var tapped: bool = false
 	if event is InputEventScreenTouch and event.pressed:
-		pass  # Handled by emulated mouse event below
+		tapped = true
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _type != &"" and _is_consumable:
-			play_highlight()
-			slot_tapped.emit(_type)
-			accept_event()
+		tapped = true
+	if tapped and Engine.get_process_frames() != _last_tap_frame:
+		_last_tap_frame = Engine.get_process_frames()
+		play_highlight()
+		slot_tapped.emit(_type)
+		accept_event()

@@ -102,11 +102,11 @@ func load_map(path: String) -> bool:
 				prop.respawn_time = float(pd.get("respawn_time", 0.0))
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
-				# Resource props: default remaining/max_amount from biome data
-				if prop.category == _Prop.Category.RESOURCE and not pd.has("remaining"):
+				# Resource props: default remaining/max_amount independently from biome data
+				if prop.category == _Prop.Category.RESOURCE:
 					var defaults: Array = _get_resource_defaults(prop.type, biome_int)
-					prop.remaining = defaults[0]
-					prop.max_amount = defaults[1]
+					prop.remaining = int(pd.get("remaining", defaults[0]))
+					prop.max_amount = int(pd.get("max_amount", defaults[1]))
 				else:
 					prop.remaining = int(pd.get("remaining", 0))
 					prop.max_amount = int(pd.get("max_amount", 0))
