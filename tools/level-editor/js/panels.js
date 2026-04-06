@@ -171,12 +171,18 @@ export class PropDetailPanel {
     const row = document.createElement('div');
     row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
 
-    // Type label with category badge
+    // Type label with category badge (safe DOM construction — no innerHTML)
     const typeLabel = document.createElement('div');
-    const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.resource;
-    const categoryColor = catColors.badge;
-    typeLabel.innerHTML = `<span style="color:${categoryColor};font-weight:600;font-size:12px;">${prop.type}</span> <span style="color:var(--text-secondary);font-size:10px;">[${prop.category}]</span>`;
     typeLabel.style.cssText = 'margin-bottom:4px;';
+    const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.resource;
+    const typeSpan = document.createElement('span');
+    typeSpan.style.cssText = `color:${catColors.badge};font-weight:600;font-size:12px;`;
+    typeSpan.textContent = String(prop.type);
+    const categorySpan = document.createElement('span');
+    categorySpan.style.cssText = 'color:var(--text-secondary);font-size:10px;';
+    categorySpan.textContent = ` [${String(prop.category)}]`;
+    typeLabel.appendChild(typeSpan);
+    typeLabel.appendChild(categorySpan);
     row.appendChild(typeLabel);
 
     // Build fields based on category

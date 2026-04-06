@@ -203,11 +203,12 @@ export class FloodFillTool extends BaseTool {
 
     const visited = new Set();
     const queue = [{ q: hex.q, r: hex.r }];
+    let head = 0;
     const commands = [];
     const SAFETY_LIMIT = 10000;
 
-    while (queue.length > 0 && commands.length < SAFETY_LIMIT) {
-      const current = queue.shift();
+    while (head < queue.length && commands.length < SAFETY_LIMIT) {
+      const current = queue[head++];
       const key = `${current.q},${current.r}`;
       if (visited.has(key)) continue;
       visited.add(key);
@@ -305,8 +306,11 @@ export class ResourcePlacer extends BaseTool {
 export class StructurePlacer extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
-    const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
+    let tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) {
+      tile = createTileData('');
+      this.grid.setTile(hex.q, hex.r, tile);
+    }
 
     const structureType = this.toolManager.activeValue || null;
     if (!structureType) return;
@@ -336,15 +340,19 @@ export class StructurePlacer extends BaseTool {
 export class AnomalyMarker extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
-    const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
+    let tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile) {
+      tile = createTileData('');
+      this.grid.setTile(hex.q, hex.r, tile);
+    }
 
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
+    const tileRef = tile; // capture for async callback
 
     showInlineModal('Enter anomaly ID:', '', (value) => {
       if (value === null || value.trim() === '') return;
-      if (isSubHexOccupied(tile, sq, sr)) return;
+      if (isSubHexOccupied(tileRef, sq, sr)) return;
       const prop = createProp(value.trim(), sq, sr, 'anomaly');
       const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
       this.commandHistory.execute(cmd);

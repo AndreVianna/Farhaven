@@ -137,7 +137,7 @@ toolManager.onStatus = (msg) => setStatus(msg);
  * @returns {void}
  */
 function selectTool(toolName) {
-  toolManager.setTool(toolName);
+  toolManager.setTool(toolName, toolManager.activeValue);
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
   }

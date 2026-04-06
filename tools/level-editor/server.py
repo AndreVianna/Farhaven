@@ -131,7 +131,7 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
-    server = http.server.HTTPServer(('', port), EditorHandler)
+    server = http.server.HTTPServer(('127.0.0.1', port), EditorHandler)
     print(f"Farhaven Level Editor running at http://localhost:{port}")
     print(f"Project root: {PROJECT_ROOT}")
     try:

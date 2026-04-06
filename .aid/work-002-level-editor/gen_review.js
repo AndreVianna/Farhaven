@@ -1,1 +1,0 @@
-const fs = require("fs"); const c = `PLACEHOLDER`; fs.writeFileSync("P:/Projects/Farhaven/.aid/work-002-level-editor/REVIEW.md", c); console.log("done");
