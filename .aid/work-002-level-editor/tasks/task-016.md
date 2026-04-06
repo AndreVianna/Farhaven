@@ -2,9 +2,9 @@
 
 **Type:** TEST
 
-**Source:** feature-005-resource-editor, feature-006-biome-editor -> delivery-003
+**Source:** feature-003-partial (tool selector, map list), feature-005-resource-editor, feature-006-biome-editor -> delivery-003
 
-**Depends on:** task-013, task-015
+**Depends on:** task-012b, task-013, task-015
 
 **Scope:**
 - Manual integration testing of the complete delivery-003 feature set
@@ -29,6 +29,11 @@
 **Acceptance Criteria:**
 - [ ] All acceptance criteria from feature-005 SPEC verified (round-trip, CRUD, delete validation, import validation)
 - [ ] All acceptance criteria from feature-006 SPEC verified (round-trip, live preview, resource_table, delete validation, import validation)
+- [ ] Tool selector sidebar: clicking palette entries activates correct tool with correct value
+- [ ] Biome palette swatches match loaded biome colors
+- [ ] Resource/structure palettes populated from loaded data
+- [ ] Map list dropdown works, switching maps loads correctly with unsaved changes prompt
+- [ ] Painting workflow end-to-end: select biome from palette → paint hexes → see correct colors
 - [ ] Undo/redo works correctly for all resource and biome commands
 - [ ] Live biome color preview updates canvas correctly
 - [ ] Dirty indicators appear on resource/biome edits and clear on save
