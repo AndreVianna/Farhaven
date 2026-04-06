@@ -26,10 +26,12 @@ var facing_direction: Vector2 = Vector2.ZERO
 var inventory: _Inventory = _Inventory.new()
 
 var _grid: Node  # HexGrid reference (autoload or test substitute)
+var _camera: Node  # Camera3D sibling (for camera-relative movement)
 var _joystick_dir: Vector2 = Vector2.ZERO
 var _joystick_magnitude: float = 0.0
 var _buffered_dir: Vector2 = Vector2.ZERO
 var _buffered_magnitude: float = 0.0
+var _model: Node3D  # PlayerModel child
 var _jump_tween: Tween
 var _snap_tween: Tween
 var _was_moving: bool = false
@@ -40,6 +42,12 @@ func _ready() -> void:
 		_grid = HexGrid
 	_grid.map_generated.connect(_on_map_generated)
 	_connect_player_input()
+	_model = get_node_or_null("PlayerModel")
+	# Camera is a sibling under World (not a child of Player).
+	if _camera == null:
+		var world: Node = get_parent()
+		if world != null:
+			_camera = world.get_node_or_null("Camera3D")
 
 
 func get_inventory() -> _Inventory:
@@ -56,6 +64,12 @@ func _connect_player_input() -> void:
 		pi.joystick_moved.connect(_on_joystick_move)
 	if pi.has_signal("joystick_released"):
 		pi.joystick_released.connect(_on_joystick_stop)
+
+
+func _update_model_rotation() -> void:
+	if _model == null or facing_direction.is_zero_approx():
+		return
+	_model.rotation.y = atan2(facing_direction.x, facing_direction.y)
 
 
 func _on_map_generated() -> void:
@@ -135,7 +149,12 @@ func _process_walking(delta: float) -> void:
 			_was_moving = false
 		return
 
-	facing_direction = _joystick_dir.normalized()
+	# Rotate joystick direction by camera yaw for camera-relative movement.
+	var raw_dir: Vector2 = _joystick_dir.normalized()
+	if _camera != null and _camera.has_method("get_yaw"):
+		raw_dir = raw_dir.rotated(-_camera.get_yaw())
+	facing_direction = raw_dir
+	_update_model_rotation()
 	var velocity_2d: Vector2 = facing_direction * move_speed * _joystick_magnitude
 
 	# Track movement drain start/stop

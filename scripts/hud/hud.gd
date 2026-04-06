@@ -3,8 +3,8 @@ extends Control
 
 const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
 
-@onready var _stat_bars := $TopBar/StatBars
-@onready var _day_counter := $TopBar/DayCounter
+@onready var _stat_bars := $StatBars
+@onready var _day_counter := $DayCounter
 @onready var _floating_text := $FloatingTextContainer
 @onready var _notifications := $NotificationContainer
 @onready var _placement_label: Label = $PlacementLabel

@@ -197,6 +197,34 @@ func _rebuild_mesh() -> void:
 		var elevation_y: float = float(tile.elevation) * ELEVATION_STEP
 		var center_color: Color = tile_colors[coords]
 
+		# Compute per-corner Y for slope interpolation.
+		# Each corner is influenced by the two edges it belongs to.
+		# Edge d spans corners d and (d+1)%6, neighbor = DIRECTIONS[d].
+		var corner_slope_sums: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+		var corner_slope_counts: Array[int] = [0, 0, 0, 0, 0, 0]
+		for d: int in range(6):
+			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
+			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+			if n_tile == null:
+				continue
+			var diff: int = absi(tile.elevation - n_tile.elevation)
+			if diff >= 1 and diff <= 3:
+				var n_y: float = float(n_tile.elevation) * ELEVATION_STEP
+				var slope_y: float = lerpf(elevation_y, n_y, 0.5)
+				# Corner d and corner (d+1)%6 both touch this edge.
+				corner_slope_sums[d] += slope_y
+				corner_slope_counts[d] += 1
+				var next: int = (d + 1) % 6
+				corner_slope_sums[next] += slope_y
+				corner_slope_counts[next] += 1
+
+		var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+		for ci: int in range(6):
+			if corner_slope_counts[ci] == 0:
+				corner_y[ci] = elevation_y
+			else:
+				corner_y[ci] = corner_slope_sums[ci] / float(corner_slope_counts[ci])
+
 		for i: int in range(6):
 			var angle_i: float = deg_to_rad(60.0 * float(i))
 			var angle_j: float = deg_to_rad(60.0 * float((i + 1) % 6))
@@ -219,7 +247,11 @@ func _rebuild_mesh() -> void:
 			var color_i: Color = corner_colors.get(key_i, center_color)
 			var color_j: Color = corner_colors.get(key_j, center_color)
 
-			# Inner triangle: center → inner_i → inner_j (pure tile color)
+			# Outer corner Y: sloped or flat depending on neighbor elevation
+			var cy_i: float = corner_y[i]
+			var cy_j: float = corner_y[(i + 1) % 6]
+
+			# Inner triangle: center → inner_i → inner_j (pure tile color, flat)
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
 			st.add_vertex(Vector3(cx, elevation_y, cz))
@@ -233,6 +265,7 @@ func _rebuild_mesh() -> void:
 			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
 
 			# Outer quad: inner_i → corner_i → corner_j → inner_j (transition band)
+			# Corner vertices use sloped Y; inner ring stays at tile elevation.
 			# Triangle A: inner_i → corner_i → inner_j
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
@@ -240,7 +273,7 @@ func _rebuild_mesh() -> void:
 
 			st.set_normal(Vector3.UP)
 			st.set_color(color_i)
-			st.add_vertex(Vector3(ci_x, elevation_y, ci_z))
+			st.add_vertex(Vector3(ci_x, cy_i, ci_z))
 
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
@@ -249,18 +282,18 @@ func _rebuild_mesh() -> void:
 			# Triangle B: corner_i → corner_j → inner_j
 			st.set_normal(Vector3.UP)
 			st.set_color(color_i)
-			st.add_vertex(Vector3(ci_x, elevation_y, ci_z))
+			st.add_vertex(Vector3(ci_x, cy_i, ci_z))
 
 			st.set_normal(Vector3.UP)
 			st.set_color(color_j)
-			st.add_vertex(Vector3(cj_x, elevation_y, cj_z))
+			st.add_vertex(Vector3(cj_x, cy_j, cj_z))
 
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
 			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
 
-	# Step 5: Generate cliff faces between tiles at different elevations.
-	# Only process from the HIGHER tile on each edge to avoid duplicate quads.
+	# Step 5: Generate cliff faces ONLY for elevation diff >= 4 (BLOCKED).
+	# Diff 1-3 uses slopes (corner Y interpolation above). No cliff face needed.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
@@ -274,7 +307,11 @@ func _rebuild_mesh() -> void:
 			if neighbor_tile == null:
 				continue
 			if neighbor_tile.elevation >= tile.elevation:
-				continue  # Same or higher elevation: skip (or let the higher tile generate it).
+				continue
+			# Only generate cliff face for large elevation differences (BLOCKED traversal).
+			var diff: int = tile.elevation - neighbor_tile.elevation
+			if diff < 4:
+				continue
 
 			var low_y: float = float(neighbor_tile.elevation) * ELEVATION_STEP
 			var cliff_color: Color = tile_colors[coords] * 0.6
