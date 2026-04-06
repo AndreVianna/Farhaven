@@ -105,10 +105,9 @@ var _torch_positions: Array[Dictionary] = []
 # Each entry: { "coords": Vector2i, "sub_hex": Vector2i }
 ```
 
-Maintained by DayNightCycle. Updated on `prop_placed`/`prop_removed` with
-`category == &"structure"` and `type == &"torch"`. Only used as visibility sources
-during NIGHT. Sub-hex position determines the torch's world-space origin for
-visibility radius calculations.
+Maintained by DayNightCycle. Updated on `HexGrid.structure_placed`/`structure_destroyed`
+signals with `structure_type == &"torch"`. Only used as visibility sources
+during NIGHT.
 
 #### refresh_visibility API (feature-001)
 
@@ -120,12 +119,15 @@ DayNightCycle owns all calls to `HexGrid.refresh_visibility(sources)`:
 func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]
 ```
 
-**Algorithm (single pass):**
-1. Demote all VISIBLE → REVEALED
-2. Promote per source within radius → VISIBLE
-3. HIDDEN → VISIBLE emits `tile_revealed`
-4. Any fog change emits `tile_visibility_changed`
-5. Return newly revealed tiles
+**Algorithm (simplified — no REVEALED state):**
+1. Promote HIDDEN tiles within source radius → VISIBLE
+2. HIDDEN → VISIBLE emits `tile_revealed`
+3. Any fog change emits `tile_visibility_changed`
+4. Return newly revealed tiles
+
+**Note:** Night/day darkness is handled by the hex shader's `darkness` uniform,
+not by fog state. All tiles start VISIBLE. The shader applies distance-based
+lantern falloff at night (full brightness at player, dimming with distance).
 
 #### Signals
 
