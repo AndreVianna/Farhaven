@@ -180,10 +180,10 @@ func test_player_tile_initially_zero() -> void:
 
 func test_advance_phase_no_crash_without_lighting() -> void:
 	# DayNightCycle advances phases without lighting registered — must not crash
-	_dnc._process(105.0 / 20.0)  # DAY → DUSK  # TEMP: accounts for 20x speed multiplier
+	_dnc._process(105.0)  # DAY → DUSK
 	assert_int(_dnc.current_phase).is_equal(_DayNightCycle.TimePhase.DUSK)
 
 
 func test_full_cycle_no_crash_without_lighting() -> void:
-	_dnc._process(240.0 / 20.0)  # TEMP: accounts for 20x speed multiplier
+	_dnc._process(240.0)
 	assert_int(_dnc.current_phase).is_equal(_DayNightCycle.TimePhase.DAY)

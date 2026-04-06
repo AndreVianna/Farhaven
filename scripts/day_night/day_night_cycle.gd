@@ -89,7 +89,7 @@ func _ready() -> void:
 	HexGrid.structure_destroyed.connect(_on_structure_destroyed)
 
 
-const TIME_SCALE: float = 20.0  # TEMP: 20x speed for testing (set to 1.0 for release)
+const TIME_SCALE: float = 1.0  # Set > 1.0 for timelapse testing (e.g. 20.0)
 
 func _process(delta: float) -> void:
 	phase_elapsed += delta * TIME_SCALE

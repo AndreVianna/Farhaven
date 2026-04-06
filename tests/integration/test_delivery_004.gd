@@ -45,7 +45,7 @@ func after_test() -> void:
 # --- Helpers ---
 
 func _simulate(delta: float) -> void:
-	_dnc._process(delta / 20.0)  # TEMP: accounts for 20x speed multiplier
+	_dnc._process(delta)
 
 
 func _cleanup_save_file() -> void:
@@ -361,7 +361,7 @@ func test_save_load_resumes_correctly_mid_night() -> void:
 	dnc2.load_save_data(save_data)
 
 	# Resume: remaining 52.5s of NIGHT → DAWN
-	dnc2._process(52.5 / 20.0)  # TEMP: accounts for 20x speed multiplier
+	dnc2._process(52.5)
 	assert_int(dnc2.current_phase).is_equal(_DayNightCycle.TimePhase.DAWN)
 	assert_int(dnc2.day_count).is_equal(2)
 	dnc2.queue_free()
@@ -377,7 +377,7 @@ func test_save_load_resumes_correctly_mid_dusk() -> void:
 	dnc2.load_save_data(save_data)
 
 	# Resume: remaining 7.5s of DUSK → NIGHT
-	dnc2._process(7.5 / 20.0)  # TEMP: accounts for 20x speed multiplier
+	dnc2._process(7.5)
 	assert_int(dnc2.current_phase).is_equal(_DayNightCycle.TimePhase.NIGHT)
 	dnc2.queue_free()
 
