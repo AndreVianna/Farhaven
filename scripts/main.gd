@@ -65,18 +65,37 @@ func _wire_systems() -> void:
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
-	# Wire state-change signals to SaveManager dirty flag
+	# Wire SurvivalSystem signals
 	var survival: Node = player.get_node_or_null("SurvivalSystem")
 	if survival != null:
+		# Stat bars wiring: SurvivalSystem.stat_changed → HUD.update_stat
+		survival.stat_changed.connect(hud.update_stat)
+		# GroundItemRenderer wiring
+		var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
+		if ground_renderer != null and ground_renderer.has_method("connect_survival"):
+			ground_renderer.connect_survival(survival)
+		# SaveManager: immediate save on critical events
 		survival.player_died.connect(SaveManager.save_now)
 		survival.player_respawned.connect(SaveManager.save_now)
+
+	# Wire DayNightCycle signals to HUD day counter
+	DayNightCycle.day_started.connect(func() -> void:
+		if is_instance_valid(hud):
+			hud.update_day(DayNightCycle.day_count)
+	)
+	DayNightCycle.phase_changed.connect(func(_old: DayNightCycle.TimePhase, new_phase: DayNightCycle.TimePhase) -> void:
+		if is_instance_valid(hud):
+			hud.update_phase(DayNightCycle.phase_to_string(new_phase))
+		SaveManager.mark_dirty()
+	)
+
+	# Wire remaining state-change signals to SaveManager dirty flag
 	if player.has_method("get_inventory"):
 		var save_inv = player.get_inventory()
 		if save_inv != null and save_inv.has_signal("inventory_changed"):
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
-	DayNightCycle.phase_changed.connect(func(_o, _n) -> void: SaveManager.mark_dirty())
 
 
 func _on_gather_fly(coords: Vector2i, resource_type: StringName, _amount: int, _player: Node) -> void:
