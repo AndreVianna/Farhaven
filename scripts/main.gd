@@ -73,11 +73,15 @@ func _wire_systems() -> void:
 			ground_renderer.connect_survival(survival)
 
 	# Wire DayNightCycle signals to HUD day counter
+	# Guard with is_instance_valid — DayNightCycle is an autoload that persists
+	# after scene teardown (e.g. during tests), so the callback may fire on freed nodes.
 	DayNightCycle.day_started.connect(func() -> void:
-		hud.update_day(DayNightCycle.day_count)
+		if is_instance_valid(hud):
+			hud.update_day(DayNightCycle.day_count)
 	)
 	DayNightCycle.phase_changed.connect(func(_old: DayNightCycle.TimePhase, new_phase: DayNightCycle.TimePhase) -> void:
-		hud.update_phase(DayNightCycle.phase_to_string(new_phase))
+		if is_instance_valid(hud):
+			hud.update_phase(DayNightCycle.phase_to_string(new_phase))
 	)
 
 
