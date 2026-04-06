@@ -7,6 +7,8 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F6, F7; §9 AC1, AC3, AC6 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: string resource normalization, MapLoader validation scope, spawn checks, anomaly null handling, .tres scope note | /aid-specify review |
+| 2026-04-04 | Sub-hex grid system: resource serialization uses (sq, sr) instead of (x, y), structure uses footprint model, legacy format migration, sub-hex validation rules | design change |
+| 2026-04-04 | Unified props model: tile format uses props[] instead of separate resources/structure/anomaly fields. Legacy import detects old format and converts. Export writes props[] format. Validation updated for unified model. | design change |
 
 ## Source
 
@@ -59,10 +61,15 @@ Must
   r: number,            // axial coordinate
   biome: string,        // biome_name key, e.g. "forest"
   elevation: number,    // integer 0-9
-  structure: string|null,   // structure id or null
-  anomaly: string|null,     // anomaly id or null
-  resources: [          // array of placed resources
-    { type: string, x: number, y: number, rotation: number }
+  props: [              // array of props (resources, structures, anomalies)
+    {
+      type: string,       // e.g. "wood", "workbench", "anomaly_ch1_001"
+      sq: int,            // sub-hex axial q
+      sr: int,            // sub-hex axial r
+      category: string,   // "resource" | "structure" | "anomaly"
+      rotation: number,   // 0-359, resources only
+      footprint: [{q,r}]  // structures only, sub-hex offsets they occupy
+    }
   ]
 }
 ```
@@ -92,8 +99,12 @@ Must
    - Parse key as `"q,r"` — reject if not two integers separated by comma.
    - Validate `biome` exists in `knownBiomes`. Error: `"Tile (q,r): unknown biome '{value}'"`.
    - Validate `elevation` is integer 0-9. Error: `"Tile (q,r): elevation {value} out of range 0-9"`.
-   - Validate `structure` (if present) exists in `knownStructures`. Error: `"Tile (q,r): unknown structure '{value}'"`.
-   - For each resource in `resources[]`: if the entry is a plain string (e.g. `"wood"`), normalize it to dict form `{ type: "wood", x: random(-0.8, 0.8), y: random(-0.8, 0.8), rotation: random(0, 359) }`. If it's a dict, use as-is. Then validate: `type` exists in `knownResources`. Error: `"Tile (q,r): unknown resource type '{value}'"`. (MapLoader supports both forms — see `map_loader.gd` lines 93-100.)
+   - **Legacy format detection:** If the tile has `resources`, `structure`, or `anomaly` keys (old format) instead of `props`, convert to unified props[] format:
+     - For each resource in `resources[]`: if the entry is a plain string (e.g. `"wood"`), normalize to `{ type: "wood", sq: 0, sr: 0, category: "resource", rotation: random(0, 359) }`. If it's a dict with `x` and `y` fields, convert to nearest sub-hex via `pixelToSubHex()`. If it's a dict with `sq` and `sr` fields, add `category: "resource"`. Push to props[].
+     - If `structure` is a plain string (legacy), convert to `{ type: string, sq: 0, sr: 0, category: "structure", footprint: [{q:0,r:0}] }`. If it's a dict with `type` and `sub_hexes`, convert `sub_hexes` to `footprint` and add `category: "structure"`. Push to props[].
+     - If `anomaly` is a non-null string, convert to `{ type: anomalyId, sq: 0, sr: 0, category: "anomaly" }`. Push to props[].
+   - **New format:** If the tile has `props[]`, use as-is.
+   - Validate all props: `type` exists in known definitions for its category. Error: `"Tile (q,r): unknown {category} type '{value}'"`. (MapLoader supports both forms — see `map_loader.gd` lines 93-100.)
 4. If `valid === true`: populate `HexGrid` map and `MapMeta`, fire `map-loaded` event, `HexCanvas.repaint()`.
 5. If `valid === false`: show error dialog listing all errors. Reject import entirely — no partial load. The previous map state (if any) remains unchanged.
 
@@ -104,9 +115,10 @@ Must
    - No duplicate coordinate keys (guaranteed by Map, but validated during serialize).
    - All tile `biome` values exist in `knownBiomes`.
    - All tile `elevation` values are integers 0-9.
-   - All tile `structure` values (when non-null) exist in `knownStructures`.
-   - All resource `type` values exist in `knownResources`.
-   - Resource positions `x` and `y` are within range [-1.0, 1.0]. Error if outside.
+   - All prop types must exist in known definitions for their category.
+   - Prop sub-hex positions (sq, sr) must be valid (distance ≤ 2). Error if invalid.
+   - No overlapping props on same sub-hex within a tile (all categories share the sub-hex space). Error if duplicates found.
+   - Structure footprints must reference valid sub-hex positions. Error if invalid.
    - Resource `rotation` is a number. Warning if outside [0, 360).
 **MapLoader-level validation (advisory):** MapLoader (`scripts/hex/map_loader.gd`) performs additional checks that are logged as warnings but do not block loading: tile count in [200, 300], required biomes (CRASH_SITE, GRASSLAND, FOREST, ROCKY) all present, at least one anomaly tile, all non-water tiles reachable from spawn via BFS, spawn tile is CRASH_SITE. These are **not** enforced as hard errors in the editor's export validator — they are game-design constraints that may not apply during early authoring. Instead, the editor could surface them as warnings in a future "Validate Map" action.
 
@@ -115,7 +127,7 @@ Must
 3. If valid: `MapSerializer.toJSON(hexGrid, mapMeta)` produces a JSON string. Write via File System Access API (`FileSystemFileHandle.createWritable()`). If no handle (fallback browser), trigger download via Blob + anchor click.
 4. If invalid: show validation error dialog with all issues. Block save.
 
-**Serialization format** — `MapSerializer.toJSON()` output matches the exact schema MapLoader expects:
+**Serialization format** — `MapSerializer.toJSON()` output uses the unified props model:
 ```js
 {
   "chapter_id": mapMeta.chapter_id,
@@ -125,17 +137,23 @@ Must
     "q,r": {
       "biome": tile.biome,
       "elevation": tile.elevation,
-      // "structure" key omitted if null
-      // "anomaly" key omitted if null
-      // "resources" key omitted if empty array
-      "resources": [
-        { "type": "wood", "x": 0.35, "y": -0.45, "rotation": 18 }
+      // "props" key omitted if empty array
+      "props": [
+        {"type": "wood", "sq": 1, "sr": 0, "category": "resource", "rotation": 18},
+        {"type": "workbench", "sq": 0, "sr": 0, "category": "structure", "footprint": [{"q":0,"r":0}, {"q":1,"r":0}]},
+        {"type": "anomaly_ch1_001", "sq": 0, "sr": -1, "category": "anomaly"}
       ]
     }
   }
 }
 ```
-Optional fields (`structure`, `anomaly`, `resources`) are omitted from output when empty/null to keep JSON clean. On import, missing optional fields default to `null` / `[]`. Note: the game's `HexTile` uses empty StringName (`&""`) as the null sentinel for `structure` and `anomaly`; the editor's `null` maps to that on export (omitted from JSON) and on import (JSON `null`, missing field, or empty string all map to editor `null`).
+The `props` key is omitted from output when the array is empty to keep JSON clean. On import, a missing `props` field defaults to `[]`. Each prop includes only the fields relevant to its category: `rotation` for resources, `footprint` for structures. The `category` field is always present. Note: the game's `map_loader.gd` will need updating separately to consume this format.
+
+**Legacy format support:** On import, detect old format (tile has `resources`, `structure`, or `anomaly` keys instead of `props`). Convert to unified props[]:
+- Resource entries: plain strings normalize to `{ type, sq: 0, sr: 0, category: "resource", rotation: random }`. Dicts with `x`/`y` fields convert via `pixelToSubHex()`. Dicts with `sq`/`sr` get `category: "resource"` added.
+- Structure: plain strings become `{ type, sq: 0, sr: 0, category: "structure", footprint: [{q:0,r:0}] }`. Dicts with `sub_hexes` convert to footprint format.
+- Anomaly: non-null strings become `{ type: anomalyId, sq: 0, sr: 0, category: "anomaly" }`.
+This provides backwards compatibility with ch1.json. Export always writes the new props[] format.
 
 **New Map:**
 1. User clicks "New Map" in toolbar.
@@ -178,11 +196,15 @@ All validation errors are collected (not fail-fast) so the user sees every issue
 | Unknown biome | `"Tile ({q},{r}): unknown biome '{value}'"` |
 | Elevation out of range | `"Tile ({q},{r}): elevation {value} out of range 0-9"` |
 | Elevation not integer | `"Tile ({q},{r}): elevation must be an integer"` |
-| Unknown structure | `"Tile ({q},{r}): unknown structure '{value}'"` |
-| Unknown resource type | `"Tile ({q},{r}): unknown resource type '{value}'"` |
-| Resource missing type | `"Tile ({q},{r}): resource entry missing 'type' field"` |
+| Unknown prop type | `"Tile ({q},{r}): unknown {category} type '{value}'"` |
+| Prop missing type | `"Tile ({q},{r}): prop entry missing 'type' field"` |
+| Prop missing category | `"Tile ({q},{r}): prop entry missing 'category' field"` |
+| Invalid category | `"Tile ({q},{r}): invalid prop category '{value}'"` |
 
-| Resource entry is plain string | Normalize to dict: `{ type: string, x: random, y: random, rotation: random }` |
+| Legacy tile (has resources/structure/anomaly keys) | Convert to unified props[] format (see Legacy format support) |
+| Prop sub-hex position invalid | `"Tile ({q},{r}): prop sub-hex ({sq},{sr}) is not a valid position (distance > 2)"` |
+| Structure footprint has invalid sub-hex | `"Tile ({q},{r}): structure footprint contains invalid sub-hex ({sq},{sr})"` |
+| Duplicate sub-hex occupancy | `"Tile ({q},{r}): sub-hex ({sq},{sr}) is occupied by multiple props"` |
 
 The editor never crashes on bad input. The editor never loads partial data.
 

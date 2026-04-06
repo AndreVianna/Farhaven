@@ -7,6 +7,9 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F1 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: hexCorners formula, biome type note, rotation type, zoom sign, color_variations note, grid toggle AC | /aid-specify review |
+| 2026-04-04 | Added ghost grid rendering and empty-cell hover/interaction | code review |
+| 2026-04-04 | Sub-hex grid system: ResourceInstance uses (sq, sr) instead of (x, y), structure uses footprint model, HexMath sub-hex functions, canvas sub-hex overlay rendering | design change |
+| 2026-04-04 | Unified props model: ResourceInstance/structure/anomaly replaced with PropInstance. TileData uses props[] instead of separate fields. Canvas rendering iterates props by category. Tooltip shows props grouped by category. | design change |
 
 ## Source
 
@@ -37,6 +40,9 @@ Must
 - [ ] Given a canvas, when middle-click-dragging or space+dragging, then the canvas pans
 - [ ] Given a hex on the canvas, when hovering over it, then a tooltip displays coordinates (q,r), biome name, elevation, resource list, and structure (if any)
 - [ ] Given the coordinate labels toggle enabled, when viewing the canvas, then each hex displays its "q,r" label at center
+- [ ] Given a loaded map, when rendered, then all empty hex positions adjacent to existing tiles are shown as faint ghost outlines
+- [ ] Given a ghost hex, when hovering over it, then it highlights and shows a tooltip with coordinates
+- [ ] Given a ghost hex, when a painting tool is used on it, then a new tile is created and the ghost grid updates to include the new tile's empty neighbors
 
 ---
 
@@ -55,25 +61,26 @@ const MapMeta = {
 };
 
 /**
+ * PropInstance — a single prop placed on a hex (resource, structure, or anomaly).
+ * sq, sr are sub-hex axial coordinates within the hex. Valid range: distance from (0,0) ≤ 2.
+ * 19 valid positions: center (0,0), ring-1 (6 neighbors), ring-2 (12 outer).
+ */
+const PropInstance = {
+  type: "",           // string, e.g. "wood", "workbench", "anomaly_ch1_001"
+  sq: 0,              // int, sub-hex axial q (-2 to 2)
+  sr: 0,              // int, sub-hex axial r (-2 to 2)
+  category: "",       // "resource" | "structure" | "anomaly"
+  rotation: 0.0,      // float, degrees (0-359) — resources only
+  footprint: null,    // Array<{q,r}> | null — structures only (sub-hex offsets they occupy)
+};
+
+/**
  * TileData — per-hex data, stored as value in HexGrid.tiles.
  */
 const TileData = {
   biome: "",        // string key, e.g. "forest", "crash_site" — matches map JSON format. (Game's HexTile uses Biome enum int internally; MapLoader translates string↔enum.)
   elevation: 0,     // integer 0-9
-  structure: null,   // string | null, e.g. "workbench", "shelter"
-  anomaly: null,     // string | null, e.g. "anomaly_ch1_001"
-  resources: []      // Array<ResourceInstance>
-};
-
-/**
- * ResourceInstance — a single resource placed on a hex.
- * x, y are offsets within the hex. Valid range: -1.0 to 1.0 (storage). Random placement uses -0.8 to 0.8 (margin from hex edge).
- */
-const ResourceInstance = {
-  type: "",         // string, e.g. "wood", "stone"
-  x: 0.0,          // float, position offset within hex
-  y: 0.0,          // float, position offset within hex
-  rotation: 0.0     // float, degrees (0-359). Matches map JSON "rotation" field; MapLoader reads as float.
+  props: []         // Array<PropInstance>
 };
 
 /**
@@ -159,6 +166,21 @@ const HexMath = {
    * Used for cliff edge rendering.
    */
   getEdgeIndex(q1, r1, q2, r2) // returns 0-5 or -1 if not adjacent
+
+  // --- Sub-hex functions ---
+
+  // Sub-hex constants
+  SUB_HEX_SCALE: 0.2,  // 1.2m / 6.0m — sub-hex size relative to main hex
+  VALID_SUB_HEXES: [/* 19 positions: center (0,0), ring-1 (6), ring-2 (12) */],
+
+  // Check if (sq, sr) is a valid sub-hex position (distance from center ≤ 2)
+  isValidSubHex(sq, sr)  // returns boolean
+
+  // Convert pixel offset within hex to sub-hex coordinates
+  pixelToSubHex(offsetX, offsetY)  // returns { q, r } snapped to nearest valid sub-hex
+
+  // Convert sub-hex to pixel offset within hex
+  subHexToPixel(sq, sr)  // returns { x, y } pixel offset from hex center
 };
 ```
 
@@ -196,9 +218,12 @@ class HexCanvas {
   drawSelection(q, r)           // draw highlight border on selected hex
   drawHoverHighlight(q, r)      // draw subtle highlight on hovered hex
   drawCoordinateLabel(q, r)     // draw "q,r" text at hex center (when showCoordinates enabled)
+  drawGhostHex(q, r)            // draw faint outline for empty adjacent position
   drawSpawnMarker(q, r)         // draw spawn indicator icon/marker
-  drawResourceIndicator(q, r, count) // draw resource count badge on hex
-  drawStructureIcon(q, r, type) // draw structure indicator on hex
+  drawPropIndicators(q, r, tile) // iterate tile.props, draw by category: blue badge for resources, orange for structures, purple for anomalies
+  drawSubHexGrid(q, r)           // draw 19 sub-hex outlines inside a hex
+  drawSubHexOccupancy(q, r, tile) // highlight occupied sub-hexes
+  drawSubHexHover(q, r, sq, sr)   // highlight hovered sub-hex
 
   // --- Coordinate transforms (account for camera) ---
   worldToScreen(wx, wy)   // applies camera offset + zoom: sx = wx * zoom + offsetX, ...
@@ -224,7 +249,11 @@ class HexCanvas {
 
 **Elevation brightness adjustment:** For a base biome color RGB, multiply each channel by `(1 + elevation * 0.05)`, clamped to 255. Elevation 0 = base color, elevation 9 = 45% brighter.
 
-**Cliff edge rendering:** For each of the 6 edges of a hex, check the neighbor. If the neighbor exists and `|tile.elevation - neighbor.elevation| >= 2`, draw that edge segment with a 3px wide stroke in `#8B4513` (brown) to indicate a cliff.
+**Cliff edge rendering:** For each of the 6 edges of a hex, check the neighbor. If the neighbor exists and `|tile.elevation - neighbor.elevation| >= 2`, draw that edge segment with a 3px wide stroke in `#8B4513` (brown) to indicate a cliff. Edge-to-neighbor mapping for flat-top hexes with corners at 0°,60°,...,300° clockwise: edge `i` → `DIRECTIONS[(6-i) % 6]`, i.e. lookup `[0, 5, 4, 3, 2, 1]`.
+
+**Sub-hex grid rendering:** When a placement tool (prop placer) is active, the hovered hex shows its 19 sub-hex positions as fine outlines. Occupied sub-hexes (by any prop in `tile.props`) are filled with a semi-transparent indicator colored by category. The currently hovered sub-hex has a bright highlight. Sub-hexes use the same flat-top orientation as main hexes, scaled by SUB_HEX_SCALE (0.2).
+
+**Ghost grid rendering:** After rendering all existing tiles, compute the set of empty positions adjacent to any existing tile. For each ghost position, draw a faint hex outline (`rgba(255,255,255,0.08)` fill with `rgba(255,255,255,0.15)` 1px stroke). Ghost hexes participate in hover detection and tool interactions — painting on a ghost cell creates a real tile. The ghost set is recomputed on each render (it depends on the current tile set, which changes as tiles are added/removed).
 
 **Tooltip:** A `<div>` element positioned near the cursor (offset +15px x, +15px y). Updated on `onMouseMove` when `hoveredHex` changes. Contents:
 
@@ -232,18 +261,21 @@ class HexCanvas {
 (q, r)
 Biome: forest
 Elevation: 3
-Structure: workbench
-Resources: wood ×2, stone ×1 (aggregated by type; if >5 types, show first 5 + "…and N more")
-Anomaly: anomaly_ch1_001
+Props:
+  Resources: wood ×2, stone ×1
+  Structures: workbench
+  Anomalies: anomaly_ch1_001
 ```
+
+Props are grouped by category. If >5 total props, show first 5 + "...and N more".
 
 Hidden when cursor leaves the canvas.
 
 ### Feature Flow
 
 1. **Initialization:** `HexCanvas.init()` attaches mouse/wheel/resize listeners to the canvas. Subscribes to `hexGrid.onChange` to call `requestRender()`.
-2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, and optionally `drawCoordinateLabel`. After all tiles, draws selection highlight and spawn marker. Finally draws the tooltip div if a hex is hovered.
-3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex`, positions the tooltip div, populates tooltip content from `grid.getTile(q, r)`, and calls `requestRender()` for hover highlight.
+2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, then: (a) computes the ghost set — all empty positions adjacent to existing tiles, (b) draws ghost hex outlines for each position in the ghost set, (c) iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, and optionally `drawCoordinateLabel`, (d) draws selection highlight, spawn marker, hover highlight. Finally draws the tooltip div if a hex is hovered.
+3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex`, positions the tooltip div, populates tooltip content from `grid.getTile(q, r)` (for real tiles) or minimal "(q,r) — empty" for ghost cells, and calls `requestRender()` for hover highlight. Ghost cells also highlight on hover. When a placement tool is active and hovering a real tile, hit detection resolves to sub-hex level: compute pixel offset from hex center, convert to sub-hex via `pixelToSubHex()`. The hovered sub-hex is tracked separately from the hovered main hex.
 4. **Selection:** `onMouseDown` (left button, no space held) converts to hex, sets `selectedHex = { q, r }`, calls `requestRender()`. If a `toolManager` is set, forwards the event to the active tool.
 5. **Zoom:** `onWheel` adjusts `camera.zoom += event.deltaY * -0.001`, clamped to `[0.2, 3.0]`. Zoom is centered on the mouse cursor position: before zoom, record the world-space point under the cursor; after zoom, adjust `offsetX/Y` so that same world point stays under the cursor. Calls `requestRender()`.
 6. **Pan:** `onMouseDown` (middle button, or left button with space held) sets `isPanning = true`, records `panStart = { x: event.clientX, y: event.clientY }`. `onMouseMove` while panning: `camera.offsetX += dx`, `camera.offsetY += dy`, updates `panStart`, calls `requestRender()`. `onMouseUp` sets `isPanning = false`.

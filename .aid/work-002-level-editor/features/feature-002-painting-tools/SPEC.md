@@ -7,6 +7,9 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F2, F5 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: rotation type, AC range, prompt→modal, undo index, WALKABLE_STRUCTURES ref, JSON field clarification | /aid-specify review |
+| 2026-04-04 | Tools now work on ghost (empty) cells — BiomeBrush, ElevationBrush, FloodFill create new tiles | code review |
+| 2026-04-04 | Sub-hex grid system: AddResourceCommand uses (sq, sr), SetStructureCommand uses footprint model, ResourceDetailPanel updated for sub-hex fields, ResourcePlacer and StructurePlacer rewritten for sub-hex placement | design change |
+| 2026-04-04 | Unified props model: AddResource/EditResource/DeleteResource/SetStructure/SetAnomaly commands replaced with AddPropCommand/EditPropCommand/DeletePropCommand. ResourceDetailPanel renamed to PropDetailPanel. EraserTool targets props at sub-hex. EraseContentCommand clears all props. | design change |
 
 ## Source
 
@@ -41,6 +44,8 @@ Must
 - [ ] Given anomaly marker tool, when clicking a hex, then an anomaly is placed with a string ID input
 - [ ] Given eraser tool, when clicking a hex with resources/structures, then they are removed but the hex remains
 - [ ] Given delete hex tool, when clicking a hex, then the hex is removed entirely from the map
+- [ ] Given biome brush, when painting on an empty (ghost) cell, then a new tile is created with the selected biome
+- [ ] Given elevation brush, when painting on an empty (ghost) cell, then a new tile is created with the target elevation
 
 ---
 
@@ -124,34 +129,23 @@ class SetElevationCommand {
   undo()      // grid.getTile(q,r).elevation = oldElevation
 }
 
-class AddResourceCommand {
-  constructor(grid, q, r, resourceInstance)
-  execute()   // const tile = grid.getTile(q,r); tile.resources.push(resourceInstance); this._index = tile.resources.length - 1
-  undo()      // grid.getTile(q,r).resources.splice(this._index, 1) — removes by tracked index, not .pop()
+class AddPropCommand {
+  constructor(grid, q, r, propInstance)
+  // propInstance = { type, sq, sr, category, rotation?, footprint? }
+  execute()   // tile.props.push(propInstance); this._index = tile.props.length - 1
+  undo()      // tile.props.splice(this._index, 1)
 }
 
-class EditResourceCommand {
-  constructor(grid, q, r, resourceIndex, oldValues, newValues)
-  execute()   // Object.assign(grid.getTile(q,r).resources[index], newValues)
-  undo()      // Object.assign(grid.getTile(q,r).resources[index], oldValues)
+class EditPropCommand {
+  constructor(grid, q, r, propIndex, oldValues, newValues)
+  execute()   // Object.assign(tile.props[propIndex], newValues)
+  undo()      // Object.assign(tile.props[propIndex], oldValues)
 }
 
-class DeleteResourceCommand {
-  constructor(grid, q, r, resourceIndex, removedResource)
-  execute()   // grid.getTile(q,r).resources.splice(index, 1)
-  undo()      // grid.getTile(q,r).resources.splice(index, 0, removedResource)
-}
-
-class SetStructureCommand {
-  constructor(grid, q, r, oldStructure, newStructure)
-  execute()   // grid.getTile(q,r).structure = newStructure
-  undo()      // grid.getTile(q,r).structure = oldStructure
-}
-
-class SetAnomalyCommand {
-  constructor(grid, q, r, oldAnomaly, newAnomaly)
-  execute()   // grid.getTile(q,r).anomaly = newAnomaly
-  undo()      // grid.getTile(q,r).anomaly = oldAnomaly
+class DeletePropCommand {
+  constructor(grid, q, r, propIndex, removedProp)
+  execute()   // tile.props.splice(propIndex, 1)
+  undo()      // tile.props.splice(propIndex, 0, removedProp)
 }
 
 class SetSpawnCommand {
@@ -161,9 +155,9 @@ class SetSpawnCommand {
 }
 
 class EraseContentCommand {
-  constructor(grid, q, r, oldTile)   // snapshot of tile before erase
-  execute()   // tile.resources = []; tile.structure = null; tile.anomaly = null
-  undo()      // restore resources, structure, anomaly from oldTile snapshot
+  constructor(grid, q, r, oldProps)   // snapshot of tile.props before erase
+  execute()   // tile.props = []
+  undo()      // tile.props = deepClone(oldProps)
 }
 
 class DeleteHexCommand {
@@ -193,17 +187,15 @@ class BatchCommand {
 - Supports drag painting like Biome Brush (tracks `paintedHexes`).
 
 **Resource Placer (`ResourcePlacer`):**
-- `onMouseDown(hex)`: creates a `ResourceInstance` with `type = toolManager.activeValue`, `x = random(-0.8, 0.8)`, `y = random(-0.8, 0.8)`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. Executes `AddResourceCommand`.
+- `onMouseDown(hex, subHex)`: creates a `PropInstance` with `type = toolManager.activeValue`, `sq = subHex.q`, `sr = subHex.r`, `category = "resource"`, `rotation = random(0, 359)`. If no tile exists at hex, creates one with default biome first. If sub-hex is already occupied (by any prop), no-op. Executes `AddPropCommand`.
 - No drag support — click only.
 
-**Note on field names:** The editor's `ResourceInstance` uses `x`, `y`, `rotation` to match the map JSON format read by `map_loader.gd`. The game's internal `ResourceNode` class uses different names (`offset: Vector2`, `rotation_deg: float`); MapLoader handles the translation. The editor never uses the GDScript field names.
-
 **Structure Placer (`StructurePlacer`):**
-- `onMouseDown(hex)`: creates `SetStructureCommand(hex, oldStructure, toolManager.activeValue)`. One structure per hex; replaces any existing structure.
+- `onMouseDown(hex, subHex)`: gets the active structure type's footprint (list of sub-hex offsets). Checks if all required sub-hexes are available. If yes, creates `AddPropCommand` with `{ type, sq: subHex.q, sr: subHex.r, category: "structure", footprint }`. If any sub-hex is occupied, no-op (show warning).
 - No drag support — click only.
 
 **Anomaly Marker (`AnomalyMarker`):**
-- `onMouseDown(hex)`: shows an inline modal dialog with a text input labeled "Enter anomaly ID:" and "OK"/"Cancel" buttons (consistent with the editor's DOM-based UI — no native browser dialogs). If user enters a non-empty string and clicks OK, creates `SetAnomalyCommand`. If user cancels, no-op.
+- `onMouseDown(hex, subHex)`: shows an inline modal dialog with a text input labeled "Enter anomaly ID:" and "OK"/"Cancel" buttons (consistent with the editor's DOM-based UI — no native browser dialogs). If user enters a non-empty string and clicks OK, creates `AddPropCommand` with `{ type: anomalyId, sq: subHex.q, sr: subHex.r, category: "anomaly" }`. If user cancels, no-op.
 - No drag support — click only.
 
 **Spawn Marker (`SpawnMarker`):**
@@ -211,8 +203,8 @@ class BatchCommand {
 - No drag support — click only.
 
 **Eraser (`EraserTool`):**
-- `onMouseDown(hex)`: if tile exists and has any content (resources, structure, or anomaly), snapshot the tile, execute `EraseContentCommand`. The hex and its biome/elevation remain.
-- Supports drag (tracks `erasedHexes` set).
+- `onMouseDown(hex, subHex)`: if sub-hex is specified and a prop exists at that sub-hex position, find the prop index and execute `DeletePropCommand`. If no sub-hex target (click on hex without sub-hex resolution), and tile has any props, snapshot `tile.props` and execute `EraseContentCommand` to clear all props. The hex and its biome/elevation remain.
+- Supports drag (tracks `erasedHexes` set) for bulk erase of all props.
 
 **Delete Hex (`DeleteHexTool`):**
 - `onMouseDown(hex)`: if tile exists, snapshot entire `TileData`, execute `DeleteHexCommand`. The hex is removed from `HexGrid.tiles` entirely.
@@ -225,12 +217,12 @@ class BatchCommand {
   - Safety limit: max 10,000 tiles to prevent runaway fills.
   - Execute all as a single `BatchCommand`.
 
-### Resource Detail Panel
+### Prop Detail Panel
 
-A DOM panel that appears when the user clicks a resource indicator on a hex (or selects a hex that has resources while using the resource tool).
+A DOM panel that appears when the user clicks a prop indicator on a hex (or selects a hex that has props).
 
 ```js
-class ResourceDetailPanel {
+class PropDetailPanel {
   constructor(container, hexGrid, commandHistory) {
     this.container = container;   // DOM element for the panel
     this.grid = hexGrid;
@@ -240,28 +232,32 @@ class ResourceDetailPanel {
 
   show(q, r)          // populate and display the panel for the given hex
   hide()              // hide the panel
-  renderRows()        // render one row per resource on the hex
-  onFieldChange(index, field, value)  // create EditResourceCommand
-  onDeleteResource(index)             // create DeleteResourceCommand
+  renderRows()        // render one row per prop on the hex, grouped by category
+  onFieldChange(index, field, value)  // create EditPropCommand
+  onDeleteProp(index)                 // create DeletePropCommand
 }
 ```
 
 **Panel UI:**
 - Positioned as a floating panel or sidebar sub-panel.
-- Header: "Resources on (q, r)" with a close button.
-- Each resource row:
-  - Type label (read-only, e.g., "wood")
-  - `x` input: number, step 0.1, range [-1.0, 1.0]
-  - `y` input: number, step 0.1, range [-1.0, 1.0]
-  - `rotation` input: number, step 1, range [0, 359] (float — matches map JSON field `rotation` which MapLoader reads as float via `rotation_deg`)
+- Header: "Props on (q, r)" with a close button.
+- Props are grouped by category (Resources, Structures, Anomalies).
+- Each prop row:
+  - Category badge (blue/orange/purple)
+  - Type label (read-only, e.g., "wood", "workbench", "anomaly_ch1_001")
+  - `sq` input: integer, range [-2, 2]
+  - `sr` input: integer, range [-2, 2]
+  - Validation: `isValidSubHex(sq, sr)` must be true (distance from center ≤ 2)
+  - For resources: `rotation` input: number, step 1, range [0, 359]
+  - For structures: `footprint` display (read-only list of sub-hex offsets)
   - Delete button (red X)
-- On input blur or Enter key: if value changed, create `EditResourceCommand` with old and new values.
+- On input blur or Enter key: if value changed, create `EditPropCommand` with old and new values.
 
 ### Layers & Components
 
 - `ToolManager` — singleton, instantiated by the application. Holds reference to `HexGrid` and `CommandHistory`. Canvas mouse events from `HexCanvas` are forwarded here.
-- Tool classes (`BiomeBrush`, `ElevationBrush`, `ResourcePlacer`, `StructurePlacer`, `AnomalyMarker`, `SpawnMarker`, `EraserTool`, `DeleteHexTool`, `FloodFillTool`) — each extends `BaseTool`.
-- `ResourceDetailPanel` — DOM-based panel for fine-tuning resource placement.
+- Tool classes (`BiomeBrush`, `ElevationBrush`, `ResourcePlacer`, `StructurePlacer`, `AnomalyMarker`, `SpawnMarker`, `EraserTool`, `DeleteHexTool`, `FloodFillTool`) — each extends `BaseTool`. Resource/Structure/Anomaly placers all produce `AddPropCommand` with appropriate category.
+- `PropDetailPanel` — DOM-based panel for viewing and editing all props on a hex, grouped by category.
 - `BatchCommand` — groups multiple commands into one undo/redo unit.
 
 ### Dependencies

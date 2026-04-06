@@ -7,6 +7,7 @@
 | 2026-04-03 | Extracted from feature-001 — undo/redo and keyboard shortcuts are cross-cutting foundation | Lola review |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: onChange signature, per-tab shortcut scoping, maxSize note, ProjectContext ref, selectTool(null) | /aid-specify review |
+| 2026-04-04 | Unified props model: PlaceResource/RemoveResource/EditResourcePlacement/PlaceStructure/PlaceAnomaly commands replaced with AddPropCommand/EditPropCommand/DeletePropCommand. EraseHexContentCommand updated to clear props[]. | design change |
 
 ## Source
 
@@ -109,13 +110,11 @@ The `onChange` callback is the integration point for `DirtyTracker` (feature 009
 |---|---|---|---|---|
 | `PaintBiomeCommand` | `paint_biome` | `{ coords, oldBiome }` for each hex | Set biome on each hex | Restore old biome on each hex |
 | `SetElevationCommand` | `set_elevation` | `{ coords, oldElevation }` for each hex | Set elevation on each hex | Restore old elevation |
-| `PlaceResourceCommand` | `place_resource` | n/a (new resource) | Add resource entry to hex | Remove resource entry from hex |
-| `RemoveResourceCommand` | `remove_resource` | `{ coords, resourceData }` | Remove resource from hex | Re-add resource to hex |
-| `EditResourcePlacementCommand` | `edit_resource_placement` | `{ coords, index, oldX, oldY, oldRotation }` | Update x, y, rotation | Restore old x, y, rotation |
-| `PlaceStructureCommand` | `place_structure` | `{ coords, oldStructure }` | Set structure on hex | Restore old structure (or clear) |
-| `PlaceAnomalyCommand` | `place_anomaly` | `{ coords, oldAnomaly }` | Set anomaly on hex | Restore old anomaly (or clear) |
-| `SetSpawnCommand` | `set_spawn` | `{ oldSpawn: [q, r] or null }` | Set spawn to new coords, clear old | Restore old spawn, clear new |
-| `EraseHexContentCommand` | `erase_hex_content` | `{ coords, oldResources, oldStructure, oldAnomaly }` | Clear resources, structure, anomaly | Restore all |
+| `AddPropCommand` | `add_prop` | n/a (new prop) | Push prop to tile.props | Remove prop from tile.props by index |
+| `EditPropCommand` | `edit_prop` | `{ coords, propIndex, oldValues }` | Object.assign new values to prop | Restore old values |
+| `DeletePropCommand` | `delete_prop` | `{ coords, propIndex, removedProp }` | Splice prop from tile.props | Re-insert prop at index |
+| `SetSpawnCommand` | `set_spawn` | `{ oldSpawn: [q, r] or null }` | Set spawn to new coords | Restore old spawn |
+| `EraseContentCommand` | `erase_content` | `{ coords, oldProps }` | Clear tile.props to [] | Restore props from snapshot |
 | `DeleteHexCommand` | `delete_hex` | full tile data snapshot | Remove tile from map | Re-add tile with snapshot |
 | `FloodFillCommand` | `flood_fill` | `{ affectedHexes: [{ coords, oldBiome }] }` | Set biome on all affected hexes | Restore old biome on each |
 
