@@ -9,6 +9,7 @@
 | 2026-04-03 | Review fixes: string resource normalization, MapLoader validation scope, spawn checks, anomaly null handling, .tres scope note | /aid-specify review |
 | 2026-04-04 | Sub-hex grid system: resource serialization uses (sq, sr) instead of (x, y), structure uses footprint model, legacy format migration, sub-hex validation rules | design change |
 | 2026-04-04 | Unified props model: tile format uses props[] instead of separate resources/structure/anomaly fields. Legacy import detects old format and converts. Export writes props[] format. Validation updated for unified model. | design change |
+| 2026-04-06 | Engine JSON schema alignment: categories serialize as integers (0=resource, 1=structure, 2=anomaly, 3=spawn), field names sub_hex_q/sub_hex_r replace sq/sr at serialization boundary, footprint is internal-only (not serialized), new optional fields per category (remaining, max_amount, tool_required, respawn_time for resources; blocks_movement for structures), root-level format is { spawn, tiles } with chapter_id/name optional | schema change |
 
 ## Source
 
@@ -127,27 +128,43 @@ Must
 3. If valid: `MapSerializer.toJSON(hexGrid, mapMeta)` produces a JSON string. Write via File System Access API (`FileSystemFileHandle.createWritable()`). If no handle (fallback browser), trigger download via Blob + anchor click.
 4. If invalid: show validation error dialog with all issues. Block save.
 
-**Serialization format** — `MapSerializer.toJSON()` output uses the unified props model:
+**Serialization format** — `MapSerializer.toJSON()` output uses the engine JSON schema with integer categories:
 ```js
 {
-  "chapter_id": mapMeta.chapter_id,
-  "name": mapMeta.name,
-  "spawn": mapMeta.spawn,
+  "spawn": [q, r],
   "tiles": {
     "q,r": {
-      "biome": tile.biome,
-      "elevation": tile.elevation,
+      "biome": "forest",
+      "elevation": 2,
       // "props" key omitted if empty array
       "props": [
-        {"type": "wood", "sq": 1, "sr": 0, "category": "resource", "rotation": 18},
-        {"type": "workbench", "sq": 0, "sr": 0, "category": "structure", "footprint": [{"q":0,"r":0}, {"q":1,"r":0}]},
-        {"type": "anomaly_ch1_001", "sq": 0, "sr": -1, "category": "anomaly"}
+        {"type": "wood", "category": 0, "sub_hex_q": 1, "sub_hex_r": 0, "rotation": 18, "remaining": 5, "max_amount": 10, "tool_required": "axe", "respawn_time": 300},
+        {"type": "workbench", "category": 1, "blocks_movement": true},
+        {"type": "anomaly_ch1_001", "category": 2, "sub_hex_q": 0, "sub_hex_r": -1}
       ]
     }
-  }
+  },
+  // Optional — included only if non-empty (editor metadata, not consumed by engine)
+  "chapter_id": "ch1",
+  "name": "Crash Landing"
 }
 ```
-The `props` key is omitted from output when the array is empty to keep JSON clean. On import, a missing `props` field defaults to `[]`. Each prop includes only the fields relevant to its category: `rotation` for resources, `footprint` for structures. The `category` field is always present. Note: the game's `map_loader.gd` will need updating separately to consume this format.
+
+**Category integer enum:** `{ resource: 0, structure: 1, anomaly: 2, spawn: 3 }`. Defined as `CATEGORY_TO_INT` / `INT_TO_CATEGORY` in `hex-grid.js`.
+
+**Field name mapping at serialization boundary:**
+- Internal `sq`/`sr` serialize as `sub_hex_q`/`sub_hex_r` (omitted when both are 0)
+- Internal string `category` serializes as integer
+- `rotation` is omitted when 0
+- `footprint` is internal-only and never serialized
+
+**Optional fields per category:**
+- Resource: `remaining` (number), `max_amount` (number), `tool_required` (string), `respawn_time` (number, omitted if 0)
+- Structure: `blocks_movement` (boolean, only serialized when true)
+
+The `props` key is omitted from output when the array is empty to keep JSON clean. On import, a missing `props` field defaults to `[]`.
+
+**Import compatibility:** The deserializer accepts both engine format (integer categories, sub_hex_q/sub_hex_r) and legacy editor format (string categories, sq/sr), as well as the oldest format with separate resources/structure/anomaly fields.
 
 **Legacy format support:** On import, detect old format (tile has `resources`, `structure`, or `anomaly` keys instead of `props`). Convert to unified props[]:
 - Resource entries: plain strings normalize to `{ type, sq: 0, sr: 0, category: "resource", rotation: random }`. Dicts with `x`/`y` fields convert via `pixelToSubHex()`. Dicts with `sq`/`sr` get `category: "resource"` added.

@@ -4,6 +4,11 @@
 
 import { HEX_SIZE, HexMath } from './hex-math.js';
 
+/** Maps internal string categories to engine JSON integer values. */
+export const CATEGORY_TO_INT = { resource: 0, structure: 1, anomaly: 2, spawn: 3 };
+/** Maps engine JSON integer category values to internal string categories. */
+export const INT_TO_CATEGORY = { 0: 'resource', 1: 'structure', 2: 'anomaly', 3: 'spawn' };
+
 /**
  * Shared category color definitions used by canvas rendering and UI panels.
  * @type {Object<string, { fill: string, badge: string, label: string }>}
@@ -38,9 +43,19 @@ export function createProp(type, sq = 0, sr = 0, category = 'resource', options 
   const prop = { type, sq, sr, category };
   if (category === 'resource') {
     prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
+    // Resource-specific optional fields (populated from biome data or map JSON)
+    if (typeof options.remaining === 'number') prop.remaining = options.remaining;
+    if (typeof options.max_amount === 'number') prop.max_amount = options.max_amount;
+    if (options.tool_required) prop.tool_required = options.tool_required;
+    if (typeof options.respawn_time === 'number') prop.respawn_time = options.respawn_time;
   }
-  if (category === 'structure' && options.footprint) {
-    prop.footprint = options.footprint;
+  if (category === 'structure') {
+    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
+    if (options.footprint) prop.footprint = options.footprint;
+    if (typeof options.blocks_movement === 'boolean') prop.blocks_movement = options.blocks_movement;
+  }
+  if (category === 'anomaly') {
+    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
   }
   return prop;
 }
@@ -233,10 +248,28 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       // New format: props array present
       if (Array.isArray(tileJson.props)) {
         tile.props = tileJson.props.map(p => {
-          const prop = { type: p.type, sq: p.sq, sr: p.sr, category: p.category };
-          if (p.category === 'resource' && typeof p.rotation === 'number') prop.rotation = p.rotation;
-          if (p.category === 'structure' && p.footprint) prop.footprint = p.footprint;
-          return prop;
+          // Handle both integer (engine) and string (legacy editor) categories
+          const categoryStr = typeof p.category === 'number' ? (INT_TO_CATEGORY[p.category] || 'resource') : (p.category || 'resource');
+          // Handle both sub_hex_q/sub_hex_r (engine) and sq/sr (legacy editor) field names
+          const sq = typeof p.sub_hex_q === 'number' ? p.sub_hex_q : (typeof p.sq === 'number' ? p.sq : 0);
+          const sr = typeof p.sub_hex_r === 'number' ? p.sub_hex_r : (typeof p.sr === 'number' ? p.sr : 0);
+          const rotation = typeof p.rotation === 'number' ? p.rotation : 0;
+
+          const options = { rotation };
+          // Resource-specific fields
+          if (categoryStr === 'resource') {
+            if (typeof p.remaining === 'number') options.remaining = p.remaining;
+            if (typeof p.max_amount === 'number') options.max_amount = p.max_amount;
+            if (p.tool_required) options.tool_required = p.tool_required;
+            if (typeof p.respawn_time === 'number') options.respawn_time = p.respawn_time;
+          }
+          // Structure-specific fields
+          if (categoryStr === 'structure') {
+            if (typeof p.blocks_movement === 'boolean') options.blocks_movement = p.blocks_movement;
+            if (p.footprint) options.footprint = p.footprint;
+          }
+
+          return createProp(p.type || '', sq, sr, categoryStr, options);
         });
       } else {
         tile.props = _parseLegacyTile(tileJson);
@@ -263,18 +296,36 @@ export function serializeGridToMapJson(hexGrid) {
     };
     if (tile.props && tile.props.length > 0) {
       entry.props = tile.props.map(p => {
-        const obj = { type: p.type, sq: p.sq, sr: p.sr, category: p.category };
-        if (p.category === 'resource' && typeof p.rotation === 'number') obj.rotation = p.rotation;
-        if (p.category === 'structure' && p.footprint) obj.footprint = p.footprint;
+        const obj = {
+          type: p.type,
+          category: CATEGORY_TO_INT[p.category] ?? 0,
+        };
+        // Only include sub_hex if not (0,0)
+        if (p.sq !== 0 || p.sr !== 0) {
+          obj.sub_hex_q = p.sq;
+          obj.sub_hex_r = p.sr;
+        }
+        // Only include rotation if non-zero
+        if (p.rotation) obj.rotation = p.rotation;
+        // Resource-specific
+        if (p.category === 'resource') {
+          if (typeof p.remaining === 'number') obj.remaining = p.remaining;
+          if (typeof p.max_amount === 'number') obj.max_amount = p.max_amount;
+          if (p.tool_required) obj.tool_required = p.tool_required;
+          if (typeof p.respawn_time === 'number' && p.respawn_time > 0) obj.respawn_time = p.respawn_time;
+        }
+        // Structure-specific (footprint is internal only — not serialized)
+        if (p.category === 'structure') {
+          if (p.blocks_movement) obj.blocks_movement = true;
+        }
         return obj;
       });
     }
     tiles[key] = entry;
   }
-  return {
-    chapter_id: hexGrid.meta.chapter_id,
-    name: hexGrid.meta.name,
-    spawn: [...hexGrid.meta.spawn],
-    tiles: tiles,
-  };
+  const result = { spawn: [...hexGrid.meta.spawn], tiles };
+  // Include optional metadata if present
+  if (hexGrid.meta.chapter_id) result.chapter_id = hexGrid.meta.chapter_id;
+  if (hexGrid.meta.name) result.name = hexGrid.meta.name;
+  return result;
 }

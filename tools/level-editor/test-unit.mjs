@@ -8,7 +8,7 @@ import './test-dom-mocks.mjs';
 
 // ES module imports
 import { HEX_SIZE, HexMath } from './js/hex-math.js';
-import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORY_COLORS } from './js/hex-grid.js';
+import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORY_COLORS, CATEGORY_TO_INT, INT_TO_CATEGORY } from './js/hex-grid.js';
 import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
@@ -1007,6 +1007,213 @@ test('CATEGORY_COLORS — has expected categories', () => {
   assert(CATEGORY_COLORS.anomaly !== undefined, 'should have anomaly');
   assert(typeof CATEGORY_COLORS.resource.badge === 'string', 'resource should have badge color');
   assert(typeof CATEGORY_COLORS.resource.fill === 'string', 'resource should have fill color');
+});
+
+// ============================================================
+// Category enum mapping tests
+// ============================================================
+
+test('CATEGORY_TO_INT — maps string categories to integers', () => {
+  assert(CATEGORY_TO_INT.resource === 0, 'resource should be 0');
+  assert(CATEGORY_TO_INT.structure === 1, 'structure should be 1');
+  assert(CATEGORY_TO_INT.anomaly === 2, 'anomaly should be 2');
+  assert(CATEGORY_TO_INT.spawn === 3, 'spawn should be 3');
+});
+
+test('INT_TO_CATEGORY — maps integers to string categories', () => {
+  assert(INT_TO_CATEGORY[0] === 'resource', '0 should be resource');
+  assert(INT_TO_CATEGORY[1] === 'structure', '1 should be structure');
+  assert(INT_TO_CATEGORY[2] === 'anomaly', '2 should be anomaly');
+  assert(INT_TO_CATEGORY[3] === 'spawn', '3 should be spawn');
+});
+
+// ============================================================
+// createProp — new optional fields
+// ============================================================
+
+test('createProp — resource with optional fields', () => {
+  const p = createProp('iron', 1, -1, 'resource', {
+    rotation: 45, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300,
+  });
+  assert(p.remaining === 5, 'remaining should be 5');
+  assert(p.max_amount === 10, 'max_amount should be 10');
+  assert(p.tool_required === 'pickaxe', 'tool_required should be pickaxe');
+  assert(p.respawn_time === 300, 'respawn_time should be 300');
+});
+
+test('createProp — resource without optional fields omits them', () => {
+  const p = createProp('wood', 0, 0, 'resource', { rotation: 0 });
+  assert(!('remaining' in p), 'remaining should not be present');
+  assert(!('max_amount' in p), 'max_amount should not be present');
+  assert(!('tool_required' in p), 'tool_required should not be present');
+  assert(!('respawn_time' in p), 'respawn_time should not be present');
+});
+
+test('createProp — structure with blocks_movement', () => {
+  const p = createProp('wall', 0, 0, 'structure', { blocks_movement: true });
+  assert(p.blocks_movement === true, 'blocks_movement should be true');
+  assert(p.rotation === 0, 'structure should have rotation');
+});
+
+test('createProp — anomaly gets rotation', () => {
+  const p = createProp('rift', 0, 0, 'anomaly', { rotation: 180 });
+  assert(p.rotation === 180, 'anomaly rotation should be 180');
+});
+
+// ============================================================
+// Serialization — engine JSON format
+// ============================================================
+
+test('serializeGridToMapJson — outputs integer categories and sub_hex_q/sub_hex_r', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('forest');
+  tile.props = [
+    createProp('wood', 1, -1, 'resource', { rotation: 90 }),
+    createProp('wall', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }], blocks_movement: true }),
+    createProp('rift', 0, 0, 'anomaly', { rotation: 45 }),
+  ];
+  grid.setTile(0, 0, tile);
+  grid.meta.spawn = [0, 0];
+  grid.meta.chapter_id = 'ch1';
+  grid.meta.name = 'Test';
+
+  const json = serializeGridToMapJson(grid);
+  const props = json.tiles['0,0'].props;
+
+  // Resource prop
+  assert(props[0].category === 0, 'resource category should be integer 0');
+  assert(props[0].sub_hex_q === 1, 'sub_hex_q should be 1');
+  assert(props[0].sub_hex_r === -1, 'sub_hex_r should be -1');
+  assert(!('sq' in props[0]), 'should not have sq field');
+  assert(!('sr' in props[0]), 'should not have sr field');
+  assert(props[0].rotation === 90, 'rotation should be 90');
+
+  // Structure prop — sub_hex omitted when (0,0)
+  assert(props[1].category === 1, 'structure category should be integer 1');
+  assert(!('sub_hex_q' in props[1]), 'sub_hex_q omitted for (0,0)');
+  assert(!('sub_hex_r' in props[1]), 'sub_hex_r omitted for (0,0)');
+  assert(!('footprint' in props[1]), 'footprint should not be serialized');
+  assert(props[1].blocks_movement === true, 'blocks_movement should be true');
+
+  // Anomaly prop
+  assert(props[2].category === 2, 'anomaly category should be integer 2');
+  assert(props[2].rotation === 45, 'anomaly rotation should be 45');
+});
+
+test('serializeGridToMapJson — omits rotation when zero', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('plains');
+  tile.props = [createProp('stone', 0, 0, 'resource', { rotation: 0 })];
+  grid.setTile(0, 0, tile);
+  grid.meta.spawn = [0, 0];
+  const json = serializeGridToMapJson(grid);
+  const prop = json.tiles['0,0'].props[0];
+  assert(!('rotation' in prop), 'rotation should be omitted when zero');
+});
+
+test('serializeGridToMapJson — resource optional fields round-trip', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('forest');
+  tile.props = [createProp('iron', 0, 0, 'resource', {
+    rotation: 0, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300,
+  })];
+  grid.setTile(0, 0, tile);
+  grid.meta.spawn = [0, 0];
+  const json = serializeGridToMapJson(grid);
+  const prop = json.tiles['0,0'].props[0];
+  assert(prop.remaining === 5, 'remaining should serialize');
+  assert(prop.max_amount === 10, 'max_amount should serialize');
+  assert(prop.tool_required === 'pickaxe', 'tool_required should serialize');
+  assert(prop.respawn_time === 300, 'respawn_time should serialize');
+});
+
+test('serializeGridToMapJson — root level has spawn and tiles, optional metadata', () => {
+  const grid = new HexGridClass();
+  grid.meta.spawn = [2, 3];
+  grid.meta.chapter_id = 'ch1';
+  grid.meta.name = 'Map';
+  const json = serializeGridToMapJson(grid);
+  assert(Array.isArray(json.spawn), 'should have spawn');
+  assert(json.spawn[0] === 2 && json.spawn[1] === 3, 'spawn values match');
+  assert(json.chapter_id === 'ch1', 'chapter_id present when set');
+  assert(json.name === 'Map', 'name present when set');
+});
+
+test('serializeGridToMapJson — omits chapter_id and name when empty', () => {
+  const grid = new HexGridClass();
+  grid.meta.spawn = [0, 0];
+  grid.meta.chapter_id = '';
+  grid.meta.name = '';
+  const json = serializeGridToMapJson(grid);
+  assert(!('chapter_id' in json), 'chapter_id omitted when empty');
+  assert(!('name' in json), 'name omitted when empty');
+});
+
+// ============================================================
+// loadMapIntoGrid — engine JSON format (integer categories)
+// ============================================================
+
+test('loadMapIntoGrid — loads engine format with integer categories and sub_hex fields', () => {
+  const grid = new HexGridClass();
+  const mapData = {
+    spawn: [0, 0],
+    tiles: {
+      '0,0': { biome: 'forest', elevation: 1, props: [
+        { type: 'iron', category: 0, sub_hex_q: 2, sub_hex_r: -1, rotation: 45, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300 },
+        { type: 'wall', category: 1, blocks_movement: true },
+        { type: 'rift', category: 2, rotation: 90 },
+      ] },
+    },
+  };
+  loadMapIntoGrid(grid, mapData);
+  const tile = grid.getTile(0, 0);
+
+  // Resource
+  const res = tile.props.find(p => p.category === 'resource');
+  assert(res.type === 'iron', 'resource type should be iron');
+  assert(res.sq === 2, 'sq should be 2 (from sub_hex_q)');
+  assert(res.sr === -1, 'sr should be -1 (from sub_hex_r)');
+  assert(res.remaining === 5, 'remaining should load');
+  assert(res.max_amount === 10, 'max_amount should load');
+  assert(res.tool_required === 'pickaxe', 'tool_required should load');
+  assert(res.respawn_time === 300, 'respawn_time should load');
+
+  // Structure
+  const st = tile.props.find(p => p.category === 'structure');
+  assert(st.type === 'wall', 'structure type should be wall');
+  assert(st.blocks_movement === true, 'blocks_movement should load');
+  assert(st.sq === 0, 'default sq for structure should be 0');
+  assert(st.sr === 0, 'default sr for structure should be 0');
+
+  // Anomaly
+  const an = tile.props.find(p => p.category === 'anomaly');
+  assert(an.type === 'rift', 'anomaly type should be rift');
+  assert(an.rotation === 90, 'anomaly rotation should load');
+});
+
+test('loadMapIntoGrid — full round-trip: load engine format, serialize back', () => {
+  const grid = new HexGridClass();
+  const input = {
+    spawn: [1, 2],
+    tiles: {
+      '0,0': { biome: 'forest', elevation: 3, props: [
+        { type: 'wood', category: 0, sub_hex_q: 1, sub_hex_r: -1, rotation: 45, remaining: 8 },
+        { type: 'campfire', category: 1, blocks_movement: false },
+      ] },
+    },
+  };
+  loadMapIntoGrid(grid, input);
+  const output = serializeGridToMapJson(grid);
+
+  assert(output.spawn[0] === 1 && output.spawn[1] === 2, 'spawn round-trips');
+  const props = output.tiles['0,0'].props;
+  assert(props[0].category === 0, 'resource category round-trips as int');
+  assert(props[0].sub_hex_q === 1, 'sub_hex_q round-trips');
+  assert(props[0].sub_hex_r === -1, 'sub_hex_r round-trips');
+  assert(props[0].remaining === 8, 'remaining round-trips');
+  assert(props[1].category === 1, 'structure category round-trips as int');
+  // blocks_movement=false should not be serialized (only truthy)
+  assert(!('blocks_movement' in props[1]), 'blocks_movement=false not serialized');
 });
 
 // ============================================================

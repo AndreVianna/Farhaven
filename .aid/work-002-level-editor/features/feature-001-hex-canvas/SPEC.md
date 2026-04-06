@@ -11,6 +11,7 @@
 | 2026-04-04 | Sub-hex grid system: ResourceInstance uses (sq, sr) instead of (x, y), structure uses footprint model, HexMath sub-hex functions, canvas sub-hex overlay rendering | design change |
 | 2026-04-04 | Unified props model: ResourceInstance/structure/anomaly replaced with PropInstance. TileData uses props[] instead of separate fields. Canvas rendering iterates props by category. Tooltip shows props grouped by category. | design change |
 | 2026-04-06 | Hex Inspector redesign: removed floating tooltip and prop badge indicators. Occupied sub-hexes now rendered with category-colored fill on ALL hexes at all times. Hex details displayed in the right-side Hex Inspector panel. Added onHexHover callback for inspector integration. | design change |
+| 2026-04-06 | Internal model clarification: internal model uses string categories (resource/structure/anomaly) and sq/sr field names. Conversion to engine integer categories and sub_hex_q/sub_hex_r happens at the serialization boundary only (see feature-004 SPEC). | schema change |
 
 ## Source
 
