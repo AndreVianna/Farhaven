@@ -473,7 +473,7 @@ export class HexCanvas {
       const offset = HexMath.subHexToPixel(sh.q, sh.r);
       const cx = screen.x + offset.x * this.camera.zoom;
       const cy = screen.y + offset.y * this.camera.zoom;
-      const corners = HexMath.hexCorners(cx, cy, subSize);
+      const corners = HexMath.subHexCorners(cx, cy, subSize);
 
       this._traceHexPath(corners);
       ctx.strokeStyle = SUB_HEX_STROKE;
@@ -507,7 +507,7 @@ export class HexCanvas {
           const offset = HexMath.subHexToPixel(f.q, f.r);
           const cx = screen.x + offset.x * this.camera.zoom;
           const cy = screen.y + offset.y * this.camera.zoom;
-          const corners = HexMath.hexCorners(cx, cy, subSize);
+          const corners = HexMath.subHexCorners(cx, cy, subSize);
           this._traceHexPath(corners);
           ctx.fillStyle = color;
           ctx.fill();
@@ -516,7 +516,7 @@ export class HexCanvas {
         const offset = HexMath.subHexToPixel(prop.sq, prop.sr);
         const cx = screen.x + offset.x * this.camera.zoom;
         const cy = screen.y + offset.y * this.camera.zoom;
-        const corners = HexMath.hexCorners(cx, cy, subSize);
+        const corners = HexMath.subHexCorners(cx, cy, subSize);
         this._traceHexPath(corners);
         ctx.fillStyle = color;
         ctx.fill();
@@ -539,7 +539,7 @@ export class HexCanvas {
     const offset = HexMath.subHexToPixel(sq, sr);
     const cx = screen.x + offset.x * this.camera.zoom;
     const cy = screen.y + offset.y * this.camera.zoom;
-    const corners = HexMath.hexCorners(cx, cy, subSize);
+    const corners = HexMath.subHexCorners(cx, cy, subSize);
 
     this._traceHexPath(corners);
     ctx.fillStyle = SUB_HEX_HOVER_FILL;
