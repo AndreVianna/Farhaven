@@ -788,11 +788,12 @@ export class HexCanvas {
   _onResize() {
     const parent = this.canvas.parentElement;
     if (!parent) return;
-    // Account for sidebar. Uses #sidebar ID which is stable in the current HTML layout.
-    // If the sidebar structure changes, consider accepting sidebar width as a constructor param.
-    const sidebar = parent.querySelector('#sidebar');
-    const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
-    this.canvas.width = parent.clientWidth - sidebarWidth;
+    // Account for sidebars. Subtract both left (#map-sidebar) and right (#sidebar) widths.
+    const rightSidebar = parent.querySelector('#sidebar');
+    const leftSidebar = parent.querySelector('#map-sidebar');
+    const rightWidth = rightSidebar ? rightSidebar.offsetWidth : 0;
+    const leftWidth = leftSidebar ? leftSidebar.offsetWidth : 0;
+    this.canvas.width = parent.clientWidth - rightWidth - leftWidth;
     this.canvas.height = parent.clientHeight;
     this.requestRender();
   }

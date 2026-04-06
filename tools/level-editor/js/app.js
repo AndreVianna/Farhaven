@@ -12,8 +12,9 @@ import { HexCanvas } from './canvas.js';
 import { PropDetailPanel, showInlineModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
-import { ToolManager } from './tools.js';
+import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
 import { validateMap } from './validator.js';
+import { renderResourceList } from './resource-editor.js';
 
 // ============================================================
 // Module-level state
@@ -141,12 +142,13 @@ function selectTool(toolName) {
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
   }
-  // Update tool indicator
+  // Update tool indicator in toolbar
   const indicator = document.getElementById('tool-indicator');
   if (indicator) {
     indicator.textContent = toolName ? `Tool: ${toolName}` : '';
   }
   setStatus(toolName ? `Tool: ${toolName}` : 'No tool selected');
+  updateSidebar();
 }
 
 // Map-only shortcut guard
@@ -404,6 +406,17 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
+  // Render resource list in the Resources tab (task-012)
+  const resourceTabEl = document.getElementById('tab-resources');
+  if (resourceTabEl) {
+    renderResourceList(resourceTabEl);
+    console.log('Resource list rendered.');
+  }
+
+  // Initialize sidebar palettes and tool buttons (task-012b)
+  initSidebar();
+  console.log('Sidebar initialized.');
+
   console.groupEnd();
 }
 
@@ -435,5 +448,350 @@ function initializeAfterLoad() {
   if (rdpContainer) {
     propDetailPanel = new PropDetailPanel(rdpContainer, hexGrid, commandHistory);
     toolManager.propDetailPanel = propDetailPanel;
+  }
+}
+
+// ============================================================
+// Sidebar — Tool Selector, Palettes, Map Dropdown (task-012b)
+// ============================================================
+
+/** @type {string|null} Currently selected map filename in the dropdown */
+let activeMapFilename = null;
+
+/**
+ * Tool definitions for the tool button grid.
+ * @type {Array<{type: string, label: string, shortcut: string}>}
+ */
+const TOOL_DEFS = [
+  { type: 'biome',      label: 'Biome',      shortcut: 'B' },
+  { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
+  { type: 'resource',   label: 'Resource',    shortcut: 'R' },
+  { type: 'structure',  label: 'Structure',   shortcut: 'S' },
+  { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
+  { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
+  { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
+  { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
+  { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
+];
+
+/**
+ * Initialize the sidebar: populate tool buttons, palettes, map dropdown.
+ * Called after project files are loaded (from initializeAfterLoad).
+ * @returns {void}
+ */
+function initSidebar() {
+  _initToolButtons();
+  _initMapSelector();
+  _initBiomePalette();
+  _initResourcePalette();
+  _initStructurePalette();
+  _initElevationControls();
+  updateSidebar();
+
+  // Trigger canvas resize to account for sidebar width
+  if (hexCanvas) hexCanvas._onResize();
+}
+
+/**
+ * Create tool buttons in the tool grid.
+ * @returns {void}
+ */
+function _initToolButtons() {
+  const container = document.getElementById('tool-buttons');
+  if (!container) return;
+  container.innerHTML = '';
+  for (const def of TOOL_DEFS) {
+    const btn = document.createElement('button');
+    btn.className = 'tool-btn';
+    btn.dataset.tool = def.type;
+    btn.textContent = `${def.label} (${def.shortcut})`;
+    btn.title = `${def.label} — shortcut: ${def.shortcut}`;
+    btn.addEventListener('click', () => {
+      // If clicking the already-active tool, deselect it
+      if (toolManager.activeToolType === def.type) {
+        selectTool(null);
+      } else {
+        selectTool(def.type);
+      }
+    });
+    container.appendChild(btn);
+  }
+}
+
+/**
+ * Populate the map dropdown from ProjectContext.files.maps.
+ * @returns {void}
+ */
+function _initMapSelector() {
+  const selector = /** @type {HTMLSelectElement|null} */ (document.getElementById('map-selector'));
+  if (!selector) return;
+  selector.innerHTML = '';
+
+  const maps = ProjectContext.files.maps;
+  if (maps.size === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = '(no maps)';
+    opt.disabled = true;
+    selector.appendChild(opt);
+    return;
+  }
+
+  let first = true;
+  for (const [filename] of maps) {
+    const opt = document.createElement('option');
+    opt.value = filename;
+    opt.textContent = filename;
+    if (first) {
+      opt.selected = true;
+      activeMapFilename = filename;
+      first = false;
+    }
+    selector.appendChild(opt);
+  }
+
+  selector.addEventListener('change', () => {
+    const selectedFilename = selector.value;
+    if (selectedFilename === activeMapFilename) return;
+
+    if (dirtyTracker.hasUnsavedChanges()) {
+      if (!confirm('Unsaved changes will be lost. Switch map?')) {
+        // Revert dropdown
+        selector.value = activeMapFilename || '';
+        return;
+      }
+    }
+
+    const mapEntry = ProjectContext.files.maps.get(selectedFilename);
+    if (!mapEntry) return;
+
+    activeMapFilename = selectedFilename;
+    loadMapIntoGrid(hexGrid, mapEntry.data);
+    commandHistory.clear();
+    dirtyTracker.markAllClean();
+    if (hexCanvas) {
+      hexCanvas.fitToView();
+      hexCanvas.requestRender();
+    }
+    setStatus(`Map "${selectedFilename}" loaded.`);
+  });
+}
+
+/**
+ * Populate the biome palette from biomeColorMap.
+ * @returns {void}
+ */
+function _initBiomePalette() {
+  const container = document.getElementById('palette-biome-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [biomeName, color] of biomeColorMap) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = biomeName;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'biome-swatch';
+    swatch.style.backgroundColor = color;
+
+    const label = document.createElement('span');
+    label.textContent = biomeName;
+
+    item.appendChild(swatch);
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('biome', biomeName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: biome — ${biomeName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Populate the resource palette from ProjectContext.files.resources.
+ * @returns {void}
+ */
+function _initResourcePalette() {
+  const container = document.getElementById('palette-resource-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [filename] of ProjectContext.files.resources) {
+    const resourceName = filename.replace('.tres', '');
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = resourceName;
+
+    const label = document.createElement('span');
+    label.textContent = resourceName;
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('resource', resourceName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: resource — ${resourceName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Populate the structure palette from STRUCTURE_FOOTPRINTS.
+ * @returns {void}
+ */
+function _initStructurePalette() {
+  const container = document.getElementById('palette-structure-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = structName;
+
+    const label = document.createElement('span');
+    label.textContent = `${structName} (${footprint.length})`;
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('structure', structName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: structure — ${structName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Wire elevation control buttons and input.
+ * @returns {void}
+ */
+function _initElevationControls() {
+  // Mode toggle buttons
+  const modeBtns = document.querySelectorAll('.elev-mode-btn');
+  const setControls = document.getElementById('elev-set-controls');
+  const incControls = document.getElementById('elev-inc-controls');
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      toolManager.elevationMode = mode;
+
+      modeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (mode === 'set') {
+        if (setControls) setControls.style.display = '';
+        if (incControls) incControls.style.display = 'none';
+      } else {
+        if (setControls) setControls.style.display = 'none';
+        if (incControls) incControls.style.display = '';
+      }
+    });
+  });
+
+  // SET mode value input
+  const elevValue = /** @type {HTMLInputElement|null} */ (document.getElementById('elev-value'));
+  if (elevValue) {
+    elevValue.addEventListener('input', () => {
+      const val = parseInt(elevValue.value, 10);
+      if (!isNaN(val)) {
+        toolManager.elevationValue = Math.max(0, Math.min(9, val));
+      }
+    });
+  }
+
+  // INCREMENT mode buttons
+  const elevDec = document.getElementById('elev-dec');
+  const elevInc = document.getElementById('elev-inc');
+  if (elevDec) {
+    elevDec.addEventListener('click', () => {
+      toolManager.elevationDelta = -1;
+      setStatus('Elevation: decrement by 1');
+    });
+  }
+  if (elevInc) {
+    elevInc.addEventListener('click', () => {
+      toolManager.elevationDelta = 1;
+      setStatus('Elevation: increment by 1');
+    });
+  }
+}
+
+/**
+ * Update the sidebar to reflect current tool state.
+ * Highlights active tool button, shows relevant palette, updates display.
+ * @returns {void}
+ */
+function updateSidebar() {
+  const activeType = toolManager.activeToolType;
+  const activeValue = toolManager.activeValue;
+
+  // Update tool buttons highlight
+  document.querySelectorAll('#tool-buttons .tool-btn').forEach(btn => {
+    if (btn.dataset.tool === activeType) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Show/hide palettes based on active tool
+  const palettes = ['biome', 'resource', 'structure', 'elevation'];
+  for (const p of palettes) {
+    const el = document.getElementById('palette-' + p);
+    if (!el) continue;
+    if (p === activeType) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  // Also show biome palette for flood_fill tool (it paints biomes)
+  const biomePalette = document.getElementById('palette-biome');
+  if (biomePalette && activeType === 'flood_fill') {
+    biomePalette.classList.remove('hidden');
+  }
+
+  // Highlight selected value in palettes
+  document.querySelectorAll('.palette-item').forEach(item => {
+    if (item.dataset.value === activeValue) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+  });
+
+  // Update active tool display
+  const display = document.getElementById('active-tool-display');
+  if (display) {
+    if (!activeType) {
+      display.textContent = 'No tool selected';
+    } else if (activeValue) {
+      display.textContent = `${activeType}: ${activeValue}`;
+    } else {
+      display.textContent = activeType;
+    }
+  }
+
+  // Update toolbar indicator too
+  const indicator = document.getElementById('tool-indicator');
+  if (indicator) {
+    if (!activeType) {
+      indicator.textContent = '';
+    } else if (activeValue) {
+      indicator.textContent = `Tool: ${activeType} — ${activeValue}`;
+    } else {
+      indicator.textContent = `Tool: ${activeType}`;
+    }
   }
 }
