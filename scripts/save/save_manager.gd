@@ -56,8 +56,8 @@ func mark_dirty() -> void:
 
 
 func save_now() -> void:
-	_dirty = false
-	save_game()
+	if save_game():
+		_dirty = false
 
 
 func save_game() -> bool:
@@ -102,8 +102,8 @@ func delete_save() -> void:
 
 func _on_save_timer() -> void:
 	if _dirty:
-		_dirty = false
-		save_game()
+		if save_game():
+			_dirty = false
 
 
 func _collect_save_data() -> Dictionary:
