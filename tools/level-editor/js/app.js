@@ -414,10 +414,10 @@ function initializeAfterLoad() {
     console.log('Resource list rendered.');
   }
 
-  // Render biome list in the Biomes tab (task-014)
+  // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
   if (biomeTabEl) {
-    renderBiomeList(biomeTabEl);
+    renderBiomeList(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas });
     console.log('Biome list rendered.');
   }
 
