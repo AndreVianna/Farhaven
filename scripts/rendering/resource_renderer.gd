@@ -233,11 +233,11 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 			continue
 		var is_depleted: bool = prop.remaining <= 0
 		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
-	for _anomaly in tile.get_anomalies():
-		_add_anomaly_instance(coords, tile, dimmed)
+	for anomaly in tile.get_anomalies():
+		_add_anomaly_instance(coords, tile, anomaly, dimmed)
 
 
-func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
+func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, dimmed: bool) -> void:
 	# Find the anomaly pool — use anomaly_fragment type if it exists, otherwise skip
 	var anomaly_pool_id: StringName = &"anomaly_fragment"
 	if not _pools.has(anomaly_pool_id):
@@ -248,7 +248,7 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> vo
 	if idx >= MAX_INSTANCES:
 		return
 
-	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var world_2d: Vector2 = _HexMath.prop_world_position(coords, anomaly.sub_hex)
 	var elevation_y: float = float(tile.elevation) * 0.5
 	var pos := Vector3(world_2d.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y)
 

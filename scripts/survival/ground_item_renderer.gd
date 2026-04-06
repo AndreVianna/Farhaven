@@ -82,8 +82,6 @@ func _create_pool() -> void:
 	shader.code = """
 shader_type spatial;
 render_mode unshaded;
-instance uniform vec4 instance_color : source_color = vec4(1.0, 0.85, 0.0, 0.8);
-
 void vertex() {
 	COLOR = INSTANCE_CUSTOM;
 }

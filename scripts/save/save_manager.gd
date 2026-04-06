@@ -11,13 +11,13 @@ const SAVE_PATH: String = "user://save.json"
 const _SYSTEM_KEYS: Array[Dictionary] = [
 	{"key": "hex_grid", "path": "/root/HexGrid"},
 	{"key": "day_night", "path": "/root/DayNightCycle"},
-	{"key": "player", "path": "/root/Main/Player"},
-	{"key": "inventory", "path": "/root/Main/Player/Inventory"},
-	{"key": "crafting", "path": "/root/Main/Player/CraftingSystem"},
-	{"key": "catalog", "path": "/root/Main/Player/Catalog"},
-	{"key": "scanner", "path": "/root/Main/Player/ScannerSystem"},
-	{"key": "survival", "path": "/root/Main/Player/SurvivalSystem"},
-	{"key": "journal", "path": "/root/Main/Player/JournalSystem"},
+	{"key": "player", "path": "/root/Main/World/Player"},
+	{"key": "inventory", "path": "/root/Main/World/Player/Inventory"},
+	{"key": "crafting", "path": "/root/Main/World/Player/CraftingSystem"},
+	{"key": "catalog", "path": "/root/Main/World/Player/Catalog"},
+	{"key": "scanner", "path": "/root/Main/World/Player/ScannerSystem"},
+	{"key": "survival", "path": "/root/Main/World/Player/SurvivalSystem"},
+	{"key": "journal", "path": "/root/Main/World/Player/JournalSystem"},
 ]
 
 
