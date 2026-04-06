@@ -12,15 +12,16 @@ var _gather_sound: Node = null
 func _ready() -> void:
 	_wire_systems()
 	HexGrid.load_map("res://data/maps/ch1.json")
-	# After map loads, populate renderers for already-visible tiles.
+	# Auto-load save if exists (cold resume).
+	# Deferred so all systems are fully ready before loading state.
+	# MUST run before bootstrap so renderers reflect loaded state (catalog, fog, resources).
+	SaveManager.load_game.call_deferred()
+	# After save load, populate renderers for already-visible tiles.
 	# MapLoader sets initial tiles to VISIBLE but doesn't emit tile_revealed,
 	# so renderers miss the starting hex and its neighbors.
 	# Deferred so child renderers connect their signals first (their _ready()
 	# fires before ours, and they use call_deferred for signal wiring).
 	_bootstrap_visible_tiles.call_deferred()
-	# Auto-load save if exists (cold resume).
-	# Deferred so all systems are fully ready before loading state.
-	SaveManager.load_game.call_deferred()
 
 
 func _wire_systems() -> void:

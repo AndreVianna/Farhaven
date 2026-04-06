@@ -98,12 +98,18 @@ func load_map(path: String) -> bool:
 				prop.type = StringName(pd.get("type", ""))
 				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
-				prop.remaining = int(pd.get("remaining", 0))
-				prop.max_amount = int(pd.get("max_amount", 0))
 				prop.tool_required = StringName(pd.get("tool_required", ""))
 				prop.respawn_time = float(pd.get("respawn_time", 0.0))
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
+				# Resource props: default remaining/max_amount from biome data
+				if prop.category == _Prop.Category.RESOURCE and not pd.has("remaining"):
+					var defaults: Array = _get_resource_defaults(prop.type, biome_int)
+					prop.remaining = defaults[0]
+					prop.max_amount = defaults[1]
+				else:
+					prop.remaining = int(pd.get("remaining", 0))
+					prop.max_amount = int(pd.get("max_amount", 0))
 				tile.props.append(prop)
 		else:
 			# Legacy format: "resources" + "structure" + "anomaly"
@@ -141,6 +147,20 @@ func load_map(path: String) -> bool:
 	_grid.map_generated.emit()
 	return true
 
+
+
+## Get default [remaining, max_amount] for a resource type from biome data.
+func _get_resource_defaults(type: StringName, biome_int: int) -> Array:
+	var remaining: int = 3
+	var max_amount: int = 3
+	var bd: Resource = _biome_data.get(biome_int, null)
+	if bd != null:
+		for entry_data in bd.resource_table:
+			if StringName(entry_data.get("type", "")) == type:
+				max_amount = int(entry_data.get("max_amount", 3))
+				remaining = max_amount
+				break
+	return [remaining, max_amount]
 
 
 func _make_resource_prop(type: StringName, biome_int: int) -> Resource:

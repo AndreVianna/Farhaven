@@ -37,10 +37,10 @@ tile.anomaly = StringName         # one per hex
 **The new model:**
 ```
 tile.props = [
-  {type: "wood",            sub_hex: {q: 1, r: 0},  category: "resource"},
-  {type: "workbench",       sub_hex: {q: 0, r: 0},  category: "structure", footprint: [{q:0,r:0}, {q:1,r:0}]},
-  {type: "torch",           sub_hex: {q: -1, r: 1},  category: "structure", footprint: [{q:-1,r:1}]},
-  {type: "anomaly_ch1_001", sub_hex: {q: 0, r: -1},  category: "anomaly"},
+  {type: "wood",            sub_hex: Vector2i(1, 0),  category: Category.RESOURCE},
+  {type: "workbench",       sub_hex: Vector2i(0, 0),  category: Category.STRUCTURE, footprint: [Vector2i(0,0), Vector2i(1,0)]},
+  {type: "torch",           sub_hex: Vector2i(-1, 1), category: Category.STRUCTURE, footprint: [Vector2i(-1,1)]},
+  {type: "anomaly_ch1_001", sub_hex: Vector2i(0, -1), category: Category.ANOMALY},
 ]
 ```
 
@@ -70,8 +70,8 @@ tile.props = [
 #### HexTile Data Model
 - **Remove:** `resource_nodes: Array[ResourceNode]`, `structure: StringName`, `anomaly: StringName`
 - **Add:** `props: Array[Prop]`
-- **Prop structure:** `{type: StringName, sub_hex: Vector2i, category: StringName, footprint: Array[Vector2i], rotation: float, remaining: int, max_amount: int, ...}`
-- **Category values:** `"resource"`, `"structure"`, `"anomaly"`, `"spawn"` (extensible)
+- **Prop structure:** `{type: StringName, sub_hex: Vector2i, category: int (Prop.Category enum), footprint: Array[Vector2i], rotation_deg: float, remaining: int, max_amount: int, ...}`
+- **Category values:** `Category.RESOURCE = 0`, `Category.STRUCTURE = 1`, `Category.ANOMALY = 2` (int enum, extensible)
 - **Dependencies:** Everything that reads tile data
 
 #### MapLoader
@@ -81,11 +81,12 @@ tile.props = [
     "biome": "crash_site",
     "elevation": 0,
     "props": [
-      {"type": "wood", "sq": 1, "sr": 0, "category": "resource", "rotation": 18},
-      {"type": "workbench", "sq": 0, "sr": 0, "category": "structure", "footprint": [{"q":0,"r":0},{"q":1,"r":0}]}
+      {"type": "wood", "sub_hex_q": 1, "sub_hex_r": 0, "category": 0, "rotation": 18},
+      {"type": "workbench", "sub_hex_q": 0, "sub_hex_r": 0, "category": 1, "blocks_movement": true}
     ]
   }
   ```
+  Note: `remaining`/`max_amount` are optional for resource props — defaults from biome data.
 - **Backward compat:** Old format with `resources[]` + `structure` + `anomaly` → auto-convert to `props[]` on load. Resources without sq/sr → convert offset to nearest sub-hex.
 - **Validation:** Check sub-hex range, footprint overlap, spawn uniqueness
 
