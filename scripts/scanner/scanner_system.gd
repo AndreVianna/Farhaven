@@ -269,3 +269,16 @@ func bootstrap_visible() -> void:
 		var tile = _grid._tiles[coords]
 		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
 			_check_passive_identification(coords)
+
+
+# --- Serialization (delegates to Catalog) ---
+
+func get_save_data() -> Dictionary:
+	if _catalog != null:
+		return {"catalog": _catalog.get_save_data()}
+	return {}
+
+
+func load_save_data(data: Dictionary) -> void:
+	if _catalog != null and data.has("catalog"):
+		_catalog.load_save_data(data["catalog"])

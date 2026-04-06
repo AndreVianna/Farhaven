@@ -350,10 +350,13 @@ func _get_survival_system() -> Node:
 # --- Serialization ---
 
 func get_save_data() -> Dictionary:
-	return {
+	var data: Dictionary = {
 		"tile_col": current_tile.x,
 		"tile_row": current_tile.y,
 	}
+	if inventory != null:
+		data["inventory"] = inventory.get_save_data()
+	return data
 
 
 func load_save_data(data: Dictionary) -> void:
@@ -366,3 +369,5 @@ func load_save_data(data: Dictionary) -> void:
 	_cancel_jump_tween()
 	_cancel_snap_tween()
 	_snap_to_tile(current_tile)
+	if inventory != null and data.has("inventory"):
+		inventory.load_save_data(data["inventory"])

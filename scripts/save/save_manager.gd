@@ -10,16 +10,16 @@ const SAVE_INTERVAL: float = 5.0
 ## System registry: key used in save dict → NodePath or callable to locate the node.
 ## Autoloads are fetched from /root/<Name>.
 ## Player children are fetched via the scene tree.
+## Each system must be a Node in the scene tree with get_save_data()/load_save_data().
+## Inventory is saved via Player (RefCounted, not a Node).
+## Catalog is saved via ScannerSystem (RefCounted, not a Node).
 const _SYSTEM_KEYS: Array[Dictionary] = [
 	{"key": "hex_grid", "path": "/root/HexGrid"},
 	{"key": "day_night", "path": "/root/DayNightCycle"},
 	{"key": "player", "path": "/root/Main/World/Player"},
-	{"key": "inventory", "path": "/root/Main/World/Player/Inventory"},
 	{"key": "crafting", "path": "/root/Main/World/Player/CraftingSystem"},
-	{"key": "catalog", "path": "/root/Main/World/Player/Catalog"},
 	{"key": "scanner", "path": "/root/Main/World/Player/ScannerSystem"},
 	{"key": "survival", "path": "/root/Main/World/Player/SurvivalSystem"},
-	{"key": "journal", "path": "/root/Main/World/Player/JournalSystem"},
 ]
 
 var _dirty: bool = false
