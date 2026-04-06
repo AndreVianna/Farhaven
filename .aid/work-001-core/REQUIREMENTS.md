@@ -20,6 +20,7 @@
 | 2026-04-01 | C1+C6: HEX_SIZE=3.0 and ELEVATION_STEP=0.5 added to §5 F1 Spatial Constants. Player occupancy ~30% noted. C2: Cliff faces added as current scope. | /pivot-cascade |
 | 2026-04-02 | Scan redesign: F2 removed press-and-hold reference, F13 rewritten for proximity auto-scan + 3-state knowledge, AC2 removed scan hold criterion, AC11 rewritten for proximity scan + ENCOUNTERED state. §4 updated. | /scan-redesign-apply |
 | 2026-04-03 | Review fixes: Grassland resources (Grass→Wood), build order notes updated | /aid-specify review |
+| 2026-04-04 | ARCHITECTURE: Sub-hex grid (19 sub-hexes per main hex, axial sq/sr coords) for prop placement. Unified props[] list replaces separate resources/structure/anomaly fields on tiles. | Architecture decision (Andre + Lola) |
 
 ## 1. Objective
 
@@ -138,12 +139,27 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
   - Diff 4+: Blocked (cliff, future wall texture)
   - Asymmetric gravity: dropping faster than jumping. Both auto-triggered, no input.
 - **Spatial constants (define world scale):**
-  - `HEX_SIZE = 3.0` — world-space size of one hex (center to corner). All spatial calculations derive from this constant.
+  - `HEX_SIZE = 3.0` — world-space size of one hex (center to corner). Diameter = 6.0m. All spatial calculations derive from this constant.
+  - `SUB_HEX_SIZE = HEX_SIZE / 5.0` (0.6) — sub-hex center to corner. Diameter = 1.2m.
   - `ELEVATION_STEP = 0.5` — world units of Y offset per elevation level. Total height range: 0–4.5 world units.
   - Player visual occupies ~30% of hex width (~0.9 units at HEX_SIZE=3.0)
+- **Sub-hex grid (prop placement granularity):**
+  - Each main hex contains 19 sub-hexes: 1 center + 6 inner ring + 12 outer ring
+  - Sub-hexes use axial coordinates (sq, sr) — same system as the main grid at smaller scale
+  - Center = (0,0). Inner ring = radius 1 neighbors. Outer ring = radius 2 neighbors.
+  - Full world address of any prop: (q, r, sq, sr) — main hex + sub-hex position
+  - World position: `hex_center(q, r) + axial_to_pixel(sq, sr) * sub_scale`
+  - **Main hex** = unit of gameplay (movement, fog, biome, elevation, pathfinding)
+  - **Sub-hex** = unit of placement (where props sit WITHIN the hex)
+- **Unified props model:**
+  - Each tile has a single `props[]` list containing ALL placed content: resources, structures, anomalies, spawn markers
+  - Each prop has: `type` (StringName), `sub_hex` (Vector2i — sq, sr), `category` (resource/structure/anomaly/spawn)
+  - Structures have `footprint: Array[Vector2i]` — the sub-hexes they occupy
+  - The hex is a container. The prop's type/category defines its behavior.
+  - See `docs/design/sub-hex-grid-impact.md` for full architecture decision.
 - **Cliff faces:** Flat vertical quads between adjacent hexes at different elevations. Higher tile's biome color × 0.6. Part of the hex ArrayMesh (zero extra draw calls). Current scope, not deferred.
 - Fog of war — tiles reveal when player moves adjacent
-- **Anomaly tiles:** Hand-placed by level designer. Scanned to unlock story content.
+- **Anomaly tiles:** Hand-placed by level designer as props with `category: "anomaly"`. Scanned to unlock story content.
 
 ### F2. Player Movement & Controls
 - **[PIVOT] Joystick-only movement.** Floating joystick: touch-and-drag anywhere on screen → joystick appears at touch point. Continuous movement (not tile-snapped during motion).
@@ -180,11 +196,12 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - Build button always visible in HUD — opens menu of structures placeable on adjacent tiles
 - Building is separate from Crafting: Build = place structures, Craft = make items
 - Workbench is the first thing the player builds
-- Place structures on hex tiles (one per tile)
+- **Structures are props** — placed into `tile.props[]` with `category: "structure"` and a `footprint` (list of sub-hexes they occupy). Multiple structures per hex allowed if sub-hexes don't overlap.
+- Placement: select structure → enter placement mode → choose target hex → choose sub-hex position → validate footprint (no overlap) → place
 - Structures are indestructible in MVP
-- Most structures block movement; Shelter and Torch are walkable
+- Walkability: Shelter, Torch, Campfire = walkable. Wall = blocks movement. Workbench, Storage Chest = walkable (but their footprint sub-hexes are occupied for placement purposes).
 - Shelter = safe zone at night
-- MVP structures: Workbench, Shelter, Storage Chest, Wall, Torch
+- MVP structures: Workbench, Shelter, Storage Chest, Wall, Torch, Campfire
 - Raw-tier recipes only
 
 ### F7. Day/Night Cycle
@@ -398,10 +415,11 @@ Farhaven fills the gap: the same satisfying exploration/gathering loop, a compel
 - [ ] Items stack with quantity display
 
 ### AC6 — Building
-- [ ] Place Workbench on empty hex → occupied, blocks movement
-- [ ] Try to place on occupied hex → rejected
+- [ ] Place Workbench on hex with free sub-hexes → prop added to tile.props[]
+- [ ] Try to place structure on sub-hexes already occupied → rejected
+- [ ] Multiple structures in same hex allowed if footprints don't overlap
 - [ ] Shelter built → player inside at night takes 0 damage
-- [ ] Wall built → fauna pathfinding routes around it
+- [ ] Wall built → fauna pathfinding routes around it (main-hex level traversal check)
 - [ ] Structures are indestructible — fauna cannot damage them
 
 ### AC7 — Day/Night
@@ -518,6 +536,8 @@ Each delivery that adds systems MUST document how it extends this sequence:
 - Feature SPECs (001-012) reconciled with redesign. 14 functional requirements (F1-F14) across 12 feature SPECs.
 - Scanner/Catalog (F13) and Journal (F14) decomposed and specified.
 
-## §13 Prop Taxonomy
+## §13 Prop Taxonomy & Sub-Hex Architecture
 
-See `docs/design/prop-taxonomy.md` for the authoritative 4-category prop classification (Decoration, Resource, Structure, Entity) and render pipeline.
+See `docs/design/prop-taxonomy.md` for the 4-category prop classification (Decoration, Resource, Structure, Entity) and render pipeline.
+
+See `docs/design/sub-hex-grid-impact.md` for the sub-hex grid architecture decision, unified props[] model, and full impact analysis across all systems.

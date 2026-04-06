@@ -4,13 +4,13 @@ extends Node3D
 ## One pool per ResourceDef from ResourceRegistry, keyed by StringName (resource type id).
 ## Signal-driven: subscribes to HexGrid map_generated, tile_visibility_changed,
 ## resource_depleted, resource_respawned signals.
-## Fog: HIDDEN=not instanced, REVEALED=dimmed (0.4 alpha), VISIBLE=full.
+## Fog: HIDDEN=not instanced, VISIBLE=full.
 ## On resource_depleted: swap mesh variant (tree→stump, rock→rubble).
 ## On resource_respawned: swap back to original mesh.
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Constants ---
 
@@ -36,9 +36,6 @@ var _depleted_meshes: Dictionary = {}
 
 ## Normal colors per resource type id (for undimmed state)
 var _pool_colors: Dictionary = {}
-
-## Dimmed colors per resource type id (for REVEALED fog state)
-var _pool_colors_dimmed: Dictionary = {}
 
 ## Tile coords -> Array of {resource_type: StringName, pool: StringName, instance_idx: int, depleted: bool}
 var _tile_entries: Dictionary = {}
@@ -72,9 +69,7 @@ func _create_pools() -> void:
 		_normal_meshes[def.id] = normal_mesh
 		_depleted_meshes[def.id] = depleted_mesh_res
 		var color: Color = def.placeholder_color if def.mesh == null else Color.WHITE
-		var dimmed_color := Color(color.r * 0.57, color.g * 0.57, color.b * 0.57, 1.0)
 		_pool_colors[def.id] = color
-		_pool_colors_dimmed[def.id] = dimmed_color
 		_create_pool(def.id, normal_mesh, color)
 
 
@@ -197,8 +192,6 @@ func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 	match state:
 		_HexTile.FogState.VISIBLE:
 			_add_resources_for_tile(coords, false)
-		_HexTile.FogState.REVEALED:
-			_add_resources_for_tile(coords, true)
 		_HexTile.FogState.HIDDEN:
 			_remove_all_resources_at(coords)
 
@@ -221,12 +214,9 @@ func _populate_all_visible_tiles() -> void:
 		var tile: Resource = tiles[coords]
 		if tile == null:
 			continue
-		match tile.fog_state:
-			_HexTile.FogState.VISIBLE:
-				_add_resources_for_tile(coords, false)
-			_HexTile.FogState.REVEALED:
-				_add_resources_for_tile(coords, true)
-			# HIDDEN: skip
+		if tile.fog_state == _HexTile.FogState.VISIBLE:
+			_add_resources_for_tile(coords, false)
+		# HIDDEN: skip
 
 
 func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
@@ -237,19 +227,17 @@ func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
 	if tile == null:
 		return
 
-	for rn in tile.resource_nodes:
-		var pool_id: StringName = rn.type
+	for prop in tile.get_resources():
+		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue
-		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
-
-	# Anomaly: rendered as a standalone prop at tile center
-	if tile.anomaly != &"":
-		_add_anomaly_instance(coords, tile, dimmed)
+		var is_depleted: bool = prop.remaining <= 0
+		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
+	for anomaly in tile.get_anomalies():
+		_add_anomaly_instance(coords, tile, anomaly, dimmed)
 
 
-func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> void:
+func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, dimmed: bool) -> void:
 	# Find the anomaly pool — use anomaly_fragment type if it exists, otherwise skip
 	var anomaly_pool_id: StringName = &"anomaly_fragment"
 	if not _pools.has(anomaly_pool_id):
@@ -260,7 +248,7 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, dimmed: bool) -> vo
 	if idx >= MAX_INSTANCES:
 		return
 
-	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var world_2d: Vector2 = _HexMath.prop_world_position(coords, anomaly.sub_hex)
 	var elevation_y: float = float(tile.elevation) * 0.5
 	var pos := Vector3(world_2d.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y)
 
@@ -293,15 +281,15 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 	if idx >= MAX_INSTANCES:
 		return
 
-	# Position: tile center + resource offset + elevation
+	# Position: tile center + sub-hex offset + elevation
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	var elevation_y: float = 0.0
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 
-	var world_offset: Vector2 = _PropUtils.offset_to_world(rn.offset, HEX_SIZE)
-	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y + world_offset.y)
+	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
+	var pos := Vector3(world_2d.x + sub_hex_offset.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y + sub_hex_offset.y)
 
 	# Apply rotation
 	var xform := Transform3D.IDENTITY
@@ -381,30 +369,25 @@ func _rebuild_tile(coords: Vector2i) -> void:
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	if tile == null:
 		return
-	var dimmed: bool = tile.fog_state == _HexTile.FogState.REVEALED
+	var dimmed: bool = false
 	_remove_all_resources_at(coords)
-	for rn in tile.resource_nodes:
-		var pool_id: StringName = rn.type
+	for prop in tile.get_resources():
+		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue
-		var is_depleted: bool = rn.remaining <= 0
-		_add_resource_instance(coords, rn, pool_id, dimmed, is_depleted)
+		var is_depleted: bool = prop.remaining <= 0
+		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
 
 
-func _update_pool_material(pool_id: StringName, dimmed: bool) -> void:
-	# Material reflects the most recent add — in practice, tiles at the same
-	# fog level share a pool, so this works for placeholder rendering.
-	# Full per-instance coloring would use custom_data in a shader.
+func _update_pool_material(pool_id: StringName, _dimmed: bool) -> void:
+	# Material always uses full color. Darkness handled by shader.
 	if not _pools.has(pool_id):
 		return
 	var mmi: MultiMeshInstance3D = _pools[pool_id]
 	var mat: StandardMaterial3D = mmi.material_override as StandardMaterial3D
 	if mat == null:
 		return
-	if dimmed:
-		mat.albedo_color = _pool_colors_dimmed.get(pool_id, _pool_colors.get(pool_id, Color.WHITE))
-	else:
-		mat.albedo_color = _pool_colors.get(pool_id, Color.WHITE)
+	mat.albedo_color = _pool_colors.get(pool_id, Color.WHITE)
 
 
 # --- Public API (for testing) ---

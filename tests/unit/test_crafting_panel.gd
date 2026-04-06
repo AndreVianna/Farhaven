@@ -10,6 +10,7 @@ const _RecipeEntryUI = preload("res://ui/recipe_entry_ui.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _panel: PanelContainer = null
 var _inv: RefCounted = null
@@ -33,6 +34,15 @@ class MockHexGrid extends Node:
 
 	func get_tile(coords: Vector2i) -> Resource:
 		return _tiles.get(coords, null)
+
+	func has_structure(coords: Vector2i, type: StringName) -> bool:
+		var tile: Resource = _tiles.get(coords, null)
+		if tile == null:
+			return false
+		for prop in tile.get_structures():
+			if prop.type == type:
+				return true
+		return false
 
 	func get_neighbors(coords: Vector2i) -> Array[Vector2i]:
 		var dirs: Array[Vector2i] = [
@@ -65,14 +75,13 @@ class MockPlayer extends Node:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &"workbench"
+	tile.props = [_Prop.create_structure(&"workbench")]
 	_grid.set_tile(coords, tile)
 
 
 func _place_empty_tile(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.structure = &""
 	_grid.set_tile(coords, tile)
 
 

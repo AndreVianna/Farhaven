@@ -2,7 +2,7 @@
 
 > **Source:** discovery-analyst
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-04
 
 ## Entities / Schemas
 
@@ -15,9 +15,12 @@ Godot Resource representing a single hex tile in the game world.
 | biome | Biome enum (int) | GRASSLAND (1) | 0-4 | CRASH_SITE=0, GRASSLAND=1, FOREST=2, ROCKY=3, WATER=4 |
 | elevation | int | 0 | 0-9 (clamped in MapLoader) | World Y = elevation * 0.5 |
 | fog_state | FogState enum (int) | HIDDEN (0) | 0-2 | HIDDEN=0, REVEALED=1, VISIBLE=2 |
-| structure | StringName | &"" | Empty or valid structure name | e.g. &"workbench", &"shelter", &"torch" |
-| resource_nodes | Array | [] | Array of ResourceNode resources | Untyped array (contains Resource objects) |
-| anomaly | StringName | &"" | Empty or anomaly entry_id | e.g. &"anomaly_ch1_001" |
+| props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `resource_nodes`, `anomaly` fields. |
+
+**Deprecated fields (replaced by props[]):**
+- ~~`structure`~~ — now a prop with `category="structure"` in `props[]`
+- ~~`resource_nodes`~~ — now props with `category="resource"` in `props[]`
+- ~~`anomaly`~~ — now a prop with `category="anomaly"` in `props[]`
 
 Source: `scripts/hex/hex_tile.gd`
 

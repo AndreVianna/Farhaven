@@ -2,7 +2,7 @@
 
 > **Source:** discovery-integrator
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-04
 
 Farhaven is a 100% offline single-player mobile game with no network calls, no backend, no analytics, no ads, and no IAP. There are no external service integrations. This document covers engine-level integrations and the planned (but not yet configured) platform export targets.
 
@@ -13,7 +13,7 @@ Farhaven is a 100% offline single-player mobile game with no network calls, no b
 ## Caches
 
 **None.** There are no caching layers. All game data is held in memory:
-- Hex grid tiles: `HexGrid._tiles` Dictionary (Vector2i -> HexTile). Source: `scripts/hex/hex_grid.gd`
+- Hex grid tiles: `HexGrid._tiles` Dictionary (Vector2i -> HexTile). Each tile holds a unified `props[]` array (resources, structures, anomalies). Source: `scripts/hex/hex_grid.gd`
 - Resource definitions: `ResourceRegistry._defs` Dictionary (StringName -> ResourceDef). Source: `scripts/data/resource_registry.gd`
 - Catalog entries: `Catalog._all_entries` Dictionary (StringName -> CatalogEntry). Source: `scripts/scanner/catalog.gd`
 - Biome data: loaded at startup and held in arrays by HexGridRenderer and MapLoader. Source: `scenes/world/hex_grid_renderer.gd`, `scripts/hex/map_loader.gd`

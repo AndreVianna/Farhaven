@@ -11,6 +11,7 @@
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 | 2026-04-02 | Scan redesign: auto-defend gate changed from CATALOGED to ENCOUNTERED (hostile fauna). Auto-gather gate remains CATALOGED. Catalog query updated to `get_knowledge_state`. | /scan-redesign-apply |
 | 2026-04-03 | Review fixes: proximity model now world-space radius (GATHER_RADIUS=0.75), signal signature updates, resource config via ResourceRegistry | /aid-specify review |
+| 2026-04-04 | Unified props: resource lookup via tile.props filtered by category. Respawn queue tracks (coords, sub_hex). Distance calc includes sub-hex world offset. Ground items remain main-hex. | /arch-update |
 
 ## Source
 
@@ -65,17 +66,18 @@ rest. All interactions are proximity-based and catalog-gated:
 - ✅ (CATALOGED) = full auto-interaction (auto-gather, auto-hunt, everything unlocked)
 - No taps required for gathering, defending, or picking up items
 
-#### ResourceNode Extension (feature-001 Resource)
+#### Resource Props (via feature-001 Prop)
 
-Feature-001 defines `ResourceNode` with: `type`, `remaining`, `max_amount`, `tool_required`.
-This feature adds:
+Feature-001 defines `Prop` with unified fields. Resource props (`category == &"resource"`)
+have: `type`, `sub_hex`, `remaining`, `max_amount`, `tool_required`, `respawn_time`.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn). Set by MapLoader from BiomeData. |
-
-No other per-node additions. `gather_time` and `gather_amount` are resource-type
+This feature adds no per-prop fields. `gather_time` and `gather_amount` are resource-type
 properties looked up from the resource config table at gather time.
+
+**Querying resources on a tile:**
+```gdscript
+var resource_props: Array = tile.props.filter(func(p): return p.category == &"resource")
+```
 
 #### Resource Config Table
 
@@ -119,11 +121,11 @@ No tier system. Direct match between `ResourceNode.tool_required` and the tool i
 the corresponding Inventory slot:
 
 ```gdscript
-func can_gather(node: ResourceNode, inventory: Inventory) -> bool:
-    if node.tool_required == &"":
+func can_gather(prop: Prop, inventory: Inventory) -> bool:
+    if prop.tool_required == &"":
         return true  # bare hands
-    var slot = item_config[node.tool_required].get("tool_slot", &"")
-    return inventory.get_tool(slot) == node.tool_required
+    var slot = item_config[prop.tool_required].get("tool_slot", &"")
+    return inventory.get_tool(slot) == prop.tool_required
 ```
 
 - `tool_required == &""` → bare hands (wood, berries, fiber)
@@ -158,7 +160,7 @@ const AUTO_DEFEND_CONFIG: Dictionary = {
 |----------|------|-------------|
 | `_is_gathering` | `bool` | Currently auto-gathering a resource (gather timer active) |
 | `_gather_target_coords` | `Vector2i` | Tile being gathered from |
-| `_gather_target_index` | `int` | Index into tile.resource_nodes |
+| `_gather_target_sub_hex` | `Vector2i` | Sub-hex of the resource prop being gathered |
 | `_gather_tween` | `Tween` | Active gather timer (null when not gathering) |
 | `_defend_cooldown` | `float` | Remaining seconds until next auto-attack (0 = ready) |
 | `_respawn_queue` | `Array[Dictionary]` | Depleted resources awaiting respawn |
@@ -169,7 +171,7 @@ const AUTO_DEFEND_CONFIG: Dictionary = {
 # Each entry in _respawn_queue:
 {
   "coords": Vector2i,      # tile location
-  "resource_index": int,    # index into tile.resource_nodes
+  "sub_hex": Vector2i,     # sub-hex of the resource prop within the tile
   "time_remaining": float,  # seconds until respawn
 }
 ```
@@ -210,7 +212,7 @@ sessions. This is a small player-friendly bonus and avoids serializing timer sta
 
 | This feature queries | Source | What it reads |
 |---------------------|--------|---------------|
-| `HexGrid.get_tile(coords).resource_nodes[]` | feature-001 | Resources on tile |
+| `HexGrid.get_tile(coords).props.filter(category == "resource")` | feature-001 | Resource props on tile |
 | `HexGrid.get_tile(coords).fog_state` | feature-001 | For respawn pause/resume |
 | `Catalog.get_knowledge_state(entry_id)` | feature-003 | Knowledge gate for auto-interaction. Auto-gather requires CATALOGED. Auto-defend requires ENCOUNTERED or CATALOGED. Queried per tile_entered, NOT via signals. |
 | `Catalog.get_entry(entry_id).properties` | feature-003 | Flora edible/toxic, fauna hostile, mineral tool_required (only available for CATALOGED entries) |
@@ -241,15 +243,18 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │   (circular area, radius TBD). This may reduce from 7 tiles to current-tile-only
   │   or a small circular radius. Flag for playtesting.
   │     For each tile in [current_tile] + HexGrid.get_neighbors(coords):
-  │       For each resource_node in tile.resource_nodes:
-  │         if resource_node.remaining <= 0: skip (depleted)
+  │       For each prop in tile.props where prop.category == &"resource":
+  │         if prop.remaining <= 0: skip (depleted)
   │
-  │         entry_id = RESOURCE_TO_ENTRY[resource_node.type]  (from feature-003)
+  │         entry_id = RESOURCE_TO_ENTRY[prop.type]  (from feature-003)
   │         if NOT Catalog.is_cataloged(entry_id): skip (catalog gate — must be CATALOGED for auto-gather)
   │
-  │         if NOT can_gather(resource_node, Inventory): skip (tool gate)
+  │         if NOT can_gather(prop, Inventory): skip (tool gate)
   │
   │         → Found a gatherable, cataloged resource! Add to candidates list.
+  │         Distance includes sub-hex world offset:
+  │           candidate_world_pos = HexMath.axial_to_world(tile.coords)
+  │                               + HexMath.sub_hex_to_offset(prop.sub_hex)
   │
   ├─ Sort candidates: TOOL_PRIORITY (highest first), then nearest to player
   ├─ If no candidates: return (nothing to do)
@@ -257,17 +262,17 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   ├─ Begin auto-gather on best candidate:
   │     _is_gathering = true
   │     _gather_target_coords = candidate.tile.coords
-  │     _gather_target_index = candidate.resource_index
+  │     _gather_target_sub_hex = candidate.prop.sub_hex
   │
   │     Compute effective gather time:
-  │       tool_slot = item_config[node.tool_required].get("tool_slot", &"")
+  │       tool_slot = item_config[prop.tool_required].get("tool_slot", &"")
   │       equipped = Inventory.get_tool(tool_slot) if tool_slot else &""
-  │       base = resource_config[node.type].gather_time
-  │       multiplier = tool_speed.get(equipped, {}).get(node.type, 1.0)
+  │       base = resource_config[prop.type].gather_time
+  │       multiplier = tool_speed.get(equipped, {}).get(prop.type, 1.0)
   │       effective_time = base * multiplier
   │
-  │     Emit auto_gather_started(coords, node.type)
-  │     Play resource "harvesting" animation on the resource node
+  │     Emit auto_gather_started(coords, prop.type)
+  │     Play resource "harvesting" animation on the resource prop
   │     Create Tween: _gather_tween, duration = effective_time
   │
   │     ** GATHER ALWAYS COMPLETES. ** No cancel, no range check after start.
@@ -275,12 +280,12 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │     of distance. This is the core MLU feel: keep moving, stuff flows in.
   │
   ├─ On Tween complete (player may be anywhere):
-  │     node.remaining -= 1
-  │     amount = resource_config[node.type].gather_amount
-  │     added = Inventory.add_item(node.type, amount)
+  │     prop.remaining -= 1
+  │     amount = resource_config[prop.type].gather_amount
+  │     added = Inventory.add_item(prop.type, amount)
   │
   │     if added > 0:
-  │       Emit auto_gather_completed(coords, node.type, added)
+  │       Emit auto_gather_completed(coords, prop.type, added)
   │       → Visual: resource visually "flies to" player's CURRENT position
   │         (not where they were when gather started). Tween from resource
   │         world position to Player.position over ~0.5s. **[TUNING_REQUIRED]** —
@@ -291,10 +296,10 @@ HexGrid emits tile_entered(coords) — player moved to a new tile
   │       Emit auto_gather_failed(coords, &"inventory_full")
   │       → HUD: floating "INVENTORY FULL" red text
   │
-  │     if node.remaining == 0:
-  │       Emit resource_depleted(coords, node.type) → forward to HexGrid
-  │       if node.respawn_time > 0:
-  │         _respawn_queue.append({ coords, resource_index, time_remaining: node.respawn_time })
+  │     if prop.remaining == 0:
+  │       Emit resource_depleted(coords, prop.type) → forward to HexGrid
+  │       if prop.respawn_time > 0:
+  │         _respawn_queue.append({ coords, sub_hex: prop.sub_hex, time_remaining: prop.respawn_time })
   │
   │     _is_gathering = false
   │     _gather_tween = null
@@ -431,10 +436,10 @@ Every frame (AutoInteractionSystem._process):
   │     else:
   │       entry.time_remaining -= delta
   │       if entry.time_remaining <= 0:
-  │         node = tile.resource_nodes[entry.resource_index]
-  │         node.remaining = node.max_amount
+  │         prop = tile.props.filter(func(p): return p.sub_hex == entry.sub_hex and p.category == &"resource")[0]
+  │         prop.remaining = prop.max_amount
   │         Remove entry from _respawn_queue
-  │         Emit resource_respawned(entry.coords, node.type) → forward to HexGrid
+  │         Emit resource_respawned(entry.coords, prop.type) → forward to HexGrid
   │
   └─ End
 ```
@@ -506,7 +511,7 @@ data/
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
 | `auto_interaction_system.gd` | Child Node of Player. Proximity detection on `tile_entered` and `fauna_moved`. Auto-gather (catalog gate → tool gate → tween timer → inventory add → chain). Auto-defend (catalog gate → hostile check → cooldown → damage signal). Auto-pickup (ground items via feature-007 API). Respawn queue tick. | `HexGrid` (tile queries, signals), `Catalog` feature-003 (`is_cataloged`, `get_entry`), `Inventory` feature-005 (`get_tool`, `add_item`), `FaunaManager` feature-010 (fauna queries + `fauna_moved` signal), `SurvivalSystem` feature-007 (`get_ground_items_at`) |
-| `resource_renderer.gd` | Node3D under World. One MultiMeshInstance3D per resource type (~6 draw calls). On `map_generated`: spawn instances. On `tile_revealed`/`tile_visibility_changed`: show/hide per fog. On `resource_depleted`: swap mesh (tree→stump). On `resource_respawned`: swap back. Per-node random offset within hex. | `HexGrid` (signals: map_generated, tile_revealed, tile_visibility_changed, resource_depleted, resource_respawned) |
+| `resource_renderer.gd` | Node3D under World. One MultiMeshInstance3D per resource type (~6 draw calls). On `map_generated`: spawn instances at sub-hex world positions. On `tile_revealed`/`tile_visibility_changed`: show/hide per fog. On `resource_depleted`: swap mesh (tree→stump). On `resource_respawned`: swap back. Instance positioned at prop's sub-hex offset within hex. | `HexGrid` (signals: map_generated, tile_revealed, tile_visibility_changed, resource_depleted, resource_respawned) |
 
 #### Signal Wiring — Complete
 
@@ -549,10 +554,10 @@ One `MultiMeshInstance3D` per resource type (~6 types = ~6 draw calls). Placehol
 meshes: colored cylinder (tree), grey box (rock), red sphere (berry bush), green
 strand (fiber), dark grey vein (ore), purple crystal (crystal cluster). <500 tris each.
 
-**Instance positioning:** Each resource gets a slight random offset within its hex tile
-(not dead-center) for visual variety. Offset = ±15% of hex radius (i.e., ±`HEX_SIZE × 0.15`
-= ±0.45 world units at HEX_SIZE=3.0). Computed deterministically from coords +
-resource index (seeded, not truly random — consistent across save/load).
+**Instance positioning:** Each resource prop is placed at its sub-hex world position
+within the parent tile. World offset computed via `HexMath.sub_hex_to_offset(prop.sub_hex)`
+using `SUB_HEX_SIZE=0.6`. This replaces the previous random ±15% offset — sub-hex
+positions provide deterministic, designed placement.
 
 **Mesh variants:** Full → depleted (tree → stump, rock → rubble). Swap via instance
 custom data channel (shader reads a flag) or by maintaining two MultiMesh pools per

@@ -7,7 +7,7 @@ class_name TestCatalog
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 
 # Minimal fake HexGrid for get_scannable_at tests
@@ -331,9 +331,7 @@ func test_encounter_entry_does_not_emit_twice() -> void:
 
 func _make_tile_with_resource(resource_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	tile.resource_nodes = [node]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 
@@ -382,7 +380,7 @@ func test_get_scannable_at_returns_empty_when_no_hex_grid() -> void:
 func test_get_scannable_at_anomaly_uncataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
 	var tile: HexTile = _HexTile.new()
-	tile.anomaly = &"anomaly_ch1_001"
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	fake._tiles[Vector2i(1, 0)] = tile
 
 	_catalog._hex_grid = fake
@@ -393,7 +391,7 @@ func test_get_scannable_at_anomaly_uncataloged() -> void:
 func test_get_scannable_at_anomaly_cataloged_returns_empty() -> void:
 	var fake: FakeGrid = FakeGrid.new()
 	var tile: HexTile = _HexTile.new()
-	tile.anomaly = &"anomaly_ch1_001"
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	fake._tiles[Vector2i(1, 0)] = tile
 
 	_catalog._hex_grid = fake

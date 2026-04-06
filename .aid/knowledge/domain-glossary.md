@@ -2,7 +2,7 @@
 
 > **Source:** discovery-integrator
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-04
 
 Terms extracted from code: class names, method names, constants, enums, comments, and documentation that encode business or domain concepts.
 
@@ -14,7 +14,11 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | Axial Coordinates | Two-axis hex coordinate system (q, r) stored as Vector2i. The primary coordinate system used throughout. Cube coordinate s is derived as -q-r. | `scripts/hex/hex_math.gd:4-5` |
 | Cube Coordinates | Three-axis hex coordinate system (q, r, s) with constraint q+r+s=0. Used internally for distance calculations. | `scripts/hex/hex_math.gd:20` |
 | HEX_SIZE | World-space radius of each hexagon (3.0 Godot units). Controls tile spacing and all hex-to-world conversions. | `scripts/hex/hex_math.gd:7` |
-| Tile | A single hexagonal cell in the grid, represented by a HexTile Resource. Has biome, elevation, fog state, structure, resource nodes, and anomaly. | `scripts/hex/hex_tile.gd` |
+| Tile | A single hexagonal cell in the grid, represented by a HexTile Resource. Has biome, elevation, fog state, and a unified props array containing all placed content (resources, structures, anomalies, spawn markers). | `scripts/hex/hex_tile.gd` |
+| Prop | A unified game object placed in a hex tile. All world content (resources, structures, anomalies, spawn markers) are props stored in `tile.props[]`. Each prop has a type, category, sub-hex coordinate, and optional footprint. Replaces the former separate `structure`, `resource_nodes`, and `anomaly` fields. | `scripts/hex/hex_tile.gd`, `docs/design/prop-taxonomy.md` |
+| Sub-hex | A 0.6m hexagonal subdivision within a main 6m hex tile. Each tile contains 19 sub-hexes (1 center + 6 inner ring + 12 outer ring) addressed by axial coordinates (sq, sr). Sub-hex size = HEX_SIZE / 5.0 (SUB_HEX_SIZE = 0.6 at HEX_SIZE = 3.0). Used for precise prop placement within tiles. | `scripts/hex/hex_math.gd` |
+| Footprint | An array of sub-hex coordinates `Array[Vector2i]` that a structure prop occupies within its parent hex tile. Used for placement validation — structures can coexist on the same tile as long as their footprints don't overlap. Small structures (torch, campfire) occupy 1 sub-hex; large structures (shelter) occupy multiple. | `scripts/hex/hex_tile.gd`, feature-009 SPEC |
+| Props List | The `tile.props[]` array on each HexTile containing all placed content as prop dictionaries. Replaces the former separate `tile.structure`, `tile.resource_nodes`, and `tile.anomaly` fields. Queried by category for backward-compatible operations (e.g., checking for blocking structures). | `scripts/hex/hex_tile.gd` |
 | Biome | The terrain type of a hex tile. Determines visual color, available resources, and traversability. Chapter 1 has 5: CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER. | `scripts/hex/hex_tile.gd:6-12` |
 | Elevation | Integer height level (0-9) of a tile. Affects traversability (walking vs jumping), visual rendering (Y position = elevation * 0.5), and cliff face generation. | `scripts/hex/hex_tile.gd:20`, `scripts/player/player.gd:18` |
 | Fog of War | Visibility system with three states: HIDDEN (no geometry rendered), REVEALED (seen before but not currently visible, dimmed), VISIBLE (currently in view range). | `scripts/hex/hex_tile.gd:14-18` |
@@ -30,8 +34,8 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | JUMP | Movement type for climbing up significant elevation changes (diff 2-3). Triggers a tween arc animation. | `scripts/hex/hex_grid.gd:12` |
 | DROP | Movement type for descending significant elevation changes (diff 2-3). Triggers a shorter hop-and-fall animation. | `scripts/hex/hex_grid.gd:12` |
 | BLOCKED | Movement is impossible: water tiles, walls, or elevation difference >= 4. Player slides along the boundary instead. | `scripts/hex/hex_grid.gd:17` |
-| Passable | A tile is passable from another if traversal type is not BLOCKED. Considers biome (water blocks), structures (non-walkable block), and elevation difference. | `scripts/hex/hex_grid.gd:68-70` |
-| Walkable Structure | A structure that does NOT block movement. List: shelter, torch, workbench, storage_chest, campfire. | `scripts/hex/hex_grid.gd:20` |
+| Passable | A tile is passable from another if traversal type is not BLOCKED. Considers biome (water blocks), structure props with `blocks_movement` (queried from tile.props[]), and elevation difference. | `scripts/hex/hex_grid.gd:68-70` |
+| Walkable Structure | A structure prop that does NOT block movement. List: shelter, torch, workbench, storage_chest, campfire. | `scripts/hex/hex_grid.gd:20` |
 | Slide | When movement toward a BLOCKED tile is attempted, velocity is projected onto the boundary tangent, allowing the player to slide along the hex edge. | `scripts/player/player.gd:244` |
 | MoveState | Player movement state machine: IDLE (stationary), WALKING (continuous joystick movement), JUMPING (mid-air tween, input buffered). | `scripts/player/player.gd:10` |
 | Tile Transition | The moment the player's derived tile changes. Triggers tile_exited, tile_entered, fog refresh, and player_moved signals in that order. | `scripts/player/player.gd:307-319` |
@@ -48,7 +52,7 @@ Terms extracted from code: class names, method names, constants, enums, comments
 
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
-| Resource Node | A gatherable resource instance on a tile. Has type, remaining count, max amount, tool requirement, respawn time, and visual offset/rotation. Multiple can exist per tile. | `scripts/hex/resource_node.gd` |
+| Resource Node | A gatherable resource instance on a tile, now stored as a prop with `category="resource"` in `tile.props[]`. Has type, remaining count, max amount, tool requirement, respawn time, and sub-hex position. Multiple can exist per tile. | `scripts/hex/resource_node.gd` |
 | Resource Def (ResourceDef) | Static definition for a resource type. Defines gather time, gather amount, tool requirement, respawn time, yield mapping, tool speed multipliers, stack size, catalog entry link, and visual appearance. | `scripts/data/resource_def.gd` |
 | Resource Registry | Autoload singleton that indexes all ResourceDef .tres files from data/resources/ at startup. Central lookup for resource metadata. | `scripts/data/resource_registry.gd` |
 | Gather | The act of collecting resources from a Resource Node. Automatic (proximity-based), requires the node to be CATALOGED, and may require a specific tool. | `scripts/auto_interaction/auto_interaction_system.gd:130-143` |
@@ -115,7 +119,7 @@ Terms extracted from code: class names, method names, constants, enums, comments
 
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
-| Structure | A player-built object placed on a hex tile. Stored as a StringName on the HexTile. Some block movement (walls), others are walkable. | `scripts/hex/hex_tile.gd:24` |
+| Structure | A prop with `category="structure"` placed on a hex tile via BuildingSystem or MapLoader. Stored in `tile.props[]`. Has a footprint defining which sub-hexes it occupies. Some block movement (walls), others are walkable. Multiple structures per hex allowed if footprints don't overlap. | `scripts/hex/hex_tile.gd`, feature-009 SPEC |
 | Shelter | A walkable structure. Provides protection during night cycle. | `scripts/hex/hex_grid.gd:20` |
 | Torch | A walkable structure. Provides light. | `scripts/hex/hex_grid.gd:20` |
 | Storage Chest | A walkable structure. Provides additional storage. | `scripts/hex/hex_grid.gd:20` |
@@ -130,7 +134,7 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | Elevation Step | World-space Y offset per elevation level: 0.5 Godot units. Must match between HexGridRenderer and Player. | `scenes/world/hex_grid_renderer.gd:20`, `scripts/player/player.gd:18` |
 | Cliff Face | Vertical geometry generated between adjacent tiles at different elevations. Darkened to 60% of tile color. | `scenes/world/hex_grid_renderer.gd:265-320` |
 | Inner Ring | At 85% of hex radius, a ring of vertices with pure tile color. The outer 15% band transitions/blends with neighbor tile colors. | `scenes/world/hex_grid_renderer.gd:190` |
-| Prop | A 3D object placed on a tile representing a resource node or anomaly. Currently placeholder meshes (cubes, cylinders, spheres). | `scripts/rendering/resource_renderer.gd` |
+| Prop (render) | A 3D object placed on a tile representing any game object (resource, structure, anomaly). Currently placeholder meshes (cubes, cylinders, spheres). The term "prop" in rendering context refers to the visual instance; in data context it refers to a unified game object in `tile.props[]`. | `scripts/rendering/resource_renderer.gd` |
 | Placeholder Mesh | Programmatic low-poly mesh shapes (cube, cylinder, sphere, octahedron, prism, box) used until real 3D art assets are created. | `scripts/rendering/resource_renderer.gd:81-89` |
 | Fly-to-Player | Visual effect: a colored sphere tweens from the gathered resource position to the player with a parabolic arc, providing satisfying feedback. | `scripts/rendering/fly_to_player.gd` |
 | Prop Label | 3D billboard marker above a prop showing knowledge state. Question mark for UNKNOWN (color-coded by category), warning for ENCOUNTERED, nothing for CATALOGED. | `scripts/rendering/prop_label_renderer.gd` |
@@ -163,7 +167,7 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | Auto-Interaction | Core design principle: the player controls WHERE to go, the game handles the rest. Gathering, scanning, and defending happen automatically based on proximity. | `docs/vision-pivot-briefing.md:55-57` |
 | Core Loop | EXPLORE -> GATHER -> CRAFT -> BUILD -> SURVIVE -> ESCAPE. Each day the player progresses through this cycle. | `docs/GDD.md:30-34` |
 | Crash Site | The starting biome. Player wakes next to a wrecked ship. Safe starting area with basic resources. | `docs/GDD.md:72` |
-| Anomaly | Mysterious alien artifact placed on specific tiles. Part of the narrative mystery -- the planet shows signs of previous civilization. Scanned via the catalog system. | `scripts/hex/hex_tile.gd:26`, `docs/vision-pivot-briefing.md:16` |
+| Anomaly | Mysterious alien artifact placed on specific tiles as a prop with `category="anomaly"` in `tile.props[]`. Part of the narrative mystery -- the planet shows signs of previous civilization. Scanned via the catalog system. | `scripts/hex/hex_tile.gd`, `docs/vision-pivot-briefing.md:16` |
 | Day/Night Cycle | Game time system with 4 phases (DAY/DUSK/NIGHT/DAWN). Full cycle ~5 minutes real time. Night increases danger. Not yet implemented in code (planned for delivery-004). | `docs/GDD.md:74-79` |
 | Anti-Predatory Monetization | Design philosophy: zero ads, zero IAP, zero fake currencies, zero timers. Free Chapter 1, paid chapters ~$2.50 each. | `docs/GDD.md:7`, `docs/vision-pivot-briefing.md:37-43` |
 | Warm Horizon | The visual design system. Vibrant, warm, charming low-poly sci-fi aesthetic. Replaced the earlier "Tactical Brutalism" dark theme. | `docs/design/design-system.md`, `docs/vision-pivot-briefing.md:27-29` |

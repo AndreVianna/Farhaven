@@ -144,7 +144,7 @@ func _on_entry_encountered(entry_id: StringName, _label: String) -> void:
 
 
 func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	if state == _HexTile.FogState.REVEALED or state == _HexTile.FogState.HIDDEN:
+	if state == _HexTile.FogState.HIDDEN:
 		_remove_all_labels_at(coords)
 
 
@@ -164,10 +164,9 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 
-	# Look up resource_node offset from tile data (anomalies stay at center)
+	# Look up sub-hex world offset from tile data (anomalies stay at center)
 	var placement: Array = _PropUtils.get_prop_placement(tile, entry_id)
-	var prop_offset: Vector2 = placement[0]
-	var world_offset: Vector2 = _PropUtils.offset_to_world(prop_offset, HEX_SIZE)
+	var world_offset: Vector2 = placement[0]  # Already world-space from sub_axial_to_world
 	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + LABEL_Y_OFFSET, world_2d.y + world_offset.y)
 
 	var label_3d := Label3D.new()

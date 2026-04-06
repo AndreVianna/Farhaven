@@ -7,10 +7,9 @@ class_name AutoInteractionSystem
 ## respawn queue, auto-defend stub, and auto-pickup stub.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Signals ---
@@ -100,11 +99,12 @@ func _process(delta: float) -> void:
 	_tick_respawn_queue(delta)
 	if _defend_cooldown > 0.0:
 		_defend_cooldown -= delta
-	# Continuous proximity gather check (throttled)
+	# Continuous proximity gather + pickup check (throttled)
 	_proximity_timer += delta
 	if _proximity_timer >= PROXIMITY_CHECK_INTERVAL:
 		_proximity_timer = 0.0
 		_check_gather_proximity()
+		_check_pickup_proximity()
 
 
 func _connect_signals() -> void:
@@ -124,12 +124,16 @@ func _check_gather_proximity() -> void:
 		return  # Already gathering — chain will re-check after completion
 	if _player == null or not "current_tile" in _player:
 		return
+	# Don't gather while dead
+	var survival: Node = _get_survival_system()
+	if survival != null and "is_dead" in survival and survival.is_dead:
+		return
 	_try_gather_nearby(_player.current_tile)
 
 
 # --- Utility: can_gather ---
 
-## Returns true if the player can gather the given resource node.
+## Returns true if the player can gather the given resource prop.
 ## Bare-hands resources (tool_required == "") always pass.
 ## Tool-gated resources require an exact match in the corresponding inventory slot.
 func can_gather(node: Resource, inventory: RefCounted) -> bool:
@@ -144,9 +148,9 @@ func can_gather(node: Resource, inventory: RefCounted) -> bool:
 
 # --- Auto-Gather Flow ---
 
-## Called when player enters a new tile. Triggers auto-pickup only.
-func _on_tile_entered(coords: Vector2i) -> void:
-	_try_auto_pickup(coords)
+## Called when player enters a new tile. Reserved for future use.
+func _on_tile_entered(_coords: Vector2i) -> void:
+	pass
 
 
 ## Find the best gatherable resource within GATHER_RADIUS around the given coords.
@@ -190,27 +194,29 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 		# Tile center in world space
 		var tile_center_2d: Vector2 = _grid.axial_to_world(tile_coords)
 
-		for i in tile.resource_nodes.size():
-			var node: Resource = tile.resource_nodes[i]
-			if node.remaining <= 0:
+		for i in tile.props.size():
+			var prop: Resource = tile.props[i]
+			if prop.category != _Prop.Category.RESOURCE:
+				continue
+			if prop.remaining <= 0:
 				continue  # Depleted
 
 			# Catalog gate: must be CATALOGED
-			var entry_id: StringName = ResourceRegistry.get_def(node.type).catalog_entry if ResourceRegistry.has_def(node.type) else &""
+			var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
 			if entry_id == &"":
 				continue
 			if not _catalog.is_cataloged(entry_id):
 				continue
 
 			# Tool gate (silent skip — no signal for tool_gated)
-			if not can_gather(node, _inventory):
+			if not can_gather(prop, _inventory):
 				continue
 
-			# Compute world-space position of this resource node
-			var offset_world: Vector2 = _PropUtils.offset_to_world(node.offset, _HexMath.HEX_SIZE)
+			# Compute world-space position of this resource prop
+			var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
 			var resource_pos_xz: Vector2 = Vector2(
-				tile_center_2d.x + offset_world.x,
-				tile_center_2d.y + offset_world.y
+				tile_center_2d.x + sub_hex_offset.x,
+				tile_center_2d.y + sub_hex_offset.y
 			)
 
 			# World-space distance on XZ plane
@@ -218,11 +224,11 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if world_dist > GATHER_RADIUS:
 				continue  # Out of arm's reach
 
-			var priority: int = TOOL_PRIORITY.get(node.tool_required, 0)
+			var priority: int = TOOL_PRIORITY.get(prop.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
 				"resource_index": i,
-				"node": node,
+				"node": prop,
 				"priority": priority,
 				"distance": world_dist,
 			})
@@ -237,7 +243,7 @@ func _compare_candidates(a: Dictionary, b: Dictionary) -> bool:
 	return a["distance"] < b["distance"]
 
 
-## Begin gathering a specific resource node. Creates the tween timer.
+## Begin gathering a specific resource prop. Creates the tween timer.
 func _begin_gather(coords: Vector2i, resource_index: int, node: Resource) -> void:
 	_is_gathering = true
 	_gather_target_coords = coords
@@ -267,13 +273,18 @@ func _on_gather_tween_complete() -> void:
 	var index: int = _gather_target_index
 	_gather_tween = null
 
-	# Get the resource node
+	# Get the resource prop
 	var tile = _grid.get_tile(coords)
-	if tile == null or index < 0 or index >= tile.resource_nodes.size():
+	if tile == null or index < 0 or index >= tile.props.size():
 		_is_gathering = false
 		return
 
-	var node: Resource = tile.resource_nodes[index]
+	# Apply gathering survival cost
+	var survival: Node = _get_survival_system()
+	if survival and survival.has_method("apply_activity_cost"):
+		survival.apply_activity_cost(&"gathering")
+
+	var node: Resource = tile.props[index]
 	var amount: int = ResourceRegistry.get_def(node.type).gather_amount if ResourceRegistry.has_def(node.type) else 1
 
 	# Resolve yield type (e.g. loose_rock yields stone)
@@ -321,8 +332,8 @@ func _tick_respawn_queue(delta: float) -> void:
 			var tile = _grid.get_tile(coords) if _grid != null else null
 			if tile != null:
 				var idx: int = entry["resource_index"]
-				if idx >= 0 and idx < tile.resource_nodes.size():
-					var node: Resource = tile.resource_nodes[idx]
+				if idx >= 0 and idx < tile.props.size():
+					var node: Resource = tile.props[idx]
 					node.remaining = node.max_amount
 					_grid.resource_respawned.emit(coords, node.type)
 			_respawn_queue.remove_at(i)
@@ -382,28 +393,70 @@ func _on_fauna_moved(fauna_id: int, coords: Vector2i) -> void:
 			weapon = equipped
 	var damage: int = WEAPON_DAMAGE.get(weapon, WEAPON_DAMAGE.get(&"", 5))
 	_defend_cooldown = AUTO_DEFEND_CONFIG["attack_cooldown"]
+	# Apply attacking survival cost
+	var survival_atk: Node = _get_survival_system()
+	if survival_atk and survival_atk.has_method("apply_activity_cost"):
+		survival_atk.apply_activity_cost(&"attacking")
 	auto_defend_triggered.emit(fauna_id, damage)
 
 
-# --- Auto-Pickup Stub ---
+# --- Survival System Helper ---
 
-## On tile_entered: query SurvivalSystem for ground items and pick them up.
-func _try_auto_pickup(coords: Vector2i) -> void:
-	var survival: Node = get_node_or_null("/root/SurvivalSystem")
-	if survival == null:
+
+func _get_survival_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child in parent.get_children():
+		if child != self and child.has_method("apply_activity_cost"):
+			return child
+	return null
+
+
+# --- Auto-Pickup (Proximity-Based) ---
+
+## Check for ground items within GATHER_RADIUS of the player's world position.
+## Picks up all items at a sub-hex when the player is close enough.
+func _check_pickup_proximity() -> void:
+	if _player == null or not "current_tile" in _player:
 		return
-	if not survival.has_method("get_ground_items_at"):
+	var survival: Node = _get_survival_system()
+	if survival == null or not survival.has_method("get_ground_items_at"):
 		return
-	var items: Array = survival.get_ground_items_at(coords)
-	if items.is_empty():
+	# Don't pick up items while dead (prevents recollecting dropped items before respawn)
+	if "is_dead" in survival and survival.is_dead:
 		return
 	if _inventory == null:
 		return
+
+	# Player world position on XZ plane
+	var player_pos_xz: Vector2 = Vector2.ZERO
+	if "global_position" in _player:
+		player_pos_xz = Vector2(_player.global_position.x, _player.global_position.z)
+	elif "position" in _player:
+		player_pos_xz = Vector2(_player.position.x, _player.position.z)
+
+	var current_tile: Vector2i = _player.current_tile
+	var items: Array = survival.get_ground_items_at(current_tile)
+	if items.is_empty():
+		return
+
+	# Check each ground item's sub-hex distance to player
 	for item in items:
-		var item_name: StringName = item.get("name", &"")
-		var amount: int = item.get("amount", 1)
-		if item_name == &"":
+		var item_name: StringName = item.get("item_type", &"")
+		var amount: int = item.get("count", 0)
+		var sub_hex: Vector2i = item.get("sub_hex", Vector2i.ZERO)
+		if item_name == &"" or amount <= 0:
 			continue
+
+		# Compute world position of this ground item
+		var item_world_pos: Vector2 = _HexMath.prop_world_position(current_tile, sub_hex)
+		var dist: float = player_pos_xz.distance_to(item_world_pos)
+		if dist > GATHER_RADIUS:
+			continue
+
+		# Pick up all items at this sub-hex
 		var added: int = _inventory.add_item(item_name, amount)
 		if added > 0:
+			survival.remove_ground_item(current_tile, item_name, added, sub_hex)
 			ground_item_picked_up.emit(item_name, added)

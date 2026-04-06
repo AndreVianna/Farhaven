@@ -5,6 +5,7 @@ class_name HexMath
 ## Flat-top hexagon layout. Follows Red Blob Games conventions.
 
 const HEX_SIZE: float = 3.0
+const SUB_HEX_SIZE: float = HEX_SIZE / 5.0  # 0.6
 
 # Flat-top axial neighbor directions (E, NE, NW, W, SW, SE)
 const DIRECTIONS = [
@@ -90,3 +91,39 @@ static func get_ring(center: Vector2i, radius: int) -> Array[Vector2i]:
 			result.append(current)
 			current = current + (DIRECTIONS[i] as Vector2i)
 	return result
+
+
+# --- Sub-hex functions ---
+
+## Convert sub-hex axial coords to world offset relative to parent hex center.
+static func sub_axial_to_world(sub_coords: Vector2i) -> Vector2:
+	var sq: float = float(sub_coords.x)
+	var sr: float = float(sub_coords.y)
+	var x: float = SUB_HEX_SIZE * (3.0 / 2.0 * sq)
+	var y: float = SUB_HEX_SIZE * (sqrt(3.0) / 2.0 * sq + sqrt(3.0) * sr)
+	return Vector2(x, y)
+
+
+## Convert a world offset (relative to hex center) to nearest sub-hex coords.
+static func world_to_sub_axial(offset: Vector2) -> Vector2i:
+	var x: float = offset.x
+	var y: float = offset.y
+	var fq: float = (2.0 / 3.0 * x) / SUB_HEX_SIZE
+	var fr: float = (-1.0 / 3.0 * x + sqrt(3.0) / 3.0 * y) / SUB_HEX_SIZE
+	var fs: float = -fq - fr
+	return _cube_round_to_axial(fq, fr, fs)
+
+
+## Check if sub-hex coords are within the valid 19-hex grid (radius 2).
+static func is_valid_sub_hex(sub_coords: Vector2i) -> bool:
+	return distance(Vector2i.ZERO, sub_coords) <= 2
+
+
+## Get all 19 valid sub-hex positions (center + ring 1 + ring 2).
+static func get_all_sub_hexes() -> Array[Vector2i]:
+	return get_tiles_in_range(Vector2i.ZERO, 2)
+
+
+## Full world position of a prop: main hex center + sub-hex offset.
+static func prop_world_position(main_coords: Vector2i, sub_coords: Vector2i) -> Vector2:
+	return axial_to_world(main_coords) + sub_axial_to_world(sub_coords)

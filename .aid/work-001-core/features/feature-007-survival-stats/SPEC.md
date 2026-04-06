@@ -8,6 +8,7 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-03-31 | Fix: toxic_berries concrete values (hunger 10, toxic_damage 25) | /aid-specify |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
+| 2026-04-04 | Unified props: ground items remain main-hex addressed (no sub-hex). Death drops unchanged. Save/load note for resource props with sub-hex data. | /arch-update |
 
 ## Source
 
@@ -139,12 +140,18 @@ entries with same coords supported. Items on non-visible tiles recoverable when 
 
 #### Ground Items — Transient Pickups
 
-Separate from ResourceNode (tile property from map data). Ground items are death drops
-+ fauna meat drops that persist until picked up.
+Separate from tile props (map data). Ground items are death drops + fauna meat drops
+that persist until picked up.
+
+**Ground items use main-hex coords only (no sub-hex).** Unlike resource props which
+have sub-hex positions, ground items are addressed at the tile level. This is an MVP
+simplification — sub-hex placement for drops is not needed since auto-pickup triggers
+on tile entry.
 
 ```gdscript
 var _ground_items: Array[Dictionary] = []
 # Each entry: { "type": StringName, "amount": int, "coords": Vector2i }
+# Note: no sub_hex field — ground items are main-hex addressed
 ```
 
 **[CHANGED] Auto-pickup ownership:** Feature-004 (AutoInteractionSystem) handles the
@@ -169,7 +176,7 @@ var _respawn_tile: Vector2i  # Shelter coords if built, else Crash Site (0,0)
 ```
 
 Updates on:
-- `structure_placed` with `&"shelter"` → `_respawn_tile = coords`
+- `structure_placed` with `&"shelter"` → `_respawn_tile = coords` (signal operates on props with category="structure")
 - `structure_destroyed` with `&"shelter"` → revert to Crash Site or another Shelter
 
 #### Signals
@@ -201,6 +208,11 @@ signal ground_item_picked_up(coords: Vector2i, type: StringName, amount: int)
 ```
 
 `is_dead` not saved — player always loads alive (respawn completes before save).
+
+**Note on props vs ground items:** Resource props (tile data from feature-001) include
+`sub_hex` coordinates and are saved per-tile in the hex grid save. Ground items
+(death drops, meat) do NOT have sub-hex data — they remain main-hex addressed.
+The two systems are independent: props are map data, ground items are transient pickups.
 
 #### Cross-Feature Dependencies
 

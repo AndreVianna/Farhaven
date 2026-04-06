@@ -3,7 +3,7 @@ class_name TestAutoInteractionSystem
 
 const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _sys: Node
 var _inv: RefCounted
@@ -23,12 +23,7 @@ func after_test() -> void:
 # --- Helper ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"") -> Resource:
-	var rn: Resource = _ResourceNode.new()
-	rn.type = type
-	rn.remaining = 3
-	rn.max_amount = 3
-	rn.tool_required = tool_req
-	return rn
+	return _Prop.create_resource(type, 3, 3, tool_req)
 
 
 # --- can_gather: bare hands gathers wood ---

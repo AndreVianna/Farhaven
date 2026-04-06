@@ -69,6 +69,9 @@ func refresh(slot: Dictionary, item_config: Dictionary) -> void:
 		_apply_empty_style()
 		return
 	var cfg: Dictionary = item_config.get(_type, {})
+	if cfg.is_empty() and ResourceRegistry.has_def(_type):
+		var def = ResourceRegistry.get_def(_type)
+		cfg = {"category": def.category}
 	_is_consumable = cfg.get("category", &"") == &"consumable"
 	_apply_occupied_style()
 
@@ -109,9 +112,18 @@ func _apply_occupied_style() -> void:
 	_bg_panel.add_theme_stylebox_override("panel", style)
 
 
+var _last_tap_frame: int = -1
+
 func _gui_input(event: InputEvent) -> void:
+	if _type == &"" or not _is_consumable:
+		return
+	var tapped: bool = false
 	if event is InputEventScreenTouch and event.pressed:
-		if _type != &"" and _is_consumable:
-			play_highlight()
-			slot_tapped.emit(_type)
-			accept_event()
+		tapped = true
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		tapped = true
+	if tapped and Engine.get_process_frames() != _last_tap_frame:
+		_last_tap_frame = Engine.get_process_frames()
+		play_highlight()
+		slot_tapped.emit(_type)
+		accept_event()

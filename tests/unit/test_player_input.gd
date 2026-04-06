@@ -45,12 +45,12 @@ func after_test() -> void:
 
 
 func _build_test_grid() -> void:
-	# Single REVEALED tile at (0,0) so taps resolve via world_to_axial→(0,0).
+	# Single VISIBLE tile at (0,0) so taps resolve via world_to_axial→(0,0).
 	var tile := _HexTile.new()
 	tile.coords = Vector2i.ZERO
 	tile.biome = _HexTile.Biome.GRASSLAND
 	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.REVEALED
+	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[Vector2i.ZERO] = tile
 	# Hidden tile at (1,0) to test hidden-tile rejection.
 	var hidden := _HexTile.new()
@@ -116,7 +116,7 @@ func test_tap_on_hidden_tile_does_not_emit_tap() -> void:
 	# Restore
 	var tile := _HexTile.new()
 	tile.coords = Vector2i.ZERO
-	tile.fog_state = _HexTile.FogState.REVEALED
+	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[Vector2i.ZERO] = tile
 
 

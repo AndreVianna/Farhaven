@@ -357,3 +357,4 @@ No additional requirements beyond delivery-001.
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (016-023) — 3 parallel chains documented | /aid-detail |
 | 2026-04-02 | Scan redesign: task-017 catalog gate uses `is_cataloged` (CATALOGED only for auto-gather). task-018 auto-defend fires on ENCOUNTERED or CATALOGED hostile. | /scan-redesign-apply |
+| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. Resources are props with `category="resource"`. Auto-interaction queries props instead of `tile.resource_nodes`. Tasks already implemented — this note is for future reference. | /arch-update |
