@@ -91,44 +91,50 @@ task-011b (Ghost Grid & Empty-Cell Interaction) can run in parallel with task-01
 |------------------------|
 | task-011, task-011b |
 
-### delivery-003: Data Editors — Resource + Biome
+### delivery-003: Tool Selector, Map List, Data Editors
 
-**Features:** 005 (Resource Editor) + 006 (Biome Editor)
-**Depends on:** delivery-001
-**Cumulative state:** Full CRUD for ResourceDef and BiomeData .tres files, live biome color preview on map canvas
+**Features:** 003-partial (Tool Selector + Map List) + 005 (Resource Editor) + 006 (Biome Editor)
+**Depends on:** delivery-001, delivery-002
+**Cumulative state:** Painting tools fully usable via sidebar palette (biome/resource/structure/anomaly selectors), map list with switching, full CRUD for ResourceDef and BiomeData .tres files, live biome color preview on map canvas
+
+**2026-04-04:** Moved tool selector and map list from delivery-004 to delivery-003. Without these, delivery-002's painting tools are barely testable — tools activate via keyboard but have no way to select which type to paint with.
 
 Build order:
-1. feature-005 (Resource Editor) — list/edit/create/delete ResourceDef, .tres serialization
-2. feature-006 (Biome Editor) — list/edit/create/delete BiomeData, resource table editor, live color preview
+1. feature-003-partial (Tool Selector + Map List) — toolbar with tool buttons + type dropdowns populated from loaded data, map list dropdown for switching active map
+2. feature-005 (Resource Editor) — list/edit/create/delete ResourceDef, .tres serialization
+3. feature-006 (Biome Editor) — list/edit/create/delete BiomeData, resource table editor, live color preview
 
-These two are independent of the hex canvas (delivery-002) but depend on TresParser from delivery-001. They can be built in parallel with delivery-002 if desired. F-005 must precede F-006 (biome resource_table dropdown needs resource IDs).
+F-003-partial depends on delivery-002 (needs canvas + tools). F-005 and F-006 depend only on delivery-001 (TresParser). F-005 must precede F-006 (biome resource_table dropdown needs resource IDs).
 
-**AC coverage:** AC2 (.tres round-trip save), AC4 (resource CRUD), AC5 (biome CRUD)
+**AC coverage:** AC2 (.tres round-trip save), AC4 (resource CRUD), AC5 (biome CRUD), partial AC3 (tool selector enables full painting workflow)
 
 #### Execution Graph
 
 | Task | Depends On |
 |------|-----------|
 | task-012 | task-003, task-004 |
+| task-012b | task-008, task-009, task-010 |
 | task-013 | task-012 |
 | task-014 | task-003, task-004, task-012 |
 | task-015 | task-014 |
-| task-016 | task-013, task-015 |
+| task-016 | task-012b, task-013, task-015 |
+
+task-012b = Tool Selector + Map List (new task, depends on delivery-002 canvas/tools)
 
 | Can Be Done In Parallel |
 |------------------------|
-| task-012, task-014 (after shared deps) |
+| task-012, task-012b (independent — different deps) |
 | task-013, task-015 (after respective list views) |
 
-### delivery-004: Complete Editor — Import/Export + Sidebar
+### delivery-004: Complete Editor — Import/Export + Full Sidebar
 
-**Features:** 004 (Import/Export) + 003 (Palette & Sidebar)
+**Features:** 004 (Import/Export) + 003-remaining (Statistics, Map Properties, Active Tool Indicator)
 **Depends on:** delivery-001, delivery-002, delivery-003
-**Cumulative state:** Full editor with map import/export, validation, palette sidebar, statistics, map properties — all features integrated
+**Cumulative state:** Full editor with map import/export, validation, statistics, map properties — all features integrated
 
 Build order:
-1. feature-004 (Import/Export) — MapSerializer, MapValidator, import validation, export validation, new map creation
-2. feature-003 (Palette & Sidebar) — biome/resource/structure palettes, active tool indicator, statistics, map properties. This is the integration glue — wires all editors together.
+1. feature-004 (Import/Export) — MapSerializer, import/export validation UI, detailed error list
+2. feature-003-remaining (Full Sidebar) — biome statistics, tile counts, map properties panel, active tool indicator. Final integration glue.
 
 This is the final delivery. After this, the editor is fully functional: open project → load/create map → paint with palette → edit resources/biomes → export valid JSON → unsaved changes protection.
 
@@ -140,7 +146,7 @@ This is the final delivery. After this, the editor is fully functional: open pro
 |------|-----------|
 | task-017 | task-007, task-002 |
 | task-018 | task-017, task-005 |
-| task-019 | task-008, task-009, task-012, task-014, task-018 |
+| task-019 | task-008, task-009, task-012, task-012b, task-014, task-018 |
 | task-020 | task-018, task-019 |
 
 | Can Be Done In Parallel |
