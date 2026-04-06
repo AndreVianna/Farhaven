@@ -150,3 +150,42 @@ func test_load_empty_dict_does_not_crash() -> void:
 	var sm: Node = _make_save_manager()
 	var result: bool = sm.load_game()
 	assert_bool(result).is_true()
+
+
+# --- Dirty flag & timer ---
+
+func test_mark_dirty_sets_flag() -> void:
+	var sm: Node = _make_save_manager()
+	assert_bool(sm._dirty).is_false()
+	sm.mark_dirty()
+	assert_bool(sm._dirty).is_true()
+
+
+func test_save_now_saves_immediately_and_clears_dirty() -> void:
+	var sm: Node = _make_save_manager()
+	sm.mark_dirty()
+	sm.save_now()
+	assert_bool(sm._dirty).is_false()
+	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_true()
+
+
+func test_timer_saves_when_dirty() -> void:
+	var sm: Node = _make_save_manager()
+	sm.mark_dirty()
+	# Simulate what the timer callback does
+	sm._on_save_timer()
+	assert_bool(sm._dirty).is_false()
+	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_true()
+
+
+func test_timer_skips_save_when_not_dirty() -> void:
+	var sm: Node = _make_save_manager()
+	# Not dirty — timer should not create a save file
+	sm._on_save_timer()
+	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_false()
+
+
+func test_save_timer_created_in_ready() -> void:
+	var sm: Node = _make_save_manager()
+	assert_object(sm._save_timer).is_not_null()
+	assert_float(sm._save_timer.wait_time).is_equal(5.0)

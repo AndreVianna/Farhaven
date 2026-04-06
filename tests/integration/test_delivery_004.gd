@@ -383,35 +383,33 @@ func test_save_load_resumes_correctly_mid_dusk() -> void:
 
 
 # ===========================================================================
-# SaveManager integration: auto-save on day_started
+# SaveManager integration: dirty-flag + timer saves
 # ===========================================================================
 
-func test_auto_save_on_day_started() -> void:
+func test_save_now_creates_file() -> void:
 	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_false()
-	# Full cycle: day_started fires at DAWN→DAY transition
-	_simulate(240.0)
+	SaveManager.save_now()
 	assert_bool(FileAccess.file_exists(SAVE_PATH)).override_failure_message(
-		"Save file must be created when day_started fires"
+		"save_now() must create save file"
 	).is_true()
 
 
-func test_auto_save_creates_valid_json() -> void:
-	_simulate(240.0)
+func test_save_now_creates_valid_json() -> void:
+	SaveManager.save_now()
 	var text: String = _read_save_file()
 	var parsed: Variant = JSON.parse_string(text)
 	assert_bool(parsed != null).override_failure_message(
-		"Auto-save must produce valid JSON"
+		"save_now() must produce valid JSON"
 	).is_true()
 	assert_bool(parsed is Dictionary).is_true()
 
 
-func test_auto_save_fires_each_cycle() -> void:
-	_simulate(240.0)  # first day_started
-	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_true()
-	_cleanup_save_file()
-	_simulate(240.0)  # second day_started
+func test_mark_dirty_and_timer_saves() -> void:
+	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_false()
+	SaveManager.mark_dirty()
+	SaveManager._on_save_timer()
 	assert_bool(FileAccess.file_exists(SAVE_PATH)).override_failure_message(
-		"Auto-save must fire on every day_started"
+		"Timer must save when dirty flag is set"
 	).is_true()
 
 

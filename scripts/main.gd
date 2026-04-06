@@ -18,6 +18,9 @@ func _ready() -> void:
 	# Deferred so child renderers connect their signals first (their _ready()
 	# fires before ours, and they use call_deferred for signal wiring).
 	_bootstrap_visible_tiles.call_deferred()
+	# Auto-load save if exists (cold resume).
+	# Deferred so all systems are fully ready before loading state.
+	SaveManager.load_game.call_deferred()
 
 
 func _wire_systems() -> void:
@@ -62,27 +65,18 @@ func _wire_systems() -> void:
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
-	# Wire SurvivalSystem signals
+	# Wire state-change signals to SaveManager dirty flag
 	var survival: Node = player.get_node_or_null("SurvivalSystem")
 	if survival != null:
-		# Stat bars wiring: SurvivalSystem.stat_changed → HUD.update_stat
-		survival.stat_changed.connect(hud.update_stat)
-		# GroundItemRenderer wiring
-		var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
-		if ground_renderer != null and ground_renderer.has_method("connect_survival"):
-			ground_renderer.connect_survival(survival)
-
-	# Wire DayNightCycle signals to HUD day counter
-	# Guard with is_instance_valid — DayNightCycle is an autoload that persists
-	# after scene teardown (e.g. during tests), so the callback may fire on freed nodes.
-	DayNightCycle.day_started.connect(func() -> void:
-		if is_instance_valid(hud):
-			hud.update_day(DayNightCycle.day_count)
-	)
-	DayNightCycle.phase_changed.connect(func(_old: DayNightCycle.TimePhase, new_phase: DayNightCycle.TimePhase) -> void:
-		if is_instance_valid(hud):
-			hud.update_phase(DayNightCycle.phase_to_string(new_phase))
-	)
+		survival.player_died.connect(SaveManager.save_now)
+		survival.player_respawned.connect(SaveManager.save_now)
+	if player.has_method("get_inventory"):
+		var save_inv = player.get_inventory()
+		if save_inv != null and save_inv.has_signal("inventory_changed"):
+			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
+	if crafting != null:
+		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
+	DayNightCycle.phase_changed.connect(func(_o, _n) -> void: SaveManager.mark_dirty())
 
 
 func _on_gather_fly(coords: Vector2i, resource_type: StringName, _amount: int, _player: Node) -> void:
