@@ -65,6 +65,8 @@ export class HexCanvas {
     this.panStart = null;
     this.spaceHeld = false;
     this.toolManager = null;
+    /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
+    this.onHexHover = null;
     this._renderRequested = false;
     this._mouseDown = false;
 
@@ -187,8 +189,9 @@ export class HexCanvas {
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
+      // Draw occupied sub-hexes on ALL tiles that have props
       if (tile.props && tile.props.length > 0) {
-        this._drawPropIndicators(q, r, tile);
+        this._drawSubHexOccupancy(q, r, tile);
       }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
@@ -209,16 +212,12 @@ export class HexCanvas {
       }
     }
 
-    // --- Phase 6: Sub-hex grid for placement tools ---
+    // --- Phase 6: Sub-hex grid overlay on hovered hex (placement tools only) ---
     if (this.hoveredHex && this.toolManager && this._isPlacementTool()) {
       const hq = this.hoveredHex.q;
       const hr = this.hoveredHex.r;
       if (this.grid.hasTile(hq, hr) || (this._ghostSet && this._ghostSet.has(`${hq},${hr}`))) {
         this._drawSubHexGrid(hq, hr);
-        const tile = this.grid.getTile(hq, hr);
-        if (tile) {
-          this._drawSubHexOccupancy(hq, hr, tile);
-        }
         if (this.hoveredSubHex) {
           this._drawSubHexHover(hq, hr, this.hoveredSubHex.q, this.hoveredSubHex.r);
         }
@@ -384,66 +383,6 @@ export class HexCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('S', screen.x, screen.y - HEX_SIZE * this.camera.zoom * 0.3);
-  }
-
-  /**
-   * Draw prop indicators (resource badge, structure abbreviation, anomaly marker).
-   * @param {number} q
-   * @param {number} r
-   * @param {Object} tile
-   * @returns {void}
-   */
-  _drawPropIndicators(q, r, tile) {
-    const ctx = this.ctx;
-    const { screen } = this._getHexScreen(q, r);
-    const offsetY = HEX_SIZE * this.camera.zoom * 0.35;
-
-    const resources = tile.props.filter(p => p.category === 'resource');
-    const structures = tile.props.filter(p => p.category === 'structure');
-    const anomalies = tile.props.filter(p => p.category === 'anomaly');
-
-    // Draw resource count badge (blue)
-    if (resources.length > 0) {
-      const badgeSize = Math.max(5, 7 * this.camera.zoom);
-      ctx.beginPath();
-      ctx.arc(screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
-      ctx.fillStyle = CATEGORY_COLORS.resource.badge;
-      ctx.fill();
-
-      const fontSize = Math.max(5, 8 * this.camera.zoom);
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(resources.length), screen.x + HEX_SIZE * this.camera.zoom * 0.3, screen.y + offsetY);
-    }
-
-    // Draw structure abbreviation (orange)
-    if (structures.length > 0) {
-      const fontSize = Math.max(5, 8 * this.camera.zoom);
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = CATEGORY_COLORS.structure.badge;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const abbrev = (structures[0].type || '').substring(0, 3).toUpperCase();
-      ctx.fillText(abbrev, screen.x - HEX_SIZE * this.camera.zoom * 0.25, screen.y + offsetY);
-    }
-
-    // Draw anomaly marker (purple)
-    if (anomalies.length > 0) {
-      const badgeSize = Math.max(4, 5 * this.camera.zoom);
-      ctx.beginPath();
-      ctx.arc(screen.x, screen.y + offsetY, badgeSize, 0, Math.PI * 2);
-      ctx.fillStyle = CATEGORY_COLORS.anomaly.badge;
-      ctx.fill();
-
-      const fontSize = Math.max(4, 6 * this.camera.zoom);
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('!', screen.x, screen.y + offsetY);
-    }
   }
 
   // --- Sub-hex rendering ---
@@ -642,7 +581,6 @@ export class HexCanvas {
     const prevHover = this.hoveredHex;
     if (!prevHover || prevHover.q !== hex.q || prevHover.r !== hex.r) {
       this.hoveredHex = { q: hex.q, r: hex.r };
-      this._updateTooltip(hex, event.clientX, event.clientY);
       this.requestRender();
     }
 
@@ -662,6 +600,11 @@ export class HexCanvas {
         this.hoveredSubHex = null;
         this.requestRender();
       }
+    }
+
+    // Notify hex inspector of hovered hex/sub-hex
+    if (this.onHexHover) {
+      this.onHexHover(this.hoveredHex, this.hoveredSubHex);
     }
 
     // Forward to tool during drag
@@ -693,7 +636,10 @@ export class HexCanvas {
   /** @param {MouseEvent} event */
   _onMouseLeave(event) {
     this.hoveredHex = null;
-    this._hideTooltip();
+    this.hoveredSubHex = null;
+    if (this.onHexHover) {
+      this.onHexHover(null, null);
+    }
     if (this._mouseDown) {
       this._mouseDown = false;
       if (this.toolManager) {
@@ -843,72 +789,6 @@ export class HexCanvas {
     this.camera.offsetY = canvasH / 2 - worldCenterY * this.camera.zoom;
 
     this.requestRender();
-  }
-
-  // --- Tooltip ---
-
-  /**
-   * @param {{ q: number, r: number }} hex
-   * @param {number} clientX
-   * @param {number} clientY
-   * @returns {void}
-   */
-  _updateTooltip(hex, clientX, clientY) {
-    const tile = this.grid.getTile(hex.q, hex.r);
-    const tooltip = document.getElementById('hex-tooltip');
-    if (!tooltip) return;
-
-    if (!tile) {
-      // Show minimal tooltip for ghost cells
-      const ghostKey = `${hex.q},${hex.r}`;
-      if (this._ghostSet && this._ghostSet.has(ghostKey)) {
-        tooltip.textContent = `(${hex.q}, ${hex.r}) \u2014 empty`;
-        tooltip.style.display = 'block';
-        tooltip.style.whiteSpace = 'pre-line';
-        tooltip.style.left = (clientX + 15) + 'px';
-        tooltip.style.top = (clientY + 15) + 'px';
-        return;
-      }
-      this._hideTooltip();
-      return;
-    }
-
-    const lines = [`(${hex.q}, ${hex.r})`];
-    lines.push(`Biome: ${tile.biome || 'none'}`);
-    lines.push(`Elevation: ${tile.elevation}`);
-    if (tile.props && tile.props.length > 0) {
-      const byCategory = {};
-      for (const p of tile.props) {
-        if (!byCategory[p.category]) byCategory[p.category] = [];
-        byCategory[p.category].push(p);
-      }
-      for (const [cat, props] of Object.entries(byCategory)) {
-        if (cat === 'resource') {
-          const counts = {};
-          for (const p of props) counts[p.type] = (counts[p.type] || 0) + 1;
-          const parts = Object.entries(counts).map(([t, c]) => `${t} x${c}`);
-          lines.push(`Resources: ${parts.join(', ')}`);
-        } else if (cat === 'structure') {
-          lines.push(`Structures: ${props.map(p => p.type).join(', ')}`);
-        } else if (cat === 'anomaly') {
-          lines.push(`Anomalies: ${props.map(p => p.type).join(', ')}`);
-        }
-      }
-    }
-
-    tooltip.textContent = lines.join('\n');
-    tooltip.style.display = 'block';
-    tooltip.style.whiteSpace = 'pre-line';
-    tooltip.style.left = (clientX + 15) + 'px';
-    tooltip.style.top = (clientY + 15) + 'px';
-  }
-
-  /**
-   * @returns {void}
-   */
-  _hideTooltip() {
-    const tooltip = document.getElementById('hex-tooltip');
-    if (tooltip) tooltip.style.display = 'none';
   }
 
   /**

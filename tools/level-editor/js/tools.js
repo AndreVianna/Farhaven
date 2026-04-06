@@ -295,11 +295,6 @@ export class ResourcePlacer extends BaseTool {
 
     const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
     this.commandHistory.execute(cmd);
-
-    // Show prop detail panel if available
-    if (this.toolManager.propDetailPanel) {
-      this.toolManager.propDetailPanel.show(hex.q, hex.r);
-    }
   }
 }
 
@@ -407,8 +402,6 @@ export class ToolManager {
     this.elevationDelta = 1;
     /** @type {function(string):void|null} */
     this.onStatus = null;
-    /** @type {import('./panels.js').PropDetailPanel|null} */
-    this.propDetailPanel = null;
   }
 
   /**

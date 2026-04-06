@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js'
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { PropDetailPanel, showInlineModal } from './panels.js';
+import { HexInspector, showInlineModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
@@ -51,8 +51,8 @@ const dirtyTracker = new DirtyTracker();
 /** @type {HexCanvas|null} */
 let hexCanvas = null;
 
-/** @type {PropDetailPanel|null} */
-let propDetailPanel = null;
+/** @type {HexInspector|null} */
+let hexInspector = null;
 
 // ============================================================
 // Tab Switching (task-001)
@@ -427,6 +427,12 @@ function initializeAfterLoad() {
   initSidebar();
   console.log('Sidebar initialized.');
 
+  // Update hex inspector map stats after loading
+  if (hexInspector) {
+    hexInspector.updateMapStats();
+    console.log('Hex inspector map stats updated.');
+  }
+
   console.groupEnd();
 }
 
@@ -453,11 +459,17 @@ function initializeAfterLoad() {
     });
   }
 
-  // Initialize PropDetailPanel
-  const rdpContainer = document.getElementById('resource-detail-panel');
-  if (rdpContainer) {
-    propDetailPanel = new PropDetailPanel(rdpContainer, hexGrid, commandHistory);
-    toolManager.propDetailPanel = propDetailPanel;
+  // Initialize HexInspector (right sidebar)
+  const sidebarEl = document.getElementById('sidebar');
+  if (sidebarEl) {
+    hexInspector = new HexInspector(sidebarEl, hexGrid, commandHistory, biomeColorMap);
+  }
+
+  // Wire canvas hover to hex inspector
+  if (hexCanvas) {
+    hexCanvas.onHexHover = (hex, subHex) => {
+      if (hexInspector) hexInspector.updateHex(hex, subHex);
+    };
   }
 }
 
@@ -581,6 +593,9 @@ function _initMapSelector() {
     if (hexCanvas) {
       hexCanvas.fitToView();
       hexCanvas.requestRender();
+    }
+    if (hexInspector) {
+      hexInspector.updateMapStats();
     }
     setStatus(`Map "${selectedFilename}" loaded.`);
   });

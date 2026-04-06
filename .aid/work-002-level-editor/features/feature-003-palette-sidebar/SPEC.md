@@ -7,6 +7,7 @@
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F3, F4 | /aid-interview |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: biome key clarification, STRUCTURE_LIST source, hasSpawn, spawn read-only note | /aid-specify review |
+| 2026-04-06 | Added Hex Inspector panel to right sidebar: map stats (total hexes, q/r range, biome distribution), hex details on hover (coordinates, biome with swatch, elevation), prop editor (editable fields for sq/sr/rotation, delete button). Replaces floating PropDetailPanel from feature-002. | design change |
 
 ## Source
 
@@ -281,6 +282,24 @@ class Statistics {
 - Resource color dot: `display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;`
 - Text inputs: `width: 100%; background: #313244; border: 1px solid #45475a; color: #cdd6f4; padding: 4px 8px; border-radius: 4px;`
 - Statistics table: `width: 100%; font-size: 12px; font-family: monospace;` — alternating row backgrounds for readability.
+
+### Hex Inspector (Right Sidebar)
+
+The right sidebar (`<aside id="sidebar">`) serves as the Hex Inspector panel with three sections:
+
+**Map Stats (top):** Displays total hex count, q range (min-max), r range (min-max), and biome distribution (sorted by count descending, with color swatches). Updated on map load and map switch.
+
+**Hex Details (middle):** Shows coordinates, biome (with color swatch), and elevation for the currently hovered hex. Updated on every mousemove via `HexCanvas.onHexHover` callback. Shows "Hover a hex to inspect" when no hex is hovered.
+
+**Prop Editor (bottom):** Lists all props on the hovered hex with editable fields (sq, sr, rotation for resources) and delete buttons. Uses `EditPropCommand`/`DeletePropCommand` for undo/redo support. Auto-updates on hover (no click required). Replaces the former floating `PropDetailPanel`.
+
+```js
+class HexInspector {
+  constructor(container, grid, commandHistory, biomeColorMap)
+  updateMapStats()           // recompute and render map-level statistics
+  updateHex(hex, subHex)     // update hex info and prop editor for hovered hex
+}
+```
 
 ### Dependencies
 

@@ -10,6 +10,7 @@
 | 2026-04-04 | Tools now work on ghost (empty) cells — BiomeBrush, ElevationBrush, FloodFill create new tiles | code review |
 | 2026-04-04 | Sub-hex grid system: AddResourceCommand uses (sq, sr), SetStructureCommand uses footprint model, ResourceDetailPanel updated for sub-hex fields, ResourcePlacer and StructurePlacer rewritten for sub-hex placement | design change |
 | 2026-04-04 | Unified props model: AddResource/EditResource/DeleteResource/SetStructure/SetAnomaly commands replaced with AddPropCommand/EditPropCommand/DeletePropCommand. ResourceDetailPanel renamed to PropDetailPanel. EraserTool targets props at sub-hex. EraseContentCommand clears all props. | design change |
+| 2026-04-06 | Removed PropDetailPanel floating panel. Prop editing is now handled by the Hex Inspector panel (right sidebar). ResourcePlacer no longer opens a detail panel on placement. | design change |
 
 ## Source
 
@@ -217,47 +218,15 @@ class BatchCommand {
   - Safety limit: max 10,000 tiles to prevent runaway fills.
   - Execute all as a single `BatchCommand`.
 
-### Prop Detail Panel
+### Prop Editing (Hex Inspector)
 
-A DOM panel that appears when the user clicks a prop indicator on a hex (or selects a hex that has props).
-
-```js
-class PropDetailPanel {
-  constructor(container, hexGrid, commandHistory) {
-    this.container = container;   // DOM element for the panel
-    this.grid = hexGrid;
-    this.commandHistory = commandHistory;
-    this.currentHex = null;       // { q, r }
-  }
-
-  show(q, r)          // populate and display the panel for the given hex
-  hide()              // hide the panel
-  renderRows()        // render one row per prop on the hex, grouped by category
-  onFieldChange(index, field, value)  // create EditPropCommand
-  onDeleteProp(index)                 // create DeletePropCommand
-}
-```
-
-**Panel UI:**
-- Positioned as a floating panel or sidebar sub-panel.
-- Header: "Props on (q, r)" with a close button.
-- Props are grouped by category (Resources, Structures, Anomalies).
-- Each prop row:
-  - Category badge (blue/orange/purple)
-  - Type label (read-only, e.g., "wood", "workbench", "anomaly_ch1_001")
-  - `sq` input: integer, range [-2, 2]
-  - `sr` input: integer, range [-2, 2]
-  - Validation: `isValidSubHex(sq, sr)` must be true (distance from center ≤ 2)
-  - For resources: `rotation` input: number, step 1, range [0, 359]
-  - For structures: `footprint` display (read-only list of sub-hex offsets)
-  - Delete button (red X)
-- On input blur or Enter key: if value changed, create `EditPropCommand` with old and new values.
+Prop editing is handled by the Hex Inspector panel in the right sidebar (feature-003). The inspector auto-updates on hover, showing editable fields for all props on the hovered hex. No separate floating panel is used. The same EditPropCommand/DeletePropCommand pattern is used for undo/redo support.
 
 ### Layers & Components
 
 - `ToolManager` — singleton, instantiated by the application. Holds reference to `HexGrid` and `CommandHistory`. Canvas mouse events from `HexCanvas` are forwarded here.
 - Tool classes (`BiomeBrush`, `ElevationBrush`, `ResourcePlacer`, `StructurePlacer`, `AnomalyMarker`, `SpawnMarker`, `EraserTool`, `DeleteHexTool`, `FloodFillTool`) — each extends `BaseTool`. Resource/Structure/Anomaly placers all produce `AddPropCommand` with appropriate category.
-- `PropDetailPanel` — DOM-based panel for viewing and editing all props on a hex, grouped by category.
+- `HexInspector` (feature-003) — right sidebar panel for viewing and editing all props on the hovered hex.
 - `BatchCommand` — groups multiple commands into one undo/redo unit.
 
 ### Dependencies
