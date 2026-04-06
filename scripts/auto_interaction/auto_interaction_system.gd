@@ -124,6 +124,10 @@ func _check_gather_proximity() -> void:
 		return  # Already gathering — chain will re-check after completion
 	if _player == null or not "current_tile" in _player:
 		return
+	# Don't gather while dead
+	var survival: Node = _get_survival_system()
+	if survival != null and "is_dead" in survival and survival.is_dead:
+		return
 	_try_gather_nearby(_player.current_tile)
 
 
@@ -418,6 +422,9 @@ func _check_pickup_proximity() -> void:
 		return
 	var survival: Node = _get_survival_system()
 	if survival == null or not survival.has_method("get_ground_items_at"):
+		return
+	# Don't pick up items while dead (prevents recollecting dropped items before respawn)
+	if "is_dead" in survival and survival.is_dead:
 		return
 	if _inventory == null:
 		return
