@@ -139,7 +139,9 @@ toolManager.onStatus = (msg) => setStatus(msg);
  * @returns {void}
  */
 function selectTool(toolName) {
-  toolManager.setTool(toolName, toolManager.activeValue);
+  // Preserve activeValue only if staying on the same tool type
+  const value = (toolName === toolManager.activeToolType) ? toolManager.activeValue : null;
+  toolManager.setTool(toolName, value);
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
   }
