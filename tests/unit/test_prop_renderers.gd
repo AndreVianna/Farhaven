@@ -8,7 +8,7 @@ const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 
 
@@ -64,9 +64,7 @@ func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTi
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	tile.resource_nodes = [node]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 
@@ -205,14 +203,14 @@ func test_label_update_on_entry_encountered() -> void:
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
 
 
-func test_labels_removed_when_tile_becomes_revealed() -> void:
+func test_labels_not_removed_when_tile_visible() -> void:
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 
 	assert_int(_label_renderer.get_label_count()).is_equal(1)
 
-	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.REVEALED)
+	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_label_renderer.get_label_count()).is_equal(0)
+	assert_int(_label_renderer.get_label_count()).is_equal(1)
 
 
 func test_labels_removed_when_tile_becomes_hidden() -> void:

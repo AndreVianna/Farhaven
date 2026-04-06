@@ -27,7 +27,7 @@ const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
 const _ResourceRenderer = preload("res://scripts/rendering/resource_renderer.gd")
 const _FlyToPlayer = preload("res://scripts/rendering/fly_to_player.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
@@ -51,6 +51,15 @@ class FakeGrid extends Node:
 
 	func get_tile(coords: Vector2i):
 		return _tiles.get(coords, null)
+
+	func has_structure(coords: Vector2i, type: StringName) -> bool:
+		var tile = _tiles.get(coords, null)
+		if tile == null:
+			return false
+		for prop in tile.get_structures():
+			if prop.type == type:
+				return true
+		return false
 
 	func distance(a: Vector2i, b: Vector2i) -> int:
 		var cube_a: Vector3i = Vector3i(a.x, -a.x - a.y, a.y)
@@ -100,21 +109,15 @@ var _world: Node3D
 
 # --- Helpers ---
 
-func _make_resource_node(type: StringName, remaining: int = 3, tool_req: StringName = &"", respawn: float = 0.0) -> ResourceNode:
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = type
-	node.remaining = remaining
-	node.max_amount = remaining
-	node.tool_required = tool_req
-	node.respawn_time = respawn
-	return node
+func _make_resource_prop(type: StringName, remaining: int = 3, tool_req: StringName = &"", respawn: float = 0.0) -> Prop:
+	return _Prop.create_resource(type, remaining, remaining, tool_req, respawn)
 
 
 func _make_tile(resource_type: StringName = &"", remaining: int = 3, tool_req: StringName = &"", fog: int = _HexTile.FogState.VISIBLE, respawn: float = 0.0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.fog_state = fog
 	if resource_type != &"":
-		tile.resource_nodes = [_make_resource_node(resource_type, remaining, tool_req, respawn)]
+		tile.props = [_make_resource_prop(resource_type, remaining, tool_req, respawn)]
 	return tile
 
 
@@ -407,7 +410,7 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 	_auto_interaction._on_gather_tween_complete()
 
 	var tile: HexTile = _grid.get_tile(Vector2i(1, 0))
-	assert_int(tile.resource_nodes[0].remaining).is_equal(0)
+	assert_int(tile.props[0].remaining).is_equal(0)
 	assert_int(_auto_interaction._respawn_queue.size()).is_equal(1)
 
 	# Tile stays VISIBLE but respawn still ticks (fog system removed)
@@ -418,12 +421,12 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 
 	# Tick 1.5s — not enough yet
 	_auto_interaction._tick_respawn_queue(1.5)
-	assert_int(tile.resource_nodes[0].remaining).is_equal(0)
+	assert_int(tile.props[0].remaining).is_equal(0)
 	assert_int(respawned_signals.size()).is_equal(0)
 
 	# Tick another 1.0s — total 2.5s > 2.0s respawn_time → respawn
 	_auto_interaction._tick_respawn_queue(1.0)
-	assert_int(tile.resource_nodes[0].remaining).override_failure_message(
+	assert_int(tile.props[0].remaining).override_failure_message(
 		"Resource must respawn to max_amount after timer expires"
 	).is_equal(1)
 	assert_int(respawned_signals.size()).is_equal(1)
@@ -445,7 +448,7 @@ func test_chain_gathering_multiple_resources() -> void:
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 1)
 	# Add stone as second resource on the SAME tile
-	_grid._tiles[Vector2i(1, 0)].resource_nodes.append(_make_resource_node(&"stone", 1))
+	_grid._tiles[Vector2i(1, 0)].props.append(_make_resource_prop(&"stone", 1))
 	# Position player at the resource tile
 	_place_player_near_resource(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
@@ -502,7 +505,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	# Add a workbench neighbor for crafting
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Position player at the ore resource
 	_place_player_near_resource(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -590,7 +593,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 
 	# Workbench adjacent
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -789,8 +792,8 @@ func test_stubs_safe_no_crash_without_fauna_or_survival() -> void:
 	# FaunaManager and SurvivalSystem are both absent (not in tree)
 	# These calls should NOT crash:
 
-	# auto-pickup stub queries SurvivalSystem
-	_auto_interaction._try_auto_pickup(Vector2i.ZERO)
+	# auto-pickup proximity check queries SurvivalSystem (safe when absent)
+	_auto_interaction._check_pickup_proximity()
 
 	# auto-defend stub tries to connect FaunaManager
 	_auto_interaction._connect_fauna_manager()
@@ -844,7 +847,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -882,7 +885,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -923,7 +926,7 @@ func test_resource_renderer_depleted_visual_swap() -> void:
 	# Simulate depletion: set remaining to 0, then fire signal
 	# (ResourceRenderer._rebuild_tile checks rn.remaining <= 0)
 	var tile: HexTile = _grid.get_tile(Vector2i(2, 0))
-	tile.resource_nodes[0].remaining = 0
+	tile.props[0].remaining = 0
 	_grid.resource_depleted.emit(Vector2i(2, 0), &"stone")
 
 	entries = _resource_renderer.get_tile_entries()
@@ -932,7 +935,7 @@ func test_resource_renderer_depleted_visual_swap() -> void:
 	).is_true()
 
 	# Simulate respawn: restore remaining, then fire signal
-	tile.resource_nodes[0].remaining = tile.resource_nodes[0].max_amount
+	tile.props[0].remaining = tile.props[0].max_amount
 	_grid.resource_respawned.emit(Vector2i(2, 0), &"stone")
 
 	entries = _resource_renderer.get_tile_entries()
@@ -965,7 +968,7 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 	# Tile remains VISIBLE → respawn still ticks (fog system removed)
 	_auto_interaction._tick_respawn_queue(1.5)
 	var tile: HexTile = _grid.get_tile(Vector2i(1, 0))
-	assert_int(tile.resource_nodes[0].remaining).override_failure_message(
+	assert_int(tile.props[0].remaining).override_failure_message(
 		"Respawn must tick even while tile is VISIBLE (fog removed)"
 	).is_equal(1)
 
@@ -1017,7 +1020,7 @@ func test_workbench_proximity_signal_on_change() -> void:
 
 	# Add workbench neighbor
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 
 	_crafting._check_workbench_proximity()
@@ -1025,7 +1028,7 @@ func test_workbench_proximity_signal_on_change() -> void:
 	assert_bool(prox_signals[0]).is_true()
 
 	# Remove workbench (change structure)
-	wb_tile.structure = &""
+	wb_tile.props = []
 	_crafting._check_workbench_proximity()
 	assert_int(prox_signals.size()).is_equal(2)
 	assert_bool(prox_signals[1]).is_false()
@@ -1078,7 +1081,7 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 3)
 	_grid._tiles[Vector2i(0, 1)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.structure = &"workbench"
+	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Extra wood tile for crafting materials
 	_grid._tiles[Vector2i(0, -1)] = _make_tile(&"wood", 5)
@@ -1220,13 +1223,13 @@ func test_resource_renderer_respawn_restores_visual() -> void:
 
 	# Deplete: set remaining to 0 first (renderer rebuild checks rn.remaining)
 	var tile: HexTile = _grid.get_tile(Vector2i(3, 0))
-	tile.resource_nodes[0].remaining = 0
+	tile.props[0].remaining = 0
 	_grid.resource_depleted.emit(Vector2i(3, 0), &"berries")
 	var entries: Dictionary = _resource_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(3, 0)][0]["depleted"]).is_true()
 
 	# Respawn: restore remaining
-	tile.resource_nodes[0].remaining = tile.resource_nodes[0].max_amount
+	tile.props[0].remaining = tile.props[0].max_amount
 	_grid.resource_respawned.emit(Vector2i(3, 0), &"berries")
 	entries = _resource_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(3, 0)][0]["depleted"]).override_failure_message(

@@ -24,6 +24,7 @@
 | 2026-04-01 | [PIVOT] Elevation 0-9 all biomes. 3-tier traversal (walk/jump/blocked). Hand-crafted maps via MapLoader (replaces WorldGenerator). | /design-pivot |
 | 2026-04-01 | C1: HEX_SIZE=3.0 added to Constants table. C6: ELEVATION_STEP=0.5 added to Constants table. C2: Cliff faces moved from deferred to current scope — flat vertical quads, higher tile biome color × 0.6, same ArrayMesh (0 extra draw calls). I7: Elevation lightening (+5%/level) marked [TUNING_REQUIRED]. I2: Touch pixel estimate marked [TUNING_REQUIRED] for HEX_SIZE=3.0. M3: Cliff faces noted as 0 extra draw calls. Fog of War range: transitioning to circular world-unit area [TUNING_REQUIRED]. | /pivot-cascade |
 | 2026-04-03 | Review fixes: HEX_SIZE/ELEVATION_STEP ownership notes, ResourceNode fields (offset, rotation_deg) added | /aid-specify review |
+| 2026-04-04 | Sub-hex grid (19 sub-hexes per tile, SUB_HEX_SIZE=0.6). Unified props: tile.props[] replaces resource_nodes/structure/anomaly. Prop data structure added. Serialization updated. Signals kept for backward compat, now operate on props. | /arch-update |
 
 ## Source
 
@@ -98,33 +99,67 @@ Lightweight data object — one per tile, ~300 max. Extends `Resource`.
 | `biome` | `Biome` | Biome enum value |
 | `elevation` | `int` | 0–9 range, affects traversability (3-tier: walk/jump/blocked) |
 | `fog_state` | `FogState` | Current visibility state |
-| `structure` | `StringName` | Built structure (`&""` = empty) |
-| `resource_nodes` | `Array[ResourceNode]` | Gatherable resources on this tile |
-| `anomaly` | `StringName` | Anomaly ID (`&""` = none). Biome-independent. Scanned to trigger narrative (feature-003/011). |
+| `props` | `Array[Prop]` | All props on this tile (resources, structures, anomalies, spawn points) |
 
-**One structure per tile (MVP rule).** Deliberate design constraint.
+**Unified props model.** The hex is a container; the prop type defines behavior.
+Multiple structures per hex are allowed as long as their sub-hex footprints don't overlap.
 
 **No `element_types` field.** Each system owns its own data:
-- Flora/minerals: `tile.resource_nodes[].type` — scanner (feature-003) queries this
+- Flora/minerals: `tile.props.filter(p.category == &"resource")` — scanner (feature-003) queries this
 - Fauna: FaunaManager (feature-010) tracks creatures by position — scanner queries FaunaManager
-- Anomalies: `tile.anomaly` — owned here
+- Anomalies: `tile.props.filter(p.category == &"anomaly")` — owned here
 
 HexTile says WHAT resources and anomalies exist. Scanner/catalog decides IF the player
 knows about them. No dual tracking, no leaked responsibilities.
 
-#### ResourceNode (Resource)
+#### Prop (Resource)
+
+Unified data object for everything placed on a tile: resources, structures, anomalies,
+spawn points. The hex is a container; the prop's `type` and `category` define behavior.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `type` | `StringName` | `&"wood"`, `&"stone"`, `&"berries"`, `&"toxic_berries"`, `&"fiber"`, `&"ore"`, `&"crystal"` |
-| `remaining` | `int` | Gathers left before depletion |
-| `max_amount` | `int` | For respawn reset |
-| `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` |
-| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn) |
-| `offset` | `Vector2` | Normalized -1 to 1, position relative to hex center |
-| `rotation_deg` | `float` | Degrees, converted to radians at render time |
+| `type` | `StringName` | Prop identifier: `&"wood"`, `&"stone"`, `&"shelter"`, `&"anomaly_ch1_001"`, etc. |
+| `sub_hex` | `Vector2i` | Axial `(sq, sr)` position within the parent tile's sub-hex grid |
+| `category` | `StringName` | `&"resource"`, `&"structure"`, `&"anomaly"`, `&"spawn"` |
+| `footprint` | `Array[Vector2i]` | Sub-hex coords this prop occupies (structures only; empty for resources/anomalies) |
+| `rotation` | `float` | Degrees, converted to radians at render time |
+| `remaining` | `int` | Gathers left before depletion (resources only; -1 for non-resources) |
+| `max_amount` | `int` | For respawn reset (resources only; -1 for non-resources) |
+| `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` (resources only) |
+| `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn; resources only) |
 
-`respawn_time` is set from `ResourceRegistry` during map load. `offset` and `rotation_deg` are set from map JSON (or randomized by MapLoader for string-form resources).
+`respawn_time` is set from `ResourceRegistry` during map load. `sub_hex` and `rotation` are set from map JSON (or assigned by MapLoader for string-form resources).
+
+**Category governs behavior:**
+- `&"resource"` — gatherable. Uses `remaining`, `max_amount`, `tool_required`, `respawn_time`.
+- `&"structure"` — built or map-placed. Uses `footprint` (which sub-hexes it occupies). `blocks_movement` is looked up from `structure_config[type]`.
+- `&"anomaly"` — narrative trigger. Scanned by feature-003/011.
+- `&"spawn"` — spawn point marker. Used by MapLoader.
+
+#### Sub-Hex Coordinate System
+
+Each main hex (6m diameter, HEX_SIZE=3.0 radius) contains a grid of 19 sub-hexes
+(~1.2m diameter, SUB_HEX_SIZE=0.6 radius) arranged in a hex pattern of radius 2.
+Sub-hexes use axial coordinates `(sq, sr)` relative to the parent tile center `(0, 0)`.
+
+```
+Sub-hex layout (radius 2, 19 cells):
+         (-2,0) (-1,-1) (0,-2)
+       (-2,1) (-1,0) (0,-1) (1,-2)
+     (-2,2) (-1,1) (0,0) (1,-1) (2,-2)
+       (-1,2) (0,1) (1,0) (2,-1)
+         (0,2) (1,1) (2,0)
+```
+
+Props are placed at sub-hex positions within tiles. The main hex remains the unit
+for movement, fog, biome, and elevation. Sub-hex positioning is for prop placement
+granularity only.
+
+#### Legacy ResourceNode (Removed)
+
+**Replaced by Prop with `category == &"resource"`.** All fields from ResourceNode
+are now on Prop. The `offset`/`rotation_deg` fields are replaced by `sub_hex`/`rotation`.
 
 #### Elevation
 
@@ -188,6 +223,7 @@ Map container and sole public API. All cross-feature interaction goes through He
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `HEX_SIZE` | `3.0` | World-space radius of one hex (center to corner). All spatial calculations derive from this constant. Drives `axial_to_world`, `world_to_axial`, camera calibration, and player scale. **Note:** Lives on `HexMath` (not HexGrid) in the actual codebase — HexMath is the coordinate engine. |
+| `SUB_HEX_SIZE` | `0.6` | World-space radius of one sub-hex. 19 sub-hexes per main hex (radius-2 hex grid). Used for prop placement granularity. `SUB_HEX_SIZE = HEX_SIZE / 5.0`. Lives on `HexMath`. |
 | `ELEVATION_STEP` | `0.5` | World units of Y offset per elevation level. Total height range: 9 × 0.5 = 4.5 units. Drives cliff face heights, jump arc parameters, and vertical camera framing. **Note:** In code, `player.gd` uses `ELEVATION_SCALE` (same value, different name). |
 | `WALK_MAX_DIFF` | `1` | Walk: smooth mesh, normal movement |
 | `JUMP_MAX_DIFF` | `3` | Jump/Drop: gap, auto-animation. 4+ = BLOCKED (cliff) |
@@ -231,11 +267,11 @@ signal tile_revealed(coords: Vector2i)
 signal tile_visibility_changed(coords: Vector2i, state: FogState)
 signal tile_entered(coords: Vector2i)
 signal tile_exited(coords: Vector2i)
-signal resource_depleted(coords: Vector2i, resource_type: StringName)
-signal resource_respawned(coords: Vector2i, resource_type: StringName)
+signal resource_depleted(coords: Vector2i, resource_type: StringName)   # operates on props with category="resource"
+signal resource_respawned(coords: Vector2i, resource_type: StringName)  # operates on props with category="resource"
 signal tile_contents_changed(coords: Vector2i)  # reserved for future use
-signal structure_placed(coords: Vector2i, structure_type: StringName)
-signal structure_destroyed(coords: Vector2i, structure_type: StringName)
+signal structure_placed(coords: Vector2i, structure_type: StringName)   # operates on props with category="structure"
+signal structure_destroyed(coords: Vector2i, structure_type: StringName) # operates on props with category="structure"
 ```
 
 **Ownership pattern:** HexGrid owns signals and emit methods. Downstream features call
@@ -252,10 +288,10 @@ HexGrid methods that update tile state and emit. No feature emits directly on He
       "biome": 2,
       "elevation": 1,
       "fog": 1,
-      "structure": "",
-      "anomaly": "",
-      "resources": [
-        { "type": "wood", "remaining": 3, "max": 3, "tool": "" }
+      "props": [
+        { "type": "wood", "sub_hex": [0, -1], "category": "resource", "remaining": 3, "max": 3, "tool": "" },
+        { "type": "wood", "sub_hex": [1, 0], "category": "resource", "remaining": 3, "max": 3, "tool": "" },
+        { "type": "shelter", "sub_hex": [0, 0], "category": "structure", "footprint": [[0,0],[-1,0],[1,0],[0,-1],[0,1],[-1,1],[1,-1]], "rotation": 0 }
       ]
     }
   ]
@@ -263,6 +299,8 @@ HexGrid methods that update tile state and emit. No feature emits directly on He
 ```
 
 Code uses `q`/`r`. Serialized JSON uses `tile_col`/`tile_row` for readability.
+Props use `sub_hex: [sq, sr]` for sub-hex position. Structure props include
+`footprint` as array of `[sq, sr]` pairs.
 
 ### Feature Flow
 
@@ -279,8 +317,9 @@ MAP FILE (res://data/maps/ch1.json)
   │
   ├─ Step 2: Create HexTile objects
   │     For each tile entry: create HexTile Resource, set coords/biome/elevation.
-  │     Populate resource_nodes from tile's "resources" array.
-  │     Set anomaly from tile's "anomaly" field (if present).
+  │     Populate props[] from tile's "props" array (or from legacy "resources"/"anomaly"
+  │     fields via backward-compat conversion). Each prop gets a Prop Resource with
+  │     type, sub_hex, category, and category-specific fields.
   │
   ├─ Step 3: Register tiles in HexGrid
   │     Add each HexTile to HexGrid._tiles dictionary.
@@ -310,9 +349,14 @@ MAP FILE (res://data/maps/ch1.json)
   "spawn": [0, 0],
   "tiles": {
     "0,0":   { "biome": "crash_site", "elevation": 0 },
-    "1,0":   { "biome": "crash_site", "elevation": 0, "resources": ["wood", "stone"] },
+    "1,0":   { "biome": "crash_site", "elevation": 0, "props": [
+      { "type": "wood", "sub_hex": [0, -1], "category": "resource" },
+      { "type": "stone", "sub_hex": [1, 0], "category": "resource" }
+    ]},
     "0,1":   { "biome": "grassland",  "elevation": 1 },
-    "-3,5":  { "biome": "rocky",      "elevation": 6, "anomaly": "anomaly_ch1_001" },
+    "-3,5":  { "biome": "rocky",      "elevation": 6, "props": [
+      { "type": "anomaly_ch1_001", "sub_hex": [0, 0], "category": "anomaly" }
+    ]},
     "2,-1":  { "biome": "water",      "elevation": 0 }
   }
 }
@@ -321,9 +365,10 @@ MAP FILE (res://data/maps/ch1.json)
 **Keys:** `"q,r"` axial coordinates as strings.
 **biome:** String matching Biome enum name (lowercase).
 **elevation:** Integer 0–9.
-**resources:** Optional array of StringName IDs. MapLoader creates ResourceNode
-objects using BiomeData config tables (remaining, max_amount, tool_required).
-**anomaly:** Optional StringName ID.
+**props:** Optional array of prop objects. Each has `type`, `sub_hex` (axial coords
+within the sub-hex grid), and `category`. Resource props use ResourceRegistry for
+remaining/max_amount/tool_required. Structure props include `footprint`.
+MapLoader assigns sub_hex positions (or randomizes them for legacy string-form resources).
 **Missing tile = off-map.** Not rendered, not accessible.
 
 **The map file is read-only at runtime.** Save data stores the runtime delta
@@ -345,8 +390,8 @@ error that makes the anomaly unreachable should fail loudly during development,
 not silently at runtime.
 
 **Resource tables are data-driven:** BiomeData .tres files define what resources
-exist per biome and their properties. Map files only list which resource types
-spawn on each tile — MapLoader looks up config from BiomeData.
+exist per biome and their properties. Map files list props with types and sub-hex
+positions — MapLoader looks up config from BiomeData/ResourceRegistry.
 
 ### Layers & Components
 
@@ -379,9 +424,9 @@ Pure data + logic. No visuals. Accessible globally.
 scripts/
   hex/
     hex_grid.gd           # Autoload — map container, API, signals
-    hex_tile.gd           # Resource — tile data
-    resource_node.gd      # Resource — gatherable resource on a tile
-    hex_math.gd           # Static utility (class_name HexMath)
+    hex_tile.gd           # Resource — tile data (props[] replaces resource_nodes/structure/anomaly)
+    prop.gd               # Resource — unified prop (resource, structure, anomaly, spawn)
+    hex_math.gd           # Static utility (class_name HexMath) — includes sub-hex coordinate helpers
     map_loader.gd         # RefCounted — loads JSON level files, populates HexGrid
     biome_data.gd         # Resource — per-biome config (colors, resource tables)
 

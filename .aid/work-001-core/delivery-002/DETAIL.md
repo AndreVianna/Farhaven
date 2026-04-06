@@ -369,3 +369,4 @@ No additional requirements beyond delivery-001.
 | 2026-03-31 | 7 tasks created (009-015) — approved. Merged original task-003 into task-010. | /aid-detail |
 | 2026-04-02 | task-013 rewritten: ElementIconRenderer → PropRenderer + PropLabelRenderer. Scene tree, criteria, and integration contract updated. | /spec-update |
 | 2026-04-02 | Scan redesign applied: task-011 adds KnowledgeState + encounter_entry. task-012 rewritten for proximity auto-scan. task-013 adds 3-state labels + ElementIconRenderer removal. task-015 rewritten for proximity flow. Bootstrap/smoke test updated. | /scan-redesign-apply |
+| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. Resources, structures, anomalies are all props. PropRenderer/PropLabelRenderer now operate on unified props. Tasks already implemented — this note is for future reference. See feature-001 SPEC changelog. | /arch-update |

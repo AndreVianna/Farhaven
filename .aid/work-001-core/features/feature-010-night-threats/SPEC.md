@@ -10,6 +10,7 @@
 | 2026-04-01 | I4: move_cooldown and detection_range marked [TUNING_REQUIRED] for HEX_SIZE=3.0 visual feel. Range note: detection_range transitioning to circular world-unit area (~2 inscribed hex radii). | /pivot-cascade |
 | 2026-04-02 | Scene tree + fauna icon references: ElementIconRenderer → PropRenderer + PropLabelRenderer. Fauna body mesh via PropRenderer, ❓/name label via PropLabelRenderer. | /spec-update |
 | 2026-04-02 | Scan redesign: "surprise auto-catalog" → "auto-register as ENCOUNTERED". First hit registers hostile fauna as ENCOUNTERED (not CATALOGED). Auto-defend activates at ENCOUNTERED. Shelter farming produces ENCOUNTERED fauna (drops unknown until CATALOGED). | /scan-redesign-apply |
+| 2026-04-04 | Sub-hex + unified props: spawn validation checks `tile.props` for blocking structures. Torch radius uses sub-hex positions. Shelter/wall checks query `tile.props` by category. Meat drops stay on main hex (ground items are main-hex level). | /spec-update |
 
 ## Source
 
@@ -151,10 +152,10 @@ Fauna spawn at NIGHT start (`DayNightCycle.night` signal). Only if
 
 Spawn tile requirements:
 - `fog_state != VISIBLE` (outside player sight + torch range)
-- No structure on tile (`structure == &""`)
+- No blocking structures on tile (no props with `category == "structure"` that block spawn)
 - Passable (not water, not cliff)
 - Distance from player >= `spawn_min_distance` (3 hexes)
-- Not within torch radius (torch deters spawn within radius 2)
+- Not within torch radius (torch deters spawn within radius 2; torch position includes sub-hex offset)
 
 Spawn count: `randi_range(spawn_count_min, spawn_count_max)`.
 Species: randomly selected from `CHAPTER1_SPECIES` (Chapter 1: always `&"thornback"`).
@@ -174,7 +175,7 @@ feature-003.
 | `DayNightCycle.day_count` — first_spawn_day check | feature-008 |
 | `HexGrid.is_passable` — spawn + movement validation | feature-001 |
 | `HexGrid.get_tile().fog_state` — spawn validation | feature-001 |
-| `HexGrid.get_tile().structure` — shelter protection check | feature-001 |
+| `tile.props` filtered by category — shelter/structure checks | feature-001 |
 
 | What | Consumer |
 |------|----------|
@@ -218,10 +219,10 @@ DayNightCycle emits night()
   │     Find valid spawn tile:
   │       candidates = all tiles where:
   │         fog_state != VISIBLE
-  │         structure == &""
+  │         no props with category == "structure" that block spawn
   │         HexGrid.is_passable to at least one neighbor
   │         HexGrid.distance(player.current_tile, tile) >= spawn_min_distance
-  │         Not within 2 hexes of any torch (_torch_tiles from DayNightCycle)
+  │         Not within 2 hexes of any torch (_torch_positions from DayNightCycle)
   │       Pick randomly from candidates
   │       ✗ No valid candidates → skip this spawn (rare with 200-300 tiles)
   │
@@ -265,7 +266,7 @@ Every frame (FaunaManager._process):
   │     ├─ Pick move target:
   │     │     From HexGrid.get_neighbors(fauna.coords):
   │     │       Pick neighbor closest to player (min hex distance)
-  │     │       Must be passable (walls block — fauna routes around)
+  │     │       Must be passable (props with category="structure" and blocks_movement=true block — fauna routes around)
   │     │       Must not have another fauna (no stacking on same tile)
   │     │     ✗ No valid move → stay put
   │     │
@@ -279,7 +280,8 @@ Every frame (FaunaManager._process):
   │           if HexGrid.distance(fauna.coords, player.current_tile) == 1:
   │
   │             Shelter check:
-  │               if HexGrid.get_tile(player.current_tile).structure == &"shelter":
+  │               var tile = HexGrid.get_tile(player.current_tile)
+  │               if tile.props.any(|p| p.category == &"structure" and p.type == &"shelter"):
   │                 → 0 damage (shelter protection)
   │                 → Still emit fauna_attacked_player with damage = 0
   │
@@ -307,7 +309,7 @@ this encounter AND all future encounters with this species. The player does NOT 
 the species name or drops — only that it's hostile. Full details require CATALOGED state
 (Sneak Scan mechanic, deferred post-MVP).
 
-**Shelter protection:** `structure == &"shelter"` on player's tile → contact damage = 0.
+**Shelter protection:** player's tile has a prop with `category == "structure"` and `type == "shelter"` → contact damage = 0.
 Signal still fires (with damage = 0) so surprise auto-catalog still triggers — the
 player learns what attacked them even if they're safe.
 

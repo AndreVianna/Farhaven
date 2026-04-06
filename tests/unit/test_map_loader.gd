@@ -6,6 +6,7 @@ class_name TestMapLoader
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _grid: Node
 
@@ -72,21 +73,23 @@ func test_anomaly_exists() -> void:
 	_load_ch1()
 	var found: bool = false
 	for c in _grid._tiles:
-		if _grid._tiles[c].anomaly != &"":
-			found = true
+		for prop in _grid._tiles[c].props:
+			if prop.category == Prop.Category.ANOMALY:
+				found = true
+				break
+		if found:
 			break
 	assert_bool(found).override_failure_message("No anomaly tile found").is_true()
 
 
-# --- Fog initialized: spawn + ring 1 are VISIBLE ---
+# --- Fog initialized: all tiles VISIBLE ---
 
-func test_fog_initialized_spawn_visible() -> void:
+func test_fog_initialized_all_visible() -> void:
 	_load_ch1()
-	for coords in _HexMath.get_tiles_in_range(Vector2i.ZERO, 1):
-		if _grid._tiles.has(coords):
-			assert_int(_grid._tiles[coords].fog_state).override_failure_message(
-				"Tile %s should be VISIBLE after load" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
+	for c in _grid._tiles:
+		assert_int(_grid._tiles[c].fog_state).override_failure_message(
+			"Tile %s should be VISIBLE after load" % str(c)
+		).is_equal(_HexTile.FogState.VISIBLE)
 
 
 # --- get_traversal: WALK for elevation diff 0 ---
@@ -202,7 +205,7 @@ func test_get_traversal_blocked_structure() -> void:
 	_grid._tiles[Vector2i(0, 0)] = a
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
-	b.structure = &"wall"
+	b.props = [_Prop.create_structure(&"wall", true)]
 	_grid._tiles[Vector2i(1, 0)] = b
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 
@@ -327,7 +330,7 @@ func test_serialization_round_trip() -> void:
 		assert_int(loaded.biome).is_equal(orig.biome)
 		assert_int(loaded.elevation).is_equal(orig.elevation)
 		assert_int(loaded.fog_state).is_equal(orig.fog_state)
-		assert_str(String(loaded.anomaly)).is_equal(String(orig.anomaly))
+		assert_int(loaded.props.size()).is_equal(orig.props.size())
 
 	grid2.queue_free()
 

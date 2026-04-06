@@ -10,6 +10,7 @@
 | 2026-04-02 | Architecture: ElementIconRenderer → PropRenderer + PropLabelRenderer. 3D prop meshes replace billboard icons; floating pill labels show ❓/name. Catalog changes label text, not mesh. | /spec-update |
 | 2026-04-02 | Major redesign: press-and-hold → proximity auto-scan. Three-state knowledge (UNKNOWN/ENCOUNTERED/CATALOGED). Trap + Sneak mechanics designed but deferred post-MVP. See docs/design/scan-redesign-2026-04-02.md | /design-session |
 | 2026-04-02 | Full spec rewrite: proximity auto-scan, 3-state knowledge system, ENCOUNTERED labels, resolved design decisions applied. Old press-and-hold flow, ScanState machine, scan_hold signals, scan_rejected, drift/range checks all removed. | /scan-redesign-apply |
+| 2026-04-04 | Sub-hex + unified props: scanning targets are now `tile.props[]` filtered by category. `get_scannable_at()` queries props instead of `resource_nodes[]`/`anomaly`. Passive identification operates on `tile.props`. Element signals reference props. | /spec-update |
 
 > **📐 Design Note (2026-04-02):** The scan system has been fundamentally redesigned from press-and-hold to proximity-based auto-scan. Props now have three knowledge states (UNKNOWN → ENCOUNTERED → CATALOGED) instead of two. Fauna scanning introduces Trap (passive) and Sneak Scan (hostile) mechanics, both deferred post-MVP. Full design rationale and state transition details: [`docs/design/scan-redesign-2026-04-02.md`](../../../../docs/design/scan-redesign-2026-04-02.md)
 
@@ -143,8 +144,8 @@ func encounter_entry(entry_id: StringName, label: String) -> void  # marks as EN
 # Eligibility (used by scan flow)
 func get_scannable_at(coords: Vector2i) -> StringName
     # Returns entry_id of first uncataloged scannable element at coords, or &"" if none.
-    # Checks: tile.resource_nodes[].type, tile.anomaly, FaunaManager positions.
-    # Maps resource/anomaly/fauna type → entry_id via _all_entries lookup.
+    # Checks: tile.props[] filtered by category (resource/anomaly), FaunaManager positions.
+    # Maps prop type → entry_id via _all_entries lookup.
     # Skips ENCOUNTERED fauna (can't be proximity-scanned — needs Trap/Sneak).
     # Only returns elements that can be cataloged by proximity scan.
 ```
@@ -224,8 +225,7 @@ add entries without modifying save format.
 
 | This feature queries | Source | What it reads |
 |---------------------|--------|---------------|
-| `HexGrid.get_tile(coords).resource_nodes[].type` | feature-001 | Resource types on tile (flora/mineral) |
-| `HexGrid.get_tile(coords).anomaly` | feature-001 | Anomaly ID on tile |
+| `tile.props.filter(category)` | feature-001 | Props on tile filtered by category (resource/anomaly) |
 | FaunaManager query (fauna at coords) | feature-010 | Fauna species at position |
 
 | This feature is queried by | Consumer | What it provides |
@@ -381,32 +381,27 @@ HexGrid emits tile_revealed(coords) or tile_visibility_changed(coords, VISIBLE)
   ├─ ScannerSystem receives signal
   │
   ├─ Check tile for elements:
-  │     For each resource_node in tile.resource_nodes:
-  │       entry_id = _map_resource_to_entry(resource_node.type)
+  │     For each prop in tile.props:
+  │       entry_id = _map_prop_to_entry(prop.type)
   │       state = Catalog.get_knowledge_state(entry_id)
   │       match state:
   │         CATALOGED:
   │           Emit element_identified(coords, entry_id)
-  │           → PropRenderer: show prop mesh at tile position
+  │           → PropRenderer: show prop mesh at prop.sub_hex position
   │           → PropLabelRenderer: show real name label
   │         ENCOUNTERED:
   │           var label = Catalog.get_encounter_label(entry_id)
   │           Emit element_encountered(coords, entry_id, label)
-  │           → PropRenderer: show prop mesh at tile position
+  │           → PropRenderer: show prop mesh at prop.sub_hex position
   │           → PropLabelRenderer: show "⚠️ Unidentified Fauna ([label])" label
   │         UNKNOWN:
   │           var cat = _all_entries[entry_id].category
   │           Emit element_unknown(coords, entry_id, cat)
-  │           → PropRenderer: show prop mesh at tile position (uses category for mesh pool)
+  │           → PropRenderer: show prop mesh at prop.sub_hex position (uses category for mesh pool)
   │           → PropLabelRenderer: show "❓ Unknown [category]" label
   │
-  │     If tile.anomaly != &"":
-  │       if Catalog.is_cataloged(tile.anomaly):
-  │         Emit element_identified(coords, tile.anomaly)
-  │       else:
-  │         Emit element_unknown(coords, tile.anomaly, CatalogCategory.ANOMALY)
-  │
-  │     (Fauna handled separately — FaunaManager emits fauna_spawned with position,
+  │     (Anomalies are props with category == "anomaly" — handled by the same loop above.
+  │      Fauna handled separately — FaunaManager emits fauna_spawned with position,
   │      ScannerSystem checks knowledge state for that species and emits appropriate signal)
   │
   └─ Done
@@ -416,13 +411,13 @@ This runs once per tile when it becomes VISIBLE. PropRenderer places the 3D prop
 (always the same regardless of knowledge state). PropLabelRenderer subscribes and sets
 the appropriate label text (❓, ⚠️, or real name).
 
-#### Resource-to-Entry Mapping
+#### Prop-to-Entry Mapping
 
-`_map_resource_to_entry(resource_type: StringName) -> StringName` maps ResourceNode
-types to catalog entry IDs. This is a static lookup table:
+`_map_prop_to_entry(prop_type: StringName) -> StringName` maps prop types to catalog
+entry IDs. This is a static lookup table:
 
 ```gdscript
-const RESOURCE_TO_ENTRY: Dictionary = {
+const PROP_TO_ENTRY: Dictionary = {
     &"wood":           &"wood_tree",
     &"berries":        &"berry_bush",
     &"toxic_berries":  &"toxic_berry_bush",
@@ -433,7 +428,7 @@ const RESOURCE_TO_ENTRY: Dictionary = {
 }
 ```
 
-One resource type maps to exactly one catalog entry. Future chapters can add entries.
+One prop type maps to exactly one catalog entry. Future chapters can add entries.
 
 ---
 
@@ -503,10 +498,10 @@ data/
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
 | `scanner_system.gd` | Child Node of Player. Owns `Catalog` instance. Runs proximity check in `_process` — finds nearest uncataloged prop within `SCAN_RANGE`, starts/continues/interrupts scan based on player distance. Handles passive identification on `tile_revealed`/`tile_visibility_changed`. Handles surprise encounter on `fauna_attacked_player`. Handles passive fauna encounter on `fauna_fled`. Emits all scanner/catalog signals. | `HexGrid` (tile queries), `FaunaManager` feature-010 (fauna position queries + surprise signal), `Player` (current_tile for proximity) |
-| `catalog.gd` | RefCounted owned by ScannerSystem. 3-state knowledge tracking (`_knowledge`). Encounter labels for fauna. All query APIs (`get_knowledge_state`, `is_cataloged`, `get_entry`, `get_scannable_at`, counters). `catalog_entry()` and `encounter_entry()` mutations. `get_save_data()`/`load_save_data()`. | `catalog_entry.gd` (static definitions), `HexGrid` (for `get_scannable_at` tile queries), `FaunaManager` (for fauna position in `get_scannable_at`) |
+| `catalog.gd` | RefCounted owned by ScannerSystem. 3-state knowledge tracking (`_knowledge`). Encounter labels for fauna. All query APIs (`get_knowledge_state`, `is_cataloged`, `get_entry`, `get_scannable_at`, counters). `catalog_entry()` and `encounter_entry()` mutations. `get_save_data()`/`load_save_data()`. | `catalog_entry.gd` (static definitions), `HexGrid` (for `get_scannable_at` — queries `tile.props`), `FaunaManager` (for fauna position in `get_scannable_at`) |
 | `catalog_entry.gd` | Resource — static definition. Loaded from `.tres` data files. No runtime mutation. | Nothing (data only) |
-| `prop_renderer.gd` | Node3D under World. MultiMesh per prop type (~5 pools: flora cube, fauna sphere, mineral octahedron, anomaly tetrahedron, generic). Places 3D placeholder meshes at resource positions on hexes. Updates on `element_identified(coords, entry_id)`/`element_unknown(coords, entry_id, category)`/`element_encountered(coords, entry_id, label)`. Uses `category` to select the correct MultiMesh pool. Props are always visible once tile is revealed — knowledge state does NOT change meshes. **Multi-prop offset:** When a tile has multiple props, distributes them radially around the tile center. For N props on a tile, places at angles `(360/N * i)` degrees at radius `0.3 * HEX_SIZE` from center. Single prop stays centered. PropRenderer tracks prop count per tile via an internal `Dictionary[Vector2i, int]` to assign offsets. | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
-| `prop_label_renderer.gd` | Node3D under World. Floating pill-shaped labels above props (~1 MultiMesh pool). Billboard-enabled (faces camera). Shows "❓ Unknown [category]" for UNKNOWN, "⚠️ Unidentified Fauna (Hostile/Shy)" for ENCOUNTERED, real name for CATALOGED. Only renders labels for nearby/targeted props. On `entry_cataloged`: bulk label text update for all visible props of that type. On `entry_encountered`: update matching labels from ❓ → ⚠️ label. Labels inherit prop offset positions from PropRenderer (same radial distribution when multiple props on a tile). | `ScannerSystem` (signals), `Catalog` (name lookups, encounter labels) |
+| `prop_renderer.gd` | Node3D under World. MultiMesh per prop type (~5 pools: flora cube, fauna sphere, mineral octahedron, anomaly tetrahedron, generic). Places 3D placeholder meshes at prop sub-hex positions within hexes. Updates on `element_identified(coords, entry_id)`/`element_unknown(coords, entry_id, category)`/`element_encountered(coords, entry_id, label)`. Uses `category` to select the correct MultiMesh pool. Props are always visible once tile is revealed — knowledge state does NOT change meshes. **Sub-hex positioning:** Each prop has a `sub_hex: Vector2i` (axial coords within the 19 sub-hex grid). PropRenderer converts `(tile coords, sub_hex)` to world position for mesh placement. No manual radial offset needed — sub-hex grid provides natural spatial distribution. | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning, sub-hex → world offset) |
+| `prop_label_renderer.gd` | Node3D under World. Floating pill-shaped labels above props (~1 MultiMesh pool). Billboard-enabled (faces camera). Shows "❓ Unknown [category]" for UNKNOWN, "⚠️ Unidentified Fauna (Hostile/Shy)" for ENCOUNTERED, real name for CATALOGED. Only renders labels for nearby/targeted props. On `entry_cataloged`: bulk label text update for all visible props of that type. On `entry_encountered`: update matching labels from ❓ → ⚠️ label. Labels positioned at prop sub-hex world positions (same sub-hex coords as PropRenderer). | `ScannerSystem` (signals), `Catalog` (name lookups, encounter labels) |
 | `scan_progress_renderer.gd` | Node3D under World. Shows a progress bar billboard above the scan target tile during active scan. Updates on `scan_started`/`scan_progress_updated`/`scan_completed`/`scan_interrupted`. Single instance (only one scan at a time). | `ScannerSystem` (signals), `HexGrid` (`axial_to_world` for positioning) |
 | `catalog_panel.gd` | Control on CatalogPanel. Bottom drawer (same pattern as Inventory/Crafting/Build panels). 4 category tabs, entry list per category, discovery counter. Mutual exclusion with other panels. ENCOUNTERED entries show "Unidentified Fauna (Hostile/Shy)" with no details. CATALOGED entries show full info. | `Catalog` (query APIs for entries, counters, knowledge states, encounter labels) |
 
@@ -572,16 +567,13 @@ One `MultiMeshInstance3D` per prop category:
 **~5 MultiMeshInstance3D = ~5 draw calls.** Player visibility radius 2 = ~19 tiles,
 1-3 elements each = ~20-50 instances distributed across the pools. Well within budget.
 
-**Prop positioning:** Placed on tile surface at resource position. Uses
-`HexGrid.axial_to_world(coords)` + Y offset for elevation.
+**Prop positioning:** Each prop has a `sub_hex: Vector2i` (axial coords within the
+19 sub-hex grid, 1.2m sub-hexes). World position = `HexGrid.axial_to_world(tile_coords)`
++ sub-hex offset + Y for elevation. No manual distribution needed.
 
-**Multi-prop offset:** When a tile has multiple props (2-3 resource_nodes is common),
-they must not overlap at the same center point. PropRenderer distributes them radially:
-- **1 prop:** centered at `axial_to_world(coords)`
-- **N props (N ≥ 2):** placed at angles `(360° / N) * i` at radius `0.3 * HEX_SIZE` from center
-- PropRenderer maintains `_tile_prop_count: Dictionary[Vector2i, int]` to track how many
-  props occupy each tile and assign correct offsets on each `element_identified` or
-  `element_unknown` signal
+**Sub-hex grid:** Each main hex contains 19 sub-hexes with axial coords `(sq, sr)`.
+Props are placed at their assigned sub-hex position, providing natural spatial
+distribution within the tile. Multiple props on the same tile occupy different sub-hexes.
 
 **Prop lifecycle:**
 - Tile becomes VISIBLE → ScannerSystem checks catalog → emit `element_identified`,
@@ -662,9 +654,9 @@ Build (feature-009). Full width, ~45% height, semi-transparent.
 
 | Operation | Cost | When |
 |-----------|------|------|
-| Proximity check (`_process`) | O(7): player tile + 6 neighbors. Each: `get_scannable_at` (tile lookup + resource_nodes iteration 1-3 + catalog hash lookup) | Every frame (lightweight — just distance + hash checks) |
+| Proximity check (`_process`) | O(7): player tile + 6 neighbors. Each: `get_scannable_at` (tile lookup + props iteration 1-3 + catalog hash lookup) | Every frame (lightweight — just distance + hash checks) |
 | Scan progress tick | One float add per frame | During active scan only (2-3 seconds) |
-| Passive identification (tile reveal) | O(n): n = resource_nodes on tile (1-3) + anomaly check | Once per tile when VISIBLE |
+| Passive identification (tile reveal) | O(n): n = props on tile (1-3) | Once per tile when VISIBLE |
 | Surprise encounter | O(1): catalog hash lookup + insert | Once per new hostile species |
 
 The per-frame proximity check is lightweight: 7 tiles × ~3 hash lookups each = ~21

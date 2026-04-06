@@ -8,7 +8,7 @@ const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 
 # --- Minimal fakes ---
@@ -136,9 +136,7 @@ func _on_element_encountered(c: Vector2i, eid: StringName, label: String) -> voi
 
 func _make_tile_with_resource(resource_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	var node: ResourceNode = _ResourceNode.new()
-	node.type = resource_type
-	tile.resource_nodes = [node]
+	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
 	return tile
 
 
@@ -365,7 +363,7 @@ func test_scan_duration_mineral_is_2s() -> void:
 
 func test_scan_duration_anomaly_is_3s() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.anomaly = &"anomaly_ch1_001"
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = tile
 	_player.current_tile = Vector2i.ZERO
@@ -456,7 +454,7 @@ func test_passive_id_encountered_emits_element_encountered() -> void:
 
 func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.anomaly = &"anomaly_ch1_001"
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
@@ -467,7 +465,7 @@ func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
 	_system._catalog.catalog_entry(&"anomaly_ch1_001")
 	var tile: HexTile = _HexTile.new()
-	tile.anomaly = &"anomaly_ch1_001"
+	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
@@ -488,10 +486,10 @@ func test_passive_id_visibility_changed_to_visible_triggers_check() -> void:
 	assert_int(_unknown_count).is_equal(1)
 
 
-func test_passive_id_visibility_changed_to_revealed_does_not_trigger() -> void:
+func test_passive_id_visibility_changed_to_hidden_does_not_trigger() -> void:
 	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_resource(&"wood")
 
-	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.REVEALED)
+	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.HIDDEN)
 	assert_int(_unknown_count).is_equal(0)
 
 

@@ -1,7 +1,7 @@
 class_name HexTile
 extends Resource
 
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 enum Biome {
 	CRASH_SITE,
@@ -13,7 +13,6 @@ enum Biome {
 
 enum FogState {
 	HIDDEN,
-	REVEALED,
 	VISIBLE,
 }
 
@@ -21,6 +20,24 @@ enum FogState {
 @export var biome: Biome = Biome.GRASSLAND
 @export var elevation: int = 0
 @export var fog_state: FogState = FogState.HIDDEN
-@export var structure: StringName = &""
-@export var resource_nodes: Array = []  # Array of ResourceNode
-@export var anomaly: StringName = &""
+@export var props: Array = []  # Array of Prop
+
+
+func get_props_by_category(category: int) -> Array:
+	var result: Array = []
+	for prop in props:
+		if prop.category == category:
+			result.append(prop)
+	return result
+
+
+func get_resources() -> Array:
+	return get_props_by_category(_Prop.Category.RESOURCE)
+
+
+func get_structures() -> Array:
+	return get_props_by_category(_Prop.Category.STRUCTURE)
+
+
+func get_anomalies() -> Array:
+	return get_props_by_category(_Prop.Category.ANOMALY)

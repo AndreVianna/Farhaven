@@ -5,6 +5,7 @@ extends Node
 ## and workbench proximity detection.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 signal recipe_discovered(recipe_name: StringName)
 signal craft_completed(recipe_name: StringName)
@@ -124,7 +125,24 @@ func craft(recipe_name: StringName) -> bool:
 		_inventory.set_tool(recipe["tool_slot"], recipe_name)
 
 	craft_completed.emit(recipe_name)
+	# Apply crafting survival cost
+	var survival: Node = _get_survival_system()
+	if survival and survival.has_method("apply_activity_cost"):
+		survival.apply_activity_cost(&"crafting")
 	return true
+
+
+# --- Survival System Helper ---
+
+
+func _get_survival_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child in parent.get_children():
+		if child != self and child.has_method("apply_activity_cost"):
+			return child
+	return null
 
 
 # --- Workbench Proximity ---
@@ -144,14 +162,12 @@ func _check_workbench_proximity() -> void:
 
 func _compute_near_workbench(player_tile: Vector2i) -> bool:
 	# Check player's own tile
-	var tile: Resource = _grid.get_tile(player_tile)
-	if tile and tile.structure == &"workbench":
+	if _grid.has_structure(player_tile, &"workbench"):
 		return true
 	# Check 6 neighbors
 	var neighbors: Array[Vector2i] = _grid.get_neighbors(player_tile)
 	for neighbor: Vector2i in neighbors:
-		var ntile: Resource = _grid.get_tile(neighbor)
-		if ntile and ntile.structure == &"workbench":
+		if _grid.has_structure(neighbor, &"workbench"):
 			return true
 	return false
 

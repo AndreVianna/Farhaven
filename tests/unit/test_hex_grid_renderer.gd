@@ -191,7 +191,7 @@ func test_fog_visibility_changed_updates_tile_data() -> void:
 	HexGrid.map_generated.emit()
 
 	# Change fog state via signal.
-	HexGrid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.REVEALED)
+	HexGrid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
 	var data: Dictionary = renderer._tile_data[Vector2i(0, 0)]
-	assert_int(data.fog_state).is_equal(_HexTile.FogState.REVEALED)
+	assert_int(data.fog_state).is_equal(_HexTile.FogState.HIDDEN)
 	renderer.queue_free()

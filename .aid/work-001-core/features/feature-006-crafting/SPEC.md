@@ -8,6 +8,7 @@
 | 2026-03-31 | Full technical specification — all sections | /aid-specify |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 | 2026-04-03 | Review fixes: document pre_discovered and requires_workbench fields (MVP simplification) | /aid-specify review |
+| 2026-04-04 | Sub-hex + unified props: workbench proximity check queries `tile.props` filtered by category/type instead of `tile.structure`. | /spec-update |
 
 ## Source
 
@@ -101,12 +102,14 @@ Crafting can optionally require a Workbench on an adjacent tile (per-recipe `req
 func is_near_workbench(player_tile: Vector2i) -> bool:
     for neighbor in HexGrid.get_neighbors(player_tile):
         var tile = HexGrid.get_tile(neighbor)
-        if tile and tile.structure == &"workbench":
-            return true
+        if tile:
+            for prop in tile.props:
+                if prop.category == &"structure" and prop.type == &"workbench":
+                    return true
     return false
 ```
 
-No coupling to building internals — reads `HexTile.structure` (feature-001 data).
+No coupling to building internals — queries `tile.props` (feature-001 data).
 
 #### Signals
 
@@ -288,7 +291,7 @@ data/
 
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
-| `crafting_system.gd` | Child Node of Player. Owns `_discovered_recipes`. Recipe discovery (listens to `item_added`). Craft action (validate → consume → produce). Workbench proximity check + `workbench_proximity_changed` signal. `get_save_data()` / `load_save_data()`. | `HexGrid` (tile queries, structure signals), `Inventory` feature-005 (has_item, remove_item, set_tool, item_added signal) |
+| `crafting_system.gd` | Child Node of Player. Owns `_discovered_recipes`. Recipe discovery (listens to `item_added`). Craft action (validate → consume → produce). Workbench proximity check (queries `tile.props` for workbench) + `workbench_proximity_changed` signal. `get_save_data()` / `load_save_data()`. | `HexGrid` (tile queries, structure signals), `Inventory` feature-005 (has_item, remove_item, set_tool, item_added signal) |
 | `crafting_panel.gd` | Control on CraftingPanel. Renders discovered recipes with ingredient costs. Three states: affordable, unaffordable, already-owned. Calls `crafting_system.craft(recipe_name)`. `panel_opened` signal for mutual exclusion. | `CraftingSystem` (signals), `Inventory` feature-005 (get_count for display, get_tool for owned check) |
 | `recipe_entry_ui.gd` | Single recipe row. Icon + name + ingredients (owned/needed, green/red) + Craft button (active/greyed/"Owned"). | `Inventory`, `item_config` |
 
@@ -395,7 +398,7 @@ Always present wrapping RecipeList. Ready for future recipe additions.
 | Operation | Cost | When |
 |-----------|------|------|
 | Recipe discovery check | O(r): r = recipe count (2 in MVP) | On each `item_added` signal |
-| Workbench proximity | O(6): check 6 neighbors for structure type | On tile_entered + structure signals |
+| Workbench proximity | O(6×p): check 6 neighbors, each filtering props for workbench (p = props per tile, typically 1-3) | On tile_entered + structure signals |
 | Craft validation | O(i): i = ingredients per recipe (2-3) | On craft button tap |
 | Craft execution | O(i): remove_item per ingredient + set_tool | On craft button tap |
 

@@ -63,9 +63,10 @@ DayNightCycle from delivery-004), not on each other.
     Only Wall blocks movement — all others are in WALKABLE_STRUCTURES:
     (workbench 5W+3S walkable, storage_chest 8W+4S walkable, shelter 10W+5S+3F walkable,
     campfire 3W+2F walkable, wall 3W blocking, torch 2W+1F walkable)
-  - Placement validation: adjacent, passable, no existing structure, sufficient materials
+  - Placement validation: adjacent, passable, sub-hex footprint available (no overlapping props), sufficient materials
   - On valid placement: `Inventory.remove_item` per ingredient,
-    `HexGrid.get_tile(coords).structure = type`, emit `HexGrid.structure_placed`
+    create prop dict with `category="structure"`, `footprint` sub-hex coords,
+    append to `HexGrid.get_tile(coords).props`, emit `HexGrid.structure_placed`
   - **Storage Chest effect:** after placement, call `Inventory.expand(12)` directly
     (Inventory is RefCounted — cannot listen to signals itself)
   - `structure_build_failed(reason)` signal
@@ -74,7 +75,7 @@ DayNightCycle from delivery-004), not on each other.
 
 **Criteria:**
 - [ ] All 6 structure recipes correct (values from SPEC, including campfire)
-- [ ] Placement rejects: occupied, non-adjacent, water/cliff, insufficient materials
+- [ ] Placement rejects: footprint overlap with existing props, non-adjacent, water/cliff, insufficient materials
 - [ ] Materials consumed on successful placement
 - [ ] `structure_placed` emitted with correct coords + type
 - [ ] `structure_build_failed` emitted with reason on rejection
@@ -95,12 +96,14 @@ DayNightCycle from delivery-004), not on each other.
 - `enter_placement_mode(type)` / `exit_placement_mode()`
 - During placement: lowest `process_priority` value in `_unhandled_input`,
   claims ALL taps via `set_input_as_handled()`
-- Tap highlighted tile → place structure → exit
-- Tap non-highlighted → cancel → exit (no materials consumed)
+- Show sub-hex grid overlay on adjacent tiles during placement mode
+- Tap tile with available sub-hexes for footprint → place structure → exit
+- Tap non-valid → cancel → exit (no materials consumed)
 - Call `HexGridRenderer.highlight_tiles(valid_tiles, Color.CYAN)` on enter
   (API already exists from delivery-001 task-004)
 - Call `HexGridRenderer.clear_highlights()` on exit
 - Highlight recalculation on `tile_entered` during placement (joystick walk)
+- Sub-hex footprint overlay shows which sub-hexes are available vs occupied
 - `placement_mode_entered(type)` / `placement_mode_exited()` signals
 - Show/hide placement label via HUD (`show_placement_label` / `hide_placement_label`)
 
@@ -116,25 +119,25 @@ DayNightCycle from delivery-004), not on each other.
 
 ---
 
-### task-034: Structure Renderer (MultiMesh) [IMPLEMENT]
+### task-034: Structure Renderer [IMPLEMENT]
 
 **Source:** feature-009 → Layers & Components (StructureRenderer)
 
 **Scope:**
 - `scripts/building/structure_renderer.gd` — Node3D
-- `scenes/world/structure_renderer.tscn` — 6 MultiMeshInstance3D children
+- `scenes/world/structure_renderer.tscn` — renders structure props as individual Node3D children
   (workbench, storage_chest, shelter, campfire, wall, torch)
-- On `structure_placed`: add instance at tile world position + elevation Y
+- On `structure_placed`: add instance at sub-hex world position (tile world pos + sub-hex offset) + elevation Y
 - Placeholder meshes: colored boxes/shapes per structure type (<500 tris)
 - Fog-aware: structures on HIDDEN tiles not visible
 - Signal-driven (no per-frame queries)
+- Structure position derived from footprint's anchor sub-hex coordinate within the parent hex
 
 **Criteria:**
-- [ ] 6 MultiMeshInstance3D children (one per structure type, including campfire)
-- [ ] Structures render at correct tile positions
+- [ ] Structures render at correct sub-hex positions within tiles
 - [ ] Each type visually distinct (different color/shape)
 - [ ] Fog-aware (HIDDEN = not visible)
-- [ ] Draw calls: ~6
+- [ ] Draw calls: ~5-6
 - [ ] Signal-driven updates only
 - [ ] Build passes with zero warnings
 
@@ -180,8 +183,9 @@ DayNightCycle from delivery-004), not on each other.
   - Shelter → `_respawn_tile` updates in SurvivalSystem
   - Torch → `_torch_tiles` in DayNightCycle (NIGHT visibility extension)
   - Workbench → CraftButton visible (crafting proximity)
-  - Wall (only blocking structure) → AStar2D edges disconnected
+  - Wall (only blocking structure) → blocks movement (checked via props query on tile)
   - Walkable structures (Workbench, Storage Chest, Shelter, Campfire, Torch) → player can stand on them
+  - Multiple structures per hex: footprints don't overlap
 - AC6 full coverage: place on empty hex, reject occupied, shelter protection, wall redirects
 - Panel mutual exclusion with all 4 other panels
 - Placement mode cancel verified
@@ -192,7 +196,7 @@ DayNightCycle from delivery-004), not on each other.
 - [ ] Shelter → respawn point updates
 - [ ] Torch → night visibility extends
 - [ ] Workbench → CraftButton visible
-- [ ] Blocking structures → pathfinding routes around
+- [ ] Blocking structure props → pathfinding routes around
 - [ ] Shelter/Torch → player can walk on
 - [ ] Placement cancel → no material loss
 - [ ] Panel mutual exclusion verified
@@ -291,11 +295,11 @@ Cumulative (adds to delivery-004):
   - BuildingSystem (Node) — NEW
   - FaunaManager (Node) — NEW
 - World
-  - StructureRenderer (Node3D) — NEW, ~6 MultiMesh for structure types
+  - StructureRenderer (Node3D) — NEW, renders structure props (individual Node3D per structure)
   - FaunaRenderer (Node3D) — NEW, 1 MultiMesh for fauna bodies
 
 ### Bootstrap Changes
-- BuildingSystem._ready() → connects to HexGrid.tile_entered + structure_placed/destroyed
+- BuildingSystem._ready() → connects to HexGrid.tile_entered + structure_placed/destroyed. Placement validates sub-hex footprint availability in tile.props[].
 - FaunaManager._ready() → connects to DayNightCycle.night_started/day_started for spawn/despawn
 - FaunaManager.apply_damage() API available for AutoInteractionSystem auto-defend
 - AutoInteractionSystem auto-defend stub activates (was stub since delivery-003)
@@ -305,9 +309,9 @@ Cumulative (adds to delivery-004):
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
 - [ ] Everything from delivery-004 still works
-- [ ] Tap Build button → panel shows 5 structures with costs
-- [ ] Select structure → adjacent valid tiles highlight cyan
-- [ ] Tap highlighted tile → structure appears → tile occupied
+- [ ] Tap Build button → panel shows 6 structures with costs
+- [ ] Select structure → adjacent valid tiles highlight cyan, sub-hex grid overlay shown
+- [ ] Tap highlighted tile → structure prop placed at sub-hex position → footprint occupied
 - [ ] Storage Chest placed → inventory expands to 24 slots
 - [ ] Night (day 4+): fauna appear outside visible area, approach player
 - [ ] UNKNOWN fauna shows ❓, attacks player → surprise damage → auto-registered as ENCOUNTERED → "⚠️ Unidentified Fauna (Hostile)"
@@ -326,3 +330,4 @@ No additional requirements beyond delivery-001.
 | 2026-03-31 | 7 tasks created (032-038). Two parallel chains. Highlight API redundancy eliminated. | /aid-detail |
 | 2026-04-02 | task-038: fauna_spawned signal wiring updated — ElementIconRenderer → PropRenderer + PropLabelRenderer. | /spec-update |
 | 2026-04-02 | Scan redesign: task-037 "surprise auto-catalog" → "auto-register as ENCOUNTERED". task-038 auto-defend activates on ENCOUNTERED, not CATALOGED. | /scan-redesign-apply |
+| 2026-04-04 | Unified props + sub-hex architecture: structures are props in tile.props[] with footprints. Placement validates sub-hex availability. StructureRenderer uses individual Node3D (not MultiMesh). Task descriptions updated for tasks 032-036. | /arch-update |

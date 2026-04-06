@@ -32,6 +32,7 @@ var _buffered_dir: Vector2 = Vector2.ZERO
 var _buffered_magnitude: float = 0.0
 var _jump_tween: Tween
 var _snap_tween: Tween
+var _was_moving: bool = false
 
 
 func _ready() -> void:
@@ -110,6 +111,12 @@ func _on_joystick_stop() -> void:
 	_joystick_magnitude = 0.0
 	_buffered_dir = Vector2.ZERO
 	_buffered_magnitude = 0.0
+	# Stop movement drain
+	if _was_moving:
+		var survival: Node = _get_survival_system()
+		if survival and survival.has_method("stop_activity_drain"):
+			survival.stop_activity_drain(&"moving")
+		_was_moving = false
 	if move_state == MoveState.JUMPING:
 		return
 	move_state = MoveState.IDLE
@@ -120,10 +127,25 @@ func _on_joystick_stop() -> void:
 
 func _process_walking(delta: float) -> void:
 	if _joystick_dir.is_zero_approx() or _joystick_magnitude < 0.01:
+		# Stopped moving
+		if _was_moving:
+			var survival_stop: Node = _get_survival_system()
+			if survival_stop and survival_stop.has_method("stop_activity_drain"):
+				survival_stop.stop_activity_drain(&"moving")
+			_was_moving = false
 		return
 
 	facing_direction = _joystick_dir.normalized()
 	var velocity_2d: Vector2 = facing_direction * move_speed * _joystick_magnitude
+
+	# Track movement drain start/stop
+	var is_moving: bool = velocity_2d.length_squared() > 0.01
+	if is_moving and not _was_moving:
+		var survival_start: Node = _get_survival_system()
+		if survival_start and survival_start.has_method("start_activity_drain"):
+			survival_start.start_activity_drain(&"moving")
+	_was_moving = is_moving
+
 	var movement := Vector3(velocity_2d.x, 0.0, velocity_2d.y) * delta
 
 	var new_pos: Vector3 = position + movement
@@ -311,21 +333,30 @@ func _emit_tile_transition(from: Vector2i, to: Vector2i) -> void:
 	current_tile = to
 	# 3. tile_entered(B)
 	_grid.tile_entered.emit(to)
-	# 4. Reveal fog (temporary — delivery-004 DayNightCycle takes over)
-	if _grid.has_method("refresh_visibility"):
-		var sources: Array[Dictionary] = [{"coords": to, "radius": 2}]
-		_grid.refresh_visibility(sources)
-	# 5. player_moved(A, B)
+	# 4. player_moved(A, B)
 	player_moved.emit(from, to)
+
+
+# --- Survival System Helper ---
+
+
+func _get_survival_system() -> Node:
+	for child in get_children():
+		if child.has_method("apply_activity_cost"):
+			return child
+	return null
 
 
 # --- Serialization ---
 
 func get_save_data() -> Dictionary:
-	return {
+	var data: Dictionary = {
 		"tile_col": current_tile.x,
 		"tile_row": current_tile.y,
 	}
+	if inventory != null:
+		data["inventory"] = inventory.get_save_data()
+	return data
 
 
 func load_save_data(data: Dictionary) -> void:
@@ -338,3 +369,5 @@ func load_save_data(data: Dictionary) -> void:
 	_cancel_jump_tween()
 	_cancel_snap_tween()
 	_snap_to_tile(current_tile)
+	if inventory != null and data.has("inventory"):
+		inventory.load_save_data(data["inventory"])

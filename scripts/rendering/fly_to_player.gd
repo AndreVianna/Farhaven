@@ -6,7 +6,7 @@ class_name FlyToPlayer
 ## Used as visual feedback on auto_gather_completed.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 ## Duration of the fly-to-player tween in seconds.
 const FLY_DURATION: float = 0.3
@@ -48,12 +48,12 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 	if tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 
-	# Find the resource node's offset to start from prop position (not hex center)
+	# Find the resource prop's sub-hex offset to start from prop position (not hex center)
 	var prop_offset := Vector2.ZERO
 	if tile != null:
-		for rn in tile.resource_nodes:
-			if rn.type == resource_type:
-				prop_offset = _PropUtils.offset_to_world(rn.offset, _HexMath.HEX_SIZE)
+		for prop in tile.get_resources():
+			if prop.type == resource_type:
+				prop_offset = _HexMath.sub_axial_to_world(prop.sub_hex)
 				break
 
 	var start_pos := Vector3(world_2d.x + prop_offset.x, elevation_y + 0.6, world_2d.y + prop_offset.y)

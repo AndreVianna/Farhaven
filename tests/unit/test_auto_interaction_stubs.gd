@@ -7,7 +7,7 @@ class_name TestAutoInteractionStubs
 const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _ResourceNode = preload("res://scripts/hex/resource_node.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
@@ -79,7 +79,26 @@ class FakeSurvivalSystem extends Node:
 	var _ground_items: Dictionary = {}  # coords -> Array[Dictionary]
 
 	func get_ground_items_at(coords: Vector2i) -> Array:
-		return _ground_items.get(coords, [])
+		var source: Array = _ground_items.get(coords, [])
+		var result: Array = []
+		for entry in source:
+			result.append(entry.duplicate())
+		return result
+
+	func remove_ground_item(coords: Vector2i, item_type: StringName, count: int, _sub_hex: Vector2i = Vector2i.ZERO) -> int:
+		var items: Array = _ground_items.get(coords, [])
+		for i in range(items.size()):
+			if items[i].get("item_type", &"") == item_type:
+				var available: int = items[i].get("count", 0)
+				var removed: int = min(available, count)
+				items[i]["count"] -= removed
+				if items[i]["count"] <= 0:
+					items.remove_at(i)
+				return removed
+		return 0
+
+	func apply_activity_cost(_activity: StringName) -> void:
+		pass
 
 
 # --- Test state ---
@@ -165,13 +184,7 @@ func _on_respawned(coords: Vector2i, resource_type: StringName) -> void:
 # --- Helpers ---
 
 func _make_resource(type: StringName, tool_req: StringName = &"", remaining: int = 3, respawn: float = 0.0) -> Resource:
-	var rn: Resource = _ResourceNode.new()
-	rn.type = type
-	rn.remaining = remaining
-	rn.max_amount = remaining
-	rn.tool_required = tool_req
-	rn.respawn_time = respawn
-	return rn
+	return _Prop.create_resource(type, remaining, remaining, tool_req, respawn)
 
 
 func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.FogState.VISIBLE) -> Resource:
@@ -180,7 +193,7 @@ func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.Fog
 	tile.biome = _HexTile.Biome.FOREST
 	tile.elevation = 0
 	tile.fog_state = fog
-	tile.resource_nodes = resources
+	tile.props = resources
 	return tile
 
 
@@ -191,7 +204,7 @@ func _make_tile(coords: Vector2i, resources: Array = [], fog: int = _HexTile.Fog
 func test_respawn_ticks_when_revealed() -> void:
 	var rn := _make_resource(&"wood", &"", 0, 5.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.REVEALED)
+	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -247,7 +260,7 @@ func test_respawn_ticks_when_visible() -> void:
 func test_respawn_triggers_at_zero() -> void:
 	var rn := _make_resource(&"wood", &"", 0, 1.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.REVEALED)
+	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -304,7 +317,7 @@ func test_respawn_time_zero_never_enters_queue() -> void:
 func test_respawn_queue_handles_multiple_entries() -> void:
 	var rn1 := _make_resource(&"wood", &"", 0, 3.0)
 	rn1.max_amount = 2
-	var tile1 := _make_tile(Vector2i.ZERO, [rn1], _HexTile.FogState.REVEALED)
+	var tile1 := _make_tile(Vector2i.ZERO, [rn1], _HexTile.FogState.VISIBLE)
 	_grid._tiles[Vector2i.ZERO] = tile1
 
 	var rn2 := _make_resource(&"stone", &"", 0, 1.0)
@@ -520,26 +533,22 @@ func test_no_crash_without_fauna_manager() -> void:
 
 
 # ===================================================================
-# AUTO-PICKUP STUB TESTS
+# AUTO-PICKUP PROXIMITY TESTS
 # ===================================================================
 
-func test_pickup_collects_ground_items() -> void:
+func test_pickup_collects_ground_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"wood", "amount": 3},
+		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
-	# We need to make it findable via get_node_or_null("/root/SurvivalSystem")
-	# Since _try_auto_pickup uses get_node_or_null, we inject by calling directly
-	# Instead, we override _try_auto_pickup behavior by calling it through a helper
+	_player.add_child(survival)
 
-	# For testability, we'll directly test the pickup logic
-	# The function queries SurvivalSystem via get_node_or_null("/root/SurvivalSystem")
-	# In test environment, let's add it to the root
-	get_tree().root.add_child(survival)
-
+	# Position player at tile center (within GATHER_RADIUS of sub_hex ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
 	_player.current_tile = Vector2i.ZERO
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
 	assert_str(_pickup_name).is_equal(&"wood")
@@ -549,16 +558,19 @@ func test_pickup_collects_ground_items() -> void:
 	survival.queue_free()
 
 
-func test_pickup_multiple_items() -> void:
+func test_pickup_multiple_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"wood", "amount": 2},
-		{"name": &"stone", "amount": 1},
+		{"item_type": &"wood", "count": 2, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"stone", "count": 1, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(2)
 	assert_int(_inv.get_count(&"wood")).is_equal(2)
@@ -569,7 +581,8 @@ func test_pickup_multiple_items() -> void:
 
 func test_pickup_no_crash_without_survival_system() -> void:
 	# SurvivalSystem not present — should be safe no-op
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 	assert_int(_pickup_count).is_equal(0)
 
 
@@ -577,9 +590,10 @@ func test_pickup_empty_ground_items() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = []
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(0)
 
@@ -589,12 +603,15 @@ func test_pickup_empty_ground_items() -> void:
 func test_pickup_skips_empty_name() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"", "amount": 5},
+		{"item_type": &"", "count": 5, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i.ZERO)
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(0)
 
@@ -603,13 +620,16 @@ func test_pickup_skips_empty_name() -> void:
 
 func test_pickup_emits_ground_item_picked_up() -> void:
 	var survival := FakeSurvivalSystem.new()
-	survival._ground_items[Vector2i(2, 1)] = [
-		{"name": &"berries", "amount": 4},
+	survival._ground_items[Vector2i.ZERO] = [
+		{"item_type": &"berries", "count": 4, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
 
-	_sys._try_auto_pickup(Vector2i(2, 1))
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
 	assert_str(_pickup_name).is_equal(&"berries")
@@ -618,14 +638,34 @@ func test_pickup_emits_ground_item_picked_up() -> void:
 	survival.queue_free()
 
 
-func test_pickup_called_on_tile_entered() -> void:
-	# Verify _on_tile_entered calls _try_auto_pickup
+func test_pickup_not_triggered_when_out_of_range() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"name": &"fiber", "amount": 1},
+		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i(2, 0)},
 	]
 	survival.name = "SurvivalSystem"
-	get_tree().root.add_child(survival)
+	_player.add_child(survival)
+
+	# Position player at tile center — sub_hex (2,0) is far from center
+	var world_2d: Vector2 = _grid.axial_to_world(Vector2i.ZERO)
+	_player.position = Vector3(world_2d.x, 0.0, world_2d.y)
+	_player.current_tile = Vector2i.ZERO
+	_sys._check_pickup_proximity()
+
+	# Sub-hex (2,0) offset > GATHER_RADIUS from tile center
+	assert_int(_pickup_count).is_equal(0)
+
+	survival.queue_free()
+
+
+func test_tile_entered_no_longer_triggers_pickup() -> void:
+	# Verify _on_tile_entered does NOT trigger pickup (now proximity-based)
+	var survival := FakeSurvivalSystem.new()
+	survival._ground_items[Vector2i.ZERO] = [
+		{"item_type": &"fiber", "count": 1, "sub_hex": Vector2i.ZERO},
+	]
+	survival.name = "SurvivalSystem"
+	_player.add_child(survival)
 
 	_player.current_tile = Vector2i.ZERO
 	var tile := _make_tile(Vector2i.ZERO)
@@ -633,7 +673,7 @@ func test_pickup_called_on_tile_entered() -> void:
 
 	_grid.tile_entered.emit(Vector2i.ZERO)
 
-	assert_int(_pickup_count).is_equal(1)
-	assert_str(_pickup_name).is_equal(&"fiber")
+	# tile_entered no longer triggers auto-pickup
+	assert_int(_pickup_count).is_equal(0)
 
 	survival.queue_free()
