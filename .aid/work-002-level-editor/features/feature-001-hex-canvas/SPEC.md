@@ -10,6 +10,8 @@
 | 2026-04-04 | Added ghost grid rendering and empty-cell hover/interaction | code review |
 | 2026-04-04 | Sub-hex grid system: ResourceInstance uses (sq, sr) instead of (x, y), structure uses footprint model, HexMath sub-hex functions, canvas sub-hex overlay rendering | design change |
 | 2026-04-04 | Unified props model: ResourceInstance/structure/anomaly replaced with PropInstance. TileData uses props[] instead of separate fields. Canvas rendering iterates props by category. Tooltip shows props grouped by category. | design change |
+| 2026-04-06 | Hex Inspector redesign: removed floating tooltip and prop badge indicators. Occupied sub-hexes now rendered with category-colored fill on ALL hexes at all times. Hex details displayed in the right-side Hex Inspector panel. Added onHexHover callback for inspector integration. | design change |
+| 2026-04-06 | Internal model clarification: internal model uses string categories (resource/structure/anomaly) and sq/sr field names. Conversion to engine integer categories and sub_hex_q/sub_hex_r happens at the serialization boundary only (see feature-004 SPEC). | schema change |
 
 ## Source
 
@@ -220,10 +222,9 @@ class HexCanvas {
   drawCoordinateLabel(q, r)     // draw "q,r" text at hex center (when showCoordinates enabled)
   drawGhostHex(q, r)            // draw faint outline for empty adjacent position
   drawSpawnMarker(q, r)         // draw spawn indicator icon/marker
-  drawPropIndicators(q, r, tile) // iterate tile.props, draw by category: blue badge for resources, orange for structures, purple for anomalies
-  drawSubHexGrid(q, r)           // draw 19 sub-hex outlines inside a hex
-  drawSubHexOccupancy(q, r, tile) // highlight occupied sub-hexes
-  drawSubHexHover(q, r, sq, sr)   // highlight hovered sub-hex
+  drawSubHexGrid(q, r)           // draw 19 sub-hex outlines inside a hex (hovered hex only, placement tools)
+  drawSubHexOccupancy(q, r, tile) // highlight occupied sub-hexes with category-colored fill (ALL tiles with props)
+  drawSubHexHover(q, r, sq, sr)   // highlight hovered sub-hex (hovered hex only, placement tools)
 
   // --- Coordinate transforms (account for camera) ---
   worldToScreen(wx, wy)   // applies camera offset + zoom: sx = wx * zoom + offsetX, ...
@@ -255,27 +256,13 @@ class HexCanvas {
 
 **Ghost grid rendering:** After rendering all existing tiles, compute the set of empty positions adjacent to any existing tile. For each ghost position, draw a faint hex outline (`rgba(255,255,255,0.08)` fill with `rgba(255,255,255,0.15)` 1px stroke). Ghost hexes participate in hover detection and tool interactions — painting on a ghost cell creates a real tile. The ghost set is recomputed on each render (it depends on the current tile set, which changes as tiles are added/removed).
 
-**Tooltip:** A `<div>` element positioned near the cursor (offset +15px x, +15px y). Updated on `onMouseMove` when `hoveredHex` changes. Contents:
-
-```
-(q, r)
-Biome: forest
-Elevation: 3
-Props:
-  Resources: wood ×2, stone ×1
-  Structures: workbench
-  Anomalies: anomaly_ch1_001
-```
-
-Props are grouped by category. If >5 total props, show first 5 + "...and N more".
-
-Hidden when cursor leaves the canvas.
+**Hex Inspector integration:** Hex details are displayed in the right-side Hex Inspector panel (not a floating tooltip). The canvas fires an `onHexHover(hex, subHex)` callback on every mousemove, which the HexInspector listens to. When the mouse leaves the canvas, `onHexHover(null, null)` is fired. The inspector panel shows coordinates, biome (with color swatch), elevation, and an editable list of props.
 
 ### Feature Flow
 
 1. **Initialization:** `HexCanvas.init()` attaches mouse/wheel/resize listeners to the canvas. Subscribes to `hexGrid.onChange` to call `requestRender()`.
-2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, then: (a) computes the ghost set — all empty positions adjacent to existing tiles, (b) draws ghost hex outlines for each position in the ghost set, (c) iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, and optionally `drawCoordinateLabel`, (d) draws selection highlight, spawn marker, hover highlight. Finally draws the tooltip div if a hex is hovered.
-3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex`, positions the tooltip div, populates tooltip content from `grid.getTile(q, r)` (for real tiles) or minimal "(q,r) — empty" for ghost cells, and calls `requestRender()` for hover highlight. Ghost cells also highlight on hover. When a placement tool is active and hovering a real tile, hit detection resolves to sub-hex level: compute pixel offset from hex center, convert to sub-hex via `pixelToSubHex()`. The hovered sub-hex is tracked separately from the hovered main hex.
+2. **Rendering cycle:** On any grid change or camera change, `requestRender()` schedules a single `render()` via `requestAnimationFrame`. `render()` clears the canvas, then: (a) computes the ghost set — all empty positions adjacent to existing tiles, (b) draws ghost hex outlines for each position in the ghost set, (c) iterates all tiles via `grid.getAllTiles()`, and for each tile calls `drawHex`, `drawElevationOverlay`, `drawCliffEdges`, `drawSubHexOccupancy` (for tiles with props), and optionally `drawCoordinateLabel`, (d) draws selection highlight, spawn marker, hover highlight. Sub-hex grid overlay and sub-hex hover are drawn only on the hovered hex when a placement tool is active.
+3. **Hover:** `onMouseMove` converts screen coordinates to hex via `screenToHex()`. If the result differs from `hoveredHex`, updates `hoveredHex` and calls `requestRender()` for hover highlight. Ghost cells also highlight on hover. When a placement tool is active and hovering a real tile, hit detection resolves to sub-hex level: compute pixel offset from hex center, convert to sub-hex via `pixelToSubHex()`. The hovered sub-hex is tracked separately from the hovered main hex. After updating hover state, fires `onHexHover(hex, subHex)` callback for the Hex Inspector panel.
 4. **Selection:** `onMouseDown` (left button, no space held) converts to hex, sets `selectedHex = { q, r }`, calls `requestRender()`. If a `toolManager` is set, forwards the event to the active tool.
 5. **Zoom:** `onWheel` adjusts `camera.zoom += event.deltaY * -0.001`, clamped to `[0.2, 3.0]`. Zoom is centered on the mouse cursor position: before zoom, record the world-space point under the cursor; after zoom, adjust `offsetX/Y` so that same world point stays under the cursor. Calls `requestRender()`.
 6. **Pan:** `onMouseDown` (middle button, or left button with space held) sets `isPanning = true`, records `panStart = { x: event.clientX, y: event.clientY }`. `onMouseMove` while panning: `camera.offsetX += dx`, `camera.offsetY += dy`, updates `panStart`, calls `requestRender()`. `onMouseUp` sets `isPanning = false`.
@@ -284,7 +271,7 @@ Hidden when cursor leaves the canvas.
 
 - The `<canvas>` element fills the main content area (CSS: `flex: 1; width: 100%; height: 100%`). On window resize, `onResize()` updates `canvas.width` and `canvas.height` to match the element's client dimensions.
 - Coordinate labels toggle: a checkbox in the toolbar or sidebar. When checked, `showCoordinates = true` and each hex renders its "q,r" text at center in small font (10px, dark gray).
-- Tooltip: a `<div id="hex-tooltip">` with `position: absolute; pointer-events: none; z-index: 100; background: rgba(0,0,0,0.85); color: white; padding: 8px; border-radius: 4px; font-size: 12px; white-space: pre-line;`. Hidden by default (`display: none`), shown on hover.
+- Hex Inspector: the right-side `<aside id="sidebar">` panel displays hex details on hover via the `onHexHover` callback. No floating tooltip is used.
 - Canvas background: `#1a1a2e` (dark blue-gray) for empty space outside the hex grid.
 
 ### Dependencies
