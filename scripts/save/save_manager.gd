@@ -17,6 +17,7 @@ const _SYSTEM_KEYS: Array[Dictionary] = [
 	{"key": "hex_grid", "path": "/root/HexGrid"},
 	{"key": "day_night", "path": "/root/DayNightCycle"},
 	{"key": "player", "path": "/root/Main/World/Player"},
+	{"key": "camera", "path": "/root/Main/World/Camera3D"},
 	{"key": "crafting", "path": "/root/Main/World/Player/CraftingSystem"},
 	{"key": "scanner", "path": "/root/Main/World/Player/ScannerSystem"},
 	{"key": "survival", "path": "/root/Main/World/Player/SurvivalSystem"},

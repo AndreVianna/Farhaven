@@ -372,6 +372,8 @@ func get_save_data() -> Dictionary:
 	var data: Dictionary = {
 		"tile_col": current_tile.x,
 		"tile_row": current_tile.y,
+		"facing_x": facing_direction.x,
+		"facing_y": facing_direction.y,
 	}
 	if inventory != null:
 		data["inventory"] = inventory.get_save_data()
@@ -385,8 +387,13 @@ func load_save_data(data: Dictionary) -> void:
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
+	facing_direction = Vector2(
+		float(data.get("facing_x", 0.0)),
+		float(data.get("facing_y", 0.0)),
+	)
 	_cancel_jump_tween()
 	_cancel_snap_tween()
 	_snap_to_tile(current_tile)
+	_update_model_rotation()
 	if inventory != null and data.has("inventory"):
 		inventory.load_save_data(data["inventory"])
