@@ -367,11 +367,11 @@ func test_ac7_hud_day_counter_exist() -> void:
 	hud.queue_free()
 
 
-func test_ac7_hud_five_action_buttons_exist() -> void:
+func test_ac7_hud_three_action_buttons_exist() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 	var expected: Array[String] = [
-		"InventoryButton", "BuildButton", "CraftButton", "ScannerButton", "JournalButton",
+		"StatusButton", "GearButton", "LogButton",
 	]
 	for btn_name: String in expected:
 		var btn: Node = hud.get_node_or_null("BottomBar/" + btn_name)
@@ -381,15 +381,11 @@ func test_ac7_hud_five_action_buttons_exist() -> void:
 	hud.queue_free()
 
 
-func test_ac7_craft_button_hidden_by_default() -> void:
+func test_ac7_gear_button_exists() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
-	var craft_btn: CanvasItem = hud.get_node_or_null("BottomBar/CraftButton") as CanvasItem
-	assert_bool(craft_btn != null).override_failure_message("CraftButton must exist").is_true()
-	if craft_btn != null:
-		assert_bool(craft_btn.visible).override_failure_message(
-			"CraftButton must be hidden by default"
-		).is_false()
+	var gear_btn: CanvasItem = hud.get_node_or_null("BottomBar/GearButton") as CanvasItem
+	assert_bool(gear_btn != null).override_failure_message("GearButton must exist").is_true()
 	hud.queue_free()
 
 

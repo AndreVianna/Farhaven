@@ -2,19 +2,22 @@ class_name HUD
 extends Control
 
 const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
+const _StatusCombinedPanel = preload("res://ui/status_combined_panel.gd")
+const _GearCombinedPanel = preload("res://ui/gear_combined_panel.gd")
+const _LogCombinedPanel = preload("res://ui/log_combined_panel.gd")
 
 @onready var _stat_bars := $StatBars
 @onready var _day_counter := $DayCounter
 @onready var _floating_text := $FloatingTextContainer
 @onready var _notifications := $NotificationContainer
 @onready var _placement_label: Label = $PlacementLabel
-@onready var _craft_button: Button = $BottomBar/CraftButton
-@onready var _inventory_button: Button = $BottomBar/InventoryButton
-@onready var _scanner_button: Button = $BottomBar/ScannerButton
-@onready var _inventory_panel = $InventoryPanel  # InventoryPanel
-@onready var _catalog_panel = $CatalogPanel  # CatalogPanel
-@onready var _crafting_panel = $CraftingPanel  # CraftingPanel
+@onready var _status_button: Button = $BottomBar/StatusButton
+@onready var _gear_button: Button = $BottomBar/GearButton
+@onready var _log_button: Button = $BottomBar/LogButton
 
+var _status_panel: CombinedPanel = null
+var _gear_panel: CombinedPanel = null
+var _log_panel: CombinedPanel = null
 var _panels: Array = []
 var _craft_flash: ColorRect = null
 var _gather_sound: Node = null  # GatherSound (set via connect_sound)
@@ -22,14 +25,31 @@ var _gather_sound: Node = null  # GatherSound (set via connect_sound)
 
 func _ready() -> void:
 	_placement_label.hide()
-	_craft_button.hide()
-	_inventory_button.pressed.connect(_inventory_panel.toggle)
-	_scanner_button.pressed.connect(_catalog_panel.toggle)
-	_craft_button.pressed.connect(_crafting_panel.toggle)
-	_panels = [_inventory_panel, _catalog_panel, _crafting_panel]
-	_inventory_panel.panel_opened.connect(_on_panel_opened.bind(_inventory_panel))
-	_catalog_panel.panel_opened.connect(_on_panel_opened.bind(_catalog_panel))
-	_crafting_panel.panel_opened.connect(_on_panel_opened.bind(_crafting_panel))
+
+	# Create combined panels programmatically
+	_status_panel = _StatusCombinedPanel.new()
+	_status_panel.name = "StatusPanel"
+	add_child(_status_panel)
+
+	_gear_panel = _GearCombinedPanel.new()
+	_gear_panel.name = "GearPanel"
+	add_child(_gear_panel)
+
+	_log_panel = _LogCombinedPanel.new()
+	_log_panel.name = "LogPanel"
+	add_child(_log_panel)
+
+	# Wire buttons to combined panels
+	_status_button.pressed.connect(_status_panel.toggle)
+	_gear_button.pressed.connect(_gear_panel.toggle)
+	_log_button.pressed.connect(_log_panel.toggle)
+
+	# Mutual exclusion
+	_panels = [_status_panel, _gear_panel, _log_panel]
+	_status_panel.panel_opened.connect(_on_panel_opened.bind(_status_panel))
+	_gear_panel.panel_opened.connect(_on_panel_opened.bind(_gear_panel))
+	_log_panel.panel_opened.connect(_on_panel_opened.bind(_log_panel))
+
 	# Craft flash overlay (fullscreen, on top)
 	_craft_flash = _CraftFlash.new()
 	add_child(_craft_flash)
@@ -71,7 +91,7 @@ func update_phase(phase: String) -> void:
 # --- Inventory integration ---
 
 func connect_inventory(inv) -> void:
-	_inventory_panel.set_inventory(inv)
+	_status_panel.set_inventory(inv)
 	inv.inventory_full.connect(_on_inventory_full)
 
 
@@ -85,20 +105,19 @@ func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 # --- Catalog integration ---
 
 func connect_catalog(cat) -> void:
-	_catalog_panel.set_catalog(cat)
+	_log_panel.set_catalog(cat)
+	# Also pass catalog to inventory panel for toxic flora checks
+	_status_panel.set_catalog(cat)
 
 
 # --- Crafting integration ---
 
 func connect_crafting(crafting_system: Node, inv) -> void:
-	_crafting_panel.set_crafting_system(crafting_system)
-	_crafting_panel.set_inventory(inv)
+	_gear_panel.set_crafting_system(crafting_system)
+	_gear_panel.set_inventory(inv)
 	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
 	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
 	crafting_system.craft_completed.connect(_on_craft_completed)
-	# Show craft button immediately if pre-discovered recipes exist
-	if not crafting_system.get_discovered_recipes().is_empty():
-		_craft_button.visible = true
 
 
 func _on_workbench_proximity_changed(_near: bool) -> void:
@@ -107,7 +126,6 @@ func _on_workbench_proximity_changed(_near: bool) -> void:
 
 
 func _on_recipe_discovered(recipe_name: StringName) -> void:
-	_craft_button.visible = true
 	var display_name: String = String(recipe_name).replace("_", " ").capitalize()
 	show_notification("New recipe: %s!" % display_name)
 

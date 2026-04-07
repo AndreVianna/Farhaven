@@ -1,9 +1,6 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/ui/catalog_panel.tscn" id="7"]
-[ext_resource type="PackedScene" path="res://scenes/ui/crafting_panel.tscn" id="8"]
 [ext_resource type="Script" path="res://scripts/hud/stat_bars.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/hud/day_counter.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/hud/floating_text_manager.gd" id="4"]
@@ -84,7 +81,7 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -528.0
+offset_left = -336.0
 offset_top = -112.0
 offset_right = -8.0
 offset_bottom = -8.0
@@ -92,70 +89,20 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_constants/separation = 8
 
-[node name="InventoryButton" type="Button" parent="BottomBar"]
+[node name="StatusButton" type="Button" parent="BottomBar"]
 custom_minimum_size = Vector2(96, 96)
-text = "INV"
-theme_override_font_sizes/font_size = 24
+text = "STATUS"
+theme_override_font_sizes/font_size = 20
 
-[node name="BuildButton" type="Button" parent="BottomBar"]
+[node name="GearButton" type="Button" parent="BottomBar"]
 custom_minimum_size = Vector2(96, 96)
-text = "BLD"
-theme_override_font_sizes/font_size = 24
+text = "GEAR"
+theme_override_font_sizes/font_size = 20
 
-[node name="CraftButton" type="Button" parent="BottomBar"]
+[node name="LogButton" type="Button" parent="BottomBar"]
 custom_minimum_size = Vector2(96, 96)
-text = "CRF"
-visible = false
-theme_override_font_sizes/font_size = 24
-
-[node name="ScannerButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(96, 96)
-text = "SCN"
-theme_override_font_sizes/font_size = 24
-
-[node name="JournalButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(96, 96)
-text = "JNL"
-theme_override_font_sizes/font_size = 24
-
-[node name="InventoryPanel" parent="." instance=ExtResource("6")]
-layout_mode = 1
-anchor_left = 0.6
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
-grow_horizontal = 0
-grow_vertical = 2
-
-[node name="CatalogPanel" parent="." instance=ExtResource("7")]
-layout_mode = 1
-anchor_left = 0.6
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
-grow_horizontal = 0
-grow_vertical = 2
-
-[node name="CraftingPanel" parent="." instance=ExtResource("8")]
-layout_mode = 1
-anchor_left = 0.6
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
-grow_horizontal = 0
-grow_vertical = 2
+text = "LOG"
+theme_override_font_sizes/font_size = 20
 
 [node name="FloatingTextContainer" type="Control" parent="."]
 layout_mode = 1

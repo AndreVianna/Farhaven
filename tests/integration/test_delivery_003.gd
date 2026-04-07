@@ -665,30 +665,16 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 # 10. CraftButton: hidden by default, visible when recipes are pre-discovered
 # ===========================================================================
 
-func test_craft_button_visibility_driven_by_recipes() -> void:
+func test_gear_button_always_visible() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	# CraftButton starts hidden (no crafting system connected yet)
-	var craft_btn: Button = hud.get_node("BottomBar/CraftButton")
-	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must be hidden by default (no crafting system connected)"
-	).is_false()
-
-	# Workbench proximity no longer drives craft button visibility
-	hud._on_workbench_proximity_changed(true)
-	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must stay hidden — workbench proximity no longer controls it"
-	).is_false()
-
-	# Connect a crafting system with pre-discovered recipes → button becomes visible
-	_setup_full_tree()
-	hud.connect_crafting(_crafting, _inventory)
-	assert_bool(craft_btn.visible).override_failure_message(
-		"CraftButton must be visible after connecting crafting system with pre-discovered recipes"
+	# GearButton is always visible (combined panels are always accessible)
+	var gear_btn: Button = hud.get_node("BottomBar/GearButton")
+	assert_bool(gear_btn.visible).override_failure_message(
+		"GearButton must always be visible"
 	).is_true()
 
-	_teardown_full_tree()
 	hud.queue_free()
 
 
@@ -700,39 +686,39 @@ func test_panel_mutual_exclusion_three_panels() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	var inv_panel = hud.get_node("InventoryPanel")
-	var cat_panel = hud.get_node("CatalogPanel")
-	var craft_panel = hud.get_node("CraftingPanel")
+	var status_panel = hud.get_node("StatusPanel")
+	var gear_panel = hud.get_node("GearPanel")
+	var log_panel = hud.get_node("LogPanel")
 
-	# Open Inventory
-	inv_panel.open()
-	assert_bool(inv_panel.visible).is_true()
+	# Open Status
+	status_panel.open()
+	assert_bool(status_panel.visible).is_true()
 
-	# Open Crafting → Inventory must close
-	craft_panel.open()
-	assert_bool(craft_panel.visible).override_failure_message(
-		"CraftingPanel must open"
+	# Open Gear → Status must close
+	gear_panel.open()
+	assert_bool(gear_panel.visible).override_failure_message(
+		"GearPanel must open"
 	).is_true()
-	assert_bool(inv_panel.visible).override_failure_message(
-		"InventoryPanel must close when CraftingPanel opens"
+	assert_bool(status_panel.visible).override_failure_message(
+		"StatusPanel must close when GearPanel opens"
 	).is_false()
-	assert_bool(cat_panel.visible).override_failure_message(
-		"CatalogPanel must stay closed"
+	assert_bool(log_panel.visible).override_failure_message(
+		"LogPanel must stay closed"
 	).is_false()
 
-	# Open Catalog → Crafting must close
-	cat_panel.open()
-	assert_bool(cat_panel.visible).is_true()
-	assert_bool(craft_panel.visible).override_failure_message(
-		"CraftingPanel must close when CatalogPanel opens"
+	# Open Log → Gear must close
+	log_panel.open()
+	assert_bool(log_panel.visible).is_true()
+	assert_bool(gear_panel.visible).override_failure_message(
+		"GearPanel must close when LogPanel opens"
 	).is_false()
-	assert_bool(inv_panel.visible).is_false()
+	assert_bool(status_panel.visible).is_false()
 
-	# Open Inventory → Catalog must close
-	inv_panel.open()
-	assert_bool(inv_panel.visible).is_true()
-	assert_bool(cat_panel.visible).override_failure_message(
-		"CatalogPanel must close when InventoryPanel opens"
+	# Open Status → Log must close
+	status_panel.open()
+	assert_bool(status_panel.visible).is_true()
+	assert_bool(log_panel.visible).override_failure_message(
+		"LogPanel must close when StatusPanel opens"
 	).is_false()
 
 	hud.queue_free()
