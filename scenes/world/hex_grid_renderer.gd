@@ -396,9 +396,13 @@ func _rebuild_mesh() -> void:
 		for d: int in range(6):
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			# Wall if neighbor is lower or missing (map edge).
-			if n_tile != null and n_tile.elevation >= tile.elevation:
-				continue
+			# Wall if neighbor is lower, missing (map edge), or water.
+			# Water always gets a wall from land even at same elevation.
+			if n_tile != null:
+				if n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
+					continue
+				if n_tile.biome == _HexTile.Biome.WATER and tile.biome == _HexTile.Biome.WATER:
+					continue  # No wall between two water tiles.
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
 			var ec: Array = edge_corners[d]
