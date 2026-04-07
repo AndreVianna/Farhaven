@@ -170,7 +170,7 @@ func world_to_axial(world_pos: Vector2) -> Vector2i:
 # --- Terrain height ---
 
 ## Get the terrain Y height at an arbitrary world XZ position.
-## Accounts for curved interpolation between hex center and corners.
+## Uses the same edge_y + corner_y logic as the renderer (12-vertex rings).
 ## Water tiles return flat elevation. Returns 0.0 for missing tiles.
 func get_terrain_y(world_x: float, world_z: float) -> float:
 	var coords: Vector2i = _HexMath.world_to_axial(Vector2(world_x, world_z))
@@ -178,11 +178,38 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	if tile == null:
 		return 0.0
 
-	var center_y: float = float(tile.elevation) * ELEVATION_STEP
+	var elev: float = float(tile.elevation)
+	var center_y: float = elev * ELEVATION_STEP
 
 	# Water stays flat.
 	if tile.biome == _HexTile.Biome.WATER:
 		return center_y
+
+	# Compute edge_y (6 values) — same logic as renderer.
+	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
+	for d: int in range(6):
+		var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
+		var n_tile: Resource = _tiles.get(n_coords, null)
+		if n_tile == null:
+			continue
+		if absi(tile.elevation - n_tile.elevation) <= 2:
+			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+
+	# Compute corner_y (6 values) — include neighbors with diff ≤ 2.
+	var corner_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
+	for ci: int in range(6):
+		var sum_e: float = elev
+		var cnt: int = 1
+		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
+		for d: int in dir_pair:
+			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_tile: Resource = _tiles.get(n_coords, null)
+			if n_tile == null:
+				continue
+			if absi(tile.elevation - n_tile.elevation) <= 2:
+				sum_e += float(n_tile.elevation)
+				cnt += 1
+		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 
 	# Distance and angle from hex center.
 	var center_2d: Vector2 = _HexMath.axial_to_world(coords)
@@ -199,36 +226,37 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
 	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 
-	# Average ALL hex elevations sharing each corner — no threshold.
-	# Guarantees cross-hex consistency. Cliff faces handle large diffs.
-	var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-	for ci: int in range(6):
-		var sum_elev: float = float(tile.elevation)
-		var count: int = 1
-		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
-		for d: int in dir_pair:
-			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
-			var n_tile: Resource = _tiles.get(n_coords, null)
-			if n_tile != null:
-				sum_elev += float(n_tile.elevation)
-				count += 1
-		corner_y[ci] = (sum_elev / float(count)) * ELEVATION_STEP
-
-	# Find angle → which two corners we're between.
+	# Find angle — 12 sectors (30° each) matching 12-vertex ring layout.
+	# Even sectors (0,2,4,...) = corners, odd sectors (1,3,5,...) = edge midpoints.
 	var angle: float = atan2(dz, dx)
 	if angle < 0.0:
 		angle += TAU
 
-	# Each corner is at i * 60°. Find sector and fractional position.
-	var sector_f: float = angle / (PI / 3.0)
-	var sector: int = int(sector_f) % 6
+	# Direction-to-edge mapping for odd sectors (edge midpoints at 30°,90°,...).
+	var edge_dir_for_midpoint: Array[int] = [0, 5, 4, 3, 2, 1]
+
+	var sector_f: float = angle / (PI / 6.0)  # 30° per sector
+	var sector: int = int(sector_f) % 12
 	var sector_frac: float = sector_f - floor(sector_f)
 
-	# Blend between the two corner Y values at this angle.
-	var cy_blend: float = lerpf(corner_y[sector], corner_y[(sector + 1) % 6], sector_frac)
+	# Get target Y for this sector and the next.
+	var target_a: float
+	var target_b: float
+	if sector % 2 == 0:
+		target_a = corner_y[sector / 2]
+	else:
+		target_a = edge_y[edge_dir_for_midpoint[(sector - 1) / 2]]
+	var next_sector: int = (sector + 1) % 12
+	if next_sector % 2 == 0:
+		target_b = corner_y[next_sector / 2]
+	else:
+		target_b = edge_y[edge_dir_for_midpoint[(next_sector - 1) / 2]]
 
-	# Interpolate from center Y to blended corner Y using the curve.
-	return lerpf(center_y, cy_blend, s)
+	# Blend between adjacent sector targets.
+	var target_blend: float = lerpf(target_a, target_b, sector_frac)
+
+	# Interpolate from center Y to blended target using the curve.
+	return lerpf(center_y, target_blend, s)
 
 
 # --- Serialization ---
