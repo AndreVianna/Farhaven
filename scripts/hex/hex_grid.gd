@@ -38,6 +38,7 @@ const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbenc
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
+var spawn_tile: Vector2i = Vector2i.ZERO
 
 # --- Signals ---
 signal map_generated()

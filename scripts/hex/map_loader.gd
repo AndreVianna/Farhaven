@@ -136,14 +136,17 @@ func load_map(path: String) -> bool:
 
 		_grid._tiles[coords] = tile
 
-	# Step 4: Validate (logs warnings on failure, does not abort)
+	# Step 4: Store spawn position on the grid.
+	_grid.spawn_tile = spawn
+
+	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
 
-	# Step 5: Initialize fog — all tiles VISIBLE (darkness handled by shader)
+	# Step 6: Initialize fog — all tiles VISIBLE (darkness handled by shader)
 	for c in _grid._tiles:
 		_grid._tiles[c].fog_state = _HexTile.FogState.VISIBLE
 
-	# Step 6: Emit map_generated
+	# Step 7: Emit map_generated
 	_grid.map_generated.emit()
 	return true
 
