@@ -12,20 +12,19 @@ func _init() -> void:
 	super("STATUS", "INVENTORY")
 
 
-func _build_left_content(parent: Control) -> void:
-	parent.add_child(CombinedPanel.create_placeholder("(Status — Coming Soon)"))
+func _build_left_content(parent: VBoxContainer) -> void:
+	var placeholder := CombinedPanel.create_placeholder("STATUS", "Status")
+	parent.add_child(placeholder)
 
 
-func _build_right_content(parent: Control) -> void:
+func _build_right_content(parent: VBoxContainer) -> void:
 	_inventory_panel = _InventoryPanelScene.instantiate()
 	CombinedPanel.embed_sub_panel(_inventory_panel, parent)
 
 
 func _on_opened() -> void:
-	# Trigger refresh on the inventory sub-panel when the combined panel opens
 	if _inventory_panel != null:
 		_inventory_panel.open()
-		# Keep it visible (open() sets visible=true and refreshes)
 
 
 # --- Pass-through API ---

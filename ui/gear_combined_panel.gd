@@ -12,17 +12,17 @@ func _init() -> void:
 	super("CRAFTING", "BUILD")
 
 
-func _build_left_content(parent: Control) -> void:
+func _build_left_content(parent: VBoxContainer) -> void:
 	_crafting_panel = _CraftingPanelScene.instantiate()
 	CombinedPanel.embed_sub_panel(_crafting_panel, parent)
 
 
-func _build_right_content(parent: Control) -> void:
-	parent.add_child(CombinedPanel.create_placeholder("(Build — Coming Soon)"))
+func _build_right_content(parent: VBoxContainer) -> void:
+	var placeholder := CombinedPanel.create_placeholder("BUILD", "Build")
+	parent.add_child(placeholder)
 
 
 func _on_opened() -> void:
-	# Trigger refresh on the crafting sub-panel when the combined panel opens
 	if _crafting_panel != null:
 		_crafting_panel.open()
 
