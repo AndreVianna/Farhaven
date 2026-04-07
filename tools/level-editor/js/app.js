@@ -5,7 +5,7 @@
 // ============================================================
 
 import { TresParser } from './tres-parser.js';
-import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js';
+import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
@@ -165,9 +165,7 @@ const mapOnly = (fn) => () => { if (activeTab !== 'map') return; fn(); };
 keyboardManager.register('v', mapOnly(() => selectTool('select')));
 keyboardManager.register('b', mapOnly(() => selectTool('biome')));
 keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
-keyboardManager.register('r', mapOnly(() => selectTool('resource')));
-keyboardManager.register('s', mapOnly(() => selectTool('structure')));
-keyboardManager.register('a', mapOnly(() => selectTool('anomaly')));
+keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
@@ -562,9 +560,7 @@ const TOOL_GROUPS = [
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
-    { type: 'resource',   label: 'Resource',    shortcut: 'R' },
-    { type: 'structure',  label: 'Structure',   shortcut: 'S' },
-    { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
+    { type: 'prop',       label: 'Prop',        shortcut: 'R' },
     { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
     { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
   ]},
@@ -579,8 +575,7 @@ function initSidebar() {
   _initToolButtons();
   _initMapSelector();
   _initBiomePalette();
-  _initResourcePalette();
-  _initStructurePalette();
+  _initPropPalette();
   _initElevationControls();
   updateSidebar();
 
@@ -628,8 +623,7 @@ function _rebuildColorMaps() {
 function refreshPalettes() {
   _rebuildColorMaps();
   _initBiomePalette();
-  _initResourcePalette();
-  _initStructurePalette();
+  _initPropPalette();
   updateSidebar();
   if (hexCanvas) hexCanvas.requestRender();
   if (hexInspector) hexInspector.updateMapStats();
@@ -776,62 +770,117 @@ function _initBiomePalette() {
 }
 
 /**
- * Populate the resource palette from ProjectContext.files.resources.
+ * Populate the prop palette with category dropdown and type list.
  * @returns {void}
  */
-function _initResourcePalette() {
-  const container = document.getElementById('palette-resource-list');
-  if (!container) return;
-  container.innerHTML = '';
+function _initPropPalette() {
+  const categorySelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('prop-category-select'));
+  const listContainer = document.getElementById('palette-prop-list');
+  if (!categorySelect || !listContainer) return;
 
-  for (const [filename] of ProjectContext.files.resources) {
-    const resourceName = filename.replace('.tres', '');
-    const item = document.createElement('div');
-    item.className = 'palette-item';
-    item.dataset.value = resourceName;
-
-    const label = document.createElement('span');
-    label.textContent = resourceName;
-    item.appendChild(label);
-
-    item.addEventListener('click', () => {
-      toolManager.setTool('resource', resourceName);
-      if (hexCanvas) hexCanvas.toolManager = toolManager;
-      updateSidebar();
-      setStatus(`Tool: resource — ${resourceName}`);
-    });
-
-    container.appendChild(item);
+  // Populate category dropdown
+  categorySelect.innerHTML = '';
+  for (let i = 0; i < CATEGORIES.length; i++) {
+    const opt = document.createElement('option');
+    opt.value = CATEGORIES[i];
+    opt.textContent = CATEGORIES[i];
+    if (CATEGORIES[i] === toolManager.activeCategory) opt.selected = true;
+    categorySelect.appendChild(opt);
   }
-}
 
-/**
- * Populate the structure palette from STRUCTURE_FOOTPRINTS.
- * @returns {void}
- */
-function _initStructurePalette() {
-  const container = document.getElementById('palette-structure-list');
-  if (!container) return;
-  container.innerHTML = '';
+  /**
+   * Rebuild the type list based on the selected category.
+   * @param {string} category
+   * @returns {void}
+   */
+  function _populateTypeList(category) {
+    listContainer.innerHTML = '';
+    const catInt = CATEGORY_TO_INT[category];
 
-  for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
-    const item = document.createElement('div');
-    item.className = 'palette-item';
-    item.dataset.value = structName;
+    if (NATURAL_CATEGORIES.has(catInt)) {
+      // Natural categories: populate from project resources
+      for (const [filename] of ProjectContext.files.resources) {
+        const resourceName = filename.replace('.tres', '');
+        const item = document.createElement('div');
+        item.className = 'palette-item';
+        item.dataset.value = resourceName;
 
-    const label = document.createElement('span');
-    label.textContent = `${structName} (${footprint.length})`;
-    item.appendChild(label);
+        const label = document.createElement('span');
+        label.textContent = resourceName;
+        item.appendChild(label);
 
-    item.addEventListener('click', () => {
-      toolManager.setTool('structure', structName);
-      if (hexCanvas) hexCanvas.toolManager = toolManager;
-      updateSidebar();
-      setStatus(`Tool: structure — ${structName}`);
-    });
+        item.addEventListener('click', () => {
+          toolManager.setTool('prop', resourceName);
+          toolManager.activeCategory = category;
+          if (hexCanvas) hexCanvas.toolManager = toolManager;
+          updateSidebar();
+          setStatus(`Tool: prop — ${category}/${resourceName}`);
+        });
 
-    container.appendChild(item);
+        listContainer.appendChild(item);
+      }
+    } else if (category === 'structure') {
+      // Structure category: populate from STRUCTURE_FOOTPRINTS
+      for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+        const item = document.createElement('div');
+        item.className = 'palette-item';
+        item.dataset.value = structName;
+
+        const label = document.createElement('span');
+        label.textContent = `${structName} (${footprint.length})`;
+        item.appendChild(label);
+
+        item.addEventListener('click', () => {
+          toolManager.setTool('prop', structName);
+          toolManager.activeCategory = category;
+          if (hexCanvas) hexCanvas.toolManager = toolManager;
+          updateSidebar();
+          setStatus(`Tool: prop — ${category}/${structName}`);
+        });
+
+        listContainer.appendChild(item);
+      }
+    } else {
+      // Non-natural, non-structure: free-text entry
+      const inputRow = document.createElement('div');
+      inputRow.style.cssText = 'display:flex;gap:4px;';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Type name...';
+      input.style.cssText = 'flex:1;padding:3px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;font-size:12px;';
+
+      const applyBtn = document.createElement('button');
+      applyBtn.textContent = 'Set';
+      applyBtn.style.cssText = 'padding:3px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:3px;font-size:11px;cursor:pointer;';
+
+      const applyType = () => {
+        const typeName = input.value.trim();
+        if (!typeName) return;
+        toolManager.setTool('prop', typeName);
+        toolManager.activeCategory = category;
+        if (hexCanvas) hexCanvas.toolManager = toolManager;
+        updateSidebar();
+        setStatus(`Tool: prop — ${category}/${typeName}`);
+      };
+
+      applyBtn.addEventListener('click', applyType);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyType(); });
+
+      inputRow.appendChild(input);
+      inputRow.appendChild(applyBtn);
+      listContainer.appendChild(inputRow);
+    }
   }
+
+  // Initial population
+  _populateTypeList(categorySelect.value || 'plant');
+
+  // Wire category change
+  categorySelect.addEventListener('change', () => {
+    toolManager.activeCategory = categorySelect.value;
+    _populateTypeList(categorySelect.value);
+  });
 }
 
 /**
@@ -909,7 +958,7 @@ function updateSidebar() {
   });
 
   // Show/hide palettes based on active tool
-  const palettes = ['biome', 'resource', 'structure', 'elevation'];
+  const palettes = ['biome', 'prop', 'elevation'];
   for (const p of palettes) {
     const el = document.getElementById('palette-' + p);
     if (!el) continue;

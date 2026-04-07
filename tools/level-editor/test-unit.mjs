@@ -15,7 +15,7 @@ import { ProjectContext } from './js/file-discovery.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
-import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
 import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
 // Alias HexGrid as HexGridClass to match existing test usage
@@ -713,11 +713,8 @@ test('ToolManager — setTool creates correct tool instances', () => {
   tm.setTool('eraser');
   assert(tm.activeTool instanceof EraserTool, 'should be EraserTool');
 
-  tm.setTool('resource', 'wood');
-  assert(tm.activeTool instanceof ResourcePlacer, 'should be ResourcePlacer');
-
-  tm.setTool('structure', 'campfire');
-  assert(tm.activeTool instanceof StructurePlacer, 'should be StructurePlacer');
+  tm.setTool('prop', 'wood');
+  assert(tm.activeTool instanceof PropPlacer, 'should be PropPlacer');
 
   tm.setTool('spawn');
   assert(tm.activeTool instanceof SpawnMarker, 'should be SpawnMarker');

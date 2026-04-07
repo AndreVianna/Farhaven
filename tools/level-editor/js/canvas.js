@@ -185,18 +185,22 @@ export class HexCanvas {
       this._drawGhostHex(q, r);
     }
 
-    // --- Phase 3: Real hexes with overlays ---
+    // --- Phase 3: Real hex backgrounds + overlays ---
     for (const [key, tile] of this.grid.getAllTiles()) {
       const { q, r } = HexGrid.parseKey(key);
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
-      // Draw occupied sub-hexes on ALL tiles that have props
-      if (tile.props && tile.props.length > 0) {
-        this._drawSubHexOccupancy(q, r, tile);
-      }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
+      }
+    }
+
+    // --- Phase 3b: Props on top of all hex backgrounds (prevents clipping) ---
+    for (const [key, tile] of this.grid.getAllTiles()) {
+      if (tile.props && tile.props.length > 0) {
+        const { q, r } = HexGrid.parseKey(key);
+        this._drawSubHexOccupancy(q, r, tile);
       }
     }
 
@@ -391,6 +395,19 @@ export class HexCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('S', cx, cy);
+
+    // Facing indicator line
+    const facing = spawn.length >= 5 ? spawn[4] : 0;
+    if (typeof facing === 'number') {
+      const angleRad = (facing - 90) * Math.PI / 180;
+      const lineLen = size * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angleRad) * lineLen, cy + Math.sin(angleRad) * lineLen);
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
   }
 
   // --- Sub-hex rendering ---
@@ -402,7 +419,7 @@ export class HexCanvas {
   _isSubHexTool() {
     if (!this.toolManager) return false;
     const t = this.toolManager.activeToolType;
-    return t === 'select' || t === 'resource' || t === 'structure' || t === 'anomaly' || t === 'spawn' || t === 'eraser';
+    return t === 'select' || t === 'prop' || t === 'spawn' || t === 'eraser';
   }
 
   /**
@@ -466,6 +483,20 @@ export class HexCanvas {
           ctx.fillStyle = color;
           ctx.fill();
         }
+        // Draw facing indicator on anchor sub-hex for structures
+        if (typeof prop.rotation === 'number') {
+          const anchorOffset = HexMath.subHexToPixel(prop.sq, prop.sr);
+          const acx = screen.x + anchorOffset.x * this.camera.zoom;
+          const acy = screen.y + anchorOffset.y * this.camera.zoom;
+          const angleRad = (prop.rotation - 90) * Math.PI / 180;
+          const lineLen = subSize * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(acx, acy);
+          ctx.lineTo(acx + Math.cos(angleRad) * lineLen, acy + Math.sin(angleRad) * lineLen);
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       } else {
         const offset = HexMath.subHexToPixel(prop.sq, prop.sr);
         const cx = screen.x + offset.x * this.camera.zoom;
@@ -474,6 +505,18 @@ export class HexCanvas {
         this._traceHexPath(corners);
         ctx.fillStyle = color;
         ctx.fill();
+
+        // Draw facing indicator line
+        if (typeof prop.rotation === 'number') {
+          const angleRad = (prop.rotation - 90) * Math.PI / 180;
+          const lineLen = subSize * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(angleRad) * lineLen, cy + Math.sin(angleRad) * lineLen);
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       }
     }
   }

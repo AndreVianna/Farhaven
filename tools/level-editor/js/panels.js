@@ -465,6 +465,17 @@ export class HexInspector {
 
     card.appendChild(fieldsRow);
 
+    // Show origin
+    if (prop.origin) {
+      const originRow = document.createElement('div');
+      originRow.className = 'prop-card-fields';
+      const originLabel = document.createElement('label');
+      originLabel.style.cssText = 'font-size:11px;color:var(--text-secondary);';
+      originLabel.textContent = 'Origin: ' + String(prop.origin);
+      originRow.appendChild(originLabel);
+      card.appendChild(originRow);
+    }
+
     // Footprint display for structures
     if (prop.category === 'structure' && prop.footprint) {
       const fpLabel = document.createElement('div');

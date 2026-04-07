@@ -288,14 +288,15 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   hexGrid.meta.name = mapData.name || '';
   if (Array.isArray(mapData.spawn)) {
     const s = mapData.spawn;
-    // Preserve original length: only store 4 elements if sub-hex was present
-    if (s.length >= 4 && (s[2] || s[3])) {
-      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0];
+    if (s.length >= 5) {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0, s[4] || 0];
+    } else if (s.length >= 4 && (s[2] || s[3])) {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0, 0];
     } else {
-      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0];
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, 0, 0, 0];
     }
   } else {
-    hexGrid.meta.spawn = [0, 0];
+    hexGrid.meta.spawn = [0, 0, 0, 0, 0];
   }
 
   if (mapData.tiles && typeof mapData.tiles === 'object') {
@@ -382,8 +383,11 @@ export function serializeGridToMapJson(hexGrid) {
     }
     tiles[key] = entry;
   }
-  // Trim trailing zero sub-hex elements from spawn to reduce diff noise
+  // Trim trailing zero elements from spawn to reduce diff noise
   const spawn = [...hexGrid.meta.spawn];
+  if (spawn.length === 5 && spawn[4] === 0) {
+    spawn.length = 4;
+  }
   if (spawn.length === 4 && spawn[2] === 0 && spawn[3] === 0) {
     spawn.length = 2;
   }

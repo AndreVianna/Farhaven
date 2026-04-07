@@ -824,16 +824,14 @@ html, body {
             <div id="palette-biome-list"></div>
           </div>
 
-          <!-- Resource palette -->
-          <div id="palette-resource" class="sidebar-section palette hidden">
-            <label class="sidebar-label">Resources</label>
-            <div id="palette-resource-list"></div>
-          </div>
-
-          <!-- Structure palette -->
-          <div id="palette-structure" class="sidebar-section palette hidden">
-            <label class="sidebar-label">Structures</label>
-            <div id="palette-structure-list"></div>
+          <!-- Prop palette -->
+          <div id="palette-prop" class="sidebar-section palette hidden">
+            <label class="sidebar-label">Prop Type</label>
+            <div style="margin-bottom:6px;">
+              <label style="font-size:10px;color:var(--text-secondary);">Category:</label>
+              <select id="prop-category-select" style="width:100%;padding:3px 4px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;font-size:12px;"></select>
+            </div>
+            <div id="palette-prop-list"></div>
           </div>
 
           <!-- Elevation controls -->
@@ -911,9 +909,7 @@ html, body {
     <tr><td>E</td><td>Elevation</td></tr>
     <tr><td>F</td><td>Flood Fill</td></tr>
     <tr><td>D</td><td>Delete Hex</td></tr>
-    <tr><td>R</td><td>Resource</td></tr>
-    <tr><td>S</td><td>Structure</td></tr>
-    <tr><td>A</td><td>Anomaly</td></tr>
+    <tr><td>R</td><td>Prop</td></tr>
     <tr><td>P</td><td>Spawn</td></tr>
     <tr><td>X</td><td>Eraser</td></tr>
     <tr><td>Escape</td><td>Back to Select</td></tr>
