@@ -7,7 +7,7 @@ class_name PlayerInput
 ## Screen zones (landscape, percentage-based):
 ##   LEFT  40% — joystick (drag) + tap (quick release)
 ##   CENTER 20% — tap only (world interaction)
-##   RIGHT 40% — ignored (camera_camera.gd handles orbit)
+##   RIGHT 40% — ignored (player_camera.gd handles orbit)
 ##
 ## Outcomes:
 ##   TAP        — touch DOWN+UP in <tap_max_duration AND drag <tap_max_drag

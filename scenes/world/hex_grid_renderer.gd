@@ -418,7 +418,7 @@ func _rebuild_mesh() -> void:
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			# Skip only if neighbor is higher (it will generate its own wall).
-			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation > tile.elevation:
+			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
 				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6

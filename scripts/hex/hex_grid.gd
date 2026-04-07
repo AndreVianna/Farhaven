@@ -225,17 +225,23 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	if dist < 0.001:
 		return center_y
 
-	# Normalized distance (0 at center, 1 at hex edge).
-	var t: float = clampf(dist / _HexMath.HEX_SIZE, 0.0, 1.0)
-
-	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
-	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
-
 	# Find angle — 12 sectors (30° each) matching 12-vertex ring layout.
 	# Even sectors (0,2,4,...) = corners, odd sectors (1,3,5,...) = edge midpoints.
 	var angle: float = atan2(dz, dx)
 	if angle < 0.0:
 		angle += TAU
+
+	# Normalized distance (0 at center, 1 at hex edge).
+	# Hex boundary radius varies with angle: HEX_SIZE at corners, HEX_SIZE*cos(30°) at edge midpoints.
+	# Within each 30° sector, compute the offset from the nearest corner direction.
+	var raw_sector_f: float = fmod(angle, TAU) / (PI / 6.0)
+	var sector_offset: float = (raw_sector_f - floor(raw_sector_f)) * (PI / 6.0)  # 0..30° within sector
+	var nearest_corner_offset: float = minf(sector_offset, (PI / 6.0) - sector_offset)
+	var hex_boundary_radius: float = _HexMath.HEX_SIZE * cos(nearest_corner_offset)
+	var t: float = clampf(dist / hex_boundary_radius, 0.0, 1.0)
+
+	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
+	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 
 	# Direction-to-edge mapping for odd sectors (edge midpoints at 30°,90°,...).
 	var edge_dir_for_midpoint: Array[int] = [0, 5, 4, 3, 2, 1]

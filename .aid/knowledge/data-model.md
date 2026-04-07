@@ -13,7 +13,7 @@ Godot Resource representing a single hex tile in the game world.
 |-------|------|---------|-------------|-------|
 | coords | Vector2i | (0,0) | Axial coordinates (q, r) | Primary key in HexGrid._tiles dictionary |
 | biome | Biome enum (int) | GRASSLAND (1) | 0-4 | CRASH_SITE=0, GRASSLAND=1, FOREST=2, ROCKY=3, WATER=4 |
-| elevation | int | 0 | 0-9 (clamped in MapLoader) | World Y = elevation * 0.5 |
+| elevation | int | 0 | -32000..32000 (clamped in MapLoader) | World Y = elevation * 0.5 |
 | fog_state | FogState enum (int) | HIDDEN (0) | 0-1 | HIDDEN=0, VISIBLE=1. Darkness handled by shader, not fog state. |
 | props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `resource_nodes`, `anomaly` fields. |
 
@@ -206,7 +206,7 @@ Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy
 | blocks_movement | bool | no | false | Structure only: true for walls |
 
 **Biome values:** `"crash_site"`, `"grassland"`, `"forest"`, `"rocky"`, `"water"`
-**Elevation:** integer 0-9
+**Elevation:** integer -32000..32000
 
 **Legacy format (still supported, auto-converted on load):**
 ```json
@@ -323,7 +323,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | Spawn tile must exist and be CRASH_SITE biome | `map_loader.gd` lines 145-149 |
 | All required biomes present (CRASH_SITE, GRASSLAND, FOREST, ROCKY) | `map_loader.gd` lines 161-164 |
 | At least one anomaly tile exists | `map_loader.gd` lines 166-167 |
-| Elevation in [0, 9] for all tiles | `map_loader.gd` lines 158-159 |
+| Elevation in [-32000, 32000] for all tiles | `map_loader.gd` lines 158-159 |
 | All non-water tiles reachable from spawn via BFS | `map_loader.gd` lines 172-192 |
 
 ### Inventory Validation
