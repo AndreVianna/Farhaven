@@ -307,8 +307,11 @@ func _rebuild_mesh() -> void:
 			var ring_col: Array = []
 			for j: int in range(VERTS_PER_RING):
 				var angle: float = deg_to_rad(30.0 * float(j))
-				var vx: float = cx + cos(angle) * radius
-				var vz: float = cz + sin(angle) * radius
+				# Edge midpoints sit closer to center than corners (hex is flat-sided).
+				# Corner radius = full radius. Edge midpoint = radius * cos(30°).
+				var r: float = radius if j % 2 == 0 else radius * cos(deg_to_rad(30.0))
+				var vx: float = cx + cos(angle) * r
+				var vz: float = cz + sin(angle) * r
 
 				var target_y: float
 				var target_col: Color
@@ -415,8 +418,9 @@ func _rebuild_mesh() -> void:
 			# Handle wrap-around (e.g., corners at 300° and 0° → mid at 330°, not 150°).
 			if absf(angle_a - angle_b) > PI:
 				mid_angle += PI
-			var mid_x: float = cx + cos(mid_angle) * HexMath.HEX_SIZE
-			var mid_z: float = cz + sin(mid_angle) * HexMath.HEX_SIZE
+			var edge_mid_radius: float = HexMath.HEX_SIZE * cos(deg_to_rad(30.0))
+			var mid_x: float = cx + cos(mid_angle) * edge_mid_radius
+			var mid_z: float = cz + sin(mid_angle) * edge_mid_radius
 
 			# High hex (tile) Y values at the 3 edge points.
 			var h_corner_y: Array[float] = all_corner_y[coords]
