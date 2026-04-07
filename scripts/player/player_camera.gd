@@ -100,11 +100,11 @@ func _handle_drag(event: InputEventScreenDrag) -> void:
 	var idx: int = event.index
 	_pinch_positions[idx] = event.position
 
-	# Orbit drag.
+	# Orbit drag — event.relative is per-frame pixel displacement.
+	# Yaw is radians, pitch is degrees — different scale factors needed.
 	if idx == _orbit_touch_index:
-		var delta_factor: float = get_process_delta_time()
-		_yaw += event.relative.x * orbit_sensitivity * delta_factor
-		_pitch_deg_current -= event.relative.y * orbit_sensitivity * delta_factor
+		_yaw += event.relative.x * orbit_sensitivity * 0.02
+		_pitch_deg_current -= event.relative.y * orbit_sensitivity * 0.5
 		_pitch_deg_current = clampf(_pitch_deg_current, pitch_min, pitch_max)
 		_idle_timer = 0.0
 		_orbit_last_pos = event.position
