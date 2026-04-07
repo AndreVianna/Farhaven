@@ -195,8 +195,8 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	# Normalized distance (0 at center, 1 at hex edge).
 	var t: float = clampf(dist / _HexMath.HEX_SIZE, 0.0, 1.0)
 
-	# Interpolation curve — smoothstep: t²(3 - 2t)
-	var s: float = t * t * (3.0 - 2.0 * t)
+	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
+	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 
 	# Compute corner Y values (average of up to 3 hexes sharing each corner).
 	var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

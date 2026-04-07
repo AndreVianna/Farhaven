@@ -8,7 +8,7 @@ extends Node3D
 ##   - Concentric ring subdivision: 1 center + 6 vertices × 4 rings = 25 vertices per hex.
 ##   - 6 inner-fan triangles + 36 ring-strip triangles = 42 triangles per hex.
 ##   - Ring radii: 0, 25%, 50%, 75%, 100% of HEX_SIZE.
-##   - Smoothstep interpolation between center and outer corners → curved terrain.
+##   - Quintic smoothstep interpolation between center and outer corners → curved terrain.
 ##   - Center vertex color = biome color variation (hash-selected from BiomeData).
 ##   - Corner vertex color = average of all tiles sharing that corner at SAME elevation.
 ##   - Different elevation = different corner key → no color sharing → cliff edge.
@@ -265,7 +265,7 @@ func _rebuild_mesh() -> void:
 		# Rings 1..RING_COUNT (k = 1..4): 6 vertices each.
 		for k: int in range(1, RING_COUNT + 1):
 			var t: float = float(k) / float(RING_COUNT)
-			var s: float = t * t * (3.0 - 2.0 * t)  # smoothstep
+			var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)  # quintic smoothstep
 			var radius: float = HexMath.HEX_SIZE * t
 
 			var ring_pos: Array = []
