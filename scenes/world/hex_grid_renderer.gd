@@ -341,27 +341,27 @@ func _rebuild_mesh() -> void:
 			var v2 := Vector3(ci_x, low_y, ci_z)    # left-bottom
 			var v3 := Vector3(cj_x, low_y, cj_z)    # right-bottom
 
-			# Triangle 1: v0, v3, v2 — outward-facing CCW
+			# Triangle 1: v0, v2, v3 — outward-facing CCW (visible from neighbor side)
 			st.set_normal(cliff_normal)
 			st.set_color(cliff_color)
 			st.add_vertex(v0)
-			st.set_normal(cliff_normal)
-			st.set_color(cliff_color)
-			st.add_vertex(v3)
 			st.set_normal(cliff_normal)
 			st.set_color(cliff_color)
 			st.add_vertex(v2)
+			st.set_normal(cliff_normal)
+			st.set_color(cliff_color)
+			st.add_vertex(v3)
 
-			# Triangle 2: v0, v1, v3 — outward-facing CCW
+			# Triangle 2: v0, v3, v1 — outward-facing CCW
 			st.set_normal(cliff_normal)
 			st.set_color(cliff_color)
 			st.add_vertex(v0)
 			st.set_normal(cliff_normal)
 			st.set_color(cliff_color)
-			st.add_vertex(v1)
+			st.add_vertex(v3)
 			st.set_normal(cliff_normal)
 			st.set_color(cliff_color)
-			st.add_vertex(v3)
+			st.add_vertex(v1)
 
 	_mesh_instance.mesh = st.commit()
 
