@@ -8,8 +8,8 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const WALK_MAX_DIFF: int = 1
-const JUMP_MAX_DIFF: int = 2
+const WALK_MAX_DIFF: int = 2
+const JUMP_MAX_DIFF: int = 4
 
 # Legacy alias — existing code may reference this
 const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
@@ -95,7 +95,7 @@ func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
 	return abs(int(tile_to.elevation) - int(tile_from.elevation))
 
 
-## 3-tier traversal: WALK (0-1), JUMP/DROP (2), BLOCKED (3+, water, wall).
+## 3-tier traversal: WALK (0-2), JUMP/DROP (3-4), BLOCKED (5+, water, wall).
 func get_traversal(from: Vector2i, to: Vector2i) -> int:
 	var tile_to: Resource = _tiles.get(to, null)
 	if tile_to == null:
@@ -192,7 +192,7 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 		var n_tile: Resource = _tiles.get(n_coords, null)
 		if n_tile == null:
 			continue
-		if absi(tile.elevation - n_tile.elevation) <= 2:
+		if absi(tile.elevation - n_tile.elevation) <= 4:
 			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 
 	# Compute corner_y (6 values) — include neighbors with diff ≤ 2.
@@ -206,7 +206,7 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 			var n_tile: Resource = _tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
-			if absi(tile.elevation - n_tile.elevation) <= 2:
+			if absi(tile.elevation - n_tile.elevation) <= 4:
 				sum_e += float(n_tile.elevation)
 				cnt += 1
 		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP

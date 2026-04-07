@@ -146,7 +146,7 @@ func test_tile_transition_emits_signals_in_order() -> void:
 	assert_object(filtered[2]["to"]).is_equal(Vector2i(1, 0))
 
 
-# --- WALK traversal (elevation diff 0-1) ---
+# --- WALK traversal (elevation diff 0-2) ---
 
 func test_walk_traversal_seamless_boundary_crossing() -> void:
 	# Adjacent tile at elevation 1 (diff = 1 = WALK)
@@ -174,11 +174,11 @@ func test_walk_y_follows_terrain() -> void:
 	assert_float(_player.position.y).is_equal_approx(expected_y, 0.001)
 
 
-# --- JUMP/DROP traversal (elevation diff 2) ---
+# --- JUMP/DROP traversal (elevation diff 3-4) ---
 
 func test_jump_triggers_jumping_state() -> void:
-	# Set tile (1,0) to elevation 2 (diff = 2, going up = JUMP)
-	_set_tile_elevation(Vector2i(1, 0), 2)
+	# Set tile (1,0) to elevation 3 (diff = 3, going up = JUMP)
+	_set_tile_elevation(Vector2i(1, 0), 3)
 	_player._on_joystick_start(Vector2.RIGHT)
 	_player._joystick_dir = Vector2.RIGHT
 	_player._joystick_magnitude = 1.0
@@ -191,8 +191,8 @@ func test_jump_triggers_jumping_state() -> void:
 
 
 func test_drop_triggers_jumping_state() -> void:
-	# Set tile (1,0) to elevation 0, current at elevation 2 (diff = 2, going down = DROP)
-	_set_tile_elevation(Vector2i(0, 0), 2)
+	# Set tile (1,0) to elevation 0, current at elevation 3 (diff = 3, going down = DROP)
+	_set_tile_elevation(Vector2i(0, 0), 3)
 	_player._snap_to_tile(Vector2i(0, 0))
 	_set_tile_elevation(Vector2i(1, 0), 0)
 	_player._on_joystick_start(Vector2.RIGHT)
@@ -206,7 +206,7 @@ func test_drop_triggers_jumping_state() -> void:
 
 
 func test_joystick_buffered_during_jumping() -> void:
-	_set_tile_elevation(Vector2i(1, 0), 2)
+	_set_tile_elevation(Vector2i(1, 0), 3)
 	_player._on_joystick_start(Vector2.RIGHT)
 	_player._joystick_dir = Vector2.RIGHT
 	_player._joystick_magnitude = 1.0

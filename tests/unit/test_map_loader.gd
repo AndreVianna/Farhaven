@@ -118,9 +118,9 @@ func test_get_traversal_walk_diff_1() -> void:
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.WALK)
 
 
-# --- get_traversal: JUMP for diff 2 uphill ---
+# --- get_traversal: WALK for diff 2 uphill ---
 
-func test_get_traversal_jump_diff_2() -> void:
+func test_get_traversal_walk_diff_2() -> void:
 	_grid._tiles.clear()
 	var a: Resource = _HexTile.new()
 	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 1
@@ -128,12 +128,12 @@ func test_get_traversal_jump_diff_2() -> void:
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 3
 	_grid._tiles[Vector2i(1, 0)] = b
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.WALK)
 
 
-# --- get_traversal: BLOCKED for diff 3 uphill ---
+# --- get_traversal: JUMP for diff 3 uphill ---
 
-func test_get_traversal_blocked_diff_3_uphill() -> void:
+func test_get_traversal_jump_diff_3() -> void:
 	_grid._tiles.clear()
 	var a: Resource = _HexTile.new()
 	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 0
@@ -141,12 +141,12 @@ func test_get_traversal_blocked_diff_3_uphill() -> void:
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 3
 	_grid._tiles[Vector2i(1, 0)] = b
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
 
 
-# --- get_traversal: DROP for diff 2 downhill ---
+# --- get_traversal: WALK for diff 2 downhill ---
 
-func test_get_traversal_drop_diff_2() -> void:
+func test_get_traversal_walk_diff_2_downhill() -> void:
 	_grid._tiles.clear()
 	var a: Resource = _HexTile.new()
 	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 3
@@ -154,12 +154,12 @@ func test_get_traversal_drop_diff_2() -> void:
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 1
 	_grid._tiles[Vector2i(1, 0)] = b
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.DROP)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.WALK)
 
 
-# --- get_traversal: BLOCKED for diff 3 downhill ---
+# --- get_traversal: DROP for diff 3 downhill ---
 
-func test_get_traversal_blocked_diff_3_downhill() -> void:
+func test_get_traversal_drop_diff_3() -> void:
 	_grid._tiles.clear()
 	var a: Resource = _HexTile.new()
 	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 3
@@ -167,10 +167,36 @@ func test_get_traversal_blocked_diff_3_downhill() -> void:
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
 	_grid._tiles[Vector2i(1, 0)] = b
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.DROP)
+
+
+# --- get_traversal: BLOCKED for diff 5 uphill ---
+
+func test_get_traversal_blocked_diff_5_uphill() -> void:
+	_grid._tiles.clear()
+	var a: Resource = _HexTile.new()
+	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 0
+	_grid._tiles[Vector2i(0, 0)] = a
+	var b: Resource = _HexTile.new()
+	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 5
+	_grid._tiles[Vector2i(1, 0)] = b
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 
 
-# --- get_traversal: BLOCKED for diff 4+ ---
+# --- get_traversal: BLOCKED for diff 5 downhill ---
+
+func test_get_traversal_blocked_diff_5_downhill() -> void:
+	_grid._tiles.clear()
+	var a: Resource = _HexTile.new()
+	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 5
+	_grid._tiles[Vector2i(0, 0)] = a
+	var b: Resource = _HexTile.new()
+	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
+	_grid._tiles[Vector2i(1, 0)] = b
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
+
+
+# --- get_traversal: BLOCKED for diff 6+ ---
 
 func test_get_traversal_blocked_steep_elevation() -> void:
 	_grid._tiles.clear()
@@ -230,7 +256,7 @@ func test_is_passable_jump() -> void:
 	var a: Resource = _HexTile.new()
 	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 0
 	var b: Resource = _HexTile.new()
-	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 2
+	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 3
 	_grid._tiles[Vector2i(0, 0)] = a
 	_grid._tiles[Vector2i(1, 0)] = b
 	assert_bool(_grid.is_passable(Vector2i(0, 0), Vector2i(1, 0))).is_true()
@@ -241,7 +267,7 @@ func test_is_passable_jump() -> void:
 func test_is_passable_drop() -> void:
 	_grid._tiles.clear()
 	var a: Resource = _HexTile.new()
-	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 2
+	a.coords = Vector2i(0, 0); a.biome = _HexTile.Biome.GRASSLAND; a.elevation = 3
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
 	_grid._tiles[Vector2i(0, 0)] = a

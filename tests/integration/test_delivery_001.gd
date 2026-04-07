@@ -533,7 +533,7 @@ func test_ac11_main_scene_bootstrap_generates_world() -> void:
 
 
 # ===========================================================================
-# AC12 — Elevation/TraversalType: WALK (diff 0-1), JUMP (diff 2), BLOCKED (diff 3+)
+# AC12 — Elevation/TraversalType: WALK (diff 0-2), JUMP/DROP (diff 3-4), BLOCKED (diff 5+)
 # ===========================================================================
 
 func test_ac12_walk_for_elevation_diff_0() -> void:
@@ -550,24 +550,24 @@ func test_ac12_walk_for_elevation_diff_1() -> void:
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.WALK)
 
 
-func test_ac12_jump_for_elevation_diff_2() -> void:
-	_grid._tiles.clear()
-	_make_tile(Vector2i(0, 0), 0)
-	_make_tile(Vector2i(1, 0), 2)
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
-
-
-func test_ac12_blocked_for_elevation_diff_3() -> void:
+func test_ac12_jump_for_elevation_diff_3() -> void:
 	_grid._tiles.clear()
 	_make_tile(Vector2i(0, 0), 0)
 	_make_tile(Vector2i(1, 0), 3)
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
 
 
-func test_ac12_blocked_for_elevation_diff_4() -> void:
+func test_ac12_jump_for_elevation_diff_4() -> void:
 	_grid._tiles.clear()
 	_make_tile(Vector2i(0, 0), 0)
 	_make_tile(Vector2i(1, 0), 4)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
+
+
+func test_ac12_blocked_for_elevation_diff_5() -> void:
+	_grid._tiles.clear()
+	_make_tile(Vector2i(0, 0), 0)
+	_make_tile(Vector2i(1, 0), 5)
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 
 
