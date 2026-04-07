@@ -347,7 +347,20 @@ func _rebuild_mesh() -> void:
 				st.add_vertex(rk_pos[i_next])
 
 	# Step 5: Generate cliff faces ONLY for elevation diff >= 3 (BLOCKED).
-	# Diff 1-2 uses curved slopes (smoothstep ring Y interpolation above). No cliff face needed.
+	# Diff 1-2 uses curved slopes (ring Y interpolation above). No cliff face needed.
+	#
+	# Edge-to-corner mapping: DIRECTIONS[d] neighbors share these corner pairs.
+	# Derived from corner_neighbor_dirs (verified empirically).
+	# Corner angle = corner_index * 60°.
+	var edge_corners: Array = [
+		[0, 1],  # dir 0 (E)  → corners at 0° and 60°
+		[5, 0],  # dir 1 (SE) → corners at 300° and 0°
+		[4, 5],  # dir 2 (S)  → corners at 240° and 300°
+		[3, 4],  # dir 3 (SW) → corners at 180° and 240°
+		[2, 3],  # dir 4 (NW) → corners at 120° and 180°
+		[1, 2],  # dir 5 (N)  → corners at 60° and 120°
+	]
+
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
@@ -370,20 +383,26 @@ func _rebuild_mesh() -> void:
 			var low_y: float = float(neighbor_tile.elevation) * ELEVATION_STEP
 			var cliff_color: Color = tile_colors[coords] * 0.6
 
-			var angle_i: float = deg_to_rad(60.0 * float(i))
-			var angle_j: float = deg_to_rad(60.0 * float(i + 1))
-			var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
-			var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
-			var cj_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE
-			var cj_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE
+			# Use correct corner positions for this direction (not i*60°).
+			var ec: Array = edge_corners[i]
+			var angle_a: float = deg_to_rad(60.0 * float(ec[0]))
+			var angle_b: float = deg_to_rad(60.0 * float(ec[1]))
+			var ca_x: float = cx + cos(angle_a) * HexMath.HEX_SIZE
+			var ca_z: float = cz + sin(angle_a) * HexMath.HEX_SIZE
+			var cb_x: float = cx + cos(angle_b) * HexMath.HEX_SIZE
+			var cb_z: float = cz + sin(angle_b) * HexMath.HEX_SIZE
 
-			var mid_angle: float = deg_to_rad(60.0 * float(i) + 30.0)
-			var cliff_normal: Vector3 = Vector3(cos(mid_angle), 0.0, sin(mid_angle))
+			# Normal: direction from hex center toward neighbor center.
+			var n_world: Vector2 = HexMath.axial_to_world(neighbor_coords)
+			var dir_x: float = n_world.x - cx
+			var dir_z: float = n_world.y - cz
+			var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
+			var cliff_normal: Vector3 = Vector3(dir_x / dir_len, 0.0, dir_z / dir_len)
 
-			var v0 := Vector3(ci_x, high_y, ci_z)   # left-top
-			var v1 := Vector3(cj_x, high_y, cj_z)   # right-top
-			var v2 := Vector3(ci_x, low_y, ci_z)    # left-bottom
-			var v3 := Vector3(cj_x, low_y, cj_z)    # right-bottom
+			var v0 := Vector3(ca_x, high_y, ca_z)   # left-top
+			var v1 := Vector3(cb_x, high_y, cb_z)   # right-top
+			var v2 := Vector3(ca_x, low_y, ca_z)    # left-bottom
+			var v3 := Vector3(cb_x, low_y, cb_z)    # right-bottom
 
 			# Triangle 1: v0, v2, v3 — outward-facing CCW (visible from neighbor side)
 			st.set_normal(cliff_normal)
