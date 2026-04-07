@@ -188,10 +188,6 @@ export class HexInspector {
       return;
     }
 
-    // Avoid re-rendering if same hex
-    if (this.currentHex && this.currentHex.q === hex.q && this.currentHex.r === hex.r) {
-      return;
-    }
     this.currentHex = { q: hex.q, r: hex.r };
 
     this._renderHexInfo(hex.q, hex.r);

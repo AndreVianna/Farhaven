@@ -1217,6 +1217,47 @@ test('loadMapIntoGrid — full round-trip: load engine format, serialize back', 
 });
 
 // ============================================================
+// Sub-hex round-trip and geometry tests (task: hex-math.js:201)
+// ============================================================
+
+test('subHexToPixel -> pixelToSubHex round-trip for all 19 VALID_SUB_HEXES', () => {
+  for (const sh of HexMath.VALID_SUB_HEXES) {
+    const px = HexMath.subHexToPixel(sh.q, sh.r);
+    const back = HexMath.pixelToSubHex(px.x, px.y);
+    assert(back.q === sh.q && back.r === sh.r,
+      `round-trip failed for (${sh.q},${sh.r}): got (${back.q},${back.r})`);
+  }
+});
+
+test('pixelToSubHex clamping — distance > 2 returns nearest valid sub-hex', () => {
+  // Push a pixel far out along the +x axis; should clamp to a ring-2 sub-hex
+  const farPx = HexMath.subHexToPixel(4, 0); // well beyond ring 2
+  const clamped = HexMath.pixelToSubHex(farPx.x, farPx.y);
+  assert(HexMath.distance(0, 0, clamped.q, clamped.r) <= 2,
+    `clamped result (${clamped.q},${clamped.r}) should be within distance 2`);
+  // The nearest valid sub-hex along +x axis should be (2, 0)
+  assert(clamped.q === 2 && clamped.r === 0,
+    `expected (2,0) but got (${clamped.q},${clamped.r})`);
+});
+
+test('subHexCorners returns 6 points with pointy-top orientation (first corner at 30 degrees)', () => {
+  const corners = HexMath.subHexCorners(0, 0, 10);
+  assert(corners.length === 6, `expected 6 corners, got ${corners.length}`);
+  // First corner should be at 30 degrees: x = 10*cos(30°), y = 10*sin(30°)
+  const expectedX = 10 * Math.cos(30 * Math.PI / 180);
+  const expectedY = 10 * Math.sin(30 * Math.PI / 180);
+  assert(Math.abs(corners[0].x - expectedX) < 1e-9,
+    `first corner x: expected ${expectedX}, got ${corners[0].x}`);
+  assert(Math.abs(corners[0].y - expectedY) < 1e-9,
+    `first corner y: expected ${expectedY}, got ${corners[0].y}`);
+  // All corners should be at distance 10 from center
+  for (let i = 0; i < 6; i++) {
+    const dist = Math.hypot(corners[i].x, corners[i].y);
+    assert(Math.abs(dist - 10) < 1e-9, `corner ${i} distance should be 10, got ${dist}`);
+  }
+});
+
+// ============================================================
 // Summary
 // ============================================================
 

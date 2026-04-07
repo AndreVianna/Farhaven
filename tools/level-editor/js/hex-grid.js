@@ -30,13 +30,21 @@ export function createTileData(biome = '') {
 
 /**
  * Creates a PropInstance.
- * @param {string} type
+ * @param {string} type - Resource/structure/anomaly identifier
  * @param {number} [sq=0] - Sub-hex q coordinate
  * @param {number} [sr=0] - Sub-hex r coordinate
  * @param {string} [category='resource'] - 'resource' | 'structure' | 'anomaly'
- * @param {Object} [options={}]
- * @param {number} [options.rotation] - Rotation in degrees (resources only)
- * @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets (structures only)
+ * @param {Object} [options={}] - Per-category optional fields:
+ *   **All categories:**
+ *   @param {number} [options.rotation] - Rotation in degrees (default 0)
+ *   **resource only:**
+ *   @param {number} [options.remaining] - Current resource amount
+ *   @param {number} [options.max_amount] - Maximum resource amount
+ *   @param {string} [options.tool_required] - Tool needed to harvest
+ *   @param {number} [options.respawn_time] - Respawn time in seconds
+ *   **structure only:**
+ *   @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets
+ *   @param {boolean} [options.blocks_movement] - Whether structure blocks movement
  * @returns {Object}
  */
 export function createProp(type, sq = 0, sr = 0, category = 'resource', options = {}) {
@@ -66,7 +74,7 @@ export function createProp(type, sq = 0, sr = 0, category = 'resource', options 
 export class HexGrid {
   constructor() {
     /** @type {{ chapter_id: string, name: string, spawn: number[] }} */
-    this.meta = { chapter_id: '', name: '', spawn: [0, 0, 0, 0] };
+    this.meta = { chapter_id: '', name: '', spawn: [0, 0] };
     /** @type {Map<string, Object>} */
     this.tiles = new Map();
     /**
@@ -239,9 +247,14 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   hexGrid.meta.name = mapData.name || '';
   if (Array.isArray(mapData.spawn)) {
     const s = mapData.spawn;
-    hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0];
+    // Preserve original length: only store 4 elements if sub-hex was present
+    if (s.length >= 4 && (s[2] || s[3])) {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0];
+    } else {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0];
+    }
   } else {
-    hexGrid.meta.spawn = [0, 0, 0, 0];
+    hexGrid.meta.spawn = [0, 0];
   }
 
   if (mapData.tiles && typeof mapData.tiles === 'object') {
@@ -328,7 +341,12 @@ export function serializeGridToMapJson(hexGrid) {
     }
     tiles[key] = entry;
   }
-  const result = { spawn: [...hexGrid.meta.spawn], tiles };
+  // Trim trailing zero sub-hex elements from spawn to reduce diff noise
+  const spawn = [...hexGrid.meta.spawn];
+  if (spawn.length === 4 && spawn[2] === 0 && spawn[3] === 0) {
+    spawn.length = 2;
+  }
+  const result = { spawn, tiles };
   // Include optional metadata if present
   if (hexGrid.meta.chapter_id) result.chapter_id = hexGrid.meta.chapter_id;
   if (hexGrid.meta.name) result.name = hexGrid.meta.name;

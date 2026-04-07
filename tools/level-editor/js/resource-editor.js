@@ -1267,7 +1267,7 @@ export function findResourceUsage(resourceId) {
     let count = 0;
     for (const [key, tile] of Object.entries(mapEntry.data.tiles || {})) {
       if (tile.props) {
-        count += tile.props.filter(p => p.category === 'resource' && p.type === resourceId).length;
+        count += tile.props.filter(p => (p.category === 'resource' || p.category === 0) && p.type === resourceId).length;
       }
     }
     if (count > 0) usages.push({ map: mapName, count });

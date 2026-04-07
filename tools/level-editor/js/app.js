@@ -294,12 +294,13 @@ async function saveAll() {
  */
 async function saveTab(tab) {
   if (tab === 'map') {
-    // Serialize from the live HexGrid model
+    // Serialize from the live HexGrid model — only save the active map
     const mapData = serializeGridToMapJson(hexGrid);
-    for (const [filename, entry] of ProjectContext.files.maps) {
+    const entry = activeMapFilename ? ProjectContext.files.maps.get(activeMapFilename) : null;
+    if (entry) {
       entry.data = mapData;
       const json = JSON.stringify(entry.data, null, '\t');
-      await FileDiscovery.saveFile(entry.dir || 'data/maps', json, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/maps', json, activeMapFilename);
     }
   } else if (tab === 'resources') {
     for (const [filename, entry] of ProjectContext.files.resources) {
