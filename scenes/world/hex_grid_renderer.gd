@@ -150,9 +150,9 @@ func _rebuild_mesh() -> void:
 		return
 
 	# Step 2: Build corner color map.
-	# Key = Vector3i(round(x*1000), elevation, round(z*1000)) → Array[Color].
-	# Only tiles visible (non-HIDDEN) contribute their color to shared corners.
-	# Different elevations = different keys → no color sharing → hard cliff edge.
+	# Key = Vector2i(round(x*1000), round(z*1000)) → Array[Color].
+	# Colors blend between hexes with diff ≤ 2 (slopes). Diff ≥ 3 gets walls,
+	# so each hex keeps its own color at those corners.
 	var corner_map: Dictionary = {}
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
@@ -163,30 +163,37 @@ func _rebuild_mesh() -> void:
 			var angle: float = deg_to_rad(60.0 * float(i))
 			var corner_x: float = cx + cos(angle) * HexMath.HEX_SIZE
 			var corner_z: float = cz + sin(angle) * HexMath.HEX_SIZE
-			var key := Vector3i(
+			var pos_key := Vector2i(
 				roundi(corner_x * 1000.0),
-				tile.elevation,
 				roundi(corner_z * 1000.0)
 			)
-			if not corner_map.has(key):
-				corner_map[key] = []
-			(corner_map[key] as Array).append(tile_colors[coords])
+			if not corner_map.has(pos_key):
+				corner_map[pos_key] = []
+			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = tile.elevation})
 
-	# Step 3: Average corner colors.
+	# Step 3: Average corner colors per elevation group (diff ≤ 2 blends).
+	# For each position, group entries by elevation proximity and average within groups.
+	# Result keyed by Vector3i(x*1000, elevation, z*1000) for lookup.
 	var corner_colors: Dictionary = {}
-	for key: Variant in corner_map:
-		var colors: Array = corner_map[key]
-		var r: float = 0.0
-		var g: float = 0.0
-		var b: float = 0.0
-		var a: float = 0.0
-		for c: Color in colors:
-			r += c.r
-			g += c.g
-			b += c.b
-			a += c.a
-		var n: float = float(colors.size())
-		corner_colors[key] = Color(r / n, g / n, b / n, a / n)
+	for pos_key: Variant in corner_map:
+		var entries: Array = corner_map[pos_key]
+		# For each entry, blend with others within diff ≤ 2.
+		for entry: Dictionary in entries:
+			var elev: int = entry.elevation
+			var r: float = 0.0
+			var g: float = 0.0
+			var b: float = 0.0
+			var a: float = 0.0
+			var n: float = 0.0
+			for other: Dictionary in entries:
+				if absi(elev - other.elevation) <= 2:
+					r += (other.color as Color).r
+					g += (other.color as Color).g
+					b += (other.color as Color).b
+					a += (other.color as Color).a
+					n += 1.0
+			var result_key := Vector3i((pos_key as Vector2i).x, elev, (pos_key as Vector2i).y)
+			corner_colors[result_key] = Color(r / n, g / n, b / n, a / n)
 
 	# Step 4: Compute edge_y and corner_y for all visible tiles.
 	# edge_y[d]: Y at the midpoint of edge in direction d.
