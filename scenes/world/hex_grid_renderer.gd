@@ -236,19 +236,24 @@ func _rebuild_mesh() -> void:
 		var elev: float = float(tile.elevation)
 		var elev_y: float = elev * ELEVATION_STEP
 
-		# Edge Y
+		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+
+		# Edge Y — don't blend land with water (water is flat, wall handles transition).
 		var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
 		for d: int in range(6):
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
+			# Skip water/land cross-blending.
+			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+				continue
 			var diff: int = absi(tile.elevation - n_tile.elevation)
 			if diff <= 2:
 				ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
-		# Corner Y
+		# Corner Y — same: don't blend land with water.
 		var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
 		for ci: int in range(6):
 			var sum_e: float = elev
@@ -258,6 +263,8 @@ func _rebuild_mesh() -> void:
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 				if n_tile == null:
+					continue
+				if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 					continue
 				if absi(tile.elevation - n_tile.elevation) <= 2:
 					sum_e += float(n_tile.elevation)
@@ -445,8 +452,14 @@ func _rebuild_mesh() -> void:
 			var l_ca_y: float
 			var l_mid_y: float
 			var l_cb_y: float
-			if n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
-				# Neighbor exists — use its surface profile (corners swapped).
+			if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
+				# Water is always flat — don't use averaged corner_y/edge_y.
+				var water_y: float = float(n_tile.elevation) * ELEVATION_STEP
+				l_ca_y = water_y
+				l_mid_y = water_y
+				l_cb_y = water_y
+			elif n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
+				# Non-water neighbor — use its surface profile (corners swapped).
 				var n_cy: Array[float] = all_corner_y[n_coords]
 				var n_ey: Array[float] = all_edge_y[n_coords]
 				var rev_d: int = -1

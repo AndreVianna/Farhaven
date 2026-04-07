@@ -185,17 +185,20 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	if tile.biome == _HexTile.Biome.WATER:
 		return center_y
 
-	# Compute edge_y (6 values) — same logic as renderer.
+	# Compute edge_y (6 values) — don't blend land with water.
+	var is_water: bool = tile.biome == _HexTile.Biome.WATER
 	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for d: int in range(6):
 		var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
 		var n_tile: Resource = _tiles.get(n_coords, null)
 		if n_tile == null:
 			continue
+		if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+			continue
 		if absi(tile.elevation - n_tile.elevation) <= 2:
 			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 
-	# Compute corner_y (6 values) — include neighbors with diff ≤ 2.
+	# Compute corner_y (6 values) — don't blend land with water.
 	var corner_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for ci: int in range(6):
 		var sum_e: float = elev
@@ -205,6 +208,8 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = _tiles.get(n_coords, null)
 			if n_tile == null:
+				continue
+			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
 			if absi(tile.elevation - n_tile.elevation) <= 2:
 				sum_e += float(n_tile.elevation)
