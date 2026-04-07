@@ -389,8 +389,6 @@ func _rebuild_mesh() -> void:
 	# 6-point polygon per wall, following the actual surface profile on both sides.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		if tile.elevation == 0:
-			continue  # Ground-level hexes need no walls.
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y

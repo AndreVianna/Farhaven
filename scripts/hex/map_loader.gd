@@ -87,7 +87,7 @@ func load_map(path: String) -> bool:
 		var tile: Resource = _HexTile.new()
 		tile.coords = coords
 		tile.biome = biome_int
-		tile.elevation = clampi(int(td.get("elevation", 0)), 0, 20)
+		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
 		tile.fog_state = _HexTile.FogState.VISIBLE
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
@@ -203,7 +203,7 @@ func _validate(spawn: Vector2i) -> void:
 			if p.category == _Prop.Category.ANOMALY:
 				has_anomaly = true
 				break
-		if t.elevation < 0 or t.elevation > 20:
+		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
 
 	for b: int in [_HexTile.Biome.CRASH_SITE, _HexTile.Biome.GRASSLAND,
