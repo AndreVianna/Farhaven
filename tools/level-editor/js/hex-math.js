@@ -154,20 +154,21 @@ export const HexMath = {
 
   /**
    * Convert pixel offset from hex center to sub-hex coordinates.
-   * Uses the same axialToPixel/pixelToAxial math at sub-hex scale.
+   * Sub-hexes use POINTY-TOP orientation (rotated 30° from main flat-top grid)
+   * so the ring-2 boundary shape aligns with the parent hex outline.
    * @param {number} offsetX
    * @param {number} offsetY
    * @returns {{ q: number, r: number }}
    */
   pixelToSubHex(offsetX, offsetY) {
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE;
-    const fq = (2 / 3 * offsetX) / subSize;
-    const fr = (-1 / 3 * offsetX + Math.sqrt(3) / 3 * offsetY) / subSize;
+    // Pointy-top pixel-to-axial:
+    const fq = (Math.sqrt(3) / 3 * offsetX - 1 / 3 * offsetY) / subSize;
+    const fr = (2 / 3 * offsetY) / subSize;
     const rounded = HexMath.cubeRound(fq, fr);
     // Clamp to valid sub-hex (distance <= 2)
     if (HexMath.distance(0, 0, rounded.q, rounded.r) > 2) {
       // Find nearest valid sub-hex using pixel-space distance
-      // (axial axes are 60° apart, so Euclidean in axial space is wrong)
       let best = { q: 0, r: 0 };
       let bestDist = Infinity;
       for (const sh of HexMath.VALID_SUB_HEXES) {
@@ -185,15 +186,38 @@ export const HexMath = {
 
   /**
    * Convert sub-hex coordinates to pixel offset from hex center.
+   * Sub-hexes use POINTY-TOP orientation (rotated 30° from main flat-top grid).
    * @param {number} sq
    * @param {number} sr
    * @returns {{ x: number, y: number }}
    */
   subHexToPixel(sq, sr) {
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE;
+    // Pointy-top axial-to-pixel:
     return {
-      x: subSize * (3 / 2 * sq),
-      y: subSize * (Math.sqrt(3) / 2 * sq + Math.sqrt(3) * sr),
+      x: subSize * (Math.sqrt(3) * sq + Math.sqrt(3) / 2 * sr),
+      y: subSize * (3 / 2 * sr),
     };
+  },
+
+  /**
+   * Returns the 6 corner points of a POINTY-TOP hex at pixel position (cx, cy).
+   * Used for sub-hex rendering. Corners start at 30° instead of 0°.
+   * @param {number} cx
+   * @param {number} cy
+   * @param {number} size
+   * @returns {Array<{ x: number, y: number }>}
+   */
+  subHexCorners(cx, cy, size) {
+    const corners = [];
+    for (let i = 0; i < 6; i++) {
+      const angleDeg = 60 * i + 30;  // pointy-top: offset by 30°
+      const angleRad = angleDeg * Math.PI / 180;
+      corners.push({
+        x: cx + size * Math.cos(angleRad),
+        y: cy + size * Math.sin(angleRad),
+      });
+    }
+    return corners;
   },
 };

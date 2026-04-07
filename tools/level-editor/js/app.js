@@ -9,11 +9,13 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js'
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { PropDetailPanel, showInlineModal } from './panels.js';
+import { HexInspector, showInlineModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
-import { ToolManager } from './tools.js';
+import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
 import { validateMap } from './validator.js';
+import { renderResourceEditor } from './resource-editor.js';
+import { renderBiomeEditor } from './biome-editor.js';
 
 // ============================================================
 // Module-level state
@@ -34,6 +36,9 @@ const camera = { offsetX: 0, offsetY: 0, zoom: 1.0 };
 /** @type {Map<string, string>} Biome name -> CSS color string, populated from .tres data */
 const biomeColorMap = new Map();
 
+/** @type {Map<string, string>} Resource type -> CSS color string, from placeholder_color */
+const resourceColorMap = new Map();
+
 /** @type {CommandHistory} */
 const commandHistory = new CommandHistory();
 
@@ -49,8 +54,8 @@ const dirtyTracker = new DirtyTracker();
 /** @type {HexCanvas|null} */
 let hexCanvas = null;
 
-/** @type {PropDetailPanel|null} */
-let propDetailPanel = null;
+/** @type {HexInspector|null} */
+let hexInspector = null;
 
 // ============================================================
 // Tab Switching (task-001)
@@ -137,16 +142,19 @@ toolManager.onStatus = (msg) => setStatus(msg);
  * @returns {void}
  */
 function selectTool(toolName) {
-  toolManager.setTool(toolName, toolManager.activeValue);
+  // Preserve activeValue only if staying on the same tool type
+  const value = (toolName === toolManager.activeToolType) ? toolManager.activeValue : null;
+  toolManager.setTool(toolName, value);
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
   }
-  // Update tool indicator
+  // Update tool indicator in toolbar
   const indicator = document.getElementById('tool-indicator');
   if (indicator) {
     indicator.textContent = toolName ? `Tool: ${toolName}` : '';
   }
   setStatus(toolName ? `Tool: ${toolName}` : 'No tool selected');
+  updateSidebar();
 }
 
 // Map-only shortcut guard
@@ -154,6 +162,7 @@ function selectTool(toolName) {
 const mapOnly = (fn) => () => { if (activeTab !== 'map') return; fn(); };
 
 // Register tool shortcuts (map-only)
+keyboardManager.register('v', mapOnly(() => selectTool('select')));
 keyboardManager.register('b', mapOnly(() => selectTool('biome')));
 keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
 keyboardManager.register('r', mapOnly(() => selectTool('resource')));
@@ -163,7 +172,7 @@ keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
 keyboardManager.register('f', mapOnly(() => selectTool('flood_fill')));
-keyboardManager.register('escape', mapOnly(() => selectTool(null)));
+keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
 keyboardManager.register('ctrl+z', () => commandHistory.undo());
@@ -285,12 +294,13 @@ async function saveAll() {
  */
 async function saveTab(tab) {
   if (tab === 'map') {
-    // Serialize from the live HexGrid model
+    // Serialize from the live HexGrid model — only save the active map
     const mapData = serializeGridToMapJson(hexGrid);
-    for (const [filename, entry] of ProjectContext.files.maps) {
+    const entry = activeMapFilename ? ProjectContext.files.maps.get(activeMapFilename) : null;
+    if (entry) {
       entry.data = mapData;
       const json = JSON.stringify(entry.data, null, '\t');
-      await FileDiscovery.saveFile(entry.dir || 'data/maps', json, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/maps', json, activeMapFilename);
     }
   } else if (tab === 'resources') {
     for (const [filename, entry] of ProjectContext.files.resources) {
@@ -377,6 +387,24 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
+  // Build resource color map from loaded .tres data
+  resourceColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.resources) {
+    const colorField = entry.raw.resourceFields.get('placeholder_color');
+    if (colorField && colorField.type === 'color') {
+      const resourceName = filename.replace('.tres', '');
+      const c = colorField.value;
+      const r = Math.round(c.r * 255);
+      const g = Math.round(c.g * 255);
+      const b = Math.round(c.b * 255);
+      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      console.log(`  Resource color: "${resourceName}" -> rgb(${r},${g},${b})`);
+    } else {
+      console.warn(`  Resource "${filename}" has no valid placeholder_color field.`);
+    }
+  }
+  console.log(`Resource color map built — ${resourceColorMap.size} entries.`);
+
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
   if (!firstMap.done) {
@@ -404,6 +432,30 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
+  // Render resource list in the Resources tab (task-012/013)
+  const resourceTabEl = document.getElementById('tab-resources');
+  if (resourceTabEl) {
+    renderResourceEditor(resourceTabEl, { commandHistory });
+    console.log('Resource editor rendered.');
+  }
+
+  // Render biome list in the Biomes tab (task-014/015)
+  const biomeTabEl = document.getElementById('tab-biomes');
+  if (biomeTabEl) {
+    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas });
+    console.log('Biome editor rendered.');
+  }
+
+  // Initialize sidebar palettes and tool buttons (task-012b)
+  initSidebar();
+  console.log('Sidebar initialized.');
+
+  // Update hex inspector map stats after loading
+  if (hexInspector) {
+    hexInspector.updateMapStats();
+    console.log('Hex inspector map stats updated.');
+  }
+
   console.groupEnd();
 }
 
@@ -414,26 +466,385 @@ function initializeAfterLoad() {
 {
   const canvasEl = document.getElementById('hex-canvas');
   if (canvasEl && typeof canvasEl.getContext === 'function') {
-    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap);
+    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, resourceColorMap);
     hexCanvas.toolManager = toolManager;
     hexCanvas.init();
   }
 
-  // Wire coordinates toggle
-  const chkCoords = document.getElementById('chk-coordinates');
-  if (chkCoords) {
-    chkCoords.addEventListener('change', (e) => {
-      if (hexCanvas) {
-        hexCanvas.showCoordinates = /** @type {HTMLInputElement} */ (e.target).checked;
-        hexCanvas.requestRender();
+  // Initialize HexInspector (right sidebar)
+  const sidebarEl = document.getElementById('sidebar');
+  if (sidebarEl) {
+    hexInspector = new HexInspector(sidebarEl, hexGrid, commandHistory, biomeColorMap);
+  }
+
+  // Wire canvas hover to hex inspector
+  if (hexCanvas) {
+    hexCanvas.onHexHover = (hex, subHex) => {
+      if (hexInspector) hexInspector.updateHex(hex, subHex);
+    };
+  }
+}
+
+// ============================================================
+// Sidebar — Tool Selector, Palettes, Map Dropdown (task-012b)
+// ============================================================
+
+/** @type {string|null} Currently selected map filename in the dropdown */
+let activeMapFilename = null;
+
+/**
+ * Tool definitions grouped by scope.
+ * @type {Array<{group: string, tools: Array<{type: string, label: string, shortcut: string}>}>}
+ */
+const TOOL_GROUPS = [
+  { group: 'General', tools: [
+    { type: 'select',     label: 'Select',     shortcut: 'V' },
+  ]},
+  { group: 'Hex Tools', tools: [
+    { type: 'biome',      label: 'Biome',      shortcut: 'B' },
+    { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
+    { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
+    { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
+  ]},
+  { group: 'Sub-Hex Tools', tools: [
+    { type: 'resource',   label: 'Resource',    shortcut: 'R' },
+    { type: 'structure',  label: 'Structure',   shortcut: 'S' },
+    { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
+    { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
+    { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
+  ]},
+];
+
+/**
+ * Initialize the sidebar: populate tool buttons, palettes, map dropdown.
+ * Called after project files are loaded (from initializeAfterLoad).
+ * @returns {void}
+ */
+function initSidebar() {
+  _initToolButtons();
+  _initMapSelector();
+  _initBiomePalette();
+  _initResourcePalette();
+  _initStructurePalette();
+  _initElevationControls();
+  updateSidebar();
+
+  // Trigger canvas resize to account for sidebar width
+  if (hexCanvas) hexCanvas._onResize();
+}
+
+/**
+ * Create tool buttons in the tool grid.
+ * @returns {void}
+ */
+function _initToolButtons() {
+  const container = document.getElementById('tool-buttons');
+  if (!container) return;
+  container.innerHTML = '';
+  for (const group of TOOL_GROUPS) {
+    const header = document.createElement('div');
+    header.className = 'tool-group-header';
+    header.textContent = group.group;
+    container.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'tool-grid';
+    for (const def of group.tools) {
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn';
+      btn.dataset.tool = def.type;
+      btn.textContent = `${def.label} (${def.shortcut})`;
+      btn.title = `${def.label} — shortcut: ${def.shortcut}`;
+      btn.addEventListener('click', () => {
+        if (toolManager.activeToolType === def.type) {
+          selectTool(null);
+        } else {
+          selectTool(def.type);
+        }
+      });
+      grid.appendChild(btn);
+    }
+    container.appendChild(grid);
+  }
+}
+
+/**
+ * Populate the map dropdown from ProjectContext.files.maps.
+ * @returns {void}
+ */
+function _initMapSelector() {
+  const selector = /** @type {HTMLSelectElement|null} */ (document.getElementById('map-selector'));
+  if (!selector) return;
+  selector.innerHTML = '';
+
+  const maps = ProjectContext.files.maps;
+  if (maps.size === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = '(no maps)';
+    opt.disabled = true;
+    selector.appendChild(opt);
+    return;
+  }
+
+  let first = true;
+  for (const [filename] of maps) {
+    const opt = document.createElement('option');
+    opt.value = filename;
+    opt.textContent = filename;
+    if (first) {
+      opt.selected = true;
+      activeMapFilename = filename;
+      first = false;
+    }
+    selector.appendChild(opt);
+  }
+
+  selector.addEventListener('change', () => {
+    const selectedFilename = selector.value;
+    if (selectedFilename === activeMapFilename) return;
+
+    if (dirtyTracker.hasUnsavedChanges()) {
+      if (!confirm('Unsaved changes will be lost. Switch map?')) {
+        // Revert dropdown
+        selector.value = activeMapFilename || '';
+        return;
+      }
+    }
+
+    const mapEntry = ProjectContext.files.maps.get(selectedFilename);
+    if (!mapEntry) return;
+
+    activeMapFilename = selectedFilename;
+    loadMapIntoGrid(hexGrid, mapEntry.data);
+    commandHistory.clear();
+    dirtyTracker.markAllClean();
+    if (hexCanvas) {
+      hexCanvas.fitToView();
+      hexCanvas.requestRender();
+    }
+    if (hexInspector) {
+      hexInspector.updateMapStats();
+    }
+    setStatus(`Map "${selectedFilename}" loaded.`);
+  });
+}
+
+/**
+ * Populate the biome palette from biomeColorMap.
+ * @returns {void}
+ */
+function _initBiomePalette() {
+  const container = document.getElementById('palette-biome-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [biomeName, color] of biomeColorMap) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = biomeName;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'biome-swatch';
+    swatch.style.backgroundColor = color;
+
+    const label = document.createElement('span');
+    label.textContent = biomeName;
+
+    item.appendChild(swatch);
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('biome', biomeName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: biome — ${biomeName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Populate the resource palette from ProjectContext.files.resources.
+ * @returns {void}
+ */
+function _initResourcePalette() {
+  const container = document.getElementById('palette-resource-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [filename] of ProjectContext.files.resources) {
+    const resourceName = filename.replace('.tres', '');
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = resourceName;
+
+    const label = document.createElement('span');
+    label.textContent = resourceName;
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('resource', resourceName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: resource — ${resourceName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Populate the structure palette from STRUCTURE_FOOTPRINTS.
+ * @returns {void}
+ */
+function _initStructurePalette() {
+  const container = document.getElementById('palette-structure-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = structName;
+
+    const label = document.createElement('span');
+    label.textContent = `${structName} (${footprint.length})`;
+    item.appendChild(label);
+
+    item.addEventListener('click', () => {
+      toolManager.setTool('structure', structName);
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: structure — ${structName}`);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Wire elevation control buttons and input.
+ * @returns {void}
+ */
+function _initElevationControls() {
+  // Mode toggle buttons
+  const modeBtns = document.querySelectorAll('.elev-mode-btn');
+  const setControls = document.getElementById('elev-set-controls');
+  const incControls = document.getElementById('elev-inc-controls');
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      toolManager.elevationMode = mode;
+
+      modeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (mode === 'set') {
+        if (setControls) setControls.style.display = '';
+        if (incControls) incControls.style.display = 'none';
+      } else {
+        if (setControls) setControls.style.display = 'none';
+        if (incControls) incControls.style.display = '';
+      }
+    });
+  });
+
+  // SET mode value input
+  const elevValue = /** @type {HTMLInputElement|null} */ (document.getElementById('elev-value'));
+  if (elevValue) {
+    elevValue.addEventListener('input', () => {
+      const val = parseInt(elevValue.value, 10);
+      if (!isNaN(val)) {
+        toolManager.elevationValue = Math.max(0, Math.min(9, val));
       }
     });
   }
 
-  // Initialize PropDetailPanel
-  const rdpContainer = document.getElementById('resource-detail-panel');
-  if (rdpContainer) {
-    propDetailPanel = new PropDetailPanel(rdpContainer, hexGrid, commandHistory);
-    toolManager.propDetailPanel = propDetailPanel;
+  // INCREMENT mode buttons
+  const elevDec = document.getElementById('elev-dec');
+  const elevInc = document.getElementById('elev-inc');
+  if (elevDec) {
+    elevDec.addEventListener('click', () => {
+      toolManager.elevationDelta = -1;
+      setStatus('Elevation: decrement by 1');
+    });
+  }
+  if (elevInc) {
+    elevInc.addEventListener('click', () => {
+      toolManager.elevationDelta = 1;
+      setStatus('Elevation: increment by 1');
+    });
+  }
+}
+
+/**
+ * Update the sidebar to reflect current tool state.
+ * Highlights active tool button, shows relevant palette, updates display.
+ * @returns {void}
+ */
+function updateSidebar() {
+  const activeType = toolManager.activeToolType;
+  const activeValue = toolManager.activeValue;
+
+  // Update tool buttons highlight
+  document.querySelectorAll('#tool-buttons .tool-btn').forEach(btn => {
+    if (btn.dataset.tool === activeType) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Show/hide palettes based on active tool
+  const palettes = ['biome', 'resource', 'structure', 'elevation'];
+  for (const p of palettes) {
+    const el = document.getElementById('palette-' + p);
+    if (!el) continue;
+    if (p === activeType) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  // Also show biome palette for flood_fill tool (it paints biomes)
+  const biomePalette = document.getElementById('palette-biome');
+  if (biomePalette && activeType === 'flood_fill') {
+    biomePalette.classList.remove('hidden');
+  }
+
+  // Highlight selected value in palettes
+  document.querySelectorAll('.palette-item').forEach(item => {
+    if (item.dataset.value === activeValue) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+  });
+
+  // Update active tool display
+  const display = document.getElementById('active-tool-display');
+  if (display) {
+    if (!activeType) {
+      display.textContent = 'No tool selected';
+    } else if (activeValue) {
+      display.textContent = `${activeType}: ${activeValue}`;
+    } else {
+      display.textContent = activeType;
+    }
+  }
+
+  // Update toolbar indicator too
+  const indicator = document.getElementById('tool-indicator');
+  if (indicator) {
+    if (!activeType) {
+      indicator.textContent = '';
+    } else if (activeValue) {
+      indicator.textContent = `Tool: ${activeType} — ${activeValue}`;
+    } else {
+      indicator.textContent = `Tool: ${activeType}`;
+    }
   }
 }

@@ -39,6 +39,7 @@ function isSubHexOccupied(tile, sq, sr) {
 }
 
 export const ToolType = {
+  SELECT: 'select',
   BIOME: 'biome',
   ELEVATION: 'elevation',
   RESOURCE: 'resource',
@@ -275,6 +276,7 @@ export class EraserTool extends DragBrushTool {
 export class ResourcePlacer extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
+    if (!this.toolManager.activeValue) return;
     let tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) {
       // Create tile with default biome
@@ -295,11 +297,6 @@ export class ResourcePlacer extends BaseTool {
 
     const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
     this.commandHistory.execute(cmd);
-
-    // Show prop detail panel if available
-    if (this.toolManager.propDetailPanel) {
-      this.toolManager.propDetailPanel.show(hex.q, hex.r);
-    }
   }
 }
 
@@ -364,9 +361,12 @@ export class SpawnMarker extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
     if (!this.grid.hasTile(hex.q, hex.r)) return;
+    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
+    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
     const oldSpawn = [...this.grid.meta.spawn];
-    const newSpawn = [hex.q, hex.r];
-    if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]) return;
+    const newSpawn = [hex.q, hex.r, sq, sr];
+    if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]
+      && oldSpawn[2] === newSpawn[2] && oldSpawn[3] === newSpawn[3]) return;
 
     const cmd = new SetSpawnCommand(this.grid, oldSpawn, newSpawn);
     this.commandHistory.execute(cmd);
@@ -407,8 +407,6 @@ export class ToolManager {
     this.elevationDelta = 1;
     /** @type {function(string):void|null} */
     this.onStatus = null;
-    /** @type {import('./panels.js').PropDetailPanel|null} */
-    this.propDetailPanel = null;
   }
 
   /**
@@ -427,6 +425,9 @@ export class ToolManager {
     }
 
     switch (toolType) {
+      case ToolType.SELECT:
+        this.activeTool = null;
+        break;
       case ToolType.BIOME:
         this.activeTool = new BiomeBrush(this.grid, this.commandHistory, this);
         break;

@@ -66,100 +66,235 @@ export function showInlineModal(label, defaultValue, callback) {
 }
 
 // ============================================================
-// PropDetailPanel (task-010)
+// HexInspector — Right sidebar panel (replaces PropDetailPanel)
 // ============================================================
 
-export class PropDetailPanel {
+export class HexInspector {
   /**
-   * @param {HTMLElement} container
+   * @param {HTMLElement} container - The #sidebar element
    * @param {import('./hex-grid.js').HexGrid} grid
    * @param {import('./commands.js').CommandHistory} cmdHistory
+   * @param {Map<string, string>} biomeColorMap
    */
-  constructor(container, grid, cmdHistory) {
+  constructor(container, grid, cmdHistory, biomeColorMap) {
     this.container = container;
     this.grid = grid;
     this.commandHistory = cmdHistory;
+    this.biomeColorMap = biomeColorMap;
+    this.mapStatsEl = container.querySelector('#map-stats-content');
+    this.hexInfoEl = container.querySelector('#hex-info-content');
+    this.propEditorEl = container.querySelector('#prop-editor-content');
+    /** @type {{ q: number, r: number }|null} */
     this.currentHex = null;
   }
 
   /**
-   * Show panel for a hex.
+   * Update map-level statistics in the top section.
+   * @returns {void}
+   */
+  updateMapStats() {
+    if (!this.mapStatsEl) return;
+    // Clear previous content
+    while (this.mapStatsEl.firstChild) {
+      this.mapStatsEl.removeChild(this.mapStatsEl.firstChild);
+    }
+
+    const tiles = this.grid.tiles;
+    const totalHexes = tiles.size;
+
+    if (totalHexes === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'text-muted';
+      empty.textContent = 'No tiles loaded';
+      this.mapStatsEl.appendChild(empty);
+      return;
+    }
+
+    let minQ = Infinity, maxQ = -Infinity;
+    let minR = Infinity, maxR = -Infinity;
+    /** @type {Map<string, number>} */
+    const biomeCounts = new Map();
+
+    for (const [key, tile] of tiles) {
+      const parts = key.split(',');
+      const q = parseInt(parts[0], 10);
+      const r = parseInt(parts[1], 10);
+      if (q < minQ) minQ = q;
+      if (q > maxQ) maxQ = q;
+      if (r < minR) minR = r;
+      if (r > maxR) maxR = r;
+      const biome = tile.biome || '(none)';
+      biomeCounts.set(biome, (biomeCounts.get(biome) || 0) + 1);
+    }
+
+    // Map identity
+    if (this.grid.meta.chapter_id) {
+      this.mapStatsEl.appendChild(this._createStatRow('Map ID', this.grid.meta.chapter_id));
+    }
+    if (this.grid.meta.name) {
+      this.mapStatsEl.appendChild(this._createStatRow('Name', this.grid.meta.name));
+    }
+    // Total hexes
+    this.mapStatsEl.appendChild(this._createStatRow('Total hexes', String(totalHexes)));
+    // Q range with distance in meters (each hex = 6m)
+    const qSpan = (maxQ - minQ + 1) * 6;
+    this.mapStatsEl.appendChild(this._createStatRow('Q range', `${minQ} to ${maxQ} (${qSpan}m)`));
+    // R range with distance in meters
+    const rSpan = (maxR - minR + 1) * 6;
+    this.mapStatsEl.appendChild(this._createStatRow('R range', `${minR} to ${maxR} (${rSpan}m)`));
+
+    // Biome distribution header
+    const biomeHeader = document.createElement('div');
+    biomeHeader.style.cssText = 'margin-top:6px;margin-bottom:2px;font-size:11px;color:var(--text-secondary);';
+    biomeHeader.textContent = 'Biome distribution:';
+    this.mapStatsEl.appendChild(biomeHeader);
+
+    // Sort biomes by count descending
+    const sorted = [...biomeCounts.entries()].sort((a, b) => b[1] - a[1]);
+    for (const [biome, count] of sorted) {
+      const row = document.createElement('div');
+      row.className = 'biome-stat-row';
+
+      const swatch = document.createElement('span');
+      swatch.className = 'biome-swatch';
+      swatch.style.backgroundColor = this.biomeColorMap.get(biome) || '#888';
+      swatch.style.borderRadius = '2px';
+      swatch.style.border = '1px solid var(--border)';
+      row.appendChild(swatch);
+
+      const label = document.createElement('span');
+      label.textContent = `${biome}: ${count}`;
+      row.appendChild(label);
+
+      this.mapStatsEl.appendChild(row);
+    }
+  }
+
+  /**
+   * Update when hovering a hex. Called on every mousemove from canvas.
+   * @param {{ q: number, r: number }|null} hex
+   * @param {{ q: number, r: number }|null} subHex
+   * @returns {void}
+   */
+  updateHex(hex, subHex) {
+    if (!hex) {
+      this.currentHex = null;
+      this._clearEl(this.hexInfoEl);
+      const muted = document.createElement('span');
+      muted.className = 'text-muted';
+      muted.textContent = 'Hover a hex to inspect';
+      if (this.hexInfoEl) this.hexInfoEl.appendChild(muted);
+      this._clearEl(this.propEditorEl);
+      return;
+    }
+
+    this.currentHex = { q: hex.q, r: hex.r };
+
+    this._renderHexInfo(hex.q, hex.r);
+    this._renderPropEditor(hex.q, hex.r);
+  }
+
+  /**
+   * Force re-render the current hex (e.g. after editing a prop).
+   * @returns {void}
+   */
+  _refreshCurrentHex() {
+    if (!this.currentHex) return;
+    const { q, r } = this.currentHex;
+    this._renderHexInfo(q, r);
+    this._renderPropEditor(q, r);
+  }
+
+  /**
+   * Render hex details in the middle section.
    * @param {number} q
    * @param {number} r
    * @returns {void}
    */
-  show(q, r) {
-    this.currentHex = { q, r };
-    this.container.style.display = 'block';
-    this._renderContent();
-  }
+  _renderHexInfo(q, r) {
+    this._clearEl(this.hexInfoEl);
+    if (!this.hexInfoEl) return;
 
-  /**
-   * Hide the panel.
-   * @returns {void}
-   */
-  hide() {
-    this.currentHex = null;
-    this.container.style.display = 'none';
-    this.container.innerHTML = '';
-  }
-
-  /**
-   * Re-render panel content.
-   * @returns {void}
-   */
-  _renderContent() {
-    if (!this.currentHex) return;
-    const { q, r } = this.currentHex;
     const tile = this.grid.getTile(q, r);
-    this.container.innerHTML = '';
 
-    this.container.appendChild(this._renderHeader(q, r));
+    // Coordinates
+    const coordRow = document.createElement('div');
+    coordRow.className = 'hex-info-row';
+    const coordLabel = document.createElement('span');
+    coordLabel.textContent = `Coordinates: (${q}, ${r})`;
+    coordRow.appendChild(coordLabel);
+    this.hexInfoEl.appendChild(coordRow);
 
+    if (!tile) {
+      const ghostNote = document.createElement('div');
+      ghostNote.className = 'hex-info-row';
+      const ghostSpan = document.createElement('span');
+      ghostSpan.className = 'text-muted';
+      ghostSpan.textContent = 'Empty (ghost cell)';
+      ghostNote.appendChild(ghostSpan);
+      this.hexInfoEl.appendChild(ghostNote);
+      return;
+    }
+
+    // Biome with color swatch
+    const biomeRow = document.createElement('div');
+    biomeRow.className = 'hex-info-row';
+    const biomeSwatch = document.createElement('span');
+    biomeSwatch.className = 'biome-swatch';
+    biomeSwatch.style.backgroundColor = this.biomeColorMap.get(tile.biome) || '#888';
+    biomeSwatch.style.borderRadius = '3px';
+    biomeSwatch.style.border = '1px solid var(--border)';
+    biomeRow.appendChild(biomeSwatch);
+    const biomeText = document.createElement('span');
+    biomeText.textContent = `Biome: ${tile.biome || '(none)'}`;
+    biomeRow.appendChild(biomeText);
+    this.hexInfoEl.appendChild(biomeRow);
+
+    // Elevation
+    const elevRow = document.createElement('div');
+    elevRow.className = 'hex-info-row';
+    const elevText = document.createElement('span');
+    elevText.textContent = `Elevation: ${tile.elevation}`;
+    elevRow.appendChild(elevText);
+    this.hexInfoEl.appendChild(elevRow);
+
+    // Prop summary
+    if (tile.props && tile.props.length > 0) {
+      const propSummary = document.createElement('div');
+      propSummary.className = 'hex-info-row';
+      const propText = document.createElement('span');
+      propText.textContent = `Props: ${tile.props.length}`;
+      propSummary.appendChild(propText);
+      this.hexInfoEl.appendChild(propSummary);
+    }
+  }
+
+  /**
+   * Render the prop editor in the bottom section.
+   * @param {number} q
+   * @param {number} r
+   * @returns {void}
+   */
+  _renderPropEditor(q, r) {
+    this._clearEl(this.propEditorEl);
+    if (!this.propEditorEl) return;
+
+    const tile = this.grid.getTile(q, r);
     if (!tile || !tile.props || tile.props.length === 0) {
-      this.container.appendChild(this._renderEmptyState());
+      const empty = document.createElement('span');
+      empty.className = 'text-muted';
+      empty.textContent = 'No props on this hex';
+      this.propEditorEl.appendChild(empty);
       return;
     }
 
     tile.props.forEach((prop, index) => {
-      this.container.appendChild(this._renderPropRow(prop, index, q, r, tile));
+      this.propEditorEl.appendChild(this._renderPropCard(prop, index, q, r, tile));
     });
   }
 
   /**
-   * Render the panel header with title and close button.
-   * @param {number} q
-   * @param {number} r
-   * @returns {HTMLElement}
-   */
-  _renderHeader(q, r) {
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
-    const title = document.createElement('strong');
-    title.textContent = `Props on (${q}, ${r})`;
-    title.style.fontSize = '13px';
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'X';
-    closeBtn.style.cssText = 'background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px;padding:2px 6px;';
-    closeBtn.addEventListener('click', () => this.hide());
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-    return header;
-  }
-
-  /**
-   * Render the "No props" empty state message.
-   * @returns {HTMLElement}
-   */
-  _renderEmptyState() {
-    const empty = document.createElement('div');
-    empty.textContent = 'No props on this hex.';
-    empty.style.cssText = 'color:var(--text-secondary);font-size:12px;';
-    return empty;
-  }
-
-  /**
-   * Render a single prop row with inputs and delete button.
+   * Render a single editable prop card.
    * @param {Object} prop
    * @param {number} index
    * @param {number} q
@@ -167,13 +302,13 @@ export class PropDetailPanel {
    * @param {Object} tile
    * @returns {HTMLElement}
    */
-  _renderPropRow(prop, index, q, r, tile) {
-    const row = document.createElement('div');
-    row.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px;background:var(--bg-tertiary);';
+  _renderPropCard(prop, index, q, r, tile) {
+    const card = document.createElement('div');
+    card.className = 'prop-card';
 
-    // Type label with category badge (safe DOM construction — no innerHTML)
-    const typeLabel = document.createElement('div');
-    typeLabel.style.cssText = 'margin-bottom:4px;';
+    // Type label with category badge (safe DOM — no innerHTML)
+    const header = document.createElement('div');
+    header.className = 'prop-card-header';
     const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.resource;
     const typeSpan = document.createElement('span');
     typeSpan.style.cssText = `color:${catColors.badge};font-weight:600;font-size:12px;`;
@@ -181,9 +316,9 @@ export class PropDetailPanel {
     const categorySpan = document.createElement('span');
     categorySpan.style.cssText = 'color:var(--text-secondary);font-size:10px;';
     categorySpan.textContent = ` [${String(prop.category)}]`;
-    typeLabel.appendChild(typeSpan);
-    typeLabel.appendChild(categorySpan);
-    row.appendChild(typeLabel);
+    header.appendChild(typeSpan);
+    header.appendChild(categorySpan);
+    card.appendChild(header);
 
     // Build fields based on category
     const fields = [
@@ -191,17 +326,15 @@ export class PropDetailPanel {
       { name: 'sr', value: prop.sr, min: -2, max: 2, step: 1 },
     ];
 
-    // Resources have rotation
     if (prop.category === 'resource') {
       fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
     }
 
     const fieldsRow = document.createElement('div');
-    fieldsRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+    fieldsRow.className = 'prop-card-fields';
 
     for (const field of fields) {
       const label = document.createElement('label');
-      label.style.cssText = 'font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:2px;';
       label.textContent = field.name + ':';
       const input = document.createElement('input');
       input.type = 'number';
@@ -209,7 +342,6 @@ export class PropDetailPanel {
       input.min = String(field.min);
       input.max = String(field.max);
       input.step = String(field.step);
-      input.style.cssText = 'width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;';
       input.dataset.propIndex = String(index);
       input.dataset.field = field.name;
 
@@ -231,7 +363,7 @@ export class PropDetailPanel {
         const newValues = { [field.name]: clamped };
         const cmd = new EditPropCommand(this.grid, q, r, index, oldValues, newValues);
         this.commandHistory.execute(cmd);
-        this._renderContent(); // refresh
+        this._refreshCurrentHex();
       };
 
       input.addEventListener('blur', handleChange);
@@ -242,27 +374,59 @@ export class PropDetailPanel {
 
     // Delete button
     const delBtn = document.createElement('button');
+    delBtn.className = 'prop-delete-btn';
     delBtn.textContent = 'X';
     delBtn.title = 'Delete prop';
-    delBtn.style.cssText = 'background:var(--danger);color:white;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:auto;';
     delBtn.addEventListener('click', () => {
       const removed = tile.props[index];
       const cmd = new DeletePropCommand(this.grid, q, r, index, removed);
       this.commandHistory.execute(cmd);
-      this._renderContent(); // refresh
+      this._refreshCurrentHex();
     });
     fieldsRow.appendChild(delBtn);
 
-    row.appendChild(fieldsRow);
+    card.appendChild(fieldsRow);
 
-    // Footprint display for structures (G7)
+    // Footprint display for structures
     if (prop.category === 'structure' && prop.footprint) {
       const fpLabel = document.createElement('div');
+      fpLabel.className = 'prop-footprint';
       fpLabel.textContent = 'Footprint: ' + prop.footprint.map(f => `(${f.q},${f.r})`).join(' ');
-      fpLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);margin-top:2px;';
-      row.appendChild(fpLabel);
+      card.appendChild(fpLabel);
     }
 
+    return card;
+  }
+
+  /**
+   * Create a stat row with label and value.
+   * @param {string} label
+   * @param {string} value
+   * @returns {HTMLElement}
+   */
+  _createStatRow(label, value) {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'stat-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('span');
+    valueEl.className = 'stat-value';
+    valueEl.textContent = value;
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
     return row;
+  }
+
+  /**
+   * Clear all child nodes from an element safely.
+   * @param {HTMLElement|null} el
+   * @returns {void}
+   */
+  _clearEl(el) {
+    if (!el) return;
+    while (el.firstChild) {
+      el.removeChild(el.firstChild);
+    }
   }
 }
