@@ -267,7 +267,7 @@ function saveMapAs() {
     return;
   }
 
-  const defaultName = (hexGrid.meta.chapter_id || 'map') + '.json';
+  const defaultName = hexGrid.meta.chapter_id || 'map';
   showInlineModal('Save As (filename):', defaultName, async (filename) => {
     if (filename === null) return;
     const name = filename.trim();
