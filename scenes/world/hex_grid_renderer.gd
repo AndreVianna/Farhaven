@@ -169,7 +169,7 @@ func _rebuild_mesh() -> void:
 			)
 			if not corner_map.has(pos_key):
 				corner_map[pos_key] = []
-			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = tile.elevation})
+			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = tile.elevation, is_water = (tile.biome == _HexTile.Biome.WATER)})
 
 	# Step 3: Average corner colors per elevation group (diff ≤ 2 blends).
 	# For each position, group entries by elevation proximity and average within groups.
@@ -178,14 +178,19 @@ func _rebuild_mesh() -> void:
 	for pos_key: Variant in corner_map:
 		var entries: Array = corner_map[pos_key]
 		# For each entry, blend with others within diff ≤ 2.
+		# Water never blends with non-water (hard edge at water boundary).
 		for entry: Dictionary in entries:
 			var elev: int = entry.elevation
+			var entry_is_water: bool = entry.is_water
 			var r: float = 0.0
 			var g: float = 0.0
 			var b: float = 0.0
 			var a: float = 0.0
 			var n: float = 0.0
 			for other: Dictionary in entries:
+				# Skip water/land cross-blending.
+				if entry_is_water != other.is_water:
+					continue
 				if absi(elev - other.elevation) <= 2:
 					r += (other.color as Color).r
 					g += (other.color as Color).g
@@ -390,16 +395,14 @@ func _rebuild_mesh() -> void:
 				st.set_color(rk_col[j_next])
 				st.add_vertex(rk_pos[j_next])
 
-	# Step 6: Generate wall faces on ALL faces of non-zero-elevation hexes.
-	# Every face gets a wall — ensures no visual gaps at any terrain transition.
-	# Only exceptions: elevation 0 hexes (ground level) and water-to-water.
+	# Step 6: Generate wall faces on ALL faces of non-water hexes.
+	# Every face gets a wall unless neighbor is higher (it generates its own).
+	# Only exception: water hexes (no walls from water).
 	# 6-point polygon per wall, following the actual surface profile on both sides.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
 		if tile.biome == _HexTile.Biome.WATER:
-			continue  # Water hexes don't generate walls (handled later).
-		if tile.elevation == 0:
-			continue  # Ground-level hexes need no walls.
+			continue  # Water hexes don't generate walls.
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y

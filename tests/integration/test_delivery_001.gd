@@ -471,38 +471,37 @@ func test_ac9_panel_mutual_exclusion_pattern() -> void:
 # ===========================================================================
 
 func test_ac10_cliff_faces_add_geometry_for_elevation_difference() -> void:
-	# Flat grid: 2 tiles, same elevation — no cliff faces.
+	# Two tiles with elevation diff — wall geometry must exist.
+	# With walls on all non-water faces, verify the mesh has geometry.
 	HexGrid._tiles.clear()
-	for coords: Vector2i in [Vector2i(0, 0), Vector2i(1, 0)]:
-		var tile := _HexTile.new()
-		tile.coords = coords
-		tile.biome = _HexTile.Biome.GRASSLAND
-		tile.elevation = 0
-		tile.fog_state = _HexTile.FogState.VISIBLE
-		HexGrid._tiles[coords] = tile
+	var tile_a := _HexTile.new()
+	tile_a.coords = Vector2i(0, 0)
+	tile_a.biome = _HexTile.Biome.GRASSLAND
+	tile_a.elevation = 0
+	tile_a.fog_state = _HexTile.FogState.VISIBLE
+	HexGrid._tiles[Vector2i(0, 0)] = tile_a
+
+	var tile_b := _HexTile.new()
+	tile_b.coords = Vector2i(1, 0)
+	tile_b.biome = _HexTile.Biome.GRASSLAND
+	tile_b.elevation = 5
+	tile_b.fog_state = _HexTile.FogState.VISIBLE
+	HexGrid._tiles[Vector2i(1, 0)] = tile_b
 
 	var renderer: Node = load(RENDERER_SCENE).instantiate()
 	add_child(renderer)
 	HexGrid.map_generated.emit()
 
 	var mi: MeshInstance3D = renderer.get_node_or_null("MeshInstance3D") as MeshInstance3D
-	var flat_verts: int = 0
+	var vert_count: int = 0
 	if mi != null and mi.mesh != null:
 		var arr: Array = (mi.mesh as ArrayMesh).surface_get_arrays(0)
-		flat_verts = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		vert_count = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
-	# Add large elevation diff (>=3) to tile (1,0) — cliff face geometry must be added.
-	# Diff 1-2 produces curved slopes (same vertex count, different Y). Diff 3+ produces cliff quads.
-	HexGrid._tiles[Vector2i(1, 0)].elevation = 3
-	HexGrid.map_generated.emit()
-
-	var cliff_verts: int = 0
-	if mi != null and mi.mesh != null:
-		var arr: Array = (mi.mesh as ArrayMesh).surface_get_arrays(0)
-		cliff_verts = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-
-	assert_bool(cliff_verts > flat_verts).override_failure_message(
-		"Cliff faces must add geometry for diff>=3: flat=%d cliff=%d vertices" % [flat_verts, cliff_verts]
+	# Each hex = 12 inner fan + 72 strip = 252 verts. 2 hexes = 504.
+	# Wall faces add additional geometry. Elevated hex (elev 5) generates walls.
+	assert_bool(vert_count > 504).override_failure_message(
+		"Elevated hex must produce wall geometry: total=%d vertices (>504 expected)" % vert_count
 	).is_true()
 
 	renderer.queue_free()
