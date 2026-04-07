@@ -9,7 +9,7 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 const WALK_MAX_DIFF: int = 1
-const JUMP_MAX_DIFF: int = 3
+const JUMP_MAX_DIFF: int = 2
 
 # Legacy alias — existing code may reference this
 const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
@@ -78,7 +78,7 @@ func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
 	return abs(int(tile_to.elevation) - int(tile_from.elevation))
 
 
-## 3-tier traversal: WALK (0-1), JUMP/DROP (2-3), BLOCKED (4+, water, wall).
+## 3-tier traversal: WALK (0-1), JUMP/DROP (2), BLOCKED (3+, water, wall).
 func get_traversal(from: Vector2i, to: Vector2i) -> int:
 	var tile_to: Resource = _tiles.get(to, null)
 	if tile_to == null:

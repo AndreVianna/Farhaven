@@ -5,14 +5,19 @@ extends Node3D
 ##
 ## Architecture:
 ##   - On map_generated: build full ArrayMesh from HexGrid tile data.
-##   - 7 vertices per hex (1 center + 6 corners), 6 triangles (fan from center).
+##   - Concentric ring subdivision: 1 center + 6 vertices × 4 rings = 25 vertices per hex.
+##   - 6 inner-fan triangles + 36 ring-strip triangles = 42 triangles per hex.
+##   - Ring radii: 0, 25%, 50%, 75%, 100% of HEX_SIZE.
+##   - Smoothstep interpolation between center and outer corners → curved terrain.
 ##   - Center vertex color = biome color variation (hash-selected from BiomeData).
 ##   - Corner vertex color = average of all tiles sharing that corner at SAME elevation.
-##   - Different elevation = each hex owns its own corner vertices → hard cliff edge.
-##   - Y position = elevation * ELEVATION_STEP.
+##   - Different elevation = different corner key → no color sharing → cliff edge.
+##   - Y position = elevation * ELEVATION_STEP, with corner Y averaged for slopes (diff 1-2).
+##   - Water tiles stay flat regardless of neighbor elevation (no curvature).
 ##   - HIDDEN tiles: excluded from mesh (no geometry).
 ##   - VISIBLE tiles: full vertex colors. Darkness handled by shader.
 ##   - Highlights: vertex color override, cleared on clear_highlights().
+##   - Cliff faces generated only for elevation diff >= 3 (BLOCKED traversal).
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
@@ -181,10 +186,12 @@ func _rebuild_mesh() -> void:
 		corner_colors[key] = Color(r / n, g / n, b / n, a / n)
 
 	# Step 4: Assemble triangles with SurfaceTool.
-	# Each hex has 13 vertices: center + 6 inner ring (85% radius) + 6 corners.
-	# Inner ring vertices = pure tile color. Only corners blend with neighbors.
-	# This creates a narrow 15% transition band at hex edges.
-	const INNER_RING: float = 0.85  # inner ring at 85% of hex radius
+	# Concentric ring subdivision: 1 center vertex + 6 vertices × 4 rings = 25 verts per hex.
+	# Ring radii: 0, 25%, 50%, 75%, 100% of HEX_SIZE.
+	# Y is interpolated via smoothstep between center elevation and per-corner elevation.
+	# 6 inner-fan triangles + 3 quad strips × 12 tris each = 42 tris per hex.
+	# Water tiles stay flat at center elevation regardless of neighbor heights.
+	const RING_COUNT: int = 4
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -196,6 +203,7 @@ func _rebuild_mesh() -> void:
 		var cz: float = world_2d.y
 		var elevation_y: float = float(tile.elevation) * ELEVATION_STEP
 		var center_color: Color = tile_colors[coords]
+		var is_water: bool = tile.biome == _HexTile.Biome.WATER
 
 		# Compute per-corner Y for slope interpolation.
 		# Each corner is influenced by the two edges it belongs to.
@@ -208,7 +216,7 @@ func _rebuild_mesh() -> void:
 			if n_tile == null:
 				continue
 			var diff: int = absi(tile.elevation - n_tile.elevation)
-			if diff >= 1 and diff <= 3:
+			if diff >= 1 and diff <= 2:
 				var n_y: float = float(n_tile.elevation) * ELEVATION_STEP
 				var slope_y: float = lerpf(elevation_y, n_y, 0.5)
 				# Corner d and corner (d+1)%6 both touch this edge.
@@ -225,75 +233,110 @@ func _rebuild_mesh() -> void:
 			else:
 				corner_y[ci] = corner_slope_sums[ci] / float(corner_slope_counts[ci])
 
+		# Precompute outer corner colors at each angular direction (i = 0..5).
+		var corner_colors_at: Array[Color] = [
+			center_color, center_color, center_color,
+			center_color, center_color, center_color,
+		]
 		for i: int in range(6):
 			var angle_i: float = deg_to_rad(60.0 * float(i))
-			var angle_j: float = deg_to_rad(60.0 * float((i + 1) % 6))
-
-			# Outer corners (blended with neighbors)
 			var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
 			var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
-			var cj_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE
-			var cj_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE
+			var key_i := Vector3i(
+				roundi(ci_x * 1000.0),
+				tile.elevation,
+				roundi(ci_z * 1000.0)
+			)
+			corner_colors_at[i] = corner_colors.get(key_i, center_color)
 
-			# Inner ring (pure tile color)
-			var ii_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE * INNER_RING
-			var ii_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE * INNER_RING
-			var ij_x: float = cx + cos(angle_j) * HexMath.HEX_SIZE * INNER_RING
-			var ij_z: float = cz + sin(angle_j) * HexMath.HEX_SIZE * INNER_RING
+		# Build all ring vertex positions and colors.
+		# rings_pos[k] = Array of 6 Vector3 (or 1 element for ring 0)
+		# rings_col[k] = Array of 6 Color   (or 1 element for ring 0)
+		var rings_pos: Array = []
+		var rings_col: Array = []
 
-			var key_i := Vector3i(roundi(ci_x * 1000.0), tile.elevation, roundi(ci_z * 1000.0))
-			var key_j := Vector3i(roundi(cj_x * 1000.0), tile.elevation, roundi(cj_z * 1000.0))
+		# Ring 0: just the center vertex.
+		rings_pos.append([Vector3(cx, elevation_y, cz)])
+		rings_col.append([center_color])
 
-			var color_i: Color = corner_colors.get(key_i, center_color)
-			var color_j: Color = corner_colors.get(key_j, center_color)
+		# Rings 1..RING_COUNT (k = 1..4): 6 vertices each.
+		for k: int in range(1, RING_COUNT + 1):
+			var t: float = float(k) / float(RING_COUNT)
+			var s: float = t * t * (3.0 - 2.0 * t)  # smoothstep
+			var radius: float = HexMath.HEX_SIZE * t
 
-			# Outer corner Y: sloped or flat depending on neighbor elevation
-			var cy_i: float = corner_y[i]
-			var cy_j: float = corner_y[(i + 1) % 6]
+			var ring_pos: Array = []
+			var ring_col: Array = []
+			for i: int in range(6):
+				var angle: float = deg_to_rad(60.0 * float(i))
+				var vx: float = cx + cos(angle) * radius
+				var vz: float = cz + sin(angle) * radius
+				var vy: float
+				if is_water:
+					vy = elevation_y  # water stays flat
+				else:
+					vy = lerpf(elevation_y, corner_y[i], s)
+				ring_pos.append(Vector3(vx, vy, vz))
+				# Color: linear lerp from center to outer corner color at this angle.
+				ring_col.append(center_color.lerp(corner_colors_at[i], t))
+			rings_pos.append(ring_pos)
+			rings_col.append(ring_col)
 
-			# Inner triangle: center → inner_i → inner_j (pure tile color, flat)
+		# Inner fan: center → ring1[i] → ring1[(i+1)%6]
+		var center_pos: Vector3 = rings_pos[0][0]
+		var ring1_pos: Array = rings_pos[1]
+		var ring1_col: Array = rings_col[1]
+		for i: int in range(6):
+			var i_next: int = (i + 1) % 6
 			st.set_normal(Vector3.UP)
 			st.set_color(center_color)
-			st.add_vertex(Vector3(cx, elevation_y, cz))
+			st.add_vertex(center_pos)
 
 			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.add_vertex(Vector3(ii_x, elevation_y, ii_z))
+			st.set_color(ring1_col[i])
+			st.add_vertex(ring1_pos[i])
 
 			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
+			st.set_color(ring1_col[i_next])
+			st.add_vertex(ring1_pos[i_next])
 
-			# Outer quad: inner_i → corner_i → corner_j → inner_j (transition band)
-			# Corner vertices use sloped Y; inner ring stays at tile elevation.
-			# Triangle A: inner_i → corner_i → inner_j
-			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.add_vertex(Vector3(ii_x, elevation_y, ii_z))
+		# Quad strips between ring k and ring k+1, for k in 1..RING_COUNT-1 (1..3).
+		# Each strip = 6 quads = 12 triangles. 3 strips × 12 = 36 strip triangles.
+		for k: int in range(1, RING_COUNT):
+			var rk_pos: Array = rings_pos[k]
+			var rk_col: Array = rings_col[k]
+			var rk1_pos: Array = rings_pos[k + 1]
+			var rk1_col: Array = rings_col[k + 1]
+			for i: int in range(6):
+				var i_next: int = (i + 1) % 6
+				# Triangle A: rk[i] → rk1[i] → rk[i_next]
+				st.set_normal(Vector3.UP)
+				st.set_color(rk_col[i])
+				st.add_vertex(rk_pos[i])
 
-			st.set_normal(Vector3.UP)
-			st.set_color(color_i)
-			st.add_vertex(Vector3(ci_x, cy_i, ci_z))
+				st.set_normal(Vector3.UP)
+				st.set_color(rk1_col[i])
+				st.add_vertex(rk1_pos[i])
 
-			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
+				st.set_normal(Vector3.UP)
+				st.set_color(rk_col[i_next])
+				st.add_vertex(rk_pos[i_next])
 
-			# Triangle B: corner_i → corner_j → inner_j
-			st.set_normal(Vector3.UP)
-			st.set_color(color_i)
-			st.add_vertex(Vector3(ci_x, cy_i, ci_z))
+				# Triangle B: rk1[i] → rk1[i_next] → rk[i_next]
+				st.set_normal(Vector3.UP)
+				st.set_color(rk1_col[i])
+				st.add_vertex(rk1_pos[i])
 
-			st.set_normal(Vector3.UP)
-			st.set_color(color_j)
-			st.add_vertex(Vector3(cj_x, cy_j, cj_z))
+				st.set_normal(Vector3.UP)
+				st.set_color(rk1_col[i_next])
+				st.add_vertex(rk1_pos[i_next])
 
-			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.add_vertex(Vector3(ij_x, elevation_y, ij_z))
+				st.set_normal(Vector3.UP)
+				st.set_color(rk_col[i_next])
+				st.add_vertex(rk_pos[i_next])
 
-	# Step 5: Generate cliff faces ONLY for elevation diff >= 4 (BLOCKED).
-	# Diff 1-3 uses slopes (corner Y interpolation above). No cliff face needed.
+	# Step 5: Generate cliff faces ONLY for elevation diff >= 3 (BLOCKED).
+	# Diff 1-2 uses curved slopes (smoothstep ring Y interpolation above). No cliff face needed.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
@@ -310,7 +353,7 @@ func _rebuild_mesh() -> void:
 				continue
 			# Only generate cliff face for large elevation differences (BLOCKED traversal).
 			var diff: int = tile.elevation - neighbor_tile.elevation
-			if diff < 4:
+			if diff < 3:
 				continue
 
 			var low_y: float = float(neighbor_tile.elevation) * ELEVATION_STEP
