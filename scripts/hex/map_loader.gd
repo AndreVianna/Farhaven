@@ -98,8 +98,16 @@ func load_map(path: String) -> bool:
 				prop.type = StringName(pd.get("type", ""))
 				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
-				prop.tool_required = StringName(pd.get("tool_required", ""))
-				prop.respawn_time = float(pd.get("respawn_time", 0.0))
+				var tool_req_str: String = pd.get("tool_required", "")
+				if tool_req_str == "" and ResourceRegistry.has_def(prop.type):
+					prop.tool_required = ResourceRegistry.get_def(prop.type).tool_required
+				else:
+					prop.tool_required = StringName(tool_req_str)
+				var respawn_val: float = float(pd.get("respawn_time", 0.0))
+				if respawn_val == 0.0 and ResourceRegistry.has_def(prop.type):
+					prop.respawn_time = ResourceRegistry.get_def(prop.type).respawn_time
+				else:
+					prop.respawn_time = respawn_val
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
