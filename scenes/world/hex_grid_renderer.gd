@@ -222,27 +222,19 @@ func _rebuild_mesh() -> void:
 		]
 		var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 		for ci: int in range(6):
-			# Gather all elevations sharing this corner (this tile + up to 2 neighbors).
-			var elevs: Array[int] = [tile.elevation]
+			# Average ALL hex elevations sharing this corner — no threshold.
+			# Guarantees cross-hex consistency (all 3 hexes compute same Y).
+			# Cliff faces handle large elevation transitions separately.
+			var sum_elev: float = float(tile.elevation)
+			var count: int = 1
 			var dir_pair: Array = corner_neighbor_dirs[ci]
 			for d: int in dir_pair:
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 				if n_tile != null:
-					elevs.append(n_tile.elevation)
-			# Only average if ALL pairwise diffs are within slope range.
-			# This ensures every hex sharing the corner makes the same decision.
-			var max_diff: int = 0
-			for a: int in range(elevs.size()):
-				for b: int in range(a + 1, elevs.size()):
-					max_diff = maxi(max_diff, absi(elevs[a] - elevs[b]))
-			if max_diff <= 2:
-				var sum_elev: float = 0.0
-				for e: int in elevs:
-					sum_elev += float(e)
-				corner_y[ci] = (sum_elev / float(elevs.size())) * ELEVATION_STEP
-			else:
-				corner_y[ci] = elevation_y  # cliff — no averaging, use own elevation
+					sum_elev += float(n_tile.elevation)
+					count += 1
+			corner_y[ci] = (sum_elev / float(count)) * ELEVATION_STEP
 
 		# Precompute outer corner colors at each angular direction (i = 0..5).
 		var corner_colors_at: Array[Color] = [

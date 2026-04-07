@@ -199,29 +199,20 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
 	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 
-	# Compute corner Y values (average of up to 3 hexes sharing each corner).
-	# Only average if ALL pairwise diffs are within slope range — ensures
-	# every hex sharing the corner makes the same include/exclude decision.
+	# Average ALL hex elevations sharing each corner — no threshold.
+	# Guarantees cross-hex consistency. Cliff faces handle large diffs.
 	var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 	for ci: int in range(6):
-		var elevs: Array[int] = [tile.elevation]
+		var sum_elev: float = float(tile.elevation)
+		var count: int = 1
 		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
 		for d: int in dir_pair:
 			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = _tiles.get(n_coords, null)
 			if n_tile != null:
-				elevs.append(n_tile.elevation)
-		var max_diff: int = 0
-		for a: int in range(elevs.size()):
-			for b_idx: int in range(a + 1, elevs.size()):
-				max_diff = maxi(max_diff, absi(elevs[a] - elevs[b_idx]))
-		if max_diff <= 2:
-			var sum_elev: float = 0.0
-			for e: int in elevs:
-				sum_elev += float(e)
-			corner_y[ci] = (sum_elev / float(elevs.size())) * ELEVATION_STEP
-		else:
-			corner_y[ci] = center_y
+				sum_elev += float(n_tile.elevation)
+				count += 1
+		corner_y[ci] = (sum_elev / float(count)) * ELEVATION_STEP
 
 	# Find angle → which two corners we're between.
 	var angle: float = atan2(dz, dx)
