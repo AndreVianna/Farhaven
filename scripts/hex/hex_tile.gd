@@ -32,7 +32,11 @@ func get_props_by_category(category: int) -> Array:
 
 
 func get_resources() -> Array:
-	return get_props_by_category(_Prop.Category.RESOURCE)
+	var result: Array = []
+	for prop in props:
+		if prop.is_natural_category():
+			result.append(prop)
+	return result
 
 
 func get_structures() -> Array:
@@ -40,4 +44,8 @@ func get_structures() -> Array:
 
 
 func get_anomalies() -> Array:
-	return get_props_by_category(_Prop.Category.ANOMALY)
+	var result: Array = []
+	for prop in props:
+		if prop.is_anomaly():
+			result.append(prop)
+	return result

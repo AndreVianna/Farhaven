@@ -196,7 +196,7 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 
 		for i in tile.props.size():
 			var prop: Resource = tile.props[i]
-			if prop.category != _Prop.Category.RESOURCE:
+			if not prop.is_natural_category():
 				continue
 			if prop.remaining <= 0:
 				continue  # Depleted

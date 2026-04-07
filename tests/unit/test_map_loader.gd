@@ -74,7 +74,7 @@ func test_anomaly_exists() -> void:
 	var found: bool = false
 	for c in _grid._tiles:
 		for prop in _grid._tiles[c].props:
-			if prop.category == Prop.Category.ANOMALY:
+			if prop.is_anomaly():
 				found = true
 				break
 		if found:

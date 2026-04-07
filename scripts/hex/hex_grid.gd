@@ -286,6 +286,7 @@ func get_save_data() -> Dictionary:
 			props_data.append({
 				"type": String(prop.type),
 				"category": prop.category,
+				"origin": prop.origin,
 				"sub_hex_q": prop.sub_hex.x,
 				"sub_hex_r": prop.sub_hex.y,
 				"remaining": prop.remaining,
@@ -331,7 +332,13 @@ func load_save_data(data: Dictionary) -> void:
 			for pd in td["props"]:
 				var prop: Resource = _Prop.new()
 				prop.type = StringName(pd["type"])
-				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
+				var raw_cat: int = int(pd.get("category", _Prop.Category.PLANT))
+				prop.category = _remap_legacy_save_category(raw_cat)
+				# Legacy anomaly (old category 2) → set origin to UNKNOWN so is_anomaly() works
+				if raw_cat == 2 and not pd.has("origin"):
+					prop.origin = _Prop.Origin.UNKNOWN
+				else:
+					prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				prop.remaining = int(pd.get("remaining", 0))
 				prop.max_amount = int(pd.get("max_amount", 0))
@@ -362,6 +369,17 @@ func load_save_data(data: Dictionary) -> void:
 				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
 
 		_tiles[coords] = tile
+
+
+## Remap legacy save category values (old enum) to new Category enum.
+## Old: RESOURCE=0, STRUCTURE=1, ANOMALY=2, SPAWN=3
+func _remap_legacy_save_category(old_cat: int) -> int:
+	match old_cat:
+		0: return _Prop.Category.PLANT      # Old RESOURCE → PLANT
+		1: return _Prop.Category.STRUCTURE   # Old STRUCTURE
+		2: return _Prop.Category.PLANT       # Old ANOMALY → default PLANT
+		3: return _Prop.Category.PLANT       # Old SPAWN → default PLANT
+		_: return old_cat                    # Already new format
 
 
 # --- Prop helpers ---
