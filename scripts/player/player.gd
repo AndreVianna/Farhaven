@@ -73,7 +73,7 @@ func _update_model_rotation() -> void:
 
 
 func _on_map_generated() -> void:
-	current_tile = Vector2i.ZERO
+	current_tile = _grid.spawn_tile
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
