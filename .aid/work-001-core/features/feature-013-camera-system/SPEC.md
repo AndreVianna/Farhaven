@@ -40,7 +40,7 @@ Must (P0 — delivery-004b)
 
 ## Save Integration
 
-Camera state NOT saved. Always resets to default on load.
+Camera state (yaw, pitch, distance) IS saved and restored on load. This is intentional — the player's chosen viewpoint is part of their session context.
 
 ---
 

@@ -5,7 +5,7 @@ extends CombinedPanel
 
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
 
-var _catalog_panel: PanelContainer = null
+var _catalog_panel: CatalogPanel = null
 
 
 func _init() -> void:
@@ -34,5 +34,5 @@ func set_catalog(cat) -> void:
 		_catalog_panel.set_catalog(cat)
 
 
-func get_catalog_panel() -> PanelContainer:
+func get_catalog_panel() -> CatalogPanel:
 	return _catalog_panel

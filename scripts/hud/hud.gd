@@ -15,9 +15,9 @@ const _LogCombinedPanel = preload("res://ui/log_combined_panel.gd")
 @onready var _gear_button: Button = $BottomBar/GearButton
 @onready var _log_button: Button = $BottomBar/LogButton
 
-var _status_panel: CombinedPanel = null
-var _gear_panel: CombinedPanel = null
-var _log_panel: CombinedPanel = null
+var _status_panel: StatusCombinedPanel = null
+var _gear_panel: GearCombinedPanel = null
+var _log_panel: LogCombinedPanel = null
 var _panels: Array = []
 var _craft_flash: ColorRect = null
 var _gather_sound: Node = null  # GatherSound (set via connect_sound)

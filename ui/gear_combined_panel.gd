@@ -5,7 +5,7 @@ extends CombinedPanel
 
 const _CraftingPanelScene = preload("res://scenes/ui/crafting_panel.tscn")
 
-var _crafting_panel: PanelContainer = null
+var _crafting_panel: CraftingPanel = null
 
 
 func _init() -> void:
@@ -39,5 +39,5 @@ func set_inventory(inv) -> void:
 		_crafting_panel.set_inventory(inv)
 
 
-func get_crafting_panel() -> PanelContainer:
+func get_crafting_panel() -> CraftingPanel:
 	return _crafting_panel
