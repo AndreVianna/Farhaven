@@ -24,8 +24,15 @@ func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# Full-screen anchors
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Full-screen anchors — must set offsets to 0 for programmatic nodes
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0
+	offset_top = 0
+	offset_right = 0
+	offset_bottom = 0
 
 	# Dark semi-transparent background
 	var style := StyleBoxFlat.new()
