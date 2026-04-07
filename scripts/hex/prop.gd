@@ -13,14 +13,6 @@ enum Origin {
 	NATURAL, CRAFTED, HUMAN, NATIVE_ALIEN, UNKNOWN,
 }
 
-# Legacy category mapping for old save/map data
-const LEGACY_CATEGORY_MAP: Dictionary = {
-	100: Category.PLANT,       # old RESOURCE (0) remapped via loader
-	101: Category.STRUCTURE,   # old STRUCTURE (1)
-	102: Category.PLANT,       # old ANOMALY (2) → default to PLANT
-	103: Category.PLANT,       # old SPAWN (3) → ignored
-}
-
 @export var type: StringName = &""
 @export var sub_hex: Vector2i = Vector2i.ZERO        # (sq, sr) within parent hex
 @export var category: Category = Category.PLANT

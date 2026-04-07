@@ -96,13 +96,8 @@ func load_map(path: String) -> bool:
 			for pd in td["props"]:
 				var prop: Resource = _Prop.new()
 				prop.type = StringName(pd.get("type", ""))
-				var raw_cat: int = int(pd.get("category", _Prop.Category.PLANT))
-				prop.category = _remap_legacy_category(raw_cat, prop.type)
-				# Legacy anomaly (old category 2) → set origin to UNKNOWN so is_anomaly() works
-				if raw_cat == 2 and not pd.has("origin"):
-					prop.origin = _Prop.Origin.UNKNOWN
-				else:
-					prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
+				prop.category = int(pd.get("category", _Prop.Category.PLANT))
+				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				if pd.has("tool_required") and pd["tool_required"] != "":
 					prop.tool_required = StringName(pd["tool_required"])
@@ -252,22 +247,3 @@ func _validate_reachability(spawn: Vector2i) -> void:
 				str(coords), t.biome, t.elevation
 			])
 
-
-## Remap legacy category values (0-3) to new Category enum values.
-## Old: RESOURCE=0, STRUCTURE=1, ANOMALY=2, SPAWN=3
-## New categories start at 0 with different meanings, so we detect legacy
-## values by checking if category is 0-3 and inferring from resource type.
-static func _remap_legacy_category(old_cat: int, type: StringName) -> int:
-	match old_cat:
-		0:  # Old RESOURCE → infer from type
-			if ResourceRegistry.has_def(type):
-				var cat_str: String = ResourceRegistry.get_def(type).catalog_category
-				match cat_str:
-					"flora": return _Prop.Category.PLANT
-					"minerals": return _Prop.Category.MINERAL
-					"fauna": return _Prop.Category.ANIMAL
-					_: return _Prop.Category.PLANT  # default
-			return _Prop.Category.PLANT
-		1: return _Prop.Category.STRUCTURE  # Old STRUCTURE
-		2: return _Prop.Category.PLANT      # Old ANOMALY → default
-		_: return old_cat  # Already new format or unknown
