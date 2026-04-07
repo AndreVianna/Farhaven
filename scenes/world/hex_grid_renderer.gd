@@ -232,7 +232,7 @@ func _rebuild_mesh() -> void:
 			if n_tile == null:
 				continue
 			var diff: int = absi(tile.elevation - n_tile.elevation)
-			if diff <= 4:
+			if diff <= 2:
 				ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
@@ -247,7 +247,7 @@ func _rebuild_mesh() -> void:
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 				if n_tile == null:
 					continue
-				if absi(tile.elevation - n_tile.elevation) <= 4:
+				if absi(tile.elevation - n_tile.elevation) <= 2:
 					sum_e += float(n_tile.elevation)
 					cnt += 1
 			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP

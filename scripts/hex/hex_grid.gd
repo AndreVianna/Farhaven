@@ -192,7 +192,7 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 		var n_tile: Resource = _tiles.get(n_coords, null)
 		if n_tile == null:
 			continue
-		if absi(tile.elevation - n_tile.elevation) <= 4:
+		if absi(tile.elevation - n_tile.elevation) <= 2:
 			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 
 	# Compute corner_y (6 values) — include neighbors with diff ≤ 2.
@@ -206,7 +206,7 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 			var n_tile: Resource = _tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
-			if absi(tile.elevation - n_tile.elevation) <= 4:
+			if absi(tile.elevation - n_tile.elevation) <= 2:
 				sum_e += float(n_tile.elevation)
 				cnt += 1
 		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
