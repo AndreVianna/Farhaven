@@ -248,6 +248,7 @@ export function renderBiomeEditor(container, options) {
   container.innerHTML = '';
 
   const opts = options || {};
+  const onChange = typeof opts.onChange === 'function' ? opts.onChange : () => {};
 
   // State for the editor
   /** @type {BiomeDataModel|null} */
@@ -625,6 +626,7 @@ export function renderBiomeEditor(container, options) {
         isNewMode = false;
         _showEmpty();
       }
+      onChange();
     });
 
     // ── Delete handler ──
@@ -661,6 +663,7 @@ export function renderBiomeEditor(container, options) {
         isNewMode = false;
         _refreshList();
         _showEmpty();
+        onChange();
       },
     });
   }

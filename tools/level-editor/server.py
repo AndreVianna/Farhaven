@@ -95,8 +95,9 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
                 self._json_response(400, {'error': 'Invalid path'})
                 return
             full_path = os.path.join(PROJECT_ROOT, rel_path)
-            if not os.path.isfile(full_path):
-                self._json_response(404, {'error': f'File not found: {rel_path}'})
+            parent_dir = os.path.dirname(full_path)
+            if not os.path.isdir(parent_dir):
+                self._json_response(404, {'error': f'Directory not found: {os.path.dirname(rel_path)}'})
                 return
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')

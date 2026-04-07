@@ -329,6 +329,7 @@ export function renderResourceEditor(container, options) {
   container.innerHTML = '';
 
   const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
+  const onChange = options && typeof options.onChange === 'function' ? options.onChange : () => {};
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -603,6 +604,7 @@ export function renderResourceEditor(container, options) {
 
       refreshList();
       _renderDetail();
+      onChange();
     });
 
     // --- Delete handler ---
@@ -644,6 +646,7 @@ export function renderResourceEditor(container, options) {
     isNewMode = false;
     refreshList();
     _showEmpty();
+    onChange();
   }
 
   /**

@@ -65,6 +65,84 @@ export function showInlineModal(label, defaultValue, callback) {
   input.select();
 }
 
+/**
+ * Show a modal dialog listing multiple errors. Each error can have
+ * hex coordinates, a field name, and a message. Scrollable if long.
+ * @param {string} title
+ * @param {Array<{hex?: number[], field?: string, message: string}>} errors
+ * @returns {void}
+ */
+export function showErrorListModal(title, errors) {
+  const existing = document.getElementById('error-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'error-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:480px;max-width:720px;max-height:80vh;display:flex;flex-direction:column;color:var(--text-primary);';
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = title;
+  titleEl.style.cssText = 'margin-bottom:10px;font-size:15px;font-weight:600;color:#ff9999;';
+  dialog.appendChild(titleEl);
+
+  const summary = document.createElement('div');
+  summary.textContent = `${errors.length} error${errors.length === 1 ? '' : 's'} found:`;
+  summary.style.cssText = 'margin-bottom:8px;font-size:12px;color:var(--text-secondary);';
+  dialog.appendChild(summary);
+
+  const list = document.createElement('div');
+  list.style.cssText = 'flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);padding:8px;margin-bottom:12px;font-size:12px;font-family:monospace;';
+
+  for (const err of errors) {
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:4px 6px;border-bottom:1px solid var(--border);display:flex;gap:8px;';
+
+    const prefix = document.createElement('span');
+    prefix.style.cssText = 'color:var(--accent);flex-shrink:0;min-width:90px;';
+    if (err.hex && err.hex.length > 0) {
+      prefix.textContent = `(${err.hex.join(',')})`;
+    } else {
+      prefix.textContent = '(map)';
+    }
+
+    const msg = document.createElement('span');
+    msg.style.cssText = 'color:#ff9999;flex:1;word-break:break-word;';
+    msg.textContent = err.field ? `${err.field}: ${err.message}` : err.message;
+
+    row.appendChild(prefix);
+    row.appendChild(msg);
+    list.appendChild(row);
+  }
+  dialog.appendChild(list);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+
+  const btnClose = document.createElement('button');
+  btnClose.textContent = 'Close';
+  btnClose.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+
+  const cleanup = () => overlay.remove();
+  btnClose.addEventListener('click', cleanup);
+
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') {
+      cleanup();
+      document.removeEventListener('keydown', keyHandler);
+    }
+  };
+  document.addEventListener('keydown', keyHandler);
+
+  btnRow.appendChild(btnClose);
+  dialog.appendChild(btnRow);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  btnClose.focus();
+}
+
 // ============================================================
 // HexInspector — Right sidebar panel (replaces PropDetailPanel)
 // ============================================================
@@ -127,13 +205,15 @@ export class HexInspector {
       biomeCounts.set(biome, (biomeCounts.get(biome) || 0) + 1);
     }
 
-    // Map identity
-    if (this.grid.meta.chapter_id) {
-      this.mapStatsEl.appendChild(this._createStatRow('Map ID', this.grid.meta.chapter_id));
-    }
-    if (this.grid.meta.name) {
-      this.mapStatsEl.appendChild(this._createStatRow('Name', this.grid.meta.name));
-    }
+    // Editable map identity (chapter_id and name)
+    this.mapStatsEl.appendChild(this._createEditableStatRow('Map ID', this.grid.meta.chapter_id || '', (value) => {
+      this.grid.meta.chapter_id = value;
+      if (this.onMapMetaChange) this.onMapMetaChange();
+    }));
+    this.mapStatsEl.appendChild(this._createEditableStatRow('Name', this.grid.meta.name || '', (value) => {
+      this.grid.meta.name = value;
+      if (this.onMapMetaChange) this.onMapMetaChange();
+    }));
     // Total hexes
     this.mapStatsEl.appendChild(this._createStatRow('Total hexes', String(totalHexes)));
     // Q range with distance in meters (each hex = 6m)
@@ -415,6 +495,43 @@ export class HexInspector {
     valueEl.textContent = value;
     row.appendChild(labelEl);
     row.appendChild(valueEl);
+    return row;
+  }
+
+  /**
+   * Create a stat row with an editable text input.
+   * @param {string} label
+   * @param {string} value
+   * @param {function(string):void} onChange - called with trimmed value on blur/Enter
+   * @returns {HTMLElement}
+   */
+  _createEditableStatRow(label, value, onChange) {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'stat-label';
+    labelEl.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    input.className = 'stat-input';
+    input.style.cssText = 'flex:1;padding:1px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);font-size:11px;min-width:0;';
+    /** @type {string} */
+    let lastValue = value;
+    const commit = () => {
+      const trimmed = input.value.trim();
+      if (trimmed !== lastValue) {
+        lastValue = trimmed;
+        onChange(trimmed);
+      }
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { input.value = lastValue; input.blur(); }
+    });
+    row.appendChild(labelEl);
+    row.appendChild(input);
     return row;
   }
 
