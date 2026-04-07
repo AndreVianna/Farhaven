@@ -249,7 +249,11 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 		return
 
 	var world_2d: Vector2 = _HexMath.prop_world_position(coords, anomaly.sub_hex)
-	var elevation_y: float = float(tile.elevation) * 0.5
+	var elevation_y: float = 0.0
+	if _grid != null and _grid.has_method("get_terrain_y"):
+		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
+	elif tile != null:
+		elevation_y = float(tile.elevation) * 0.5
 	var pos := Vector3(world_2d.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y)
 
 	var xform := Transform3D.IDENTITY
@@ -284,12 +288,15 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 	# Position: tile center + sub-hex offset + elevation
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
-	var elevation_y: float = 0.0
-	if tile != null:
-		elevation_y = float(tile.elevation) * 0.5
-
 	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
-	var pos := Vector3(world_2d.x + sub_hex_offset.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y + sub_hex_offset.y)
+	var wx: float = world_2d.x + sub_hex_offset.x
+	var wz: float = world_2d.y + sub_hex_offset.y
+	var elevation_y: float = 0.0
+	if _grid != null and _grid.has_method("get_terrain_y"):
+		elevation_y = _grid.get_terrain_y(wx, wz)
+	elif tile != null:
+		elevation_y = float(tile.elevation) * 0.5
+	var pos := Vector3(wx, elevation_y + RESOURCE_Y_OFFSET, wz)
 
 	# Apply rotation
 	var xform := Transform3D.IDENTITY

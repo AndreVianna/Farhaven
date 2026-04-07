@@ -44,10 +44,6 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 
 	var world_2d: Vector2 = grid.axial_to_world(coords)
 	var tile: Resource = grid.get_tile(coords) if grid.has_method("get_tile") else null
-	var elevation_y: float = 0.0
-	if tile != null:
-		elevation_y = float(tile.elevation) * 0.5
-
 	# Find the resource prop's sub-hex offset to start from prop position (not hex center)
 	var prop_offset := Vector2.ZERO
 	if tile != null:
@@ -56,7 +52,14 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 				prop_offset = _HexMath.sub_axial_to_world(prop.sub_hex)
 				break
 
-	var start_pos := Vector3(world_2d.x + prop_offset.x, elevation_y + 0.6, world_2d.y + prop_offset.y)
+	var wx: float = world_2d.x + prop_offset.x
+	var wz: float = world_2d.y + prop_offset.y
+	var elevation_y: float = 0.0
+	if grid != null and grid.has_method("get_terrain_y"):
+		elevation_y = grid.get_terrain_y(wx, wz)
+	elif tile != null:
+		elevation_y = float(tile.elevation) * 0.5
+	var start_pos := Vector3(wx, elevation_y + 0.6, wz)
 
 	var sprite := _create_sprite(resource_type)
 	sprite.position = start_pos

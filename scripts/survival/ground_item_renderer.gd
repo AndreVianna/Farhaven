@@ -205,10 +205,8 @@ func _add_instance(tile: Vector2i, sub_hex: Vector2i, item_type: StringName) -> 
 	# World position at sub-hex within the tile
 	var world_2d: Vector2 = _HexMath.prop_world_position(tile, sub_hex)
 	var elevation_y: float = 0.0
-	if _grid != null:
-		var hex_tile: Resource = _grid.get_tile(tile)
-		if hex_tile != null:
-			elevation_y = float(hex_tile.elevation) * 0.5
+	if _grid != null and _grid.has_method("get_terrain_y"):
+		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	var pos := Vector3(world_2d.x, elevation_y + MARKER_Y_OFFSET, world_2d.y)
 
 	var xform := Transform3D.IDENTITY
