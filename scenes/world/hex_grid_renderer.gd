@@ -205,33 +205,36 @@ func _rebuild_mesh() -> void:
 		var center_color: Color = tile_colors[coords]
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
 
-		# Compute per-corner Y for slope interpolation.
-		# Each corner is influenced by the two edges it belongs to.
-		# Edge d spans corners d and (d+1)%6, neighbor = DIRECTIONS[d].
-		var corner_slope_sums: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-		var corner_slope_counts: Array[int] = [0, 0, 0, 0, 0, 0]
-		for d: int in range(6):
-			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
-			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			if n_tile == null:
-				continue
-			var diff: int = absi(tile.elevation - n_tile.elevation)
-			if diff >= 1 and diff <= 2:
-				var n_y: float = float(n_tile.elevation) * ELEVATION_STEP
-				var slope_y: float = lerpf(elevation_y, n_y, 0.5)
-				# Corner d and corner (d+1)%6 both touch this edge.
-				corner_slope_sums[d] += slope_y
-				corner_slope_counts[d] += 1
-				var next: int = (d + 1) % 6
-				corner_slope_sums[next] += slope_y
-				corner_slope_counts[next] += 1
-
+		# Compute per-corner Y by directly averaging the elevations of all 3 hexes
+		# that share each corner. CRITICAL for cross-hex consistency: each of the
+		# 3 hexes sharing a corner must compute the SAME Y value for it.
+		#
+		# Corner-to-neighbor mapping for flat-top hexes (verified empirically):
+		# DIRECTIONS array order is [E(30°), SE(330°), S(270°), SW(210°), NW(150°), N(90°)]
+		# Corner i is at angle i*60°. The 2 neighbors sharing corner i:
+		var corner_neighbor_dirs: Array = [
+			[0, 1],  # corner 0 (0°)   ← E + SE
+			[0, 5],  # corner 1 (60°)  ← E + N
+			[5, 4],  # corner 2 (120°) ← N + NW
+			[4, 3],  # corner 3 (180°) ← NW + SW
+			[3, 2],  # corner 4 (240°) ← SW + S
+			[2, 1],  # corner 5 (300°) ← S + SE
+		]
 		var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 		for ci: int in range(6):
-			if corner_slope_counts[ci] == 0:
-				corner_y[ci] = elevation_y
-			else:
-				corner_y[ci] = corner_slope_sums[ci] / float(corner_slope_counts[ci])
+			var sum_elev: float = float(tile.elevation)
+			var count: int = 1
+			var dir_pair: Array = corner_neighbor_dirs[ci]
+			for d: int in dir_pair:
+				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
+				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+				if n_tile == null:
+					continue
+				var diff: int = absi(tile.elevation - n_tile.elevation)
+				if diff <= 2:
+					sum_elev += float(n_tile.elevation)
+					count += 1
+			corner_y[ci] = (sum_elev / float(count)) * ELEVATION_STEP
 
 		# Precompute outer corner colors at each angular direction (i = 0..5).
 		var corner_colors_at: Array[Color] = [
