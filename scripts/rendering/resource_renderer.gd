@@ -14,8 +14,8 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Constants ---
 
-## Y offset above tile surface for resource meshes
-const RESOURCE_Y_OFFSET: float = 0.6
+## Fallback Y offset if mesh height can't be determined.
+const RESOURCE_Y_OFFSET: float = 0.3
 
 ## Max instances per MultiMesh pool (Chapter 1: ~50 elements max)
 const MAX_INSTANCES: int = 128
@@ -37,6 +37,9 @@ var _depleted_meshes: Dictionary = {}
 ## Normal colors per resource type id (for undimmed state)
 var _pool_colors: Dictionary = {}
 
+## Per-pool Y offset (center-to-bottom distance of the mesh)
+var _pool_y_offsets: Dictionary = {}
+
 ## Tile coords -> Array of {resource_type: StringName, pool: StringName, instance_idx: int, depleted: bool}
 var _tile_entries: Dictionary = {}
 
@@ -55,33 +58,54 @@ func _create_pools() -> void:
 	for def in ResourceRegistry.get_all():
 		var normal_mesh: Mesh
 		var depleted_mesh_res: Mesh
+		var y_offset: float = RESOURCE_Y_OFFSET
 
 		if def.mesh != null:
 			normal_mesh = def.mesh
 		else:
-			normal_mesh = _build_placeholder_mesh(def.placeholder_mesh_type, def.placeholder_params)
+			var result: Array = _build_placeholder_mesh(def.placeholder_mesh_type, def.placeholder_params)
+			normal_mesh = result[0]
+			y_offset = result[1]
 
 		if def.depleted_mesh != null:
 			depleted_mesh_res = def.depleted_mesh
 		else:
-			depleted_mesh_res = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
+			var result: Array = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
+			depleted_mesh_res = result[0]
 
 		_normal_meshes[def.id] = normal_mesh
 		_depleted_meshes[def.id] = depleted_mesh_res
+		_pool_y_offsets[def.id] = y_offset
 		var color: Color = def.placeholder_color if def.mesh == null else Color.WHITE
 		_pool_colors[def.id] = color
 		_create_pool(def.id, normal_mesh, color)
 
 
-func _build_placeholder_mesh(type: StringName, params: Dictionary) -> Mesh:
+## Returns [mesh, y_offset] where y_offset is center-to-bottom distance.
+func _build_placeholder_mesh(type: StringName, params: Dictionary) -> Array:
 	match type:
-		&"cylinder": return _make_cylinder_mesh(params.get("radius", 0.2), params.get("height", 0.8))
-		&"cube":     return _make_cube_mesh(params.get("half_size", 0.3))
-		&"box":      return _make_box_mesh(params.get("size", Vector3(0.5, 0.15, 0.5)))
-		&"sphere":   return _make_sphere_mesh(params.get("radius", 0.3))
-		&"octahedron": return _make_octahedron_mesh(params.get("radius", 0.35))
-		&"prism":    return _make_prism_mesh(params.get("radius", 0.2), params.get("height", 0.7))
-		_:           return _make_cube_mesh(0.3)
+		&"cylinder":
+			var h: float = params.get("height", 0.8)
+			return [_make_cylinder_mesh(params.get("radius", 0.2), h), h / 2.0]
+		&"cube":
+			var hs: float = params.get("half_size", 0.3)
+			return [_make_cube_mesh(hs), hs]
+		&"box":
+			var sx: float = params.get("size_x", 0.5)
+			var sy: float = params.get("size_y", 0.15)
+			var sz: float = params.get("size_z", 0.5)
+			return [_make_box_mesh(Vector3(sx, sy, sz)), sy / 2.0]
+		&"sphere":
+			var r: float = params.get("radius", 0.3)
+			return [_make_sphere_mesh(r), r]
+		&"octahedron":
+			var r: float = params.get("radius", 0.35)
+			return [_make_octahedron_mesh(r), r]
+		&"prism":
+			var h: float = params.get("height", 0.7)
+			return [_make_prism_mesh(params.get("radius", 0.2), h), h / 2.0]
+		_:
+			return [_make_cube_mesh(0.3), 0.3]
 
 
 func _create_pool(pool_id: StringName, mesh: Mesh, color: Color) -> void:
@@ -254,7 +278,8 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * 0.5
-	var pos := Vector3(world_2d.x, elevation_y + RESOURCE_Y_OFFSET, world_2d.y)
+	var y_off: float = _pool_y_offsets.get(anomaly_pool_id, RESOURCE_Y_OFFSET)
+	var pos := Vector3(world_2d.x, elevation_y + y_off, world_2d.y)
 
 	var xform := Transform3D.IDENTITY
 	xform.origin = pos
@@ -296,7 +321,8 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * 0.5
-	var pos := Vector3(wx, elevation_y + RESOURCE_Y_OFFSET, wz)
+	var y_off: float = _pool_y_offsets.get(pool_id, RESOURCE_Y_OFFSET)
+	var pos := Vector3(wx, elevation_y + y_off, wz)
 
 	# Apply rotation
 	var xform := Transform3D.IDENTITY
