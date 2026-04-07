@@ -215,7 +215,7 @@ export class HexCanvas {
     }
 
     // --- Phase 6: Sub-hex grid overlay on hovered hex (placement tools only) ---
-    if (this.hoveredHex && this.toolManager && this._isPlacementTool()) {
+    if (this.hoveredHex && this.toolManager && this._isSubHexTool()) {
       const hq = this.hoveredHex.q;
       const hr = this.hoveredHex.r;
       if (this.grid.hasTile(hq, hr) || (this._ghostSet && this._ghostSet.has(`${hq},${hr}`))) {
@@ -399,7 +399,7 @@ export class HexCanvas {
    * Check if the active tool operates at sub-hex resolution.
    * @returns {boolean}
    */
-  _isPlacementTool() {
+  _isSubHexTool() {
     if (!this.toolManager) return false;
     const t = this.toolManager.activeToolType;
     return t === 'select' || t === 'resource' || t === 'structure' || t === 'anomaly' || t === 'spawn' || t === 'eraser';
@@ -563,7 +563,7 @@ export class HexCanvas {
       if (this.toolManager) {
         // Pass sub-hex info for placement tools
         const hexWithSub = { q: hex.q, r: hex.r };
-        if (this.hoveredSubHex && this._isPlacementTool()) {
+        if (this.hoveredSubHex && this._isSubHexTool()) {
           hexWithSub.sq = this.hoveredSubHex.q;
           hexWithSub.sr = this.hoveredSubHex.r;
         }
@@ -599,7 +599,7 @@ export class HexCanvas {
     }
 
     // Compute sub-hex when placement tool active
-    if (this._isPlacementTool() && this.grid.hasTile(hex.q, hex.r)) {
+    if (this._isSubHexTool() && this.grid.hasTile(hex.q, hex.r)) {
       const world = HexMath.axialToPixel(hex.q, hex.r);
       const mouseWorld = this.screenToWorld(mx, my);
       const offsetX = mouseWorld.x - world.x;

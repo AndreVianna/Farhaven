@@ -276,6 +276,7 @@ export class EraserTool extends DragBrushTool {
 export class ResourcePlacer extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
+    if (!this.toolManager.activeValue) return;
     let tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) {
       // Create tile with default biome
