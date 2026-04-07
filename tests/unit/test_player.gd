@@ -160,16 +160,18 @@ func test_walk_traversal_seamless_boundary_crossing() -> void:
 	assert_int(_player.move_state).is_equal(_Player.MoveState.WALKING)
 
 
-func test_walk_y_interpolation() -> void:
-	# Tile (1,0) at elevation 2, current at 0
+func test_walk_y_follows_terrain() -> void:
+	# Tile (1,0) at elevation 1, current at 0.
+	# Player at midpoint should follow the curved terrain surface.
 	_set_tile_elevation(Vector2i(1, 0), 1)
 	var from_world: Vector2 = _grid.axial_to_world(Vector2i(0, 0))
 	var to_world: Vector2 = _grid.axial_to_world(Vector2i(1, 0))
 	var mid: Vector2 = (from_world + to_world) * 0.5
+	_player.position = Vector3(mid.x, 0.0, mid.y)
 	_player._update_elevation_y_interpolated(mid, Vector2i(0, 0), Vector2i(1, 0))
-	# Y should be roughly halfway between 0.0 and 0.5 (elevation 1 * ELEVATION_SCALE 0.5)
-	assert_float(_player.position.y).is_greater(0.2)
-	assert_float(_player.position.y).is_less(0.3)
+	# Y should match the terrain height computed by get_terrain_y.
+	var expected_y: float = _grid.get_terrain_y(mid.x, mid.y)
+	assert_float(_player.position.y).is_equal_approx(expected_y, 0.001)
 
 
 # --- JUMP/DROP traversal (elevation diff 2) ---

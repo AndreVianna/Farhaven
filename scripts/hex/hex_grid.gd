@@ -14,6 +14,22 @@ const JUMP_MAX_DIFF: int = 2
 # Legacy alias — existing code may reference this
 const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
 
+## Elevation scale: world Y per elevation level.
+## Shared constant — renderer, player, and terrain queries all use this.
+const ELEVATION_STEP: float = 0.5
+
+## Corner-to-neighbor direction mapping for flat-top hexes (verified empirically).
+## DIRECTIONS order: [E, NE, NW, W, SW, SE]. Corner i is at angle i*60°.
+## Each pair lists the 2 DIRECTIONS indices whose neighbor hexes share that corner.
+const _CORNER_NEIGHBOR_DIRS: Array = [
+	[0, 1],  # corner 0 (0°)   ← DIRECTIONS[0] + DIRECTIONS[1]
+	[0, 5],  # corner 1 (60°)  ← DIRECTIONS[0] + DIRECTIONS[5]
+	[5, 4],  # corner 2 (120°) ← DIRECTIONS[5] + DIRECTIONS[4]
+	[4, 3],  # corner 3 (180°) ← DIRECTIONS[4] + DIRECTIONS[3]
+	[3, 2],  # corner 4 (240°) ← DIRECTIONS[3] + DIRECTIONS[2]
+	[2, 1],  # corner 5 (300°) ← DIRECTIONS[2] + DIRECTIONS[1]
+]
+
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 # Legacy: Structures that do NOT block movement (walkable).
@@ -148,6 +164,72 @@ func axial_to_world(coords: Vector2i) -> Vector2:
 
 func world_to_axial(world_pos: Vector2) -> Vector2i:
 	return _HexMath.world_to_axial(world_pos)
+
+
+# --- Terrain height ---
+
+## Get the terrain Y height at an arbitrary world XZ position.
+## Accounts for curved interpolation between hex center and corners.
+## Water tiles return flat elevation. Returns 0.0 for missing tiles.
+func get_terrain_y(world_x: float, world_z: float) -> float:
+	var coords: Vector2i = _HexMath.world_to_axial(Vector2(world_x, world_z))
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return 0.0
+
+	var center_y: float = float(tile.elevation) * ELEVATION_STEP
+
+	# Water stays flat.
+	if tile.biome == _HexTile.Biome.WATER:
+		return center_y
+
+	# Distance and angle from hex center.
+	var center_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var dx: float = world_x - center_2d.x
+	var dz: float = world_z - center_2d.y
+	var dist: float = sqrt(dx * dx + dz * dz)
+
+	if dist < 0.001:
+		return center_y
+
+	# Normalized distance (0 at center, 1 at hex edge).
+	var t: float = clampf(dist / _HexMath.HEX_SIZE, 0.0, 1.0)
+
+	# Interpolation curve — smoothstep: t²(3 - 2t)
+	var s: float = t * t * (3.0 - 2.0 * t)
+
+	# Compute corner Y values (average of up to 3 hexes sharing each corner).
+	var corner_y: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	for ci: int in range(6):
+		var sum_elev: float = float(tile.elevation)
+		var count: int = 1
+		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
+		for d: int in dir_pair:
+			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_tile: Resource = _tiles.get(n_coords, null)
+			if n_tile == null:
+				continue
+			var diff: int = absi(tile.elevation - n_tile.elevation)
+			if diff <= 2:
+				sum_elev += float(n_tile.elevation)
+				count += 1
+		corner_y[ci] = (sum_elev / float(count)) * ELEVATION_STEP
+
+	# Find angle → which two corners we're between.
+	var angle: float = atan2(dz, dx)
+	if angle < 0.0:
+		angle += TAU
+
+	# Each corner is at i * 60°. Find sector and fractional position.
+	var sector_f: float = angle / (PI / 3.0)
+	var sector: int = int(sector_f) % 6
+	var sector_frac: float = sector_f - floor(sector_f)
+
+	# Blend between the two corner Y values at this angle.
+	var cy_blend: float = lerpf(corner_y[sector], corner_y[(sector + 1) % 6], sector_frac)
+
+	# Interpolate from center Y to blended corner Y using the curve.
+	return lerpf(center_y, cy_blend, s)
 
 
 # --- Serialization ---
