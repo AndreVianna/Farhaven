@@ -207,3 +207,19 @@ func get_yaw() -> float:
 
 func get_pitch() -> float:
 	return _pitch_deg_current
+
+
+# --- Serialization ---
+
+func get_save_data() -> Dictionary:
+	return {
+		"yaw": _yaw,
+		"pitch": _pitch_deg_current,
+		"distance": distance,
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	_yaw = float(data.get("yaw", 0.0))
+	_pitch_deg_current = float(data.get("pitch", pitch_deg))
+	distance = clampf(float(data.get("distance", 7.0)), distance_min, distance_max)
