@@ -226,3 +226,59 @@ func test_screen_to_axial_returns_zero_with_no_grid() -> void:
 	assert_object(result).is_equal(Vector2i.ZERO)
 	# Restore grid
 	_player_input._grid = _grid
+
+
+# --- Zone detection ---
+
+func test_get_zone_left_returns_left() -> void:
+	var vw: float = _player_input.get_viewport().get_visible_rect().size.x
+	var pos := Vector2(vw * 0.2, 100.0)  # 20% — well inside left 40%
+	var zone: int = _player_input._get_zone(pos)
+	assert_int(zone).is_equal(PlayerInput._Zone.LEFT)
+
+
+func test_get_zone_center_returns_center() -> void:
+	var vw: float = _player_input.get_viewport().get_visible_rect().size.x
+	var pos := Vector2(vw * 0.5, 100.0)  # 50% — inside center 40-60%
+	var zone: int = _player_input._get_zone(pos)
+	assert_int(zone).is_equal(PlayerInput._Zone.CENTER)
+
+
+func test_get_zone_right_returns_right() -> void:
+	var vw: float = _player_input.get_viewport().get_visible_rect().size.x
+	var pos := Vector2(vw * 0.8, 100.0)  # 80% — well inside right 60%+
+	var zone: int = _player_input._get_zone(pos)
+	assert_int(zone).is_equal(PlayerInput._Zone.RIGHT)
+
+
+# --- Zone behavior ---
+
+func test_center_zone_allows_tap() -> void:
+	_player_input._active_zone = PlayerInput._Zone.CENTER
+	_player_input._on_touch_down(Vector2.ZERO)
+	_player_input._touch_duration = 0.1
+	_player_input._on_touch_up()
+	assert_bool(_has_signal_of_type("tap_tile")).is_true()
+
+
+func test_center_zone_does_not_start_joystick() -> void:
+	_player_input._active_zone = PlayerInput._Zone.CENTER
+	_player_input._on_touch_down(Vector2.ZERO)
+	_player_input._on_drag(Vector2(25.0, 0.0))  # drag beyond threshold
+	assert_bool(_has_signal_of_type("joystick_started")).is_false()
+
+
+func test_right_zone_touch_ignored() -> void:
+	_player_input._active_zone = PlayerInput._Zone.RIGHT
+	_player_input._on_touch_down(Vector2.ZERO)
+	# Touch down transitions to TRACKING regardless of zone (zone gating is in _unhandled_input).
+	# But _process hold-to-joystick only activates for LEFT zone, and _on_drag only activates
+	# for LEFT zone. So after touch_down + drag in RIGHT zone, no joystick should start.
+	_player_input._on_drag(Vector2(25.0, 0.0))
+	assert_bool(_has_signal_of_type("joystick_started")).is_false()
+	# And tap still works since _on_touch_up doesn't check zone for tap.
+	# The real gating for RIGHT zone happens in _unhandled_input (returns early).
+	# With _active_zone set to RIGHT, hold-to-joystick in _process is blocked.
+	_player_input._touch_duration = 0.5
+	_player_input._process(0.0)
+	assert_int(_player_input._state).is_not_equal(PlayerInput._State.JOYSTICK)

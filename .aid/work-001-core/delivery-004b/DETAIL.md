@@ -1,6 +1,6 @@
 # delivery-004b: New Perspective — Camera + Landscape Layout
 
-**Status:** Draft
+**Status:** In Progress (7/8 tasks done, 038b in progress)
 **Created:** 2026-04-06
 **Features:** feature-013-camera-system, feature-014-landscape-layout, feature-015-terrain-slopes
 **Depends on:** delivery-004 (024-031)
@@ -63,16 +63,16 @@ task-038b (Visual polish + test —
 
 ## Tasks
 
-| # | Name | Type | Depends On | Parallel With |
-|---|------|------|-----------|---------------|
-| 032b | Project settings — landscape viewport + orientation | IMPLEMENT | delivery-004 | -- |
-| 033b | Camera orbital controller | IMPLEMENT | 032b | 036b |
-| 034b | Input zone split — multi-touch routing | IMPLEMENT | 033b | 036b |
-| 035b | HUD landscape layout | IMPLEMENT | 034b | -- |
-| 036b | Player model placeholder | IMPLEMENT | 032b | 033b |
-| 037b | Camera-relative movement | IMPLEMENT | 033b, 036b | 035b |
-| 039b | Terrain slopes — elevation edge interpolation | IMPLEMENT | 037b | -- |
-| 038b | Visual polish + integration test | TEST | all above | -- |
+| # | Name | Type | Depends On | Parallel With | Status |
+|---|------|------|-----------|---------------|--------|
+| 032b | Project settings — landscape viewport + orientation | IMPLEMENT | delivery-004 | -- | DONE |
+| 033b | Camera orbital controller | IMPLEMENT | 032b | 036b | DONE |
+| 034b | Input zone split — multi-touch routing | IMPLEMENT | 033b | 036b | DONE |
+| 035b | HUD landscape layout | IMPLEMENT | 034b | -- | DONE |
+| 036b | Player model placeholder | IMPLEMENT | 032b | 033b | DONE |
+| 037b | Camera-relative movement | IMPLEMENT | 033b, 036b | 035b | DONE |
+| 039b | Terrain slopes — elevation edge interpolation | IMPLEMENT | 037b | -- | DONE |
+| 038b | Visual polish + integration test | TEST | all above | -- | IN PROGRESS |
 
 ## Task Details
 

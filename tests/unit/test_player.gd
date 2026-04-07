@@ -310,3 +310,38 @@ func test_spawns_at_crash_site_on_map_generated() -> void:
 	_player._on_map_generated()
 	assert_object(_player.current_tile).is_equal(Vector2i(0, 0))
 	assert_int(_player.move_state).is_equal(_Player.MoveState.IDLE)
+
+
+# --- Facing direction & model rotation ---
+
+func test_facing_direction_updates_on_walk() -> void:
+	_player._on_joystick_start(Vector2.RIGHT)
+	_player._joystick_dir = Vector2.RIGHT
+	_player._joystick_magnitude = 1.0
+	_player._process_walking(0.1)
+	assert_bool(_player.facing_direction.is_zero_approx()).is_false()
+
+
+func test_model_rotation_matches_facing() -> void:
+	var mock_model := Node3D.new()
+	_player.add_child(mock_model)
+	_player._model = mock_model
+	_player.facing_direction = Vector2(1.0, 0.0)  # facing +X
+	_player._update_model_rotation()
+	var expected_y: float = atan2(1.0, 0.0)
+	assert_float(mock_model.rotation.y).is_equal_approx(expected_y, 0.001)
+	mock_model.queue_free()
+
+
+# --- Camera-relative movement ---
+
+func test_movement_without_camera_is_world_space() -> void:
+	_player._camera = null
+	_player._on_joystick_start(Vector2.RIGHT)
+	_player._joystick_dir = Vector2.RIGHT
+	_player._joystick_magnitude = 1.0
+	var old_x: float = _player.position.x
+	_player._process_walking(0.1)
+	# Without camera, joystick RIGHT maps to world +X (no rotation applied)
+	assert_float(_player.position.x).is_greater(old_x)
+	assert_float(_player.facing_direction.x).is_greater(0.9)
