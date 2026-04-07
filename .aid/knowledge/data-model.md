@@ -2,7 +2,7 @@
 
 > **Source:** discovery-analyst
 > **Status:** Active
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-04-06
 
 ## Entities / Schemas
 
@@ -13,8 +13,8 @@ Godot Resource representing a single hex tile in the game world.
 |-------|------|---------|-------------|-------|
 | coords | Vector2i | (0,0) | Axial coordinates (q, r) | Primary key in HexGrid._tiles dictionary |
 | biome | Biome enum (int) | GRASSLAND (1) | 0-4 | CRASH_SITE=0, GRASSLAND=1, FOREST=2, ROCKY=3, WATER=4 |
-| elevation | int | 0 | 0-9 (clamped in MapLoader) | World Y = elevation * 0.5 |
-| fog_state | FogState enum (int) | HIDDEN (0) | 0-2 | HIDDEN=0, REVEALED=1, VISIBLE=2 |
+| elevation | int | 0 | -32000..32000 (clamped in MapLoader) | World Y = elevation * 0.5 |
+| fog_state | FogState enum (int) | HIDDEN (0) | 0-1 | HIDDEN=0, VISIBLE=1. Darkness handled by shader, not fog state. |
 | props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `resource_nodes`, `anomaly` fields. |
 
 **Deprecated fields (replaced by props[]):**
@@ -24,20 +24,28 @@ Godot Resource representing a single hex tile in the game world.
 
 Source: `scripts/hex/hex_tile.gd`
 
-### ResourceNode (scripts/hex/resource_node.gd)
-Godot Resource representing a single gatherable resource instance on a tile.
+### Prop (scripts/hex/prop.gd)
+Godot Resource representing any game object placed in a hex tile. Replaces the former separate ResourceNode, structure, and anomaly fields with a unified model.
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
-| type | StringName | &"" | Must match a ResourceDef id | e.g. &"wood", &"stone", &"berries" |
-| remaining | int | 0 | 0 to max_amount | Decremented on gather; 0 = depleted |
-| max_amount | int | 0 | Set from BiomeData resource_table | Reset to max on respawn |
-| tool_required | StringName | &"" | Empty = bare hands | e.g. &"stone_pickaxe" |
-| respawn_time | float | 0.0 | Seconds; 0 = no respawn | 30.0 for common, 60.0 for rare |
-| offset | Vector2 | (0,0) | Normalized -1 to 1 | Position relative to hex center |
-| rotation_deg | float | 0.0 | Degrees | Converted to radians at render time |
+| type | StringName | &"" | Must match a registry id | e.g. &"wood", &"workbench", &"anomaly_ch1_001" |
+| category | Category enum (int) | RESOURCE (0) | 0-3 | RESOURCE=0, STRUCTURE=1, ANOMALY=2, SPAWN=3 |
+| sub_hex | Vector2i | (0,0) | Distance from origin <= 2 | Pointy-top axial coords within parent hex (19 valid positions) |
+| remaining | int | 0 | 0 to max_amount | Resource only: decremented on gather; 0 = depleted |
+| max_amount | int | 0 | Set from BiomeData | Resource only: reset to max on respawn |
+| tool_required | StringName | &"" | Empty = bare hands | Resource only: e.g. &"stone_pickaxe" |
+| respawn_time | float | 0.0 | Seconds; 0 = no respawn | Resource only: 30.0 common, 60.0 rare |
+| rotation_deg | float | 0.0 | Degrees | Visual rotation of prop mesh |
+| footprint | Array[Vector2i] | [] | Sub-hex coords | Structure only: multi-sub-hex occupancy (future, F-009) |
+| blocks_movement | bool | false | | Structure only: true for walls |
 
-Source: `scripts/hex/resource_node.gd`
+**Factory methods:** `Prop.create_resource()`, `Prop.create_structure()`, `Prop.create_anomaly()`, `Prop.create_spawn()`
+
+Source: `scripts/hex/prop.gd`
+
+### ~~ResourceNode (scripts/hex/resource_node.gd)~~ — DEPRECATED
+Replaced by Prop with `category=RESOURCE`. File may still exist as orphan.
 
 ### ResourceDef (scripts/data/resource_def.gd)
 Godot Resource defining a resource type's static properties. Loaded from `data/resources/*.tres`.
@@ -157,27 +165,60 @@ Hardcoded recipe definitions.
 Source: `scripts/crafting/crafting_system.gd` RECIPE_CONFIG
 
 ### Map JSON Schema (data/maps/ch1.json)
-Hand-designed map file loaded by MapLoader.
+Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy formats.
 
-```
+**Root:**
+```json
 {
-  "chapter_id": string,
-  "name": string,
-  "spawn": [q: int, r: int],
+  "spawn": [0, 0],
   "tiles": {
-    "q,r": {
-      "biome": string,           // crash_site|grassland|forest|rocky|water
-      "elevation": int,          // 0-9
-      "resources": [             // Array of string or {type, x, y, rotation}
-        string |
-        {"type": string, "x": float, "y": float, "rotation": float}
-      ],
-      "structure": string,       // optional: workbench, shelter, etc.
-      "anomaly": string          // optional: anomaly entry_id
-    }
+    "q,r": { ... }
   }
 }
 ```
+
+**Tile (new format — unified props):**
+```json
+"0,0": {
+  "biome": "crash_site",
+  "elevation": 0,
+  "props": [
+    {"type": "wood", "category": 0, "sub_hex_q": 1, "sub_hex_r": 0, "rotation": 45},
+    {"type": "workbench", "category": 1, "sub_hex_q": 0, "sub_hex_r": 0, "blocks_movement": false},
+    {"type": "anomaly_ch1_001", "category": 2, "sub_hex_q": 0, "sub_hex_r": -1}
+  ]
+}
+```
+
+**Props fields:**
+
+| Field | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| type | string | yes | - | Must match a ResourceDef id, structure name, or anomaly id |
+| category | int | yes | 0 | 0=RESOURCE, 1=STRUCTURE, 2=ANOMALY, 3=SPAWN |
+| sub_hex_q | int | no | 0 | Sub-hex axial q (pointy-top layout, range: distance <= 2) |
+| sub_hex_r | int | no | 0 | Sub-hex axial r (pointy-top layout, range: distance <= 2) |
+| rotation | float | no | 0.0 | Degrees |
+| remaining | int | no | biome default | Resource only: current amount. Defaults from BiomeData |
+| max_amount | int | no | biome default | Resource only: maximum amount. Defaults from BiomeData |
+| tool_required | string | no | "" | Resource only: tool StringName |
+| respawn_time | float | no | 0.0 | Resource only: seconds |
+| blocks_movement | bool | no | false | Structure only: true for walls |
+
+**Biome values:** `"crash_site"`, `"grassland"`, `"forest"`, `"rocky"`, `"water"`
+**Elevation:** integer -32000..32000
+
+**Legacy format (still supported, auto-converted on load):**
+```json
+"0,0": {
+  "biome": "forest",
+  "elevation": 1,
+  "resources": ["wood", {"type": "berries", "x": 0.5, "y": -0.3, "rotation": 18}],
+  "structure": "workbench",
+  "anomaly": "anomaly_ch1_001"
+}
+```
+Legacy x/y offsets are converted to sub-hex coords via `world_to_sub_axial()`.
 
 Source: `data/maps/ch1.json`, `scripts/hex/map_loader.gd`
 
@@ -188,15 +229,16 @@ Source: `data/maps/ch1.json`, `scripts/hex/map_loader.gd`
 - ~250 tiles per chapter map
 - Source: `scripts/hex/hex_grid.gd` line 22
 
-### HexTile -> ResourceNode (1:many)
-- HexTile.resource_nodes: untyped Array of ResourceNode Resources
-- 0-3 resource nodes per tile (from map data)
-- Source: `scripts/hex/hex_tile.gd` line 25
+### HexTile -> Prop (1:many)
+- HexTile.props: Array of Prop Resources
+- 0-5 props per tile (resources, structures, anomalies combined)
+- Accessed via helper methods: `tile.get_resources()`, `tile.get_structures()`, `tile.get_anomalies()`
+- Source: `scripts/hex/hex_tile.gd`
 
-### ResourceNode -> ResourceDef (many:1)
-- ResourceNode.type matches ResourceDef.id via ResourceRegistry autoload
+### Prop (RESOURCE) -> ResourceDef (many:1)
+- Prop.type matches ResourceDef.id via ResourceRegistry autoload
 - ResourceRegistry.get_def(type) retrieves the definition
-- Source: `scripts/hex/resource_node.gd` (type field), `scripts/data/resource_registry.gd` (lookup)
+- Source: `scripts/hex/prop.gd` (type field), `scripts/data/resource_registry.gd` (lookup)
 
 ### ResourceDef -> CatalogEntry (1:1)
 - ResourceDef.catalog_entry matches CatalogEntry.entry_id
@@ -281,7 +323,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | Spawn tile must exist and be CRASH_SITE biome | `map_loader.gd` lines 145-149 |
 | All required biomes present (CRASH_SITE, GRASSLAND, FOREST, ROCKY) | `map_loader.gd` lines 161-164 |
 | At least one anomaly tile exists | `map_loader.gd` lines 166-167 |
-| Elevation in [0, 9] for all tiles | `map_loader.gd` lines 158-159 |
+| Elevation in [-32000, 32000] for all tiles | `map_loader.gd` lines 158-159 |
 | All non-water tiles reachable from spawn via BFS | `map_loader.gd` lines 172-192 |
 
 ### Inventory Validation

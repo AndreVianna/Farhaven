@@ -1,12 +1,17 @@
 extends Node
 class_name PlayerInput
 
-## Two-outcome touch classifier. Child Node of Player.
+## Multi-zone touch input — child Node of Player.
 ## Uses _unhandled_input so HUD elements (mouse_filter=STOP) consume first.
+##
+## Screen zones (landscape, percentage-based):
+##   LEFT  40% — joystick (drag) + tap (quick release)
+##   CENTER 20% — tap only (world interaction)
+##   RIGHT 40% — ignored (player_camera.gd handles orbit)
 ##
 ## Outcomes:
 ##   TAP        — touch DOWN+UP in <tap_max_duration AND drag <tap_max_drag
-##   JOYSTICK   — drag ≥drag_threshold at ANY time
+##   JOYSTICK   — drag ≥drag_threshold (left zone only)
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
@@ -21,10 +26,18 @@ signal joystick_released()
 @export var tap_max_drag: float = 20.0
 @export var drag_threshold: float = 20.0
 
+# --- Zone boundaries (percentage of viewport width) ---
+const ZONE_LEFT_END: float = 0.4
+const ZONE_CENTER_END: float = 0.6
+
+enum _Zone { LEFT, CENTER, RIGHT }
+
 # --- Internal state ---
 enum _State { IDLE, TRACKING, JOYSTICK }
 
 var _state: _State = _State.IDLE
+var _active_touch_index: int = -1  # which finger we're tracking
+var _active_zone: _Zone = _Zone.LEFT
 var _touch_origin: Vector2 = Vector2.ZERO
 var _touch_current: Vector2 = Vector2.ZERO
 var _touch_duration: float = 0.0
@@ -49,24 +62,50 @@ func _ready() -> void:
 		_joystick_overlay = joystick_layer.get_child(0)
 
 
+# --- Zone detection ---
+
+func _get_zone(pos: Vector2) -> _Zone:
+	var vw: float = get_viewport().get_visible_rect().size.x
+	if pos.x < vw * ZONE_LEFT_END:
+		return _Zone.LEFT
+	elif pos.x < vw * ZONE_CENTER_END:
+		return _Zone.CENTER
+	return _Zone.RIGHT
+
+
 # --- Input handling ---
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		if event.pressed:
-			_on_touch_down(event.position)
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			# Only claim if idle and not in right zone (camera handles right)
+			if _state != _State.IDLE:
+				return
+			var zone: _Zone = _get_zone(touch.position)
+			if zone == _Zone.RIGHT:
+				return
+			_active_touch_index = touch.index
+			_active_zone = zone
+			_on_touch_down(touch.position)
 		else:
+			if touch.index != _active_touch_index:
+				return
 			_on_touch_up()
+			_active_touch_index = -1
 	elif event is InputEventScreenDrag:
-		_on_drag(event.position)
+		var drag := event as InputEventScreenDrag
+		if drag.index != _active_touch_index:
+			return
+		_on_drag(drag.position)
 
 
 func _process(delta: float) -> void:
 	match _state:
 		_State.TRACKING:
 			_touch_duration += delta
-			# If held long enough without dragging, start joystick
-			if _touch_duration >= tap_max_duration:
+			# Joystick hold-to-activate only in left zone
+			if _active_zone == _Zone.LEFT and _touch_duration >= tap_max_duration:
 				_enter_joystick()
 		_State.JOYSTICK:
 			_emit_joystick_moved()
@@ -97,7 +136,8 @@ func _on_touch_up() -> void:
 
 func _on_drag(pos: Vector2) -> void:
 	_touch_current = pos
-	if _state == _State.TRACKING:
+	# Joystick drag only from left zone (tests default to LEFT)
+	if _state == _State.TRACKING and _active_zone == _Zone.LEFT:
 		var drag_dist: float = (_touch_current - _touch_origin).length()
 		if drag_dist >= drag_threshold:
 			_enter_joystick()

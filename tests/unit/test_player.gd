@@ -146,7 +146,7 @@ func test_tile_transition_emits_signals_in_order() -> void:
 	assert_object(filtered[2]["to"]).is_equal(Vector2i(1, 0))
 
 
-# --- WALK traversal (elevation diff 0-1) ---
+# --- WALK traversal (elevation diff 0-2) ---
 
 func test_walk_traversal_seamless_boundary_crossing() -> void:
 	# Adjacent tile at elevation 1 (diff = 1 = WALK)
@@ -160,19 +160,21 @@ func test_walk_traversal_seamless_boundary_crossing() -> void:
 	assert_int(_player.move_state).is_equal(_Player.MoveState.WALKING)
 
 
-func test_walk_y_interpolation() -> void:
-	# Tile (1,0) at elevation 2, current at 0
+func test_walk_y_follows_terrain() -> void:
+	# Tile (1,0) at elevation 1, current at 0.
+	# Player at midpoint should follow the curved terrain surface.
 	_set_tile_elevation(Vector2i(1, 0), 1)
 	var from_world: Vector2 = _grid.axial_to_world(Vector2i(0, 0))
 	var to_world: Vector2 = _grid.axial_to_world(Vector2i(1, 0))
 	var mid: Vector2 = (from_world + to_world) * 0.5
+	_player.position = Vector3(mid.x, 0.0, mid.y)
 	_player._update_elevation_y_interpolated(mid, Vector2i(0, 0), Vector2i(1, 0))
-	# Y should be roughly halfway between 0.0 and 0.5 (elevation 1 * ELEVATION_SCALE 0.5)
-	assert_float(_player.position.y).is_greater(0.2)
-	assert_float(_player.position.y).is_less(0.3)
+	# Y should match the terrain height computed by get_terrain_y.
+	var expected_y: float = _grid.get_terrain_y(mid.x, mid.y)
+	assert_float(_player.position.y).is_equal_approx(expected_y, 0.001)
 
 
-# --- JUMP/DROP traversal (elevation diff 2-3) ---
+# --- JUMP/DROP traversal (elevation diff 3-4) ---
 
 func test_jump_triggers_jumping_state() -> void:
 	# Set tile (1,0) to elevation 3 (diff = 3, going up = JUMP)
@@ -310,3 +312,38 @@ func test_spawns_at_crash_site_on_map_generated() -> void:
 	_player._on_map_generated()
 	assert_object(_player.current_tile).is_equal(Vector2i(0, 0))
 	assert_int(_player.move_state).is_equal(_Player.MoveState.IDLE)
+
+
+# --- Facing direction & model rotation ---
+
+func test_facing_direction_updates_on_walk() -> void:
+	_player._on_joystick_start(Vector2.RIGHT)
+	_player._joystick_dir = Vector2.RIGHT
+	_player._joystick_magnitude = 1.0
+	_player._process_walking(0.1)
+	assert_bool(_player.facing_direction.is_zero_approx()).is_false()
+
+
+func test_model_rotation_matches_facing() -> void:
+	var mock_model := Node3D.new()
+	_player.add_child(mock_model)
+	_player._model = mock_model
+	_player.facing_direction = Vector2(1.0, 0.0)  # facing +X
+	_player._update_model_rotation()
+	var expected_y: float = atan2(1.0, 0.0)
+	assert_float(mock_model.rotation.y).is_equal_approx(expected_y, 0.001)
+	mock_model.queue_free()
+
+
+# --- Camera-relative movement ---
+
+func test_movement_without_camera_is_world_space() -> void:
+	_player._camera = null
+	_player._on_joystick_start(Vector2.RIGHT)
+	_player._joystick_dir = Vector2.RIGHT
+	_player._joystick_magnitude = 1.0
+	var old_x: float = _player.position.x
+	_player._process_walking(0.1)
+	# Without camera, joystick RIGHT maps to world +X (no rotation applied)
+	assert_float(_player.position.x).is_greater(old_x)
+	assert_float(_player.facing_direction.x).is_greater(0.9)

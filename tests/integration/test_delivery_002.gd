@@ -444,15 +444,15 @@ func test_mutual_exclusion_catalog_closes_inventory() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	var inv_panel = hud.get_node("InventoryPanel")
-	var cat_panel = hud.get_node("CatalogPanel")
+	var status_panel = hud.get_node("StatusPanel")
+	var log_panel = hud.get_node("LogPanel")
 
-	inv_panel.open()
-	assert_bool(inv_panel.visible).is_true()
+	status_panel.open()
+	assert_bool(status_panel.visible).is_true()
 
-	cat_panel.open()
-	assert_bool(cat_panel.visible).is_true()
-	assert_bool(inv_panel.visible).is_false()
+	log_panel.open()
+	assert_bool(log_panel.visible).is_true()
+	assert_bool(status_panel.visible).is_false()
 
 	hud.queue_free()
 
@@ -461,15 +461,15 @@ func test_mutual_exclusion_inventory_closes_catalog() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	var inv_panel = hud.get_node("InventoryPanel")
-	var cat_panel = hud.get_node("CatalogPanel")
+	var status_panel = hud.get_node("StatusPanel")
+	var log_panel = hud.get_node("LogPanel")
 
-	cat_panel.open()
-	assert_bool(cat_panel.visible).is_true()
+	log_panel.open()
+	assert_bool(log_panel.visible).is_true()
 
-	inv_panel.open()
-	assert_bool(inv_panel.visible).is_true()
-	assert_bool(cat_panel.visible).is_false()
+	status_panel.open()
+	assert_bool(status_panel.visible).is_true()
+	assert_bool(log_panel.visible).is_false()
 
 	hud.queue_free()
 
@@ -855,19 +855,23 @@ func test_catalog_save_load_round_trip() -> void:
 # HUD structure — buttons exist
 # ===========================================================================
 
-func test_hud_inventory_and_scanner_buttons_exist() -> void:
+func test_hud_status_gear_log_buttons_exist() -> void:
 	var hud: Node = load("res://scenes/ui/hud.tscn").instantiate()
 	add_child(hud)
 
-	var inv_btn: Node = hud.get_node_or_null("BottomBar/InventoryButton")
-	var scn_btn: Node = hud.get_node_or_null("BottomBar/ScannerButton")
-	assert_bool(inv_btn != null).override_failure_message("InventoryButton must exist in HUD").is_true()
-	assert_bool(scn_btn != null).override_failure_message("ScannerButton must exist in HUD").is_true()
+	var status_btn: Node = hud.get_node_or_null("BottomBar/StatusButton")
+	var gear_btn: Node = hud.get_node_or_null("BottomBar/GearButton")
+	var log_btn: Node = hud.get_node_or_null("BottomBar/LogButton")
+	assert_bool(status_btn != null).override_failure_message("StatusButton must exist in HUD").is_true()
+	assert_bool(gear_btn != null).override_failure_message("GearButton must exist in HUD").is_true()
+	assert_bool(log_btn != null).override_failure_message("LogButton must exist in HUD").is_true()
 
-	if inv_btn != null:
-		assert_float((inv_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
-	if scn_btn != null:
-		assert_float((scn_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
+	if status_btn != null:
+		assert_float((status_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
+	if gear_btn != null:
+		assert_float((gear_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
+	if log_btn != null:
+		assert_float((log_btn as Control).custom_minimum_size.x).is_greater_equal(64.0)
 
 	hud.queue_free()
 

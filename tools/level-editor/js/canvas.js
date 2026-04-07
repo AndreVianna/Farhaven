@@ -546,8 +546,8 @@ export class HexCanvas {
     const mx = event.clientX - rect.left;
     const my = event.clientY - rect.top;
 
-    // Middle-click or space+left-click: start pan
-    if (event.button === 1 || (event.button === 0 && this.spaceHeld)) {
+    // Middle-click, right-click, or space+left-click: start pan
+    if (event.button === 1 || event.button === 2 || (event.button === 0 && this.spaceHeld)) {
       this.isPanning = true;
       this.panStart = { x: event.clientX, y: event.clientY };
       event.preventDefault();

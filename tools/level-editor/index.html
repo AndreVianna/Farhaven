@@ -686,6 +686,104 @@ html, body {
   min-height: 24px;
 }
 
+/* ---- Help Button & Overlay ---- */
+#help-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#help-btn:hover {
+  background: var(--tab-hover);
+  color: var(--text-primary);
+}
+
+#help-overlay {
+  display: none;
+  position: fixed;
+  top: 50px;
+  right: 16px;
+  width: 360px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#help-overlay.visible {
+  display: block;
+}
+
+#help-overlay h3 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+#help-overlay h4 {
+  margin: 12px 0 6px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#help-overlay h4:first-of-type {
+  margin-top: 0;
+}
+
+#help-overlay table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+#help-overlay td {
+  padding: 2px 0;
+  vertical-align: top;
+}
+
+#help-overlay td:first-child {
+  width: 160px;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#help-overlay td:last-child {
+  color: var(--text-secondary);
+}
+
+#help-overlay-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+}
+
+#help-overlay-backdrop.visible {
+  display: block;
+}
+
 </style>
 </head>
 <body>
@@ -695,6 +793,7 @@ html, body {
     <header id="toolbar">
       <span class="toolbar-title">Farhaven Level Editor</span>
       <span id="tool-indicator" style="font-size:12px;color:var(--text-secondary);"></span>
+      <button id="help-btn" title="Keyboard Shortcuts (?)">?</button>
     </header>
     <nav id="tabs">
       <button class="tab-btn active" data-tab="map">Map Editor</button>
@@ -789,6 +888,71 @@ html, body {
   </div>
 
 </div>
+
+<!-- Help overlay -->
+<div id="help-overlay-backdrop"></div>
+<div id="help-overlay">
+  <h3>Keyboard &amp; Mouse Shortcuts</h3>
+
+  <h4>Mouse</h4>
+  <table>
+    <tr><td>Left click</td><td>Apply active tool</td></tr>
+    <tr><td>Left drag</td><td>Paint continuously</td></tr>
+    <tr><td>Right-click drag</td><td>Pan map</td></tr>
+    <tr><td>Middle-click drag</td><td>Pan map</td></tr>
+    <tr><td>Space + Left drag</td><td>Pan map</td></tr>
+    <tr><td>Scroll wheel</td><td>Zoom (cursor-centered)</td></tr>
+  </table>
+
+  <h4>Tool Shortcuts (Map tab)</h4>
+  <table>
+    <tr><td>V</td><td>Select</td></tr>
+    <tr><td>B</td><td>Biome</td></tr>
+    <tr><td>E</td><td>Elevation</td></tr>
+    <tr><td>F</td><td>Flood Fill</td></tr>
+    <tr><td>D</td><td>Delete Hex</td></tr>
+    <tr><td>R</td><td>Resource</td></tr>
+    <tr><td>S</td><td>Structure</td></tr>
+    <tr><td>A</td><td>Anomaly</td></tr>
+    <tr><td>P</td><td>Spawn</td></tr>
+    <tr><td>X</td><td>Eraser</td></tr>
+    <tr><td>Escape</td><td>Back to Select</td></tr>
+  </table>
+
+  <h4>Global</h4>
+  <table>
+    <tr><td>Ctrl+Z</td><td>Undo</td></tr>
+    <tr><td>Ctrl+Shift+Z</td><td>Redo</td></tr>
+    <tr><td>Ctrl+S</td><td>Save</td></tr>
+    <tr><td>Ctrl+N</td><td>New Map</td></tr>
+  </table>
+</div>
+
+<script>
+(function() {
+  const btn = document.getElementById('help-btn');
+  const overlay = document.getElementById('help-overlay');
+  const backdrop = document.getElementById('help-overlay-backdrop');
+
+  function toggleHelp() {
+    overlay.classList.toggle('visible');
+    backdrop.classList.toggle('visible');
+  }
+
+  function closeHelp() {
+    overlay.classList.remove('visible');
+    backdrop.classList.remove('visible');
+  }
+
+  btn.addEventListener('click', toggleHelp);
+  backdrop.addEventListener('click', closeHelp);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('visible')) {
+      closeHelp();
+    }
+  });
+})();
+</script>
 
 <script type="module" src="js/app.js"></script>
 </body>

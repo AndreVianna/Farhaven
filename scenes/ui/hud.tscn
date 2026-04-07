@@ -1,9 +1,6 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/ui/catalog_panel.tscn" id="7"]
-[ext_resource type="PackedScene" path="res://scenes/ui/crafting_panel.tscn" id="8"]
 [ext_resource type="Script" path="res://scripts/hud/stat_bars.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/hud/day_counter.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/hud/floating_text_manager.gd" id="4"]
@@ -18,127 +15,94 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1")
 
-[node name="TopBar" type="HBoxContainer" parent="."]
+[node name="StatBars" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
+anchors_preset = 0
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 88.0
-grow_horizontal = 2
-theme_override_constants/separation = 8
-
-[node name="StatBars" type="VBoxContainer" parent="TopBar"]
-size_flags_vertical = 4
+offset_right = 176.0
+offset_bottom = 92.0
 theme_override_constants/separation = 4
 script = ExtResource("2")
 
-[node name="HPBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 24)
+[node name="HPBar" type="ProgressBar" parent="StatBars"]
+custom_minimum_size = Vector2(160, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="HungerBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 24)
+[node name="HungerBar" type="ProgressBar" parent="StatBars"]
+custom_minimum_size = Vector2(160, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="ThirstBar" type="ProgressBar" parent="TopBar/StatBars"]
-custom_minimum_size = Vector2(200, 24)
+[node name="ThirstBar" type="ProgressBar" parent="StatBars"]
+custom_minimum_size = Vector2(160, 24)
 size_flags_horizontal = 3
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="Spacer" type="Control" parent="TopBar"]
-size_flags_horizontal = 3
-
-[node name="DayCounter" type="HBoxContainer" parent="TopBar"]
-size_flags_vertical = 4
+[node name="DayCounter" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = -240.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 80.0
+grow_horizontal = 0
 theme_override_constants/separation = 6
 script = ExtResource("3")
 
-[node name="DayLabel" type="Label" parent="TopBar/DayCounter"]
+[node name="DayLabel" type="Label" parent="DayCounter"]
 text = "DAY 01"
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 48
 
-[node name="PhaseIcon" type="ColorRect" parent="TopBar/DayCounter"]
+[node name="PhaseIcon" type="ColorRect" parent="DayCounter"]
 custom_minimum_size = Vector2(64, 64)
 color = Color(1.0, 0.851, 0.239, 1.0)
 
 [node name="BottomBar" type="HBoxContainer" parent="."]
 layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = -144.0
+offset_left = -336.0
+offset_top = -112.0
 offset_right = -8.0
 offset_bottom = -8.0
-grow_horizontal = 2
+grow_horizontal = 0
+grow_vertical = 0
 theme_override_constants/separation = 8
 
-[node name="Spacer2" type="Control" parent="BottomBar"]
-size_flags_horizontal = 3
+[node name="StatusButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(96, 96)
+text = "STATUS"
+theme_override_font_sizes/font_size = 20
 
-[node name="InventoryButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(128, 128)
-text = "INV"
-theme_override_font_sizes/font_size = 28
+[node name="GearButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(96, 96)
+text = "GEAR"
+theme_override_font_sizes/font_size = 20
 
-[node name="BuildButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(128, 128)
-text = "BLD"
-theme_override_font_sizes/font_size = 28
-
-[node name="CraftButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(128, 128)
-text = "CRF"
-visible = false
-theme_override_font_sizes/font_size = 28
-
-[node name="ScannerButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(128, 128)
-text = "SCN"
-theme_override_font_sizes/font_size = 28
-
-[node name="JournalButton" type="Button" parent="BottomBar"]
-custom_minimum_size = Vector2(128, 128)
-text = "JNL"
-theme_override_font_sizes/font_size = 28
-
-[node name="InventoryPanel" parent="." instance=ExtResource("6")]
-layout_mode = 1
-anchor_left = 0.0
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="CatalogPanel" parent="." instance=ExtResource("7")]
-layout_mode = 1
-anchor_left = 0.0
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="CraftingPanel" parent="." instance=ExtResource("8")]
-layout_mode = 1
-anchor_left = 0.0
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 0
+[node name="LogButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(96, 96)
+text = "LOG"
+theme_override_font_sizes/font_size = 20
 
 [node name="FloatingTextContainer" type="Control" parent="."]
 layout_mode = 1
@@ -152,18 +116,18 @@ script = ExtResource("4")
 
 [node name="NotificationContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchor_left = 0.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = -260.0
-offset_right = -8.0
-offset_bottom = -96.0
+anchor_left = 0.3
+anchor_top = 0.0
+anchor_right = 0.7
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 8.0
+offset_right = 0.0
+offset_bottom = 120.0
 mouse_filter = 2
 grow_horizontal = 2
-grow_vertical = 0
-alignment = 2
+grow_vertical = 1
+alignment = 0
 script = ExtResource("5")
 
 [node name="PlacementLabel" type="Label" parent="."]

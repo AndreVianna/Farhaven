@@ -5,8 +5,9 @@ const HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- SUB_HEX_SIZE ---
 
-func test_sub_hex_size_equals_hex_size_over_five() -> void:
-	assert_float(HexMath.SUB_HEX_SIZE).is_equal_approx(HexMath.HEX_SIZE / 5.0, 0.0001)
+func test_sub_hex_size_fits_pointy_top_in_hex() -> void:
+	var expected: float = (HexMath.HEX_SIZE / cos(deg_to_rad(30.0))) / 5.0
+	assert_float(HexMath.SUB_HEX_SIZE).is_equal_approx(expected, 0.0001)
 
 # --- sub_axial_to_world ---
 

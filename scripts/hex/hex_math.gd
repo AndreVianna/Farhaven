@@ -5,7 +5,7 @@ class_name HexMath
 ## Flat-top hexagon layout. Follows Red Blob Games conventions.
 
 const HEX_SIZE: float = 3.0
-const SUB_HEX_SIZE: float = HEX_SIZE / 5.0  # 0.6
+const SUB_HEX_SIZE: float = (HEX_SIZE / cos(deg_to_rad(30.0))) / 5.0  # ~0.6928 (pointy-top sub-hexes fill hex)
 
 # Flat-top axial neighbor directions (E, NE, NW, W, SW, SE)
 const DIRECTIONS = [
@@ -96,20 +96,25 @@ static func get_ring(center: Vector2i, radius: int) -> Array[Vector2i]:
 # --- Sub-hex functions ---
 
 ## Convert sub-hex axial coords to world offset relative to parent hex center.
+## Sub-hexes use POINTY-TOP layout (rotated 30° from main flat-top hexes) so that
+## sub-hex rings align with the edges of the parent flat-top hex.
 static func sub_axial_to_world(sub_coords: Vector2i) -> Vector2:
 	var sq: float = float(sub_coords.x)
 	var sr: float = float(sub_coords.y)
-	var x: float = SUB_HEX_SIZE * (3.0 / 2.0 * sq)
-	var y: float = SUB_HEX_SIZE * (sqrt(3.0) / 2.0 * sq + sqrt(3.0) * sr)
+	# Pointy-top: x = size * (sqrt(3) * q + sqrt(3)/2 * r), y = size * (3/2 * r)
+	var x: float = SUB_HEX_SIZE * (sqrt(3.0) * sq + sqrt(3.0) / 2.0 * sr)
+	var y: float = SUB_HEX_SIZE * (3.0 / 2.0 * sr)
 	return Vector2(x, y)
 
 
 ## Convert a world offset (relative to hex center) to nearest sub-hex coords.
+## Inverse of sub_axial_to_world (pointy-top layout).
 static func world_to_sub_axial(offset: Vector2) -> Vector2i:
 	var x: float = offset.x
 	var y: float = offset.y
-	var fq: float = (2.0 / 3.0 * x) / SUB_HEX_SIZE
-	var fr: float = (-1.0 / 3.0 * x + sqrt(3.0) / 3.0 * y) / SUB_HEX_SIZE
+	# Pointy-top inverse: q = (sqrt(3)/3 * x - 1/3 * y) / size, r = (2/3 * y) / size
+	var fq: float = (sqrt(3.0) / 3.0 * x - 1.0 / 3.0 * y) / SUB_HEX_SIZE
+	var fr: float = (2.0 / 3.0 * y) / SUB_HEX_SIZE
 	var fs: float = -fq - fr
 	return _cube_round_to_axial(fq, fr, fs)
 

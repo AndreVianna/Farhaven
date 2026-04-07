@@ -26,10 +26,12 @@ var facing_direction: Vector2 = Vector2.ZERO
 var inventory: _Inventory = _Inventory.new()
 
 var _grid: Node  # HexGrid reference (autoload or test substitute)
+var _camera: Node  # Camera3D sibling (for camera-relative movement)
 var _joystick_dir: Vector2 = Vector2.ZERO
 var _joystick_magnitude: float = 0.0
 var _buffered_dir: Vector2 = Vector2.ZERO
 var _buffered_magnitude: float = 0.0
+var _model: Node3D  # PlayerModel child
 var _jump_tween: Tween
 var _snap_tween: Tween
 var _was_moving: bool = false
@@ -40,6 +42,12 @@ func _ready() -> void:
 		_grid = HexGrid
 	_grid.map_generated.connect(_on_map_generated)
 	_connect_player_input()
+	_model = get_node_or_null("PlayerModel")
+	# Camera is a sibling under World (not a child of Player).
+	if _camera == null:
+		var world: Node = get_parent()
+		if world != null:
+			_camera = world.get_node_or_null("Camera3D")
 
 
 func get_inventory() -> _Inventory:
@@ -58,8 +66,14 @@ func _connect_player_input() -> void:
 		pi.joystick_released.connect(_on_joystick_stop)
 
 
+func _update_model_rotation() -> void:
+	if _model == null or facing_direction.is_zero_approx():
+		return
+	_model.rotation.y = atan2(facing_direction.x, facing_direction.y)
+
+
 func _on_map_generated() -> void:
-	current_tile = Vector2i.ZERO
+	current_tile = _grid.spawn_tile
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
@@ -74,11 +88,8 @@ func _process(delta: float) -> void:
 ## Snap the player's world position to the given tile center.
 func _snap_to_tile(coords: Vector2i) -> void:
 	var world_2d: Vector2 = _grid.axial_to_world(coords)
-	var tile = _grid.get_tile(coords)
-	var elevation_y: float = 0.0
-	if tile != null:
-		elevation_y = float(tile.elevation) * ELEVATION_SCALE
-	position = Vector3(world_2d.x, elevation_y, world_2d.y)
+	var terrain_y: float = _grid.get_terrain_y(world_2d.x, world_2d.y)
+	position = Vector3(world_2d.x, terrain_y, world_2d.y)
 
 
 # --- Joystick signal handlers ---
@@ -135,7 +146,12 @@ func _process_walking(delta: float) -> void:
 			_was_moving = false
 		return
 
-	facing_direction = _joystick_dir.normalized()
+	# Rotate joystick direction by camera yaw for camera-relative movement.
+	var raw_dir: Vector2 = _joystick_dir.normalized()
+	if _camera != null and _camera.has_method("get_yaw"):
+		raw_dir = raw_dir.rotated(-_camera.get_yaw())
+	facing_direction = raw_dir
+	_update_model_rotation()
 	var velocity_2d: Vector2 = facing_direction * move_speed * _joystick_magnitude
 
 	# Track movement drain start/stop
@@ -169,29 +185,16 @@ func _process_walking(delta: float) -> void:
 		_update_elevation_y_same_tile()
 
 
-## Interpolate Y position based on distance to source and destination tile centers.
-func _update_elevation_y_interpolated(pos_2d: Vector2, from: Vector2i, to: Vector2i) -> void:
-	var from_world: Vector2 = _grid.axial_to_world(from)
-	var to_world: Vector2 = _grid.axial_to_world(to)
-	var from_tile = _grid.get_tile(from)
-	var to_tile = _grid.get_tile(to)
-	if from_tile == null or to_tile == null:
-		return
-	var from_y: float = float(from_tile.elevation) * ELEVATION_SCALE
-	var to_y: float = float(to_tile.elevation) * ELEVATION_SCALE
-	var total_dist: float = from_world.distance_to(to_world)
-	if total_dist < 0.001:
-		position.y = to_y
-		return
-	var progress: float = clampf(from_world.distance_to(pos_2d) / total_dist, 0.0, 1.0)
-	position.y = lerpf(from_y, to_y, progress)
+## Update Y from curved terrain at current XZ position.
+## When crossing tiles, the terrain Y already handles the interpolation
+## because get_terrain_y considers the hex the point is actually in.
+func _update_elevation_y_interpolated(_pos_2d: Vector2, _from: Vector2i, _to: Vector2i) -> void:
+	position.y = _grid.get_terrain_y(position.x, position.z)
 
 
-## Keep Y at current tile elevation.
+## Keep Y at current terrain height.
 func _update_elevation_y_same_tile() -> void:
-	var tile = _grid.get_tile(current_tile)
-	if tile != null:
-		position.y = float(tile.elevation) * ELEVATION_SCALE
+	position.y = _grid.get_terrain_y(position.x, position.z)
 
 
 # --- Jump/Drop ---
@@ -203,13 +206,10 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 
 	var current_world_2d: Vector2 = _grid.axial_to_world(current_tile)
 	var target_world_2d: Vector2 = _grid.axial_to_world(target)
-	var target_tile = _grid.get_tile(target)
-	var target_y: float = 0.0
-	if target_tile != null:
-		target_y = float(target_tile.elevation) * ELEVATION_SCALE
 
 	# Land just past the border (10% into the target hex), not at center
 	var border_point_2d: Vector2 = current_world_2d.lerp(target_world_2d, 0.55)
+	var target_y: float = _grid.get_terrain_y(border_point_2d.x, border_point_2d.y)
 	var land_pos := Vector3(border_point_2d.x, target_y, border_point_2d.y)
 
 	var higher_y: float = maxf(position.y, target_y)
@@ -300,10 +300,7 @@ func _slide_along_boundary(velocity_2d: Vector2, delta: float) -> void:
 func _tween_snap_to_center() -> void:
 	_cancel_snap_tween()
 	var world_2d: Vector2 = _grid.axial_to_world(current_tile)
-	var tile = _grid.get_tile(current_tile)
-	var target_y: float = 0.0
-	if tile != null:
-		target_y = float(tile.elevation) * ELEVATION_SCALE
+	var target_y: float = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	var target_pos := Vector3(world_2d.x, target_y, world_2d.y)
 
 	_snap_tween = create_tween()
@@ -353,6 +350,8 @@ func get_save_data() -> Dictionary:
 	var data: Dictionary = {
 		"tile_col": current_tile.x,
 		"tile_row": current_tile.y,
+		"facing_x": facing_direction.x,
+		"facing_y": facing_direction.y,
 	}
 	if inventory != null:
 		data["inventory"] = inventory.get_save_data()
@@ -366,8 +365,13 @@ func load_save_data(data: Dictionary) -> void:
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
+	facing_direction = Vector2(
+		float(data.get("facing_x", 0.0)),
+		float(data.get("facing_y", 0.0)),
+	)
 	_cancel_jump_tween()
 	_cancel_snap_tween()
 	_snap_to_tile(current_tile)
+	_update_model_rotation()
 	if inventory != null and data.has("inventory"):
 		inventory.load_save_data(data["inventory"])

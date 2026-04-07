@@ -87,7 +87,7 @@ func load_map(path: String) -> bool:
 		var tile: Resource = _HexTile.new()
 		tile.coords = coords
 		tile.biome = biome_int
-		tile.elevation = clampi(int(td.get("elevation", 0)), 0, 9)
+		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
 		tile.fog_state = _HexTile.FogState.VISIBLE
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
@@ -98,8 +98,14 @@ func load_map(path: String) -> bool:
 				prop.type = StringName(pd.get("type", ""))
 				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
-				prop.tool_required = StringName(pd.get("tool_required", ""))
-				prop.respawn_time = float(pd.get("respawn_time", 0.0))
+				if pd.has("tool_required") and pd["tool_required"] != "":
+					prop.tool_required = StringName(pd["tool_required"])
+				elif ResourceRegistry.has_def(prop.type):
+					prop.tool_required = ResourceRegistry.get_def(prop.type).tool_required
+				if pd.has("respawn_time"):
+					prop.respawn_time = float(pd["respawn_time"])
+				elif ResourceRegistry.has_def(prop.type):
+					prop.respawn_time = ResourceRegistry.get_def(prop.type).respawn_time
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
@@ -136,14 +142,17 @@ func load_map(path: String) -> bool:
 
 		_grid._tiles[coords] = tile
 
-	# Step 4: Validate (logs warnings on failure, does not abort)
+	# Step 4: Store spawn position on the grid.
+	_grid.spawn_tile = spawn
+
+	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
 
-	# Step 5: Initialize fog — all tiles VISIBLE (darkness handled by shader)
+	# Step 6: Initialize fog — all tiles VISIBLE (darkness handled by shader)
 	for c in _grid._tiles:
 		_grid._tiles[c].fog_state = _HexTile.FogState.VISIBLE
 
-	# Step 6: Emit map_generated
+	# Step 7: Emit map_generated
 	_grid.map_generated.emit()
 	return true
 
@@ -200,7 +209,7 @@ func _validate(spawn: Vector2i) -> void:
 			if p.category == _Prop.Category.ANOMALY:
 				has_anomaly = true
 				break
-		if t.elevation < 0 or t.elevation > 9:
+		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
 
 	for b: int in [_HexTile.Biome.CRASH_SITE, _HexTile.Biome.GRASSLAND,

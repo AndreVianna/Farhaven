@@ -1,0 +1,462 @@
+{
+	"spawn": [
+		0,
+		0
+	],
+	"tiles": {
+		"0,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"1,-1": {
+			"biome": "crash_site",
+			"elevation": 1
+		},
+		"2,-2": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"3,-3": {
+			"biome": "crash_site",
+			"elevation": 3
+		},
+		"4,-4": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"5,-5": {
+			"biome": "crash_site",
+			"elevation": 5
+		},
+		"6,-6": {
+			"biome": "crash_site",
+			"elevation": 6
+		},
+		"7,-7": {
+			"biome": "crash_site",
+			"elevation": 7
+		},
+		"8,-8": {
+			"biome": "crash_site",
+			"elevation": 8
+		},
+		"9,-9": {
+			"biome": "crash_site",
+			"elevation": 9
+		},
+		"1,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"2,-1": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"3,-2": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"4,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"5,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,-6": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"9,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"9,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"5,-6": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"4,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"3,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"2,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"1,-2": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"0,-1": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"2,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"3,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"4,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"5,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,-1": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,-2": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,-3": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"5,-3": {
+			"biome": "crash_site",
+			"elevation": 5
+		},
+		"4,-2": {
+			"biome": "crash_site",
+			"elevation": 6
+		},
+		"3,-1": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"4,-1": {
+			"biome": "crash_site",
+			"elevation": 1
+		},
+		"5,-1": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"6,-2": {
+			"biome": "crash_site",
+			"elevation": 3
+		},
+		"5,-2": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"9,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"11,-6": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"11,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"11,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"14,-9": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"14,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"11,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"9,-7": {
+			"biome": "crash_site",
+			"elevation": 1
+		},
+		"7,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-5": {
+			"biome": "crash_site",
+			"elevation": 1
+		},
+		"9,-5": {
+			"biome": "crash_site",
+			"elevation": 3
+		},
+		"9,-6": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"8,-6": {
+			"biome": "crash_site",
+			"elevation": 3
+		},
+		"10,-6": {
+			"biome": "crash_site",
+			"elevation": 1
+		},
+		"10,-7": {
+			"biome": "crash_site",
+			"elevation": 3
+		},
+		"11,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"6,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"7,0": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"8,-1": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"9,-2": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"11,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-6": {
+			"biome": "crash_site",
+			"elevation": 6
+		},
+		"14,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"15,-8": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"16,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"15,-9": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"14,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-6": {
+			"biome": "crash_site",
+			"elevation": 8
+		},
+		"11,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"10,-4": {
+			"biome": "crash_site",
+			"elevation": 8
+		},
+		"9,-3": {
+			"biome": "crash_site",
+			"elevation": 6
+		},
+		"8,-2": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"7,-1": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"17,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"16,-10": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"15,-10": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"14,-11": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"15,-11": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"16,-11": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"17,-11": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"16,-8": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"15,-7": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"14,-6": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-5": {
+			"biome": "crash_site",
+			"elevation": 4
+		},
+		"17,-9": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-4": {
+			"biome": "crash_site",
+			"elevation": 2
+		},
+		"11,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"12,-3": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"13,-4": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"14,-5": {
+			"biome": "crash_site",
+			"elevation": 0
+		},
+		"15,-6": {
+			"biome": "crash_site",
+			"elevation": 0
+		}
+	},
+	"chapter_id": "ch2",
+	"name": "Test Level"
+}

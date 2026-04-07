@@ -160,14 +160,17 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 	# Position
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile = _grid.get_tile(coords) if _grid != null else null
-	var elevation_y: float = 0.0
-	if tile != null:
-		elevation_y = float(tile.elevation) * 0.5
-
 	# Look up sub-hex world offset from tile data (anomalies stay at center)
 	var placement: Array = _PropUtils.get_prop_placement(tile, entry_id)
 	var world_offset: Vector2 = placement[0]  # Already world-space from sub_axial_to_world
-	var pos := Vector3(world_2d.x + world_offset.x, elevation_y + LABEL_Y_OFFSET, world_2d.y + world_offset.y)
+	var wx: float = world_2d.x + world_offset.x
+	var wz: float = world_2d.y + world_offset.y
+	var elevation_y: float = 0.0
+	if _grid != null and _grid.has_method("get_terrain_y"):
+		elevation_y = _grid.get_terrain_y(wx, wz)
+	elif tile != null:
+		elevation_y = float(tile.elevation) * 0.5
+	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET, wz)
 
 	var label_3d := Label3D.new()
 	label_3d.text = text

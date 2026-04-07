@@ -184,7 +184,7 @@
 
 ### Deferred Initialization
 - `call_deferred()` used when initialization order matters: `_bootstrap_visible_tiles.call_deferred()` in `main.gd`, `_connect_scanner_signals.call_deferred()` in `prop_label_renderer.gd`, `call_deferred("_resolve_dependencies")` in `auto_interaction_system.gd`
-- `@onready` used for child node references in scene-based scripts: `@onready var _stat_bars := $TopBar/StatBars`
+- `@onready` used for child node references in scene-based scripts: `@onready var _stat_bars := $StatBars`
 - Source: `main.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`, `auto_interaction_system.gd`, all HUD/UI scripts
 
 ### Comment Style

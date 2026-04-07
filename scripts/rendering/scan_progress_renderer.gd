@@ -119,7 +119,9 @@ func _position_at(coords: Vector2i) -> void:
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile = _grid.get_tile(coords) if _grid != null else null
 	var elevation_y: float = 0.0
-	if tile != null:
+	if _grid != null and _grid.has_method("get_terrain_y"):
+		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
+	elif tile != null:
 		elevation_y = float(tile.elevation) * 0.5
 	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET, world_2d.y)
 

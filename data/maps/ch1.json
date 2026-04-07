@@ -400,7 +400,7 @@
 		},
 		"5,0": {
 			"biome": "rocky",
-			"elevation": 5,
+			"elevation": 6,
 			"props": [
 				{
 					"type": "ore",
@@ -506,7 +506,7 @@
 		},
 		"5,1": {
 			"biome": "rocky",
-			"elevation": 9
+			"elevation": 7
 		},
 		"4,2": {
 			"biome": "rocky",
