@@ -380,10 +380,14 @@ func _rebuild_mesh() -> void:
 				st.set_color(rk_col[j_next])
 				st.add_vertex(rk_pos[j_next])
 
-	# Step 6: Generate cliff faces for elevation diff >= 3 (BLOCKED).
-	# 6-point polygon per cliff edge, following the actual surface profile on both sides.
+	# Step 6: Generate wall faces on ALL edges where this hex is higher than neighbor.
+	# Walls on every face with elevation > 0 eliminates visual gaps regardless of
+	# corner_y averaging asymmetry. Short walls for slopes, tall walls for cliffs.
+	# 6-point polygon per wall, following the actual surface profile on both sides.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
+		if tile.elevation == 0:
+			continue  # Ground-level hexes need no walls.
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
@@ -391,12 +395,8 @@ func _rebuild_mesh() -> void:
 		for d: int in range(6):
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			if n_tile == null:
-				continue
-			if n_tile.elevation >= tile.elevation:
-				continue
-			var diff: int = tile.elevation - n_tile.elevation
-			if diff < 3:
+			# Wall if neighbor is lower or missing (map edge).
+			if n_tile != null and n_tile.elevation >= tile.elevation:
 				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
@@ -425,15 +425,14 @@ func _rebuild_mesh() -> void:
 			var h_mid_y: float = h_edge_y[d]
 			var h_cb_y: float = h_corner_y[cb_idx]
 
-			# Low hex (neighbor) Y values at the same 3 points.
-			# Neighbor sees this edge from opposite side — corners are swapped.
-			var l_ca_y: float  # neighbor's Y at corner_a position
-			var l_mid_y: float  # neighbor's Y at edge midpoint
-			var l_cb_y: float  # neighbor's Y at corner_b position
-			if all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
+			# Low side Y values at the 3 edge points.
+			var l_ca_y: float
+			var l_mid_y: float
+			var l_cb_y: float
+			if n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
+				# Neighbor exists — use its surface profile (corners swapped).
 				var n_cy: Array[float] = all_corner_y[n_coords]
 				var n_ey: Array[float] = all_edge_y[n_coords]
-				# Find the reverse direction (neighbor looking back at us).
 				var rev_d: int = -1
 				for rd: int in range(6):
 					if n_coords + (HexMath.DIRECTIONS[rd] as Vector2i) == (coords as Vector2i):
@@ -441,7 +440,6 @@ func _rebuild_mesh() -> void:
 						break
 				if rev_d >= 0:
 					var rev_ec: Array = edge_corners[rev_d]
-					# Neighbor's corner_a of this edge = our corner_b, and vice versa.
 					l_cb_y = n_cy[rev_ec[0]]
 					l_mid_y = n_ey[rev_d]
 					l_ca_y = n_cy[rev_ec[1]]
@@ -450,18 +448,28 @@ func _rebuild_mesh() -> void:
 					l_ca_y = low_y
 					l_mid_y = low_y
 					l_cb_y = low_y
-			else:
+			elif n_tile != null:
 				var low_y: float = float(n_tile.elevation) * ELEVATION_STEP
 				l_ca_y = low_y
 				l_mid_y = low_y
 				l_cb_y = low_y
+			else:
+				# Map edge — wall goes down to ground (Y=0).
+				l_ca_y = 0.0
+				l_mid_y = 0.0
+				l_cb_y = 0.0
 
-			# Normal: direction from hex center toward neighbor.
-			var n_world: Vector2 = HexMath.axial_to_world(n_coords)
-			var dir_x: float = n_world.x - cx
-			var dir_z: float = n_world.y - cz
-			var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
-			var cliff_normal: Vector3 = Vector3(dir_x / dir_len, 0.0, dir_z / dir_len)
+			# Normal: direction toward neighbor (or outward for map edges).
+			var cliff_normal: Vector3
+			if n_tile != null:
+				var n_world: Vector2 = HexMath.axial_to_world(n_coords)
+				var dir_x: float = n_world.x - cx
+				var dir_z: float = n_world.y - cz
+				var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
+				cliff_normal = Vector3(dir_x / dir_len, 0.0, dir_z / dir_len)
+			else:
+				# Map edge: normal points outward from hex center toward edge midpoint.
+				cliff_normal = Vector3(cos(mid_angle), 0.0, sin(mid_angle))
 
 			# 6 vertices of the cliff face polygon:
 			# Top (high hex):  h0=corner_a, h1=edge_mid, h2=corner_b
