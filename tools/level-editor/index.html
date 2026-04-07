@@ -757,9 +757,12 @@ html, body {
         <canvas id="hex-canvas"></canvas>
         <aside id="sidebar">
           <div class="sidebar-section" id="map-stats">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
               <label class="sidebar-label" style="margin-bottom:0;">Map Info</label>
-              <button id="btn-save" type="button" title="Save All (Ctrl+S)" style="font-size:11px;padding:2px 8px;">Save</button>
+              <div style="display:flex;gap:4px;">
+                <button id="btn-save" type="button" title="Save All (Ctrl+S)" style="font-size:11px;padding:2px 8px;">Save</button>
+                <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" style="font-size:11px;padding:2px 8px;">Save As</button>
+              </div>
             </div>
             <div id="map-stats-content"></div>
           </div>

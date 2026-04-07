@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js'
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { HexInspector, showInlineModal } from './panels.js';
+import { HexInspector, showInlineModal, showErrorListModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
@@ -178,6 +178,7 @@ keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 keyboardManager.register('ctrl+z', () => commandHistory.undo());
 keyboardManager.register('ctrl+shift+z', () => commandHistory.redo());
 keyboardManager.register('ctrl+s', () => saveAll());
+keyboardManager.register('ctrl+shift+s', () => saveMapAs());
 keyboardManager.register('ctrl+n', () => newMap());
 
 // ============================================================
@@ -249,6 +250,55 @@ function newMap() {
   });
 }
 
+/**
+ * Save the current map to a new filename. Prompts for the filename,
+ * validates the map, then writes via the server API. Switches the
+ * active map to the new file on success.
+ * @returns {void}
+ */
+function saveMapAs() {
+  // Validate first so we don't create a broken file
+  const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
+  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  if (!validation.valid) {
+    showErrorListModal('Map validation failed — Save As blocked', validation.errors);
+    setStatus(`Save As blocked: ${validation.errors.length} validation error(s)`);
+    return;
+  }
+
+  const defaultName = hexGrid.meta.chapter_id || 'map';
+  showInlineModal('Save As (filename):', defaultName, async (filename) => {
+    if (filename === null) return;
+    const name = filename.trim();
+    if (!name) {
+      setStatus('Save As cancelled: empty filename.');
+      return;
+    }
+    const finalName = name.endsWith('.json') ? name : name + '.json';
+    if (ProjectContext.files.maps.has(finalName)) {
+      if (!confirm(`Map "${finalName}" already exists. Overwrite?`)) return;
+    }
+    try {
+      const mapData = serializeGridToMapJson(hexGrid);
+      const json = JSON.stringify(mapData, null, '\t');
+      await FileDiscovery.saveFile('data/maps', json, finalName);
+      // Register in ProjectContext so the dropdown picks it up
+      ProjectContext.files.maps.set(finalName, {
+        handle: null,
+        dir: 'data/maps',
+        data: mapData,
+      });
+      activeMapFilename = finalName;
+      dirtyTracker.markClean('map');
+      _refreshMapSelector();
+      setStatus(`Saved as "${finalName}".`);
+    } catch (err) {
+      showError(`Save As failed: ${err.message}`);
+    }
+  });
+}
+
 // ============================================================
 // Save Functions (task-005)
 // ============================================================
@@ -263,9 +313,8 @@ async function saveAll() {
   const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
   const validation = validateMap(hexGrid, knownBiomes, knownResources);
   if (!validation.valid) {
-    const firstError = validation.errors[0];
-    const prefix = firstError.hex.length > 0 ? `Tile (${firstError.hex.join(',')}): ` : '';
-    showError(`Validation: ${prefix}${firstError.message}`);
+    showErrorListModal('Map validation failed — save blocked', validation.errors);
+    setStatus(`Save blocked: ${validation.errors.length} validation error(s)`);
     return;
   }
 
@@ -317,6 +366,8 @@ async function saveTab(tab) {
 
 // Wire Save button
 document.getElementById('btn-save').addEventListener('click', () => saveAll());
+const btnSaveAs = document.getElementById('btn-save-as');
+if (btnSaveAs) btnSaveAs.addEventListener('click', () => saveMapAs());
 
 // ============================================================
 // beforeunload protection (task-005)
@@ -435,14 +486,14 @@ function initializeAfterLoad() {
   // Render resource list in the Resources tab (task-012/013)
   const resourceTabEl = document.getElementById('tab-resources');
   if (resourceTabEl) {
-    renderResourceEditor(resourceTabEl, { commandHistory });
+    renderResourceEditor(resourceTabEl, { commandHistory, onChange: refreshPalettes });
     console.log('Resource editor rendered.');
   }
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
   if (biomeTabEl) {
-    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas });
+    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas, onChange: refreshPalettes });
     console.log('Biome editor rendered.');
   }
 
@@ -475,6 +526,10 @@ function initializeAfterLoad() {
   const sidebarEl = document.getElementById('sidebar');
   if (sidebarEl) {
     hexInspector = new HexInspector(sidebarEl, hexGrid, commandHistory, biomeColorMap);
+    // Editing chapter_id or name marks the map dirty
+    hexInspector.onMapMetaChange = () => {
+      dirtyTracker.markDirty('map');
+    };
   }
 
   // Wire canvas hover to hex inspector
@@ -534,6 +589,53 @@ function initSidebar() {
 }
 
 /**
+ * Rebuild biomeColorMap and resourceColorMap from current ProjectContext.
+ * Called after resource/biome edits so the canvas and palettes update.
+ * @returns {void}
+ */
+function _rebuildColorMaps() {
+  biomeColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.biomes) {
+    const colorField = entry.raw && entry.raw.resourceFields.get('color');
+    if (colorField && colorField.type === 'color') {
+      const biomeName = filename.replace('.tres', '');
+      const c = colorField.value;
+      const r = Math.round(c.r * 255);
+      const g = Math.round(c.g * 255);
+      const b = Math.round(c.b * 255);
+      biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
+    }
+  }
+  resourceColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.resources) {
+    const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
+    if (colorField && colorField.type === 'color') {
+      const resourceName = filename.replace('.tres', '');
+      const c = colorField.value;
+      const r = Math.round(c.r * 255);
+      const g = Math.round(c.g * 255);
+      const b = Math.round(c.b * 255);
+      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+    }
+  }
+}
+
+/**
+ * Rebuild the sidebar palettes and color maps. Called by the resource/biome
+ * editors after create/edit/delete operations so the map tab reflects changes.
+ * @returns {void}
+ */
+function refreshPalettes() {
+  _rebuildColorMaps();
+  _initBiomePalette();
+  _initResourcePalette();
+  _initStructurePalette();
+  updateSidebar();
+  if (hexCanvas) hexCanvas.requestRender();
+  if (hexInspector) hexInspector.updateMapStats();
+}
+
+/**
  * Create tool buttons in the tool grid.
  * @returns {void}
  */
@@ -572,11 +674,15 @@ function _initToolButtons() {
  * Populate the map dropdown from ProjectContext.files.maps.
  * @returns {void}
  */
-function _initMapSelector() {
+/**
+ * Rebuild the map selector <option> list from ProjectContext.
+ * Keeps the current active map selected if still present.
+ * @returns {void}
+ */
+function _refreshMapSelector() {
   const selector = /** @type {HTMLSelectElement|null} */ (document.getElementById('map-selector'));
   if (!selector) return;
   selector.innerHTML = '';
-
   const maps = ProjectContext.files.maps;
   if (maps.size === 0) {
     const opt = document.createElement('option');
@@ -585,19 +691,24 @@ function _initMapSelector() {
     selector.appendChild(opt);
     return;
   }
-
-  let first = true;
   for (const [filename] of maps) {
     const opt = document.createElement('option');
     opt.value = filename;
     opt.textContent = filename;
-    if (first) {
-      opt.selected = true;
-      activeMapFilename = filename;
-      first = false;
-    }
+    if (filename === activeMapFilename) opt.selected = true;
     selector.appendChild(opt);
   }
+}
+
+function _initMapSelector() {
+  const selector = /** @type {HTMLSelectElement|null} */ (document.getElementById('map-selector'));
+  if (!selector) return;
+
+  const maps = ProjectContext.files.maps;
+  if (maps.size > 0 && !activeMapFilename) {
+    activeMapFilename = maps.keys().next().value;
+  }
+  _refreshMapSelector();
 
   selector.addEventListener('change', () => {
     const selectedFilename = selector.value;
