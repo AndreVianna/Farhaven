@@ -20,7 +20,7 @@ extends Node3D
 ##   - HIDDEN tiles: excluded from mesh (no geometry).
 ##   - VISIBLE tiles: full vertex colors. Darkness handled by shader.
 ##   - Highlights: vertex color override, cleared on clear_highlights().
-##   - Cliff faces generated only for elevation diff >= 3 (BLOCKED traversal).
+##   - Wall faces on all non-water hex edges where neighbor is same-or-lower, water, or missing.
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 

@@ -183,7 +183,7 @@ func _compute_bounds() -> void:
 # ── Helpers ──────────────────────────────────────────────────────────
 
 func _is_right_zone(pos: Vector2) -> bool:
-	return pos.x > get_viewport().get_visible_rect().size.x * 0.6
+	return pos.x >= get_viewport().get_visible_rect().size.x * 0.6
 
 
 func _current_pinch_spread() -> float:

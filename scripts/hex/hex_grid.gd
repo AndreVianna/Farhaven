@@ -232,12 +232,17 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 		angle += TAU
 
 	# Normalized distance (0 at center, 1 at hex edge).
-	# Hex boundary radius varies with angle: HEX_SIZE at corners, HEX_SIZE*cos(30°) at edge midpoints.
-	# Within each 30° sector, compute the offset from the nearest corner direction.
-	var raw_sector_f: float = fmod(angle, TAU) / (PI / 6.0)
-	var sector_offset: float = (raw_sector_f - floor(raw_sector_f)) * (PI / 6.0)  # 0..30° within sector
-	var nearest_corner_offset: float = minf(sector_offset, (PI / 6.0) - sector_offset)
-	var hex_boundary_radius: float = _HexMath.HEX_SIZE * cos(nearest_corner_offset)
+	# Hex boundary radius at this angle (flat-top hex).
+	# Each edge midpoint is at 30°+60°*n. Distance to edge = apothem/cos(offset_from_edge).
+	var edge_step: float = PI / 3.0  # 60°
+	var first_edge: float = PI / 6.0  # 30°
+	var edge_index: float = round((angle - first_edge) / edge_step)
+	var nearest_edge_angle: float = first_edge + edge_index * edge_step
+	var angle_from_edge: float = absf(angle - nearest_edge_angle)
+	# Clamp to avoid numerical issues at exact corners (30° from edge = corner).
+	angle_from_edge = minf(angle_from_edge, deg_to_rad(29.99))
+	var apothem: float = _HexMath.HEX_SIZE * cos(deg_to_rad(30.0))
+	var hex_boundary_radius: float = apothem / cos(angle_from_edge)
 	var t: float = clampf(dist / hex_boundary_radius, 0.0, 1.0)
 
 	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
