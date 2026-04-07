@@ -286,6 +286,7 @@ func get_save_data() -> Dictionary:
 			props_data.append({
 				"type": String(prop.type),
 				"category": prop.category,
+				"origin": prop.origin,
 				"sub_hex_q": prop.sub_hex.x,
 				"sub_hex_r": prop.sub_hex.y,
 				"remaining": prop.remaining,
@@ -331,7 +332,8 @@ func load_save_data(data: Dictionary) -> void:
 			for pd in td["props"]:
 				var prop: Resource = _Prop.new()
 				prop.type = StringName(pd["type"])
-				prop.category = int(pd.get("category", _Prop.Category.RESOURCE))
+				prop.category = int(pd.get("category", _Prop.Category.PLANT))
+				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				prop.remaining = int(pd.get("remaining", 0))
 				prop.max_amount = int(pd.get("max_amount", 0))
@@ -362,6 +364,7 @@ func load_save_data(data: Dictionary) -> void:
 				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
 
 		_tiles[coords] = tile
+
 
 
 # --- Prop helpers ---

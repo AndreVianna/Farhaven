@@ -13,9 +13,9 @@ func test_prop_default_sub_hex_is_zero() -> void:
 	var prop: Prop = PropClass.new()
 	assert_bool(prop.sub_hex == Vector2i.ZERO).is_true()
 
-func test_prop_default_category_is_resource() -> void:
+func test_prop_default_category_is_plant() -> void:
 	var prop: Prop = PropClass.new()
-	assert_int(prop.category).is_equal(Prop.Category.RESOURCE)
+	assert_int(prop.category).is_equal(Prop.Category.PLANT)
 
 func test_prop_default_remaining_is_zero() -> void:
 	var prop: Prop = PropClass.new()
@@ -34,7 +34,7 @@ func test_prop_default_footprint_is_empty() -> void:
 func test_prop_resource_fields() -> void:
 	var prop: Prop = PropClass.new()
 	prop.type = &"iron_ore"
-	prop.category = Prop.Category.RESOURCE
+	prop.category = Prop.Category.MINERAL
 	prop.remaining = 5
 	prop.max_amount = 10
 	prop.tool_required = &"pickaxe"
@@ -59,17 +59,86 @@ func test_prop_structure_with_footprint() -> void:
 
 # --- Category enum values ---
 
-func test_category_resource_value() -> void:
-	assert_int(Prop.Category.RESOURCE).is_equal(0)
+func test_category_plant_value() -> void:
+	assert_int(Prop.Category.PLANT).is_equal(0)
+
+func test_category_mineral_value() -> void:
+	assert_int(Prop.Category.MINERAL).is_equal(1)
+
+func test_category_animal_value() -> void:
+	assert_int(Prop.Category.ANIMAL).is_equal(2)
+
+func test_category_fungi_value() -> void:
+	assert_int(Prop.Category.FUNGI).is_equal(3)
+
+func test_category_liquid_value() -> void:
+	assert_int(Prop.Category.LIQUID).is_equal(4)
+
+func test_category_ooze_value() -> void:
+	assert_int(Prop.Category.OOZE).is_equal(5)
 
 func test_category_structure_value() -> void:
-	assert_int(Prop.Category.STRUCTURE).is_equal(1)
+	assert_int(Prop.Category.STRUCTURE).is_equal(6)
 
-func test_category_anomaly_value() -> void:
-	assert_int(Prop.Category.ANOMALY).is_equal(2)
+func test_category_vehicle_value() -> void:
+	assert_int(Prop.Category.VEHICLE).is_equal(7)
 
-func test_category_spawn_value() -> void:
-	assert_int(Prop.Category.SPAWN).is_equal(3)
+func test_category_equipment_value() -> void:
+	assert_int(Prop.Category.EQUIPMENT).is_equal(8)
+
+func test_category_storage_value() -> void:
+	assert_int(Prop.Category.STORAGE).is_equal(9)
+
+# --- Origin enum values ---
+
+func test_origin_natural_value() -> void:
+	assert_int(Prop.Origin.NATURAL).is_equal(0)
+
+func test_origin_crafted_value() -> void:
+	assert_int(Prop.Origin.CRAFTED).is_equal(1)
+
+func test_default_origin_is_natural() -> void:
+	var prop: Prop = PropClass.new()
+	assert_int(prop.origin).is_equal(Prop.Origin.NATURAL)
+
+# --- is_anomaly helper ---
+
+func test_is_anomaly_false_for_natural() -> void:
+	var prop: Prop = PropClass.new()
+	prop.origin = Prop.Origin.NATURAL
+	assert_bool(prop.is_anomaly()).is_false()
+
+func test_is_anomaly_false_for_crafted() -> void:
+	var prop: Prop = PropClass.new()
+	prop.origin = Prop.Origin.CRAFTED
+	assert_bool(prop.is_anomaly()).is_false()
+
+func test_is_anomaly_true_for_unknown() -> void:
+	var prop: Prop = PropClass.new()
+	prop.origin = Prop.Origin.UNKNOWN
+	assert_bool(prop.is_anomaly()).is_true()
+
+func test_is_anomaly_true_for_native_alien() -> void:
+	var prop: Prop = PropClass.new()
+	prop.origin = Prop.Origin.NATIVE_ALIEN
+	assert_bool(prop.is_anomaly()).is_true()
+
+# --- is_natural_category helper ---
+
+func test_is_natural_category_true_for_plant() -> void:
+	var prop: Prop = PropClass.new()
+	prop.category = Prop.Category.PLANT
+	assert_bool(prop.is_natural_category()).is_true()
+
+func test_is_natural_category_true_for_ooze() -> void:
+	var prop: Prop = PropClass.new()
+	prop.category = Prop.Category.OOZE
+	assert_bool(prop.is_natural_category()).is_true()
+
+func test_is_natural_category_false_for_structure() -> void:
+	var prop: Prop = PropClass.new()
+	prop.category = Prop.Category.STRUCTURE
+	assert_bool(prop.is_natural_category()).is_false()
 
 # --- Sub-hex assignment ---
 

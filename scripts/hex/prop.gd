@@ -4,11 +4,19 @@ extends Resource
 ## Unified game object placed in a hex tile.
 ## Replaces ResourceNode. Category defines behavior.
 
-enum Category { RESOURCE, STRUCTURE, ANOMALY, SPAWN }
+enum Category {
+	PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE,
+	STRUCTURE, VEHICLE, EQUIPMENT, STORAGE,
+}
+
+enum Origin {
+	NATURAL, CRAFTED, HUMAN, NATIVE_ALIEN, UNKNOWN,
+}
 
 @export var type: StringName = &""
 @export var sub_hex: Vector2i = Vector2i.ZERO        # (sq, sr) within parent hex
-@export var category: Category = Category.RESOURCE
+@export var category: Category = Category.PLANT
+@export var origin: Origin = Origin.NATURAL
 
 # Resource-specific fields
 @export var remaining: int = 0
@@ -22,12 +30,22 @@ enum Category { RESOURCE, STRUCTURE, ANOMALY, SPAWN }
 @export var blocks_movement: bool = false
 
 
+## Returns true if this prop is considered an anomaly (derived state).
+func is_anomaly() -> bool:
+	return origin != Origin.NATURAL and origin != Origin.CRAFTED
+
+
+## Returns true if this prop has a natural category (PLANT through OOZE, indices 0-5).
+func is_natural_category() -> bool:
+	return category >= Category.PLANT and category <= Category.OOZE
+
+
 static func create_resource(type: StringName, remaining: int, max_amount: int,
 		tool_required: StringName = &"", respawn_time: float = 0.0,
 		rotation_deg: float = 0.0, sub_hex: Vector2i = Vector2i.ZERO) -> Prop:
 	var p := Prop.new()
 	p.type = type
-	p.category = Category.RESOURCE
+	p.category = Category.PLANT
 	p.remaining = remaining
 	p.max_amount = max_amount
 	p.tool_required = tool_required
@@ -52,14 +70,7 @@ static func create_structure(type: StringName, blocks_movement: bool = false,
 static func create_anomaly(type: StringName, sub_hex: Vector2i = Vector2i.ZERO) -> Prop:
 	var p := Prop.new()
 	p.type = type
-	p.category = Category.ANOMALY
-	p.sub_hex = sub_hex
-	return p
-
-
-static func create_spawn(sub_hex: Vector2i = Vector2i.ZERO) -> Prop:
-	var p := Prop.new()
-	p.type = &"spawn"
-	p.category = Category.SPAWN
+	p.category = Category.MINERAL
+	p.origin = Origin.UNKNOWN
 	p.sub_hex = sub_hex
 	return p

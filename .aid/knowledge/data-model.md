@@ -18,9 +18,9 @@ Godot Resource representing a single hex tile in the game world.
 | props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `resource_nodes`, `anomaly` fields. |
 
 **Deprecated fields (replaced by props[]):**
-- ~~`structure`~~ — now a prop with `category="structure"` in `props[]`
-- ~~`resource_nodes`~~ — now props with `category="resource"` in `props[]`
-- ~~`anomaly`~~ — now a prop with `category="anomaly"` in `props[]`
+- ~~`structure`~~ — now a prop with `category=STRUCTURE` (6) in `props[]`
+- ~~`resource_nodes`~~ — now props with natural categories (PLANT=0..OOZE=5) in `props[]`
+- ~~`anomaly`~~ — now a derived state via `prop.is_anomaly()` (origin is not NATURAL or CRAFTED)
 
 Source: `scripts/hex/hex_tile.gd`
 
@@ -30,7 +30,8 @@ Godot Resource representing any game object placed in a hex tile. Replaces the f
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
 | type | StringName | &"" | Must match a registry id | e.g. &"wood", &"workbench", &"anomaly_ch1_001" |
-| category | Category enum (int) | RESOURCE (0) | 0-3 | RESOURCE=0, STRUCTURE=1, ANOMALY=2, SPAWN=3 |
+| category | Category enum (int) | PLANT (0) | 0-9 | PLANT=0, MINERAL=1, ANIMAL=2, FUNGI=3, LIQUID=4, OOZE=5, STRUCTURE=6, VEHICLE=7, EQUIPMENT=8, STORAGE=9 |
+| origin | Origin enum (int) | NATURAL (0) | 0-4 | NATURAL=0, CRAFTED=1, HUMAN=2, NATIVE_ALIEN=3, UNKNOWN=4 |
 | sub_hex | Vector2i | (0,0) | Distance from origin <= 2 | Pointy-top axial coords within parent hex (19 valid positions) |
 | remaining | int | 0 | 0 to max_amount | Resource only: decremented on gather; 0 = depleted |
 | max_amount | int | 0 | Set from BiomeData | Resource only: reset to max on respawn |
@@ -40,7 +41,9 @@ Godot Resource representing any game object placed in a hex tile. Replaces the f
 | footprint | Array[Vector2i] | [] | Sub-hex coords | Structure only: multi-sub-hex occupancy (future, F-009) |
 | blocks_movement | bool | false | | Structure only: true for walls |
 
-**Factory methods:** `Prop.create_resource()`, `Prop.create_structure()`, `Prop.create_anomaly()`, `Prop.create_spawn()`
+**Factory methods:** `Prop.create_resource()`, `Prop.create_structure()`, `Prop.create_anomaly()`
+**Helper methods:** `prop.is_anomaly()` (derived state: origin is not NATURAL or CRAFTED), `prop.is_natural_category()` (category in PLANT..OOZE range)
+**Note:** ANOMALY is now a derived state (via `is_anomaly()`), not a category. SPAWN was removed (level metadata).
 
 Source: `scripts/hex/prop.gd`
 
@@ -184,8 +187,8 @@ Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy
   "elevation": 0,
   "props": [
     {"type": "wood", "category": 0, "sub_hex_q": 1, "sub_hex_r": 0, "rotation": 45},
-    {"type": "workbench", "category": 1, "sub_hex_q": 0, "sub_hex_r": 0, "blocks_movement": false},
-    {"type": "anomaly_ch1_001", "category": 2, "sub_hex_q": 0, "sub_hex_r": -1}
+    {"type": "workbench", "category": 6, "sub_hex_q": 0, "sub_hex_r": 0, "blocks_movement": false},
+    {"type": "anomaly_ch1_001", "category": 1, "origin": 4, "sub_hex_q": 0, "sub_hex_r": -1}
   ]
 }
 ```
@@ -195,7 +198,8 @@ Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy
 | Field | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
 | type | string | yes | - | Must match a ResourceDef id, structure name, or anomaly id |
-| category | int | yes | 0 | 0=RESOURCE, 1=STRUCTURE, 2=ANOMALY, 3=SPAWN |
+| category | int | yes | 0 | 0=PLANT, 1=MINERAL, 2=ANIMAL, 3=FUNGI, 4=LIQUID, 5=OOZE, 6=STRUCTURE, 7=VEHICLE, 8=EQUIPMENT, 9=STORAGE |
+| origin | int | no | 0 | 0=NATURAL, 1=CRAFTED, 2=HUMAN, 3=NATIVE_ALIEN, 4=UNKNOWN |
 | sub_hex_q | int | no | 0 | Sub-hex axial q (pointy-top layout, range: distance <= 2) |
 | sub_hex_r | int | no | 0 | Sub-hex axial r (pointy-top layout, range: distance <= 2) |
 | rotation | float | no | 0.0 | Degrees |

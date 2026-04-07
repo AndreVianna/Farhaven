@@ -30,7 +30,7 @@
 				},
 				{
 					"type": "workbench",
-					"category": 1
+					"category": 6
 				}
 			]
 		},
@@ -471,7 +471,8 @@
 				},
 				{
 					"type": "anomaly_ch1_001",
-					"category": 2
+					"category": 1,
+					"origin": 4
 				}
 			]
 		},
