@@ -1,5 +1,5 @@
 // ============================================================
-// ResourceEditor — List View, Edit Form, Commands (task-012/013)
+// ResourceEditor — Master-Detail Split Layout (A2 Tabbed Detail)
 // ============================================================
 
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
@@ -190,197 +190,8 @@ function _hexToColor(hex, alpha) {
 }
 
 // ============================================================
-// List View Rendering
+// KV Editor & Color Field Helpers
 // ============================================================
-
-/**
- * Render the resource list view into the Resources tab panel.
- * @param {HTMLElement} container - The #tab-resources element
- * @param {Object} [options] - Options object
- * @param {import('./commands.js').CommandHistory} [options.commandHistory] - Command history for undo/redo
- * @returns {void}
- */
-export function renderResourceList(container, options) {
-  container.innerHTML = '';
-
-  const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
-
-  // Header bar with title and New Resource button
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;';
-  const title = document.createElement('h3');
-  title.textContent = 'Resources';
-  title.style.cssText = 'margin:0;font-size:16px;color:var(--text-primary);';
-  const newBtn = document.createElement('button');
-  newBtn.textContent = '+ New Resource';
-  newBtn.style.cssText = 'padding:4px 12px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;';
-  newBtn.addEventListener('click', () => {
-    renderResourceForm(container, new ResourceDefModel(), true, {
-      commandHistory: cmdHistory,
-      onSave: () => renderResourceList(container, options),
-      onCancel: () => renderResourceList(container, options),
-    });
-  });
-  header.appendChild(title);
-  header.appendChild(newBtn);
-  container.appendChild(header);
-
-  // Build sorted list of resource models
-  /** @type {ResourceDefModel[]} */
-  const resources = [];
-  for (const [filename, entry] of ProjectContext.files.resources) {
-    resources.push(ResourceDefModel.fromEntry(filename, entry));
-  }
-  resources.sort((a, b) => a.id.localeCompare(b.id));
-
-  // Empty state
-  if (resources.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = 'No resources found. Open a project folder to load resource definitions.';
-    empty.style.cssText = 'padding:12px;color:var(--text-secondary);font-size:13px;';
-    container.appendChild(empty);
-    return;
-  }
-
-  // Table
-  const table = document.createElement('table');
-  table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px;';
-
-  // Header row
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  /** @type {string[]} */
-  const columns = ['Color', 'ID', 'Display Name', 'Category', 'Gather Time'];
-  for (const col of columns) {
-    const th = document.createElement('th');
-    th.textContent = col;
-    th.style.cssText = 'text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-secondary);font-weight:600;';
-    headerRow.appendChild(th);
-  }
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  // Data rows
-  const tbody = document.createElement('tbody');
-  for (const model of resources) {
-    const row = document.createElement('tr');
-    row.style.cssText = 'cursor:pointer;';
-    row.addEventListener('mouseenter', () => { row.style.background = 'var(--bg-tertiary)'; });
-    row.addEventListener('mouseleave', () => { row.style.background = ''; });
-    row.addEventListener('click', () => {
-      renderResourceForm(container, model, false, {
-        commandHistory: cmdHistory,
-        onSave: () => renderResourceList(container, options),
-        onCancel: () => renderResourceList(container, options),
-        onDelete: () => renderResourceList(container, options),
-      });
-    });
-
-    // Color swatch
-    const tdColor = document.createElement('td');
-    tdColor.style.cssText = 'padding:6px 8px;';
-    const swatch = document.createElement('div');
-    swatch.style.cssText = `width:16px;height:16px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
-    tdColor.appendChild(swatch);
-    row.appendChild(tdColor);
-
-    // ID
-    const tdId = document.createElement('td');
-    tdId.textContent = model.id;
-    tdId.style.cssText = 'padding:6px 8px;color:var(--accent);font-weight:600;';
-    row.appendChild(tdId);
-
-    // Display name
-    const tdName = document.createElement('td');
-    tdName.textContent = model.display_name;
-    tdName.style.cssText = 'padding:6px 8px;';
-    row.appendChild(tdName);
-
-    // Category
-    const tdCat = document.createElement('td');
-    tdCat.textContent = model.category;
-    tdCat.style.cssText = 'padding:6px 8px;color:var(--text-secondary);';
-    row.appendChild(tdCat);
-
-    // Gather time
-    const tdGather = document.createElement('td');
-    tdGather.textContent = model.gather_time > 0 ? `${model.gather_time}s` : '-';
-    tdGather.style.cssText = 'padding:6px 8px;color:var(--text-secondary);';
-    row.appendChild(tdGather);
-
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
-
-// ============================================================
-// Form Rendering (task-013)
-// ============================================================
-
-/** Common input style for form fields */
-const INPUT_STYLE = 'width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;box-sizing:border-box;';
-
-/** Common label style for form fields */
-const LABEL_STYLE = 'display:block;margin-bottom:2px;font-size:11px;color:var(--text-secondary);font-weight:600;';
-
-/** Style for collapsible details sections */
-const DETAILS_STYLE = 'margin-bottom:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;';
-
-/** Style for details summary */
-const SUMMARY_STYLE = 'padding:6px 10px;background:var(--bg-tertiary);cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);';
-
-/** Style for details content area */
-const SECTION_CONTENT_STYLE = 'padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;';
-
-/**
- * Create a labeled form field (label + input).
- * @param {string} labelText
- * @param {string} name - Form input name attribute
- * @param {string} type - Input type ('text', 'number', etc.)
- * @param {string|number} value
- * @param {Object} [attrs] - Additional attributes for the input
- * @returns {HTMLElement}
- */
-function _createField(labelText, name, type, value, attrs) {
-  const wrapper = document.createElement('div');
-  const label = document.createElement('label');
-  label.textContent = labelText;
-  label.style.cssText = LABEL_STYLE;
-  const input = document.createElement('input');
-  input.type = type;
-  input.name = name;
-  input.value = String(value);
-  input.style.cssText = INPUT_STYLE;
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      input.setAttribute(k, String(v));
-    }
-  }
-  wrapper.appendChild(label);
-  wrapper.appendChild(input);
-  return wrapper;
-}
-
-/**
- * Create a collapsible details/summary section.
- * @param {string} title
- * @param {boolean} [open=true]
- * @returns {{details: HTMLDetailsElement, content: HTMLDivElement}}
- */
-function _createSection(title, open) {
-  const details = document.createElement('details');
-  details.style.cssText = DETAILS_STYLE;
-  if (open !== false) details.open = true;
-  const summary = document.createElement('summary');
-  summary.textContent = title;
-  summary.style.cssText = SUMMARY_STYLE;
-  details.appendChild(summary);
-  const content = document.createElement('div');
-  content.style.cssText = SECTION_CONTENT_STYLE;
-  details.appendChild(content);
-  return { details, content };
-}
 
 /**
  * Create a key-value editor for dict fields (string key -> number value).
@@ -390,12 +201,12 @@ function _createSection(title, open) {
  */
 function _createKvEditor(name, data) {
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'grid-column:1/-1;';
+  wrapper.classList.add('prop-full');
   wrapper.dataset.kvName = name;
 
   const label = document.createElement('div');
   label.textContent = name.replace(/_/g, ' ');
-  label.style.cssText = LABEL_STYLE;
+  label.classList.add('prop-label');
   wrapper.appendChild(label);
 
   const rowsContainer = document.createElement('div');
@@ -417,7 +228,8 @@ function _createKvEditor(name, data) {
     keyInput.value = key;
     keyInput.placeholder = 'key';
     keyInput.dataset.kvKey = name;
-    keyInput.style.cssText = INPUT_STYLE + 'flex:1;';
+    keyInput.classList.add('prop-input');
+    keyInput.style.flex = '1';
 
     const valInput = document.createElement('input');
     valInput.type = 'number';
@@ -425,7 +237,8 @@ function _createKvEditor(name, data) {
     valInput.step = 'any';
     valInput.placeholder = 'value';
     valInput.dataset.kvVal = name;
-    valInput.style.cssText = INPUT_STYLE + 'flex:1;';
+    valInput.classList.add('prop-input');
+    valInput.style.flex = '1';
 
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
@@ -463,9 +276,11 @@ function _createKvEditor(name, data) {
  */
 function _createColorField(labelText, name, color) {
   const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+
   const label = document.createElement('label');
   label.textContent = labelText;
-  label.style.cssText = LABEL_STYLE;
+  label.classList.add('prop-label');
   wrapper.appendChild(label);
 
   const row = document.createElement('div');
@@ -476,10 +291,6 @@ function _createColorField(labelText, name, color) {
   input.name = name;
   input.value = _colorToHex(color);
   input.style.cssText = 'width:40px;height:28px;border:1px solid var(--border);border-radius:3px;cursor:pointer;padding:0;';
-
-  const swatch = document.createElement('div');
-  swatch.style.cssText = `width:32px;height:32px;border-radius:3px;border:1px solid var(--border);background:${_colorToHex(color)};`;
-  swatch.dataset.swatch = name;
 
   const alphaLabel = document.createElement('label');
   alphaLabel.textContent = 'A:';
@@ -492,14 +303,10 @@ function _createColorField(labelText, name, color) {
   alphaInput.step = '0.1';
   alphaInput.min = '0';
   alphaInput.max = '1';
-  alphaInput.style.cssText = INPUT_STYLE + 'width:50px;';
-
-  input.addEventListener('input', () => {
-    swatch.style.background = input.value;
-  });
+  alphaInput.classList.add('prop-input');
+  alphaInput.style.width = '50px';
 
   row.appendChild(input);
-  row.appendChild(swatch);
   row.appendChild(alphaLabel);
   row.appendChild(alphaInput);
   wrapper.appendChild(row);
@@ -507,153 +314,298 @@ function _createColorField(labelText, name, color) {
   return wrapper;
 }
 
+// ============================================================
+// Master-Detail Split Layout
+// ============================================================
+
 /**
- * Render the resource edit form into the container, replacing the list view.
+ * Render the resource editor as a persistent master-detail split view.
  * @param {HTMLElement} container - The #tab-resources element
- * @param {ResourceDefModel} model - Resource model to edit
- * @param {boolean} isNew - True if creating a new resource
- * @param {Object} options
- * @param {import('./commands.js').CommandHistory} [options.commandHistory]
- * @param {function():void} [options.onSave]
- * @param {function():void} [options.onCancel]
- * @param {function():void} [options.onDelete]
+ * @param {Object} [options] - Options object
+ * @param {import('./commands.js').CommandHistory} [options.commandHistory] - Command history for undo/redo
  * @returns {void}
  */
-export function renderResourceForm(container, model, isNew, options) {
+export function renderResourceEditor(container, options) {
   container.innerHTML = '';
 
-  // Track initial state for dirty detection
-  const initialJson = JSON.stringify(_modelToPlain(model));
+  const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
 
-  // Form element
-  const form = document.createElement('form');
-  form.style.cssText = 'padding:8px 12px;overflow-y:auto;max-height:calc(100vh - 100px);';
-  form.addEventListener('submit', (e) => e.preventDefault());
+  // --- Split layout ---
+  const split = document.createElement('div');
+  split.classList.add('editor-split');
 
-  // Title
-  const titleEl = document.createElement('h3');
-  titleEl.textContent = isNew ? 'New Resource' : `Edit: ${model.id}`;
-  titleEl.style.cssText = 'margin:0 0 8px 0;font-size:16px;color:var(--text-primary);';
-  form.appendChild(titleEl);
+  // --- Left panel ---
+  const listPanel = document.createElement('div');
+  listPanel.classList.add('editor-list-panel');
 
-  // Error display area
-  const errorArea = document.createElement('div');
-  errorArea.style.cssText = 'display:none;padding:6px 10px;margin-bottom:8px;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
-  form.appendChild(errorArea);
+  const listHeader = document.createElement('div');
+  listHeader.classList.add('editor-list-header');
 
-  // Section 1: Identity
-  {
-    const { details, content } = _createSection('Identity');
-    content.appendChild(_createField('ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' }));
-    content.appendChild(_createField('Display Name', 'display_name', 'text', model.display_name));
-    form.appendChild(details);
+  const filterInput = document.createElement('input');
+  filterInput.type = 'text';
+  filterInput.placeholder = 'Filter...';
+  filterInput.classList.add('editor-filter');
+
+  const newBtn = document.createElement('button');
+  newBtn.textContent = '+ New';
+  newBtn.classList.add('editor-new-btn');
+
+  listHeader.appendChild(filterInput);
+  listHeader.appendChild(newBtn);
+  listPanel.appendChild(listHeader);
+
+  const listItems = document.createElement('div');
+  listItems.classList.add('editor-list-items');
+  listPanel.appendChild(listItems);
+
+  // --- Right panel ---
+  const detailPanel = document.createElement('div');
+  detailPanel.classList.add('editor-detail-panel');
+
+  split.appendChild(listPanel);
+  split.appendChild(detailPanel);
+  container.appendChild(split);
+
+  // --- State ---
+  /** @type {string|null} */
+  let selectedId = null;
+  /** @type {string} */
+  let activeTab = 'general';
+  /** @type {boolean} */
+  let isNewMode = false;
+  /** @type {ResourceDefModel|null} */
+  let editingModel = null;
+
+  // --- Build the resource list ---
+  /**
+   * Rebuild the list items, optionally filtering.
+   * @returns {void}
+   */
+  function refreshList() {
+    listItems.innerHTML = '';
+    const filter = filterInput.value.toLowerCase().trim();
+
+    /** @type {ResourceDefModel[]} */
+    const resources = [];
+    for (const [filename, entry] of ProjectContext.files.resources) {
+      resources.push(ResourceDefModel.fromEntry(filename, entry));
+    }
+    resources.sort((a, b) => a.id.localeCompare(b.id));
+
+    for (const model of resources) {
+      if (filter && !model.id.toLowerCase().includes(filter) && !model.display_name.toLowerCase().includes(filter)) {
+        continue;
+      }
+      const item = document.createElement('div');
+      item.classList.add('editor-list-item');
+      if (model.id === selectedId && !isNewMode) {
+        item.classList.add('active');
+      }
+      item.dataset.id = model.id;
+
+      const swatch = document.createElement('div');
+      swatch.classList.add('swatch');
+      swatch.style.background = model.colorHex;
+
+      const span = document.createElement('span');
+      span.textContent = model.id;
+
+      item.appendChild(swatch);
+      item.appendChild(span);
+
+      item.addEventListener('click', () => {
+        isNewMode = false;
+        selectedId = model.id;
+        activeTab = 'general';
+        // Re-read from ProjectContext so we get the latest data
+        const entry = ProjectContext.files.resources.get(model.id + '.tres');
+        if (entry) {
+          editingModel = ResourceDefModel.fromEntry(model.id + '.tres', entry);
+        } else {
+          editingModel = model;
+        }
+        _updateListSelection();
+        _renderDetail();
+      });
+
+      listItems.appendChild(item);
+    }
   }
 
-  // Section 2: Gathering
-  {
-    const { details, content } = _createSection('Gathering');
-    content.appendChild(_createField('Gather Time', 'gather_time', 'number', model.gather_time, { step: 'any', min: '0' }));
-    content.appendChild(_createField('Gather Amount', 'gather_amount', 'number', model.gather_amount, { step: '1', min: '0' }));
-    content.appendChild(_createField('Tool Required', 'tool_required', 'text', model.tool_required));
-    content.appendChild(_createField('Respawn Time', 'respawn_time', 'number', model.respawn_time, { step: 'any', min: '0' }));
-    content.appendChild(_createField('Yield Type', 'yield_type', 'text', model.yield_type));
-    content.appendChild(_createKvEditor('tool_speed', model.tool_speed));
-    form.appendChild(details);
+  /**
+   * Update the .active class on list items without full re-render.
+   * @returns {void}
+   */
+  function _updateListSelection() {
+    for (const el of listItems.querySelectorAll('.editor-list-item')) {
+      el.classList.toggle('active', !isNewMode && el.dataset.id === selectedId);
+    }
   }
 
-  // Section 3: Inventory
-  {
-    const { details, content } = _createSection('Inventory');
-    content.appendChild(_createField('Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' }));
-    content.appendChild(_createField('Category', 'category', 'text', model.category));
-    form.appendChild(details);
+  // --- Detail panel rendering ---
+
+  /**
+   * Show the empty state in the detail panel.
+   * @returns {void}
+   */
+  function _showEmpty() {
+    detailPanel.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.classList.add('editor-detail-empty');
+    empty.textContent = 'Select a resource';
+    detailPanel.appendChild(empty);
   }
 
-  // Section 4: Catalog
-  {
-    const { details, content } = _createSection('Catalog');
-    content.appendChild(_createField('Catalog Entry', 'catalog_entry', 'text', model.catalog_entry));
-    content.appendChild(_createField('Catalog Category', 'catalog_category', 'text', model.catalog_category));
-    form.appendChild(details);
-  }
+  /**
+   * Render the detail panel for the currently selected / new resource.
+   * @returns {void}
+   */
+  function _renderDetail() {
+    detailPanel.innerHTML = '';
 
-  // Section 5: Visuals
-  {
-    const { details, content } = _createSection('Visuals');
-    content.appendChild(_createField('Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type));
-    content.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
-    content.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
-    content.appendChild(_createField('Depleted Mesh Type', 'placeholder_depleted_type', 'text', model.placeholder_depleted_type));
-    content.appendChild(_createKvEditor('placeholder_depleted_params', model.placeholder_depleted_params));
-    content.appendChild(_createColorField('Depleted Color', 'placeholder_depleted_color', model.placeholder_depleted_color));
-    form.appendChild(details);
-  }
-
-  // Footer buttons
-  const footer = document.createElement('div');
-  footer.style.cssText = 'display:flex;gap:8px;padding:10px 0;border-top:1px solid var(--border);margin-top:8px;';
-
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Save';
-  saveBtn.type = 'button';
-  saveBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;font-size:12px;';
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.type = 'button';
-  cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;';
-
-  saveBtn.addEventListener('click', () => {
-    const collected = collectFormData(form);
-    // Preserve round-trip metadata from original model
-    collected._filename = isNew ? collected.id + '.tres' : model._filename;
-    collected._raw = model._raw;
-
-    const validation = validateResourceForm(collected, isNew);
-    if (!validation.valid) {
-      errorArea.style.display = 'block';
-      errorArea.textContent = validation.errors.join('; ');
+    if (!editingModel) {
+      _showEmpty();
       return;
     }
 
-    if (isNew) {
-      const cmd = new CreateResourceDefCommand(collected, options.commandHistory);
-      if (options.commandHistory) {
-        options.commandHistory.execute(cmd);
-      } else {
-        cmd.execute();
-      }
-    } else {
-      const cmd = new EditResourceDefCommand(model._filename, model, collected, options.commandHistory);
-      if (options.commandHistory) {
-        options.commandHistory.execute(cmd);
-      } else {
-        cmd.execute();
-      }
-    }
+    const model = editingModel;
+    const isNew = isNewMode;
 
-    if (options.onSave) options.onSave();
-  });
+    // Wrap in a form for collectFormData compatibility
+    const form = document.createElement('form');
+    form.style.cssText = 'display:flex;flex-direction:column;height:100%;';
+    form.addEventListener('submit', (e) => e.preventDefault());
 
-  cancelBtn.addEventListener('click', () => {
-    // Check if dirty
-    const currentData = collectFormData(form);
-    const currentJson = JSON.stringify(_modelToPlain(currentData));
-    if (currentJson !== initialJson) {
-      if (!confirm('Discard unsaved changes?')) return;
-    }
-    if (options.onCancel) options.onCancel();
-  });
+    // --- Header ---
+    const header = document.createElement('div');
+    header.classList.add('editor-detail-header');
 
-  footer.appendChild(saveBtn);
-  footer.appendChild(cancelBtn);
+    const h3 = document.createElement('h3');
+    const headerSwatch = document.createElement('div');
+    headerSwatch.classList.add('swatch');
+    headerSwatch.style.cssText = `width:14px;height:14px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
+    const headerName = document.createElement('span');
+    headerName.textContent = isNew ? 'New Resource' : model.id;
+    h3.appendChild(headerSwatch);
+    h3.appendChild(headerName);
 
-  if (!isNew) {
+    const btnGroup = document.createElement('div');
+    btnGroup.classList.add('btn-group');
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Save';
+    saveBtn.type = 'button';
+    saveBtn.classList.add('editor-btn-save');
+
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.type = 'button';
-    deleteBtn.style.cssText = 'padding:6px 16px;border:1px solid #7a3030;border-radius:4px;background:#4a1c1c;color:#ff9999;cursor:pointer;font-size:12px;font-weight:600;margin-left:auto;';
+    deleteBtn.classList.add('editor-btn-delete');
 
+    btnGroup.appendChild(saveBtn);
+    if (!isNew) {
+      btnGroup.appendChild(deleteBtn);
+    }
+
+    header.appendChild(h3);
+    header.appendChild(btnGroup);
+    form.appendChild(header);
+
+    // --- Error area ---
+    const errorArea = document.createElement('div');
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
+    form.appendChild(errorArea);
+
+    // --- Sub-tabs ---
+    const tabsRow = document.createElement('div');
+    tabsRow.classList.add('editor-detail-tabs');
+
+    const generalTab = document.createElement('button');
+    generalTab.textContent = 'General';
+    generalTab.type = 'button';
+    generalTab.classList.add('editor-detail-tab');
+    if (activeTab === 'general') generalTab.classList.add('active');
+
+    const visualsTab = document.createElement('button');
+    visualsTab.textContent = 'Visuals';
+    visualsTab.type = 'button';
+    visualsTab.classList.add('editor-detail-tab');
+    if (activeTab === 'visuals') visualsTab.classList.add('active');
+
+    generalTab.addEventListener('click', () => {
+      activeTab = 'general';
+      _renderTabBody(body, model, isNew);
+      generalTab.classList.add('active');
+      visualsTab.classList.remove('active');
+    });
+
+    visualsTab.addEventListener('click', () => {
+      activeTab = 'visuals';
+      _renderTabBody(body, model, isNew);
+      visualsTab.classList.remove('active');
+      generalTab.classList.remove('active');
+      visualsTab.classList.add('active');
+    });
+
+    tabsRow.appendChild(generalTab);
+    tabsRow.appendChild(visualsTab);
+    form.appendChild(tabsRow);
+
+    // --- Body ---
+    const body = document.createElement('div');
+    body.classList.add('editor-detail-body');
+    _renderTabBody(body, model, isNew);
+    form.appendChild(body);
+
+    detailPanel.appendChild(form);
+
+    // --- Save handler ---
+    saveBtn.addEventListener('click', () => {
+      const collected = collectFormData(form);
+      collected._filename = isNew ? collected.id + '.tres' : model._filename;
+      collected._raw = model._raw;
+
+      const validation = validateResourceForm(collected, isNew);
+      if (!validation.valid) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = validation.errors.join('; ');
+        return;
+      }
+
+      if (isNew) {
+        const cmd = new CreateResourceDefCommand(collected, cmdHistory);
+        if (cmdHistory) {
+          cmdHistory.execute(cmd);
+        } else {
+          cmd.execute();
+        }
+        // Switch to editing the newly created resource
+        isNewMode = false;
+        selectedId = collected.id;
+        activeTab = 'general';
+        const entry = ProjectContext.files.resources.get(collected.id + '.tres');
+        if (entry) {
+          editingModel = ResourceDefModel.fromEntry(collected.id + '.tres', entry);
+        }
+      } else {
+        const cmd = new EditResourceDefCommand(model._filename, model, collected, cmdHistory);
+        if (cmdHistory) {
+          cmdHistory.execute(cmd);
+        } else {
+          cmd.execute();
+        }
+        // Refresh the editing model from ProjectContext
+        const entry = ProjectContext.files.resources.get(model._filename);
+        if (entry) {
+          editingModel = ResourceDefModel.fromEntry(model._filename, entry);
+        }
+      }
+
+      refreshList();
+      _renderDetail();
+    });
+
+    // --- Delete handler ---
     deleteBtn.addEventListener('click', () => {
       const usages = findResourceUsage(model.id);
       if (usages.length > 0) {
@@ -663,70 +615,210 @@ export function renderResourceForm(container, model, isNew, options) {
           '',
           (val) => {
             if (val === 'DELETE') {
-              _executeDelete(model, options);
+              _doDelete(model);
             }
           }
         );
       } else {
         if (confirm(`Delete resource "${model.id}"? This cannot be undone without undo.`)) {
-          _executeDelete(model, options);
+          _doDelete(model);
         }
       }
     });
-
-    footer.appendChild(deleteBtn);
   }
 
-  form.appendChild(footer);
-  container.appendChild(form);
-}
-
-/**
- * Execute the delete command for a resource.
- * @param {ResourceDefModel} model
- * @param {Object} options
- * @returns {void}
- */
-function _executeDelete(model, options) {
-  const cmd = new DeleteResourceDefCommand(model._filename, model, options.commandHistory);
-  if (options.commandHistory) {
-    options.commandHistory.execute(cmd);
-  } else {
-    cmd.execute();
+  /**
+   * Execute delete and update UI.
+   * @param {ResourceDefModel} model
+   * @returns {void}
+   */
+  function _doDelete(model) {
+    const cmd = new DeleteResourceDefCommand(model._filename, model, cmdHistory);
+    if (cmdHistory) {
+      cmdHistory.execute(cmd);
+    } else {
+      cmd.execute();
+    }
+    selectedId = null;
+    editingModel = null;
+    isNewMode = false;
+    refreshList();
+    _showEmpty();
   }
-  if (options.onDelete) options.onDelete();
-}
 
-/**
- * Convert a model to a plain object for dirty comparison (excluding metadata fields).
- * @param {ResourceDefModel} model
- * @returns {Object}
- */
-function _modelToPlain(model) {
-  return {
-    id: model.id,
-    display_name: model.display_name,
-    gather_time: model.gather_time,
-    gather_amount: model.gather_amount,
-    tool_required: model.tool_required,
-    respawn_time: model.respawn_time,
-    yield_type: model.yield_type,
-    tool_speed: model.tool_speed,
-    max_stack: model.max_stack,
-    category: model.category,
-    catalog_entry: model.catalog_entry,
-    catalog_category: model.catalog_category,
-    placeholder_mesh_type: model.placeholder_mesh_type,
-    placeholder_params: model.placeholder_params,
-    placeholder_color: model.placeholder_color,
-    placeholder_depleted_type: model.placeholder_depleted_type,
-    placeholder_depleted_params: model.placeholder_depleted_params,
-    placeholder_depleted_color: model.placeholder_depleted_color,
-  };
+  /**
+   * Render the active tab content into the body element.
+   * Reads current form values first so switching tabs preserves edits.
+   * @param {HTMLElement} body
+   * @param {ResourceDefModel} model
+   * @param {boolean} isNew
+   * @returns {void}
+   */
+  function _renderTabBody(body, model, isNew) {
+    // Before clearing, collect current form data to preserve edits across tab switches.
+    // Only overwrite fields whose inputs exist in the current tab's DOM.
+    const form = body.closest('form');
+    if (form && body.children.length > 0) {
+      try {
+        const partial = collectFormData(form);
+        // General tab fields
+        const generalFields = ['id', 'display_name', 'gather_time', 'gather_amount',
+          'tool_required', 'respawn_time', 'yield_type', 'tool_speed',
+          'max_stack', 'category', 'catalog_entry', 'catalog_category'];
+        // Visuals tab fields
+        const visualFields = ['placeholder_mesh_type', 'placeholder_params',
+          'placeholder_color', 'placeholder_depleted_type',
+          'placeholder_depleted_params', 'placeholder_depleted_color'];
+        // activeTab is already set to the NEW tab, so collect the OLD tab's fields
+        // (the ones still in the DOM) onto the model
+        const oldTabFields = activeTab === 'general' ? visualFields : generalFields;
+        for (const f of oldTabFields) {
+          model[f] = partial[f];
+        }
+      } catch (_e) {
+        // ignore collection errors
+      }
+    }
+
+    body.innerHTML = '';
+
+    if (activeTab === 'general') {
+      _renderGeneralTab(body, model, isNew);
+    } else {
+      _renderVisualsTab(body, model);
+    }
+  }
+
+  /**
+   * Render the General tab content.
+   * @param {HTMLElement} body
+   * @param {ResourceDefModel} model
+   * @param {boolean} isNew
+   * @returns {void}
+   */
+  function _renderGeneralTab(body, model, isNew) {
+    const grid = document.createElement('div');
+    grid.classList.add('prop-grid');
+
+    // ID
+    _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
+    // Display Name
+    _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
+
+    // -- Gathering separator --
+    _addSeparator(grid, 'Gathering');
+    _addField(grid, 'Gather Time', 'gather_time', 'number', model.gather_time, { step: 'any', min: '0' });
+    _addField(grid, 'Gather Amount', 'gather_amount', 'number', model.gather_amount, { step: '1', min: '0' });
+    _addField(grid, 'Tool Required', 'tool_required', 'text', model.tool_required);
+    _addField(grid, 'Respawn Time', 'respawn_time', 'number', model.respawn_time, { step: 'any', min: '0' });
+    _addField(grid, 'Yield Type', 'yield_type', 'text', model.yield_type);
+    grid.appendChild(_createKvEditor('tool_speed', model.tool_speed));
+
+    // -- Inventory separator --
+    _addSeparator(grid, 'Inventory');
+    _addField(grid, 'Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' });
+    _addField(grid, 'Category', 'category', 'text', model.category);
+
+    // -- Catalog separator --
+    _addSeparator(grid, 'Catalog');
+    _addField(grid, 'Catalog Entry', 'catalog_entry', 'text', model.catalog_entry);
+    _addField(grid, 'Catalog Cat', 'catalog_category', 'text', model.catalog_category);
+
+    body.appendChild(grid);
+  }
+
+  /**
+   * Render the Visuals tab content.
+   * @param {HTMLElement} body
+   * @param {ResourceDefModel} model
+   * @returns {void}
+   */
+  function _renderVisualsTab(body, model) {
+    const grid = document.createElement('div');
+    grid.classList.add('prop-grid');
+
+    _addField(grid, 'Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type);
+    grid.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
+    grid.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
+
+    // -- Depleted separator --
+    _addSeparator(grid, 'Depleted');
+    _addField(grid, 'Depleted Mesh', 'placeholder_depleted_type', 'text', model.placeholder_depleted_type);
+    grid.appendChild(_createKvEditor('placeholder_depleted_params', model.placeholder_depleted_params));
+    grid.appendChild(_createColorField('Depleted Color', 'placeholder_depleted_color', model.placeholder_depleted_color));
+
+    body.appendChild(grid);
+  }
+
+  // --- Wire up events ---
+  filterInput.addEventListener('input', () => refreshList());
+
+  newBtn.addEventListener('click', () => {
+    isNewMode = true;
+    selectedId = null;
+    editingModel = new ResourceDefModel();
+    activeTab = 'general';
+    _updateListSelection();
+    _renderDetail();
+  });
+
+  // --- Initial render ---
+  refreshList();
+  _showEmpty();
 }
 
 // ============================================================
-// Form Data Collection (task-013)
+// Prop-Grid Field Helpers
+// ============================================================
+
+/**
+ * Add a label + input row to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string} type
+ * @param {string|number} value
+ * @param {Object} [attrs]
+ * @returns {void}
+ */
+function _addField(grid, labelText, name, type, value, attrs) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+
+  const input = document.createElement('input');
+  input.type = type;
+  input.name = name;
+  input.value = String(value);
+  input.classList.add('prop-input');
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      input.setAttribute(k, String(v));
+    }
+  }
+
+  grid.appendChild(label);
+  grid.appendChild(input);
+}
+
+/**
+ * Add a separator row with optional label to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} [text]
+ * @returns {void}
+ */
+function _addSeparator(grid, text) {
+  const sep = document.createElement('div');
+  sep.classList.add('prop-separator');
+  if (text) {
+    sep.style.cssText = 'font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;padding-top:8px;border-top:1px solid var(--border);margin:6px 0;';
+    sep.textContent = text;
+  }
+  grid.appendChild(sep);
+}
+
+// ============================================================
+// Form Data Collection
 // ============================================================
 
 /**
@@ -824,7 +916,7 @@ function _collectKvData(formElement, name) {
 }
 
 // ============================================================
-// Form Validation (task-013)
+// Form Validation
 // ============================================================
 
 /**
@@ -869,8 +961,36 @@ export function validateResourceForm(model, isNew) {
 }
 
 // ============================================================
-// Model -> TresFile Serialization (task-013)
+// Model -> TresFile Serialization
 // ============================================================
+
+/**
+ * Convert a model to a plain object for dirty comparison (excluding metadata fields).
+ * @param {ResourceDefModel} model
+ * @returns {Object}
+ */
+function _modelToPlain(model) {
+  return {
+    id: model.id,
+    display_name: model.display_name,
+    gather_time: model.gather_time,
+    gather_amount: model.gather_amount,
+    tool_required: model.tool_required,
+    respawn_time: model.respawn_time,
+    yield_type: model.yield_type,
+    tool_speed: model.tool_speed,
+    max_stack: model.max_stack,
+    category: model.category,
+    catalog_entry: model.catalog_entry,
+    catalog_category: model.catalog_category,
+    placeholder_mesh_type: model.placeholder_mesh_type,
+    placeholder_params: model.placeholder_params,
+    placeholder_color: model.placeholder_color,
+    placeholder_depleted_type: model.placeholder_depleted_type,
+    placeholder_depleted_params: model.placeholder_depleted_params,
+    placeholder_depleted_color: model.placeholder_depleted_color,
+  };
+}
 
 /**
  * Update a TresFile's resourceFields from a ResourceDefModel.
@@ -968,7 +1088,7 @@ function _colorToTresValue(c) {
 }
 
 // ============================================================
-// Command Classes (task-013)
+// Command Classes
 // ============================================================
 
 /**
@@ -1132,7 +1252,7 @@ export class DeleteResourceDefCommand {
 }
 
 // ============================================================
-// Delete Validation — Usage Scan (task-013)
+// Delete Validation — Usage Scan
 // ============================================================
 
 /**

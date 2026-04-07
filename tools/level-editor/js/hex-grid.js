@@ -66,7 +66,7 @@ export function createProp(type, sq = 0, sr = 0, category = 'resource', options 
 export class HexGrid {
   constructor() {
     /** @type {{ chapter_id: string, name: string, spawn: number[] }} */
-    this.meta = { chapter_id: '', name: '', spawn: [0, 0] };
+    this.meta = { chapter_id: '', name: '', spawn: [0, 0, 0, 0] };
     /** @type {Map<string, Object>} */
     this.tiles = new Map();
     /**
@@ -237,7 +237,12 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   hexGrid.clear();
   hexGrid.meta.chapter_id = mapData.chapter_id || '';
   hexGrid.meta.name = mapData.name || '';
-  hexGrid.meta.spawn = Array.isArray(mapData.spawn) ? [...mapData.spawn] : [0, 0];
+  if (Array.isArray(mapData.spawn)) {
+    const s = mapData.spawn;
+    hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0];
+  } else {
+    hexGrid.meta.spawn = [0, 0, 0, 0];
+  }
 
   if (mapData.tiles && typeof mapData.tiles === 'object') {
     for (const [key, tileJson] of Object.entries(mapData.tiles)) {

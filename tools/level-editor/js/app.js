@@ -14,8 +14,8 @@ import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
 import { validateMap } from './validator.js';
-import { renderResourceList } from './resource-editor.js';
-import { renderBiomeList } from './biome-editor.js';
+import { renderResourceEditor } from './resource-editor.js';
+import { renderBiomeEditor } from './biome-editor.js';
 
 // ============================================================
 // Module-level state
@@ -434,15 +434,15 @@ function initializeAfterLoad() {
   // Render resource list in the Resources tab (task-012/013)
   const resourceTabEl = document.getElementById('tab-resources');
   if (resourceTabEl) {
-    renderResourceList(resourceTabEl, { commandHistory });
-    console.log('Resource list rendered.');
+    renderResourceEditor(resourceTabEl, { commandHistory });
+    console.log('Resource editor rendered.');
   }
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
   if (biomeTabEl) {
-    renderBiomeList(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas });
-    console.log('Biome list rendered.');
+    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas });
+    console.log('Biome editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)
@@ -470,17 +470,6 @@ function initializeAfterLoad() {
     hexCanvas.init();
   }
 
-  // Wire coordinates toggle
-  const chkCoords = document.getElementById('chk-coordinates');
-  if (chkCoords) {
-    chkCoords.addEventListener('change', (e) => {
-      if (hexCanvas) {
-        hexCanvas.showCoordinates = /** @type {HTMLInputElement} */ (e.target).checked;
-        hexCanvas.requestRender();
-      }
-    });
-  }
-
   // Initialize HexInspector (right sidebar)
   const sidebarEl = document.getElementById('sidebar');
   if (sidebarEl) {
@@ -503,20 +492,26 @@ function initializeAfterLoad() {
 let activeMapFilename = null;
 
 /**
- * Tool definitions for the tool button grid.
- * @type {Array<{type: string, label: string, shortcut: string}>}
+ * Tool definitions grouped by scope.
+ * @type {Array<{group: string, tools: Array<{type: string, label: string, shortcut: string}>}>}
  */
-const TOOL_DEFS = [
-  { type: 'select',     label: 'Select',     shortcut: 'V' },
-  { type: 'biome',      label: 'Biome',      shortcut: 'B' },
-  { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
-  { type: 'resource',   label: 'Resource',    shortcut: 'R' },
-  { type: 'structure',  label: 'Structure',   shortcut: 'S' },
-  { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
-  { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
-  { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
-  { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
-  { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
+const TOOL_GROUPS = [
+  { group: 'General', tools: [
+    { type: 'select',     label: 'Select',     shortcut: 'V' },
+  ]},
+  { group: 'Hex Tools', tools: [
+    { type: 'biome',      label: 'Biome',      shortcut: 'B' },
+    { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
+    { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
+    { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
+  ]},
+  { group: 'Sub-Hex Tools', tools: [
+    { type: 'resource',   label: 'Resource',    shortcut: 'R' },
+    { type: 'structure',  label: 'Structure',   shortcut: 'S' },
+    { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
+    { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
+    { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
+  ]},
 ];
 
 /**
@@ -545,21 +540,30 @@ function _initToolButtons() {
   const container = document.getElementById('tool-buttons');
   if (!container) return;
   container.innerHTML = '';
-  for (const def of TOOL_DEFS) {
-    const btn = document.createElement('button');
-    btn.className = 'tool-btn';
-    btn.dataset.tool = def.type;
-    btn.textContent = `${def.label} (${def.shortcut})`;
-    btn.title = `${def.label} — shortcut: ${def.shortcut}`;
-    btn.addEventListener('click', () => {
-      // If clicking the already-active tool, deselect it
-      if (toolManager.activeToolType === def.type) {
-        selectTool(null);
-      } else {
-        selectTool(def.type);
-      }
-    });
-    container.appendChild(btn);
+  for (const group of TOOL_GROUPS) {
+    const header = document.createElement('div');
+    header.className = 'tool-group-header';
+    header.textContent = group.group;
+    container.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'tool-grid';
+    for (const def of group.tools) {
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn';
+      btn.dataset.tool = def.type;
+      btn.textContent = `${def.label} (${def.shortcut})`;
+      btn.title = `${def.label} — shortcut: ${def.shortcut}`;
+      btn.addEventListener('click', () => {
+        if (toolManager.activeToolType === def.type) {
+          selectTool(null);
+        } else {
+          selectTool(def.type);
+        }
+      });
+      grid.appendChild(btn);
+    }
+    container.appendChild(grid);
   }
 }
 

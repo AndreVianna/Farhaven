@@ -360,9 +360,12 @@ export class SpawnMarker extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
     if (!this.grid.hasTile(hex.q, hex.r)) return;
+    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
+    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
     const oldSpawn = [...this.grid.meta.spawn];
-    const newSpawn = [hex.q, hex.r];
-    if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]) return;
+    const newSpawn = [hex.q, hex.r, sq, sr];
+    if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]
+      && oldSpawn[2] === newSpawn[2] && oldSpawn[3] === newSpawn[3]) return;
 
     const cmd = new SetSpawnCommand(this.grid, oldSpawn, newSpawn);
     this.commandHistory.execute(cmd);

@@ -368,10 +368,16 @@ export class HexCanvas {
   _drawSpawnMarker(q, r) {
     const ctx = this.ctx;
     const { screen } = this._getHexScreen(q, r);
+    const spawn = this.grid.meta.spawn;
+    const sq = spawn.length > 2 ? spawn[2] : 0;
+    const sr = spawn.length > 3 ? spawn[3] : 0;
+    const subOffset = HexMath.subHexToPixel(sq, sr);
+    const cx = screen.x + subOffset.x * this.camera.zoom;
+    const cy = screen.y + subOffset.y * this.camera.zoom;
     const size = 8 * this.camera.zoom;
 
     ctx.beginPath();
-    ctx.arc(screen.x, screen.y - HEX_SIZE * this.camera.zoom * 0.3, size, 0, Math.PI * 2);
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
     ctx.fillStyle = SPAWN_COLOR;
     ctx.fill();
     ctx.strokeStyle = '#000';
@@ -384,19 +390,19 @@ export class HexCanvas {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('S', screen.x, screen.y - HEX_SIZE * this.camera.zoom * 0.3);
+    ctx.fillText('S', cx, cy);
   }
 
   // --- Sub-hex rendering ---
 
   /**
-   * Check if the active tool needs sub-hex resolution (placement or eraser).
+   * Check if the active tool operates at sub-hex resolution.
    * @returns {boolean}
    */
   _isPlacementTool() {
     if (!this.toolManager) return false;
     const t = this.toolManager.activeToolType;
-    return t === 'resource' || t === 'structure' || t === 'anomaly' || t === 'eraser';
+    return t === 'select' || t === 'resource' || t === 'structure' || t === 'anomaly' || t === 'spawn' || t === 'eraser';
   }
 
   /**

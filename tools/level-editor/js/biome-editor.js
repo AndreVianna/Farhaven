@@ -1,5 +1,5 @@
 // ============================================================
-// BiomeEditor — List View, Edit Form, Commands (task-014/015)
+// BiomeEditor — Master-Detail Split Layout (task-014/015)
 // ============================================================
 
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
@@ -216,249 +216,6 @@ function _colorToRgb(c) {
   return `rgb(${Math.round((c.r || 0) * 255)},${Math.round((c.g || 0) * 255)},${Math.round((c.b || 0) * 255)})`;
 }
 
-// ============================================================
-// List View Rendering
-// ============================================================
-
-/**
- * Render the biome list view into the Biomes tab panel.
- * @param {HTMLElement} container - The #tab-biomes element
- * @param {Object} [options] - Options object
- * @param {import('./commands.js').CommandHistory} [options.commandHistory] - Command history for undo/redo
- * @param {Map<string, string>} [options.biomeColorMap] - Biome name -> CSS color string
- * @param {import('./canvas.js').HexCanvas} [options.hexCanvas] - Canvas for live preview
- * @returns {void}
- */
-export function renderBiomeList(container, options) {
-  container.innerHTML = '';
-
-  const opts = options || {};
-
-  // Header bar with title and New Biome button
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;';
-  const title = document.createElement('h3');
-  title.textContent = 'Biomes';
-  title.style.cssText = 'margin:0;font-size:16px;color:var(--text-primary);';
-  const newBtn = document.createElement('button');
-  newBtn.textContent = '+ New Biome';
-  newBtn.style.cssText = 'padding:4px 12px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;';
-  newBtn.addEventListener('click', () => {
-    renderBiomeForm(container, new BiomeDataModel(), true, {
-      commandHistory: opts.commandHistory || null,
-      biomeColorMap: opts.biomeColorMap || null,
-      hexCanvas: opts.hexCanvas || null,
-      onSave: () => renderBiomeList(container, options),
-      onCancel: () => renderBiomeList(container, options),
-    });
-  });
-  header.appendChild(title);
-  header.appendChild(newBtn);
-  container.appendChild(header);
-
-  // Build sorted list of biome models
-  /** @type {BiomeDataModel[]} */
-  const biomes = [];
-  for (const [filename, entry] of ProjectContext.files.biomes) {
-    biomes.push(BiomeDataModel.fromEntry(filename, entry));
-  }
-  biomes.sort((a, b) => a.biome_name.localeCompare(b.biome_name));
-
-  // Empty state
-  if (biomes.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = 'No biomes found. Open a project folder to load biome definitions.';
-    empty.style.cssText = 'padding:12px;color:var(--text-secondary);font-size:13px;';
-    container.appendChild(empty);
-    return;
-  }
-
-  // Table
-  const table = document.createElement('table');
-  table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px;';
-
-  // Header row
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  /** @type {string[]} */
-  const columns = ['Color', 'Biome Name', 'Elevation Range', 'Resources'];
-  for (const col of columns) {
-    const th = document.createElement('th');
-    th.textContent = col;
-    th.style.cssText = 'text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-secondary);font-weight:600;';
-    headerRow.appendChild(th);
-  }
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  // Data rows
-  const tbody = document.createElement('tbody');
-  for (const model of biomes) {
-    const row = document.createElement('tr');
-    row.style.cssText = 'cursor:pointer;';
-    row.addEventListener('mouseenter', () => { row.style.background = 'var(--bg-tertiary)'; });
-    row.addEventListener('mouseleave', () => { row.style.background = ''; });
-    row.addEventListener('click', () => {
-      renderBiomeForm(container, model, false, {
-        commandHistory: opts.commandHistory || null,
-        biomeColorMap: opts.biomeColorMap || null,
-        hexCanvas: opts.hexCanvas || null,
-        onSave: () => renderBiomeList(container, options),
-        onCancel: () => renderBiomeList(container, options),
-        onDelete: () => renderBiomeList(container, options),
-      });
-    });
-
-    // Color swatch
-    const tdColor = document.createElement('td');
-    tdColor.style.cssText = 'padding:6px 8px;';
-    const swatch = document.createElement('div');
-    swatch.style.cssText = `width:16px;height:16px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
-    tdColor.appendChild(swatch);
-    row.appendChild(tdColor);
-
-    // Biome Name (with warning badge for custom biomes)
-    const tdName = document.createElement('td');
-    tdName.style.cssText = 'padding:6px 8px;color:var(--accent);font-weight:600;';
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = model.biome_name;
-    tdName.appendChild(nameSpan);
-
-    if (!KNOWN_BIOMES.has(model.id)) {
-      const warn = document.createElement('span');
-      warn.textContent = ' !';
-      warn.title = 'Custom biome \u2014 not recognized by game MapLoader';
-      warn.style.cssText = 'color:var(--warning, #f0ad4e);font-weight:700;margin-left:4px;cursor:help;';
-      tdName.appendChild(warn);
-    }
-    row.appendChild(tdName);
-
-    // Elevation Range
-    const tdElev = document.createElement('td');
-    tdElev.textContent = `${model.elevation_range.min}\u2013${model.elevation_range.max}`;
-    tdElev.style.cssText = 'padding:6px 8px;color:var(--text-secondary);';
-    row.appendChild(tdElev);
-
-    // Resources (count)
-    const tdRes = document.createElement('td');
-    tdRes.textContent = String(model.resource_table.length);
-    tdRes.style.cssText = 'padding:6px 8px;color:var(--text-secondary);';
-    row.appendChild(tdRes);
-
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
-
-// ============================================================
-// Form Rendering (task-015)
-// ============================================================
-
-/** Common input style for form fields */
-const INPUT_STYLE = 'width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;box-sizing:border-box;';
-
-/** Common label style for form fields */
-const LABEL_STYLE = 'display:block;margin-bottom:2px;font-size:11px;color:var(--text-secondary);font-weight:600;';
-
-/** Style for collapsible details sections */
-const DETAILS_STYLE = 'margin-bottom:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;';
-
-/** Style for details summary */
-const SUMMARY_STYLE = 'padding:6px 10px;background:var(--bg-tertiary);cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);';
-
-/** Style for details content area */
-const SECTION_CONTENT_STYLE = 'padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;';
-
-/**
- * Create a labeled form field (label + input).
- * @param {string} labelText
- * @param {string} name - Form input name attribute
- * @param {string} type - Input type ('text', 'number', etc.)
- * @param {string|number} value
- * @param {Object} [attrs] - Additional attributes for the input
- * @returns {HTMLElement}
- */
-function _createField(labelText, name, type, value, attrs) {
-  const wrapper = document.createElement('div');
-  const label = document.createElement('label');
-  label.textContent = labelText;
-  label.style.cssText = LABEL_STYLE;
-  const input = document.createElement('input');
-  input.type = type;
-  input.name = name;
-  input.value = String(value);
-  input.style.cssText = INPUT_STYLE;
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      input.setAttribute(k, String(v));
-    }
-  }
-  wrapper.appendChild(label);
-  wrapper.appendChild(input);
-  return wrapper;
-}
-
-/**
- * Create a collapsible details/summary section.
- * @param {string} title
- * @param {boolean} [open=true]
- * @returns {{details: HTMLDetailsElement, content: HTMLDivElement}}
- */
-function _createSection(title, open) {
-  const details = document.createElement('details');
-  details.style.cssText = DETAILS_STYLE;
-  if (open !== false) details.open = true;
-  const summary = document.createElement('summary');
-  summary.textContent = title;
-  summary.style.cssText = SUMMARY_STYLE;
-  details.appendChild(summary);
-  const content = document.createElement('div');
-  content.style.cssText = SECTION_CONTENT_STYLE;
-  details.appendChild(content);
-  return { details, content };
-}
-
-/**
- * Create a color picker field with a 32x32 swatch preview.
- * @param {string} labelText
- * @param {string} name - Form input name
- * @param {{r: number, g: number, b: number, a: number}} color
- * @param {function(string):void} [onInput] - Callback on input event with hex value
- * @returns {HTMLElement}
- */
-function _createColorField(labelText, name, color, onInput) {
-  const wrapper = document.createElement('div');
-  const label = document.createElement('label');
-  label.textContent = labelText;
-  label.style.cssText = LABEL_STYLE;
-  wrapper.appendChild(label);
-
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-
-  const input = document.createElement('input');
-  input.type = 'color';
-  input.name = name;
-  input.value = _colorToHex(color);
-  input.style.cssText = 'width:40px;height:28px;border:1px solid var(--border);border-radius:3px;cursor:pointer;padding:0;';
-
-  const swatch = document.createElement('div');
-  swatch.style.cssText = `width:32px;height:32px;border-radius:3px;border:1px solid var(--border);background:${_colorToHex(color)};`;
-  swatch.dataset.swatch = name;
-
-  input.addEventListener('input', () => {
-    swatch.style.background = input.value;
-    if (onInput) onInput(input.value);
-  });
-
-  row.appendChild(input);
-  row.appendChild(swatch);
-  wrapper.appendChild(row);
-
-  return wrapper;
-}
-
 /**
  * Convert a model to a plain object for dirty comparison (excluding metadata fields).
  * @param {BiomeDataModel} model
@@ -474,158 +231,541 @@ function _modelToPlain(model) {
   };
 }
 
+// ============================================================
+// Master-Detail Split Layout
+// ============================================================
+
 /**
- * Render the biome edit form into the container, replacing the list view.
+ * Render the biome editor as a master-detail split layout.
  * @param {HTMLElement} container - The #tab-biomes element
- * @param {BiomeDataModel} model - Biome model to edit
- * @param {boolean} isNew - True if creating a new biome
- * @param {Object} options
- * @param {import('./commands.js').CommandHistory} [options.commandHistory]
- * @param {function():void} [options.onSave]
- * @param {function():void} [options.onCancel]
- * @param {function():void} [options.onDelete]
- * @param {Map<string, string>} [options.biomeColorMap]
- * @param {import('./canvas.js').HexCanvas} [options.hexCanvas]
+ * @param {Object} [options] - Options object
+ * @param {import('./commands.js').CommandHistory} [options.commandHistory] - Command history for undo/redo
+ * @param {Map<string, string>} [options.biomeColorMap] - Biome name -> CSS color string
+ * @param {import('./canvas.js').HexCanvas} [options.hexCanvas] - Canvas for live preview
  * @returns {void}
  */
-export function renderBiomeForm(container, model, isNew, options) {
+export function renderBiomeEditor(container, options) {
   container.innerHTML = '';
 
-  // Track initial state for dirty detection
-  const initialJson = JSON.stringify(_modelToPlain(model));
+  const opts = options || {};
 
-  // Save original color for cancel revert
-  const originalColorRgb = model.id && options.biomeColorMap
-    ? options.biomeColorMap.get(model.id) || null
-    : null;
+  // State for the editor
+  /** @type {BiomeDataModel|null} */
+  let selectedModel = null;
+  /** @type {boolean} */
+  let isNewMode = false;
+  /** @type {string|null} */
+  let originalColorRgb = null;
+  /** @type {string} */
+  let initialJson = '';
+  /** @type {string} */
+  let activeTab = 'general';
 
-  // Form element
-  const form = document.createElement('form');
-  form.style.cssText = 'padding:8px 12px;overflow-y:auto;max-height:calc(100vh - 100px);';
-  form.addEventListener('submit', (e) => e.preventDefault());
+  // Build split layout
+  const split = document.createElement('div');
+  split.className = 'editor-split';
 
-  // Title
-  const titleEl = document.createElement('h3');
-  titleEl.textContent = isNew ? 'New Biome' : `Edit: ${model.biome_name}`;
-  titleEl.style.cssText = 'margin:0 0 8px 0;font-size:16px;color:var(--text-primary);';
-  form.appendChild(titleEl);
+  // ── Left Panel ──
+  const listPanel = document.createElement('div');
+  listPanel.className = 'editor-list-panel';
 
-  // Error display area
-  const errorArea = document.createElement('div');
-  errorArea.style.cssText = 'display:none;padding:6px 10px;margin-bottom:8px;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
-  form.appendChild(errorArea);
+  const listHeader = document.createElement('div');
+  listHeader.className = 'editor-list-header';
 
-  // Section 1: Identity
-  {
-    const { details, content } = _createSection('Identity');
-    content.appendChild(_createField('Biome Name', 'biome_name', 'text', model.biome_name, isNew ? {} : { disabled: '' }));
-    form.appendChild(details);
+  const filterInput = document.createElement('input');
+  filterInput.type = 'text';
+  filterInput.placeholder = 'Filter biomes...';
+  filterInput.className = 'editor-filter';
+  filterInput.addEventListener('input', () => _applyFilter());
+
+  const newBtn = document.createElement('button');
+  newBtn.textContent = '+ New';
+  newBtn.className = 'editor-new-btn';
+  newBtn.addEventListener('click', () => {
+    if (!_guardDirty()) return;
+    _selectNew();
+  });
+
+  listHeader.appendChild(filterInput);
+  listHeader.appendChild(newBtn);
+  listPanel.appendChild(listHeader);
+
+  const listItems = document.createElement('div');
+  listItems.className = 'editor-list-items';
+  listPanel.appendChild(listItems);
+
+  // ── Right Panel ──
+  const detailPanel = document.createElement('div');
+  detailPanel.className = 'editor-detail-panel';
+
+  split.appendChild(listPanel);
+  split.appendChild(detailPanel);
+  container.appendChild(split);
+
+  // ── Populate list ──
+  _refreshList();
+  _showEmpty();
+
+  // ============================================================
+  // List helpers
+  // ============================================================
+
+  /**
+   * Build sorted array of biome models from ProjectContext.
+   * @returns {BiomeDataModel[]}
+   */
+  function _getBiomes() {
+    /** @type {BiomeDataModel[]} */
+    const biomes = [];
+    for (const [filename, entry] of ProjectContext.files.biomes) {
+      biomes.push(BiomeDataModel.fromEntry(filename, entry));
+    }
+    biomes.sort((a, b) => a.biome_name.localeCompare(b.biome_name));
+    return biomes;
   }
 
-  // Section 2: Elevation
-  {
-    const { details, content } = _createSection('Elevation Range');
-    content.appendChild(_createField('Min', 'elevation_min', 'number', model.elevation_range.min, { step: '1', min: '0', max: '9' }));
-    content.appendChild(_createField('Max', 'elevation_max', 'number', model.elevation_range.max, { step: '1', min: '0', max: '9' }));
-    form.appendChild(details);
-  }
+  /** Refresh the list items. Preserves active selection if still present. */
+  function _refreshList() {
+    listItems.innerHTML = '';
+    const biomes = _getBiomes();
 
-  // Section 3: Color with live preview
-  {
-    const { details, content } = _createSection('Color');
-    content.style.cssText = SECTION_CONTENT_STYLE + 'grid-template-columns:1fr;';
+    if (biomes.length === 0) {
+      const empty = document.createElement('div');
+      empty.textContent = 'No biomes found.';
+      empty.style.cssText = 'padding:10px 8px;color:var(--text-secondary);font-size:12px;';
+      listItems.appendChild(empty);
+      return;
+    }
 
-    const colorField = _createColorField('Base Color', 'color', model.color, (hex) => {
-      // Live preview: update biomeColorMap and request canvas re-render
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      if (options.biomeColorMap && model.id) {
-        options.biomeColorMap.set(model.id, `rgb(${r},${g},${b})`);
-        if (options.hexCanvas) options.hexCanvas.requestRender();
+    for (const model of biomes) {
+      const item = document.createElement('div');
+      item.className = 'editor-list-item';
+      item.dataset.biomeId = model.id;
+
+      if (selectedModel && !isNewMode && selectedModel.id === model.id) {
+        item.classList.add('active');
       }
-    });
-    content.appendChild(colorField);
-
-    // Color Variations
-    const variationsWrapper = document.createElement('div');
-    variationsWrapper.style.cssText = 'margin-top:6px;';
-    const variationsLabel = document.createElement('div');
-    variationsLabel.textContent = 'Color Variations';
-    variationsLabel.style.cssText = LABEL_STYLE;
-    variationsWrapper.appendChild(variationsLabel);
-
-    const variationsContainer = document.createElement('div');
-    variationsContainer.dataset.variationsContainer = 'true';
-    variationsWrapper.appendChild(variationsContainer);
-
-    /**
-     * Add a color variation entry to the list.
-     * @param {{ r: number, g: number, b: number, a: number }} varColor
-     * @returns {void}
-     */
-    function addVariationRow(varColor) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px;';
-
-      const input = document.createElement('input');
-      input.type = 'color';
-      input.value = _colorToHex(varColor);
-      input.dataset.variationColor = 'true';
-      input.style.cssText = 'width:40px;height:28px;border:1px solid var(--border);border-radius:3px;cursor:pointer;padding:0;';
 
       const swatch = document.createElement('div');
-      swatch.style.cssText = `width:32px;height:32px;border-radius:3px;border:1px solid var(--border);background:${_colorToHex(varColor)};`;
+      swatch.className = 'swatch';
+      swatch.style.background = model.colorHex;
 
-      input.addEventListener('input', () => {
-        swatch.style.background = input.value;
+      const label = document.createElement('span');
+      label.textContent = model.biome_name || model.id;
+
+      item.appendChild(swatch);
+      item.appendChild(label);
+
+      if (!KNOWN_BIOMES.has(model.id)) {
+        const warn = document.createElement('span');
+        warn.textContent = ' !';
+        warn.title = 'Custom biome \u2014 not recognized by game MapLoader';
+        warn.style.cssText = 'color:var(--warning, #f0ad4e);font-weight:700;margin-left:auto;cursor:help;font-size:11px;';
+        item.appendChild(warn);
+      }
+
+      item.addEventListener('click', () => {
+        if (selectedModel && !isNewMode && selectedModel.id === model.id) return;
+        if (!_guardDirty()) return;
+        _selectExisting(model);
       });
 
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'X';
-      removeBtn.type = 'button';
-      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
-      removeBtn.addEventListener('click', () => row.remove());
-
-      row.appendChild(input);
-      row.appendChild(swatch);
-      row.appendChild(removeBtn);
-      variationsContainer.appendChild(row);
+      listItems.appendChild(item);
     }
 
-    // Populate existing variations
-    for (const vc of model.color_variations) {
-      addVariationRow(vc);
-    }
-
-    const addVarBtn = document.createElement('button');
-    addVarBtn.textContent = '+ Add Variation';
-    addVarBtn.type = 'button';
-    addVarBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-    addVarBtn.addEventListener('click', () => {
-      // Check max 10
-      const currentCount = variationsContainer.querySelectorAll('[data-variation-color]').length;
-      if (currentCount >= 10) {
-        errorArea.style.display = 'block';
-        errorArea.textContent = 'Maximum 10 color variations allowed.';
-        return;
-      }
-      // Default to base color
-      const colorInput = /** @type {HTMLInputElement|null} */ (form.querySelector('[name="color"]'));
-      const baseHex = colorInput ? colorInput.value : '#000000';
-      addVariationRow(_hexToColor(baseHex));
-    });
-    variationsWrapper.appendChild(addVarBtn);
-    content.appendChild(variationsWrapper);
-
-    form.appendChild(details);
+    _applyFilter();
   }
 
-  // Section 4: Resource Table
-  {
-    const { details, content } = _createSection('Resource Table');
-    content.style.cssText = SECTION_CONTENT_STYLE + 'grid-template-columns:1fr;';
+  /** Apply the filter input to the list items. */
+  function _applyFilter() {
+    const text = filterInput.value.trim().toLowerCase();
+    const items = listItems.querySelectorAll('.editor-list-item');
+    for (const item of items) {
+      const el = /** @type {HTMLElement} */ (item);
+      const id = (el.dataset.biomeId || '').toLowerCase();
+      const name = (el.querySelector('span')?.textContent || '').toLowerCase();
+      el.style.display = (!text || id.includes(text) || name.includes(text)) ? '' : 'none';
+    }
+  }
 
+  /**
+   * Mark an item as active in the list by biome ID.
+   * @param {string|null} biomeId
+   */
+  function _setActiveItem(biomeId) {
+    const items = listItems.querySelectorAll('.editor-list-item');
+    for (const item of items) {
+      const el = /** @type {HTMLElement} */ (item);
+      if (biomeId && el.dataset.biomeId === biomeId) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    }
+  }
+
+  // ============================================================
+  // Detail panel rendering
+  // ============================================================
+
+  /** Show the empty placeholder. */
+  function _showEmpty() {
+    detailPanel.innerHTML = '';
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'editor-detail-empty';
+    emptyEl.textContent = 'Select a biome';
+    detailPanel.appendChild(emptyEl);
+  }
+
+  /**
+   * Select an existing biome for editing.
+   * @param {BiomeDataModel} model
+   */
+  function _selectExisting(model) {
+    selectedModel = model;
+    isNewMode = false;
+    activeTab = 'general';
+    originalColorRgb = (model.id && opts.biomeColorMap)
+      ? opts.biomeColorMap.get(model.id) || null
+      : null;
+    initialJson = JSON.stringify(_modelToPlain(model));
+    _setActiveItem(model.id);
+    _renderDetail();
+  }
+
+  /** Start creating a new biome. */
+  function _selectNew() {
+    selectedModel = new BiomeDataModel();
+    isNewMode = true;
+    activeTab = 'general';
+    originalColorRgb = null;
+    initialJson = JSON.stringify(_modelToPlain(selectedModel));
+    _setActiveItem(null);
+    _renderDetail();
+  }
+
+  /**
+   * Check if the current form is dirty and guard navigation.
+   * If dirty, asks the user to confirm discarding changes.
+   * Also reverts live-preview color if cancelled or discarded.
+   * @returns {boolean} true if safe to proceed
+   */
+  function _guardDirty() {
+    if (!selectedModel) return true;
+    const form = detailPanel.querySelector('form');
+    if (!form) return true;
+
+    const currentData = _collectBiomeFormData(/** @type {HTMLFormElement} */ (form));
+    const currentJson = JSON.stringify(_modelToPlain(currentData));
+    if (currentJson !== initialJson) {
+      if (!confirm('Discard unsaved changes?')) return false;
+    }
+
+    // Revert live preview color on navigating away
+    _revertLivePreview();
+    return true;
+  }
+
+  /** Revert the biomeColorMap entry to original if it was changed via live preview. */
+  function _revertLivePreview() {
+    if (opts.biomeColorMap && selectedModel && selectedModel.id && originalColorRgb != null) {
+      opts.biomeColorMap.set(selectedModel.id, originalColorRgb);
+      if (opts.hexCanvas) opts.hexCanvas.requestRender();
+    }
+  }
+
+  /** Render (or re-render) the detail panel for the currently selected biome. */
+  function _renderDetail() {
+    detailPanel.innerHTML = '';
+    if (!selectedModel) {
+      _showEmpty();
+      return;
+    }
+
+    const model = selectedModel;
+    const isNew = isNewMode;
+
+    // ── Header ──
+    const header = document.createElement('div');
+    header.className = 'editor-detail-header';
+
+    const h3 = document.createElement('h3');
+    const headerSwatch = document.createElement('div');
+    headerSwatch.className = 'swatch';
+    headerSwatch.style.cssText = `width:14px;height:14px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
+    const headerTitle = document.createElement('span');
+    headerTitle.textContent = isNew ? 'New Biome' : model.biome_name;
+    h3.appendChild(headerSwatch);
+    h3.appendChild(headerTitle);
+
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Save';
+    saveBtn.type = 'button';
+    saveBtn.className = 'editor-btn-save';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'editor-btn-delete';
+
+    btnGroup.appendChild(saveBtn);
+    if (!isNew) {
+      btnGroup.appendChild(deleteBtn);
+    }
+
+    header.appendChild(h3);
+    header.appendChild(btnGroup);
+    detailPanel.appendChild(header);
+
+    // ── Error area ──
+    const errorArea = document.createElement('div');
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
+    detailPanel.appendChild(errorArea);
+
+    // ── Sub-tabs ──
+    const tabBar = document.createElement('div');
+    tabBar.className = 'editor-detail-tabs';
+
+    const generalTab = document.createElement('button');
+    generalTab.textContent = 'General';
+    generalTab.type = 'button';
+    generalTab.className = 'editor-detail-tab' + (activeTab === 'general' ? ' active' : '');
+    generalTab.addEventListener('click', () => {
+      if (activeTab === 'general') return;
+      activeTab = 'general';
+      _updateTabs();
+    });
+
+    const colorsTab = document.createElement('button');
+    colorsTab.textContent = 'Colors';
+    colorsTab.type = 'button';
+    colorsTab.className = 'editor-detail-tab' + (activeTab === 'colors' ? ' active' : '');
+    colorsTab.addEventListener('click', () => {
+      if (activeTab === 'colors') return;
+      activeTab = 'colors';
+      _updateTabs();
+    });
+
+    tabBar.appendChild(generalTab);
+    tabBar.appendChild(colorsTab);
+    detailPanel.appendChild(tabBar);
+
+    // ── Body (form) ──
+    const form = document.createElement('form');
+    form.addEventListener('submit', (e) => e.preventDefault());
+
+    const body = document.createElement('div');
+    body.className = 'editor-detail-body';
+    body.appendChild(form);
+    detailPanel.appendChild(body);
+
+    // Build both tab contents — toggle visibility
+    const generalContent = _buildGeneralTab(model, isNew, form, errorArea);
+    const colorsContent = _buildColorsTab(model, form, errorArea, headerSwatch);
+    form.appendChild(generalContent);
+    form.appendChild(colorsContent);
+
+    _updateTabVisibility(generalContent, colorsContent);
+
+    /** Update tab button styles and content visibility. */
+    function _updateTabs() {
+      generalTab.className = 'editor-detail-tab' + (activeTab === 'general' ? ' active' : '');
+      colorsTab.className = 'editor-detail-tab' + (activeTab === 'colors' ? ' active' : '');
+      _updateTabVisibility(generalContent, colorsContent);
+    }
+
+    // ── Save handler ──
+    saveBtn.addEventListener('click', () => {
+      const collected = _collectBiomeFormData(form);
+      collected._filename = isNew ? _biomeNameToFilename(collected.biome_name) : model._filename;
+      collected._raw = model._raw;
+
+      const validation = _validateBiomeForm(collected, isNew);
+      if (!validation.valid) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = validation.errors.join('; ');
+        return;
+      }
+
+      if (isNew) {
+        const cmd = new CreateBiomeCommand(collected, opts.commandHistory);
+        if (opts.commandHistory) {
+          opts.commandHistory.execute(cmd);
+        } else {
+          cmd.execute();
+        }
+      } else {
+        const cmd = new EditBiomeCommand(model._filename, model, collected, opts.commandHistory, opts);
+        if (opts.commandHistory) {
+          opts.commandHistory.execute(cmd);
+        } else {
+          cmd.execute();
+        }
+      }
+
+      // After save: refresh list, select the saved biome
+      const savedId = collected._filename.replace('.tres', '');
+      const entry = ProjectContext.files.biomes.get(collected._filename);
+      if (entry) {
+        const savedModel = BiomeDataModel.fromEntry(collected._filename, entry);
+        _refreshList();
+        // Reset originalColorRgb to reflect the newly saved color
+        originalColorRgb = opts.biomeColorMap ? opts.biomeColorMap.get(savedId) || null : null;
+        selectedModel = savedModel;
+        isNewMode = false;
+        initialJson = JSON.stringify(_modelToPlain(savedModel));
+        _setActiveItem(savedId);
+        _renderDetail();
+      } else {
+        _refreshList();
+        selectedModel = null;
+        isNewMode = false;
+        _showEmpty();
+      }
+    });
+
+    // ── Delete handler ──
+    deleteBtn.addEventListener('click', () => {
+      const usages = findBiomeUsage(model.id);
+      if (usages.length > 0) {
+        const usageList = usages.map(u => `${u.map} (${u.count} tile${u.count > 1 ? 's' : ''})`).join(', ');
+        showInlineModal(
+          `Biome "${model.biome_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
+          '',
+          (val) => {
+            if (val === 'DELETE') {
+              _performDelete(model);
+            }
+          }
+        );
+      } else {
+        if (confirm(`Delete biome "${model.biome_name}"? This cannot be undone without undo.`)) {
+          _performDelete(model);
+        }
+      }
+    });
+  }
+
+  /**
+   * Execute the delete command and refresh the UI.
+   * @param {BiomeDataModel} model
+   */
+  function _performDelete(model) {
+    _executeDelete(model, {
+      commandHistory: opts.commandHistory,
+      onDelete: () => {
+        selectedModel = null;
+        isNewMode = false;
+        _refreshList();
+        _showEmpty();
+      },
+    });
+  }
+
+  /**
+   * Show/hide tab content based on activeTab.
+   * @param {HTMLElement} generalEl
+   * @param {HTMLElement} colorsEl
+   */
+  function _updateTabVisibility(generalEl, colorsEl) {
+    generalEl.style.display = activeTab === 'general' ? '' : 'none';
+    colorsEl.style.display = activeTab === 'colors' ? '' : 'none';
+  }
+
+  // ============================================================
+  // General tab builder
+  // ============================================================
+
+  /**
+   * Build the "General" tab content.
+   * @param {BiomeDataModel} model
+   * @param {boolean} isNew
+   * @param {HTMLFormElement} form
+   * @param {HTMLElement} errorArea
+   * @returns {HTMLElement}
+   */
+  function _buildGeneralTab(model, isNew, form, errorArea) {
+    const wrapper = document.createElement('div');
+    wrapper.dataset.tab = 'general';
+
+    const grid = document.createElement('div');
+    grid.className = 'prop-grid';
+
+    // Biome Name
+    const nameLabel = document.createElement('div');
+    nameLabel.className = 'prop-label';
+    nameLabel.textContent = 'Biome Name';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.name = 'biome_name';
+    nameInput.value = model.biome_name;
+    nameInput.className = 'prop-input';
+    if (!isNew) nameInput.disabled = true;
+    grid.appendChild(nameLabel);
+    grid.appendChild(nameInput);
+
+    // Separator — Elevation
+    const elevSep = document.createElement('div');
+    elevSep.className = 'prop-separator';
+    elevSep.textContent = 'Elevation';
+    grid.appendChild(elevSep);
+
+    // Min Elevation
+    const minLabel = document.createElement('div');
+    minLabel.className = 'prop-label';
+    minLabel.textContent = 'Min Elevation';
+    const minInput = document.createElement('input');
+    minInput.type = 'number';
+    minInput.name = 'elevation_min';
+    minInput.value = String(model.elevation_range.min);
+    minInput.min = '0';
+    minInput.max = '9';
+    minInput.step = '1';
+    minInput.className = 'prop-input';
+    grid.appendChild(minLabel);
+    grid.appendChild(minInput);
+
+    // Max Elevation
+    const maxLabel = document.createElement('div');
+    maxLabel.className = 'prop-label';
+    maxLabel.textContent = 'Max Elevation';
+    const maxInput = document.createElement('input');
+    maxInput.type = 'number';
+    maxInput.name = 'elevation_max';
+    maxInput.value = String(model.elevation_range.max);
+    maxInput.min = '0';
+    maxInput.max = '9';
+    maxInput.step = '1';
+    maxInput.className = 'prop-input';
+    grid.appendChild(maxLabel);
+    grid.appendChild(maxInput);
+
+    // Separator — Resource Table
+    const resSep = document.createElement('div');
+    resSep.className = 'prop-separator';
+    resSep.textContent = 'Resource Table';
+    grid.appendChild(resSep);
+
+    // Resource table — full width
+    const resFullWidth = document.createElement('div');
+    resFullWidth.className = 'prop-full';
+    resFullWidth.appendChild(_buildResourceTable(model, errorArea));
+    grid.appendChild(resFullWidth);
+
+    wrapper.appendChild(grid);
+    return wrapper;
+  }
+
+  /**
+   * Build the resource table editor.
+   * @param {BiomeDataModel} model
+   * @param {HTMLElement} errorArea
+   * @returns {HTMLElement}
+   */
+  function _buildResourceTable(model, errorArea) {
     const tableWrapper = document.createElement('div');
     tableWrapper.dataset.resourceTableContainer = 'true';
 
@@ -645,7 +785,6 @@ export function renderBiomeForm(container, model, isNew, options) {
     /**
      * Add a resource table row.
      * @param {{ type: string, chance: number, min_amount: number, max_amount: number }} entry
-     * @returns {void}
      */
     function addResourceRow(entry) {
       const row = document.createElement('div');
@@ -655,9 +794,9 @@ export function renderBiomeForm(container, model, isNew, options) {
       // Type select
       const typeSelect = document.createElement('select');
       typeSelect.dataset.rtType = 'true';
-      typeSelect.style.cssText = INPUT_STYLE + 'flex:2;min-width:80px;';
+      typeSelect.className = 'prop-input';
+      typeSelect.style.cssText = 'flex:2;min-width:80px;';
 
-      // Add option for current value if it's not in known resources
       const isUnknown = entry.type && !knownResources.includes(entry.type);
 
       for (const resName of knownResources) {
@@ -681,7 +820,6 @@ export function renderBiomeForm(container, model, isNew, options) {
         });
       }
 
-      // If no resources and no entry type, add empty option
       if (knownResources.length === 0 && !entry.type) {
         const opt = document.createElement('option');
         opt.value = '';
@@ -701,7 +839,8 @@ export function renderBiomeForm(container, model, isNew, options) {
       chanceInput.max = '1';
       chanceInput.placeholder = 'Chance';
       chanceInput.title = 'Chance (0.0 - 1.0)';
-      chanceInput.style.cssText = INPUT_STYLE + 'flex:1;min-width:60px;';
+      chanceInput.className = 'prop-input';
+      chanceInput.style.cssText = 'flex:1;min-width:60px;';
 
       // Min amount
       const minInput = document.createElement('input');
@@ -712,7 +851,8 @@ export function renderBiomeForm(container, model, isNew, options) {
       minInput.min = '0';
       minInput.placeholder = 'Min';
       minInput.title = 'Min Amount';
-      minInput.style.cssText = INPUT_STYLE + 'flex:1;min-width:50px;';
+      minInput.className = 'prop-input';
+      minInput.style.cssText = 'flex:1;min-width:50px;';
 
       // Max amount
       const maxInput = document.createElement('input');
@@ -723,7 +863,8 @@ export function renderBiomeForm(container, model, isNew, options) {
       maxInput.min = '0';
       maxInput.placeholder = 'Max';
       maxInput.title = 'Max Amount';
-      maxInput.style.cssText = INPUT_STYLE + 'flex:1;min-width:50px;';
+      maxInput.className = 'prop-input';
+      maxInput.style.cssText = 'flex:1;min-width:50px;';
 
       // Remove button
       const removeBtn = document.createElement('button');
@@ -753,123 +894,134 @@ export function renderBiomeForm(container, model, isNew, options) {
       addResourceRow({ type: knownResources[0] || '', chance: 0.5, min_amount: 1, max_amount: 1 });
     });
 
-    content.appendChild(tableWrapper);
-    content.appendChild(addRowBtn);
-    form.appendChild(details);
+    const container2 = document.createElement('div');
+    container2.appendChild(tableWrapper);
+    container2.appendChild(addRowBtn);
+    return container2;
   }
 
-  // Footer buttons
-  const footer = document.createElement('div');
-  footer.style.cssText = 'display:flex;gap:8px;padding:10px 0;border-top:1px solid var(--border);margin-top:8px;';
+  // ============================================================
+  // Colors tab builder
+  // ============================================================
 
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Save';
-  saveBtn.type = 'button';
-  saveBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;font-size:12px;';
+  /**
+   * Build the "Colors" tab content.
+   * @param {BiomeDataModel} model
+   * @param {HTMLFormElement} form
+   * @param {HTMLElement} errorArea
+   * @param {HTMLElement} headerSwatch - The swatch in the detail header for live update
+   * @returns {HTMLElement}
+   */
+  function _buildColorsTab(model, form, errorArea, headerSwatch) {
+    const wrapper = document.createElement('div');
+    wrapper.dataset.tab = 'colors';
 
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.type = 'button';
-  cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;';
+    const grid = document.createElement('div');
+    grid.className = 'prop-grid';
 
-  saveBtn.addEventListener('click', () => {
-    const collected = _collectBiomeFormData(form);
-    // Preserve round-trip metadata from original model
-    collected._filename = isNew ? _biomeNameToFilename(collected.biome_name) : model._filename;
-    collected._raw = model._raw;
+    // Base Color — label
+    const colorLabel = document.createElement('div');
+    colorLabel.className = 'prop-label';
+    colorLabel.textContent = 'Base Color';
 
-    const validation = _validateBiomeForm(collected, isNew);
-    if (!validation.valid) {
-      errorArea.style.display = 'block';
-      errorArea.textContent = validation.errors.join('; ');
-      return;
-    }
+    // Base Color — picker + swatch
+    const colorCell = document.createElement('div');
+    colorCell.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
-    if (isNew) {
-      const cmd = new CreateBiomeCommand(collected, options.commandHistory);
-      if (options.commandHistory) {
-        options.commandHistory.execute(cmd);
-      } else {
-        cmd.execute();
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.name = 'color';
+    colorInput.value = _colorToHex(model.color);
+    colorInput.className = 'prop-input';
+    colorInput.style.cssText = 'width:40px;height:28px;padding:0;cursor:pointer;';
+
+    colorInput.addEventListener('input', () => {
+      headerSwatch.style.background = colorInput.value;
+      // Live preview: update biomeColorMap
+      const hex = colorInput.value;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      if (opts.biomeColorMap && selectedModel && selectedModel.id) {
+        opts.biomeColorMap.set(selectedModel.id, `rgb(${r},${g},${b})`);
+        if (opts.hexCanvas) opts.hexCanvas.requestRender();
       }
-    } else {
-      const cmd = new EditBiomeCommand(model._filename, model, collected, options.commandHistory, options);
-      if (options.commandHistory) {
-        options.commandHistory.execute(cmd);
-      } else {
-        cmd.execute();
-      }
-    }
-
-    if (options.onSave) options.onSave();
-  });
-
-  cancelBtn.addEventListener('click', () => {
-    // Revert live preview color on cancel
-    if (options.biomeColorMap && model.id && originalColorRgb != null) {
-      options.biomeColorMap.set(model.id, originalColorRgb);
-      if (options.hexCanvas) options.hexCanvas.requestRender();
-    }
-
-    // Check if dirty
-    const currentData = _collectBiomeFormData(form);
-    const currentJson = JSON.stringify(_modelToPlain(currentData));
-    if (currentJson !== initialJson) {
-      if (!confirm('Discard unsaved changes?')) return;
-    }
-    if (options.onCancel) options.onCancel();
-  });
-
-  footer.appendChild(saveBtn);
-  footer.appendChild(cancelBtn);
-
-  if (!isNew) {
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.type = 'button';
-    deleteBtn.style.cssText = 'padding:6px 16px;border:1px solid #7a3030;border-radius:4px;background:#4a1c1c;color:#ff9999;cursor:pointer;font-size:12px;font-weight:600;margin-left:auto;';
-
-    deleteBtn.addEventListener('click', () => {
-      const usages = findBiomeUsage(model.id);
-      if (usages.length > 0) {
-        const usageList = usages.map(u => `${u.map} (${u.count} tile${u.count > 1 ? 's' : ''})`).join(', ');
-        showInlineModal(
-          `Biome "${model.biome_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
-          '',
-          (val) => {
-            if (val === 'DELETE') {
-              _executeDelete(model, options);
-            }
-          }
-        );
-      } else {
-        if (confirm(`Delete biome "${model.biome_name}"? This cannot be undone without undo.`)) {
-          _executeDelete(model, options);
-        }
-      }
+      // Also update swatch in list panel
+      const listItem = listItems.querySelector(`[data-biome-id="${selectedModel?.id}"] .swatch`);
+      if (listItem) /** @type {HTMLElement} */ (listItem).style.background = colorInput.value;
     });
 
-    footer.appendChild(deleteBtn);
-  }
+    colorCell.appendChild(colorInput);
 
-  form.appendChild(footer);
-  container.appendChild(form);
-}
+    grid.appendChild(colorLabel);
+    grid.appendChild(colorCell);
 
-/**
- * Execute the delete command for a biome.
- * @param {BiomeDataModel} model
- * @param {Object} options
- * @returns {void}
- */
-function _executeDelete(model, options) {
-  const cmd = new DeleteBiomeCommand(model._filename, model, options.commandHistory);
-  if (options.commandHistory) {
-    options.commandHistory.execute(cmd);
-  } else {
-    cmd.execute();
+    // Separator — Variations
+    const varSep = document.createElement('div');
+    varSep.className = 'prop-separator';
+    varSep.textContent = 'Variations';
+    grid.appendChild(varSep);
+
+    // Variations list — full width
+    const varFull = document.createElement('div');
+    varFull.className = 'prop-full';
+
+    const variationsContainer = document.createElement('div');
+    variationsContainer.dataset.variationsContainer = 'true';
+
+    /**
+     * Add a color variation entry.
+     * @param {{ r: number, g: number, b: number, a: number }} varColor
+     */
+    function addVariationRow(varColor) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px;';
+
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = _colorToHex(varColor);
+      input.dataset.variationColor = 'true';
+      input.className = 'prop-input';
+      input.style.cssText = 'width:40px;height:28px;padding:0;cursor:pointer;';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'X';
+      removeBtn.type = 'button';
+      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+      removeBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(input);
+      row.appendChild(removeBtn);
+      variationsContainer.appendChild(row);
+    }
+
+    // Populate existing variations
+    for (const vc of model.color_variations) {
+      addVariationRow(vc);
+    }
+
+    const addVarBtn = document.createElement('button');
+    addVarBtn.textContent = '+ Add Variation';
+    addVarBtn.type = 'button';
+    addVarBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+    addVarBtn.addEventListener('click', () => {
+      const currentCount = variationsContainer.querySelectorAll('[data-variation-color]').length;
+      if (currentCount >= 10) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = 'Maximum 10 color variations allowed.';
+        return;
+      }
+      const baseHex = colorInput.value || '#000000';
+      addVariationRow(_hexToColor(baseHex));
+    });
+
+    varFull.appendChild(variationsContainer);
+    varFull.appendChild(addVarBtn);
+    grid.appendChild(varFull);
+
+    wrapper.appendChild(grid);
+    return wrapper;
   }
-  if (options.onDelete) options.onDelete();
 }
 
 // ============================================================
@@ -1255,6 +1407,26 @@ export class DeleteBiomeCommand {
       });
     }
   }
+}
+
+// ============================================================
+// Delete Helpers
+// ============================================================
+
+/**
+ * Execute the delete command for a biome.
+ * @param {BiomeDataModel} model
+ * @param {Object} options
+ * @returns {void}
+ */
+function _executeDelete(model, options) {
+  const cmd = new DeleteBiomeCommand(model._filename, model, options.commandHistory);
+  if (options.commandHistory) {
+    options.commandHistory.execute(cmd);
+  } else {
+    cmd.execute();
+  }
+  if (options.onDelete) options.onDelete();
 }
 
 // ============================================================
