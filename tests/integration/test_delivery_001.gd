@@ -491,9 +491,9 @@ func test_ac10_cliff_faces_add_geometry_for_elevation_difference() -> void:
 		var arr: Array = (mi.mesh as ArrayMesh).surface_get_arrays(0)
 		flat_verts = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
-	# Add large elevation diff (>=4) to tile (1,0) — cliff face geometry must be added.
-	# Diff 1-3 produces slopes (same vertex count, different Y). Diff 4+ produces cliff quads.
-	HexGrid._tiles[Vector2i(1, 0)].elevation = 4
+	# Add large elevation diff (>=3) to tile (1,0) — cliff face geometry must be added.
+	# Diff 1-2 produces curved slopes (same vertex count, different Y). Diff 3+ produces cliff quads.
+	HexGrid._tiles[Vector2i(1, 0)].elevation = 3
 	HexGrid.map_generated.emit()
 
 	var cliff_verts: int = 0
@@ -502,7 +502,7 @@ func test_ac10_cliff_faces_add_geometry_for_elevation_difference() -> void:
 		cliff_verts = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
 	assert_bool(cliff_verts > flat_verts).override_failure_message(
-		"Cliff faces must add geometry for diff>=4: flat=%d cliff=%d vertices" % [flat_verts, cliff_verts]
+		"Cliff faces must add geometry for diff>=3: flat=%d cliff=%d vertices" % [flat_verts, cliff_verts]
 	).is_true()
 
 	renderer.queue_free()
@@ -533,7 +533,7 @@ func test_ac11_main_scene_bootstrap_generates_world() -> void:
 
 
 # ===========================================================================
-# AC12 — Elevation/TraversalType: WALK (diff 0-1), JUMP (diff 2-3), BLOCKED (diff 4+)
+# AC12 — Elevation/TraversalType: WALK (diff 0-2), JUMP/DROP (diff 3-4), BLOCKED (diff 5+)
 # ===========================================================================
 
 func test_ac12_walk_for_elevation_diff_0() -> void:
@@ -550,13 +550,6 @@ func test_ac12_walk_for_elevation_diff_1() -> void:
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.WALK)
 
 
-func test_ac12_jump_for_elevation_diff_2() -> void:
-	_grid._tiles.clear()
-	_make_tile(Vector2i(0, 0), 0)
-	_make_tile(Vector2i(1, 0), 2)
-	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
-
-
 func test_ac12_jump_for_elevation_diff_3() -> void:
 	_grid._tiles.clear()
 	_make_tile(Vector2i(0, 0), 0)
@@ -564,10 +557,17 @@ func test_ac12_jump_for_elevation_diff_3() -> void:
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
 
 
-func test_ac12_blocked_for_elevation_diff_4() -> void:
+func test_ac12_jump_for_elevation_diff_4() -> void:
 	_grid._tiles.clear()
 	_make_tile(Vector2i(0, 0), 0)
 	_make_tile(Vector2i(1, 0), 4)
+	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.JUMP)
+
+
+func test_ac12_blocked_for_elevation_diff_5() -> void:
+	_grid._tiles.clear()
+	_make_tile(Vector2i(0, 0), 0)
+	_make_tile(Vector2i(1, 0), 5)
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 
 

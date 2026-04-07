@@ -8,11 +8,27 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const WALK_MAX_DIFF: int = 1
-const JUMP_MAX_DIFF: int = 3
+const WALK_MAX_DIFF: int = 2
+const JUMP_MAX_DIFF: int = 4
 
 # Legacy alias — existing code may reference this
 const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
+
+## Elevation scale: world Y per elevation level.
+## Shared constant — renderer, player, and terrain queries all use this.
+const ELEVATION_STEP: float = 0.5
+
+## Corner-to-neighbor direction mapping for flat-top hexes (verified empirically).
+## DIRECTIONS order: [E, NE, NW, W, SW, SE]. Corner i is at angle i*60°.
+## Each pair lists the 2 DIRECTIONS indices whose neighbor hexes share that corner.
+const _CORNER_NEIGHBOR_DIRS: Array = [
+	[0, 1],  # corner 0 (0°)   ← DIRECTIONS[0] + DIRECTIONS[1]
+	[0, 5],  # corner 1 (60°)  ← DIRECTIONS[0] + DIRECTIONS[5]
+	[5, 4],  # corner 2 (120°) ← DIRECTIONS[5] + DIRECTIONS[4]
+	[4, 3],  # corner 3 (180°) ← DIRECTIONS[4] + DIRECTIONS[3]
+	[3, 2],  # corner 4 (240°) ← DIRECTIONS[3] + DIRECTIONS[2]
+	[2, 1],  # corner 5 (300°) ← DIRECTIONS[2] + DIRECTIONS[1]
+]
 
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
@@ -79,7 +95,7 @@ func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
 	return abs(int(tile_to.elevation) - int(tile_from.elevation))
 
 
-## 3-tier traversal: WALK (0-1), JUMP/DROP (2-3), BLOCKED (4+, water, wall).
+## 3-tier traversal: WALK (0-2), JUMP/DROP (3-4), BLOCKED (5+, water, wall).
 func get_traversal(from: Vector2i, to: Vector2i) -> int:
 	var tile_to: Resource = _tiles.get(to, null)
 	if tile_to == null:
@@ -149,6 +165,98 @@ func axial_to_world(coords: Vector2i) -> Vector2:
 
 func world_to_axial(world_pos: Vector2) -> Vector2i:
 	return _HexMath.world_to_axial(world_pos)
+
+
+# --- Terrain height ---
+
+## Get the terrain Y height at an arbitrary world XZ position.
+## Uses the same edge_y + corner_y logic as the renderer (12-vertex rings).
+## Water tiles return flat elevation. Returns 0.0 for missing tiles.
+func get_terrain_y(world_x: float, world_z: float) -> float:
+	var coords: Vector2i = _HexMath.world_to_axial(Vector2(world_x, world_z))
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return 0.0
+
+	var elev: float = float(tile.elevation)
+	var center_y: float = elev * ELEVATION_STEP
+
+	# Water stays flat.
+	if tile.biome == _HexTile.Biome.WATER:
+		return center_y
+
+	# Compute edge_y (6 values) — same logic as renderer.
+	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
+	for d: int in range(6):
+		var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
+		var n_tile: Resource = _tiles.get(n_coords, null)
+		if n_tile == null:
+			continue
+		if absi(tile.elevation - n_tile.elevation) <= 2:
+			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+
+	# Compute corner_y (6 values) — include neighbors with diff ≤ 2.
+	var corner_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
+	for ci: int in range(6):
+		var sum_e: float = elev
+		var cnt: int = 1
+		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
+		for d: int in dir_pair:
+			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_tile: Resource = _tiles.get(n_coords, null)
+			if n_tile == null:
+				continue
+			if absi(tile.elevation - n_tile.elevation) <= 2:
+				sum_e += float(n_tile.elevation)
+				cnt += 1
+		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
+
+	# Distance and angle from hex center.
+	var center_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var dx: float = world_x - center_2d.x
+	var dz: float = world_z - center_2d.y
+	var dist: float = sqrt(dx * dx + dz * dz)
+
+	if dist < 0.001:
+		return center_y
+
+	# Normalized distance (0 at center, 1 at hex edge).
+	var t: float = clampf(dist / _HexMath.HEX_SIZE, 0.0, 1.0)
+
+	# Interpolation curve — quintic smoothstep: t³(t(6t - 15) + 10)
+	var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
+
+	# Find angle — 12 sectors (30° each) matching 12-vertex ring layout.
+	# Even sectors (0,2,4,...) = corners, odd sectors (1,3,5,...) = edge midpoints.
+	var angle: float = atan2(dz, dx)
+	if angle < 0.0:
+		angle += TAU
+
+	# Direction-to-edge mapping for odd sectors (edge midpoints at 30°,90°,...).
+	var edge_dir_for_midpoint: Array[int] = [0, 5, 4, 3, 2, 1]
+
+	var sector_f: float = angle / (PI / 6.0)  # 30° per sector
+	var sector: int = int(sector_f) % 12
+	var sector_frac: float = sector_f - floor(sector_f)
+
+	# Get target Y for this sector and the next.
+	var target_a: float
+	var target_b: float
+	if sector % 2 == 0:
+		target_a = corner_y[sector / 2]
+	else:
+		target_a = edge_y[edge_dir_for_midpoint[(sector - 1) / 2]]
+	var next_sector: int = (sector + 1) % 12
+	if next_sector % 2 == 0:
+		target_b = corner_y[next_sector / 2]
+	else:
+		target_b = edge_y[edge_dir_for_midpoint[(next_sector - 1) / 2]]
+
+	# Blend between adjacent sector targets.
+	var target_blend: float = lerpf(target_a, target_b, sector_frac)
+
+	# Interpolate from center Y to blended target using the curve.
+	return lerpf(center_y, target_blend, s)
 
 
 # --- Serialization ---

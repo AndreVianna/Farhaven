@@ -88,11 +88,8 @@ func _process(delta: float) -> void:
 ## Snap the player's world position to the given tile center.
 func _snap_to_tile(coords: Vector2i) -> void:
 	var world_2d: Vector2 = _grid.axial_to_world(coords)
-	var tile = _grid.get_tile(coords)
-	var elevation_y: float = 0.0
-	if tile != null:
-		elevation_y = float(tile.elevation) * ELEVATION_SCALE
-	position = Vector3(world_2d.x, elevation_y, world_2d.y)
+	var terrain_y: float = _grid.get_terrain_y(world_2d.x, world_2d.y)
+	position = Vector3(world_2d.x, terrain_y, world_2d.y)
 
 
 # --- Joystick signal handlers ---
@@ -188,29 +185,16 @@ func _process_walking(delta: float) -> void:
 		_update_elevation_y_same_tile()
 
 
-## Interpolate Y position based on distance to source and destination tile centers.
-func _update_elevation_y_interpolated(pos_2d: Vector2, from: Vector2i, to: Vector2i) -> void:
-	var from_world: Vector2 = _grid.axial_to_world(from)
-	var to_world: Vector2 = _grid.axial_to_world(to)
-	var from_tile = _grid.get_tile(from)
-	var to_tile = _grid.get_tile(to)
-	if from_tile == null or to_tile == null:
-		return
-	var from_y: float = float(from_tile.elevation) * ELEVATION_SCALE
-	var to_y: float = float(to_tile.elevation) * ELEVATION_SCALE
-	var total_dist: float = from_world.distance_to(to_world)
-	if total_dist < 0.001:
-		position.y = to_y
-		return
-	var progress: float = clampf(from_world.distance_to(pos_2d) / total_dist, 0.0, 1.0)
-	position.y = lerpf(from_y, to_y, progress)
+## Update Y from curved terrain at current XZ position.
+## When crossing tiles, the terrain Y already handles the interpolation
+## because get_terrain_y considers the hex the point is actually in.
+func _update_elevation_y_interpolated(_pos_2d: Vector2, _from: Vector2i, _to: Vector2i) -> void:
+	position.y = _grid.get_terrain_y(position.x, position.z)
 
 
-## Keep Y at current tile elevation.
+## Keep Y at current terrain height.
 func _update_elevation_y_same_tile() -> void:
-	var tile = _grid.get_tile(current_tile)
-	if tile != null:
-		position.y = float(tile.elevation) * ELEVATION_SCALE
+	position.y = _grid.get_terrain_y(position.x, position.z)
 
 
 # --- Jump/Drop ---
@@ -222,13 +206,10 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 
 	var current_world_2d: Vector2 = _grid.axial_to_world(current_tile)
 	var target_world_2d: Vector2 = _grid.axial_to_world(target)
-	var target_tile = _grid.get_tile(target)
-	var target_y: float = 0.0
-	if target_tile != null:
-		target_y = float(target_tile.elevation) * ELEVATION_SCALE
 
 	# Land just past the border (10% into the target hex), not at center
 	var border_point_2d: Vector2 = current_world_2d.lerp(target_world_2d, 0.55)
+	var target_y: float = _grid.get_terrain_y(border_point_2d.x, border_point_2d.y)
 	var land_pos := Vector3(border_point_2d.x, target_y, border_point_2d.y)
 
 	var higher_y: float = maxf(position.y, target_y)
@@ -319,10 +300,7 @@ func _slide_along_boundary(velocity_2d: Vector2, delta: float) -> void:
 func _tween_snap_to_center() -> void:
 	_cancel_snap_tween()
 	var world_2d: Vector2 = _grid.axial_to_world(current_tile)
-	var tile = _grid.get_tile(current_tile)
-	var target_y: float = 0.0
-	if tile != null:
-		target_y = float(tile.elevation) * ELEVATION_SCALE
+	var target_y: float = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	var target_pos := Vector3(world_2d.x, target_y, world_2d.y)
 
 	_snap_tween = create_tween()
