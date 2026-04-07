@@ -5,7 +5,7 @@ class_name HexMath
 ## Flat-top hexagon layout. Follows Red Blob Games conventions.
 
 const HEX_SIZE: float = 3.0
-const SUB_HEX_SIZE: float = HEX_SIZE / 5.0  # 0.6
+const SUB_HEX_SIZE: float = (HEX_SIZE / cos(deg_to_rad(30.0))) / 5.0  # ~0.6928 (pointy-top sub-hexes fill hex)
 
 # Flat-top axial neighbor directions (E, NE, NW, W, SW, SE)
 const DIRECTIONS = [
