@@ -210,7 +210,7 @@ func _rebuild_mesh() -> void:
 		# 3 hexes sharing a corner must compute the SAME Y value for it.
 		#
 		# Corner-to-neighbor mapping for flat-top hexes (verified empirically):
-		# DIRECTIONS array order is [E(30°), SE(330°), S(270°), SW(210°), NW(150°), N(90°)]
+		# DIRECTIONS array order is [E, SE, S, SW, NW, N].
 		# Corner i is at angle i*60°. The 2 neighbors sharing corner i:
 		var corner_neighbor_dirs: Array = [
 			[0, 1],  # corner 0 (0°)   ← E + SE
