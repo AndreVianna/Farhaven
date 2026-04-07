@@ -868,7 +868,7 @@ function _initElevationControls() {
     elevValue.addEventListener('input', () => {
       const val = parseInt(elevValue.value, 10);
       if (!isNaN(val)) {
-        toolManager.elevationValue = Math.max(0, Math.min(9, val));
+        toolManager.elevationValue = Math.max(-32000, Math.min(32000, val));
       }
     });
   }

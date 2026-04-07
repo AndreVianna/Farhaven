@@ -131,8 +131,8 @@ export const HexMath = {
 
   // ---- Sub-hex grid ----
 
-  /** Scale factor: sub-hex size relative to main hex (1.2m / 6.0m) */
-  SUB_HEX_SCALE: 0.2,
+  /** Scale factor: sub-hex size relative to main hex. Matches engine: (HEX_SIZE / cos(30°)) / 5 */
+  SUB_HEX_SCALE: 1.0 / (Math.cos(Math.PI / 6) * 5),
 
   /** All 19 valid sub-hex positions (center + ring 1 + ring 2) */
   VALID_SUB_HEXES: [

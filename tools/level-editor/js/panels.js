@@ -389,7 +389,7 @@ export class HexInspector {
     // Type label with category badge (safe DOM — no innerHTML)
     const header = document.createElement('div');
     header.className = 'prop-card-header';
-    const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.resource;
+    const catColors = CATEGORY_COLORS[prop.category] || CATEGORY_COLORS.plant;
     const typeSpan = document.createElement('span');
     typeSpan.style.cssText = `color:${catColors.badge};font-weight:600;font-size:12px;`;
     typeSpan.textContent = String(prop.type);
@@ -406,9 +406,7 @@ export class HexInspector {
       { name: 'sr', value: prop.sr, min: -2, max: 2, step: 1 },
     ];
 
-    if (prop.category === 'resource') {
-      fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
-    }
+    fields.push({ name: 'rotation', value: prop.rotation || 0, min: 0, max: 359, step: 1 });
 
     const fieldsRow = document.createElement('div');
     fieldsRow.className = 'prop-card-fields';

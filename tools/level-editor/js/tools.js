@@ -182,7 +182,7 @@ export class ElevationBrush extends DragBrushTool {
     } else {
       newElevation = oldElevation + this.toolManager.elevationDelta;
     }
-    newElevation = Math.max(0, Math.min(9, newElevation));
+    newElevation = Math.max(-32000, Math.min(32000, newElevation));
 
     if (oldElevation === newElevation) return;
 

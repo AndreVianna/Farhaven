@@ -18,7 +18,7 @@ export class BiomeDataModel {
     /** @type {string} */
     this.biome_name = '';
     /** @type {{ min: number, max: number }} From Vector2i(min, max) */
-    this.elevation_range = { min: 0, max: 9 };
+    this.elevation_range = { min: -32000, max: 32000 };
     /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
     this.resource_table = [];
     /** @type {{ r: number, g: number, b: number, a: number }} */
@@ -1135,11 +1135,11 @@ function _validateBiomeForm(model, isNew) {
   }
 
   // Elevation range
-  if (model.elevation_range.min < 0 || model.elevation_range.min > 9) {
-    errors.push('Elevation Min must be between 0 and 9');
+  if (model.elevation_range.min < -32000 || model.elevation_range.min > 32000) {
+    errors.push('Elevation Min must be between -32000 and 32000');
   }
-  if (model.elevation_range.max < 0 || model.elevation_range.max > 9) {
-    errors.push('Elevation Max must be between 0 and 9');
+  if (model.elevation_range.max < -32000 || model.elevation_range.max > 32000) {
+    errors.push('Elevation Max must be between -32000 and 32000');
   }
   if (model.elevation_range.min > model.elevation_range.max) {
     errors.push('Elevation Min must be <= Max');

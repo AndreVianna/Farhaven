@@ -12,6 +12,7 @@
 | 2026-04-04 | Added ghost grid and empty-cell painting to F1/F2. New AC10 for map expansion. | code review |
 | 2026-04-04 | Sub-hex grid system: resources use discrete (sq, sr) positions, structures use footprints, canvas shows sub-hex overlay for placement tools. Updated F1, F2, F5, F7, §9. | design change |
 | 2026-04-04 | Unified props model: resources/structures/anomalies collapsed into single props[] array per tile. Separate placement fields replaced with per-prop {type, sq, sr, category, rotation?, footprint?}. Commands unified to AddProp/EditProp/DeleteProp. Spawn stays in grid.meta. Updated F1, F2, F5, F7, §9. | design change |
+| 2026-04-07 | Engine sync (delivery-004b): sub-hex scale corrected to 1/(cos(30°)*5), elevation range expanded to -32000..+32000, prop categories expanded to 10 (Plant/Mineral/Animal/Fungi/Liquid/Ooze/Structure/Vehicle/Equipment/Storage), origin field added (Natural/Crafted/Human/NativeAlien/Unknown), anomaly removed as category, spawn facing angle added. Single Prop tool replaces 3 separate tools. Updated F1, F2, F3, F4, F5, F7, §9. | engine sync |
 
 ## 1. Objective
 
@@ -66,45 +67,47 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 ### F1: Hex Canvas (Map Editor)
 - Flat-top hex grid matching Farhaven's axial coordinate system (q, r)
 - Each hex colored by biome using actual biome colors from .tres files
-- Each hex stores a list of props (resources, structures, anomalies) -- all items placed on the tile
-- Elevation shown as number overlay and/or brightness gradient (higher = lighter)
+- Each hex stores a list of props — all items placed on the tile
+- Elevation shown as number overlay and/or brightness gradient (higher = lighter). Elevation range: -32000..+32000.
 - Cliff indicators on edges between hexes with elevation difference ≥ 2
-- **Ghost grid** -- faint hex outlines rendered at all empty positions adjacent to existing tiles, providing visual affordance for map expansion. Ghost hexes respond to hover and tool interactions (painting a ghost cell creates a real tile).
+- **Ghost grid** — faint hex outlines rendered at all empty positions adjacent to existing tiles. Ghost hexes respond to hover and tool interactions.
 - Click to select hex, click-drag to paint (biome brush, elevation brush)
-- Hover tooltip showing hex coordinates, biome, elevation, props (grouped by category)
-- Zoom (scroll wheel) + pan (middle-click drag or space+drag)
-- Grid coordinates toggle (show q,r labels on hexes)
-- **Sub-hex grid overlay:** when a placement tool (prop placer) is active, the hovered/selected hex shows its 19 sub-hex positions as a fine grid overlay. Occupied sub-hexes are highlighted. Available sub-hexes respond to clicks.
-- **Canvas rendering:** iterates `tile.props` and renders each by category -- blue badge for resources, orange for structures, purple for anomalies.
+- Hover tooltip showing hex coordinates, biome, elevation, props
+- Zoom (scroll wheel) + pan (middle-click/right-click drag or space+drag)
+- **Sub-hex grid overlay:** when a sub-hex tool is active, the hovered hex shows its 19 sub-hex positions. Sub-hex scale: `1/(cos(30°)*5) ≈ 0.2309` (matches engine's pointy-top sub-hex sizing).
+- **Canvas rendering:** iterates `tile.props` and renders each with a color per category (10 categories).
+- **10 prop categories:** Plant(0), Mineral(1), Animal(2), Fungi(3), Liquid(4), Ooze(5), Structure(6), Vehicle(7), Equipment(8), Storage(9). Each has a distinct render color.
 
 ### F2: Painting Tools
-- **Biome Brush** -- paint biome type from palette. Painting on an empty (ghost) cell creates a new tile with the selected biome.
-- **Elevation Brush** -- set elevation 0-9, with +/- increment mode. Painting on an empty cell creates a new tile.
-- **Prop Placer** -- place props on sub-hexes within a hex. Tool mode determines category (resource, structure, anomaly). Resources get auto-randomized rotation (0-359). Structures preview their footprint before placement. Structure list initially matches WALKABLE_STRUCTURES: workbench, storage_chest, campfire, shelter, torch. List defined once in editor config, easy to update as game adds structures.
-- **Spawn Marker** -- set player spawn hex (exactly one per map). Operates on meta, not a prop.
-- **Eraser** -- click a sub-hex to remove the prop at that position. Click hex without sub-hex target to clear all props from the tile.
-- **Delete Hex** -- remove hex entirely from map
-- **Flood Fill** -- paint contiguous same-biome hexes (adapted from Iterate)
-- **Note:** Biome Brush, Elevation Brush, Flood Fill, Delete Hex, Spawn Marker operate on main hexes only -- unaffected by sub-hex system. Eraser operates at sub-hex level when targeting a specific prop.
+- **Biome Brush** — paint biome type from palette. Painting on a ghost cell creates a new tile.
+- **Elevation Brush** — set elevation (full integer range -32000..+32000), with +/- increment mode. Input field (not slider, range too large).
+- **Prop Placer** — single unified tool for placing all prop types. User selects a category (from 10-category enum), then a type within that category. Props include: type, sub-hex position (sq, sr), category (0-9), origin (0-4, defaulted by category), rotation (0-359°). Origin defaults: Natural categories (0-5) → NATURAL(0), Non-Natural categories (6-9) → CRAFTED(1). Rotation settable during or after placement.
+- **Spawn Marker** — set player spawn position and facing angle. Operates on map-level metadata (`spawn: [q, r, sq, sr, facing]`), not a prop. Facing angle: 0-359°.
+- **Eraser** — click a sub-hex to remove the prop at that position.
+- **Delete Hex** — remove hex entirely from map
+- **Flood Fill** — paint contiguous same-biome hexes
+- **Note:** Biome Brush, Elevation Brush, Flood Fill, Delete Hex operate on main hexes only. Prop Placer, Spawn Marker, Eraser operate at sub-hex level.
 
 ### F3: Palette / Sidebar
-- Biome palette — swatches showing each biome's actual color + name (from loaded .tres files)
-- Resource palette — all resource types (from loaded .tres files)
-- Structure palette — all known structures
+- Biome palette — swatches showing each biome's actual color + name
+- Prop palette — category selector (10 categories grouped: Natural 0-5, Non-Natural 6-9), then type selector within the chosen category. Types from loaded .tres files (for natural categories) or configured list (for structures etc.)
 - Active tool indicator
-- Biome statistics — tile count per biome, total tiles, resource count
+- Biome/hex statistics
 - Palettes are live — changes in Resource/Biome Editor tabs update Map Editor palette immediately
 
 ### F4: Map Properties
-- Chapter ID (string, e.g., "ch1")
-- Chapter Name (display name, e.g., "Crash Landing")
-- Spawn point — highlighted hex on canvas
+- Chapter ID (string, editable)
+- Chapter Name (display name, editable)
+- Spawn point — highlighted on canvas with facing direction indicator
+- Spawn format in JSON: `spawn: [q, r, sq, sr, facing]` where facing is 0-359°
 
-### F5: Prop Placement Detail
-- Each hex has 0-N props. Each prop has: type (string), sub-hex position (sq, sr), category (resource|structure|anomaly). Resources additionally have rotation (0-359). Structures have a footprint (list of sub-hex offsets they occupy).
-- Click prop in detail panel → highlight its sub-hex on canvas
-- Visual indicator on hexes with props (category-colored badges) -- clicking opens a prop list for selecting/editing individual props
-- One prop per sub-hex (occupancy check across all categories). Structures may occupy multiple sub-hexes via footprint.
+### F5: Prop Data Model
+- Each hex has 0-N props. Each prop has: `type` (string), `sub_hex_q`/`sub_hex_r` (int), `category` (0-9), `origin` (0-4), `rotation` (0-359°). Optional fields: `blocks_movement`, `tool_required`, `respawn_time`, `remaining`, `max_amount`, `footprint` (structure multi-cell).
+- **10 categories:** Plant(0), Mineral(1), Animal(2), Fungi(3), Liquid(4), Ooze(5), Structure(6), Vehicle(7), Equipment(8), Storage(9)
+- **5 origins:** Natural(0), Crafted(1), Human(2), NativeAlien(3), Unknown(4)
+- Origin defaults by category: Natural categories (0-5) → 0, Non-Natural categories (6-9) → 1
+- Anomaly is NOT a category — it's a derived runtime state. SPAWN is NOT a prop — it's map-level metadata.
+- One prop per sub-hex (occupancy check). Structures may occupy multiple sub-hexes via footprint.
 
 ### F6: Import / Export
 - **Import:** Load existing chapter JSON → renders the full map
@@ -113,10 +116,12 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### F7: Export Validation
 - Exactly one spawn point exists (from meta)
+- Spawn has valid facing angle (0-359)
 - No duplicate coordinates
 - All biome names valid (match known biome list)
 - All prop types must exist in known definitions for their category
-- Elevation range 0-9
+- Elevation range -32000..+32000
+- Prop category in range 0-9, origin in range 0-4
 - Prop sub-hex positions (sq, sr) must be valid (hex distance from (0,0) ≤ 2)
 - Structure footprints must reference valid sub-hex positions
 - No overlapping props on same sub-hex within a tile (all categories share the sub-hex space)

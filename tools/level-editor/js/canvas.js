@@ -3,7 +3,7 @@
 // ============================================================
 
 import { HEX_SIZE, HexMath } from './hex-math.js';
-import { HexGrid, CATEGORY_COLORS } from './hex-grid.js';
+import { HexGrid, CATEGORY_COLORS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
 
 /** @type {string} Fallback color for unknown biomes */
 export const BIOME_FALLBACK_COLOR = '#888888';
@@ -446,7 +446,8 @@ export class HexCanvas {
     for (const prop of tile.props) {
       // Use per-resource color from resourceColorMap when available, else fall back to category color
       let color;
-      if (prop.category === 'resource' && this.resourceColorMap.has(prop.type)) {
+      const catInt = CATEGORY_TO_INT[prop.category];
+      if (catInt != null && NATURAL_CATEGORIES.has(catInt) && this.resourceColorMap.has(prop.type)) {
         color = this.resourceColorMap.get(prop.type);
       } else {
         color = CATEGORY_COLORS[prop.category]

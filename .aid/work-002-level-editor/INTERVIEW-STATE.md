@@ -48,3 +48,4 @@
 | 3 | 2026-04-03 | — | Lola review | Expanded to 9 features: extracted command infrastructure (F008) from canvas, added unsaved changes protection (F009). Added F14/F15 to REQUIREMENTS.md. Expanded ACs across all SPECs. |
 | 4 | 2026-04-03 | B+ | /aid-interview (cross-reference) | 1 medium (ResourceDef field mismatch), 1 low (biome field names), 3 minors. Both resolved. REQUIREMENTS.md §4 updated with correct field lists from resource_def.gd and biome_data.gd. |
 | 5 | 2026-04-03 | A | /aid-interview (re-validation) | All medium/low issues resolved. 3 remaining minors are acceptable (structure list configurable, .tres parser shared, field abbreviation fixed). No new findings. |
+| 6 | 2026-04-07 | — | Engine sync (delivery-004b) | Major engine changes: sub-hex scale correction, elevation range expansion, 10 prop categories, origin field, spawn facing. Updated F1, F2, F3, F4, F5, F7, §9. |
