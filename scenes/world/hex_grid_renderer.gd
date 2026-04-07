@@ -390,12 +390,16 @@ func _rebuild_mesh() -> void:
 				st.set_color(rk_col[j_next])
 				st.add_vertex(rk_pos[j_next])
 
-	# Step 6: Generate wall faces on ALL edges where this hex is higher than neighbor.
-	# Walls on every face with elevation > 0 eliminates visual gaps regardless of
-	# corner_y averaging asymmetry. Short walls for slopes, tall walls for cliffs.
+	# Step 6: Generate wall faces on ALL faces of non-zero-elevation hexes.
+	# Every face gets a wall — ensures no visual gaps at any terrain transition.
+	# Only exceptions: elevation 0 hexes (ground level) and water-to-water.
 	# 6-point polygon per wall, following the actual surface profile on both sides.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
+		if tile.biome == _HexTile.Biome.WATER:
+			continue  # Water hexes don't generate walls (handled later).
+		if tile.elevation == 0:
+			continue  # Ground-level hexes need no walls.
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
@@ -403,13 +407,9 @@ func _rebuild_mesh() -> void:
 		for d: int in range(6):
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			# Wall if neighbor is lower, missing (map edge), or water.
-			# Water always gets a wall from land even at same elevation.
-			if n_tile != null:
-				if n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
-					continue
-				if n_tile.biome == _HexTile.Biome.WATER and tile.biome == _HexTile.Biome.WATER:
-					continue  # No wall between two water tiles.
+			# Skip only if neighbor is higher (it will generate its own wall).
+			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation > tile.elevation:
+				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
 			var ec: Array = edge_corners[d]
