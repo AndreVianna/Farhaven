@@ -42,7 +42,7 @@ gdUnit4 is a GDScript-native unit testing framework for Godot. All test files ex
 | test_player.gd | 23 | 312 | Unit |
 | test_player_input.gd | 19 | 228 | Unit |
 | test_prop_renderers.gd | 11 | 231 | Unit |
-| test_resource_renderer.gd | 32 | 378 | Unit |
+| test_prop_renderer.gd | 32 | 378 | Unit |
 | test_scan_progress_renderer.gd | 7 | 171 | Unit |
 | test_scanner_system.gd | 29 | 558 | Unit |
 | test_setup.gd | 1 | 4 | Smoke |
@@ -59,13 +59,13 @@ gdUnit4 is a GDScript-native unit testing framework for Godot. All test files ex
 
 | Module | Source Files | Test Files | Status |
 |--------|-------------|------------|--------|
-| hex/ | 6 files | 2 (hex_math, map_loader) | Partial — hex_grid, hex_tile, biome_data, resource_node untested directly |
+| hex/ | 6 files | 2 (hex_math, map_loader) | Partial — hex_grid, hex_tile, biome_data, prop_node untested directly |
 | player/ | 4 files | 2 (player, player_input) | Partial — player_camera, player_pathfinder untested |
 | inventory/ | 1 file | 1 (inventory) | Good |
 | crafting/ | 1 file | 1 (crafting_system) | Good |
 | scanner/ | 4 files | 2 (catalog, scanner_system) | Partial — catalog_data, catalog_entry untested |
 | auto_interaction/ | 1 file | 3 (auto_gather, stubs, system) | Good |
-| rendering/ | 5 files | 3 (resource_renderer, prop_renderers, scan_progress) | Partial — fly_to_player, prop_label_renderer untested |
+| rendering/ | 5 files | 3 (prop_renderer, prop_renderers, scan_progress) | Partial — fly_to_player, prop_label_renderer untested |
 | hud/ | 6 files | 1 (feedback_wiring) | Low — 5 of 6 files untested |
 | ui/ | 8 files | 2 (crafting_panel, catalog_panel_ui) | Low — 6 of 8 files untested |
 | data/ | 2 files | 0 | None |

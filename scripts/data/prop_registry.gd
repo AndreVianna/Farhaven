@@ -1,11 +1,11 @@
 extends Node
 
-## Scans data/props/ and indexes all ResourceDef .tres files by id.
+## Scans data/props/ and indexes all PropDef .tres files by id.
 ## Added to project.godot as autoload BEFORE HexGrid.
 
 const PROPS_PATH := "res://data/props/"
 
-var _defs: Dictionary = {}  # StringName → ResourceDef
+var _defs: Dictionary = {}  # StringName → PropDef
 
 func _ready() -> void:
 	_scan_props()
@@ -13,18 +13,18 @@ func _ready() -> void:
 func _scan_props() -> void:
 	var dir := DirAccess.open(PROPS_PATH)
 	if dir == null:
-		push_error("ResourceRegistry: cannot open %s" % PROPS_PATH)
+		push_error("PropRegistry: cannot open %s" % PROPS_PATH)
 		return
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
 		if file_name.ends_with(".tres"):
 			var res := load(PROPS_PATH + file_name)
-			if res is ResourceDef:
+			if res is PropDef:
 				_defs[res.id] = res
 		file_name = dir.get_next()
 
-func get_def(type: StringName) -> ResourceDef:
+func get_def(type: StringName) -> PropDef:
 	return _defs.get(type)
 
 func get_all() -> Array:

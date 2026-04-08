@@ -43,8 +43,8 @@ signal tile_revealed(coords: Vector2i)
 signal tile_visibility_changed(coords: Vector2i, state: int)  # int = HexTile.FogState
 signal tile_entered(coords: Vector2i)
 signal tile_exited(coords: Vector2i)
-signal resource_depleted(coords: Vector2i, resource_type: StringName)
-signal resource_respawned(coords: Vector2i, resource_type: StringName)
+signal prop_depleted(coords: Vector2i, prop_type: StringName)
+signal prop_respawned(coords: Vector2i, prop_type: StringName)
 signal tile_contents_changed(coords: Vector2i)
 signal structure_placed(coords: Vector2i, structure_type: StringName)
 signal structure_destroyed(coords: Vector2i, structure_type: StringName)
@@ -342,7 +342,7 @@ func load_save_data(data: Dictionary) -> void:
 		else:
 			# Legacy save format: "resources" + "structure" + "anomaly"
 			for rd in td.get("resources", []):
-				tile.props.append(_Prop.create_resource(
+				tile.props.append(_Prop.create_prop(
 					StringName(rd["type"]),
 					int(rd["remaining"]),
 					int(rd["max"]),

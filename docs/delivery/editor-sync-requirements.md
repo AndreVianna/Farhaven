@@ -148,10 +148,10 @@ Default to 0 (Natural) if not set.
 determines what the player gets based on what tool they use.
 
 **Editor impact:** Currently the editor doesn't manage yield data — it comes from
-`ResourceRegistry` `.tres` files in the engine. The editor just places the type ID.
+`PropRegistry` `.tres` files in the engine. The editor just places the type ID.
 
 **Required fix:** No editor change needed for MVP. The type ID (`"thornwood_tree"`)
-maps to a ResourceDef in the engine which contains the yield table. The editor only
+maps to a PropDef in the engine which contains the yield table. The editor only
 needs to know valid type IDs for each category. A dropdown or autocomplete from a
 type registry would be helpful but is not blocking.
 
@@ -173,7 +173,7 @@ type registry would be helpful but is not blocking.
 
 ### 7. tool_required and respawn_time Defaults
 
-**What changed:** The game engine now falls back to `ResourceRegistry` defaults when
+**What changed:** The game engine now falls back to `PropRegistry` defaults when
 these fields are not present in the map JSON. The editor doesn't need to explicitly
 save them unless the map designer wants to override the registry default.
 
@@ -201,7 +201,7 @@ informational only. Low priority.
 | `scripts/hex/hex_grid.gd` | `WALK_MAX_DIFF=2`, `JUMP_MAX_DIFF=4`, traversal logic |
 | `scripts/hex/prop.gd` | Prop resource class (category, origin, type, etc.) |
 | `scripts/hex/map_loader.gd` | Map JSON parser, elevation clamp, prop loading |
-| `data/resources/*.tres` | ResourceDef files with tool_required, respawn, yields |
+| `data/resources/*.tres` | PropDef files with tool_required, respawn, yields |
 | `.aid/knowledge/data-model.md` | Data model documentation |
 
 ---

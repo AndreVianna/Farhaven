@@ -140,7 +140,7 @@ still recoverable when revealed.
 
 #### Ground Items — Transient Pickups
 
-Separate from `ResourceNode` (which are tile properties from worldgen). Ground items
+Separate from `PropNode` (which are tile properties from worldgen). Ground items
 are transient drops from death that persist until picked up.
 
 ```gdscript
@@ -357,7 +357,7 @@ pickup supported — remainder stays until player returns with space.
 Main (Node)
   └─ World (Node3D)                             [existing]
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ResourceRenderer (Node3D)             [feature-003]
+       ├─ PropRenderer (Node3D)             [feature-003]
        ├─ GroundItemRenderer (Node3D)           ← NEW (MultiMesh for dropped items)
        ├─ Player (Node3D)                       [feature-002]
        │    ├─ PlayerVisual (Node3D)

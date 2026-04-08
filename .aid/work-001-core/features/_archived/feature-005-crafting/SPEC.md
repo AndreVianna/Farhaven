@@ -243,7 +243,7 @@ lose a Workbench while standing nearby.
 Main (Node)
   └─ World (Node3D)                             [existing]
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ResourceRenderer (Node3D)             [feature-003]
+       ├─ PropRenderer (Node3D)             [feature-003]
        ├─ Player (Node3D)                       [feature-002]
        │    ├─ PlayerVisual (Node3D)
        │    ├─ PlayerInput (Node)

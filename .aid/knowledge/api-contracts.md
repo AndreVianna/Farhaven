@@ -8,16 +8,16 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 
 ## Autoload Singletons (Global API)
 
-### ResourceRegistry
+### PropRegistry
 - **Type:** Autoload singleton (initialized before HexGrid)
-- **Purpose:** Indexes all ResourceDef .tres files from `data/props/` and provides lookup by resource type id
+- **Purpose:** Indexes all PropDef .tres files from `data/props/` and provides lookup by resource type id
 - **Public Methods:**
-  - `get_def(type: StringName) -> ResourceDef` -- returns resource definition or null
+  - `get_def(type: StringName) -> PropDef` -- returns resource definition or null
   - `has_def(type: StringName) -> bool` -- checks if definition exists
-  - `get_all() -> Array` -- returns all ResourceDef instances
+  - `get_all() -> Array` -- returns all PropDef instances
   - `get_yield_type(type: StringName) -> StringName` -- resolves yield mapping (e.g., loose_rock -> stone)
   - `get_tool_speed(type: StringName, tool_name: StringName) -> float` -- tool speed multiplier
-- **Source:** `scripts/data/resource_registry.gd`
+- **Source:** `scripts/data/prop_registry.gd`
 
 ### HexGrid
 - **Type:** Autoload singleton
@@ -271,11 +271,11 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Listens to:** HexGrid.map_generated, HexGrid.tile_revealed, HexGrid.tile_visibility_changed
 - **Source:** `scenes/world/hex_grid_renderer.gd`
 
-### ResourceRenderer (Node3D)
-- **Purpose:** MultiMesh pools for 3D resource props, one pool per ResourceDef
+### PropRenderer (Node3D)
+- **Purpose:** MultiMesh pools for 3D resource props, one pool per PropDef
 - **Listens to:** HexGrid.map_generated, HexGrid.tile_visibility_changed, HexGrid.resource_depleted, HexGrid.resource_respawned
 - **Testing API:** get_pool_visible_count(), get_tile_entries(), get_pool_count(), etc.
-- **Source:** `scripts/rendering/resource_renderer.gd`
+- **Source:** `scripts/rendering/prop_renderer.gd`
 
 ### PropLabelRenderer (Node3D)
 - **Purpose:** 3D marker icons above props (question mark for UNKNOWN, warning for ENCOUNTERED, none for CATALOGED)
@@ -297,17 +297,17 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Data Layer APIs
 
 ### HexTile (Resource)
-- **Properties:** coords, biome (Biome enum), elevation, fog_state (FogState enum), structure, resource_nodes, anomaly
+- **Properties:** coords, biome (Biome enum), elevation, fog_state (FogState enum), structure, prop_nodes, anomaly
 - **Enums:** Biome (CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER), FogState (HIDDEN, REVEALED, VISIBLE)
 - **Source:** `scripts/hex/hex_tile.gd`
 
-### ResourceNode (Resource)
+### PropNode (Resource)
 - **Properties:** type, remaining, max_amount, tool_required, respawn_time, offset, rotation_deg
-- **Source:** `scripts/hex/resource_node.gd`
+- **Source:** `scripts/hex/prop_node.gd`
 
-### ResourceDef (Resource)
+### PropDef (Resource)
 - **Properties:** id, display_name, gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed, max_stack, category, catalog_entry, visual properties (mesh, material, placeholder config)
-- **Source:** `scripts/data/resource_def.gd`
+- **Source:** `scripts/data/prop_def.gd`
 
 ### BiomeData (Resource)
 - **Properties:** biome_name, elevation_range, resource_table, color, color_variations
@@ -338,7 +338,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 MapLoader.load_map()
   -> HexGrid.map_generated
     -> HexGridRenderer._on_map_generated (rebuild terrain mesh)
-    -> ResourceRenderer._on_map_generated (populate resource pools)
+    -> PropRenderer._on_map_generated (populate resource pools)
     -> PlayerPathfinder._on_map_generated (build AStar2D graph)
     -> PlayerCamera._compute_bounds (compute map AABB)
     -> Player._on_map_generated (snap to spawn)
@@ -360,7 +360,7 @@ PlayerInput.joystick_* -> Player._on_joystick_*
     -> HexGrid.refresh_visibility
       -> HexGrid.tile_revealed / tile_visibility_changed
         -> HexGridRenderer (update terrain)
-        -> ResourceRenderer (show/hide props)
+        -> PropRenderer (show/hide props)
         -> ScannerSystem (passive ID)
           -> element_* -> PropLabelRenderer
     -> Player.player_moved (informational)
@@ -379,7 +379,7 @@ AutoInteractionSystem._check_gather_proximity (every 0.1s)
       -> FlyToPlayer.spawn_fly (visual)
       -> GatherSound.play_gather_ding (audio)
     -> HexGrid.resource_depleted (if remaining <= 0)
-      -> ResourceRenderer (swap mesh)
+      -> PropRenderer (swap mesh)
       -> respawn_queue (if respawn_time > 0)
         -> HexGrid.resource_respawned (after timer)
     -> _try_gather_nearby (chain to next resource)

@@ -20,28 +20,28 @@
 - **Purpose:** Hex coordinate math, tile data model, biome definitions, map loading, resource node model. The foundational data layer for the game world. HexGrid is the sole autoload singleton exposing map queries, traversal checks, fog of war, and coordinate conversions.
 - **Size:** 6 files, 552 lines
 - **Dependencies:**
-  - Internal: `data/resource_def.gd` (via ResourceRegistry autoload, for tool_required and respawn_time in MapLoader)
+  - Internal: `data/prop_def.gd` (via PropRegistry autoload, for tool_required and respawn_time in MapLoader)
   - External: Godot Resource, RefCounted, FileAccess, JSON
 - **Test Coverage:** `test_hex_math.gd` (138 lines), `test_map_loader.gd` (342 lines), `test_biome_data.gd` (29 lines)
 - **Key Files:**
   - `hex_grid.gd` -- autoload singleton, tile dictionary, signals, traversal, fog of war, serialization (220 lines)
   - `hex_math.gd` -- pure static math: axial/cube conversions, distance, neighbors, ring, range (92 lines)
-  - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, fog state, structure, resource_nodes, anomaly (26 lines)
+  - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, fog state, structure, prop_nodes, anomaly (26 lines)
   - `map_loader.gd` -- loads JSON maps, creates tiles, validates reachability (193 lines)
   - `biome_data.gd` -- per-biome config resource: color, resource_table, elevation_range (11 lines)
-  - `resource_node.gd` -- per-tile resource instance: type, remaining, max_amount, tool_required, respawn_time, offset, rotation (10 lines)
+  - `prop_node.gd` -- per-tile resource instance: type, remaining, max_amount, tool_required, respawn_time, offset, rotation (10 lines)
 
 ## Data Layer
 - **Path:** `scripts/data/`
-- **Purpose:** Resource definitions and the ResourceRegistry autoload. Defines all gatherable resource types with their properties (gather time, tool requirements, yield mappings, stack sizes, visual placeholders). ResourceRegistry scans `data/props/` at startup and indexes all definitions.
+- **Purpose:** Resource definitions and the PropRegistry autoload. Defines all gatherable resource types with their properties (gather time, tool requirements, yield mappings, stack sizes, visual placeholders). PropRegistry scans `data/props/` at startup and indexes all definitions.
 - **Size:** 2 files, 88 lines
 - **Dependencies:**
   - Internal: `data/props/*.tres` (9 resource definition files)
   - External: Godot Resource, DirAccess
 - **Test Coverage:** No dedicated unit test. Exercised indirectly by auto-gather, crafting, and scanner tests.
 - **Key Files:**
-  - `resource_def.gd` -- ResourceDef schema: id, display_name, gather_time, tool_required, respawn_time, yield_type, tool_speed, max_stack, catalog_entry, visual placeholder config (40 lines)
-  - `resource_registry.gd` -- autoload singleton, scans data/props/, provides get_def/has_def/get_yield_type/get_tool_speed (48 lines)
+  - `prop_def.gd` -- PropDef schema: id, display_name, gather_time, tool_required, respawn_time, yield_type, tool_speed, max_stack, catalog_entry, visual placeholder config (40 lines)
+  - `prop_registry.gd` -- autoload singleton, scans data/props/, provides get_def/has_def/get_yield_type/get_tool_speed (48 lines)
 
 ## Player
 - **Path:** `scripts/player/`
@@ -62,7 +62,7 @@
 - **Purpose:** Inventory data layer with slot-based resource/consumable storage (12 base slots, expandable) and 4 fixed tool slots. Stack-based with configurable max_stack. Owned by Player, not in scene tree.
 - **Size:** 1 file, 220 lines
 - **Dependencies:**
-  - Internal: ResourceRegistry autoload (for resource max_stack and category lookups)
+  - Internal: PropRegistry autoload (for resource max_stack and category lookups)
   - External: Godot RefCounted
 - **Test Coverage:** `test_inventory.gd` (447 lines)
 - **Key Files:**
@@ -84,7 +84,7 @@
 - **Purpose:** Proximity-based automatic resource gathering, auto-defend (stub), auto-pickup (stub). Continuously checks player position against nearby resources within GATHER_RADIUS (0.75 world units). Handles tool gating, catalog gating, gather timing via tweens, resource depletion, and respawn queue.
 - **Size:** 1 file, 409 lines
 - **Dependencies:**
-  - Internal: `inventory/inventory.gd`, `hex/resource_node.gd`, `hex/hex_tile.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, `hex/hex_math.gd`, ResourceRegistry autoload, HexGrid autoload
+  - Internal: `inventory/inventory.gd`, `hex/prop_node.gd`, `hex/hex_tile.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, `hex/hex_math.gd`, PropRegistry autoload, HexGrid autoload
   - External: Godot Node, Tween
 - **Test Coverage:** `test_auto_gather.gd` (781 lines), `test_auto_interaction_stubs.gd` (639 lines), `test_auto_interaction_system.gd` (235 lines)
 - **Key Files:**
@@ -95,7 +95,7 @@
 - **Purpose:** Scanner system manages proximity auto-scan lifecycle (start/progress/complete/interrupt), passive identification on tile reveal, and surprise encounters. Catalog is the data layer tracking knowledge states (UNKNOWN/ENCOUNTERED/CATALOGED) for all discoverable entities.
 - **Size:** 4 files, 470 lines
 - **Dependencies:**
-  - Internal: `hex/hex_tile.gd`, ResourceRegistry autoload, HexGrid autoload, `data/catalog/*.tres`
+  - Internal: `hex/hex_tile.gd`, PropRegistry autoload, HexGrid autoload, `data/catalog/*.tres`
   - External: Godot Node, RefCounted, Resource
 - **Test Coverage:** `test_scanner_system.gd` (558 lines), `test_catalog.gd` (492 lines), `test_catalog_panel_ui.gd` (300 lines)
 - **Key Files:**
@@ -122,15 +122,15 @@
 
 ## Rendering
 - **Path:** `scripts/rendering/` + `scenes/world/hex_grid_renderer.gd`
-- **Purpose:** All 3D visual rendering. HexGridRenderer builds a single-draw-call ArrayMesh for terrain with per-vertex color blending and cliff faces. ResourceRenderer uses MultiMesh pools per resource type. PropLabelRenderer shows marker icons (unknown/encountered/cataloged). ScanProgressRenderer shows a shader-based progress bar. FlyToPlayer animates gathered resource particles to the player.
+- **Purpose:** All 3D visual rendering. HexGridRenderer builds a single-draw-call ArrayMesh for terrain with per-vertex color blending and cliff faces. PropRenderer uses MultiMesh pools per resource type. PropLabelRenderer shows marker icons (unknown/encountered/cataloged). ScanProgressRenderer shows a shader-based progress bar. FlyToPlayer animates gathered resource particles to the player.
 - **Size:** 6 files, 1,348 lines (1,006 in scripts/rendering/ + 342 in scenes/world/)
 - **Dependencies:**
-  - Internal: `hex/hex_tile.gd`, `hex/hex_math.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, ResourceRegistry autoload, HexGrid autoload, `shaders/*.gdshader`
+  - Internal: `hex/hex_tile.gd`, `hex/hex_math.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, PropRegistry autoload, HexGrid autoload, `shaders/*.gdshader`
   - External: Godot Node3D, MeshInstance3D, MultiMeshInstance3D, ArrayMesh, SurfaceTool, ShaderMaterial, Label3D, StandardMaterial3D, Tween
-- **Test Coverage:** `test_hex_grid_renderer.gd` (197 lines), `test_resource_renderer.gd` (378 lines), `test_prop_renderers.gd` (231 lines), `test_scan_progress_renderer.gd` (171 lines)
+- **Test Coverage:** `test_hex_grid_renderer.gd` (197 lines), `test_prop_renderer.gd` (378 lines), `test_prop_renderers.gd` (231 lines), `test_scan_progress_renderer.gd` (171 lines)
 - **Key Files:**
   - `hex_grid_renderer.gd` -- single ArrayMesh terrain with corner color blending, cliff faces, fog dimming, highlights (342 lines)
-  - `resource_renderer.gd` -- MultiMesh pools per ResourceDef, placeholder meshes, depleted/respawned swaps (473 lines)
+  - `prop_renderer.gd` -- MultiMesh pools per PropDef, placeholder meshes, depleted/respawned swaps (473 lines)
   - `prop_label_renderer.gd` -- Label3D markers for unknown/encountered props (240 lines)
   - `scan_progress_renderer.gd` -- shader-based scan progress bar billboard (150 lines)
   - `fly_to_player.gd` -- arc-tween particle from resource to player on gather (111 lines)
@@ -151,7 +151,7 @@
 - **Purpose:** Bottom-drawer UI panels for inventory, crafting, and catalog. Plus joystick overlay and slot/entry display components. All built programmatically (no .tscn for individual widgets).
 - **Size:** 8 files, 955 lines
 - **Dependencies:**
-  - Internal: `inventory/inventory.gd`, `crafting/crafting_system.gd`, `scanner/catalog.gd`, `scanner/catalog_entry.gd`, ResourceRegistry autoload
+  - Internal: `inventory/inventory.gd`, `crafting/crafting_system.gd`, `scanner/catalog.gd`, `scanner/catalog_entry.gd`, PropRegistry autoload
   - External: Godot PanelContainer, Control, GridContainer, VBoxContainer, HBoxContainer, TabContainer, Button, Label, ColorRect, ConfirmationDialog, ScrollContainer
 - **Test Coverage:** `test_crafting_panel.gd` (431 lines), `test_catalog_panel_ui.gd` (300 lines) -- inventory panel tested indirectly via integration tests
 - **Key Files:**
@@ -181,7 +181,7 @@
 - **Purpose:** Static game data files: biome definitions, catalog entries, resource definitions, and hand-designed map.
 - **Size:** 19 files (5 biome .tres, 4 catalog .tres, 9 resource .tres, 1 map .json)
 - **Dependencies:**
-  - Internal: `scripts/hex/biome_data.gd`, `scripts/scanner/catalog_data.gd`, `scripts/scanner/catalog_entry.gd`, `scripts/data/resource_def.gd`
+  - Internal: `scripts/hex/biome_data.gd`, `scripts/scanner/catalog_data.gd`, `scripts/scanner/catalog_entry.gd`, `scripts/data/prop_def.gd`
 - **Test Coverage:** Validated by `test_map_loader.gd` (map structure), exercised by all integration tests
 - **Key Files:**
   - `maps/ch1.json` -- Chapter 1 hand-designed map (~250 tiles with biomes, elevations, resources, structures, anomalies)

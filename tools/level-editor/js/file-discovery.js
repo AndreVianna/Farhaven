@@ -14,7 +14,7 @@ export const ProjectContext = {
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object}>} */
     maps: new Map(),
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
-     * Holds prop definitions (ResourceDef .tres files). */
+     * Holds prop definitions (PropDef .tres files). */
     props: new Map(),
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>} */
     biomes: new Map(),
@@ -189,7 +189,7 @@ export class FileDiscovery {
     }
 
     // Parse prop and biome .tres files
-    await _loadTresFilesFromHandles(propFiles, 'ResourceDef', ProjectContext.files.props, 'Prop');
+    await _loadTresFilesFromHandles(propFiles, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesFromHandles(biomeFiles, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
     console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}`);
@@ -248,7 +248,7 @@ export class FileDiscovery {
         } else if (relPath.startsWith('data/props/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
-          const result = _parseTresFile(name, text, 'ResourceDef');
+          const result = _parseTresFile(name, text, 'PropDef');
           if (!result) continue;
           ProjectContext.files.props.set(name, { handle: null, data: result.data, raw: result.raw });
         } else if (relPath.startsWith('data/biomes/') && relPath.endsWith('.tres')) {
@@ -339,7 +339,7 @@ export class FileDiscovery {
     }
 
     // Load prop and biome .tres files
-    await _loadTresFilesViaApi(manifest.props.files, manifest.props.dir, 'ResourceDef', ProjectContext.files.props, 'Prop');
+    await _loadTresFilesViaApi(manifest.props.files, manifest.props.dir, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesViaApi(manifest.biomes.files, manifest.biomes.dir, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
     console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}`);

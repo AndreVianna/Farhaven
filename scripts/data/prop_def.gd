@@ -1,4 +1,4 @@
-class_name ResourceDef extends Resource
+class_name PropDef extends Resource
 
 ## Unique identifier — must match the StringName used in map data (e.g. &"wood")
 @export var id: StringName
@@ -20,7 +20,7 @@ class_name ResourceDef extends Resource
 
 # --- Inventory ---
 @export var max_stack: int = 99
-@export var category: StringName = &"resource"
+@export var category: StringName = &"prop"
 
 # --- Catalog ---
 @export var catalog_entry: StringName

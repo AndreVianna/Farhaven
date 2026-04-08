@@ -148,8 +148,8 @@ func connect_auto_interaction(auto_interaction: Node) -> void:
 	auto_interaction.auto_defend_triggered.connect(_on_auto_defend_triggered)
 
 
-func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
-	var display_name: String = String(resource_type).replace("_", " ").capitalize()
+func _on_auto_gather_completed(_coords: Vector2i, prop_type: StringName, amount: int) -> void:
+	var display_name: String = String(prop_type).replace("_", " ").capitalize()
 	var text: String = "+%d %s" % [amount, display_name]
 	var player: Node = _get_player()
 	if player:

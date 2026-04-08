@@ -1,7 +1,7 @@
 class_name InventorySlotUI
 extends Control
 
-## Single resource/consumable slot in the inventory grid.
+## Single prop/consumable slot in the inventory grid.
 ## Displays a color-coded icon placeholder and quantity label.
 ## Emits slot_tapped when a consumable is tapped.
 
@@ -69,8 +69,8 @@ func refresh(slot: Dictionary, item_config: Dictionary) -> void:
 		_apply_empty_style()
 		return
 	var cfg: Dictionary = item_config.get(_type, {})
-	if cfg.is_empty() and ResourceRegistry.has_def(_type):
-		var def = ResourceRegistry.get_def(_type)
+	if cfg.is_empty() and PropRegistry.has_def(_type):
+		var def = PropRegistry.get_def(_type)
 		cfg = {"category": def.category}
 	_is_consumable = cfg.get("category", &"") == &"consumable"
 	_apply_occupied_style()

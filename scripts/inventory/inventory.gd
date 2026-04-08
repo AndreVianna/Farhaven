@@ -2,7 +2,7 @@ class_name Inventory
 extends RefCounted
 
 ## Inventory data layer — owned by Player, not in scene tree.
-## Manages resource/consumable slots and 4 fixed tool slots.
+## Manages prop/consumable slots and 4 fixed tool slots.
 
 signal inventory_changed()
 signal item_added(type: StringName, amount: int)
@@ -12,7 +12,7 @@ signal item_used(type: StringName)
 signal tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)
 
 const ITEM_CONFIG: Dictionary = {
-	# Non-resource items (meat is a fauna drop, not a gatherable resource)
+	# Non-prop items (meat is a fauna drop, not a gatherable prop)
 	&"meat":           { "max_stack": 20, "category": &"consumable" },
 	# Tools
 	&"stone_axe":      { "tool_slot": &"axe",      "category": &"tool" },
@@ -43,14 +43,14 @@ func _init() -> void:
 
 func add_item(type: StringName, amount: int = 1) -> int:
 	var cfg: Dictionary = ITEM_CONFIG.get(type, {})
-	# Check ResourceRegistry as fallback for resource types
+	# Check PropRegistry as fallback for prop types
 	if cfg.is_empty():
-		var def = ResourceRegistry.get_def(type)
+		var def = PropRegistry.get_def(type)
 		if def == null:
 			return 0
 		cfg = { "max_stack": def.max_stack, "category": def.category }
 	if cfg.has(&"tool_slot"):
-		# Tools must use set_tool — reject from resource slots
+		# Tools must use set_tool — reject from prop slots
 		return 0
 	var max_stack: int = cfg["max_stack"]
 	var remaining: int = amount
@@ -128,13 +128,13 @@ func is_full() -> bool:
 	for slot in _slots:
 		if slot["type"] == &"":
 			return false
-		# Check for partial stack — ITEM_CONFIG first, then ResourceRegistry
+		# Check for partial stack — ITEM_CONFIG first, then PropRegistry
 		var cfg: Dictionary = ITEM_CONFIG.get(slot["type"], {})
 		if cfg.has("max_stack"):
 			if slot["quantity"] < cfg["max_stack"]:
 				return false
 		else:
-			var def = ResourceRegistry.get_def(slot["type"])
+			var def = PropRegistry.get_def(slot["type"])
 			if def != null and slot["quantity"] < def.max_stack:
 				return false
 	return true

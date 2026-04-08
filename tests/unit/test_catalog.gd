@@ -329,15 +329,15 @@ func test_encounter_entry_does_not_emit_twice() -> void:
 
 # --- get_scannable_at ---
 
-func _make_tile_with_resource(resource_type: StringName) -> HexTile:
+func _make_tile_with_prop(prop_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
+	tile.props = [_Prop.create_prop(prop_type, 0, 0)]
 	return tile
 
 
 func test_get_scannable_at_returns_entry_id_for_uncataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
-	var tile: HexTile = _make_tile_with_resource(&"berries")
+	var tile: HexTile = _make_tile_with_prop(&"berries")
 	fake._tiles[Vector2i.ZERO] = tile
 
 	_catalog._hex_grid = fake
@@ -347,7 +347,7 @@ func test_get_scannable_at_returns_entry_id_for_uncataloged() -> void:
 
 func test_get_scannable_at_returns_empty_for_cataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
-	var tile: HexTile = _make_tile_with_resource(&"berries")
+	var tile: HexTile = _make_tile_with_prop(&"berries")
 	fake._tiles[Vector2i.ZERO] = tile
 
 	_catalog._hex_grid = fake
@@ -360,10 +360,10 @@ func test_get_scannable_at_returns_empty_for_cataloged() -> void:
 func test_get_scannable_at_returns_empty_for_encountered_fauna() -> void:
 	# ENCOUNTERED fauna cannot be proximity-scanned (needs Trap/Sneak)
 	# This test would need a fauna tile — but fauna is queried via FaunaManager,
-	# not via resource_nodes. So this covers the case where a resource node
+	# not via prop_nodes. So this covers the case where a prop node
 	# somehow maps to a fauna entry that's ENCOUNTERED.
 	# Since flora/mineral never enter ENCOUNTERED, this is effectively a no-op
-	# for resource nodes in current data. Test the guard anyway.
+	# for prop nodes in current data. Test the guard anyway.
 	var fake: FakeGrid = FakeGrid.new()
 	var tile: HexTile = _HexTile.new()
 	fake._tiles[Vector2i.ZERO] = tile
@@ -474,17 +474,17 @@ func test_load_save_data_backwards_compatible_with_discovered_format() -> void:
 	assert_int(_catalog.get_discovery_count()).is_equal(2)
 
 
-# --- ResourceRegistry catalog_entry mapping ---
+# --- PropRegistry catalog_entry mapping ---
 
-func test_resource_defs_map_to_valid_catalog_entries() -> void:
-	for def in ResourceRegistry.get_all():
+func test_prop_defs_map_to_valid_catalog_entries() -> void:
+	for def in PropRegistry.get_all():
 		if def.catalog_entry == &"":
 			continue  # anomaly_fragment has no catalog entry
 		var entry = _catalog.get_entry(def.catalog_entry)
 		assert_bool(entry != null).override_failure_message(
-			"ResourceDef[%s].catalog_entry = %s — no matching CatalogEntry loaded" % [def.id, def.catalog_entry]
+			"PropDef[%s].catalog_entry = %s — no matching CatalogEntry loaded" % [def.id, def.catalog_entry]
 		).is_true()
 
 
-func test_resource_registry_has_nine_defs() -> void:
-	assert_int(ResourceRegistry.get_all().size()).is_equal(9)
+func test_prop_registry_has_nine_defs() -> void:
+	assert_int(PropRegistry.get_all().size()).is_equal(9)

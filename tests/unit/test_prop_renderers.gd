@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## Unit tests for PropLabelRenderer (task-013, updated task-019).
-## PropRenderer tests moved to test_resource_renderer.gd.
+## PropRenderer tests moved to test_prop_renderer.gd.
 
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
@@ -21,8 +21,8 @@ class FakeGrid extends Node:
 	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
-	signal resource_depleted(coords: Vector2i, resource_type: StringName)
-	signal resource_respawned(coords: Vector2i, resource_type: StringName)
+	signal prop_depleted(coords: Vector2i, prop_type: StringName)
+	signal prop_respawned(coords: Vector2i, prop_type: StringName)
 	signal tile_contents_changed(coords: Vector2i)
 	signal structure_placed(coords: Vector2i, structure_type: StringName)
 	signal structure_destroyed(coords: Vector2i, structure_type: StringName)
@@ -60,11 +60,11 @@ var _player: FakePlayer
 var _scanner: Node
 
 
-func _make_tile_with_resource(resource_type: StringName, elev: int = 0) -> HexTile:
+func _make_tile_with_prop(prop_type: StringName, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
 	tile.fog_state = _HexTile.FogState.VISIBLE
-	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
+	tile.props = [_Prop.create_prop(prop_type, 0, 0)]
 	return tile
 
 
@@ -129,7 +129,7 @@ func after_test() -> void:
 # ===========================================
 
 func test_unknown_label_shows_question_mark() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 
 	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
 

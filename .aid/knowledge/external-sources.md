@@ -60,7 +60,7 @@
 
 #### Scene System and Nodes
 - **Scene tree architecture.** Godot uses a tree of Nodes. Each node has a type, children, and scripts. Farhaven follows this pattern with Main > World > Player hierarchy.
-- **Autoloads (singletons).** Global nodes accessible from any script. Farhaven uses two autoloads: `ResourceRegistry` (`project.godot` line 25) and `HexGrid` (`project.godot` line 26).
+- **Autoloads (singletons).** Global nodes accessible from any script. Farhaven uses two autoloads: `PropRegistry` (`project.godot` line 25) and `HexGrid` (`project.godot` line 26).
 - **Node lifecycle:** `_ready()`, `_process()`, `_physics_process()`, `_enter_tree()`, `_exit_tree()`. The `_ready()` ordering (children before parents) caused the inventory initialization bug fixed in commit 14b7eb4.
 - **Signals.** Godot's observer pattern. Farhaven uses signals extensively for decoupling (tile_revealed, auto_gather_completed, etc.).
 

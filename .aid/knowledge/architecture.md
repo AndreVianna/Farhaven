@@ -17,7 +17,7 @@ Farhaven/
 |   +-- audio/          # Sound effects (gather ding, craft success)
 |   +-- auto_interaction/  # Proximity-based auto-gather, auto-defend, respawn queue
 |   +-- crafting/       # Recipe config, discovery tracking, craft validation
-|   +-- data/           # ResourceDef resource class + ResourceRegistry autoload
+|   +-- data/           # PropDef resource class + PropRegistry autoload
 |   +-- hex/            # Hex grid core: math, tile model, biome data, map loader
 |   +-- hud/            # HUD controller, stat bars, notifications, floating text
 |   +-- inventory/      # Slot-based inventory with tool slots
@@ -34,7 +34,7 @@ Farhaven/
 |   +-- biomes/         # BiomeData .tres (5 biomes: crash_site, grassland, forest, rocky, water)
 |   +-- catalog/        # CatalogEntry .tres (anomalies, fauna, flora, minerals)
 |   +-- maps/           # Hand-designed map JSON (ch1.json)
-|   +-- resources/      # ResourceDef .tres (9 files: wood, stone, berries, etc.)
+|   +-- resources/      # PropDef .tres (9 files: wood, stone, berries, etc.)
 +-- shaders/           # GLSL shaders (3: hex_tile, icon_billboard, scan_progress)
 +-- tests/             # gdUnit4 test suites (23 .gd files)
 |   +-- integration/    # 3 delivery-level integration tests
@@ -61,14 +61,14 @@ The pattern is closest to **Entity-Component-System** adapted for Godot scene tr
 - **System coordination:** main.gd bootstrap + HexGrid signal bus
 
 There is also a clear **data/presentation separation:**
-- Data layer: Inventory (RefCounted, no scene tree), Catalog (RefCounted), HexTile (Resource), ResourceDef (Resource)
+- Data layer: Inventory (RefCounted, no scene tree), Catalog (RefCounted), HexTile (Resource), PropDef (Resource)
 - Presentation layer: HUD, InventoryPanel, CatalogPanel, CraftingPanel (all Control nodes)
 - Wiring: main.gd connects data owners to presentation via connect_inventory(), connect_catalog(), connect_crafting()
 
 ## Module Boundaries
 
 ### hex/ -- Hex Grid Core
-- **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, resource_node.gd
+- **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, prop_node.gd
 - **Responsibility:** Map data model, coordinate math, tile queries, fog of war, traversal rules, serialization
 - **Dependencies:** None (self-contained)
 - **Consumers:** Every other module reads from HexGrid autoload
@@ -82,13 +82,13 @@ There is also a clear **data/presentation separation:**
 ### scanner/ -- Scanner and Catalog
 - **Files:** scanner_system.gd, catalog.gd, catalog_data.gd, catalog_entry.gd
 - **Responsibility:** Proximity auto-scan lifecycle, passive identification on tile reveal, knowledge state tracking (UNKNOWN/ENCOUNTERED/CATALOGED), catalog data management
-- **Dependencies:** HexGrid (autoload), ResourceRegistry (autoload)
+- **Dependencies:** HexGrid (autoload), PropRegistry (autoload)
 - **Owns:** Catalog instance (RefCounted)
 
 ### auto_interaction/ -- Auto-Gather and Auto-Defend
 - **Files:** auto_interaction_system.gd
 - **Responsibility:** Continuous world-space proximity gathering (throttled 0.1s checks), tool gating, respawn queue, auto-defend stub, auto-pickup stub
-- **Dependencies:** HexGrid, ResourceRegistry, Inventory (from parent Player), Catalog (from sibling ScannerSystem)
+- **Dependencies:** HexGrid, PropRegistry, Inventory (from parent Player), Catalog (from sibling ScannerSystem)
 - **Cross-module:** Resolves sibling dependencies via call_deferred("_resolve_dependencies") (auto_interaction_system.gd line 81)
 
 ### crafting/ -- Crafting System
@@ -99,18 +99,18 @@ There is also a clear **data/presentation separation:**
 ### inventory/ -- Inventory Management
 - **Files:** inventory.gd
 - **Responsibility:** Slot-based resource/consumable storage (12 base slots), 4 fixed tool slots, stack management, save/load
-- **Dependencies:** ResourceRegistry (autoload, for stack size lookups)
+- **Dependencies:** PropRegistry (autoload, for stack size lookups)
 - **Note:** Extends RefCounted (not Node) -- pure data, not in scene tree
 
 ### data/ -- Resource Definitions
-- **Files:** resource_def.gd, resource_registry.gd
-- **Responsibility:** Data-driven resource configuration (gather time, yield type, tool speed, visual params). ResourceRegistry autoload scans data/props/*.tres at startup.
+- **Files:** prop_def.gd, prop_registry.gd
+- **Responsibility:** Data-driven resource configuration (gather time, yield type, tool speed, visual params). PropRegistry autoload scans data/props/*.tres at startup.
 - **Dependencies:** None
 
 ### rendering/ -- Visual Renderers
-- **Files:** resource_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, fly_to_player.gd, prop_utils.gd
+- **Files:** prop_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, fly_to_player.gd, prop_utils.gd
 - **Responsibility:** 3D rendering of resource props (MultiMesh instancing), floating labels, scan progress bars, fly-to-player animation
-- **Dependencies:** HexGrid (autoload), ResourceRegistry (autoload), ScannerSystem (signals)
+- **Dependencies:** HexGrid (autoload), PropRegistry (autoload), ScannerSystem (signals)
 
 ### hud/ -- HUD Controller
 - **Files:** hud.gd, stat_bars.gd, day_counter.gd, floating_text_manager.gd, notification_manager.gd, craft_flash.gd
@@ -132,7 +132,7 @@ There is also a clear **data/presentation separation:**
 ### Game Startup
 ```
 project.godot
-  -> ResourceRegistry autoload (_ready: scans data/props/*.tres)
+  -> PropRegistry autoload (_ready: scans data/props/*.tres)
   -> HexGrid autoload (_ready: waits for load_map call)
   -> main.tscn loaded as main scene
     -> main.gd._ready()
@@ -191,7 +191,7 @@ ScannerSystem._process() [every frame]
 There is no formal DI framework. Dependencies are resolved through four mechanisms:
 
 1. **Autoload singletons** (project.godot lines 25-26):
-   - ResourceRegistry -> scripts/data/resource_registry.gd (loaded first)
+   - PropRegistry -> scripts/data/prop_registry.gd (loaded first)
    - HexGrid -> scripts/hex/hex_grid.gd
    - Accessed as global names in any script (e.g., HexGrid.get_tile(coords))
 
@@ -215,7 +215,7 @@ There is no formal DI framework. Dependencies are resolved through four mechanis
 |------|------|----------|
 | scenes/main.tscn | Main scene (game start) | project.godot line 19: run/main_scene |
 | scripts/main.gd | Bootstrap: wires systems, loads map | Attached to Main node in main.tscn line 14 |
-| scripts/data/resource_registry.gd | First autoload: indexes resource .tres files | project.godot line 25 |
+| scripts/data/prop_registry.gd | First autoload: indexes resource .tres files | project.godot line 25 |
 | scripts/hex/hex_grid.gd | Second autoload: map container, signal bus, public API | project.godot line 26 |
 
 ## Discrepancies: Documentation vs Code

@@ -185,14 +185,14 @@ func _is_near_crafting_station(station_type: StringName) -> bool:
 	return false
 
 
-## Check if any prop on this tile has is_crafting_station in its ResourceDef.
+## Check if any prop on this tile has is_crafting_station in its PropDef.
 func _tile_has_crafting_station(coords: Vector2i) -> bool:
 	var tile: Resource = _grid._tiles.get(coords, null)
 	if tile == null:
 		return false
 	for prop in tile.props:
-		if ResourceRegistry.has_def(prop.type):
-			var def: Resource = ResourceRegistry.get_def(prop.type)
+		if PropRegistry.has_def(prop.type):
+			var def: Resource = PropRegistry.get_def(prop.type)
 			if def.is_crafting_station:
 				return true
 	return false

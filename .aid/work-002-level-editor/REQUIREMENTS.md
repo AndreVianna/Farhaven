@@ -7,7 +7,7 @@
 | 2026-04-03 | Initial interview started | /aid-interview |
 | 2026-04-03 | Vision document ingested — §1-§5, §7, §10 populated | /aid-interview |
 | 2026-04-03 | Interview complete — approved | /aid-interview |
-| 2026-04-03 | Cross-reference: fixed ResourceDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
+| 2026-04-03 | Cross-reference: fixed PropDef fields (§4, F10), biome resource_table field names (§4, F11) | /aid-interview (cross-reference) |
 | 2026-04-03 | Post-spec review: unified resource position range (-1.0 to 1.0 storage, -0.8 to 0.8 random), biome CRUD confirmed dynamic, app shell added to F007 | /aid-specify review |
 | 2026-04-04 | Added ghost grid and empty-cell painting to F1/F2. New AC10 for map expansion. | code review |
 | 2026-04-04 | Sub-hex grid system: resources use discrete (sq, sr) positions, structures use footprints, canvas shows sub-hex overlay for placement tools. Updated F1, F2, F5, F7, §9. | design change |
@@ -46,7 +46,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 **Three editor tabs, each managing a different layer of game data:**
 
 1. **Map Editor** — hex canvas for painting biomes, placing resources/structures, setting elevation, managing spawn/anomaly markers. Import/export JSON in MapLoader format.
-2. **Resource Editor** — CRUD for `data/props/*.tres` ResourceDef files. Editable fields: `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color). Read-only fields: `mesh`, `depleted_mesh`, `material` (Godot resource references — cannot be authored in a web editor).
+2. **Resource Editor** — CRUD for `data/props/*.tres` PropDef files. Editable fields: `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color). Read-only fields: `mesh`, `depleted_mesh`, `material` (Godot resource references — cannot be authored in a web editor).
 3. **Biome Editor** — CRUD for `data/biomes/*.tres` BiomeData files (`biome_name`: String, `elevation_range`: Vector2i, `resource_table`: Array of `{type: String, chance: float, min_amount: int, max_amount: int, tool_required: String}`, `color`: Color, `color_variations`: Array[Color]).
 
 **Cross-tab integration:** Creating a resource in the Resource Editor makes it available in the Map Editor palette. Editing a biome color updates the map canvas immediately.
@@ -191,7 +191,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 ## 8. Assumptions & Dependencies
 
 ### Assumptions
-- Current game data file formats (map JSON, ResourceDef .tres, BiomeData .tres) remain stable
+- Current game data file formats (map JSON, PropDef .tres, BiomeData .tres) remain stable
 - Godot .tres text format remains stable (text-based, `[resource]` section with key-value pairs)
 - Map shape/size is defined implicitly by the hex array — no explicit size field in the schema
 - Chrome/Edge will continue supporting File System Access API
@@ -199,7 +199,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### Dependencies
 - `data/maps/*.json` — must match MapLoader's expected format (`scripts/hex/map_loader.gd`)
-- `data/props/*.tres` — uses ResourceDef script class (`scripts/data/resource_def.gd`)
+- `data/props/*.tres` — uses PropDef script class (`scripts/data/prop_def.gd`)
 - `data/biomes/*.tres` — uses BiomeData script class (`scripts/hex/biome_data.gd`)
 - Hex math formulas must match `scripts/hex/hex_math.gd` (axial coords, flat-top, HEX_SIZE=3.0 in game units)
 
@@ -211,7 +211,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 **AC3: Map authoring** -- Create a new map from blank canvas, paint 50+ hexes with biomes, set elevations, place props (resources, structures, anomalies) on sub-hexes, set spawn → export valid JSON that MapLoader loads without errors.
 
-**AC4: Resource CRUD** — Create a new ResourceDef, edit its fields, see it appear in map palette, place it on a hex, export. Delete a resource → confirmation dialog, in-use validation warns if any map references it.
+**AC4: Resource CRUD** — Create a new PropDef, edit its fields, see it appear in map palette, place it on a hex, export. Delete a resource → confirmation dialog, in-use validation warns if any map references it.
 
 **AC5: Biome CRUD** — Create a new BiomeData, set color, edit resource table, see map canvas update with new color in real-time. Delete → confirmation dialog, in-use validation warns if any map tile uses it.
 

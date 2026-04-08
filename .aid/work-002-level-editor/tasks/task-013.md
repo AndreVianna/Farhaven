@@ -14,12 +14,12 @@
   - Section 4 -- Catalog: catalog_entry, catalog_category
   - Section 5 -- Visuals: placeholder_mesh_type, placeholder_params (key-value editor), placeholder_color (color picker + swatch), placeholder_depleted_type, placeholder_depleted_params, placeholder_depleted_color (color picker + swatch)
   - Section 6 -- Read-Only: mesh, depleted_mesh, material (displayed as text labels)
-- Implement `collectFormData()` -- read form inputs into ResourceDefModel
+- Implement `collectFormData()` -- read form inputs into PropDefModel
 - Implement `validateForm(model)` -- required fields, id uniqueness, numeric ranges
 - Implement Command classes for feature-008 integration:
-  - `CreateResourceDefCommand` -- add to store + write file; undo removes
-  - `EditResourceDefCommand` -- apply new values + write file; undo restores old values + write
-  - `DeleteResourceDefCommand` -- remove from store + delete file; undo re-adds + write
+  - `CreatePropDefCommand` -- add to store + write file; undo removes
+  - `EditPropDefCommand` -- apply new values + write file; undo restores old values + write
+  - `DeletePropDefCommand` -- remove from store + delete file; undo re-adds + write
 - Implement delete validation: scan all loaded maps for resource references (both `"wood"` string form and `{ type: "wood" }` dict form)
 - Implement delete warning dialog: "This resource is used by {count} tile(s) in {mapNames}. Continue?"
 - Wire Save button: validate -> create command -> execute -> return to list

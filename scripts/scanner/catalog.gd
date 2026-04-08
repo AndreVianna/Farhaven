@@ -147,8 +147,8 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 	if tile == null:
 		return &""
 
-	for prop in tile.get_resources():
-		var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
+	for prop in tile.get_props():
+		var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
 		if entry_id == &"":
 			continue
 		if not is_cataloged(entry_id) and _all_entries.has(entry_id):

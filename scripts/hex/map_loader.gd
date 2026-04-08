@@ -10,7 +10,7 @@ const TILE_COUNT_MIN: int = 200
 const TILE_COUNT_MAX: int = 300
 
 var _grid: Node
-var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData resource
+var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData
 var _biome_id_to_int: Dictionary = {}  # biome_id (String) -> int (HexTile.Biome enum)
 
 
@@ -95,17 +95,17 @@ func load_map(path: String) -> bool:
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				if pd.has("tool_required") and pd["tool_required"] != "":
 					prop.tool_required = StringName(pd["tool_required"])
-				elif ResourceRegistry.has_def(prop.type):
-					prop.tool_required = ResourceRegistry.get_def(prop.type).tool_required
+				elif PropRegistry.has_def(prop.type):
+					prop.tool_required = PropRegistry.get_def(prop.type).tool_required
 				if pd.has("respawn_time"):
 					prop.respawn_time = float(pd["respawn_time"])
-				elif ResourceRegistry.has_def(prop.type):
-					prop.respawn_time = ResourceRegistry.get_def(prop.type).respawn_time
+				elif PropRegistry.has_def(prop.type):
+					prop.respawn_time = PropRegistry.get_def(prop.type).respawn_time
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
 				if prop.is_natural_category():
-					var defaults: Array = _get_resource_defaults(prop.type, biome_int)
+					var defaults: Array = _get_prop_defaults(prop.type, biome_int)
 					prop.remaining = int(pd.get("remaining", defaults[0]))
 					prop.max_amount = int(pd.get("max_amount", defaults[1]))
 				else:
@@ -116,9 +116,9 @@ func load_map(path: String) -> bool:
 			# Legacy format: "resources" + "structure" + "anomaly"
 			for res_entry in td.get("resources", []):
 				if res_entry is String:
-					tile.props.append(_make_resource_prop(StringName(str(res_entry)), biome_int))
+					tile.props.append(_make_prop(StringName(str(res_entry)), biome_int))
 				elif res_entry is Dictionary:
-					var prop: Resource = _make_resource_prop(StringName(str(res_entry.get("type", ""))), biome_int)
+					var prop: Resource = _make_prop(StringName(str(res_entry.get("type", ""))), biome_int)
 					var offset := Vector2(float(res_entry.get("x", 0.0)), float(res_entry.get("y", 0.0)))
 					prop.sub_hex = _HexMath.world_to_sub_axial(offset * _HexMath.HEX_SIZE * 0.4)
 					prop.rotation_deg = float(res_entry.get("rotation", 0.0))
@@ -153,8 +153,8 @@ func load_map(path: String) -> bool:
 
 
 
-## Get default [remaining, max_amount] for a resource type from biome data.
-func _get_resource_defaults(type: StringName, biome_int: int) -> Array:
+## Get default [remaining, max_amount] for a prop type from biome data.
+func _get_prop_defaults(type: StringName, biome_int: int) -> Array:
 	var remaining: int = 3
 	var max_amount: int = 3
 	var bd: Resource = _biome_data.get(biome_int, null)
@@ -167,9 +167,9 @@ func _get_resource_defaults(type: StringName, biome_int: int) -> Array:
 	return [remaining, max_amount]
 
 
-func _make_resource_prop(type: StringName, biome_int: int) -> Resource:
-	var tool_req: StringName = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
-	var respawn: float = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
+func _make_prop(type: StringName, biome_int: int) -> Resource:
+	var tool_req: StringName = PropRegistry.get_def(type).tool_required if PropRegistry.has_def(type) else &""
+	var respawn: float = PropRegistry.get_def(type).respawn_time if PropRegistry.has_def(type) else 0.0
 	var remaining: int = 3
 	var max_amount: int = 3
 
@@ -181,7 +181,7 @@ func _make_resource_prop(type: StringName, biome_int: int) -> Resource:
 				remaining = max_amount
 				break
 
-	return _Prop.create_resource(type, remaining, max_amount, tool_req, respawn)
+	return _Prop.create_prop(type, remaining, max_amount, tool_req, respawn)
 
 
 func _validate(spawn: Vector2i) -> void:

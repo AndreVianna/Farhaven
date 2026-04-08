@@ -1,12 +1,12 @@
 extends Node3D
 
-## ResourceRenderer — MultiMeshInstance3D pools for 3D resource meshes.
-## One pool per ResourceDef from ResourceRegistry, keyed by StringName (resource type id).
+## PropRenderer — MultiMeshInstance3D pools for 3D prop meshes.
+## One pool per PropDef from PropRegistry, keyed by StringName (prop type id).
 ## Signal-driven: subscribes to HexGrid map_generated, tile_visibility_changed,
-## resource_depleted, resource_respawned signals.
+## prop_depleted, prop_respawned signals.
 ## Fog: HIDDEN=not instanced, VISIBLE=full.
-## On resource_depleted: swap mesh variant (tree→stump, rock→rubble).
-## On resource_respawned: swap back to original mesh.
+## On prop_depleted: swap mesh variant (tree→stump, rock→rubble).
+## On prop_respawned: swap back to original mesh.
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
@@ -15,7 +15,7 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 # --- Constants ---
 
 ## Fallback Y offset if mesh height can't be determined.
-const RESOURCE_Y_OFFSET: float = 0.3
+const PROP_Y_OFFSET: float = 0.3
 
 ## Max instances per MultiMesh pool (Chapter 1: ~50 elements max)
 const MAX_INSTANCES: int = 128
@@ -25,22 +25,22 @@ const HEX_SIZE: float = 3.0
 
 # --- State ---
 
-## MultiMeshInstance3D nodes keyed by StringName (resource type id)
+## MultiMeshInstance3D nodes keyed by StringName (prop type id)
 var _pools: Dictionary = {}
 
-## Normal mesh variants per resource type id
+## Normal mesh variants per prop type id
 var _normal_meshes: Dictionary = {}
 
-## Depleted mesh variants per resource type id
+## Depleted mesh variants per prop type id
 var _depleted_meshes: Dictionary = {}
 
-## Normal colors per resource type id (for undimmed state)
+## Normal colors per prop type id (for undimmed state)
 var _pool_colors: Dictionary = {}
 
 ## Per-pool Y offset (center-to-bottom distance of the mesh)
 var _pool_y_offsets: Dictionary = {}
 
-## Tile coords -> Array of {resource_type: StringName, pool: StringName, instance_idx: int, depleted: bool}
+## Tile coords -> Array of {prop_type: StringName, pool: StringName, instance_idx: int, depleted: bool}
 var _tile_entries: Dictionary = {}
 
 ## Reference to HexGrid (allows override in tests)
@@ -55,10 +55,10 @@ func _ready() -> void:
 
 
 func _create_pools() -> void:
-	for def in ResourceRegistry.get_all():
+	for def in PropRegistry.get_all():
 		var normal_mesh: Mesh
 		var depleted_mesh_res: Mesh
-		var y_offset: float = RESOURCE_Y_OFFSET
+		var y_offset: float = PROP_Y_OFFSET
 
 		if def.mesh != null:
 			normal_mesh = def.mesh
@@ -118,7 +118,7 @@ func _create_pool(pool_id: StringName, mesh: Mesh, color: Color) -> void:
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	mmi.name = "ResourcePool_%s" % pool_id
+	mmi.name = "PropPool_%s" % pool_id
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
@@ -198,12 +198,12 @@ func _connect_grid_signals() -> void:
 	if _grid.has_signal("tile_visibility_changed"):
 		if not _grid.tile_visibility_changed.is_connected(_on_tile_visibility_changed):
 			_grid.tile_visibility_changed.connect(_on_tile_visibility_changed)
-	if _grid.has_signal("resource_depleted"):
-		if not _grid.resource_depleted.is_connected(_on_resource_depleted):
-			_grid.resource_depleted.connect(_on_resource_depleted)
-	if _grid.has_signal("resource_respawned"):
-		if not _grid.resource_respawned.is_connected(_on_resource_respawned):
-			_grid.resource_respawned.connect(_on_resource_respawned)
+	if _grid.has_signal("prop_depleted"):
+		if not _grid.prop_depleted.is_connected(_on_prop_depleted):
+			_grid.prop_depleted.connect(_on_prop_depleted)
+	if _grid.has_signal("prop_respawned"):
+		if not _grid.prop_respawned.is_connected(_on_prop_respawned):
+			_grid.prop_respawned.connect(_on_prop_respawned)
 
 
 # --- Signal handlers ---
@@ -215,20 +215,20 @@ func _on_map_generated() -> void:
 func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
 	match state:
 		_HexTile.FogState.VISIBLE:
-			_add_resources_for_tile(coords, false)
+			_add_props_for_tile(coords, false)
 		_HexTile.FogState.HIDDEN:
-			_remove_all_resources_at(coords)
+			_remove_all_props_at(coords)
 
 
-func _on_resource_depleted(coords: Vector2i, resource_type: StringName) -> void:
-	_swap_mesh_variant(coords, resource_type, true)
+func _on_prop_depleted(coords: Vector2i, prop_type: StringName) -> void:
+	_swap_mesh_variant(coords, prop_type, true)
 
 
-func _on_resource_respawned(coords: Vector2i, resource_type: StringName) -> void:
-	_swap_mesh_variant(coords, resource_type, false)
+func _on_prop_respawned(coords: Vector2i, prop_type: StringName) -> void:
+	_swap_mesh_variant(coords, prop_type, false)
 
 
-# --- Resource management ---
+# --- Prop management ---
 
 func _populate_all_visible_tiles() -> void:
 	if _grid == null:
@@ -239,24 +239,24 @@ func _populate_all_visible_tiles() -> void:
 		if tile == null:
 			continue
 		if tile.fog_state == _HexTile.FogState.VISIBLE:
-			_add_resources_for_tile(coords, false)
+			_add_props_for_tile(coords, false)
 		# HIDDEN: skip
 
 
-func _add_resources_for_tile(coords: Vector2i, dimmed: bool) -> void:
+func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
 	# Remove existing instances first (re-add with correct state)
-	_remove_all_resources_at(coords)
+	_remove_all_props_at(coords)
 
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	if tile == null:
 		return
 
-	for prop in tile.get_resources():
+	for prop in tile.get_props():
 		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue
 		var is_depleted: bool = prop.remaining <= 0
-		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
+		_add_prop_instance(coords, prop, pool_id, dimmed, is_depleted)
 	for anomaly in tile.get_anomalies():
 		_add_anomaly_instance(coords, tile, anomaly, dimmed)
 
@@ -278,7 +278,7 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * 0.5
-	var y_off: float = _pool_y_offsets.get(anomaly_pool_id, RESOURCE_Y_OFFSET)
+	var y_off: float = _pool_y_offsets.get(anomaly_pool_id, PROP_Y_OFFSET)
 	var pos := Vector3(world_2d.x, elevation_y + y_off, world_2d.y)
 
 	var xform := Transform3D.IDENTITY
@@ -292,14 +292,14 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 	if not _tile_entries.has(coords):
 		_tile_entries[coords] = []
 	_tile_entries[coords].append({
-		"resource_type": &"anomaly",
+		"prop_type": &"anomaly",
 		"pool": anomaly_pool_id,
 		"instance_idx": idx,
 		"depleted": false,
 	})
 
 
-func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dimmed: bool, depleted: bool) -> void:
+func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dimmed: bool, depleted: bool) -> void:
 	if not _pools.has(pool_id):
 		return
 
@@ -321,7 +321,7 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * 0.5
-	var y_off: float = _pool_y_offsets.get(pool_id, RESOURCE_Y_OFFSET)
+	var y_off: float = _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
 	var pos := Vector3(wx, elevation_y + y_off, wz)
 
 	# Apply rotation
@@ -342,14 +342,14 @@ func _add_resource_instance(coords: Vector2i, rn: Resource, pool_id: StringName,
 	if not _tile_entries.has(coords):
 		_tile_entries[coords] = []
 	_tile_entries[coords].append({
-		"resource_type": rn.type,
+		"prop_type": rn.type,
 		"pool": pool_id,
 		"instance_idx": idx,
 		"depleted": depleted,
 	})
 
 
-func _remove_all_resources_at(coords: Vector2i) -> void:
+func _remove_all_props_at(coords: Vector2i) -> void:
 	if not _tile_entries.has(coords):
 		return
 	while _tile_entries.has(coords) and not _tile_entries[coords].is_empty():
@@ -386,11 +386,11 @@ func _update_instance_index(pool_id: StringName, old_idx: int, new_idx: int) -> 
 				return
 
 
-func _swap_mesh_variant(coords: Vector2i, resource_type: StringName, to_depleted: bool) -> void:
+func _swap_mesh_variant(coords: Vector2i, prop_type: StringName, to_depleted: bool) -> void:
 	if not _tile_entries.has(coords):
 		return
 	for info in _tile_entries[coords]:
-		if info.resource_type == resource_type:
+		if info.prop_type == prop_type:
 			info.depleted = to_depleted
 			# Re-render tile to show swapped mesh
 			_rebuild_tile(coords)
@@ -403,13 +403,13 @@ func _rebuild_tile(coords: Vector2i) -> void:
 	if tile == null:
 		return
 	var dimmed: bool = false
-	_remove_all_resources_at(coords)
-	for prop in tile.get_resources():
+	_remove_all_props_at(coords)
+	for prop in tile.get_props():
 		var pool_id: StringName = prop.type
 		if not _pools.has(pool_id):
 			continue
 		var is_depleted: bool = prop.remaining <= 0
-		_add_resource_instance(coords, prop, pool_id, dimmed, is_depleted)
+		_add_prop_instance(coords, prop, pool_id, dimmed, is_depleted)
 
 
 func _update_pool_material(pool_id: StringName, _dimmed: bool) -> void:

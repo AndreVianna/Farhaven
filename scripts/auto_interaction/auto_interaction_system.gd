@@ -14,8 +14,8 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Signals ---
 
-signal auto_gather_started(coords: Vector2i, resource_type: StringName)
-signal auto_gather_completed(coords: Vector2i, resource_type: StringName, amount: int)
+signal auto_gather_started(coords: Vector2i, prop_type: StringName)
+signal auto_gather_completed(coords: Vector2i, prop_type: StringName, amount: int)
 signal auto_gather_failed(coords: Vector2i, reason: StringName)
 signal auto_defend_triggered(fauna_id: int, damage: int)
 signal ground_item_picked_up(item_name: StringName, amount: int)
@@ -118,7 +118,7 @@ func _connect_signals() -> void:
 
 # --- Continuous Proximity Gather ---
 
-## Check for gatherable resources within GATHER_RADIUS of the player's world position.
+## Check for gatherable props within GATHER_RADIUS of the player's world position.
 func _check_gather_proximity() -> void:
 	if _is_gathering:
 		return  # Already gathering — chain will re-check after completion
@@ -133,9 +133,9 @@ func _check_gather_proximity() -> void:
 
 # --- Utility: can_gather ---
 
-## Returns true if the player can gather the given resource prop.
-## Bare-hands resources (tool_required == "") always pass.
-## Tool-gated resources require an exact match in the corresponding inventory slot.
+## Returns true if the player can gather the given prop.
+## Bare-hands props (tool_required == "") always pass.
+## Tool-gated props require an exact match in the corresponding inventory slot.
 func can_gather(node: Resource, inventory: RefCounted) -> bool:
 	if node.tool_required == &"":
 		return true
@@ -153,7 +153,7 @@ func _on_tile_entered(_coords: Vector2i) -> void:
 	pass
 
 
-## Find the best gatherable resource within GATHER_RADIUS around the given coords.
+## Find the best gatherable prop within GATHER_RADIUS around the given coords.
 ## Returns true if a gather was started.
 func _try_gather_nearby(center: Vector2i) -> bool:
 	if _grid == null or _catalog == null or _inventory == null:
@@ -167,11 +167,11 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 	candidates.sort_custom(_compare_candidates)
 
 	var best: Dictionary = candidates[0]
-	_begin_gather(best["coords"], best["resource_index"], best["node"])
+	_begin_gather(best["coords"], best["prop_index"], best["node"])
 	return true
 
 
-## Scan current tile + 6 neighbors for gatherable resources within GATHER_RADIUS.
+## Scan current tile + 6 neighbors for gatherable props within GATHER_RADIUS.
 ## Uses world-space distance (XZ plane) instead of hex distance.
 ## Returns array of candidate dictionaries.
 func _find_gather_candidates(center: Vector2i) -> Array:
@@ -202,7 +202,7 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 				continue  # Depleted
 
 			# Catalog gate: must be CATALOGED
-			var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
+			var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
 			if entry_id == &"":
 				continue
 			if not _catalog.is_cataloged(entry_id):
@@ -212,22 +212,22 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if not can_gather(prop, _inventory):
 				continue
 
-			# Compute world-space position of this resource prop
+			# Compute world-space position of this prop
 			var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
-			var resource_pos_xz: Vector2 = Vector2(
+			var prop_pos_xz: Vector2 = Vector2(
 				tile_center_2d.x + sub_hex_offset.x,
 				tile_center_2d.y + sub_hex_offset.y
 			)
 
 			# World-space distance on XZ plane
-			var world_dist: float = player_pos_xz.distance_to(resource_pos_xz)
+			var world_dist: float = player_pos_xz.distance_to(prop_pos_xz)
 			if world_dist > GATHER_RADIUS:
 				continue  # Out of arm's reach
 
 			var priority: int = TOOL_PRIORITY.get(prop.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
-				"resource_index": i,
+				"prop_index": i,
 				"node": prop,
 				"priority": priority,
 				"distance": world_dist,
@@ -243,17 +243,17 @@ func _compare_candidates(a: Dictionary, b: Dictionary) -> bool:
 	return a["distance"] < b["distance"]
 
 
-## Begin gathering a specific resource prop. Creates the tween timer.
-func _begin_gather(coords: Vector2i, resource_index: int, node: Resource) -> void:
+## Begin gathering a specific prop. Creates the tween timer.
+func _begin_gather(coords: Vector2i, prop_index: int, node: Resource) -> void:
 	_is_gathering = true
 	_gather_target_coords = coords
-	_gather_target_index = resource_index
+	_gather_target_index = prop_index
 
 	# Compute effective gather time
-	var base_time: float = ResourceRegistry.get_def(node.type).gather_time if ResourceRegistry.has_def(node.type) else 1.0
+	var base_time: float = PropRegistry.get_def(node.type).gather_time if PropRegistry.has_def(node.type) else 1.0
 	var tool_slot: StringName = _Inventory.ITEM_CONFIG.get(node.tool_required, {}).get("tool_slot", &"")
 	var equipped: StringName = _inventory.get_tool(tool_slot) if tool_slot != &"" else &""
-	var multiplier: float = ResourceRegistry.get_tool_speed(node.type, equipped)
+	var multiplier: float = PropRegistry.get_tool_speed(node.type, equipped)
 	var effective_time: float = base_time * multiplier
 
 	auto_gather_started.emit(coords, node.type)
@@ -273,7 +273,7 @@ func _on_gather_tween_complete() -> void:
 	var index: int = _gather_target_index
 	_gather_tween = null
 
-	# Get the resource prop
+	# Get the prop
 	var tile = _grid.get_tile(coords)
 	if tile == null or index < 0 or index >= tile.props.size():
 		_is_gathering = false
@@ -285,10 +285,10 @@ func _on_gather_tween_complete() -> void:
 		survival.apply_activity_cost(&"gathering")
 
 	var node: Resource = tile.props[index]
-	var amount: int = ResourceRegistry.get_def(node.type).gather_amount if ResourceRegistry.has_def(node.type) else 1
+	var amount: int = PropRegistry.get_def(node.type).gather_amount if PropRegistry.has_def(node.type) else 1
 
 	# Resolve yield type (e.g. loose_rock yields stone)
-	var yield_type: StringName = ResourceRegistry.get_yield_type(node.type)
+	var yield_type: StringName = PropRegistry.get_yield_type(node.type)
 
 	# Try to add to inventory
 	var added: int = _inventory.add_item(yield_type, amount)
@@ -299,12 +299,12 @@ func _on_gather_tween_complete() -> void:
 
 		# Check depletion
 		if node.remaining <= 0:
-			_grid.resource_depleted.emit(coords, node.type)
+			_grid.prop_depleted.emit(coords, node.type)
 			# Add to respawn queue if respawn_time > 0
 			if node.respawn_time > 0.0:
 				_respawn_queue.append({
 					"coords": coords,
-					"resource_index": index,
+					"prop_index": index,
 					"time_remaining": node.respawn_time,
 				})
 	else:
@@ -320,7 +320,7 @@ func _on_gather_tween_complete() -> void:
 # --- Respawn Queue ---
 
 ## Tick respawn timers. Always ticks (fog system removed).
-## On expire: reset node.remaining = max_amount, emit HexGrid.resource_respawned.
+## On expire: reset node.remaining = max_amount, emit HexGrid.prop_respawned.
 func _tick_respawn_queue(delta: float) -> void:
 	var i: int = _respawn_queue.size() - 1
 	while i >= 0:
@@ -328,14 +328,14 @@ func _tick_respawn_queue(delta: float) -> void:
 		var coords: Vector2i = entry["coords"]
 		entry["time_remaining"] -= delta
 		if entry["time_remaining"] <= 0.0:
-			# Respawn the resource
+			# Respawn the prop
 			var tile = _grid.get_tile(coords) if _grid != null else null
 			if tile != null:
-				var idx: int = entry["resource_index"]
+				var idx: int = entry["prop_index"]
 				if idx >= 0 and idx < tile.props.size():
 					var node: Resource = tile.props[idx]
 					node.remaining = node.max_amount
-					_grid.resource_respawned.emit(coords, node.type)
+					_grid.prop_respawned.emit(coords, node.type)
 			_respawn_queue.remove_at(i)
 		i -= 1
 

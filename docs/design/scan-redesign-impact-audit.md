@@ -186,7 +186,7 @@ The scan system redesign from press-and-hold to proximity-based auto-scan with a
 
 Files reviewed that don't need changes:
 
-- `.aid/work-001-core/features/feature-001-hex-grid/SPEC.md` — No scan references. HexTile data model unaffected. `resource_nodes` and `anomaly` fields unchanged.
+- `.aid/work-001-core/features/feature-001-hex-grid/SPEC.md` — No scan references. HexTile data model unaffected. `prop_nodes` and `anomaly` fields unchanged.
 - `.aid/work-001-core/features/feature-006-crafting/SPEC.md` — No scan references. Crafting has zero dependency on scan mechanics.
 - `.aid/work-001-core/features/feature-007-survival-stats/SPEC.md` — No direct scan references. Consumes `fauna_attacked_player` signal (unchanged) and `item_used` (unchanged). Indirectly affected via auto-interaction but no SPEC changes needed.
 - `.aid/work-001-core/features/feature-008-day-night-cycle/SPEC.md` — No scan references. SaveManager collects `ScannerSystem.get_save_data()` — interface unchanged, internal data format changes are feature-003's concern.

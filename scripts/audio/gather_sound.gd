@@ -3,7 +3,7 @@ class_name GatherSound
 
 ## Placeholder sound hook for auto-gather and crafting feedback.
 ## Currently a silent stub — call play_gather_ding() or play_craft_success()
-## to trigger the hook. Assign real AudioStream resources later.
+## to trigger the hook. Assign real AudioStream files later.
 
 signal gather_ding_played
 signal craft_success_played

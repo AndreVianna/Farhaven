@@ -291,8 +291,8 @@ func respawn() -> void:
 # --- Shelter / Respawn tile ---
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
-	if ResourceRegistry.has_def(structure_type):
-		var def: Resource = ResourceRegistry.get_def(structure_type)
+	if PropRegistry.has_def(structure_type):
+		var def: Resource = PropRegistry.get_def(structure_type)
 		if def.is_respawn_point:
 			_respawn_tile = coords
 

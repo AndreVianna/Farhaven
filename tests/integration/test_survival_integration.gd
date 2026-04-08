@@ -293,7 +293,7 @@ func test_toxic_berries_can_kill() -> void:
 func test_inventory_use_item_triggers_consume() -> void:
 	_ss.hunger = 50.0
 	_ss.thirst = 50.0
-	# add_item needs ResourceRegistry for berries — use item_used signal directly
+	# add_item needs PropRegistry for berries — use item_used signal directly
 	_inv.item_used.emit(&"berries")
 	assert_float(_ss.hunger).is_equal(55.0)
 	assert_float(_ss.thirst).is_equal(60.0)
@@ -368,7 +368,7 @@ func test_shelter_destroy_resets_respawn_tile() -> void:
 
 func test_death_drops_100_percent_of_stacks() -> void:
 	# Manually set up inventory slots with berries
-	# Use item_used to bypass ResourceRegistry, but for drop testing
+	# Use item_used to bypass PropRegistry, but for drop testing
 	# we need actual slots. Directly manipulate _inv._slots.
 	_inv._slots[0] = {"type": &"berries", "quantity": 10}
 	_inv._slots[1] = {"type": &"meat", "quantity": 6}

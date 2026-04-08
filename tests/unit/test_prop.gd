@@ -31,7 +31,7 @@ func test_prop_default_footprint_is_empty() -> void:
 
 # --- Resource-specific fields ---
 
-func test_prop_resource_fields() -> void:
+func test_prop_fields() -> void:
 	var prop: Prop = PropClass.new()
 	prop.type = &"iron_ore"
 	prop.category = Prop.Category.MINERAL

@@ -14,7 +14,7 @@ Farhaven is a 100% offline single-player mobile game with no network calls, no b
 
 **None.** There are no caching layers. All game data is held in memory:
 - Hex grid tiles: `HexGrid._tiles` Dictionary (Vector2i -> HexTile). Each tile holds a unified `props[]` array (resources, structures, anomalies). Source: `scripts/hex/hex_grid.gd`
-- Resource definitions: `ResourceRegistry._defs` Dictionary (StringName -> ResourceDef). Source: `scripts/data/resource_registry.gd`
+- Resource definitions: `PropRegistry._defs` Dictionary (StringName -> PropDef). Source: `scripts/data/prop_registry.gd`
 - Catalog entries: `Catalog._all_entries` Dictionary (StringName -> CatalogEntry). Source: `scripts/scanner/catalog.gd`
 - Biome data: loaded at startup and held in arrays by HexGridRenderer and MapLoader. Source: `scenes/world/hex_grid_renderer.gd`, `scripts/hex/map_loader.gd`
 
@@ -36,8 +36,8 @@ Farhaven is a 100% offline single-player mobile game with no network calls, no b
 
 ### Autoload System
 Two autoload singletons registered in `project.godot` (lines 25-26):
-1. `ResourceRegistry` -> `scripts/data/resource_registry.gd` (loaded first)
-2. `HexGrid` -> `scripts/hex/hex_grid.gd` (loaded second, depends on ResourceRegistry)
+1. `PropRegistry` -> `scripts/data/prop_registry.gd` (loaded first)
+2. `HexGrid` -> `scripts/hex/hex_grid.gd` (loaded second, depends on PropRegistry)
 
 ### Rendering Pipeline
 - **Renderer:** Mobile (Vulkan-based). Source: `project.godot` line 49
@@ -61,7 +61,7 @@ Two autoload singletons registered in `project.godot` (lines 25-26):
 ### Data Loading
 - JSON map loading via FileAccess + JSON.parse_string(). Source: `scripts/hex/map_loader.gd`
 - Godot Resource (.tres) files for biome data, catalog entries, and resource definitions. Loaded via load() / preload()
-- Resource definitions auto-scanned from `data/props/` directory at startup. Source: `scripts/data/resource_registry.gd`
+- Resource definitions auto-scanned from `data/props/` directory at startup. Source: `scripts/data/prop_registry.gd`
 
 ### Save/Load System
 - Serialization methods exist on Player, HexGrid, Inventory, Catalog, and CraftingSystem (get_save_data / load_save_data)

@@ -337,7 +337,7 @@ Main (Node)
        ├─ WorldEnvironment (WorldEnvironment)   ← NEW
        ├─ DirectionalLight3D                    ← NEW (sun)
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ResourceRenderer (Node3D)             [feature-003]
+       ├─ PropRenderer (Node3D)             [feature-003]
        ├─ GroundItemRenderer (Node3D)           [feature-006]
        ├─ Player (Node3D)                       [feature-002]
        │    └─ (children as before)

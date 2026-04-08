@@ -8,8 +8,8 @@ import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
 
 /**
- * Maps a parsed .tres ResourceDef to an editable JS prop model.
- * All fields mirror the ResourceDef GDScript class.
+ * Maps a parsed .tres PropDef to an editable JS prop model.
+ * All fields mirror the PropDef GDScript class.
  */
 export class PropDefModel {
   constructor() {
@@ -1321,7 +1321,7 @@ function _modelToPlain(model) {
 
 /**
  * Update a TresFile's resourceFields from a PropDefModel.
- * For new props, creates a fresh TresFile with the standard ResourceDef structure.
+ * For new props, creates a fresh TresFile with the standard PropDef structure.
  * @param {PropDefModel} model
  * @returns {TresFile}
  */
@@ -1335,9 +1335,9 @@ export function propModelToRaw(model) {
   } else {
     // Create fresh TresFile for new prop
     raw = new TresFile();
-    raw.scriptClass = 'ResourceDef';
-    raw.headerLine = '[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]';
-    raw.extResources = ['[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]'];
+    raw.scriptClass = 'PropDef';
+    raw.headerLine = '[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]';
+    raw.extResources = ['[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]'];
     raw.lineEnding = '\n';
   }
 

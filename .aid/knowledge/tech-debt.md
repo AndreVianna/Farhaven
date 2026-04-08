@@ -25,9 +25,9 @@
 ### [High] 20 of 41 Source Files Have No Test Coverage
 
 - **Evidence:** Files without corresponding tests (see test-landscape.md for full list):
-  - Core: hex_grid.gd, hex_tile.gd, resource_node.gd, main.gd
+  - Core: hex_grid.gd, hex_tile.gd, prop_node.gd, main.gd
   - HUD: hud.gd, stat_bars.gd, notification_manager.gd, floating_text_manager.gd, day_counter.gd, craft_flash.gd
-  - Data: resource_def.gd, resource_registry.gd
+  - Data: prop_def.gd, prop_registry.gd
   - Player: player_camera.gd, player_pathfinder.gd
   - Rendering: fly_to_player.gd, prop_label_renderer.gd, prop_utils.gd
   - Scanner: catalog_data.gd, catalog_entry.gd
@@ -47,9 +47,9 @@
 - **Impact:** The Mobile renderer requires Vulkan-capable devices. Older Android devices (pre-2018, some budget devices) lack Vulkan support and will not run the game. This directly conflicts with the GDD casual mobile audience target.
 - **Effort:** 1 hour to switch and test. May require shader adjustments. Decision should be made deliberately.
 
-### [Medium] Large File: resource_renderer.gd (473 lines)
+### [Medium] Large File: prop_renderer.gd (473 lines)
 
-- **Evidence:** scripts/rendering/resource_renderer.gd -- 473 lines, largest source file in the project.
+- **Evidence:** scripts/rendering/prop_renderer.gd -- 473 lines, largest source file in the project.
 - **Impact:** Harder to navigate, test, and maintain. The file handles MultiMesh pooling, mesh generation, visibility updates, resource depletion/respawn, and fog state -- multiple responsibilities.
 - **Effort:** 2-4 hours to extract mesh generation and pool management into separate files.
 
@@ -98,10 +98,10 @@
 ## Metrics
 
 - **TODO/FIXME count:** 0 in project source files (scripts/, ui/, scenes/). All TODO/FIXME hits are inside the vendored addons/gdUnit4/ directory.
-- **Files > 500 lines (source):** None. Largest is resource_renderer.gd at 473 lines.
+- **Files > 500 lines (source):** None. Largest is prop_renderer.gd at 473 lines.
 - **Files > 500 lines (tests):** test_delivery_003.gd (1,236), test_delivery_002.gd (911), test_auto_gather.gd (781), test_auto_interaction_stubs.gd (639), test_delivery_001.gd (572), test_scanner_system.gd (558), test_crafting_system.gd (504).
 - **Files > 1000 lines:** test_delivery_003.gd (1,236 lines) -- acceptable for an integration test file.
 - **Test-to-code ratio:** 9,594 test lines / 5,519 source lines = 1.74:1 -- strong ratio for a game project.
 - **Assertion density:** 1,065 assertions across ~518 test functions = ~2.1 assertions per test -- adequate.
 - **Signal count:** 59 signal declarations across source files -- moderate coupling through observer pattern.
-- **class_name registrations:** 30 of 41 source files -- most scripts register a global class name. 11 exceptions: autoloads (hex_grid.gd, resource_registry.gd), bootstrap (main.gd), player core (player.gd, player_camera.gd), map_loader.gd, renderers (resource_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, hex_grid_renderer.gd), and crafting_system.gd.
+- **class_name registrations:** 30 of 41 source files -- most scripts register a global class name. 11 exceptions: autoloads (hex_grid.gd, prop_registry.gd), bootstrap (main.gd), player core (player.gd, player_camera.gd), map_loader.gd, renderers (prop_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, hex_grid_renderer.gd), and crafting_system.gd.

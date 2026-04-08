@@ -53,11 +53,11 @@ func test_item_config_has_all_tools() -> void:
 		assert_bool(_Inventory.ITEM_CONFIG.has(name)).is_true()
 
 
-func test_resource_defs_have_max_stack() -> void:
+func test_prop_defs_have_max_stack() -> void:
 	for name in [&"wood", &"stone", &"berries", &"toxic_berries", &"fiber", &"ore", &"crystal"]:
-		var def = ResourceRegistry.get_def(name)
+		var def = PropRegistry.get_def(name)
 		assert_bool(def != null).override_failure_message(
-			"ResourceRegistry must have def for %s" % name
+			"PropRegistry must have def for %s" % name
 		).is_true()
 		assert_bool(def.max_stack > 0).is_true()
 

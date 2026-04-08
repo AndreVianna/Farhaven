@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" path="res://ui/joystick_overlay.tscn" id="4_joystick"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="5_main"]
 [ext_resource type="PackedScene" path="res://scenes/world/hex_grid_renderer.tscn" id="6_renderer"]
-[ext_resource type="PackedScene" path="res://scenes/world/resource_renderer.tscn" id="7_resources"]
+[ext_resource type="PackedScene" path="res://scenes/world/prop_renderer.tscn" id="7_resources"]
 [ext_resource type="PackedScene" path="res://scenes/world/prop_label_renderer.tscn" id="8_labels"]
 [ext_resource type="PackedScene" path="res://scenes/world/scan_progress_renderer.tscn" id="9_progress"]
 [ext_resource type="Script" path="res://scripts/world.gd" id="10_world"]
@@ -33,7 +33,7 @@ light_energy = 1.2
 
 [node name="HexGridRenderer" parent="World" instance=ExtResource("6_renderer")]
 
-[node name="ResourceRenderer" parent="World" instance=ExtResource("7_resources")]
+[node name="PropRenderer" parent="World" instance=ExtResource("7_resources")]
 
 [node name="PropLabelRenderer" parent="World" instance=ExtResource("8_labels")]
 

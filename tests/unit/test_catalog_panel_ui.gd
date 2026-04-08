@@ -49,7 +49,7 @@ func test_catalog_entry_ui_setup_name() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"berry_bush", "Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
+	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_str(entry_ui._name_label.text).is_equal("Berry Bush")
 	entry_ui.queue_free()
@@ -70,7 +70,7 @@ func test_catalog_entry_ui_flora_properties_edible() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"berry_bush", "Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
+	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Edible")).is_true()
 	entry_ui.queue_free()
@@ -80,7 +80,7 @@ func test_catalog_entry_ui_flora_properties_toxic() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"toxic_berry_bush", "Toxic Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": true, "resource_type": &"toxic_berries"}
+	e.properties = {"edible": true, "toxic": true, "prop_type": &"toxic_berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Toxic")).is_true()
 	entry_ui.queue_free()
@@ -100,7 +100,7 @@ func test_catalog_entry_ui_mineral_shows_tool() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"iron_deposit", "Iron Deposit", 2)
-	e.properties = {"resource_type": &"ore", "tool_required": &"stone_pickaxe"}
+	e.properties = {"prop_type": &"ore", "tool_required": &"stone_pickaxe"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.to_lower().contains("pickaxe")).is_true()
 	entry_ui.queue_free()

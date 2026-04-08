@@ -1,4 +1,4 @@
-class_name ResourceNode
+class_name PropNode
 extends Resource
 
 @export var type: StringName = &""

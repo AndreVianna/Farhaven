@@ -325,7 +325,7 @@ Main (Node)
        ├─ PropRenderer (Node3D)                  [feature-003]
        ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
-       ├─ ResourceRenderer (Node3D)             [feature-004]
+       ├─ PropRenderer (Node3D)             [feature-004]
        ├─ Player (Node3D)                       [feature-002]
        │    ├─ PlayerVisual (Node3D)
        │    ├─ PlayerInput (Node)               [feature-002]

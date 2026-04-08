@@ -184,7 +184,7 @@ tasks 011-014) have zero cross-dependency. Both merge at task-015 (integration t
   - **Surprise encounter:** receive `fauna_attacked_player(id, damage, species)` →
     if UNKNOWN → instant `encounter_entry("Hostile")`. Stub connection (activates when F-010 arrives).
   - **Passive identification:** on `tile_revealed`/`tile_visibility_changed(VISIBLE)` →
-    check resource_nodes + anomaly against catalog → emit `element_identified`,
+    check prop_nodes + anomaly against catalog → emit `element_identified`,
     `element_unknown`, or `element_encountered` based on 3-state knowledge
   - Signals: `scan_started`, `scan_progress_updated`, `scan_completed`, `scan_interrupted`,
     `entry_cataloged`, `entry_encountered`, `knowledge_state_changed`, `surprise_cataloged`,

@@ -113,7 +113,7 @@ On export, check:
 
 ## Tab 2: Resource Editor
 
-Manages `data/resources/*.tres` files. Each resource is a `ResourceDef` with:
+Manages `data/resources/*.tres` files. Each resource is a `PropDef` with:
 
 | Field | Type | Example |
 |-------|------|---------|

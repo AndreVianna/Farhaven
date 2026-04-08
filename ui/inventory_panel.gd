@@ -2,7 +2,7 @@ class_name InventoryPanel
 extends PanelContainer
 
 ## Inventory bottom drawer panel (~45% screen height).
-## Opens/closes on InventoryButton tap. Renders tool slots + resource grid.
+## Opens/closes on InventoryButton tap. Renders tool slots + prop grid.
 ## Emits panel_opened for mutual exclusion with other panels.
 
 signal panel_opened()
@@ -22,7 +22,7 @@ var _pending_use_type: StringName = &""
 var _confirm_dialog: ConfirmationDialog
 
 @onready var _tool_slots_row: HBoxContainer = $VBox/ToolSlotsRow
-@onready var _resource_grid: GridContainer = $VBox/ScrollContainer/ResourceGrid
+@onready var _prop_grid: GridContainer = $VBox/ScrollContainer/PropGrid
 @onready var _close_button: Button = $VBox/Header/CloseButton
 
 
@@ -103,7 +103,7 @@ func _rebuild_slots() -> void:
 	for i: int in count:
 		var slot := InventorySlotUI.new()
 		slot.slot_tapped.connect(_on_slot_tapped)
-		_resource_grid.add_child(slot)
+		_prop_grid.add_child(slot)
 		_slot_nodes.append(slot)
 
 
@@ -144,7 +144,7 @@ func _on_toxic_confirmed() -> void:
 func _is_toxic_flora(type: StringName) -> bool:
 	if _catalog == null:
 		return false
-	var entry_id: StringName = ResourceRegistry.get_def(type).catalog_entry if ResourceRegistry.has_def(type) else &""
+	var entry_id: StringName = PropRegistry.get_def(type).catalog_entry if PropRegistry.has_def(type) else &""
 	if entry_id == &"":
 		return false
 	var entry = _catalog.get_entry(entry_id)

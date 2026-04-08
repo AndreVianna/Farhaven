@@ -20,8 +20,8 @@ class FakeGrid extends Node:
 	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
-	signal resource_depleted(coords: Vector2i, resource_type: StringName)
-	signal resource_respawned(coords: Vector2i, resource_type: StringName)
+	signal prop_depleted(coords: Vector2i, prop_type: StringName)
+	signal prop_respawned(coords: Vector2i, prop_type: StringName)
 	signal tile_contents_changed(coords: Vector2i)
 	signal structure_placed(coords: Vector2i, structure_type: StringName)
 	signal structure_destroyed(coords: Vector2i, structure_type: StringName)
@@ -134,9 +134,9 @@ func _on_element_encountered(c: Vector2i, eid: StringName, label: String) -> voi
 	_encountered_signal_count += 1
 
 
-func _make_tile_with_resource(resource_type: StringName) -> HexTile:
+func _make_tile_with_prop(prop_type: StringName) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_resource(resource_type, 0, 0)]
+	tile.props = [_Prop.create_prop(prop_type, 0, 0)]
 	return tile
 
 
@@ -209,7 +209,7 @@ func after_test() -> void:
 
 func test_proximity_detects_adjacent_uncataloged_prop() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()  # player tile
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -230,7 +230,7 @@ func test_proximity_no_scan_when_no_uncataloged_nearby() -> void:
 
 func test_proximity_no_scan_when_all_cataloged() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_system._catalog.catalog_entry(&"berry_bush")
 	_player.current_tile = Vector2i.ZERO
 
@@ -240,7 +240,7 @@ func test_proximity_no_scan_when_all_cataloged() -> void:
 
 
 func test_proximity_detects_on_player_tile() -> void:
-	_grid._tiles[Vector2i.ZERO] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i.ZERO] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -251,8 +251,8 @@ func test_proximity_detects_on_player_tile() -> void:
 
 func test_proximity_nearest_first() -> void:
 	# Two uncataloged props: one on player tile, one adjacent
-	_grid._tiles[Vector2i.ZERO] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i.ZERO] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -265,7 +265,7 @@ func test_proximity_nearest_first() -> void:
 
 func test_scan_lifecycle_proximity_to_complete() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	assert_bool(_system.is_scanning()).is_false()
@@ -293,7 +293,7 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 
 func test_scan_interrupted_when_player_leaves_range() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_grid._tiles[Vector2i(4, 0)] = _HexTile.new()
 	_player.current_tile = Vector2i.ZERO
 
@@ -311,7 +311,7 @@ func test_scan_interrupted_when_player_leaves_range() -> void:
 
 func test_scan_in_range_not_interrupted() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)  # start scan
@@ -328,8 +328,8 @@ func test_scan_in_range_not_interrupted() -> void:
 
 func test_one_scan_at_a_time() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
-	_grid._tiles[Vector2i(0, 1)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(0, 1)] = _make_tile_with_prop(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)  # start scan on nearest
@@ -345,7 +345,7 @@ func test_one_scan_at_a_time() -> void:
 
 func test_scan_duration_flora_is_2s() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -354,7 +354,7 @@ func test_scan_duration_flora_is_2s() -> void:
 
 func test_scan_duration_mineral_is_2s() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -403,7 +403,7 @@ func test_surprise_encounter_unknown_species_is_noop() -> void:
 
 func test_flora_goes_unknown_to_cataloged_directly() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	# Start and complete scan
@@ -421,7 +421,7 @@ func test_flora_goes_unknown_to_cataloged_directly() -> void:
 
 func test_passive_id_cataloged_emits_element_identified() -> void:
 	_system._catalog.catalog_entry(&"berry_bush")
-	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_prop(&"berries")
 
 	_system._check_passive_identification(Vector2i(2, 0))
 	assert_str(String(_identified_entry_id)).is_equal("berry_bush")
@@ -429,7 +429,7 @@ func test_passive_id_cataloged_emits_element_identified() -> void:
 
 
 func test_passive_id_unknown_emits_element_unknown_with_category() -> void:
-	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_prop(&"berries")
 
 	_system._check_passive_identification(Vector2i(2, 0))
 	assert_int(_unknown_count).is_equal(1)
@@ -438,15 +438,15 @@ func test_passive_id_unknown_emits_element_unknown_with_category() -> void:
 
 
 func test_passive_id_encountered_emits_element_encountered() -> void:
-	# Manually encounter thornback (fauna) — note: fauna isn't on resource nodes
-	# typically, but test the signal path through a resource node mapped to fauna
-	# In practice, this tests the code path for ENCOUNTERED resources
+	# Manually encounter thornback (fauna) — note: fauna isn't on prop nodes
+	# typically, but test the signal path through a prop mapped to fauna
+	# In practice, this tests the code path for ENCOUNTERED props
 	_system._catalog.encounter_entry(&"thornback", "Hostile")
-	# Since thornback is not a resource node type, we test with anomaly instead
+	# Since thornback is not a prop type, we test with anomaly instead
 	# Actually let's test with tiles that have the right setup
-	# The passive ID only checks resource_nodes and anomalies.
+	# The passive ID only checks prop_nodes and anomalies.
 	# Fauna are checked via FaunaManager (deferred).
-	# Let's verify that the encounter signal path works for a resource
+	# Let's verify that the encounter signal path works for a prop
 	# that was manually encountered (even though flora/mineral shouldn't be)
 	# This is more of a code path test.
 	pass  # Covered by element_encountered signal tests below
@@ -473,21 +473,21 @@ func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
 
 
 func test_passive_id_tile_revealed_triggers_check() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_resource(&"wood")
+	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(&"wood")
 
 	_system._on_tile_revealed(Vector2i(1, 1))
 	assert_int(_unknown_count).is_equal(1)
 
 
 func test_passive_id_visibility_changed_to_visible_triggers_check() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_resource(&"wood")
+	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(&"wood")
 
 	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.VISIBLE)
 	assert_int(_unknown_count).is_equal(1)
 
 
 func test_passive_id_visibility_changed_to_hidden_does_not_trigger() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_resource(&"wood")
+	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(&"wood")
 
 	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.HIDDEN)
 	assert_int(_unknown_count).is_equal(0)
@@ -497,7 +497,7 @@ func test_passive_id_visibility_changed_to_hidden_does_not_trigger() -> void:
 
 func test_entry_cataloged_emitted_with_correct_data() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"stone")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"stone")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)  # start scan
@@ -512,7 +512,7 @@ func test_entry_cataloged_emitted_with_correct_data() -> void:
 
 func test_knowledge_state_changed_on_scan_complete() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -536,7 +536,7 @@ func test_knowledge_state_changed_on_surprise_encounter() -> void:
 
 func test_scan_progress_emitted_during_proximity_scan() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_resource(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)  # start scan

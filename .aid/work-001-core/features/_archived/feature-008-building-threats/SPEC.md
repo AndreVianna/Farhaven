@@ -422,7 +422,7 @@ Main (Node)
        ├─ WorldEnvironment                      [feature-007]
        ├─ DirectionalLight3D                    [feature-007]
        ├─ HexGridRenderer (Node3D)              [feature-001]
-       ├─ ResourceRenderer (Node3D)             [feature-003]
+       ├─ PropRenderer (Node3D)             [feature-003]
        ├─ StructureRenderer (Node3D)            ← NEW (MultiMesh per structure type)
        │    ├─ MultiMeshInstance3D [workbench]
        │    ├─ MultiMeshInstance3D [storage_chest]
@@ -584,7 +584,7 @@ build_panel.panel_opened.connect(close)
 | Renderer | Draw Calls | Notes |
 |----------|-----------|-------|
 | HexGridRenderer | ~5 | One per biome |
-| ResourceRenderer | ~6 | One per resource type |
+| PropRenderer | ~6 | One per resource type |
 | StructureRenderer | ~5 | One per structure type |
 | FaunaRenderer | 1 | Max ~3 instances |
 | GroundItemRenderer | 1 | Max ~10 instances |

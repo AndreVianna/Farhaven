@@ -10,7 +10,7 @@
 | 2026-04-01 | I5: Fly-to-player animation updated to ~0.5s, marked [TUNING_REQUIRED] for HEX_SIZE=3.0 scale. M2: Resource offset specified as ±15% of HEX_SIZE radius. Range note: auto-gather area transitioning to circular world-unit [TUNING_REQUIRED]. | /pivot-cascade |
 | 2026-04-02 | Scene tree: ElementIconRenderer → PropRenderer + PropLabelRenderer (feature-003 architecture change). | /spec-update |
 | 2026-04-02 | Scan redesign: auto-defend gate changed from CATALOGED to ENCOUNTERED (hostile fauna). Auto-gather gate remains CATALOGED. Catalog query updated to `get_knowledge_state`. | /scan-redesign-apply |
-| 2026-04-03 | Review fixes: proximity model now world-space radius (GATHER_RADIUS=0.75), signal signature updates, resource config via ResourceRegistry | /aid-specify review |
+| 2026-04-03 | Review fixes: proximity model now world-space radius (GATHER_RADIUS=0.75), signal signature updates, resource config via PropRegistry | /aid-specify review |
 | 2026-04-04 | Unified props: resource lookup via tile.props filtered by category. Respawn queue tracks (coords, sub_hex). Distance calc includes sub-hex world offset. Ground items remain main-hex. | /arch-update |
 
 ## Source
@@ -82,7 +82,7 @@ var resource_props: Array = tile.props.filter(func(p): return p.category == &"re
 #### Resource Config Table
 
 Static data Dictionary keyed by resource type. Looked up during auto-gather — not
-stored per `ResourceNode` instance.
+stored per `PropNode` instance.
 
 ```gdscript
 # resource_config: Dictionary[StringName, Dictionary]
@@ -117,7 +117,7 @@ Tool looked up via `Inventory.get_tool(slot)` where slot is determined from
 
 #### Tool-Gating — Direct StringName Matching
 
-No tier system. Direct match between `ResourceNode.tool_required` and the tool in
+No tier system. Direct match between `PropNode.tool_required` and the tool in
 the corresponding Inventory slot:
 
 ```gdscript
@@ -205,7 +205,7 @@ signal ground_item_picked_up(coords: Vector2i, type: StringName, amount: int)
 No save data from this feature. Respawn queue is intentionally NOT saved.
 On load, all depleted resources respawn instantly — the world "heals" between
 sessions. This is a small player-friendly bonus and avoids serializing timer state.
-`ResourceNode.remaining` values are saved per-tile by feature-001 (they reset to
+`PropNode.remaining` values are saved per-tile by feature-001 (they reset to
 `max_amount` when respawn triggers on load). Catalog state owned by feature-003.
 
 #### Cross-Feature Data Contracts
@@ -469,7 +469,7 @@ Main (Node)
        ├─ PropRenderer (Node3D)                  [feature-003]
        ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
-       ├─ ResourceRenderer (Node3D)             ← NEW (MultiMesh per resource type)
+       ├─ PropRenderer (Node3D)             ← NEW (MultiMesh per resource type)
        │    ├─ MultiMeshInstance3D [wood/tree]
        │    ├─ MultiMeshInstance3D [stone/rock]
        │    ├─ MultiMeshInstance3D [berries/bush]
@@ -495,11 +495,11 @@ scripts/
                                  #   auto-pickup, respawn queue, _process tick
 
   rendering/
-    resource_renderer.gd        # Node3D — MultiMesh per resource type, signal-driven
+    prop_renderer.gd        # Node3D — MultiMesh per resource type, signal-driven
 
 scenes/
   world/
-    resource_renderer.tscn      # 6 MultiMeshInstance3D children
+    prop_renderer.tscn      # 6 MultiMeshInstance3D children
 
 data/
   resource_config.tres          # gather_time, gather_amount per resource type
@@ -511,7 +511,7 @@ data/
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
 | `auto_interaction_system.gd` | Child Node of Player. Proximity detection on `tile_entered` and `fauna_moved`. Auto-gather (catalog gate → tool gate → tween timer → inventory add → chain). Auto-defend (catalog gate → hostile check → cooldown → damage signal). Auto-pickup (ground items via feature-007 API). Respawn queue tick. | `HexGrid` (tile queries, signals), `Catalog` feature-003 (`is_cataloged`, `get_entry`), `Inventory` feature-005 (`get_tool`, `add_item`), `FaunaManager` feature-010 (fauna queries + `fauna_moved` signal), `SurvivalSystem` feature-007 (`get_ground_items_at`) |
-| `resource_renderer.gd` | Node3D under World. One MultiMeshInstance3D per resource type (~6 draw calls). On `map_generated`: spawn instances at sub-hex world positions. On `tile_revealed`/`tile_visibility_changed`: show/hide per fog. On `resource_depleted`: swap mesh (tree→stump). On `resource_respawned`: swap back. Instance positioned at prop's sub-hex offset within hex. | `HexGrid` (signals: map_generated, tile_revealed, tile_visibility_changed, resource_depleted, resource_respawned) |
+| `prop_renderer.gd` | Node3D under World. One MultiMeshInstance3D per resource type (~6 draw calls). On `map_generated`: spawn instances at sub-hex world positions. On `tile_revealed`/`tile_visibility_changed`: show/hide per fog. On `resource_depleted`: swap mesh (tree→stump). On `resource_respawned`: swap back. Instance positioned at prop's sub-hex offset within hex. | `HexGrid` (signals: map_generated, tile_revealed, tile_visibility_changed, resource_depleted, resource_respawned) |
 
 #### Signal Wiring — Complete
 
@@ -536,11 +536,11 @@ auto_interaction_system.gd                   feature-012 (HUD)
   auto_gather_failed(...)                ──►  floating "INVENTORY FULL" / "REQUIRES [TOOL]" text
   auto_defend_triggered(...)             ──►  floating "-10" damage text
 
-auto_interaction_system.gd                   resource_renderer.gd
+auto_interaction_system.gd                   prop_renderer.gd
   (via HexGrid resource_depleted)        ──►  swap mesh (tree → stump)
   (via HexGrid resource_respawned)       ──►  swap back (stump → tree)
 
-HexGrid signals                              resource_renderer.gd
+HexGrid signals                              prop_renderer.gd
   map_generated()                        ──►  allocate MultiMesh instances
   tile_revealed(coords)                  ──►  add resource instances for tile
   tile_visibility_changed(coords, state) ──►  show/hide per fog
@@ -587,7 +587,7 @@ custom data (same pattern as hex tiles). VISIBLE = full.
 
 | Renderer | Draw Calls | Notes |
 |----------|-----------|-------|
-| ResourceRenderer | ~6 | One MultiMesh per resource type |
+| PropRenderer | ~6 | One MultiMesh per resource type |
 | **Total** | **~6** | Within budget (terrain ~5, icons ~6, resources ~6 = ~17 total) |
 
 #### Gather Timing
@@ -623,6 +623,6 @@ None. Pure GDScript logic + Godot signals. iOS and Android identical.
 
 #### Memory
 
-- ResourceRenderer: 6 MultiMesh pools × ~50 instances = ~300 instances. ~64 bytes each. <20KB.
+- PropRenderer: 6 MultiMesh pools × ~50 instances = ~300 instances. ~64 bytes each. <20KB.
 - Respawn queue: ~100 entries × ~32 bytes = ~3KB.
 - AutoInteractionSystem state: negligible (booleans, Vector2i, float).

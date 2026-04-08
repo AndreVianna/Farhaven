@@ -71,7 +71,7 @@ class TresFile {
     this.extResources = [];    // array of raw ext_resource lines (strings)
     this.resourceFields = {};  // ordered Map<string, TresValue> of [resource] key-value pairs
     this.uid = null;           // extracted uid string or null
-    this.scriptClass = '';     // e.g. 'ResourceDef', 'BiomeData'
+    this.scriptClass = '';     // e.g. 'PropDef', 'BiomeData'
   }
 }
 ```
@@ -118,7 +118,7 @@ Wrapper for typed .tres values to enable round-trip serialization.
 
 5. **Parse Discovered Files**
    - For each map `.json`: read text via `handle.getFile()` then `file.text()`, call `JSON.parse()`. On parse error, log warning and skip file.
-   - For each resource `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'ResourceDef'`. On parse error, log warning and skip file.
+   - For each resource `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'PropDef'`. On parse error, log warning and skip file.
    - For each biome `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'BiomeData'`. On parse error, log warning and skip file.
    - Populate `ProjectContext.files.maps`, `.resources`, `.biomes` with `{ handle, data, raw }`.
 

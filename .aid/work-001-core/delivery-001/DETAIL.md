@@ -12,7 +12,7 @@
 task-001 (Project setup + autoload skeleton)
   │
   ▼
-task-002 (HexMath + HexTile + ResourceNode data layer)
+task-002 (HexMath + HexTile + PropNode data layer)
   │
   ▼
 task-003 (HexGrid autoload + MapLoader)
@@ -45,7 +45,7 @@ for task-005 implementation.
 | # | Name | Type | Depends On | Parallel With |
 |---|------|------|-----------|---------------|
 | 001 | Godot project setup + autoload skeleton | CONFIGURE | -- | -- |
-| 002 | HexMath + HexTile + ResourceNode data layer | IMPLEMENT | 001 | -- |
+| 002 | HexMath + HexTile + PropNode data layer | IMPLEMENT | 001 | -- |
 | 003 | HexGrid autoload + MapLoader | IMPLEMENT | 002 | -- |
 | 004 | HexGridRenderer — single ArrayMesh + per-vertex color blending | IMPLEMENT | 003 | 005 |
 | 005 | HUD framework — layout, bars, counter, text, notifications | IMPLEMENT | 003 | 004 |
@@ -88,7 +88,7 @@ for task-005 implementation.
 
 ---
 
-### task-002: HexMath + HexTile + ResourceNode Data Layer [IMPLEMENT]
+### task-002: HexMath + HexTile + PropNode Data Layer [IMPLEMENT]
 
 **Source:** feature-001 → Data Model
 
@@ -99,8 +99,8 @@ for task-005 implementation.
   **Must define `const HEX_SIZE: float = 3.0` and `const ELEVATION_STEP: float = 0.5`**
   as the authoritative source of these constants (all spatial math derives from them).
 - `scripts/hex/hex_tile.gd` — Resource with all properties: coords, biome, elevation,
-  fog_state, structure, resource_nodes, anomaly. Biome + FogState enums.
-- `scripts/hex/resource_node.gd` — Resource: type, remaining, max_amount, tool_required,
+  fog_state, structure, prop_nodes, anomaly. Biome + FogState enums.
+- `scripts/hex/prop_node.gd` — Resource: type, remaining, max_amount, tool_required,
   respawn_time, offset (Vector2), rotation_deg (float)
 - `scripts/hex/biome_data.gd` — Resource script for .tres biome configs
 - 5 BiomeData `.tres` files: crash_site, grassland, forest, rocky, water
@@ -111,7 +111,7 @@ for task-005 implementation.
 - [ ] HexMath unit tests pass: all 6 neighbor directions, distance calculations,
       ring generation, axial↔cube↔world conversions verified against Red Blob Games
 - [ ] HexTile instantiates with all typed properties (including anomaly: StringName)
-- [ ] ResourceNode instantiates with all typed properties (including offset, rotation_deg)
+- [ ] PropNode instantiates with all typed properties (including offset, rotation_deg)
 - [ ] BiomeData .tres files load without error, contain correct resource tables
 - [ ] Biome enum: CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER
 - [ ] FogState enum: HIDDEN, REVEALED, VISIBLE
@@ -418,4 +418,4 @@ Run the game on desktop (F5). You MUST see:
 | 2026-04-01 | [PIVOT] Hand-crafted maps (MapLoader), 3-tier traversal, JUMPING state, task-003/006/008 updated | /design-pivot |
 | 2026-04-01 | I1: Execution graph label fixed — "two-outcome classifier". C5+I9: Player cube updated to 0.9×1.8×0.9 (HEX_SIZE=3.0, 30% occupancy). C3: Camera offset Vector3(0, 12, 8) noted in task-006. Cliff face geometry added to task-004 scope and criteria. task-002 noted to define HEX_SIZE=3.0 and ELEVATION_STEP=0.5 constants. | /pivot-cascade |
 | 2026-04-02 | Scan redesign: task-007 simplified to single-outcome classifier (no scan_hold signals). task-008 removed scan_hold signal tests. | /scan-redesign-apply |
-| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. HexTile fields `structure`, `resource_nodes`, `anomaly` replaced by props. Tasks already implemented — this note is for future reference. See feature-001 SPEC changelog. | /arch-update |
+| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. HexTile fields `structure`, `prop_nodes`, `anomaly` replaced by props. Tasks already implemented — this note is for future reference. See feature-001 SPEC changelog. | /arch-update |

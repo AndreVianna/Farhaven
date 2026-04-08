@@ -346,7 +346,7 @@ Main (Node)
        ├─ PropRenderer (Node3D)                  [feature-003]
        ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
-       ├─ ResourceRenderer (Node3D)             [feature-004]
+       ├─ PropRenderer (Node3D)             [feature-004]
        ├─ StructureRenderer (Node3D)            [feature-009]
        ├─ FaunaRenderer (Node3D)                [feature-010]
        ├─ GroundItemRenderer (Node3D)           [feature-007]
@@ -597,7 +597,7 @@ component. Tweens run independently via Godot's tween system.
 | HexGridRenderer | 001 | ~1 (includes cliff face geometry — same ArrayMesh, 0 extra draw calls) |
 | PropRenderer | 003 | ~5 |
 | PropLabelRenderer | 003 | ~1 |
-| ResourceRenderer | 004 | ~6 |
+| PropRenderer | 004 | ~6 |
 | GroundItemRenderer | 007 | ~1 |
 | StructureRenderer | 009 | ~5 |
 | FaunaRenderer | 010 | ~1 |

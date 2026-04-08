@@ -22,14 +22,14 @@ func after_test() -> void:
 
 # --- Helper ---
 
-func _make_resource(type: StringName, tool_req: StringName = &"") -> Resource:
-	return _Prop.create_resource(type, 3, 3, tool_req)
+func _make_prop(type: StringName, tool_req: StringName = &"") -> Resource:
+	return _Prop.create_prop(type, 3, 3, tool_req)
 
 
 # --- can_gather: bare hands gathers wood ---
 
 func test_can_gather_bare_hands_wood() -> void:
-	var rn := _make_resource(&"wood", &"")
+	var rn := _make_prop(&"wood", &"")
 	assert_bool(_sys.can_gather(rn, _inv)).is_true()
 
 
@@ -37,7 +37,7 @@ func test_can_gather_bare_hands_wood() -> void:
 
 func test_can_gather_pickaxe_gathers_ore() -> void:
 	_inv.set_tool(&"pickaxe", &"stone_pickaxe")
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+	var rn := _make_prop(&"ore", &"stone_pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_true()
 
 
@@ -45,106 +45,106 @@ func test_can_gather_pickaxe_gathers_ore() -> void:
 
 func test_can_gather_axe_cannot_mine_ore() -> void:
 	_inv.set_tool(&"axe", &"stone_axe")
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+	var rn := _make_prop(&"ore", &"stone_pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_false()
 
 
-# --- can_gather: empty slot rejects gated resource ---
+# --- can_gather: empty slot rejects gated prop ---
 
 func test_can_gather_empty_slot_rejects_gated() -> void:
 	# pickaxe slot is empty by default
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+	var rn := _make_prop(&"ore", &"stone_pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_false()
 
 
-# --- Resource config: values match ResourceRegistry ---
+# --- Resource config: values match PropRegistry ---
 
-func test_resource_config_wood() -> void:
-	var def = ResourceRegistry.get_def(&"wood")
+func test_prop_config_wood() -> void:
+	var def = PropRegistry.get_def(&"wood")
 	assert_float(def.gather_time).is_equal(1.0)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_stone() -> void:
-	var def = ResourceRegistry.get_def(&"stone")
+func test_prop_config_stone() -> void:
+	var def = PropRegistry.get_def(&"stone")
 	assert_float(def.gather_time).is_equal(1.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_berries() -> void:
-	var def = ResourceRegistry.get_def(&"berries")
+func test_prop_config_berries() -> void:
+	var def = PropRegistry.get_def(&"berries")
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(2)
 
 
-func test_resource_config_fiber() -> void:
-	var def = ResourceRegistry.get_def(&"fiber")
+func test_prop_config_fiber() -> void:
+	var def = PropRegistry.get_def(&"fiber")
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_ore() -> void:
-	var def = ResourceRegistry.get_def(&"ore")
+func test_prop_config_ore() -> void:
+	var def = PropRegistry.get_def(&"ore")
 	assert_float(def.gather_time).is_equal(2.0)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_crystal() -> void:
-	var def = ResourceRegistry.get_def(&"crystal")
+func test_prop_config_crystal() -> void:
+	var def = PropRegistry.get_def(&"crystal")
 	assert_float(def.gather_time).is_equal(2.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_toxic_berries() -> void:
-	var def = ResourceRegistry.get_def(&"toxic_berries")
+func test_prop_config_toxic_berries() -> void:
+	var def = PropRegistry.get_def(&"toxic_berries")
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(2)
 
 
-func test_resource_config_anomaly_fragment() -> void:
-	var def = ResourceRegistry.get_def(&"anomaly_fragment")
+func test_prop_config_anomaly_fragment() -> void:
+	var def = PropRegistry.get_def(&"anomaly_fragment")
 	assert_float(def.gather_time).is_equal(3.0)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_registry_has_9_types() -> void:
-	assert_int(ResourceRegistry.get_all().size()).is_equal(9)
+func test_prop_registry_has_9_types() -> void:
+	assert_int(PropRegistry.get_all().size()).is_equal(9)
 
 
-func test_resource_config_loose_rock() -> void:
-	var def = ResourceRegistry.get_def(&"loose_rock")
+func test_prop_config_loose_rock() -> void:
+	var def = PropRegistry.get_def(&"loose_rock")
 	assert_float(def.gather_time).is_equal(1.0)
 	assert_int(def.gather_amount).is_equal(2)
 
 
 func test_gather_yield_loose_rock_gives_stone() -> void:
-	var yield_type: StringName = ResourceRegistry.get_yield_type(&"loose_rock")
+	var yield_type: StringName = PropRegistry.get_yield_type(&"loose_rock")
 	assert_str(String(yield_type)).is_equal("stone")
 
 
 # --- Tool speed: stone_axe halves wood gather time ---
 
 func test_tool_speed_stone_axe_halves_wood() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"wood").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"wood", &"stone_axe")
+	var base_time: float = PropRegistry.get_def(&"wood").gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(&"wood", &"stone_axe")
 	assert_float(base_time * multiplier).is_equal(0.5)
 
 
 func test_tool_speed_stone_pickaxe_halves_stone() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"stone").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"stone", &"stone_pickaxe")
+	var base_time: float = PropRegistry.get_def(&"stone").gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(&"stone", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(0.75)
 
 
 func test_tool_speed_stone_pickaxe_halves_ore() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"ore").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"ore", &"stone_pickaxe")
+	var base_time: float = PropRegistry.get_def(&"ore").gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(&"ore", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(1.0)
 
 
 func test_tool_speed_stone_pickaxe_halves_crystal() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"crystal").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"crystal", &"stone_pickaxe")
+	var base_time: float = PropRegistry.get_def(&"crystal").gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(&"crystal", &"stone_pickaxe")
 	assert_float(base_time * multiplier).is_equal(1.25)
 
 
