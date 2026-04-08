@@ -108,9 +108,11 @@ A `PropDef` also carries a free-form list of `tags: [StringName]`. Tags are used
 
 Tags are namespaced for readability but are just StringNames at runtime. Adding a new tag = adding it to a PropDef and to any Recipe that wants to filter by it.
 
-### 3.3 `category_tag`
+### 3.3 `category_tag` (implemented as the existing `catalog_category` field)
 
-A single StringName per PropDef that the Catalog UI uses to group props for display ("Flora", "Fauna", "Mineral", "Anomaly", "Wood", "Tool", "Structure"). **This field is purely for UI grouping and never controls behavior.** It replaces what `Category` enum was being used for in the Catalog screen.
+A single StringName per PropDef that the Catalog UI uses to group props for display ("flora", "fauna", "minerals", "anomalies", "survival", "crafting", "storage", etc.). **This field is purely for UI grouping and never controls behavior.**
+
+> **Implementation note (from foundation audit, §13):** PropDef already has a field `catalog_category: StringName` in `scripts/data/prop_def.gd:28` with exactly this role. **The new model uses the existing field name `catalog_category` rather than introducing a new `category_tag` field.** Throughout this document, "category_tag" and "catalog_category" refer to the same thing — `catalog_category` is the canonical name in code.
 
 ### 3.4 Example PropDefs
 
@@ -187,7 +189,7 @@ capabilities:
 Recipe {
   id:          StringName
   kind:        Assemble | Transform | Breakdown | Combine
-  inputs:      [{ ref_or_tag, count }]
+  inputs:      [{ ref_or_tag, count, source }]
   outputs:     [{ prop_ref, count, prob }]
   effects:     [effect]
   conditions:  [{ predicate, must_sustain: bool }]
@@ -205,7 +207,15 @@ Recipe {
   - `Transform` — 1 input → 1 output of a different type (cooking, refining, growing, decaying)
   - `Breakdown` — 1 input → many outputs (butchering, harvesting, dismantling)
   - `Combine` — many inputs → many outputs (the most general; use sparingly)
-- **`inputs`** — list of `{ref_or_tag, count}`. Each entry specifies either a specific PropDef ref (e.g. `branch`) **or** a tag (e.g. `BURNABLE.log`). Tag inputs are fungible — any prop with the tag matching satisfies the input. Inputs are **consumed** when the recipe resolves (unless an output declares them as a passthrough — see Trap example).
+- **`inputs`** — list of `{ref_or_tag, count, source}`. Each entry specifies:
+  - `ref_or_tag` — either a specific PropDef ref (e.g. `branch`) **or** a tag (e.g. `BURNABLE.log`). Tag inputs are fungible — any prop with the tag matching satisfies the input.
+  - `count` — how many of the prop are consumed (integer).
+  - `source` — **where the input is drawn from**. Allowed values:
+    - `&"player_inventory"` (default) — the input is taken from the triggering player's inventory.
+    - `&"container"` — the input is taken from a CONTAINER capability of a prop in scope (typically the station resolved by the `at_station` condition). Used by passive station recipes (`burn_log_in_fireplace` pulls fuel from the fireplace's CONTAINER).
+    - `&"world_tile"` — the input is taken from the props on the current tile (used by gather recipes: `chop_small_tree` consumes the small_tree on the player's tile).
+    - `&"world_anywhere"` — the input is taken from any matching prop in the world. Rarely used; reserved for future global-effect recipes.
+  Inputs are **consumed** when the recipe resolves (unless an output declares the same prop ref as a passthrough — see Trap example, where the trap is destroyed but its construction materials are returned via outputs).
 - **`outputs`** — list of `{prop_ref, count, prob}`. Each output rolls **independently** against `prob` (default 1.0 = always). Outputs are produced when the recipe resolves.
 - **`effects`** — list of non-prop consequences applied when the recipe resolves. Vocabulary (extensible):
   ```
@@ -451,22 +461,23 @@ unlock_when: []
 
 `actions: []` makes this a **passive recipe** — no player input. The condition is a gate (`must_sustain: false`), so it fires the moment a small fauna comes within range. The trap is consumed; the player gets a trapped animal back, plus the materials (with fiber breaking 10% of the time). To re-arm, the player runs `craft_trap` again.
 
-### 7.6 Meat rotting (passive, time-based)
+### 7.6 Meat rotting (passive, time-only)
 
 ```yaml
 id: meat_rots
 kind: transform
-inputs: [{ ref: cooked_meat, count: 1 }]
+inputs: [{ ref: cooked_meat, count: 1, source: world_anywhere }]
 outputs: [{ ref: rotten_meat, count: 1, prob: 1.0 }]
 effects: []
-conditions:
-  - { predicate: { kind: prop_state, prop: ambient, field: temperature, op: gt, value: 10 }, must_sustain: true }
+conditions: []
 actions: []
 time: 86400      # 24 in-game hours
 unlock_when: []
 ```
 
-Passive, time-based. Sustain condition: temperature must stay > 10°C (or whatever scale). If the meat enters cold storage (temperature drops), the sustain fails and the rot timer **resets** (or pauses — see §8.3 for cancellation policy). Preservation emerges naturally from the model.
+Pure passive time-based decay. No conditions, no sustains — just `time`. After 24 in-game hours of existing in the world (or in inventory, or in any container), `cooked_meat` transforms to `rotten_meat`. Cold-storage preservation is **deferred** to a future delivery (it would require either pause-resume sustain semantics or a separate `prop_state(temperature)` condition; both add runtime complexity). For delivery-005a, meat just rots.
+
+> **Decision (Andre, 2026-04-08):** meat_rots is `time` only — no temperature condition, no sustain. Removes pressure for pause-resume from the runtime model.
 
 ### 7.7 Burning a log in a fireplace
 
@@ -597,11 +608,32 @@ For each candidate recipe, evaluate **all** of its `unlock_when` predicates (not
 
 ### 9.1 PropDef changes
 
-- Remove `Category` enum from behavioral logic. Keep the enum **temporarily** as a typedef for the `category_tag` field, or migrate `category_tag` directly to `StringName` and delete the enum.
-- Add `tags: Array[StringName]` field.
-- Add `category_tag: StringName` field (replaces behavioral use of `Category`).
-- Add capability fields: `portable: PortableCap`, `placeable: PlaceableCap`, `container: ContainerCap`, `emits_light: LightCap`, `movable: MovableCap`, `station: StationCap`, `catalogable: CatalogableCap`. Each is its own small Resource (or Dictionary) and is `null`/empty when the capability is not present.
-- Migrate existing `.tres` files to fill in capability fields and tags. Most existing props will need PORTABLE + PLACEABLE + CATALOGABLE entries derived from their old fields.
+(Specifics confirmed by foundation audit — see §13 for the full Category-related field inventory.)
+
+- **Delete `PropDef.prop_category: int`** — this field stored an index into `Prop.Category` enum and is the source of "behavioral category." Capabilities replace its job entirely.
+- **Delete `PropDef.category: StringName`** — this field has values "prop"/"resource"/"consumable"/"structure"/"tool" and is a vague typology that capabilities + `is_*` flags supersede.
+- **Keep `PropDef.catalog_category: StringName`** — already exists, already correct. It's the UI-only catalog grouping label (this is what §3.3 calls `category_tag`). No rename needed.
+- **Delete `PropDef.is_consumable: bool`, `hunger_restore`, `thirst_restore`, `health_restore`** — these are absorbed into per-prop `eat_*` / `drink_*` recipes' `effects` field.
+- **Delete `PropDef.is_respawn_point: bool`** — becomes a tag `RESPAWN_POINT` or absorbed into a STATION station_tag (TBD in task-046).
+- **Delete `PropDef.is_crafting_station: bool`** — replaced by STATION capability with `station_tags: [&"craft"]`.
+- **Delete `PropDef.tool_slot: StringName`** — replaced by a `TOOL` tag plus a STATION-like capability or kept as a slot hint on PORTABLE (TBD; lean: keep as `tool_slot` because it maps directly to inventory tool slots and there's no clean capability for it).
+- **Delete `PropDef.emits_light: bool` and `light_radius: int`** — replaced by EMITS_LIGHT capability with `radius`, `color`, `flicker` fields.
+- **Delete `PropDef.gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed`** — all gather/yield/respawn behavior is absorbed into per-prop gather recipes (e.g. `chop_small_tree`) and respawn recipes (e.g. `regrow_berry_bush`).
+- **Keep `PropDef.max_stack: int`** temporarily during transition; the new weight model uses `PORTABLE.weight` instead, but `max_stack` may be retained as a per-prop UI grouping limit (lean: delete after task-049 is stable).
+- **Add `tags: Array[StringName]`** — free-form labels (BURNABLE.log, CONSUMABLE.edible, METAL.iron, etc.).
+- **Add capability fields:** each is a small inner Resource or Dictionary, `null`/empty when not present:
+  - `portable: PortableCap` — `{ weight: float }`
+  - `placeable: PlaceableCap` — `{ footprint: Array[Vector2i], blocks_movement: bool, rotation_snap: int }` (note: `footprint` is already a field on PropDef — this capability formalizes it)
+  - `container: ContainerCap` — `{ capacity_weight: float, accepts_filter: Array[StringName] }`
+  - `emits_light: LightCap` — `{ radius: float, color: Color, flicker: bool }`
+  - `movable: MovableCap` — `{ push_cost: float }`
+  - `station: StationCap` — `{ station_tags: Array[StringName] }`
+  - `catalogable: CatalogableCap` — `{ scan_time: float, display_tag: StringName }` (note: existing `gather_time` on sources may double as `catalogable.scan_time` initially, then split when CATALOGABLE is the only consumer)
+- **Migrate existing `.tres` files** following the inventory in §14.
+- **Behavioral cleanup in code** (task-051, after task-046 lands):
+  - `Prop.Category` enum → can be deleted from `prop.gd`. References in `hex_tile.gd::get_props_by_category()`, `hex_tile.gd::get_structures()`, `hex_grid.gd` save/load, `map_loader.gd` load all need to migrate to capability or tag queries.
+  - `Prop.is_natural_category()` → can be replaced by `prop.origin == NATURAL` (Origin enum already exists and is sufficient).
+  - `Catalog.CatalogCategory` enum (in `catalog.gd`) is **out of scope** for delivery-005a — it's a separate enum in the catalog domain (4 values: FLORA, FAUNA, MINERAL, ANOMALY) and migrating it touches ScannerSystem, PropLabelRenderer, and the Catalog .tres files. Task-046 leaves it untouched.
 
 ### 9.2 Inventory changes
 
@@ -640,11 +672,14 @@ These items came up during design but are explicitly **not** in delivery-005a:
 - **Battery usage counters** — handled later if needed via instance state + state-transition recipes. Current cycle is just two recipes.
 - **Output count ranges** (e.g. "3 to 5 berries") — for now, use multiple outputs with prob, or fixed counts. Range support can be added later by extending `count` to `Vector2i` or `[min, max]`.
 - **Loot table grouping** (one-of-N exclusive rolls) — current outputs are independent rolls. If grouping is needed, add a `group_id` field to outputs.
-- **Pause-resume sustain failure** — current cancel policy is cancel-and-return-inputs only. Pause-resume is an open implementation question (§11) that we may need for `meat_rots` and `grow_wheat`.
+- **Pause-resume sustain failure** — current cancel policy is cancel-and-return-inputs only. Andre confirmed (2026-04-08) that `meat_rots` ships as time-only, removing the main pressure for pause-resume. If a future recipe needs it, the runtime can be extended then.
 - **`on_sustain_fail` recipe field** — fixed default in delivery-005a; configurable later.
+- **Cold-storage food preservation** — would require either pause-resume sustain or a `prop_state(temperature)` condition system. Decided 2026-04-08 to ship `meat_rots` without preservation. Spoilage is uniform.
 - **NPC-taught recipes / scroll recipes as a system** — supported by the model (via `world_flag` unlocks or `grant_recipe` effects), but no NPC or scroll content ships in this delivery.
 - **Recipe difficulty tiers, skill prerequisites, partial discovery hints** — out of scope.
 - **Local Lighting System** — was task-039 in the original delivery-005a scope. This survives as its own task in the new task list (it's independent of the Recipe refactor).
+- **`Catalog.CatalogCategory` enum migration** — the catalog domain enum (4 values, in `scripts/scanner/catalog.gd`) stays untouched. It's separate from `Prop.Category` and migrating it would touch ScannerSystem, PropLabelRenderer, and catalog .tres files. Out of scope.
+- **Save/load migration of old saves** — Decided 2026-04-08 (Andre, PO call): existing save files break. Farhaven is in alpha, no important player saves exist. Loading a pre-005a save will fail loudly with a clear error. New save format is a clean break, not a backwards-compatible migration.
 
 ---
 
@@ -652,14 +687,22 @@ These items came up during design but are explicitly **not** in delivery-005a:
 
 These are unresolved details that will need a call before or during implementation. The current document does **not** decide them; the implementation tasks should flag them when they hit them.
 
-1. **Pause-resume vs reset-on-cancel for `meat_rots` (and `grow_wheat`).** When the sustain condition fails (meat enters cold storage), should the timer pause (preservation) or reset (resume rotting from scratch when warmed)? Pause-resume is a more permissive variant of cancel and may need its own field.
-2. **Where does `current_weight` live on Inventory?** Computed each query from contained props, or cached and updated incrementally? Performance vs simplicity tradeoff.
-3. **Sub-recipe input sourcing.** When a recipe input has `source: container` (like `burn_log_in_fireplace`), the input comes from the station's CONTAINER, not the player inventory. We need a clean way to disambiguate input sources: `player_inventory`, `container`, `world_tile`, etc. Currently sketched as a `source` field on the input entry; needs to be formalized.
-4. **Recipe collisions.** What if multiple recipes match the same situation (e.g. player can either `chop_tree` or `inspect_tree` while holding an axe near a tree)? UI must present a choice. Default policy: present all eligible recipes as a quick-pick menu; let the player choose. Sort by `kind` and `time`.
-5. **Catalog of un-discovered recipes.** Should the player see "?? recipe" placeholders for recipes they haven't unlocked yet, or no entry at all? Likely "no entry" for delivery-005a (less UI work).
-6. **Save/load of pending recipes.** When the player saves mid-cook, the pending queue must persist. Bound inputs and bound stations need stable IDs across save/load.
-7. **`category_tag` enum or StringName?** The capability set already eliminates the enum's behavioral role. For UI grouping, StringName is more flexible (no migration on add) but enum is type-safe. Lean: StringName for now, switch to enum later only if we need exhaustive switches in UI code.
-8. **Recipe ordering inside DiscoveryWatcher.** When several recipes unlock simultaneously (e.g. picking up a prop unlocks 3 recipes), in what order are they granted? Probably doesn't matter, but worth confirming.
+> **Resolved between draft v1 and v2 (2026-04-08):**
+> - ~~Pause-resume vs reset-on-cancel for `meat_rots`~~ → Andre: meat_rots is time-only, no condition. Pause-resume not needed for delivery-005a.
+> - ~~Sub-recipe input sourcing~~ → Formalized as `source` field on RecipeInput in §4.1/§4.2 (allowed values: `player_inventory`, `container`, `world_tile`, `world_anywhere`).
+> - ~~Save/load of pre-005a saves~~ → Andre: accept break in alpha (see §10).
+> - ~~`category_tag` naming~~ → Use existing `catalog_category` field name (foundation audit revealed it already exists; see §3.3 and §13).
+
+Remaining open questions:
+
+1. **Where does `current_weight` live on Inventory?** Computed each query from contained props, or cached and updated incrementally? Performance vs simplicity tradeoff. *Lean: cached, updated on add/remove.*
+2. **Recipe collisions.** What if multiple recipes match the same situation (e.g. player can either `chop_tree` or `inspect_tree` while holding an axe near a tree)? UI must present a choice. Default policy: present all eligible recipes as a quick-pick menu; let the player choose. Sort by `kind` and `time`. *Lean: quick-pick, defer fancy UX.*
+3. **Catalog of un-discovered recipes.** Should the player see "?? recipe" placeholders for recipes they haven't unlocked yet, or no entry at all? *Lean: no entry for delivery-005a (less UI work).*
+4. **Save/load of pending recipes.** When the player saves mid-cook, the pending queue must persist. Bound inputs and bound stations need stable IDs across save/load. *Lean: stable IDs derived from tile coords + sub_hex + prop_def_id.*
+5. **Recipe ordering inside DiscoveryWatcher.** When several recipes unlock simultaneously (e.g. picking up a prop unlocks 3 recipes), in what order are they granted? Probably doesn't matter, but worth confirming. *Lean: alphabetical by recipe id for determinism.*
+6. **`tool_slot` field on PropDef** — keep, fold into a tag, or move into a TOOL capability? Tools (Axe, Pickaxe, Shovel, Knife, Scanner) currently use `tool_slot: StringName` to map to inventory tool slots. The new model could express this as `tags: [TOOL.axe]` or as a TOOL capability, but the simplest path is to keep `tool_slot` as-is. *Lean: keep `tool_slot`, no change.*
+7. **`PlaceableCap.footprint` vs existing `footprint` field** — PropDef already has `footprint: Array[Vector2i]`. The PLACEABLE capability formalizes it. Should the existing field move into the capability, or stay top-level with PLACEABLE referencing it? *Lean: move into capability, single source of truth.*
+8. **Predicate vocabulary stubs (skills, weather)** — the predicate evaluator needs `player_skill` and `weather` handlers but those subsystems don't exist yet. Should they return `false` with a warning, or be deferred entirely (parser rejects them)? *Lean: return false + warning, parseable but inert.*
 
 ---
 
@@ -677,3 +720,196 @@ These are unresolved details that will need a call before or during implementati
 | 2026-04-08 | `Prop` name kept (not renamed to `Asset`) | "Asset" is overloaded in Godot ecosystem; second massive rename in two weeks not justified by marginal clarity gain. |
 | 2026-04-08 | Discovery is permanent + flat — `unlock_when` predicate list, watched continuously, granted once forever | Simplest possible model; no progress tracking, no skill trees, no narrative metadata. Reuses condition vocabulary. |
 | 2026-04-08 | Battery usage counter deferred — model as two state-transition recipes between charged/depleted | No need for instance counters yet; if richer behavior is required later, prop instance state + prop_state predicates handle it. |
+| 2026-04-08 | `meat_rots` recipe is time-only (no temperature condition, no sustain) | Removes the architectural pressure for pause-resume sustain semantics in delivery-005a. Cold-storage food preservation is deferred. Andre's call. |
+| 2026-04-08 | Existing save files break with delivery-005a — no migration path | Farhaven is alpha, no important player saves exist. Clean break is simpler than backwards-compat shims. Andre's call. |
+| 2026-04-08 | Use existing `PropDef.catalog_category: StringName` field instead of inventing `category_tag` | Foundation audit revealed `catalog_category` already exists with exactly the right role. Using a new name would be gratuitous churn. |
+| 2026-04-08 | RecipeInput formalized with `source` field (`player_inventory` / `container` / `world_tile` / `world_anywhere`) | Resolves the ambiguity from §7.7 (`burn_log_in_fireplace` pulled from container) by making the source explicit on every input. |
+| 2026-04-08 | `Catalog.CatalogCategory` enum stays untouched in delivery-005a | It's a separate enum in the catalog domain (4 values, only used by ScannerSystem/PropLabelRenderer). Migrating it is out of scope. |
+| 2026-04-08 | `Prop.is_natural_category()` replaced by `Origin == NATURAL` | Origin enum already exists and is sufficient. The behavioral category check is redundant. |
+
+---
+
+## 13. Foundation Audit (existing Category-related code)
+
+> Performed 2026-04-08 by Lola during the design refinement pass. Goal: prove the migration scope before implementation.
+
+### 13.1 Three different "category" fields on PropDef
+
+PropDef in `scripts/data/prop_def.gd` currently has **three distinct fields with overlapping semantics**, each playing a different role:
+
+| Field | Type | Values seen in data | Role | Decision |
+|---|---|---|---|---|
+| `category` | `StringName` | `"prop"`, `"resource"`, `"consumable"`, `"structure"`, `"tool"` | Loose typology — what kind of thing is this in inventory/world terms | **DELETE.** Capabilities + tags supersede this. |
+| `prop_category` | `int` | 0..9 — index into `Prop.Category` enum (PLANT/MINERAL/ANIMAL/FUNGI/LIQUID/OOZE/STRUCTURE/VEHICLE/EQUIPMENT/STORAGE) | Behavioral classification — drives `get_props_by_category()`, structure detection, etc. | **DELETE.** Capabilities replace its role. |
+| `catalog_category` | `StringName` | `"flora"`, `"minerals"`, `"fauna"`, `"anomalies"`, `"survival"`, `"crafting"`, `"storage"`, `""` | UI grouping label for the Catalog screen | **KEEP.** This is what §3.3 calls `category_tag`. Already exists with the right role. |
+
+This is the first surprise: **the field §3.3 specifies (`category_tag`) already exists** under the name `catalog_category`. The DESIGN.md was updated to use the existing name throughout.
+
+### 13.2 `Prop.Category` enum behavioral call sites
+
+The 10-value enum in `scripts/hex/prop.gd:7-10`:
+
+```gdscript
+enum Category {
+    PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE,
+    STRUCTURE, VEHICLE, EQUIPMENT, STORAGE,
+}
+```
+
+| Location | Use | Migration target |
+|---|---|---|
+| `prop.gd:18` | `@export var category: Category = Category.PLANT` (instance default) | Delete; instance no longer carries this field |
+| `prop.gd:40` `is_natural_category()` | range check `category in [PLANT..OOZE]` | Replace with `origin == Origin.NATURAL`. Origin enum already exists. |
+| `prop.gd:48,63,73` (factory methods `create_prop`, `create_structure`, `create_anomaly`) | Set category on new instances | Factory methods can be deleted entirely; instances are reconstructed from PropDef + capabilities |
+| `hex_tile.gd:20-25` `get_props_by_category(int)` | Filter props by category enum value | Replace with capability/tag query, e.g. `get_props_with_capability(STATION)` or `get_props_with_tag(&"STRUCTURE")` |
+| `hex_tile.gd:36-37` `get_structures()` | `get_props_by_category(STRUCTURE)` | Replace with `get_props_with_capability(STATION)` OR `get_props_with_tag(&"STRUCTURE")` (decide in task-051) |
+| `hex_tile.gd:28-33` `get_props()` | Filter via `is_natural_category()` | Replace with `prop.origin == NATURAL` filter |
+| `hex_grid.gd:255` (save) | `"category": prop.category` | Delete; not in new save format |
+| `hex_grid.gd:308` (load) | `prop.category = int(pd.get("category", _Prop.Category.PLANT))` | Delete; not in new load format |
+| `map_loader.gd:108` | Same load pattern | Delete |
+| `prop_def.gd:31-32` | `prop_category: int` field | Delete (see §13.1) |
+
+**Total: ~10 behavioral call sites** across 4 files. Manageable. The migration is bounded.
+
+### 13.3 `Catalog.CatalogCategory` enum (separate, out-of-scope)
+
+A **different** enum lives in `scripts/scanner/catalog.gd:6`:
+
+```gdscript
+enum CatalogCategory { FLORA, FAUNA, MINERAL, ANOMALY }
+```
+
+This is the catalog domain enum, used by:
+
+| Location | Use |
+|---|---|
+| `catalog_entry.gd:5` | Field on `CatalogEntry: int = 0  # Catalog.CatalogCategory value` |
+| `catalog.gd` | `get_discovered_by_category()`, `entry_cataloged` signal payload, `encounter_entry` fauna gate, `get_scannable_at` skip logic |
+| `scanner_system.gd:17-20` | Scan time per category lookup table |
+| `scanner_system.gd:121,149,203,212` | Default category fallback when entry is null |
+| `prop_label_renderer.gd:23-37` | Marker color and label per category |
+
+**Decision: leave `CatalogCategory` untouched in delivery-005a.** Reasons:
+- Different domain (catalog/scanner) from `Prop.Category` (world placement). Same word, different concept.
+- Only 4 values, well-bounded, well-localized.
+- Migrating it touches ScannerSystem, PropLabelRenderer, and 4 catalog `.tres` files (`flora.tres`, `fauna.tres`, `minerals.tres`, `anomalies.tres`).
+- The new model could route this through `catalog_category: StringName` on PropDef instead of the enum, but that's a separate cleanup.
+
+If a future delivery wants to unify all categorization through StringName tags, this enum is the next target. Not now.
+
+### 13.4 Test impact
+
+41 references to `Category` / `prop_category` / `catalog_category` across 6 test files:
+
+| File | Refs |
+|---|---|
+| `tests/integration/test_delivery_002.gd` | 3 |
+| `tests/unit/test_catalog.gd` | 5 |
+| `tests/unit/test_scanner_system.gd` | 4 |
+| `tests/unit/test_prop_renderers.gd` | 10 |
+| `tests/unit/test_prop.gd` | 18 |
+| `tests/unit/test_catalog_panel_ui.gd` | 1 |
+
+Most of these are in `test_prop.gd` (testing the factory methods and `is_natural_category()`) and `test_prop_renderers.gd` (mock PropDefs setting categories). They will need updates in **task-046** (when PropDef changes) and **task-051** (when Category enum is removed). Test impact is real but bounded.
+
+### 13.5 Other related fields that go away in delivery-005a
+
+| Field | Currently | Replaced by |
+|---|---|---|
+| `is_consumable: bool` | Flag | Per-prop `eat_*`/`drink_*` recipes |
+| `hunger_restore: float` | Effect on consume | `eat_*` recipe `effects: [stat_delta(hunger, +X)]` |
+| `thirst_restore: float` | Effect on consume | `eat_*` recipe `effects: [stat_delta(thirst, +X)]` |
+| `health_restore: float` | Effect on consume | `eat_*` recipe `effects: [stat_delta(health, +X)]` (negative for poison) |
+| `is_respawn_point: bool` | Flag for shelter | Tag `RESPAWN_POINT` or absorbed into a `respawn` STATION tag |
+| `is_crafting_station: bool` | Flag for workbench | STATION capability with `station_tags: [&"craft"]` |
+| `emits_light: bool` + `light_radius: int` | Flag + radius | `EMITS_LIGHT` capability with `radius`, `color`, `flicker` |
+| `gather_time: float` | Time to gather | `gather_*` recipe `time` field |
+| `gather_amount: int` | Yield count | `gather_*` recipe `outputs[].count` |
+| `tool_required: StringName` | Tool gate | `gather_*` recipe `conditions: [{has_tool: ...}]` |
+| `respawn_time: float` | Source respawn delay | `regrow_*` recipe `time` field |
+| `yield_type: StringName` | Single yield type | `gather_*` recipe `outputs[].prop_ref` |
+| `tool_speed: Dictionary` | Per-tool speed multiplier | Multiple `gather_*` recipes with different `has_tool` conditions and different `time` |
+
+This table is the migration cheat sheet for **task-046** + **task-047** + **task-051**. Every existing PropDef field that goes away has a clear destination.
+
+### 13.6 Audit conclusions
+
+- The migration scope is bounded and well-understood: ~10 behavioral call sites, 4 files, 6 test files, 28 PropDef `.tres` migrations.
+- The biggest landmines:
+  - The three-fields-named-category situation (resolved by §13.1's table)
+  - The `Catalog.CatalogCategory` is a **separate** enum and must NOT be confused with `Prop.Category` (resolved by §13.3 — out of scope)
+  - The 13 fields on PropDef that get deleted (see §13.5) — significant but each has a clear replacement
+- No surprises that invalidate the design. The model holds.
+
+---
+
+## 14. Existing prop inventory — target capability mapping
+
+> Performed 2026-04-08 by Lola. Each existing PropDef in `data/props/` mapped to its target capability set + tags. This table is the migration plan for **task-046**.
+
+### 14.1 Sources (placed in world, gathered to yield)
+
+| ID | Name | Tags | catalog_category | Target capabilities | Notes |
+|---|---|---|---|---|---|
+| 00001 | Small Tree | `SOURCE`, `WOOD` | `flora` | PLACEABLE(1×1, blocks=true), CATALOGABLE(1.0, "flora") | Generates `chop_small_tree` recipe with `has_tool(axe)` condition. Yields 00010 wood. |
+| 00002 | Loose Rocks | `SOURCE`, `STONE` | `minerals` | PLACEABLE(1×1, blocks=false), CATALOGABLE(1.0, "minerals") | Generates `gather_loose_rocks` recipe (no tool needed). Yields 00011 rock. |
+| 00003 | Tall Grass | `SOURCE`, `PLANT` | `flora` | PLACEABLE(1×1, blocks=false), CATALOGABLE(0.5, "flora") | Generates `gather_tall_grass` recipe (no tool needed). Yields 00012 fiber. |
+| 00004 | Berry Bush | `SOURCE`, `PLANT` | `flora` | PLACEABLE(1×1, blocks=false), CATALOGABLE(1.0, "flora") | Generates `gather_berry_bush` recipe. Yields 00020 berry. |
+| 00005 | Stone Boulder | `SOURCE`, `STONE` | `minerals` | PLACEABLE(1×1, blocks=true), CATALOGABLE(1.5, "minerals") | Generates `mine_stone_boulder` recipe with `has_tool(pickaxe)` condition. Yields 00013 stone. |
+| 00006 | Iron Deposit | `SOURCE`, `ORE.iron` | `minerals` | PLACEABLE(1×1, blocks=true), CATALOGABLE(2.0, "minerals") | Generates `mine_iron_deposit` recipe with `has_tool(pickaxe)`. Yields 00014 iron ore. |
+| 00007 | Crystal Cluster | `SOURCE`, `CRYSTAL` | `minerals` | PLACEABLE(1×1, blocks=true), CATALOGABLE(2.5, "minerals") | Generates `mine_crystal_cluster` recipe with `has_tool(pickaxe)`. Yields 00015 crystal shard. |
+| 00008 | Toxic Berries Bush | `SOURCE`, `PLANT` | `flora` | PLACEABLE(1×1, blocks=false), CATALOGABLE(1.0, "flora") | Generates `gather_toxic_berries` recipe. Yields 00021 toxic berry. |
+
+### 14.2 Yield items (carried in inventory, may be consumable)
+
+| ID | Name | Tags | catalog_category | Target capabilities | Consumable effects |
+|---|---|---|---|---|---|
+| 00010 | Wood | `RESOURCE`, `WOOD`, `BURNABLE.log` | `""` | PORTABLE(1.0), PLACEABLE(0.5×0.5, blocks=false) | n/a |
+| 00011 | Rock | `RESOURCE`, `STONE` | `""` | PORTABLE(0.2), PLACEABLE(0.3×0.3, blocks=false) | n/a |
+| 00012 | Fiber | `RESOURCE`, `PLANT` | `""` | PORTABLE(0.05) | n/a |
+| 00013 | Stone | `RESOURCE`, `STONE` | `""` | PORTABLE(0.5), PLACEABLE(0.5×0.5, blocks=false) | n/a |
+| 00014 | Iron Ore | `RESOURCE`, `ORE.iron` | `""` | PORTABLE(0.4) | n/a |
+| 00015 | Crystal Shard | `RESOURCE`, `CRYSTAL` | `""` | PORTABLE(0.15) | n/a |
+| 00020 | Berry | `RESOURCE`, `CONSUMABLE.edible` | `""` | PORTABLE(0.01) | `eat_berry`: hunger+5, thirst+10 |
+| 00021 | Toxic Berry | `RESOURCE`, `CONSUMABLE.edible` | `""` | PORTABLE(0.01) | `eat_toxic_berry`: hunger+10, health-25 |
+| 00022 | Meat | `RESOURCE`, `CONSUMABLE.edible` | `""` | PORTABLE(0.3) | `eat_meat`: hunger+25, health+10. Also subject to `meat_rots` after 24h. |
+
+### 14.3 Structures (placed, mostly non-portable)
+
+| ID | Name | Tags | catalog_category | Target capabilities | Notes |
+|---|---|---|---|---|---|
+| 00101 | Campfire | `STRUCTURE`, `STATION.fire`, `STATION.cook`, `STATION.light` | `survival` | PLACEABLE(1×1, blocks=true), CONTAINER(20.0, accepts=[BURNABLE]), EMITS_LIGHT(4.0, warm_orange, flicker=true), STATION([fire, cook, light]), CATALOGABLE(1.0, "survival") | Instance state: `is_lit: bool`. Recipes `burn_log_in_fireplace`, `cook_meat`, `light_fire` use this. |
+| 00102 | Shelter | `STRUCTURE`, `RESPAWN_POINT` | `survival` | PLACEABLE([3 hexes], blocks=true), STATION([respawn]), CATALOGABLE(1.0, "survival") | Multi-hex footprint preserved from existing field. Existing `is_respawn_point: bool` flag absorbed into `STATION.respawn` tag. |
+| 00103 | Torch | `STRUCTURE`, `CRAFTED`, `BURNABLE.fuel` | `survival` | PORTABLE(0.5), PLACEABLE(0.5×0.5, blocks=false), EMITS_LIGHT(3.0, warm_orange, flicker=true), CATALOGABLE(1.0, "survival") | **Dual-state** — both PORTABLE (held in inventory or hand) and PLACEABLE (placed on ground/wall). Confirms the design intent. |
+| 00104 | Storage Chest | `STRUCTURE`, `STORAGE` | `storage` | PLACEABLE(1×1, blocks=true), CONTAINER(100.0, accepts=[]), CATALOGABLE(1.5, "storage") | Empty `accepts` filter means "anything goes." |
+| 00105 | Workbench | `STRUCTURE`, `STATION.craft` | `crafting` | PLACEABLE([2 hexes], blocks=true), STATION([craft]), CATALOGABLE(2.0, "crafting") | Existing `is_crafting_station: bool` flag absorbed into `STATION.craft` tag. Multi-hex footprint preserved. |
+
+### 14.4 Tools (held/equipped, non-consumed)
+
+| ID | Name | Tags | catalog_category | Target capabilities | tool_slot |
+|---|---|---|---|---|---|
+| 00201 | Axe | `TOOL`, `CRAFTED` | `""` | PORTABLE(2.0) | `&"axe"` (kept) |
+| 00202 | Pickaxe | `TOOL`, `CRAFTED` | `""` | PORTABLE(2.5) | `&"pickaxe"` (kept) |
+| 00203 | Shovel | `TOOL`, `CRAFTED` | `""` | PORTABLE(1.8) | `&"shovel"` (kept) |
+| 00204 | Survival Knife | `TOOL`, `WEAPON`, `HUMAN` | `""` | PORTABLE(0.5) | `&"weapon"` (kept) |
+| 00205 | Scanner | `TOOL`, `HUMAN` | `""` | PORTABLE(0.4) | `&"scanner"` (kept) |
+
+Per Open Question §11.6, `tool_slot` is **kept as-is** on PropDef (not folded into a capability). Tools are the only props that use it; adding a TOOL capability for one field is over-engineering.
+
+### 14.5 Anomalies
+
+| ID | Name | Tags | catalog_category | Target capabilities | Notes |
+|---|---|---|---|---|---|
+| 10001 | Anomaly Fragment | `SOURCE`, `ANOMALY`, `NATIVE_ALIEN` | `anomalies` | PLACEABLE(1×1, blocks=false), CATALOGABLE(3.0, "anomalies") | Currently `gather_time=3` and `yield_type=""` (yields self). Generates `gather_anomaly_fragment` recipe. Origin = NATIVE_ALIEN preserved. |
+
+### 14.6 Migration counts
+
+- **28 PropDef `.tres` files** to migrate
+- **8 sources** need their old gather/respawn fields removed and corresponding `gather_*` + `regrow_*` recipes created (16 recipes total)
+- **9 yield items** need PORTABLE weight values assigned (table above proposes initial values; tune in playtest)
+- **3 consumables** (00020, 00021, 00022) need corresponding `eat_*` recipes with `effects` lists
+- **5 structures** need capability composition + the recipes they enable (`burn_log_in_fireplace`, `cook_meat`, `light_fire`, etc.)
+- **5 tools** keep `tool_slot` and gain only PORTABLE
+- **1 anomaly** needs `gather_anomaly_fragment` recipe
+
+**Total new recipes seeded by this inventory: ~25-30**, all derived mechanically from existing PropDef data. Most are simple gather/eat/regrow recipes; a few are interesting (cook_meat, burn_log_in_fireplace, light_fire).

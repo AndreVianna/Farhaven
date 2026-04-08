@@ -67,13 +67,14 @@ task-039 (Local Lighting System)        task-046 (PropDef refactor)
 | # | Name | Type | Depends On | Parallel With |
 |---|------|------|-----------|---------------|
 | 039 | Local Lighting System | IMPLEMENT | delivery-004b | All other 005a tasks |
-| 046 | PropDef refactor — capabilities + tags + category_tag | IMPLEMENT | delivery-004b + post-PR#10 | 039 |
-| 047 | Recipe schema + parser (Resource type, .tres loader, RecipeRegistry) | IMPLEMENT | 046 | 039 |
-| 048 | Predicate Evaluator (query item) | IMPLEMENT | 047 | 049, 039 |
-| 049 | Inventory weight refactor | IMPLEMENT | 046 | 048, 039 |
+| 046 | PropDef refactor — capabilities + tags + use catalog_category | IMPLEMENT | delivery-004b + post-PR#10 | 039 |
+| 046b | Editor schema sync (prop-editor.js + 366 JS tests) | IMPLEMENT | 046 | 047, 048, 049, 039 |
+| 047 | Recipe schema + parser (Resource type, .tres loader, RecipeRegistry) | IMPLEMENT | 046 | 046b, 039 |
+| 048 | Predicate Evaluator (query item) | IMPLEMENT | 047 | 049, 046b, 039 |
+| 049 | Inventory weight refactor | IMPLEMENT | 046 | 048, 046b, 039 |
 | 050 | Recipe Runtime + Discovery Watcher | IMPLEMENT | 047, 048, 049 | 039 |
 | 051 | Migrate AutoInteractionSystem + Catalog hooks | IMPLEMENT | 050 | 039 |
-| 052 | Documentation cascade | DOCS | 039, 046, 047, 048, 049, 050, 051 | -- |
+| 052 | Documentation cascade | DOCS | 039, 046, 046b, 047, 048, 049, 050, 051 | -- |
 
 ## Task Details
 
@@ -109,30 +110,77 @@ task-039 (Local Lighting System)        task-046 (PropDef refactor)
 **Source:** `DESIGN.md` §3 (PropDef)
 
 **Scope:**
-- Replace `Category` enum's behavioral role. The enum may be retained as a typedef for `category_tag` values, or removed in favor of free-form `StringName` (decision: see Open Questions §1).
-- Add the following fields to `PropDef`:
-  - `tags: Array[StringName]` — free-form tag list (e.g. `BURNABLE.log`, `CONSUMABLE.edible`, `WOOD`, `METAL.iron`)
-  - `category_tag: StringName` — purely for Catalog UI grouping (replaces behavioral use of `Category`)
+- **Use the existing `catalog_category: StringName` field on PropDef.** Foundation audit (DESIGN.md §13.1) confirmed this field already exists with the right role for UI grouping. **Do not introduce a new `category_tag` field.**
+- **Delete** the following PropDef fields (full list with replacements in DESIGN.md §13.5):
+  - `prop_category: int` (the Prop.Category enum index — replaced by capabilities)
+  - `category: StringName` (the loose typology field — replaced by capabilities + tags)
+  - `is_consumable, hunger_restore, thirst_restore, health_restore` (replaced by `eat_*` recipes)
+  - `is_respawn_point, is_crafting_station` (replaced by STATION capability tags)
+  - `emits_light, light_radius` (replaced by EMITS_LIGHT capability)
+  - `gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed` (replaced by gather/regrow recipes)
+- **Keep**: `id`, `display_name`, `catalog_entry`, `catalog_category`, `origin`, `tool_slot` (per Open Question §11.6 in DESIGN.md), `footprint` (will move into PLACEABLE capability per §11.7), `mesh`, `material`, all `placeholder_*` fields.
+- **Add** to `PropDef`:
+  - `tags: Array[StringName]` — free-form tag list (e.g. `BURNABLE.log`, `CONSUMABLE.edible`, `STRUCTURE`, `STATION.fire`)
   - **Capability fields** (each is a small inner Resource or Dictionary, `null`/empty when not present):
     - `portable: PortableCap` — `{ weight: float }`
-    - `placeable: PlaceableCap` — `{ footprint: Vector2i, blocks_movement: bool, rotation_snap: int }`
+    - `placeable: PlaceableCap` — `{ footprint: Array[Vector2i], blocks_movement: bool, rotation_snap: int }` (absorbs existing top-level `footprint` field)
     - `container: ContainerCap` — `{ capacity_weight: float, accepts_filter: Array[StringName] }`
     - `emits_light: LightCap` — `{ radius: float, color: Color, flicker: bool }`
     - `movable: MovableCap` — `{ push_cost: float }`
     - `station: StationCap` — `{ station_tags: Array[StringName] }`
     - `catalogable: CatalogableCap` — `{ scan_time: float, display_tag: StringName }`
-- Migrate existing `data/props/*.tres` to fill in the new fields. Most props will need PORTABLE + PLACEABLE + CATALOGABLE entries derived from their old fields. Cross-check every existing prop.
-- Update the editor (`tools/level-editor/js/prop-editor.js`) to read/write the new fields. Unknown-field passthrough (added in Fase 1 audit) protects against data loss during the transition; the editor will ignore the new fields until updated.
-- Remove old fields that are now superseded (`yield_type`, `is_consumable`, `light_radius` if loose, `gather_time`, etc.) **only after** task-051 has migrated their consumers.
+- **Migrate existing `data/props/*.tres` files following the inventory in DESIGN.md §14.** That section pre-maps every one of the 28 existing PropDefs to its target capability set, tags, and notes — use it as the migration cheat sheet.
+- **Behavioral cleanup is task-051's job, NOT task-046's.** Task-046 ONLY changes the schema and data files. The code that branches on `Prop.Category` (see DESIGN.md §13.2 for the call-site list) is migrated in task-051. Until then, leave the old code paths working with stub defaults.
+- **Editor updates are task-046b's job, NOT task-046's.** Unknown-field passthrough (added in Fase 1 audit) protects against data loss during the transition; the editor will ignore the new fields until task-046b updates it.
 
 **Criteria:**
 - [ ] All capability fields exist on `PropDef` and load from `.tres`
-- [ ] `tags` and `category_tag` exist and load
-- [ ] All existing prop `.tres` files migrated; `957/957` Godot tests still pass
-- [ ] Editor reads/writes capability fields without losing data on round-trip
-- [ ] Old `Category` enum behavioral references in code identified and tagged with `# REMOVE in task-051` comments (don't remove yet — that's task-051's job)
-- [ ] Unit tests: capability presence/absence, tag membership, category_tag round-trip
+- [ ] `tags` field exists and loads; `catalog_category` (existing) still loads
+- [ ] All 28 existing prop `.tres` files migrated per DESIGN.md §14 inventory
+- [ ] Deleted fields (`prop_category`, `category`, `is_consumable`, `hunger_restore`, `thirst_restore`, `health_restore`, `is_respawn_point`, `is_crafting_station`, `emits_light`, `light_radius`, `gather_*`, `respawn_time`, `yield_type`, `tool_speed`) are gone from PropDef
+- [ ] All 957/957 Godot tests still pass (some test fixtures may need updates if they reference deleted fields directly — document those updates in the commit)
+- [ ] Old `Prop.Category` enum behavioral references in code identified and tagged with `# REMOVE in task-051` comments (don't remove yet — that's task-051's job). The list is in DESIGN.md §13.2.
+- [ ] Unit tests: capability presence/absence, tag membership, catalog_category round-trip
 - [ ] Build passes with zero warnings
+
+---
+
+### task-046b: Editor schema sync — prop-editor.js + JS test suite [IMPLEMENT]
+
+**Source:** task-046 (PropDef schema changes) + the editor's existing 366-test JS suite
+
+**Why split out from task-046:** The editor lives in `tools/level-editor/` as a JS subsystem with its own test runner and 366 tests. It is materially independent from the GDScript side: a separate codebase, a separate test suite, a separate file format reader/writer (the `.tres` parser is in `tools/level-editor/js/tres-parser.js`). Pretending the editor sync is a sub-bullet of task-046 hides ~3-5 hours of work that has its own failure modes. Splitting it makes the work visible.
+
+**Scope:**
+- Update `tools/level-editor/js/prop-editor.js` to read and write the new PropDef schema:
+  - Show new capability fields (PORTABLE, PLACEABLE, CONTAINER, EMITS_LIGHT, MOVABLE, STATION, CATALOGABLE) as collapsible panels in the prop edit UI
+  - Show `tags` as a chip/tag input
+  - `catalog_category` keeps its existing UI (already there)
+  - Stop showing the deleted fields (`prop_category`, `category`, `is_consumable`, etc.)
+- Update `tools/level-editor/js/tres-parser.js` to read/write the new fields. The Fase 1 audit added unknown-field passthrough so reading old files won't error, but writing the new format needs explicit handling.
+- Update validation in `prop-editor.js` to enforce the new schema:
+  - PORTABLE.weight must be >= 0
+  - PLACEABLE.footprint must be a non-empty array
+  - EMITS_LIGHT.radius must be >= 1 if EMITS_LIGHT is present (existing rule)
+  - STATION.station_tags must be a non-empty array if STATION is present
+- Update the 366 JS tests:
+  - Tests that construct mock PropDef objects need to use the new schema
+  - Tests that assert on serialized output need to expect the new format
+  - Add new tests for capability round-trip (load → edit → save → load → assert)
+- Round-trip integration test: load every migrated `data/props/*.tres` from task-046, serialize via the editor, compare to the original. Zero diffs.
+
+**Criteria:**
+- [ ] prop-editor.js renders all capability panels correctly
+- [ ] tags input works (add, remove, validate)
+- [ ] tres-parser.js reads the new format
+- [ ] tres-parser.js writes the new format
+- [ ] Validation rules enforced
+- [ ] All 366 JS tests pass (some rewritten as needed — document in commit)
+- [ ] Round-trip test: every prop in `data/props/` survives load → edit → save → reload with zero data loss
+- [ ] No `console.error` or `console.warn` in normal operation
+- [ ] Editor UI remains usable (manual smoke test on at least 5 representative props: a Source, a Yield item, a Consumable, a Structure, a Tool)
+
+**Parallel with:** task-047, task-048, task-049 (different codebase, independent)
 
 ---
 
@@ -427,3 +475,4 @@ After delivery-005a is fully landed:
 |------|--------|--------|
 | 2026-04-08 | Initial scope created. Split from delivery-005 to separate engine refactor from Night Falls gameplay. Tasks 039-045. | Lola post-PR#10 review |
 | 2026-04-08 | **Full task list rewritten** after Props/Recipes design conversation. Tasks 040-044 collapsed into a unified Recipe system (tasks 046-051). Task 039 (Lighting) preserved. Task 045 → 052 (Doc cascade). Authoritative spec moved to `DESIGN.md`. | Andre + Lola design conversation |
+| 2026-04-08 | **Grade-A pass on DESIGN.md.** Foundation audit added (DESIGN.md §13). Existing prop inventory added (DESIGN.md §14). `meat_rots` simplified to time-only per Andre. `RecipeInput.source` field formalized. Save/load decision recorded (alpha break, no migration). `category_tag` renamed to `catalog_category` (existing field name). task-046b (Editor schema sync) added as a separate task. task-046 scope tightened with explicit field-by-field migration list and reference to DESIGN.md §14. | Lola grade-A revision; meat_rots & save/load decisions by Andre |
