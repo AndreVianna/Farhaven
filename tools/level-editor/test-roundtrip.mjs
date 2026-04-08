@@ -18,7 +18,7 @@ const projectRoot = join(__dirname, '..', '..');
 
 // Test all .tres files
 const dirs = [
-  { path: 'data/resources', expectedClass: 'ResourceDef' },
+  { path: 'data/props', expectedClass: 'ResourceDef' },
   { path: 'data/biomes', expectedClass: 'BiomeData' },
 ];
 

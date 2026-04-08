@@ -102,7 +102,7 @@ No external linters, formatters, or type checkers are configured. The Godot edit
 
 | Format | Location | Purpose |
 |--------|----------|---------|
-| .tres (Godot Resource) | data/biomes/, data/catalog/, data/resources/ | Typed game data (BiomeData, CatalogEntry, ResourceDef) |
+| .tres (Godot Resource) | data/biomes/, data/catalog/, data/props/ | Typed game data (BiomeData, CatalogEntry, ResourceDef) |
 | .json | data/maps/ch1.json | Hand-designed map definition (tile positions, biomes, resources, structures) |
 | .tscn (Godot Scene) | scenes/ | Scene tree definitions (text format, version controlled) |
 | .gdshader | shaders/ | Custom vertex/fragment shaders |

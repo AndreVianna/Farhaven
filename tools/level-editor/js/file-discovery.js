@@ -170,7 +170,7 @@ export class FileDiscovery {
 
     // Scan directories
     const mapFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/maps', '.json');
-    const resourceFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/resources', '.tres');
+    const resourceFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/props', '.tres');
     const biomeFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres');
     console.log(`Scan results — maps: ${mapFiles.length}, resources: ${resourceFiles.length}, biomes: ${biomeFiles.length}`);
 
@@ -245,7 +245,7 @@ export class FileDiscovery {
           const text = await readFileText(file);
           const data = JSON.parse(text);
           ProjectContext.files.maps.set(name, { handle: null, data });
-        } else if (relPath.startsWith('data/resources/') && relPath.endsWith('.tres')) {
+        } else if (relPath.startsWith('data/props/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
           const result = _parseTresFile(name, text, 'ResourceDef');

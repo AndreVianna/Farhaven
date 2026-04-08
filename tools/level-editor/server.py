@@ -25,12 +25,12 @@ EDITOR_DIR = SCRIPT_DIR
 # Directories to scan (relative to project root)
 SCAN_DIRS = {
     'maps': ('data/maps', '.json'),
-    'resources': ('data/resources', '.tres'),
+    'resources': ('data/props', '.tres'),
     'biomes': ('data/biomes', '.tres'),
 }
 
 # Only allow access to files under these prefixes
-ALLOWED_PREFIXES = ['data/maps/', 'data/resources/', 'data/biomes/', 'data/catalog/']
+ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/']
 
 
 def is_safe_path(rel_path):

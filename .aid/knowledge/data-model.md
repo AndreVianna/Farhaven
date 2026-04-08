@@ -51,7 +51,7 @@ Source: `scripts/hex/prop.gd`
 Replaced by Prop with `category=RESOURCE`. File may still exist as orphan.
 
 ### ResourceDef (scripts/data/resource_def.gd)
-Godot Resource defining a resource type's static properties. Loaded from `data/resources/*.tres`.
+Godot Resource defining a resource type's static properties. Loaded from `data/props/*.tres`.
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
@@ -77,7 +77,7 @@ Godot Resource defining a resource type's static properties. Loaded from `data/r
 | placeholder_depleted_params | Dictionary | {} | Same as params | Depleted variant params |
 | placeholder_depleted_color | Color | GRAY | RGB color | Depleted variant color |
 
-Source: `scripts/data/resource_def.gd`, `data/resources/*.tres`
+Source: `scripts/data/resource_def.gd`, `data/props/*.tres`
 
 ### BiomeData (scripts/hex/biome_data.gd)
 Godot Resource defining per-biome configuration.
@@ -310,7 +310,7 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 
 | Index | Mechanism | Source |
 |-------|-----------|--------|
-| ResourceDef lookup | ResourceRegistry scans data/resources/ directory at startup | `resource_registry.gd` lines 10-21 |
+| ResourceDef lookup | ResourceRegistry scans data/props/ directory at startup | `resource_registry.gd` lines 10-21 |
 | CatalogEntry lookup | Catalog loads 4 hardcoded .tres file paths | `catalog.gd` lines 28-40 |
 | BiomeData lookup | MapLoader and HexGridRenderer use hardcoded path arrays | `map_loader.gd` lines 17-23, `hex_grid_renderer.gd` lines 24-30 |
 
@@ -367,7 +367,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | loose_rock | Loose Rock | 1.0s | 2 | - | 30s | stone | 99 | loose_rocks |
 | anomaly_fragment | Anomaly Fragment | 3.0s | 1 | - | 0 (none) | self | 99 | - |
 
-Source: `data/resources/*.tres`
+Source: `data/props/*.tres`
 
 ## Current Catalog Entries
 

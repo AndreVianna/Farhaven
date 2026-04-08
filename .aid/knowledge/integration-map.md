@@ -61,7 +61,7 @@ Two autoload singletons registered in `project.godot` (lines 25-26):
 ### Data Loading
 - JSON map loading via FileAccess + JSON.parse_string(). Source: `scripts/hex/map_loader.gd`
 - Godot Resource (.tres) files for biome data, catalog entries, and resource definitions. Loaded via load() / preload()
-- Resource definitions auto-scanned from `data/resources/` directory at startup. Source: `scripts/data/resource_registry.gd`
+- Resource definitions auto-scanned from `data/props/` directory at startup. Source: `scripts/data/resource_registry.gd`
 
 ### Save/Load System
 - Serialization methods exist on Player, HexGrid, Inventory, Catalog, and CraftingSystem (get_save_data / load_save_data)

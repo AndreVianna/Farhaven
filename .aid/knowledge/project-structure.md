@@ -145,7 +145,7 @@ Farhaven/
 - Texture compression: ETC2/ASTC enabled (for Android/iOS)
 
 ### Autoloads
-- `ResourceRegistry` -- singleton, loaded from `scripts/data/resource_registry.gd` (project.godot line 25). Scans data/resources/ at startup and indexes all ResourceDef files.
+- `ResourceRegistry` -- singleton, loaded from `scripts/data/resource_registry.gd` (project.godot line 25). Scans data/props/ at startup and indexes all ResourceDef files.
 - `HexGrid` -- singleton, loaded from `scripts/hex/hex_grid.gd` (project.godot line 26). Map container, stores tiles, manages fog of war and resource state.
 
 ### Editor Plugins

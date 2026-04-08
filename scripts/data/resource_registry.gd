@@ -1,9 +1,9 @@
 extends Node
 
-## Scans data/resources/ and indexes all ResourceDef .tres files by id.
+## Scans data/props/ and indexes all ResourceDef .tres files by id.
 ## Added to project.godot as autoload BEFORE HexGrid.
 
-const RESOURCES_PATH := "res://data/resources/"
+const RESOURCES_PATH := "res://data/props/"
 
 var _defs: Dictionary = {}  # StringName → ResourceDef
 

@@ -46,7 +46,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 **Three editor tabs, each managing a different layer of game data:**
 
 1. **Map Editor** — hex canvas for painting biomes, placing resources/structures, setting elevation, managing spawn/anomaly markers. Import/export JSON in MapLoader format.
-2. **Resource Editor** — CRUD for `data/resources/*.tres` ResourceDef files. Editable fields: `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color). Read-only fields: `mesh`, `depleted_mesh`, `material` (Godot resource references — cannot be authored in a web editor).
+2. **Resource Editor** — CRUD for `data/props/*.tres` ResourceDef files. Editable fields: `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color). Read-only fields: `mesh`, `depleted_mesh`, `material` (Godot resource references — cannot be authored in a web editor).
 3. **Biome Editor** — CRUD for `data/biomes/*.tres` BiomeData files (`biome_name`: String, `elevation_range`: Vector2i, `resource_table`: Array of `{type: String, chance: float, min_amount: int, max_amount: int, tool_required: String}`, `color`: Color, `color_variations`: Array[Color]).
 
 **Cross-tab integration:** Creating a resource in the Resource Editor makes it available in the Map Editor palette. Editing a biome color updates the map canvas immediately.
@@ -158,7 +158,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### F13: File Discovery
 - User selects Farhaven project root folder on startup
-- Auto-discovers: maps from `data/maps/*.json`, resources from `data/resources/*.tres`, biomes from `data/biomes/*.tres`
+- Auto-discovers: maps from `data/maps/*.json`, resources from `data/props/*.tres`, biomes from `data/biomes/*.tres`
 - Retains file handles via File System Access API for direct save
 
 ### F14: Unsaved Changes Protection
@@ -199,7 +199,7 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 ### Dependencies
 - `data/maps/*.json` — must match MapLoader's expected format (`scripts/hex/map_loader.gd`)
-- `data/resources/*.tres` — uses ResourceDef script class (`scripts/data/resource_def.gd`)
+- `data/props/*.tres` — uses ResourceDef script class (`scripts/data/resource_def.gd`)
 - `data/biomes/*.tres` — uses BiomeData script class (`scripts/hex/biome_data.gd`)
 - Hex math formulas must match `scripts/hex/hex_math.gd` (axial coords, flat-top, HEX_SIZE=3.0 in game units)
 

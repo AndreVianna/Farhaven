@@ -10,7 +10,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 
 ### ResourceRegistry
 - **Type:** Autoload singleton (initialized before HexGrid)
-- **Purpose:** Indexes all ResourceDef .tres files from `data/resources/` and provides lookup by resource type id
+- **Purpose:** Indexes all ResourceDef .tres files from `data/props/` and provides lookup by resource type id
 - **Public Methods:**
   - `get_def(type: StringName) -> ResourceDef` -- returns resource definition or null
   - `has_def(type: StringName) -> bool` -- checks if definition exists

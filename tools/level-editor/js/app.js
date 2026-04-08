@@ -362,7 +362,7 @@ async function saveTab(tab) {
   } else if (tab === 'props') {
     for (const [filename, entry] of ProjectContext.files.resources) {
       const text = TresParser.serialize(entry.raw);
-      await FileDiscovery.saveFile(entry.dir || 'data/resources', text, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/props', text, filename);
     }
   } else if (tab === 'biomes') {
     for (const [filename, entry] of ProjectContext.files.biomes) {

@@ -104,7 +104,7 @@ There is also a clear **data/presentation separation:**
 
 ### data/ -- Resource Definitions
 - **Files:** resource_def.gd, resource_registry.gd
-- **Responsibility:** Data-driven resource configuration (gather time, yield type, tool speed, visual params). ResourceRegistry autoload scans data/resources/*.tres at startup.
+- **Responsibility:** Data-driven resource configuration (gather time, yield type, tool speed, visual params). ResourceRegistry autoload scans data/props/*.tres at startup.
 - **Dependencies:** None
 
 ### rendering/ -- Visual Renderers
@@ -132,7 +132,7 @@ There is also a clear **data/presentation separation:**
 ### Game Startup
 ```
 project.godot
-  -> ResourceRegistry autoload (_ready: scans data/resources/*.tres)
+  -> ResourceRegistry autoload (_ready: scans data/props/*.tres)
   -> HexGrid autoload (_ready: waits for load_map call)
   -> main.tscn loaded as main scene
     -> main.gd._ready()

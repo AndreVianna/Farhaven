@@ -1465,13 +1465,13 @@ export class CreatePropDefCommand {
     // Add to ProjectContext
     ProjectContext.files.resources.set(this._filename, {
       handle: null,
-      dir: 'data/resources',
+      dir: 'data/props',
       data,
       raw,
     });
 
     // Write file
-    FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
+    FileDiscovery.saveFile('data/props', content, this._filename).catch((err) => {
       console.warn(`CreatePropDefCommand: Failed to save "${this._filename}": ${err.message}`);
     });
   }
@@ -1515,7 +1515,7 @@ export class EditPropDefCommand {
       entry.raw = raw;
     }
 
-    FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
+    FileDiscovery.saveFile('data/props', content, this._filename).catch((err) => {
       console.warn(`EditPropDefCommand: Failed to save "${this._filename}": ${err.message}`);
     });
   }
@@ -1535,7 +1535,7 @@ export class EditPropDefCommand {
       }
 
       const content = TresParser.serialize(this._oldRaw);
-      FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
+      FileDiscovery.saveFile('data/props', content, this._filename).catch((err) => {
         console.warn(`EditPropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     } else {
@@ -1554,7 +1554,7 @@ export class EditPropDefCommand {
         entry.raw = oldRaw;
       }
 
-      FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
+      FileDiscovery.saveFile('data/props', content, this._filename).catch((err) => {
         console.warn(`EditPropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     }
@@ -1590,7 +1590,7 @@ export class DeletePropDefCommand {
 
       // Re-write the file
       const content = TresParser.serialize(this._savedEntry.raw);
-      FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
+      FileDiscovery.saveFile('data/props', content, this._filename).catch((err) => {
         console.warn(`DeletePropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     }

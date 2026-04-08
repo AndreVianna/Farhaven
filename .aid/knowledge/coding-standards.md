@@ -94,7 +94,7 @@
 
 ### Autoloads (project.godot)
 - Two autoloads, loaded in order:
-  1. `ResourceRegistry` -- `scripts/data/resource_registry.gd` (scans data/resources/ at startup)
+  1. `ResourceRegistry` -- `scripts/data/resource_registry.gd` (scans data/props/ at startup)
   2. `HexGrid` -- `scripts/hex/hex_grid.gd` (map container singleton)
 - Source: `project.godot` lines 24-26
 
@@ -109,7 +109,7 @@
 - Source: all `@export` declarations
 
 ### Data-Driven Configuration
-- Resource definitions in `data/resources/*.tres` files (scanned by ResourceRegistry)
+- Resource definitions in `data/props/*.tres` files (scanned by ResourceRegistry)
 - Biome definitions in `data/biomes/*.tres` files
 - Catalog entries in `data/catalog/*.tres` files
 - Map layout in `data/maps/ch1.json`
@@ -138,7 +138,7 @@
 
 ### Data Organization
 - All game data in `data/` organized by type: `biomes/`, `catalog/`, `maps/`, `resources/`
-- Each ResourceDef is a separate .tres file in `data/resources/`
+- Each ResourceDef is a separate .tres file in `data/props/`
 - Each biome is a separate .tres file in `data/biomes/`
 - Catalog entries grouped by category (flora.tres, fauna.tres, minerals.tres, anomalies.tres) -- each file contains multiple CatalogEntry sub-resources
 - Source: `data/` directory

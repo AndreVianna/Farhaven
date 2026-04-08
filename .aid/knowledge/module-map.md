@@ -33,15 +33,15 @@
 
 ## Data Layer
 - **Path:** `scripts/data/`
-- **Purpose:** Resource definitions and the ResourceRegistry autoload. Defines all gatherable resource types with their properties (gather time, tool requirements, yield mappings, stack sizes, visual placeholders). ResourceRegistry scans `data/resources/` at startup and indexes all definitions.
+- **Purpose:** Resource definitions and the ResourceRegistry autoload. Defines all gatherable resource types with their properties (gather time, tool requirements, yield mappings, stack sizes, visual placeholders). ResourceRegistry scans `data/props/` at startup and indexes all definitions.
 - **Size:** 2 files, 88 lines
 - **Dependencies:**
-  - Internal: `data/resources/*.tres` (9 resource definition files)
+  - Internal: `data/props/*.tres` (9 resource definition files)
   - External: Godot Resource, DirAccess
 - **Test Coverage:** No dedicated unit test. Exercised indirectly by auto-gather, crafting, and scanner tests.
 - **Key Files:**
   - `resource_def.gd` -- ResourceDef schema: id, display_name, gather_time, tool_required, respawn_time, yield_type, tool_speed, max_stack, catalog_entry, visual placeholder config (40 lines)
-  - `resource_registry.gd` -- autoload singleton, scans data/resources/, provides get_def/has_def/get_yield_type/get_tool_speed (48 lines)
+  - `resource_registry.gd` -- autoload singleton, scans data/props/, provides get_def/has_def/get_yield_type/get_tool_speed (48 lines)
 
 ## Player
 - **Path:** `scripts/player/`

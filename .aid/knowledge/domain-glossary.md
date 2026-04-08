@@ -54,7 +54,7 @@ Terms extracted from code: class names, method names, constants, enums, comments
 |------|----------------------------------|--------|
 | Resource Node | A gatherable resource instance on a tile, now stored as a prop with `category="resource"` in `tile.props[]`. Has type, remaining count, max amount, tool requirement, respawn time, and sub-hex position. Multiple can exist per tile. | `scripts/hex/resource_node.gd` |
 | Resource Def (ResourceDef) | Static definition for a resource type. Defines gather time, gather amount, tool requirement, respawn time, yield mapping, tool speed multipliers, stack size, catalog entry link, and visual appearance. | `scripts/data/resource_def.gd` |
-| Resource Registry | Autoload singleton that indexes all ResourceDef .tres files from data/resources/ at startup. Central lookup for resource metadata. | `scripts/data/resource_registry.gd` |
+| Resource Registry | Autoload singleton that indexes all ResourceDef .tres files from data/props/ at startup. Central lookup for resource metadata. | `scripts/data/resource_registry.gd` |
 | Gather | The act of collecting resources from a Resource Node. Automatic (proximity-based), requires the node to be CATALOGED, and may require a specific tool. | `scripts/auto_interaction/auto_interaction_system.gd:130-143` |
 | Gather Radius | World-space distance (0.75 Godot units) within which auto-gather activates. Represents arm's reach. | `scripts/auto_interaction/auto_interaction_system.gd:42` |
 | Tool Gate | Resources that require a specific tool (e.g., stone_axe for wood, stone_pickaxe for ore) cannot be gathered without that tool equipped. Silently skipped. | `scripts/auto_interaction/auto_interaction_system.gd:135-143` |
@@ -68,15 +68,15 @@ Terms extracted from code: class names, method names, constants, enums, comments
 
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
-| Wood | Common resource from forest/grassland biomes. Gathered bare-handed or faster with stone_axe. Used in crafting. | `data/resources/wood.tres` |
-| Stone | Common mineral resource. Gathered bare-handed. Used in crafting stone tools. | `data/resources/stone.tres` |
-| Berries | Edible flora resource. Gathered bare-handed. Consumable item. | `data/resources/berries.tres` |
-| Toxic Berries | Poisonous flora resource. Gathered bare-handed. Consumable with toxic warning dialog. | `data/resources/toxic_berries.tres` |
-| Fiber | Plant-based resource from forest/grassland. Gathered bare-handed. Crafting material. | `data/resources/fiber.tres` |
-| Ore | Mineral resource from rocky biomes. Requires stone_pickaxe to gather. | `data/resources/ore.tres` |
-| Crystal | Rare mineral resource. Requires stone_pickaxe to gather. | `data/resources/crystal.tres` |
-| Loose Rock | A rocky biome resource that yields stone when gathered. Example of yield_type mapping. | `data/resources/loose_rock.tres` |
-| Anomaly Fragment | Mysterious alien artifact resource. Linked to anomaly entries in the catalog. | `data/resources/anomaly_fragment.tres` |
+| Wood | Common resource from forest/grassland biomes. Gathered bare-handed or faster with stone_axe. Used in crafting. | `data/props/wood.tres` |
+| Stone | Common mineral resource. Gathered bare-handed. Used in crafting stone tools. | `data/props/stone.tres` |
+| Berries | Edible flora resource. Gathered bare-handed. Consumable item. | `data/props/berries.tres` |
+| Toxic Berries | Poisonous flora resource. Gathered bare-handed. Consumable with toxic warning dialog. | `data/props/toxic_berries.tres` |
+| Fiber | Plant-based resource from forest/grassland. Gathered bare-handed. Crafting material. | `data/props/fiber.tres` |
+| Ore | Mineral resource from rocky biomes. Requires stone_pickaxe to gather. | `data/props/ore.tres` |
+| Crystal | Rare mineral resource. Requires stone_pickaxe to gather. | `data/props/crystal.tres` |
+| Loose Rock | A rocky biome resource that yields stone when gathered. Example of yield_type mapping. | `data/props/loose_rock.tres` |
+| Anomaly Fragment | Mysterious alien artifact resource. Linked to anomaly entries in the catalog. | `data/props/anomaly_fragment.tres` |
 | Meat | Fauna drop (not a gatherable resource). Category: consumable. Max stack: 20. | `scripts/inventory/inventory.gd:16` |
 
 ## Inventory and Tools
