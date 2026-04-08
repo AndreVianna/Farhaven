@@ -843,22 +843,23 @@ function _initPropPalette() {
     listContainer.innerHTML = '';
     const allowedCats = _categoriesForOrigin(origin);
     const showCats = category === 'all' ? allowedCats : [category];
+    const hasNatural = showCats.some(c => NATURAL_CATEGORIES.has(CATEGORY_TO_INT[c]));
+    const hasStructure = showCats.includes('structure');
 
-    for (const cat of showCats) {
-      const catInt = CATEGORY_TO_INT[cat];
-      if (NATURAL_CATEGORIES.has(catInt)) {
-        // Natural categories: populate from project resources
-        for (const [filename] of ProjectContext.files.resources) {
-          const resourceName = filename.replace('.tres', '');
-          _addTypeItem(resourceName, cat, origin === 'all' ? INT_TO_ORIGIN[defaultOrigin(catInt)] : origin);
-        }
-      } else if (cat === 'structure') {
-        for (const [structName] of Object.entries(STRUCTURE_FOOTPRINTS)) {
-          _addTypeItem(structName, cat, origin === 'all' ? 'crafted' : origin);
-        }
-      } else {
-        // Other non-natural: free-text entry
-        _addFreeTextEntry(cat, origin === 'all' ? 'crafted' : origin);
+    // Natural resources: show once (not per-category), with the selected category or 'plant' default
+    if (hasNatural) {
+      const naturalCat = category !== 'all' ? category : 'plant';
+      const naturalOrigin = origin !== 'all' ? origin : 'natural';
+      for (const [filename] of ProjectContext.files.resources) {
+        const resourceName = filename.replace('.tres', '');
+        _addTypeItem(resourceName, naturalCat, naturalOrigin);
+      }
+    }
+
+    // Structures: show from STRUCTURE_FOOTPRINTS
+    if (hasStructure) {
+      for (const [structName] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+        _addTypeItem(structName, 'structure', origin !== 'all' ? origin : 'crafted');
       }
     }
 
@@ -892,42 +893,6 @@ function _initPropPalette() {
       setStatus(`Tool: prop — ${originName}/${cat}/${typeName}`);
     });
     listContainer.appendChild(item);
-  }
-
-  /**
-   * Add a free-text type entry row for non-natural, non-structure categories.
-   * @param {string} cat
-   * @param {string} originName
-   */
-  function _addFreeTextEntry(cat, originName) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;';
-    const catLabel = document.createElement('span');
-    catLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);min-width:60px;padding-top:4px;';
-    catLabel.textContent = cat + ':';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Type name...';
-    input.style.cssText = 'flex:1;padding:3px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;font-size:12px;';
-    const applyBtn = document.createElement('button');
-    applyBtn.textContent = 'Set';
-    applyBtn.style.cssText = 'padding:3px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:3px;font-size:11px;cursor:pointer;';
-    const applyType = () => {
-      const typeName = input.value.trim();
-      if (!typeName) return;
-      toolManager.setTool('prop', typeName);
-      toolManager.activeCategory = cat;
-      toolManager.activeOrigin = originName;
-      if (hexCanvas) hexCanvas.toolManager = toolManager;
-      updateSidebar();
-      setStatus(`Tool: prop — ${originName}/${cat}/${typeName}`);
-    };
-    applyBtn.addEventListener('click', applyType);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyType(); });
-    row.appendChild(catLabel);
-    row.appendChild(input);
-    row.appendChild(applyBtn);
-    listContainer.appendChild(row);
   }
 
   // Initial population
