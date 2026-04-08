@@ -98,26 +98,30 @@ Death has consequences. Progress saves. The world feels alive.
 
 **AC coverage:** AC7 (day/night), AC8 (survival), AC10 (save)
 
-### delivery-005a: Engine Refactor — Lighting, Yields, Refinement, Inventory Weight
+### delivery-005a: Engine Refactor — Props, Recipes, Lighting, Inventory Weight
 
-**Features:** TBD (likely 016 Lighting, 017 Yield System, 018 Refinement Chains, 019 Inventory Weight)
+**Features:** TBD (see `delivery-005a/DETAIL.md` Open Questions §3 for feature numbering decision)
 **Depends on:** delivery-004 + delivery-004b + post-PR#10 cleanup
-**Cumulative state:** Engine ready for full survival gameplay loop — local lighting, multi-tool yields, world refinement chains, weighted inventory, robust consumables.
+**Cumulative state:** Engine ready for full survival gameplay loop — composable Props (capabilities + tags), unified Recipe system (crafting/cooking/refining/gathering/consuming/burning/decaying/growing all via the same machinery), weight-based Inventory, local lighting.
 
-Build order (tasks 039–045, parallel where possible):
-1. task-039 (Local Lighting System) — replaces fog-reveal with shader-based local brightness; restores meaning to torches/campfires
-2. task-040 (Slot-based inventory weight) — `slot_size: float` on PropDef, fractional inventory math
-3. task-041 (Yield tables with tool variation) — single yield → dictionary keyed by tool
-4. task-042 (Refinement chains in world) — Tree → Fallen Tree → Log → Firewood, in-place replacement
-5. task-043 (Movable flag + Cart system foundations) — large Sources transportable via Cart
-6. task-044 (Robust consumables) — buffs, delayed effects, HUD status icons, cooldowns
-7. task-045 (Documentation cascade) — data-model, architecture, module-map, glossary, feature-inventory
+**Authoritative design doc:** `.aid/work-001-core/delivery-005a/DESIGN.md` (snapshot from 2026-04-08 design conversation).
+
+Build order (tasks 039 + 046–052, parallel where possible):
+1. task-039 (Local Lighting System) — replaces fog-reveal with shader-based local brightness; runs entirely in parallel with the Recipe stack
+2. task-046 (PropDef refactor) — `Category` enum → capabilities + tags + `category_tag`
+3. task-047 (Recipe schema + parser + RecipeRegistry) — `Recipe` resource + `data/recipes/` loader + indexes
+4. task-048 (Predicate Evaluator "query item") — single source of truth for condition predicates
+5. task-049 (Inventory weight refactor) — slot-count → weight-based, parallel with task-048
+6. task-050 (Recipe Runtime + Discovery Watcher) — pending queue, tick loop, sustain checks, unlock_when watching
+7. task-051 (Migrate AutoInteractionSystem + Catalog hooks) — delegate gather/cook/craft/etc to RecipeRuntime
+8. task-052 (Documentation cascade) — knowledge folder + cross-links + PLAN.md sync
 
 This is a pure engine refactor. No new gameplay. Enables delivery-005b.
 
 **AC coverage:** none directly (infrastructure for AC6, AC9)
 
 > **Note:** delivery-005 was split; see delivery-005a (engine refactor) first.
+> **Revised 2026-04-08:** original tasks 040–044 (slot weight, yield tables, refinement chains, movable+cart, consumables) collapsed into the unified Recipe system (tasks 046–051). Task 039 (Lighting) preserved unchanged. See `delivery-005a/DESIGN.md` for the full design rationale.
 
 ### delivery-005b: Night Falls — Building + Threats
 

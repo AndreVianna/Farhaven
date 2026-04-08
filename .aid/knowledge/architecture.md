@@ -226,3 +226,9 @@ There is no formal DI framework. Dependencies are resolved through four mechanis
 3. **Procedural vs hand-designed maps:** The GDD mentions procedural generation, but the vision pivot moved to episodic chapters with hand-designed maps loaded from JSON (data/maps/ch1.json via map_loader.gd). (Noted in project-structure.md line 157.)
 
 4. **README describes assets/ directory** that does not exist. The game currently uses programmatic rendering (ArrayMesh, MultiMesh) with placeholder geometry. (Noted in project-structure.md line 154.)
+
+## Pending Major Refactor — Props & Recipes (delivery-005a)
+
+A significant engine refactor is planned in `delivery-005a` that will replace the current `Prop.Category` enum with composable **capabilities** (PORTABLE, PLACEABLE, CONTAINER, EMITS_LIGHT, MOVABLE, STATION, CATALOGABLE) plus free-form **tags** plus a UI-only `category_tag` label. It will also introduce a first-class **Recipe** system that unifies crafting, gathering, refining, cooking, eating, drinking, burning, decaying, growing, and trap-firing into a single data-driven machinery — Recipes are `.tres` files matched against the world by a `RecipeRuntime` autoload, with conditions evaluated by a `PredicateEvaluator` and discovery driven by `unlock_when` predicates watched by a `DiscoveryWatcher`.
+
+**Authoritative spec:** `.aid/work-001-core/delivery-005a/DESIGN.md`. Until that delivery lands, this `architecture.md` reflects the current pre-refactor state and the design doc reflects the target state.
