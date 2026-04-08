@@ -1,10 +1,21 @@
-# delivery-005: Night Falls — Building + Threats
+# delivery-005b: Night Falls — Building + Threats
 
 **Status:** Approved
 **Created:** 2026-03-31
 **Features:** feature-009-building, feature-010-night-threats
-**Depends on:** delivery-001 (001-008), delivery-002 (009-015), delivery-003 (016-023), delivery-004 (024-031)
+**Depends on:** delivery-001 (001-008), delivery-002 (009-015), delivery-003 (016-023), delivery-004 (024-031), delivery-005a
 **Cumulative state:** Place structures, fauna at night, auto-defend + auto-pickup activate
+
+## Scope updates after fog removal
+
+Fog of war was removed from the engine in post-PR#10 cleanup. Several tasks in this delivery reference fog-based mechanics that need redesign before implementation. Flagged items (do NOT implement as currently written):
+
+- **task-034 (Structure Renderer):** Criterion "Fog-aware: structures on HIDDEN tiles not visible" must be removed. All structures always render regardless of visibility. (TBD cleanup during implementation.)
+- **task-037 (FaunaManager) spawn validation:** "not VISIBLE" criterion must be replaced with a distance-based or other gating mechanism. (TBD with Andre.)
+- **task-037 surprise attack mechanic:** UNKNOWN fauna stepping out of fog HIDDEN tiles → surprise attack depended on fog. Needs redesign. (TBD.)
+- **task-037 "not within torch radius 2":** the torch-radius spawn exclusion is no longer fog-based. To be replaced by the lighting system from delivery-005a (task-039 Local Lighting System). (TBD.)
+
+Criteria text in the task sections below is left intact as historical record — do not implement those criteria verbatim. Redesign happens at delivery-005b kickoff, after delivery-005a lands.
 
 ## Execution Graph
 

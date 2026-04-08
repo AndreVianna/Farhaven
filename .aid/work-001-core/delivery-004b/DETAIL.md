@@ -8,7 +8,7 @@
 
 ## Motivation
 
-The game pivots from top-down portrait (board game feel) to third-person orbital landscape (exploration feel). This must happen before delivery-005 (Building + Fauna) because:
+The game pivots from top-down portrait (board game feel) to third-person orbital landscape (exploration feel). This must happen before delivery-005b (Building + Fauna) because:
 - Structure placement feedback depends on camera perspective
 - Fauna needs to be visible at player level for threat impact
 - All future visual work builds on this foundation
@@ -330,7 +330,7 @@ task-038b (Visual polish + test —
 - Master shader evolution (rim light, emission) — incremental, post-004b
 - Bioluminescence effects — future delivery
 - Biome-specific tile meshes (vegetation, terrain detail) — future delivery
-- Fauna, building, journal features — delivery-005, -006
+- Fauna, building, journal features — delivery-005b, -006
 - Inventory stack limit redesign — deferred discussion
 
 ## Risk Register

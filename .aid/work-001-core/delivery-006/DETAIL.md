@@ -184,7 +184,7 @@ They CAN run in parallel if two agents are available.
 ## Integration Contract
 
 ### Scene Tree Additions
-Cumulative (adds to delivery-005):
+Cumulative (adds to delivery-005b):
 - Player
   - JournalSystem (Node) — NEW
 - CutsceneViewer (CanvasLayer, layer=40) — NEW, above everything
@@ -197,7 +197,7 @@ Cumulative (adds to delivery-005):
 
 ### Visual Smoke Test
 Run the game on desktop (F5). You MUST see:
-- [ ] Everything from delivery-005 still works
+- [ ] Everything from delivery-005b still works
 - [ ] Game start → crash landing cutscene plays (placeholder: colored panel + caption text)
 - [ ] Tap to advance cutscene panels → cutscene ends → game resumes
 - [ ] Tap Journal button → panel shows Story Timeline with crash_landing entry

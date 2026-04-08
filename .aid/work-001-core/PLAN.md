@@ -98,10 +98,29 @@ Death has consequences. Progress saves. The world feels alive.
 
 **AC coverage:** AC7 (day/night), AC8 (survival), AC10 (save)
 
-### delivery-005: Night Falls — Building + Threats
+### delivery-005a: Engine Refactor — Lighting, Yields, Refinement, Inventory Weight
+
+**Features:** TBD (likely 016 Lighting, 017 Yield System, 018 Refinement Chains, 019 Inventory Weight)
+**Depends on:** delivery-004 + delivery-004b + post-PR#10 cleanup
+**Cumulative state:** Engine ready for full survival gameplay loop — local lighting, multi-tool yields, world refinement chains, weighted inventory, robust consumables.
+
+Build order (tasks 039–045, parallel where possible):
+1. task-039 (Local Lighting System) — replaces fog-reveal with shader-based local brightness; restores meaning to torches/campfires
+2. task-040 (Slot-based inventory weight) — `slot_size: float` on PropDef, fractional inventory math
+3. task-041 (Yield tables with tool variation) — single yield → dictionary keyed by tool
+4. task-042 (Refinement chains in world) — Tree → Fallen Tree → Log → Firewood, in-place replacement
+5. task-043 (Movable flag + Cart system foundations) — large Sources transportable via Cart
+6. task-044 (Robust consumables) — buffs, delayed effects, HUD status icons, cooldowns
+7. task-045 (Documentation cascade) — data-model, architecture, module-map, glossary, feature-inventory
+
+This is a pure engine refactor. No new gameplay. Enables delivery-005b.
+
+**AC coverage:** none directly (infrastructure for AC6, AC9)
+
+### delivery-005b: Night Falls — Building + Threats
 
 **Features:** 009 (Building) + 010 (Night Threats)
-**Depends on:** delivery-004
+**Depends on:** delivery-004 + delivery-005a
 **Cumulative state:** Place structures, fauna at night, auto-defend + auto-pickup activate
 
 Build order:
@@ -112,9 +131,10 @@ When this lands:
 - F-004 auto-defend activates (FaunaManager now exists, returns real fauna data)
 - F-004 auto-pickup activates (ground items from meat drops + death drops now exist)
 - Building gives crafting its workbench (F-006 workbench proximity gate deferred; CraftButton is recipe-discovery-gated instead — shows permanently after first recipe discovered. MVP: pre-discovered at startup.)
-- Shelter protects player, walls redirect fauna, torches extend visibility
+- Shelter protects player, walls redirect fauna, torches extend visibility (via delivery-005a lighting system)
 - Meat drops give survival a new food source
 - **Sub-hex architecture:** Structures placed at specific sub-hex positions within a tile. Multiple structures per hex allowed if footprints don't overlap. Torch tracking uses props[] query instead of dedicated structure field.
+- **Fog removal impact:** several task-034/037 criteria reference fog-based mechanics that need redesign before implementation (see delivery-005b/DETAIL.md "Scope updates after fog removal").
 
 **AC coverage:** AC6 (building), AC9 (night threats)
 
@@ -142,7 +162,8 @@ delivery-001: Walk       → "Where am I? Let me explore this beautiful alien wo
 delivery-002: See        → "What are these ❓ things? Let me walk near them to scan and discover."
 delivery-003: Interact   → "Resources auto-gather! I can craft tools! The world responds to me."
 delivery-004: Survive    → "Time passes. I need to eat. I died... but I came back."
-delivery-005: Defend     → "Night is dangerous. I built shelter. I killed a creature and got meat!"
+delivery-005a: Refactor → (engine-only — no new gameplay; enables 005b)
+delivery-005b: Defend    → "Night is dangerous. I built shelter. I killed a creature and got meat!"
 delivery-006: Understand → "There were people here before. What happened? I need to find out..."
 ```
 
@@ -163,3 +184,4 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 | 2026-04-02 | Scan redesign: delivery-002 description updated (proximity scan, not press-hold). Delivery progression language updated. | /scan-redesign-apply |
 | 2026-04-03 | Review cascade: F006 pre_discovered/requires_workbench, F009 6 structures (campfire added, only Wall blocks), F012 CraftButton recipe-discovery-gated, signal names synced | /aid-specify review |
 | 2026-04-04 | Architecture: sub-hex grid + unified props[]. Impacts delivery-005 (building uses props + footprints), delivery-001 (HexTile data model). See docs/design/sub-hex-grid-impact.md | Architecture decision |
+| 2026-04-08 | Split delivery-005 into 005a (Engine Refactor — lighting, yields, refinement chains, inventory weight, consumables) and 005b (Night Falls — Building + Threats, formerly delivery-005). Fog of war removal in post-PR#10 cleanup flagged several 005b criteria for redesign. | post-PR#10 review |

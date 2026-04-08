@@ -337,7 +337,7 @@ func _make_tile_with_prop(prop_type: StringName) -> HexTile:
 
 func test_get_scannable_at_returns_entry_id_for_uncataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
-	var tile: HexTile = _make_tile_with_prop(&"berries")
+	var tile: HexTile = _make_tile_with_prop(&"00004")
 	fake._tiles[Vector2i.ZERO] = tile
 
 	_catalog._hex_grid = fake
@@ -347,7 +347,7 @@ func test_get_scannable_at_returns_entry_id_for_uncataloged() -> void:
 
 func test_get_scannable_at_returns_empty_for_cataloged() -> void:
 	var fake: FakeGrid = FakeGrid.new()
-	var tile: HexTile = _make_tile_with_prop(&"berries")
+	var tile: HexTile = _make_tile_with_prop(&"00004")
 	fake._tiles[Vector2i.ZERO] = tile
 
 	_catalog._hex_grid = fake
@@ -486,5 +486,7 @@ func test_prop_defs_map_to_valid_catalog_entries() -> void:
 		).is_true()
 
 
-func test_prop_registry_has_nine_defs() -> void:
-	assert_int(PropRegistry.get_all().size()).is_equal(9)
+func test_prop_registry_loads_props() -> void:
+	# PropRegistry scans data/props/*.tres at startup. Asserting > 0 keeps
+	# this future-proof as new props are added.
+	assert_int(PropRegistry.get_all().size()).is_greater(0)

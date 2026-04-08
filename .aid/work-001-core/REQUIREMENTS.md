@@ -488,7 +488,8 @@ Each delivery that adds systems MUST document how it extends this sequence:
 - **delivery-002:** ScannerSystem + Inventory initialize after Player (no dependencies on other new systems)
 - **delivery-003:** AutoInteractionSystem connects to tile_entered signal after Player ready
 - **delivery-004:** DayNightCycle autoload starts phase timer. SurvivalSystem connects to phase signals. SaveManager connects to day_started for auto-save. Visibility radius changes per phase (day=2, night=1). DayNightCycle takes ownership of refresh_visibility calls (replaces delivery-001 player-driven calls)
-- **delivery-005:** BuildingSystem + FaunaManager initialize as Player children. Torch placement registers visibility sources with DayNightCycle
+- **delivery-005a:** LightingManager initialized (autoload or World child). PropDef schema extended (slot_size, yields table, movable). ConsumableEffect resources registered. Inventory math becomes float-based. No new scene tree nodes for gameplay systems.
+- **delivery-005b:** BuildingSystem + FaunaManager initialize as Player children. Torch placement registers with LightingManager (from delivery-005a)
 - **delivery-006:** JournalSystem connects to entry_cataloged + day_started signals
 
 ### Dev Environment Requirements

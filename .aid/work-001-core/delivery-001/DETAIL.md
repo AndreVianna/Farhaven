@@ -280,7 +280,7 @@ Projection testing deferred to task-008. Implementation is complete without came
 - Add Player + Camera3D to World scene as siblings
 
 **[PIVOT] Removed:** PlayerPathfinder, A* graph, PATHFINDING state, tap-to-move transitions.
-A* pathfinding preserved for fauna (feature-010, delivery-005).
+A* pathfinding preserved for fauna (feature-010, delivery-005b).
 
 **Criteria:**
 - [ ] Player moves continuously with joystick (direction + magnitude)

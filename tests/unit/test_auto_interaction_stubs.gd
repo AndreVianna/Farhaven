@@ -198,7 +198,7 @@ func _make_tile(coords: Vector2i, props: Array = []) -> Resource:
 # ===================================================================
 
 func test_respawn_ticks() -> void:
-	var rn := _make_prop(&"wood", &"", 0, 5.0)
+	var rn := _make_prop(&"00010", &"", 0, 5.0)
 	rn.max_amount = 3
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -216,7 +216,7 @@ func test_respawn_ticks() -> void:
 
 
 func test_respawn_triggers_at_zero() -> void:
-	var rn := _make_prop(&"wood", &"", 0, 1.0)
+	var rn := _make_prop(&"00010", &"", 0, 1.0)
 	rn.max_amount = 3
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -234,11 +234,11 @@ func test_respawn_triggers_at_zero() -> void:
 	assert_int(rn.remaining).is_equal(3)
 	assert_int(_respawned_count).is_equal(1)
 	assert_object(_respawned_coords).is_equal(Vector2i.ZERO)
-	assert_str(_respawned_type).is_equal(&"wood")
+	assert_str(_respawned_type).is_equal(&"00010")
 
 
 func test_respawn_resets_to_max_amount() -> void:
-	var rn := _make_prop(&"wood", &"", 0, 1.0)
+	var rn := _make_prop(&"00010", &"", 0, 1.0)
 	rn.max_amount = 5
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -256,7 +256,7 @@ func test_respawn_resets_to_max_amount() -> void:
 
 func test_respawn_time_zero_never_enters_queue() -> void:
 	# Gather a prop with respawn_time=0, verify it doesn't enter respawn queue
-	var rn := _make_prop(&"wood", &"", 1, 0.0)  # respawn_time = 0
+	var rn := _make_prop(&"00010", &"", 1, 0.0)  # respawn_time = 0
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog._knowledge[&"wood_tree"] = _Catalog.KnowledgeState.CATALOGED
@@ -273,12 +273,12 @@ func test_respawn_time_zero_never_enters_queue() -> void:
 
 
 func test_respawn_queue_handles_multiple_entries() -> void:
-	var rn1 := _make_prop(&"wood", &"", 0, 3.0)
+	var rn1 := _make_prop(&"00010", &"", 0, 3.0)
 	rn1.max_amount = 2
 	var tile1 := _make_tile(Vector2i.ZERO, [rn1])
 	_grid._tiles[Vector2i.ZERO] = tile1
 
-	var rn2 := _make_prop(&"stone", &"", 0, 1.0)
+	var rn2 := _make_prop(&"00013", &"", 0, 1.0)
 	rn2.max_amount = 4
 	var tile2 := _make_tile(Vector2i(1, 0), [rn2])
 	_grid._tiles[Vector2i(1, 0)] = tile2
@@ -301,7 +301,7 @@ func test_respawn_queue_handles_multiple_entries() -> void:
 	assert_int(rn2.remaining).is_equal(4)
 	assert_int(rn1.remaining).is_equal(0)
 	assert_int(_respawned_count).is_equal(1)
-	assert_str(_respawned_type).is_equal(&"stone")
+	assert_str(_respawned_type).is_equal(&"00013")
 
 
 # ===================================================================
@@ -445,7 +445,7 @@ func test_defend_with_weapon_uses_weapon_damage() -> void:
 
 	_sys._fauna_manager = fm
 	_catalog._knowledge[&"wolf"] = _Catalog.KnowledgeState.CATALOGED
-	_inv.set_tool(&"weapon", &"survival_knife")
+	_inv.set_tool(&"weapon", &"00204")
 	_player.current_tile = Vector2i.ZERO
 
 	var tile := _make_tile(Vector2i.ZERO)
@@ -497,7 +497,7 @@ func test_no_crash_without_fauna_manager() -> void:
 func test_pickup_collects_ground_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"00010", "count": 3, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
@@ -509,9 +509,9 @@ func test_pickup_collects_ground_items_by_proximity() -> void:
 	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
-	assert_str(_pickup_name).is_equal(&"wood")
+	assert_str(_pickup_name).is_equal(&"00010")
 	assert_int(_pickup_amount).is_equal(3)
-	assert_int(_inv.get_count(&"wood")).is_equal(3)
+	assert_int(_inv.get_count(&"00010")).is_equal(3)
 
 	survival.queue_free()
 
@@ -519,8 +519,8 @@ func test_pickup_collects_ground_items_by_proximity() -> void:
 func test_pickup_multiple_items_by_proximity() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"wood", "count": 2, "sub_hex": Vector2i.ZERO},
-		{"item_type": &"stone", "count": 1, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"00010", "count": 2, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"00013", "count": 1, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
@@ -531,8 +531,8 @@ func test_pickup_multiple_items_by_proximity() -> void:
 	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(2)
-	assert_int(_inv.get_count(&"wood")).is_equal(2)
-	assert_int(_inv.get_count(&"stone")).is_equal(1)
+	assert_int(_inv.get_count(&"00010")).is_equal(2)
+	assert_int(_inv.get_count(&"00013")).is_equal(1)
 
 	survival.queue_free()
 
@@ -579,7 +579,7 @@ func test_pickup_skips_empty_name() -> void:
 func test_pickup_emits_ground_item_picked_up() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"berries", "count": 4, "sub_hex": Vector2i.ZERO},
+		{"item_type": &"00020", "count": 4, "sub_hex": Vector2i.ZERO},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)
@@ -590,7 +590,7 @@ func test_pickup_emits_ground_item_picked_up() -> void:
 	_sys._check_pickup_proximity()
 
 	assert_int(_pickup_count).is_equal(1)
-	assert_str(_pickup_name).is_equal(&"berries")
+	assert_str(_pickup_name).is_equal(&"00020")
 	assert_int(_pickup_amount).is_equal(4)
 
 	survival.queue_free()
@@ -599,7 +599,7 @@ func test_pickup_emits_ground_item_picked_up() -> void:
 func test_pickup_not_triggered_when_out_of_range() -> void:
 	var survival := FakeSurvivalSystem.new()
 	survival._ground_items[Vector2i.ZERO] = [
-		{"item_type": &"wood", "count": 3, "sub_hex": Vector2i(2, 0)},
+		{"item_type": &"00010", "count": 3, "sub_hex": Vector2i(2, 0)},
 	]
 	survival.name = "SurvivalSystem"
 	_player.add_child(survival)

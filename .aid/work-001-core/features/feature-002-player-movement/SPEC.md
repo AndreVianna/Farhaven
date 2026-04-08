@@ -357,7 +357,7 @@ ui/
 ```
 
 **[PIVOT] Removed:** `player_pathfinder.gd` — player no longer uses A* pathfinding.
-Feature-010 (fauna) will implement its own pathfinder in delivery-005.
+Feature-010 (fauna) will implement its own pathfinder in delivery-005b.
 
 #### Component Responsibilities
 
