@@ -505,6 +505,9 @@ function initializeAfterLoad() {
     console.log('Hex inspector map stats updated.');
   }
 
+  // Start with Select tool active
+  selectTool('select');
+
   console.groupEnd();
 }
 
@@ -652,8 +655,8 @@ function _initToolButtons() {
       btn.textContent = `${def.label} (${def.shortcut})`;
       btn.title = `${def.label} — shortcut: ${def.shortcut}`;
       btn.addEventListener('click', () => {
-        if (toolManager.activeToolType === def.type) {
-          selectTool(null);
+        if (toolManager.activeToolType === def.type && def.type !== 'select') {
+          selectTool('select');
         } else {
           selectTool(def.type);
         }
