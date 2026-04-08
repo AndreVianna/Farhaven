@@ -78,8 +78,8 @@ export function createTileData(biome = '') {
  * @param {Object} [options={}] - Optional fields:
  *   @param {number} [options.rotation] - Rotation 0-359°
  *   @param {number|string} [options.origin] - Origin index or name. Default derived from category.
- *   @param {number} [options.remaining] - Current resource amount
- *   @param {number} [options.max_amount] - Maximum resource amount
+ *   @param {number} [options.remaining] - Current prop amount
+ *   @param {number} [options.max_amount] - Maximum prop amount
  *   @param {string} [options.tool_required] - Tool needed to harvest
  *   @param {number} [options.respawn_time] - Respawn time in seconds
  *   @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets (structures)
@@ -211,7 +211,7 @@ export class HexGrid {
 function _parseLegacyTile(tileJson) {
   const props = [];
 
-  // Legacy resources
+  // Legacy props
   if (Array.isArray(tileJson.resources)) {
     for (const res of tileJson.resources) {
       // B5/Q5: Handle plain-string resource format

@@ -143,7 +143,7 @@ function _num(val) {
 }
 
 /**
- * Convert a dict Map<string, TresValue> to a resource table row.
+ * Convert a dict Map<string, TresValue> to a prop table row.
  * @param {Map<string, *>} map - Map of key -> TresValue
  * @returns {{ type: string, chance: number, min_amount: number, max_amount: number }}
  */
@@ -740,12 +740,12 @@ export function renderBiomeEditor(container, options) {
     const tableWrapper = document.createElement('div');
     tableWrapper.dataset.resourceTableContainer = 'true';
 
-    // Get known resource types from ProjectContext
-    const knownResources = [];
-    for (const [filename] of ProjectContext.files.resources) {
-      knownResources.push(filename.replace('.tres', ''));
+    // Get known prop types from ProjectContext
+    const knownProps = [];
+    for (const [filename] of ProjectContext.files.props) {
+      knownProps.push(filename.replace('.tres', ''));
     }
-    knownResources.sort();
+    knownProps.sort();
 
     // Column headers
     const labelsRow = document.createElement('div');
@@ -754,13 +754,13 @@ export function renderBiomeEditor(container, options) {
     tableWrapper.appendChild(labelsRow);
 
     /**
-     * Add a resource table row.
+     * Add a prop table row.
      * @param {{ type: string, chance: number, min_amount: number, max_amount: number }} entry
      */
-    function addResourceRow(entry) {
+    function addPropRow(entry) {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
-      row.dataset.resourceRow = 'true';
+      row.dataset.propRow = 'true';
 
       // Type select
       const typeSelect = document.createElement('select');
@@ -768,9 +768,9 @@ export function renderBiomeEditor(container, options) {
       typeSelect.className = 'prop-input';
       typeSelect.style.cssText = 'flex:2;min-width:80px;';
 
-      const isUnknown = entry.type && !knownResources.includes(entry.type);
+      const isUnknown = entry.type && !knownProps.includes(entry.type);
 
-      for (const resName of knownResources) {
+      for (const resName of knownProps) {
         const opt = document.createElement('option');
         opt.value = resName;
         opt.textContent = resName;
@@ -787,14 +787,14 @@ export function renderBiomeEditor(container, options) {
         typeSelect.appendChild(opt);
         typeSelect.style.color = '#ff6666';
         typeSelect.addEventListener('change', () => {
-          typeSelect.style.color = knownResources.includes(typeSelect.value) ? '' : '#ff6666';
+          typeSelect.style.color = knownProps.includes(typeSelect.value) ? '' : '#ff6666';
         });
       }
 
-      if (knownResources.length === 0 && !entry.type) {
+      if (knownProps.length === 0 && !entry.type) {
         const opt = document.createElement('option');
         opt.value = '';
-        opt.textContent = '(no resources)';
+        opt.textContent = '(no props)';
         opt.disabled = true;
         opt.selected = true;
         typeSelect.appendChild(opt);
@@ -854,7 +854,7 @@ export function renderBiomeEditor(container, options) {
 
     // Populate existing entries
     for (const entry of model.resource_table) {
-      addResourceRow(entry);
+      addPropRow(entry);
     }
 
     const addRowBtn = document.createElement('button');
@@ -862,7 +862,7 @@ export function renderBiomeEditor(container, options) {
     addRowBtn.type = 'button';
     addRowBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
     addRowBtn.addEventListener('click', () => {
-      addResourceRow({ type: knownResources[0] || '', chance: 0.5, min_amount: 1, max_amount: 1 });
+      addPropRow({ type: knownProps[0] || '', chance: 0.5, min_amount: 1, max_amount: 1 });
     });
 
     const container2 = document.createElement('div');
@@ -1057,8 +1057,8 @@ function _collectBiomeFormData(formElement) {
 
   // Resource table
   model.resource_table = [];
-  const resourceRows = formElement.querySelectorAll('[data-resource-row]');
-  for (const row of resourceRows) {
+  const propRows = formElement.querySelectorAll('[data-prop-row]');
+  for (const row of propRows) {
     const typeSelect = /** @type {HTMLSelectElement|null} */ (row.querySelector('[data-rt-type]'));
     const chanceInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-chance]'));
     const minInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-min]'));

@@ -52,13 +52,13 @@ export const ElevationMode = {
 };
 
 /**
- * Look up footprint offsets for a resource type from ProjectContext.
+ * Look up footprint offsets for a prop type from ProjectContext.
  * Returns an array of {q, r} offsets, or null if no footprint is defined.
- * @param {string} type - Resource type name (e.g. 'workbench')
+ * @param {string} type - Prop type name (e.g. 'workbench')
  * @returns {Array<{q: number, r: number}>|null}
  */
 export function getFootprintForType(type) {
-  const entry = ProjectContext.files.resources.get(type + '.tres');
+  const entry = ProjectContext.files.props.get(type + '.tres');
   if (!entry || !entry.data) return null;
   const fp = entry.data.footprint;
   if (!fp || !Array.isArray(fp) || fp.length === 0) return null;

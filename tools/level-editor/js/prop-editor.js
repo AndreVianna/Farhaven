@@ -582,11 +582,11 @@ export function renderPropEditor(container, options) {
     const originVal = originFilter.value;
     const catVal = catFilter.value;
 
-    // Build list from all prop definitions in ProjectContext (stored in files.resources map)
+    // Build list from all prop definitions in ProjectContext (stored in files.props map)
     /** @type {Array<{id: string, displayName: string, isPropDef: boolean, propCat: string, propOrigin: string}>} */
     const allProps = [];
 
-    for (const [filename, entry] of ProjectContext.files.resources) {
+    for (const [filename, entry] of ProjectContext.files.props) {
       const model = PropDefModel.fromEntry(filename, entry);
       allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
     }
@@ -617,7 +617,7 @@ export function renderPropEditor(container, options) {
         isNewMode = false;
         selectedId = prop.id;
         // Re-read from ProjectContext so we get the latest data
-        const entry = ProjectContext.files.resources.get(prop.id + '.tres');
+        const entry = ProjectContext.files.props.get(prop.id + '.tres');
         if (entry) {
           editingModel = PropDefModel.fromEntry(prop.id + '.tres', entry);
         } else {
@@ -778,7 +778,7 @@ export function renderPropEditor(container, options) {
         // Switch to editing the newly created prop
         isNewMode = false;
         selectedId = collected.id;
-        const entry = ProjectContext.files.resources.get(collected.id + '.tres');
+        const entry = ProjectContext.files.props.get(collected.id + '.tres');
         if (entry) {
           editingModel = PropDefModel.fromEntry(collected.id + '.tres', entry);
         }
@@ -790,7 +790,7 @@ export function renderPropEditor(container, options) {
           cmd.execute();
         }
         // Refresh the editing model from ProjectContext
-        const entry = ProjectContext.files.resources.get(model._filename);
+        const entry = ProjectContext.files.props.get(model._filename);
         if (entry) {
           editingModel = PropDefModel.fromEntry(model._filename, entry);
         }
@@ -1254,7 +1254,7 @@ export function validatePropForm(model, isNew) {
     errors.push('ID is required');
   } else if (!/^[a-zA-Z0-9_]+$/.test(model.id)) {
     errors.push('ID must contain only alphanumeric characters and underscores');
-  } else if (isNew && ProjectContext.files.resources.has(model.id + '.tres')) {
+  } else if (isNew && ProjectContext.files.props.has(model.id + '.tres')) {
     errors.push(`Prop "${model.id}" already exists`);
   }
 
@@ -1463,7 +1463,7 @@ export class CreatePropDefCommand {
     }
 
     // Add to ProjectContext
-    ProjectContext.files.resources.set(this._filename, {
+    ProjectContext.files.props.set(this._filename, {
       handle: null,
       dir: 'data/props',
       data,
@@ -1477,7 +1477,7 @@ export class CreatePropDefCommand {
   }
 
   undo() {
-    ProjectContext.files.resources.delete(this._filename);
+    ProjectContext.files.props.delete(this._filename);
   }
 }
 
@@ -1509,7 +1509,7 @@ export class EditPropDefCommand {
       data[key] = tv.value;
     }
 
-    const entry = ProjectContext.files.resources.get(this._filename);
+    const entry = ProjectContext.files.props.get(this._filename);
     if (entry) {
       entry.data = data;
       entry.raw = raw;
@@ -1524,7 +1524,7 @@ export class EditPropDefCommand {
     const raw = propModelToRaw(this._oldModel);
     // Restore the original raw if available
     if (this._oldRaw) {
-      const entry = ProjectContext.files.resources.get(this._filename);
+      const entry = ProjectContext.files.props.get(this._filename);
       if (entry) {
         entry.raw = this._oldRaw;
         const data = {};
@@ -1548,7 +1548,7 @@ export class EditPropDefCommand {
         data[key] = tv.value;
       }
 
-      const entry = ProjectContext.files.resources.get(this._filename);
+      const entry = ProjectContext.files.props.get(this._filename);
       if (entry) {
         entry.data = data;
         entry.raw = oldRaw;
@@ -1580,13 +1580,13 @@ export class DeletePropDefCommand {
 
   execute() {
     // Save entry for undo
-    this._savedEntry = ProjectContext.files.resources.get(this._filename) || null;
-    ProjectContext.files.resources.delete(this._filename);
+    this._savedEntry = ProjectContext.files.props.get(this._filename) || null;
+    ProjectContext.files.props.delete(this._filename);
   }
 
   undo() {
     if (this._savedEntry) {
-      ProjectContext.files.resources.set(this._filename, this._savedEntry);
+      ProjectContext.files.props.set(this._filename, this._savedEntry);
 
       // Re-write the file
       const content = TresParser.serialize(this._savedEntry.raw);

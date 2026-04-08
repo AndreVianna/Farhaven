@@ -31,11 +31,11 @@ const SUB_HEX_HOVER_STROKE = 'rgba(255,255,255,0.5)';
 //   - Elevation label: bold, min 8px, base 12px
 //   - Coordinate label: regular, min 7px, base 10px
 //   - Spawn "S" label: bold, min 6px, base 10px
-//   - Prop badges: bold, min 5px, base 8px (resource count), min 4px base 6px (anomaly "!")
+//   - Prop badges: bold, min 5px, base 8px (prop count), min 4px base 6px (anomaly "!")
 // Position offsets (fractions of HEX_SIZE * zoom):
 //   - Spawn marker: 0.3 above center
 //   - Prop indicators: 0.35 below center
-//   - Resource badge: 0.3 right of center
+//   - Prop badge: 0.3 right of center
 //   - Structure text: 0.25 left of center
 //   - Coordinate label: 2px above center
 // Cliff edge line width: 3 * zoom
@@ -482,7 +482,7 @@ export class HexCanvas {
     if (!tile.props) return;
 
     for (const prop of tile.props) {
-      // Use per-resource color from propColorMap when available, else fall back to category color
+      // Use per-prop color from propColorMap when available, else fall back to category color
       let color;
       const catInt = CATEGORY_TO_INT[prop.category];
       if (catInt != null && NATURAL_CATEGORIES.has(catInt) && this.propColorMap.has(prop.type)) {
@@ -490,7 +490,7 @@ export class HexCanvas {
       } else {
         color = CATEGORY_COLORS[prop.category]
           ? CATEGORY_COLORS[prop.category].fill
-          : CATEGORY_COLORS.resource.fill;
+          : CATEGORY_COLORS.plant.fill;
       }
 
       // For structures with footprint, draw all footprint hexes

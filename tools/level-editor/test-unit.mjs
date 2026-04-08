@@ -467,7 +467,7 @@ test('HexGrid — clear removes all tiles', () => {
   assert(grid.tiles.size === 0, 'tiles should be empty after clear');
 });
 
-test('loadMapIntoGrid — loads legacy map JSON correctly (x,y resources, string structure)', () => {
+test('loadMapIntoGrid — loads legacy map JSON correctly (x,y props, string structure)', () => {
   const grid = new HexGridClass();
   const mapData = {
     chapter_id: 'ch1',
@@ -1130,7 +1130,7 @@ test('serializeGridToMapJson — omits rotation when zero', () => {
   assert(!('rotation' in prop), 'rotation should be omitted when zero');
 });
 
-test('serializeGridToMapJson — resource optional fields round-trip', () => {
+test('serializeGridToMapJson — prop optional fields round-trip', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.props = [createProp('iron', 0, 0, 'mineral', {

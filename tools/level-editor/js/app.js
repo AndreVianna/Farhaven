@@ -267,8 +267,8 @@ function newMap() {
 function saveMapAs() {
   // Validate first so we don't create a broken file
   const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
-  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
-  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  const knownProps = new Set([...ProjectContext.files.props.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownProps);
   if (!validation.valid) {
     showErrorListModal('Map validation failed — Save As blocked', validation.errors);
     setStatus(`Save As blocked: ${validation.errors.length} validation error(s)`);
@@ -318,8 +318,8 @@ function saveMapAs() {
 async function saveAll() {
   // Validate map before saving
   const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
-  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
-  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  const knownProps = new Set([...ProjectContext.files.props.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownProps);
   if (!validation.valid) {
     showErrorListModal('Map validation failed — save blocked', validation.errors);
     setStatus(`Save blocked: ${validation.errors.length} validation error(s)`);
@@ -360,7 +360,7 @@ async function saveTab(tab) {
       await FileDiscovery.saveFile(entry.dir || 'data/maps', json, activeMapFilename);
     }
   } else if (tab === 'props') {
-    for (const [filename, entry] of ProjectContext.files.resources) {
+    for (const [filename, entry] of ProjectContext.files.props) {
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/props', text, filename);
     }
@@ -413,9 +413,9 @@ async function autoLoadProject() {
   initializeAfterLoad();
 
   const mapCount = ProjectContext.files.maps.size;
-  const resCount = ProjectContext.files.resources.size;
+  const propCount = ProjectContext.files.props.size;
   const biomeCount = ProjectContext.files.biomes.size;
-  setStatus(`Project loaded: ${mapCount} map(s), ${resCount} resource(s), ${biomeCount} biome(s)`);
+  setStatus(`Project loaded: ${mapCount} map(s), ${propCount} prop(s), ${biomeCount} biome(s)`);
   console.log('autoLoadProject: Workspace ready.');
 }
 
@@ -446,20 +446,20 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
-  // Build prop color map from loaded .tres data (stored in files.resources)
+  // Build prop color map from loaded .tres data (stored in files.props)
   propColorMap.clear();
-  for (const [filename, entry] of ProjectContext.files.resources) {
+  for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
-      const resourceName = filename.replace('.tres', '');
+      const propName = filename.replace('.tres', '');
       const c = colorField.value;
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      propColorMap.set(resourceName, `rgb(${r},${g},${b})`);
-      console.log(`  Prop color: "${resourceName}" -> rgb(${r},${g},${b})`);
+      propColorMap.set(propName, `rgb(${r},${g},${b})`);
+      console.log(`  Prop color: "${propName}" -> rgb(${r},${g},${b})`);
     } else {
-      console.warn(`  Resource "${filename}" has no valid placeholder_color field.`);
+      console.warn(`  Prop "${filename}" has no valid placeholder_color field.`);
     }
   }
   console.log(`Prop color map built — ${propColorMap.size} entries.`);
@@ -608,7 +608,7 @@ function initSidebar() {
 
 /**
  * Rebuild biomeColorMap and propColorMap from current ProjectContext.
- * Called after resource/biome edits so the canvas and palettes update.
+ * Called after prop/biome edits so the canvas and palettes update.
  * @returns {void}
  */
 function _rebuildColorMaps() {
@@ -625,21 +625,21 @@ function _rebuildColorMaps() {
     }
   }
   propColorMap.clear();
-  for (const [filename, entry] of ProjectContext.files.resources) {
+  for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
-      const resourceName = filename.replace('.tres', '');
+      const propName = filename.replace('.tres', '');
       const c = colorField.value;
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      propColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      propColorMap.set(propName, `rgb(${r},${g},${b})`);
     }
   }
 }
 
 /**
- * Rebuild the sidebar palettes and color maps. Called by the resource/biome
+ * Rebuild the sidebar palettes and color maps. Called by the prop/biome
  * editors after create/edit/delete operations so the map tab reflects changes.
  * @returns {void}
  */
@@ -868,9 +868,9 @@ function _initPropPalette() {
     const allowedCats = _categoriesForOrigin(origin);
     const showCats = category === 'all' ? allowedCats : [category];
 
-    // All props come from ProjectContext.files.resources
-    for (const [filename, entry] of ProjectContext.files.resources) {
-      const resourceName = filename.replace('.tres', '');
+    // All props come from ProjectContext.files.props
+    for (const [filename, entry] of ProjectContext.files.props) {
+      const propName = filename.replace('.tres', '');
       const resCat = _str(entry.data.category) || 'plant';
       if (!showCats.includes(resCat)) continue;
 
@@ -879,8 +879,8 @@ function _initPropPalette() {
       const defaultOrig = NATURAL_CATEGORIES.has(catInt) ? 'natural' : 'crafted';
       const resOrigin = origin !== 'all' ? origin : defaultOrig;
 
-      const displayName = _str(entry.data.display_name) || resourceName;
-      _addTypeItem(resourceName, displayName, resCat, resOrigin);
+      const displayName = _str(entry.data.display_name) || propName;
+      _addTypeItem(propName, displayName, resCat, resOrigin);
     }
 
     if (listContainer.children.length === 0) {

@@ -16,10 +16,10 @@ import { HexGrid, CATEGORIES, ORIGINS, CATEGORY_TO_INT } from './hex-grid.js';
  * Validate a HexGrid map before export/save.
  * @param {import('./hex-grid.js').HexGrid} hexGrid
  * @param {Set<string>} knownBiomes - Set of known biome names (without .tres extension)
- * @param {Set<string>} knownResources - Set of known resource names (without .tres extension)
+ * @param {Set<string>} knownProps - Set of known prop names (without .tres extension)
  * @returns {{ valid: boolean, errors: ValidationError[] }}
  */
-export function validateMap(hexGrid, knownBiomes, knownResources) {
+export function validateMap(hexGrid, knownBiomes, knownProps) {
   /** @type {ValidationError[]} */
   const errors = [];
 
