@@ -6,6 +6,7 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
+import { STRUCTURE_FOOTPRINTS } from './tools.js';
 
 /**
  * Maps a parsed .tres ResourceDef to an editable JS model.
@@ -348,6 +349,54 @@ export function renderResourceEditor(container, options) {
   const listHeader = document.createElement('div');
   listHeader.classList.add('editor-list-header');
 
+  // Origin filter
+  const originLabel = document.createElement('label');
+  originLabel.textContent = 'Origin:';
+  originLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);';
+  const originFilter = document.createElement('select');
+  originFilter.classList.add('editor-filter');
+  originFilter.style.marginBottom = '4px';
+  const originAll = document.createElement('option');
+  originAll.value = 'all'; originAll.textContent = 'All'; originAll.selected = true;
+  originFilter.appendChild(originAll);
+  for (const o of ORIGINS) {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    originFilter.appendChild(opt);
+  }
+
+  // Category filter
+  const catLabel = document.createElement('label');
+  catLabel.textContent = 'Category:';
+  catLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);';
+  const catFilter = document.createElement('select');
+  catFilter.classList.add('editor-filter');
+  catFilter.style.marginBottom = '4px';
+
+  const naturalCatNames = CATEGORIES.filter((_, i) => NATURAL_CATEGORIES.has(i));
+  const nonNaturalCatNames = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.has(i));
+
+  /** Rebuild category options based on selected origin. */
+  function _refreshCatOptions() {
+    const origin = originFilter.value;
+    const allowed = origin === 'all' ? CATEGORIES
+      : origin === 'natural' ? naturalCatNames : nonNaturalCatNames;
+    const prev = catFilter.value;
+    catFilter.innerHTML = '';
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all'; allOpt.textContent = 'All';
+    catFilter.appendChild(allOpt);
+    for (const c of allowed) {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      catFilter.appendChild(opt);
+    }
+    if (allowed.includes(prev)) catFilter.value = prev;
+    else catFilter.value = 'all';
+  }
+  _refreshCatOptions();
+
+  // Text filter
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
   filterInput.placeholder = 'Filter...';
@@ -357,6 +406,10 @@ export function renderResourceEditor(container, options) {
   newBtn.textContent = '+ New';
   newBtn.classList.add('editor-new-btn');
 
+  listHeader.appendChild(originLabel);
+  listHeader.appendChild(originFilter);
+  listHeader.appendChild(catLabel);
+  listHeader.appendChild(catFilter);
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
   listPanel.appendChild(listHeader);
@@ -388,34 +441,41 @@ export function renderResourceEditor(container, options) {
    */
   function refreshList() {
     listItems.innerHTML = '';
-    const filter = filterInput.value.toLowerCase().trim();
+    const textFilter = filterInput.value.toLowerCase().trim();
+    const originVal = originFilter.value;
+    const catVal = catFilter.value;
 
-    /** @type {ResourceDefModel[]} */
-    const resources = [];
+    // Build combined list: resources (.tres) + structures (STRUCTURE_FOOTPRINTS)
+    /** @type {Array<{id: string, isResource: boolean, propCat: string, propOrigin: string}>} */
+    const allProps = [];
+
     for (const [filename, entry] of ProjectContext.files.resources) {
-      resources.push(ResourceDefModel.fromEntry(filename, entry));
+      const model = ResourceDefModel.fromEntry(filename, entry);
+      allProps.push({ id: model.id, isResource: true, propCat: model.prop_category, propOrigin: model.prop_origin });
     }
-    resources.sort((a, b) => a.id.localeCompare(b.id));
+    for (const structName of Object.keys(STRUCTURE_FOOTPRINTS)) {
+      allProps.push({ id: structName, isResource: false, propCat: 'structure', propOrigin: 'crafted' });
+    }
+    allProps.sort((a, b) => a.id.localeCompare(b.id));
 
-    for (const model of resources) {
-      if (filter && !model.id.toLowerCase().includes(filter) && !model.display_name.toLowerCase().includes(filter)) {
-        continue;
-      }
+    for (const prop of allProps) {
+      // Origin filter
+      if (originVal !== 'all' && prop.propOrigin !== originVal) continue;
+      // Category filter
+      if (catVal !== 'all' && prop.propCat !== catVal) continue;
+      // Text filter
+      if (textFilter && !prop.id.toLowerCase().includes(textFilter)) continue;
+
       const item = document.createElement('div');
       item.classList.add('editor-list-item');
-      if (model.id === selectedId && !isNewMode) {
+      if (prop.id === selectedId && !isNewMode) {
         item.classList.add('active');
       }
-      item.dataset.id = model.id;
-
-      const swatch = document.createElement('div');
-      swatch.classList.add('swatch');
-      swatch.style.background = model.colorHex;
+      item.dataset.id = prop.id;
+      item.dataset.isResource = String(prop.isResource);
 
       const span = document.createElement('span');
-      span.textContent = model.id;
-
-      item.appendChild(swatch);
+      span.textContent = prop.id;
       item.appendChild(span);
 
       item.addEventListener('click', () => {
@@ -695,6 +755,8 @@ export function renderResourceEditor(container, options) {
 
   // --- Wire up events ---
   filterInput.addEventListener('input', () => refreshList());
+  originFilter.addEventListener('change', () => { _refreshCatOptions(); refreshList(); });
+  catFilter.addEventListener('change', () => refreshList());
 
   newBtn.addEventListener('click', () => {
     isNewMode = true;
