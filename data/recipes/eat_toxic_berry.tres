@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="Recipe" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="3_effect"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="4_predicate"]
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2_input")
+ref_or_tag = &"00021"
+count = 1
+
+[sub_resource type="Resource" id="effect_1"]
+script = ExtResource("3_effect")
+kind = &"stat_delta"
+params = { "stat": "hunger", "value": 10 }
+
+[sub_resource type="Resource" id="effect_2"]
+script = ExtResource("3_effect")
+kind = &"stat_delta"
+params = { "stat": "health", "value": -25 }
+
+[sub_resource type="Resource" id="unlock_pred_1"]
+script = ExtResource("4_predicate")
+kind = &"cataloged"
+params = { "prop": "00021" }
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"eat_toxic_berry"
+kind = 1
+inputs = [SubResource("input_1")]
+effects = [SubResource("effect_1"), SubResource("effect_2")]
+actions = [&"eat"]
+unlock_when = [SubResource("unlock_pred_1")]

@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="Recipe" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_output.gd" id="3_output"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="4_effect"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_condition.gd" id="5_condition"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="6_predicate"]
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2_input")
+ref_or_tag = &"BURNABLE.log"
+count = 1
+source = &"container"
+is_tag = true
+
+[sub_resource type="Resource" id="output_1"]
+script = ExtResource("3_output")
+prop_ref = &"ash"
+count = 1
+
+[sub_resource type="Resource" id="effect_1"]
+script = ExtResource("4_effect")
+kind = &"emit_light"
+params = { "radius": 5, "duration": 60 }
+
+[sub_resource type="Resource" id="effect_2"]
+script = ExtResource("4_effect")
+kind = &"spawn_heat"
+params = { "radius": 2, "duration": 60 }
+
+[sub_resource type="Resource" id="cond_pred_1"]
+script = ExtResource("6_predicate")
+kind = &"at_station"
+params = { "tag": "fire" }
+
+[sub_resource type="Resource" id="condition_1"]
+script = ExtResource("5_condition")
+predicate = SubResource("cond_pred_1")
+must_sustain = true
+
+[sub_resource type="Resource" id="cond_pred_2"]
+script = ExtResource("6_predicate")
+kind = &"prop_state"
+params = { "prop": "00101", "field": "is_lit", "op": "eq", "value": true }
+
+[sub_resource type="Resource" id="condition_2"]
+script = ExtResource("5_condition")
+predicate = SubResource("cond_pred_2")
+must_sustain = true
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"burn_log_in_fireplace"
+kind = 2
+inputs = [SubResource("input_1")]
+outputs = [SubResource("output_1")]
+effects = [SubResource("effect_1"), SubResource("effect_2")]
+conditions = [SubResource("condition_1"), SubResource("condition_2")]
+time = 60.0
