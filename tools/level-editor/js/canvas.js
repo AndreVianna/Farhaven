@@ -604,7 +604,7 @@ export class HexCanvas {
       ? this._previewRotation
       : (typeof prop.rotation === 'number' ? prop.rotation : 0);
     const angleRad = (rotation - 90) * Math.PI / 180;
-    const lineLen = subSize * 0.6;
+    const lineLen = subSize * 1.2;
     const handleX = anchorScreen.x + Math.cos(angleRad) * lineLen;
     const handleY = anchorScreen.y + Math.sin(angleRad) * lineLen;
 
@@ -669,7 +669,7 @@ export class HexCanvas {
     const rotation = this._dragMode === 'rotating' && this._previewRotation != null
       ? this._previewRotation : facing;
     const angleRad = (rotation - 90) * Math.PI / 180;
-    const lineLen = size * 1.2;
+    const lineLen = size * 2.4;
     const handleX = screenPos.x + Math.cos(angleRad) * lineLen;
     const handleY = screenPos.y + Math.sin(angleRad) * lineLen;
 
