@@ -257,18 +257,18 @@ func test_torch_visibility_radius_is_2() -> void:
 
 func test_torch_registered_via_structure_placed() -> void:
 	HexGrid.structure_placed.emit(Vector2i(3, 4), &"torch")
-	assert_bool(_dnc._torch_tiles.has(Vector2i(3, 4))).is_true()
+	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_true()
 
 
 func test_torch_removed_via_structure_destroyed() -> void:
 	HexGrid.structure_placed.emit(Vector2i(3, 4), &"torch")
 	HexGrid.structure_destroyed.emit(Vector2i(3, 4), &"torch")
-	assert_bool(_dnc._torch_tiles.has(Vector2i(3, 4))).is_false()
+	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_false()
 
 
 func test_non_torch_structure_not_tracked() -> void:
 	HexGrid.structure_placed.emit(Vector2i(5, 5), &"wall")
-	assert_int(_dnc._torch_tiles.size()).is_equal(0)
+	assert_int(_dnc._light_sources.size()).is_equal(0)
 
 
 func test_torch_extends_visibility_during_night() -> void:
@@ -523,4 +523,4 @@ func test_clean_state_no_save_file() -> void:
 
 
 func test_clean_state_no_torches() -> void:
-	assert_int(_dnc._torch_tiles.size()).is_equal(0)
+	assert_int(_dnc._light_sources.size()).is_equal(0)

@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"wood"
-display_name = "Wood"
+id = &"00001"
+display_name = "Small Tree"
 gather_time = 1.0
 gather_amount = 1
 tool_required = &""
@@ -14,7 +14,7 @@ yield_type = &""
 tool_speed = { &"stone_axe": 0.5 }
 max_stack = 99
 category = &"resource"
-catalog_entry = &"wood_tree"
+catalog_entry = &"00001"
 catalog_category = &"flora"
 prop_category = 0
 origin = 0

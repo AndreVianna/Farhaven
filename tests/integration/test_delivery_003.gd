@@ -529,8 +529,8 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	).is_true()
 
 	# Proximity to workbench
-	_crafting._check_workbench_proximity()
-	assert_bool(_crafting.is_near_workbench()).is_true()
+	_crafting._check_station_proximity()
+	assert_bool(_crafting.is_near_station()).is_true()
 
 	# Craft stone_pickaxe
 	var craft_ok: bool = _crafting.craft(&"stone_pickaxe")
@@ -598,8 +598,8 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
 
-	_crafting._check_workbench_proximity()
-	assert_bool(_crafting.is_near_workbench()).is_true()
+	_crafting._check_station_proximity()
+	assert_bool(_crafting.is_near_station()).is_true()
 
 	# Recipes are pre-discovered
 	assert_bool(_crafting.is_recipe_discovered(&"stone_axe")).is_true()
@@ -807,8 +807,8 @@ func test_craft_succeeds_without_workbench() -> void:
 	_inventory.add_item(&"wood", 3)
 
 	# Not near workbench — but requires_workbench is false for current recipes
-	_crafting._check_workbench_proximity()
-	assert_bool(_crafting.is_near_workbench()).is_false()
+	_crafting._check_station_proximity()
+	assert_bool(_crafting.is_near_station()).is_false()
 
 	var completed: Array = []
 	_crafting.craft_completed.connect(func(n: StringName) -> void:
@@ -838,7 +838,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
 
-	_crafting._check_workbench_proximity()
+	_crafting._check_station_proximity()
 
 	# Give tool directly
 	_inventory.set_tool(&"axe", &"stone_axe")
@@ -876,7 +876,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
 
-	_crafting._check_workbench_proximity()
+	_crafting._check_station_proximity()
 
 	# Discover recipe but insufficient materials
 	_inventory.add_item(&"stone", 1)
@@ -996,12 +996,12 @@ func test_workbench_proximity_signal_on_change() -> void:
 	_place_player_at_tile(Vector2i.ZERO)
 
 	var prox_signals: Array = []
-	_crafting.workbench_proximity_changed.connect(func(near: bool) -> void:
+	_crafting.station_proximity_changed.connect(func(near: bool) -> void:
 		prox_signals.append(near)
 	)
 
 	# No workbench → false (initial state already false, no signal yet)
-	_crafting._check_workbench_proximity()
+	_crafting._check_station_proximity()
 	assert_int(prox_signals.size()).is_equal(0)  # no change
 
 	# Add workbench neighbor
@@ -1009,13 +1009,13 @@ func test_workbench_proximity_signal_on_change() -> void:
 	wb_tile.props = [_Prop.create_structure(&"workbench")]
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 
-	_crafting._check_workbench_proximity()
+	_crafting._check_station_proximity()
 	assert_int(prox_signals.size()).is_equal(1)
 	assert_bool(prox_signals[0]).is_true()
 
 	# Remove workbench (change structure)
 	wb_tile.props = []
-	_crafting._check_workbench_proximity()
+	_crafting._check_station_proximity()
 	assert_int(prox_signals.size()).is_equal(2)
 	assert_bool(prox_signals[1]).is_false()
 
@@ -1130,8 +1130,8 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	if stone_count < 2:
 		_inventory.add_item(&"stone", 2 - stone_count)
 
-	_crafting._check_workbench_proximity()
-	assert_bool(_crafting.is_near_workbench()).is_true()
+	_crafting._check_station_proximity()
+	assert_bool(_crafting.is_near_station()).is_true()
 
 	var craft_ok: bool = _crafting.craft(&"stone_pickaxe")
 	assert_bool(craft_ok).override_failure_message(

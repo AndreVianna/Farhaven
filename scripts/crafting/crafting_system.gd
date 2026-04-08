@@ -10,29 +10,29 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 signal recipe_discovered(recipe_name: StringName)
 signal craft_completed(recipe_name: StringName)
 signal craft_failed(recipe_name: StringName, reason: StringName)
-signal workbench_proximity_changed(near: bool)
+signal station_proximity_changed(near: bool)
 
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"wood": 2, &"stone": 1 },
+		"ingredients": { &"00005": 2, &"00001": 1 },
 		"output_type": &"tool",
 		"tool_slot": &"axe",
-		"discovery_material": &"stone",
-		"requires_workbench": false,
+		"discovery_material": &"00005",
+		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"wood": 3, &"stone": 2 },
+		"ingredients": { &"00001": 3, &"00005": 2 },
 		"output_type": &"tool",
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"stone",
-		"requires_workbench": false,
+		"discovery_material": &"00005",
+		"requires_station": &"",
 		"pre_discovered": true,
 	},
 }
 
 var _discovered_recipes: Array[StringName] = []
-var _near_workbench: bool = false
+var _near_station: bool = false
 
 var _inventory: _Inventory
 var _grid: Node  # HexGrid autoload or test substitute
@@ -97,9 +97,10 @@ func craft(recipe_name: StringName) -> bool:
 
 	var recipe: Dictionary = RECIPE_CONFIG[recipe_name]
 
-	# 1. Workbench proximity (only for recipes that require it)
-	if recipe.get("requires_workbench", true) and not _near_workbench:
-		craft_failed.emit(recipe_name, &"no_workbench")
+	# 1. Station proximity (only for recipes that require a crafting station)
+	var required_station: StringName = recipe.get("requires_station", &"")
+	if required_station != &"" and not _is_near_crafting_station(required_station):
+		craft_failed.emit(recipe_name, &"no_station")
 		return false
 
 	# 2. Already owned (tools only)
@@ -145,47 +146,72 @@ func _get_survival_system() -> Node:
 	return null
 
 
-# --- Workbench Proximity ---
+# --- Crafting Station Proximity ---
 
-func is_near_workbench() -> bool:
-	return _near_workbench
+func is_near_station() -> bool:
+	return _near_station
 
 
-func _check_workbench_proximity() -> void:
+func _check_station_proximity() -> void:
 	if _player == null or _grid == null:
 		return
-	var was_near: bool = _near_workbench
-	_near_workbench = _compute_near_workbench(_player.current_tile)
-	if _near_workbench != was_near:
-		workbench_proximity_changed.emit(_near_workbench)
+	var was_near: bool = _near_station
+	_near_station = _has_nearby_crafting_station(_player.current_tile)
+	if _near_station != was_near:
+		station_proximity_changed.emit(_near_station)
 
 
-func _compute_near_workbench(player_tile: Vector2i) -> bool:
-	# Check player's own tile
-	if _grid.has_structure(player_tile, &"workbench"):
+## Check if any prop with is_crafting_station=true is on or adjacent to the tile.
+func _has_nearby_crafting_station(player_tile: Vector2i) -> bool:
+	if _tile_has_crafting_station(player_tile):
 		return true
-	# Check 6 neighbors
 	var neighbors: Array[Vector2i] = _grid.get_neighbors(player_tile)
 	for neighbor: Vector2i in neighbors:
-		if _grid.has_structure(neighbor, &"workbench"):
+		if _tile_has_crafting_station(neighbor):
 			return true
 	return false
 
 
+## Check if a specific station type is on or adjacent to the tile.
+func _is_near_crafting_station(station_type: StringName) -> bool:
+	if _player == null or _grid == null:
+		return false
+	if _grid.has_structure(_player.current_tile, station_type):
+		return true
+	var neighbors: Array[Vector2i] = _grid.get_neighbors(_player.current_tile)
+	for neighbor: Vector2i in neighbors:
+		if _grid.has_structure(neighbor, station_type):
+			return true
+	return false
+
+
+## Check if any prop on this tile has is_crafting_station in its ResourceDef.
+func _tile_has_crafting_station(coords: Vector2i) -> bool:
+	var tile: Resource = _grid._tiles.get(coords, null)
+	if tile == null:
+		return false
+	for prop in tile.props:
+		if ResourceRegistry.has_def(prop.type):
+			var def: Resource = ResourceRegistry.get_def(prop.type)
+			if def.is_crafting_station:
+				return true
+	return false
+
+
 func _on_tile_entered(_coords: Vector2i) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_tile_exited(_coords: Vector2i) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_structure_placed(_coords: Vector2i, _structure_type: StringName) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_structure_destroyed(_coords: Vector2i, _structure_type: StringName) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 # --- Save / Load ---

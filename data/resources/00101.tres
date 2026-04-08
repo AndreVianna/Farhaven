@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"torch"
-display_name = "Torch"
+id = &"00101"
+display_name = "Campfire"
 gather_time = 0.0
 gather_amount = 0
 tool_required = &""
@@ -14,14 +14,16 @@ yield_type = &""
 tool_speed = {}
 max_stack = 1
 category = &"structure"
-catalog_entry = &"torch"
+catalog_entry = &"00101"
 catalog_category = &"survival"
 prop_category = 6
 origin = 1
 footprint = [Vector2i(0, 0)]
+emits_light = true
+light_radius = 2.0
 placeholder_mesh_type = &"cylinder"
-placeholder_params = { "radius": 0.05, "height": 0.5 }
-placeholder_color = Color(0.8, 0.6, 0.1, 1.0)
+placeholder_params = { "radius": 0.3, "height": 0.15 }
+placeholder_color = Color(0.9, 0.4, 0.1, 1.0)
 placeholder_depleted_type = &"cylinder"
-placeholder_depleted_params = { "radius": 0.05, "height": 0.5 }
+placeholder_depleted_params = { "radius": 0.3, "height": 0.1 }
 placeholder_depleted_color = Color(0.3, 0.3, 0.3, 1.0)

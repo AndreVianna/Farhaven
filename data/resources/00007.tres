@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"crystal"
-display_name = "Crystal"
+id = &"00007"
+display_name = "Crystal Cluster"
 gather_time = 2.5
 gather_amount = 1
 tool_required = &"stone_pickaxe"
@@ -14,7 +14,7 @@ yield_type = &""
 tool_speed = { &"stone_pickaxe": 0.5 }
 max_stack = 50
 category = &"resource"
-catalog_entry = &"crystal_cluster"
+catalog_entry = &"00007"
 catalog_category = &"minerals"
 prop_category = 1
 origin = 0

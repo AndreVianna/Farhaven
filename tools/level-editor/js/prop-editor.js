@@ -56,6 +56,15 @@ export class PropDefModel {
     this.prop_category = 'plant';
     /** @type {string} Default origin for placement */
     this.prop_origin = 'natural';
+    // Gameplay properties
+    /** @type {boolean} */
+    this.emits_light = false;
+    /** @type {number} */
+    this.light_radius = 0;
+    /** @type {boolean} */
+    this.is_respawn_point = false;
+    /** @type {boolean} */
+    this.is_crafting_station = false;
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -108,6 +117,12 @@ export class PropDefModel {
     // Prop placement defaults (int in .tres -> string name in editor)
     model.prop_category = CATEGORIES[_num(d.prop_category)] || 'plant';
     model.prop_origin = ORIGINS[_num(d.origin)] || 'natural';
+
+    // Gameplay properties (booleans and numbers)
+    model.emits_light = !!d.emits_light;
+    model.light_radius = _num(d.light_radius);
+    model.is_respawn_point = !!d.is_respawn_point;
+    model.is_crafting_station = !!d.is_crafting_station;
 
     return model;
   }
@@ -852,6 +867,11 @@ export function renderPropEditor(container, options) {
     _addSeparator(grid, 'Footprint');
     grid.appendChild(_createFootprintEditor(model.footprint));
 
+    // -- Gameplay Properties --
+    _addSeparator(grid, 'Gameplay');
+    _addCheckbox(grid, 'Respawn Point', 'is_respawn_point', model.is_respawn_point);
+    _addCheckbox(grid, 'Crafting Station', 'is_crafting_station', model.is_crafting_station);
+
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
     _addField(grid, 'Gather Time', 'gather_time', 'number', model.gather_time, { step: 'any', min: '0' });
@@ -887,6 +907,11 @@ export function renderPropEditor(container, options) {
     _addField(grid, 'Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type);
     grid.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
     grid.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
+
+    // -- Light --
+    _addSeparator(grid, 'Light');
+    _addCheckbox(grid, 'Emits Light', 'emits_light', model.emits_light);
+    _addField(grid, 'Light Radius', 'light_radius', 'number', model.light_radius, { step: '0.1', min: '0' });
 
     // -- Depleted separator --
     _addSeparator(grid, 'Depleted');
@@ -947,6 +972,26 @@ function _addField(grid, labelText, name, type, value, attrs) {
     }
   }
 
+  grid.appendChild(label);
+  grid.appendChild(input);
+}
+
+/**
+ * Add a labeled checkbox to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {boolean} checked
+ * @returns {void}
+ */
+function _addCheckbox(grid, labelText, name, checked) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.name = name;
+  input.checked = !!checked;
   grid.appendChild(label);
   grid.appendChild(input);
 }
@@ -1107,6 +1152,12 @@ export function collectPropFormData(formElement) {
   model.prop_category = val('prop_category') || 'plant';
   model.prop_origin = val('prop_origin') || 'natural';
 
+  // Gameplay properties
+  model.emits_light = !!formElement.querySelector('[name="emits_light"]')?.checked;
+  model.light_radius = floatVal('light_radius');
+  model.is_respawn_point = !!formElement.querySelector('[name="is_respawn_point"]')?.checked;
+  model.is_crafting_station = !!formElement.querySelector('[name="is_crafting_station"]')?.checked;
+
   // Gathering
   model.gather_time = floatVal('gather_time');
   model.gather_amount = intVal('gather_amount');
@@ -1261,6 +1312,10 @@ function _modelToPlain(model) {
     footprint: model.footprint,
     prop_category: model.prop_category,
     prop_origin: model.prop_origin,
+    emits_light: model.emits_light,
+    light_radius: model.light_radius,
+    is_respawn_point: model.is_respawn_point,
+    is_crafting_station: model.is_crafting_station,
   };
 }
 
@@ -1323,6 +1378,12 @@ export function propModelToRaw(model) {
   // Prop placement defaults (int in .tres)
   fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
   fields.set('origin', { type: 'int', value: ORIGIN_TO_INT[model.prop_origin] ?? 0 });
+
+  // Gameplay properties
+  if (model.emits_light) fields.set('emits_light', { type: 'bool', value: true });
+  if (model.light_radius > 0) fields.set('light_radius', { type: 'float', value: model.light_radius });
+  if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
+  if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
 
   // Footprint (only if non-empty)
   if (model.footprint && model.footprint.length > 0) {

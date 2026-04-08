@@ -291,12 +291,14 @@ func respawn() -> void:
 # --- Shelter / Respawn tile ---
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
-	if structure_type == &"shelter":
-		_respawn_tile = coords
+	if ResourceRegistry.has_def(structure_type):
+		var def: Resource = ResourceRegistry.get_def(structure_type)
+		if def.is_respawn_point:
+			_respawn_tile = coords
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	if structure_type == &"shelter" and _respawn_tile == coords:
+	if _respawn_tile == coords:
 		_respawn_tile = Vector2i.ZERO
 
 

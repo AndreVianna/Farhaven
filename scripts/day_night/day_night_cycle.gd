@@ -20,7 +20,6 @@ const VISIBILITY_RADIUS: Dictionary = {
 	TimePhase.DAWN: 2,
 }
 
-const TORCH_VISIBILITY_RADIUS: int = 2
 
 ## Warm palette lighting per phase.
 ## ambient_color/energy control sky fill; sun_color/energy control the directional key light.
@@ -80,7 +79,7 @@ var _lighting_tween: Tween = null
 
 # --- Visibility ---
 var _player_tile: Vector2i = Vector2i.ZERO
-var _torch_tiles: Array[Vector2i] = []
+var _light_sources: Dictionary = {}  # Vector2i -> float (radius)
 
 
 func _ready() -> void:
@@ -191,28 +190,28 @@ func _on_tile_entered(coords: Vector2i) -> void:
 
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
-	if structure_type != &"torch":
+	if not ResourceRegistry.has_def(structure_type):
 		return
-	if not _torch_tiles.has(coords):
-		_torch_tiles.append(coords)
-	if current_phase == TimePhase.NIGHT:
-		_refresh_visibility()
+	var def: Resource = ResourceRegistry.get_def(structure_type)
+	if def.emits_light and def.light_radius > 0:
+		_light_sources[coords] = def.light_radius
+		if current_phase == TimePhase.NIGHT:
+			_refresh_visibility()
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	if structure_type != &"torch":
-		return
-	_torch_tiles.erase(coords)
-	if current_phase == TimePhase.NIGHT:
-		_refresh_visibility()
+	if _light_sources.has(coords):
+		_light_sources.erase(coords)
+		if current_phase == TimePhase.NIGHT:
+			_refresh_visibility()
 
 
 func _refresh_visibility() -> void:
 	var radius: int = VISIBILITY_RADIUS[current_phase]
 	var sources: Array[Dictionary] = [{"coords": _player_tile, "radius": radius}]
 	if current_phase == TimePhase.NIGHT:
-		for torch_coords: Vector2i in _torch_tiles:
-			sources.append({"coords": torch_coords, "radius": TORCH_VISIBILITY_RADIUS})
+		for light_coords: Vector2i in _light_sources:
+			sources.append({"coords": light_coords, "radius": int(_light_sources[light_coords])})
 	HexGrid.refresh_visibility(sources)
 
 

@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"loose_rock"
-display_name = "Loose Rock"
+id = &"00002"
+display_name = "Loose Rocks"
 gather_time = 1.0
 gather_amount = 2
 tool_required = &""
@@ -14,7 +14,7 @@ yield_type = &"stone"
 tool_speed = {}
 max_stack = 99
 category = &"resource"
-catalog_entry = &"loose_rocks"
+catalog_entry = &"00002"
 catalog_category = &"minerals"
 prop_category = 1
 origin = 0

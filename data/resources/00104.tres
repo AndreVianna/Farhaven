@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"storage_chest"
+id = &"00104"
 display_name = "Storage Chest"
 gather_time = 0.0
 gather_amount = 0
@@ -14,14 +14,14 @@ yield_type = &""
 tool_speed = {}
 max_stack = 1
 category = &"structure"
-catalog_entry = &"storage_chest"
+catalog_entry = &"00104"
 catalog_category = &"storage"
-prop_category = 6
+prop_category = 9
 origin = 1
 footprint = [Vector2i(0, 0)]
 placeholder_mesh_type = &"box"
 placeholder_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
-placeholder_color = Color(0.5, 0.35, 0.15, 1.0)
+placeholder_color = Color(0.5019607843137255, 0.34901960784313724, 0.14901960784313725, 1.0)
 placeholder_depleted_type = &"box"
 placeholder_depleted_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
-placeholder_depleted_color = Color(0.35, 0.25, 0.1, 1.0)
+placeholder_depleted_color = Color(0.34901960784313724, 0.25098039215686274, 0.10196078431372549, 1.0)

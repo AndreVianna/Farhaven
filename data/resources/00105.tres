@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"workbench"
+id = &"00105"
 display_name = "Workbench"
 gather_time = 0.0
 gather_amount = 0
@@ -14,14 +14,15 @@ yield_type = &""
 tool_speed = {}
 max_stack = 1
 category = &"structure"
-catalog_entry = &"workbench"
+catalog_entry = &"00105"
 catalog_category = &"crafting"
-prop_category = 6
+prop_category = 8
 origin = 1
 footprint = [Vector2i(0, 0), Vector2i(1, 0)]
+is_crafting_station = true
 placeholder_mesh_type = &"box"
 placeholder_params = { "size_x": 0.8, "size_y": 0.4, "size_z": 0.5 }
 placeholder_color = Color(0.6, 0.4, 0.2, 1.0)
 placeholder_depleted_type = &"box"
 placeholder_depleted_params = { "size_x": 0.8, "size_y": 0.4, "size_z": 0.5 }
-placeholder_depleted_color = Color(0.4, 0.3, 0.15, 1.0)
+placeholder_depleted_color = Color(0.4, 0.30196078431372547, 0.14901960784313725, 1.0)

@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"shelter"
+id = &"00102"
 display_name = "Shelter"
 gather_time = 0.0
 gather_amount = 0
@@ -14,11 +14,12 @@ yield_type = &""
 tool_speed = {}
 max_stack = 1
 category = &"structure"
-catalog_entry = &"shelter"
+catalog_entry = &"00102"
 catalog_category = &"survival"
 prop_category = 6
 origin = 1
 footprint = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
+is_respawn_point = true
 placeholder_mesh_type = &"box"
 placeholder_params = { "size_x": 1.0, "size_y": 0.6, "size_z": 1.0 }
 placeholder_color = Color(0.45098039215686275, 0.34901960784313724, 0.2, 1.0)

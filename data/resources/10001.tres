@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"anomaly_fragment"
+id = &"10001"
 display_name = "Anomaly Fragment"
 gather_time = 3.0
 gather_amount = 1
@@ -16,11 +16,11 @@ max_stack = 99
 category = &"resource"
 catalog_entry = &""
 catalog_category = &"anomalies"
-prop_category = 1
-origin = 0
+prop_category = 6
+origin = 3
 placeholder_mesh_type = &"octahedron"
 placeholder_params = { "radius": 0.4 }
-placeholder_color = Color(0.7, 0.3, 0.9, 1.0)
+placeholder_color = Color(0.7019607843137254, 0.30196078431372547, 0.9019607843137255, 1.0)
 placeholder_depleted_type = &"octahedron"
 placeholder_depleted_params = { "radius": 0.4 }
-placeholder_depleted_color = Color(0.7, 0.3, 0.9, 1.0)
+placeholder_depleted_color = Color(0.7019607843137254, 0.30196078431372547, 0.9019607843137255, 1.0)

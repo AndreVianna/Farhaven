@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"ore"
-display_name = "Ore"
+id = &"00006"
+display_name = "Iron Deposit"
 gather_time = 2.0
 gather_amount = 1
 tool_required = &"stone_pickaxe"
@@ -14,7 +14,7 @@ yield_type = &""
 tool_speed = { &"stone_pickaxe": 0.5 }
 max_stack = 99
 category = &"resource"
-catalog_entry = &"iron_deposit"
+catalog_entry = &"00006"
 catalog_category = &"minerals"
 prop_category = 1
 origin = 0

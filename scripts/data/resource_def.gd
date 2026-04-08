@@ -34,6 +34,16 @@ class_name ResourceDef extends Resource
 ## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
 @export var footprint: Array[Vector2i] = []
 
+# --- Gameplay Properties ---
+## Whether this prop emits light (e.g. torches, campfires). Used by day/night visibility.
+@export var emits_light: bool = false
+## Light radius in tiles (only used when emits_light is true).
+@export var light_radius: float = 0.0
+## Whether this prop serves as a player respawn point (e.g. shelters).
+@export var is_respawn_point: bool = false
+## Whether crafting recipes can use this prop as a crafting station.
+@export var is_crafting_station: bool = false
+
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh
 @export var depleted_mesh: Mesh

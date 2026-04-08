@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"fiber"
-display_name = "Fiber"
+id = &"00003"
+display_name = "Tall Grass"
 gather_time = 0.5
 gather_amount = 1
 tool_required = &""
@@ -14,7 +14,7 @@ yield_type = &""
 tool_speed = {}
 max_stack = 99
 category = &"resource"
-catalog_entry = &"fiber_grass"
+catalog_entry = &"00003"
 catalog_category = &"flora"
 prop_category = 0
 origin = 0

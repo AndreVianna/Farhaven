@@ -115,13 +115,13 @@ func connect_catalog(cat) -> void:
 func connect_crafting(crafting_system: Node, inv) -> void:
 	_gear_panel.set_crafting_system(crafting_system)
 	_gear_panel.set_inventory(inv)
-	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
+	crafting_system.station_proximity_changed.connect(_on_station_proximity_changed)
 	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
 	crafting_system.craft_completed.connect(_on_craft_completed)
 
 
-func _on_workbench_proximity_changed(_near: bool) -> void:
-	# Craft button visible whenever recipes are discovered (not just near workbench)
+func _on_station_proximity_changed(_near: bool) -> void:
+	# Craft button visible whenever recipes are discovered (not just near station)
 	pass
 
 
