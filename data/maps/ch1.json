@@ -1,6 +1,9 @@
 {
 	"spawn": [
 		0,
+		0,
+		0,
+		0,
 		0
 	],
 	"tiles": {
@@ -13,7 +16,8 @@
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 18
+					"rotation": 18,
+					"origin": 0
 				}
 			]
 		},
@@ -23,14 +27,16 @@
 			"props": [
 				{
 					"type": "loose_rock",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 142
+					"rotation": 142,
+					"origin": 0
 				},
 				{
 					"type": "workbench",
-					"category": 6
+					"category": 6,
+					"origin": 1
 				}
 			]
 		},
@@ -43,7 +49,8 @@
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": -1,
-					"rotation": 273
+					"rotation": 273,
+					"origin": 0
 				}
 			]
 		},
@@ -65,24 +72,27 @@
 			"props": [
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 92
+					"rotation": 92,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 165
+					"rotation": 165,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 301
+					"rotation": 301,
+					"origin": 0
 				}
 			]
 		},
@@ -95,7 +105,8 @@
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 0,
-					"rotation": 67
+					"rotation": 67,
+					"origin": 0
 				}
 			]
 		},
@@ -116,7 +127,8 @@
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 195
+					"rotation": 195,
+					"origin": 0
 				}
 			]
 		},
@@ -137,7 +149,8 @@
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": 0,
-					"rotation": 312
+					"rotation": 312,
+					"origin": 0
 				}
 			]
 		},
@@ -151,38 +164,43 @@
 			"props": [
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 317
+					"rotation": 317,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 165
+					"rotation": 165,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 134
+					"rotation": 134,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 183
+					"rotation": 183,
+					"origin": 0
 				},
 				{
 					"type": "crystal",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
-					"rotation": 148
+					"rotation": 148,
+					"origin": 0
 				}
 			]
 		},
@@ -195,7 +213,8 @@
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 2,
-					"rotation": 88
+					"rotation": 88,
+					"origin": 0
 				}
 			]
 		},
@@ -240,14 +259,16 @@
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 137
+					"rotation": 137,
+					"origin": 0
 				},
 				{
 					"type": "toxic_berries",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 104
+					"rotation": 104,
+					"origin": 0
 				}
 			]
 		},
@@ -276,7 +297,8 @@
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 237
+					"rotation": 237,
+					"origin": 0
 				}
 			]
 		},
@@ -293,7 +315,8 @@
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": 2,
-					"rotation": 54
+					"rotation": 54,
+					"origin": 0
 				}
 			]
 		},
@@ -318,7 +341,8 @@
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 161
+					"rotation": 161,
+					"origin": 0
 				}
 			]
 		},
@@ -343,7 +367,8 @@
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 329
+					"rotation": 329,
+					"origin": 0
 				}
 			]
 		},
@@ -365,10 +390,11 @@
 			"props": [
 				{
 					"type": "stone",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
-					"rotation": 102
+					"rotation": 102,
+					"origin": 0
 				}
 			]
 		},
@@ -378,10 +404,11 @@
 			"props": [
 				{
 					"type": "ore",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 140
+					"rotation": 140,
+					"origin": 0
 				}
 			]
 		},
@@ -391,10 +418,11 @@
 			"props": [
 				{
 					"type": "stone",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": 1,
-					"rotation": 359
+					"rotation": 359,
+					"origin": 0
 				}
 			]
 		},
@@ -404,10 +432,11 @@
 			"props": [
 				{
 					"type": "ore",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 52
+					"rotation": 52,
+					"origin": 0
 				}
 			]
 		},
@@ -417,10 +446,11 @@
 			"props": [
 				{
 					"type": "stone",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
-					"rotation": 301
+					"rotation": 301,
+					"origin": 0
 				}
 			]
 		},
@@ -430,10 +460,11 @@
 			"props": [
 				{
 					"type": "ore",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": 1,
-					"rotation": 44
+					"rotation": 44,
+					"origin": 0
 				}
 			]
 		},
@@ -451,10 +482,11 @@
 			"props": [
 				{
 					"type": "ore",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
-					"rotation": 47
+					"rotation": 47,
+					"origin": 0
 				}
 			]
 		},
@@ -464,14 +496,15 @@
 			"props": [
 				{
 					"type": "stone",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 81
+					"rotation": 81,
+					"origin": 0
 				},
 				{
 					"type": "anomaly_ch1_001",
-					"category": 1,
+					"category": 8,
 					"origin": 4
 				}
 			]
@@ -482,10 +515,11 @@
 			"props": [
 				{
 					"type": "ore",
-					"category": 0,
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 1,
-					"rotation": 13
+					"rotation": 13,
+					"origin": 0
 				}
 			]
 		},
