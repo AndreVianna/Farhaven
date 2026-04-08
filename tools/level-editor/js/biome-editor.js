@@ -661,10 +661,22 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.className = 'prop-grid';
 
-    // Biome Name
+    // Biome ID (read-only for existing, derived from filename)
+    const idLabel = document.createElement('div');
+    idLabel.className = 'prop-label';
+    idLabel.textContent = 'ID';
+    const idInput = document.createElement('input');
+    idInput.type = 'text';
+    idInput.value = model.id;
+    idInput.className = 'prop-input';
+    idInput.disabled = true;
+    grid.appendChild(idLabel);
+    grid.appendChild(idInput);
+
+    // Display Name
     const nameLabel = document.createElement('div');
     nameLabel.className = 'prop-label';
-    nameLabel.textContent = 'Biome Name';
+    nameLabel.textContent = 'Display Name';
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.name = 'biome_name';
