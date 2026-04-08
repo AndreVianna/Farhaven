@@ -7,7 +7,8 @@ import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
-const KNOWN_BIOMES = new Set(['crash_site', 'grassland', 'forest', 'rocky', 'water']);
+const KNOWN_BIOMES = new Set(['001', '002', '003', '004', '005',
+  'crash_site', 'grassland', 'forest', 'rocky', 'water']);
 
 /**
  * Maps a parsed .tres BiomeData to an editable JS model.

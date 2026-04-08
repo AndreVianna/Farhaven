@@ -7,26 +7,29 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 const BIOME_NAMES: Dictionary = {
-	"crash_site": 0,
-	"grassland": 1,
-	"forest": 2,
-	"rocky": 3,
-	"water": 4,
+	# Numeric IDs (current format)
+	"001": 0, "002": 1, "003": 2, "004": 3, "005": 4,
+	# Legacy string names (for backwards compatibility)
+	"crash_site": 0, "grassland": 1, "forest": 2, "rocky": 3, "water": 4,
 }
 
 const BIOME_DATA_PATHS: Dictionary = {
-	0: "res://data/biomes/crash_site.tres",
-	1: "res://data/biomes/grassland.tres",
-	2: "res://data/biomes/forest.tres",
-	3: "res://data/biomes/rocky.tres",
-	4: "res://data/biomes/water.tres",
+	0: "res://data/biomes/001.tres",
+	1: "res://data/biomes/002.tres",
+	2: "res://data/biomes/003.tres",
+	3: "res://data/biomes/004.tres",
+	4: "res://data/biomes/005.tres",
 }
 
 const TILE_COUNT_MIN: int = 200
 const TILE_COUNT_MAX: int = 300
 
 # Legacy walkable structures — used when converting old "structure" field to Prop.blocks_movement
-const _WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
+# Supports both numeric IDs (current) and legacy string names
+const _WALKABLE_STRUCTURES: Array[StringName] = [
+	&"00101", &"00102", &"00103", &"00104", &"00105",
+	&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire",
+]
 
 var _grid: Node
 var _biome_data: Dictionary = {}  # int (Biome) -> BiomeData resource
