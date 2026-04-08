@@ -7,54 +7,69 @@ class_name PropDef extends Resource
 ## Human-readable name for UI
 @export var display_name: String
 
-# --- Gathering ---
+# --- Tags ---
+## Free-form labels (e.g. &"SOURCE", &"WOOD", &"BURNABLE.log", &"CONSUMABLE.edible").
+@export var tags: Array[StringName] = []
+
+# --- Capabilities ---
+## Each capability is a small inner Resource, null when not present.
+@export var portable: PortableCap = null
+@export var placeable: PlaceableCap = null
+@export var container: ContainerCap = null
+@export var light: LightCap = null
+@export var movable: MovableCap = null
+@export var station: StationCap = null
+@export var catalogable: CatalogableCap = null
+
+# --- Inventory ---
+## Temporary — kept during transition, will be replaced by PORTABLE.weight in task-049.
+@export var max_stack: int = 99
+
+# --- Catalog ---
+@export var catalog_entry: StringName
+## UI-only catalog grouping label (e.g. "flora", "minerals", "survival", "anomalies").
+## This is what DESIGN.md §3.3 calls "category_tag". Purely for display, never controls behavior.
+@export var catalog_category: StringName
+
+# --- Placement ---
+## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
+@export var origin: int = 0
+## DEPRECATED: use placeable.footprint after task-051.
+## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
+@export var footprint: Array[Vector2i] = []
+
+# --- Tool ---
+## Tool slot this item occupies when equipped (e.g. "axe", "pickaxe", "weapon", "scanner").
+## Empty = not a tool. Kept per design decision (Open Question §11.6).
+@export var tool_slot: StringName = &""
+
+# --- Gathering (DEPRECATED — REMOVE in task-051: replaced by Recipe system) ---
 @export var gather_time: float = 1.0
 @export var gather_amount: int = 1
 @export var tool_required: StringName = &""
 @export var respawn_time: float = 30.0
-## If set, gathering this yields a different item (e.g. loose_rock → stone). Empty = yields self.
 @export var yield_type: StringName = &""
-
-# --- Tool speed multipliers (applied when tool equipped) ---
-## Key: tool PropDef id (numeric, e.g. &"00201" for axe). Value: multiplier float (0.5 = 2x faster).
 @export var tool_speed: Dictionary = {}
 
-# --- Inventory ---
-@export var max_stack: int = 99
-@export var category: StringName = &"prop"
-
-# --- Catalog ---
-@export var catalog_entry: StringName
-@export var catalog_category: StringName  # "minerals", "flora", "fauna", "anomalies"
-
-# --- Placement ---
-## Prop.Category index (0=Plant..9=Storage). Determines behavior when placed on map.
-@export var prop_category: int = 0
-## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
-@export var origin: int = 0
-## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
-@export var footprint: Array[Vector2i] = []
-
-# --- Gameplay Properties ---
-## Whether this prop emits light (e.g. torches, campfires). Used by day/night visibility.
-@export var emits_light: bool = false
-## Light radius in sub-hex rings (1=placement cell, 2=first ring, etc). Only used when emits_light is true.
-@export var light_radius: int = 0
-## Whether this prop serves as a player respawn point (e.g. shelters).
-@export var is_respawn_point: bool = false
-## Whether crafting recipes can use this prop as a crafting station.
-@export var is_crafting_station: bool = false
-## Tool slot this item occupies when equipped (e.g. "axe", "pickaxe", "weapon", "scanner").
-## Empty = not a tool.
-@export var tool_slot: StringName = &""
-## Whether this item can be consumed (eaten/drunk/used-up) from the inventory.
+# --- Consumable (DEPRECATED — REMOVE in task-051: replaced by eat_*/drink_* recipes) ---
 @export var is_consumable: bool = false
-## Hunger restored when consumed (only used if is_consumable = true).
 @export var hunger_restore: float = 0.0
-## Thirst restored when consumed (only used if is_consumable = true).
 @export var thirst_restore: float = 0.0
-## Health restored when consumed. Negative values represent damage (e.g. toxic items).
 @export var health_restore: float = 0.0
+
+# --- Legacy fields (DEPRECATED — REMOVE in task-051: replaced by capabilities/tags) ---
+## Loose typology ("prop"/"resource"/"consumable"/"structure"/"tool") — replaced by capabilities + tags.
+@export var category: StringName = &"prop"
+## Prop.Category enum index (0=Plant..9=Storage) — replaced by capabilities.
+@export var prop_category: int = 0
+## Whether this prop emits light — replaced by LightCap capability.
+@export var emits_light: bool = false
+## Light radius — replaced by LightCap.radius.
+@export var light_radius: int = 0
+## Whether this prop is a respawn point — replaced by STATION capability with "respawn" tag.
+@export var is_respawn_point: bool = false
+## Whether this prop is a crafting station — replaced by STATION capability with "craft" tag.
+@export var is_crafting_station: bool = false
 
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh
@@ -68,3 +83,21 @@ class_name PropDef extends Resource
 @export var placeholder_depleted_type: StringName = &"cube"
 @export var placeholder_depleted_params: Dictionary = {}
 @export var placeholder_depleted_color: Color = Color.GRAY
+
+
+## Returns true if the named capability is present (non-null) on this PropDef.
+func has_capability(cap_name: StringName) -> bool:
+	match cap_name:
+		&"portable": return portable != null
+		&"placeable": return placeable != null
+		&"container": return container != null
+		&"light": return light != null
+		&"movable": return movable != null
+		&"station": return station != null
+		&"catalogable": return catalogable != null
+	return false
+
+
+## Returns true if this PropDef's tags array contains the given tag.
+func has_tag(tag: StringName) -> bool:
+	return tags.has(tag)

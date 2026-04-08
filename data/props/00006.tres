@@ -1,23 +1,37 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = true
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+display_tag = &"minerals"
 
 [resource]
 script = ExtResource("1_script")
 id = &"00006"
 display_name = "Iron Deposit"
+tags = [&"SOURCE", &"ORE.iron"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 99
+catalog_entry = &"iron_deposit"
+catalog_category = &"minerals"
+origin = 0
 gather_time = 2.0
 gather_amount = 1
 tool_required = &"pickaxe"
 respawn_time = 60.0
 yield_type = &"00014"
 tool_speed = { &"00202": 0.5 }
-max_stack = 99
-category = &"prop"
-catalog_entry = &"iron_deposit"
-catalog_category = &"minerals"
 prop_category = 1
-origin = 0
 placeholder_mesh_type = &"octahedron"
 placeholder_params = { "radius": 0.35 }
 placeholder_color = Color(0.35, 0.35, 0.4, 1.0)

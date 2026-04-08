@@ -1,23 +1,33 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = false
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 3.0
+display_tag = &"anomalies"
 
 [resource]
 script = ExtResource("1_script")
 id = &"10001"
 display_name = "Anomaly Fragment"
-gather_time = 3.0
-gather_amount = 1
-tool_required = &""
-respawn_time = 0.0
-yield_type = &""
-tool_speed = {}
+tags = [&"SOURCE", &"ANOMALY", &"NATIVE_ALIEN"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
 max_stack = 99
-category = &"prop"
 catalog_entry = &""
 catalog_category = &"anomalies"
-prop_category = 6
 origin = 3
+gather_time = 3.0
+gather_amount = 1
+prop_category = 6
 placeholder_mesh_type = &"octahedron"
 placeholder_params = { "radius": 0.4 }
 placeholder_color = Color(0.7019607843137254, 0.30196078431372547, 0.9019607843137255, 1.0)

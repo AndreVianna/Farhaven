@@ -252,7 +252,7 @@ func get_save_data() -> Dictionary:
 		for prop in tile.props:
 			props_data.append({
 				"type": String(prop.type),
-				"category": prop.category,
+				"category": prop.category,  # REMOVE in task-051: not in new save format
 				"origin": prop.origin,
 				"sub_hex_q": prop.sub_hex.x,
 				"sub_hex_r": prop.sub_hex.y,
@@ -305,7 +305,7 @@ func load_save_data(data: Dictionary) -> void:
 					continue
 				var prop: Resource = _Prop.new()
 				prop.type = prop_type
-				prop.category = int(pd.get("category", _Prop.Category.PLANT))
+				prop.category = int(pd.get("category", _Prop.Category.PLANT))  # REMOVE in task-051: not in new load format
 				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				prop.remaining = int(pd.get("remaining", 0))

@@ -1,24 +1,25 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="2_portable"]
+
+[sub_resource type="Resource" id="portable_1"]
+script = ExtResource("2_portable")
+weight = 0.4
 
 [resource]
 script = ExtResource("1_script")
 id = &"00205"
 display_name = "Scanner"
-gather_time = 0.0
-gather_amount = 0
-tool_required = &""
-respawn_time = 0.0
-yield_type = &""
-tool_speed = {}
+tags = [&"TOOL", &"HUMAN"]
+portable = SubResource("portable_1")
 max_stack = 1
-category = &"tool"
 catalog_entry = &""
 catalog_category = &""
-prop_category = 8
 origin = 2
 tool_slot = &"scanner"
+category = &"tool"
+prop_category = 8
 placeholder_mesh_type = &"box"
 placeholder_params = { "size_x": 0.12, "size_y": 0.05, "size_z": 0.15 }
 placeholder_color = Color(0.2, 0.6, 0.8, 1.0)

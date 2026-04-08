@@ -1,24 +1,25 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="2_portable"]
+
+[sub_resource type="Resource" id="portable_1"]
+script = ExtResource("2_portable")
+weight = 2.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"00201"
 display_name = "Axe"
-gather_time = 0.0
-gather_amount = 0
-tool_required = &""
-respawn_time = 0.0
-yield_type = &""
-tool_speed = {}
+tags = [&"TOOL", &"CRAFTED"]
+portable = SubResource("portable_1")
 max_stack = 1
-category = &"tool"
 catalog_entry = &""
 catalog_category = &""
-prop_category = 8
 origin = 1
 tool_slot = &"axe"
+category = &"tool"
+prop_category = 8
 placeholder_mesh_type = &"box"
 placeholder_params = { "size_x": 0.1, "size_y": 0.05, "size_z": 0.4 }
 placeholder_color = Color(0.55, 0.4, 0.25, 1.0)

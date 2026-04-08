@@ -105,7 +105,7 @@ func load_map(path: String) -> bool:
 			for pd in td["props"]:
 				var prop: Resource = _Prop.new()
 				prop.type = StringName(pd.get("type", ""))
-				prop.category = int(pd.get("category", _Prop.Category.PLANT))
+				prop.category = int(pd.get("category", _Prop.Category.PLANT))  # REMOVE in task-051: not in new load format
 				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				if pd.has("tool_required") and pd["tool_required"] != "":

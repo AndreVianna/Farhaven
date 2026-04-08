@@ -17,6 +17,7 @@ enum Biome {
 @export var props: Array = []  # Array of Prop
 
 
+# REMOVE in task-051: use capability/tag queries
 func get_props_by_category(category: int) -> Array:
 	var result: Array = []
 	for prop in props:
@@ -25,6 +26,7 @@ func get_props_by_category(category: int) -> Array:
 	return result
 
 
+# REMOVE in task-051: use origin filter
 func get_props() -> Array:
 	var result: Array = []
 	for prop in props:
@@ -33,6 +35,7 @@ func get_props() -> Array:
 	return result
 
 
+# REMOVE in task-051: use STATION/STRUCTURE tag query
 func get_structures() -> Array:
 	return get_props_by_category(_Prop.Category.STRUCTURE)
 

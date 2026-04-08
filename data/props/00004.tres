@@ -1,23 +1,35 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = false
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 1.0
+display_tag = &"flora"
 
 [resource]
 script = ExtResource("1_script")
 id = &"00004"
 display_name = "Berry Bush"
-gather_time = 0.5
-gather_amount = 2
-tool_required = &""
-respawn_time = 30.0
-yield_type = &"00020"
-tool_speed = {}
+tags = [&"SOURCE", &"PLANT"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
 max_stack = 20
-category = &"consumable"
 catalog_entry = &"berry_bush"
 catalog_category = &"flora"
-prop_category = 0
 origin = 0
+gather_time = 0.5
+gather_amount = 2
+yield_type = &"00020"
+category = &"consumable"
+prop_category = 0
 placeholder_mesh_type = &"sphere"
 placeholder_params = { "radius": 0.3 }
 placeholder_color = Color(0.8, 0.14901960784313725, 0.14901960784313725, 1.0)
