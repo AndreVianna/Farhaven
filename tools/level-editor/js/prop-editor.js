@@ -911,7 +911,7 @@ export function renderPropEditor(container, options) {
     // -- Light --
     _addSeparator(grid, 'Light');
     _addCheckbox(grid, 'Emits Light', 'emits_light', model.emits_light);
-    _addField(grid, 'Light Radius', 'light_radius', 'number', model.light_radius, { step: '0.1', min: '0' });
+    _addField(grid, 'Light Radius (rings)', 'light_radius', 'number', model.light_radius, { step: '1', min: '0' });
 
     // -- Depleted separator --
     _addSeparator(grid, 'Depleted');
@@ -1154,7 +1154,7 @@ export function collectPropFormData(formElement) {
 
   // Gameplay properties
   model.emits_light = !!formElement.querySelector('[name="emits_light"]')?.checked;
-  model.light_radius = floatVal('light_radius');
+  model.light_radius = intVal('light_radius');
   model.is_respawn_point = !!formElement.querySelector('[name="is_respawn_point"]')?.checked;
   model.is_crafting_station = !!formElement.querySelector('[name="is_crafting_station"]')?.checked;
 
@@ -1381,7 +1381,7 @@ export function propModelToRaw(model) {
 
   // Gameplay properties
   if (model.emits_light) fields.set('emits_light', { type: 'bool', value: true });
-  if (model.light_radius > 0) fields.set('light_radius', { type: 'float', value: model.light_radius });
+  if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
   if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
   if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
 

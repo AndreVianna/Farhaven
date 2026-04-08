@@ -37,8 +37,8 @@ class_name ResourceDef extends Resource
 # --- Gameplay Properties ---
 ## Whether this prop emits light (e.g. torches, campfires). Used by day/night visibility.
 @export var emits_light: bool = false
-## Light radius in tiles (only used when emits_light is true).
-@export var light_radius: float = 0.0
+## Light radius in sub-hex rings (1=placement cell, 2=first ring, etc). Only used when emits_light is true.
+@export var light_radius: int = 0
 ## Whether this prop serves as a player respawn point (e.g. shelters).
 @export var is_respawn_point: bool = false
 ## Whether crafting recipes can use this prop as a crafting station.
