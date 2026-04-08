@@ -54,7 +54,7 @@ class_name PropDef extends Resource
 ## Thirst restored when consumed (only used if is_consumable = true).
 @export var thirst_restore: float = 0.0
 ## Health restored when consumed. Negative values represent damage (e.g. toxic items).
-@export var health_amount: float = 0.0
+@export var health_restore: float = 0.0
 
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh

@@ -2,13 +2,11 @@ extends Node3D
 
 ## PropRenderer — MultiMeshInstance3D pools for 3D prop meshes.
 ## One pool per PropDef from PropRegistry, keyed by StringName (prop type id).
-## Signal-driven: subscribes to HexGrid map_generated, tile_visibility_changed,
+## Signal-driven: subscribes to HexGrid map_generated,
 ## prop_depleted, prop_respawned signals.
-## Fog: HIDDEN=not instanced, VISIBLE=full.
 ## On prop_depleted: swap mesh variant (tree→stump, rock→rubble).
 ## On prop_respawned: swap back to original mesh.
 
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
@@ -195,9 +193,6 @@ func _connect_grid_signals() -> void:
 	if _grid.has_signal("map_generated"):
 		if not _grid.map_generated.is_connected(_on_map_generated):
 			_grid.map_generated.connect(_on_map_generated)
-	if _grid.has_signal("tile_visibility_changed"):
-		if not _grid.tile_visibility_changed.is_connected(_on_tile_visibility_changed):
-			_grid.tile_visibility_changed.connect(_on_tile_visibility_changed)
 	if _grid.has_signal("prop_depleted"):
 		if not _grid.prop_depleted.is_connected(_on_prop_depleted):
 			_grid.prop_depleted.connect(_on_prop_depleted)
@@ -210,14 +205,6 @@ func _connect_grid_signals() -> void:
 
 func _on_map_generated() -> void:
 	_populate_all_visible_tiles()
-
-
-func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	match state:
-		_HexTile.FogState.VISIBLE:
-			_add_props_for_tile(coords, false)
-		_HexTile.FogState.HIDDEN:
-			_remove_all_props_at(coords)
 
 
 func _on_prop_depleted(coords: Vector2i, prop_type: StringName) -> void:
@@ -238,9 +225,7 @@ func _populate_all_visible_tiles() -> void:
 		var tile: Resource = tiles[coords]
 		if tile == null:
 			continue
-		if tile.fog_state == _HexTile.FogState.VISIBLE:
-			_add_props_for_tile(coords, false)
-		# HIDDEN: skip
+		_add_props_for_tile(coords, false)
 
 
 func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:

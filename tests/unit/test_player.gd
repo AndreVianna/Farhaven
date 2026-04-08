@@ -41,7 +41,6 @@ func _build_small_grid() -> void:
 			tile.coords = Vector2i(q, r)
 			tile.biome = _HexTile.Biome.GRASSLAND
 			tile.elevation = 0
-			tile.fog_state = _HexTile.FogState.VISIBLE
 			_grid._tiles[Vector2i(q, r)] = tile
 
 

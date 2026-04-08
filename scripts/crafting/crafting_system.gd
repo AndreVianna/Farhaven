@@ -6,6 +6,8 @@ extends Node
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 signal recipe_discovered(recipe_name: StringName)
 signal craft_completed(recipe_name: StringName)
@@ -198,7 +200,7 @@ func _tile_has_crafting_station(coords: Vector2i) -> bool:
 		return false
 	for prop in tile.props:
 		if PropRegistry.has_def(prop.type):
-			var def: PropDef = PropRegistry.get_def(prop.type)
+			var def: _PropDef = PropRegistry.get_def(prop.type)
 			if def.is_crafting_station:
 				return true
 	return false

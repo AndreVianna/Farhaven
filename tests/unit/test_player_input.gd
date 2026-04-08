@@ -45,19 +45,17 @@ func after_test() -> void:
 
 
 func _build_test_grid() -> void:
-	# Single VISIBLE tile at (0,0) so taps resolve via world_to_axial→(0,0).
+	# Tile at (0,0) so taps resolve via world_to_axial→(0,0).
 	var tile := _HexTile.new()
 	tile.coords = Vector2i.ZERO
 	tile.biome = _HexTile.Biome.GRASSLAND
 	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[Vector2i.ZERO] = tile
-	# Hidden tile at (1,0) to test hidden-tile rejection.
-	var hidden := _HexTile.new()
-	hidden.coords = Vector2i(1, 0)
-	hidden.biome = _HexTile.Biome.GRASSLAND
-	hidden.fog_state = _HexTile.FogState.HIDDEN
-	_grid._tiles[Vector2i(1, 0)] = hidden
+	# Second tile at (1,0).
+	var second := _HexTile.new()
+	second.coords = Vector2i(1, 0)
+	second.biome = _HexTile.Biome.GRASSLAND
+	_grid._tiles[Vector2i(1, 0)] = second
 
 
 func _has_signal_of_type(type_str: String) -> bool:
@@ -105,19 +103,6 @@ func test_tap_with_large_drag_does_not_emit_tap() -> void:
 	_player_input._touch_duration = 0.1
 	_player_input._on_touch_up()
 	assert_bool(_has_signal_of_type("tap_tile")).is_false()
-
-
-func test_tap_on_hidden_tile_does_not_emit_tap() -> void:
-	_grid._tiles.erase(Vector2i.ZERO)
-	_player_input._on_touch_down(Vector2.ZERO)
-	_player_input._touch_duration = 0.1
-	_player_input._on_touch_up()
-	assert_bool(_has_signal_of_type("tap_tile")).is_false()
-	# Restore
-	var tile := _HexTile.new()
-	tile.coords = Vector2i.ZERO
-	tile.fog_state = _HexTile.FogState.VISIBLE
-	_grid._tiles[Vector2i.ZERO] = tile
 
 
 # --- JOYSTICK outcome ---

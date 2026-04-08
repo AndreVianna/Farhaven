@@ -7,7 +7,6 @@ extends Node3D
 ## On entry_cataloged: bulk remove — all visible markers of that type disappear.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
@@ -58,13 +57,6 @@ func _ready() -> void:
 
 func _connect_signals() -> void:
 	_connect_scanner_signals.call_deferred()
-	_connect_grid_signals()
-
-
-func _connect_grid_signals() -> void:
-	if _grid != null and _grid.has_signal("tile_visibility_changed"):
-		if not _grid.tile_visibility_changed.is_connected(_on_tile_visibility_changed):
-			_grid.tile_visibility_changed.connect(_on_tile_visibility_changed)
 
 
 func _connect_scanner_signals() -> void:
@@ -141,11 +133,6 @@ func _on_entry_encountered(entry_id: StringName, _label: String) -> void:
 				if info.label_node != null:
 					info.label_node.text = "⚠️"
 					info.label_node.modulate = ENCOUNTERED_COLOR
-
-
-func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	if state == _HexTile.FogState.HIDDEN:
-		_remove_all_labels_at(coords)
 
 
 # --- Marker management ---

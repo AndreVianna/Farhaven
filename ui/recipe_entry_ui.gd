@@ -9,6 +9,8 @@ signal craft_requested(recipe_name: StringName)
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 const COLOR_GREEN := Color(0.494, 0.784, 0.525)  # #7EC886 accent_green
 const COLOR_RED := Color(0.878, 0.482, 0.482)     # #E07B7B accent_red
@@ -130,7 +132,7 @@ func _update_ingredients(inventory, ingredients: Dictionary) -> void:
 		var lbl := Label.new()
 		lbl.add_theme_font_size_override("font_size", 18)
 
-		var def: PropDef = PropRegistry.get_def(material)
+		var def: _PropDef = PropRegistry.get_def(material)
 		var display_name: String = def.display_name if def != null and def.display_name != "" else String(material)
 		lbl.text = "%s: %d/%d" % [display_name, owned, needed]
 

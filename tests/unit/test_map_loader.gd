@@ -5,7 +5,6 @@ class_name TestMapLoader
 ## Replaces test_world_generator.gd after MapLoader pivot.
 
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _grid: Node
@@ -80,16 +79,6 @@ func test_anomaly_exists() -> void:
 		if found:
 			break
 	assert_bool(found).override_failure_message("No anomaly tile found").is_true()
-
-
-# --- Fog initialized: all tiles VISIBLE ---
-
-func test_fog_initialized_all_visible() -> void:
-	_load_ch1()
-	for c in _grid._tiles:
-		assert_int(_grid._tiles[c].fog_state).override_failure_message(
-			"Tile %s should be VISIBLE after load" % str(c)
-		).is_equal(_HexTile.FogState.VISIBLE)
 
 
 # --- get_traversal: WALK for elevation diff 0 ---
@@ -288,50 +277,6 @@ func test_is_passable_blocked() -> void:
 	assert_bool(_grid.is_passable(Vector2i(0, 0), Vector2i(1, 0))).is_false()
 
 
-# --- refresh_visibility: single-source ---
-
-func test_refresh_visibility_single_source() -> void:
-	_load_ch1()
-	for c in _grid._tiles:
-		_grid._tiles[c].fog_state = _HexTile.FogState.HIDDEN
-
-	var sources: Array[Dictionary] = [{"coords": Vector2i.ZERO, "radius": 2}]
-	_grid.refresh_visibility(sources)
-
-	for coords in _HexMath.get_tiles_in_range(Vector2i.ZERO, 2):
-		if _grid._tiles.has(coords):
-			assert_int(_grid._tiles[coords].fog_state).override_failure_message(
-				"Tile %s should be VISIBLE" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
-# --- refresh_visibility: multi-source ---
-
-func test_refresh_visibility_multi_source() -> void:
-	_load_ch1()
-	for c in _grid._tiles:
-		_grid._tiles[c].fog_state = _HexTile.FogState.HIDDEN
-
-	var second := Vector2i(3, 0)
-	var sources: Array[Dictionary] = [
-		{"coords": Vector2i.ZERO, "radius": 1},
-		{"coords": second, "radius": 1},
-	]
-	_grid.refresh_visibility(sources)
-
-	for coords in _HexMath.get_tiles_in_range(Vector2i.ZERO, 1):
-		if _grid._tiles.has(coords):
-			assert_int(_grid._tiles[coords].fog_state).override_failure_message(
-				"Origin source: tile %s should be VISIBLE" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-	for coords in _HexMath.get_tiles_in_range(second, 1):
-		if _grid._tiles.has(coords):
-			assert_int(_grid._tiles[coords].fog_state).override_failure_message(
-				"Second source: tile %s should be VISIBLE" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
 # --- Serialization round-trip ---
 
 func test_serialization_round_trip() -> void:
@@ -355,7 +300,6 @@ func test_serialization_round_trip() -> void:
 			continue
 		assert_int(loaded.biome).is_equal(orig.biome)
 		assert_int(loaded.elevation).is_equal(orig.elevation)
-		assert_int(loaded.fog_state).is_equal(orig.fog_state)
 		assert_int(loaded.props.size()).is_equal(orig.props.size())
 
 	grid2.queue_free()

@@ -5,6 +5,9 @@ extends Control
 ## Displays slot label (Axe/Pick/Wpn/Scn) and icon placeholder.
 ## No tap — tools are auto-used.
 
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
+
 ## Default tool color when a tool's PropDef is missing.
 const DEFAULT_TOOL_COLOR: Color = Color(0.5, 0.5, 0.5)
 
@@ -70,5 +73,5 @@ func refresh(tool_type: StringName) -> void:
 	if tool_type == &"":
 		_icon_rect.color = Color(0.10, 0.10, 0.12)
 	else:
-		var def: PropDef = PropRegistry.get_def(tool_type)
+		var def: _PropDef = PropRegistry.get_def(tool_type)
 		_icon_rect.color = def.placeholder_color if def != null else DEFAULT_TOOL_COLOR

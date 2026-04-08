@@ -14,11 +14,9 @@ func _ready() -> void:
 	HexGrid.load_map("res://data/maps/ch1.json")
 	# Auto-load save if exists (cold resume).
 	# Deferred so all systems are fully ready before loading state.
-	# MUST run before bootstrap so renderers reflect loaded state (catalog, fog, props).
+	# MUST run before bootstrap so renderers reflect loaded state (catalog, props).
 	SaveManager.load_game.call_deferred()
-	# After save load, populate renderers for already-visible tiles.
-	# MapLoader sets initial tiles to VISIBLE but doesn't emit tile_revealed,
-	# so renderers miss the starting hex and its neighbors.
+	# After save load, populate renderers for all tiles (all tiles are always rendered).
 	# Deferred so child renderers connect their signals first (their _ready()
 	# fires before ours, and they use call_deferred for signal wiring).
 	_bootstrap_visible_tiles.call_deferred()

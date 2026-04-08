@@ -9,7 +9,6 @@ const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 
 # --- Minimal fakes ---
@@ -17,8 +16,6 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -187,24 +184,23 @@ func _make_prop(type: StringName, tool_req: StringName = &"", remaining: int = 3
 	return _Prop.create_prop(type, remaining, remaining, tool_req, respawn)
 
 
-func _make_tile(coords: Vector2i, props: Array = [], fog: int = _HexTile.FogState.VISIBLE) -> Resource:
+func _make_tile(coords: Vector2i, props: Array = []) -> Resource:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
 	tile.biome = _HexTile.Biome.FOREST
 	tile.elevation = 0
-	tile.fog_state = fog
 	tile.props = props
 	return tile
 
 
 # ===================================================================
-# RESPAWN QUEUE TESTS (fog gate removed — always ticks)
+# RESPAWN QUEUE TESTS
 # ===================================================================
 
-func test_respawn_ticks_when_revealed() -> void:
+func test_respawn_ticks() -> void:
 	var rn := _make_prop(&"wood", &"", 0, 5.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
+	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -215,44 +211,6 @@ func test_respawn_ticks_when_revealed() -> void:
 
 	_sys._tick_respawn_queue(2.0)
 
-	assert_int(_sys._respawn_queue.size()).is_equal(1)
-	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
-
-
-func test_respawn_ticks_when_hidden() -> void:
-	var rn := _make_prop(&"wood", &"", 0, 5.0)
-	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.HIDDEN)
-	_grid._tiles[Vector2i.ZERO] = tile
-
-	_sys._respawn_queue.append({
-		"coords": Vector2i.ZERO,
-		"prop_index": 0,
-		"time_remaining": 5.0,
-	})
-
-	_sys._tick_respawn_queue(2.0)
-
-	assert_int(_sys._respawn_queue.size()).is_equal(1)
-	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
-
-
-func test_respawn_ticks_when_visible() -> void:
-	# Fog system removed — respawn always ticks, even when VISIBLE
-	var rn := _make_prop(&"wood", &"", 0, 5.0)
-	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
-	_grid._tiles[Vector2i.ZERO] = tile
-
-	_sys._respawn_queue.append({
-		"coords": Vector2i.ZERO,
-		"prop_index": 0,
-		"time_remaining": 5.0,
-	})
-
-	_sys._tick_respawn_queue(2.0)
-
-	# Should tick regardless of fog state
 	assert_int(_sys._respawn_queue.size()).is_equal(1)
 	assert_float(_sys._respawn_queue[0]["time_remaining"]).is_equal_approx(3.0, 0.01)
 
@@ -260,7 +218,7 @@ func test_respawn_ticks_when_visible() -> void:
 func test_respawn_triggers_at_zero() -> void:
 	var rn := _make_prop(&"wood", &"", 0, 1.0)
 	rn.max_amount = 3
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.VISIBLE)
+	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -282,7 +240,7 @@ func test_respawn_triggers_at_zero() -> void:
 func test_respawn_resets_to_max_amount() -> void:
 	var rn := _make_prop(&"wood", &"", 0, 1.0)
 	rn.max_amount = 5
-	var tile := _make_tile(Vector2i.ZERO, [rn], _HexTile.FogState.HIDDEN)
+	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 
 	_sys._respawn_queue.append({
@@ -317,12 +275,12 @@ func test_respawn_time_zero_never_enters_queue() -> void:
 func test_respawn_queue_handles_multiple_entries() -> void:
 	var rn1 := _make_prop(&"wood", &"", 0, 3.0)
 	rn1.max_amount = 2
-	var tile1 := _make_tile(Vector2i.ZERO, [rn1], _HexTile.FogState.VISIBLE)
+	var tile1 := _make_tile(Vector2i.ZERO, [rn1])
 	_grid._tiles[Vector2i.ZERO] = tile1
 
 	var rn2 := _make_prop(&"stone", &"", 0, 1.0)
 	rn2.max_amount = 4
-	var tile2 := _make_tile(Vector2i(1, 0), [rn2], _HexTile.FogState.HIDDEN)
+	var tile2 := _make_tile(Vector2i(1, 0), [rn2])
 	_grid._tiles[Vector2i(1, 0)] = tile2
 
 	_sys._respawn_queue.append({

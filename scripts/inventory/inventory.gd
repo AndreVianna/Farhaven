@@ -3,6 +3,9 @@ extends RefCounted
 
 ## Inventory data layer — owned by Player, not in scene tree.
 ## Manages prop/consumable slots and 4 fixed tool slots.
+## Uses preload because tests can be parsed before class_name registration completes.
+
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 signal inventory_changed()
 signal item_added(type: StringName, amount: int)
@@ -36,7 +39,7 @@ func _init() -> void:
 # --- Resource/Consumable API ---
 
 func add_item(type: StringName, amount: int = 1) -> int:
-	var def: PropDef = PropRegistry.get_def(type)
+	var def: _PropDef = PropRegistry.get_def(type)
 	if def == null:
 		return 0
 	if def.tool_slot != &"":
@@ -119,7 +122,7 @@ func is_full() -> bool:
 		if slot["type"] == &"":
 			return false
 		# Check for partial stack using PropDef.max_stack
-		var def: PropDef = PropRegistry.get_def(slot["type"])
+		var def: _PropDef = PropRegistry.get_def(slot["type"])
 		if def != null and slot["quantity"] < def.max_stack:
 			return false
 	return true

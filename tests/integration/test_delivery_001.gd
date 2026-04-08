@@ -58,7 +58,6 @@ func _build_movement_grid() -> void:
 			tile.coords = Vector2i(q, r)
 			tile.biome = _HexTile.Biome.GRASSLAND
 			tile.elevation = 0
-			tile.fog_state = _HexTile.FogState.VISIBLE
 			_grid._tiles[Vector2i(q, r)] = tile
 
 
@@ -68,7 +67,6 @@ func _make_tile(coords: Vector2i, elevation: int, biome: int = 1) -> void:
 	tile.coords = coords
 	tile.biome = biome
 	tile.elevation = elevation
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[coords] = tile
 
 
@@ -111,17 +109,6 @@ func test_ac1_all_required_biomes_present() -> void:
 	assert_bool(biomes.has(_HexTile.Biome.ROCKY)).override_failure_message("Missing ROCKY").is_true()
 
 
-func test_ac1_spawn_ring_visible_after_load() -> void:
-	_load_map()
-	# MapLoader sets radius-1 tiles around spawn to VISIBLE.
-	for coords: Variant in _HexMath.get_tiles_in_range(Vector2i.ZERO, 1):
-		var c: Vector2i = coords
-		if _grid._tiles.has(c):
-			assert_int(_grid._tiles[c].fog_state).override_failure_message(
-				"Tile %s within spawn ring must be VISIBLE" % str(c)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
 # ===========================================================================
 # AC2 — HexGridRenderer builds ArrayMesh (no MultiMesh)
 # ===========================================================================
@@ -148,7 +135,6 @@ func test_ac2_renderer_mesh_populated_after_map_generated() -> void:
 			tile.coords = Vector2i(q, r)
 			tile.biome = _HexTile.Biome.GRASSLAND
 			tile.elevation = 0
-			tile.fog_state = _HexTile.FogState.VISIBLE
 			HexGrid._tiles[Vector2i(q, r)] = tile
 
 	var renderer: Node = load(RENDERER_SCENE).instantiate()
@@ -252,45 +238,6 @@ func test_ac4_movement_updates_current_tile() -> void:
 		"current_tile must update after sustained joystick movement"
 	).is_true()
 	player.queue_free()
-
-
-# ===========================================================================
-# AC5 — Fog reveal on player movement
-# ===========================================================================
-
-func test_ac5_fog_reveals_around_new_tile_after_transition() -> void:
-	# DayNightCycle owns visibility refresh — use HexGrid autoload so the signal chain works.
-	var loader := _MapLoader.new(HexGrid)
-	loader.load_map(MAP_PATH)
-	# Find a passable neighbor of the crash site.
-	var next_tile := Vector2i(-9999, -9999)
-	for n: Variant in _HexMath.get_neighbors(Vector2i.ZERO):
-		var nv: Vector2i = n
-		if HexGrid._tiles.has(nv) and HexGrid.is_passable(Vector2i.ZERO, nv):
-			next_tile = nv
-			break
-	assert_bool(next_tile != Vector2i(-9999, -9999)).override_failure_message(
-		"Crash Site must have a passable neighbor"
-	).is_true()
-	if next_tile == Vector2i(-9999, -9999):
-		HexGrid._tiles.clear()
-		return
-
-	var player := _Player.new()
-	add_child(player)
-	player._on_map_generated()
-
-	player._emit_tile_transition(Vector2i.ZERO, next_tile)
-
-	# Tiles within radius 2 of next_tile must be VISIBLE.
-	for coords: Variant in _HexMath.get_tiles_in_range(next_tile, 2):
-		var c: Vector2i = coords
-		if HexGrid._tiles.has(c):
-			assert_int(HexGrid._tiles[c].fog_state).override_failure_message(
-				"Tile %s within radius 2 of new position must be VISIBLE" % str(c)
-			).is_equal(_HexTile.FogState.VISIBLE)
-	player.queue_free()
-	HexGrid._tiles.clear()
 
 
 func test_ac5_player_moved_signal_fires_on_transition() -> void:
@@ -474,14 +421,12 @@ func test_ac10_cliff_faces_add_geometry_for_elevation_difference() -> void:
 	tile_a.coords = Vector2i(0, 0)
 	tile_a.biome = _HexTile.Biome.GRASSLAND
 	tile_a.elevation = 0
-	tile_a.fog_state = _HexTile.FogState.VISIBLE
 	HexGrid._tiles[Vector2i(0, 0)] = tile_a
 
 	var tile_b := _HexTile.new()
 	tile_b.coords = Vector2i(1, 0)
 	tile_b.biome = _HexTile.Biome.GRASSLAND
 	tile_b.elevation = 5
-	tile_b.fog_state = _HexTile.FogState.VISIBLE
 	HexGrid._tiles[Vector2i(1, 0)] = tile_b
 
 	var renderer: Node = load(RENDERER_SCENE).instantiate()

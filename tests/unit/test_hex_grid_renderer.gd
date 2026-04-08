@@ -20,7 +20,6 @@ func _setup_small_grid() -> void:
 			tile.coords = Vector2i(q, r)
 			tile.biome = _HexTile.Biome.GRASSLAND
 			tile.elevation = 0
-			tile.fog_state = _HexTile.FogState.VISIBLE
 			HexGrid._tiles[Vector2i(q, r)] = tile
 
 
@@ -89,7 +88,6 @@ func test_renderer_tile_data_cleared_on_second_map_generated() -> void:
 	extra.coords = Vector2i(99, 99)
 	extra.biome = _HexTile.Biome.ROCKY
 	extra.elevation = 0
-	extra.fog_state = _HexTile.FogState.VISIBLE
 	HexGrid._tiles[Vector2i(99, 99)] = extra
 	HexGrid.map_generated.emit()
 
@@ -109,27 +107,6 @@ func test_renderer_builds_array_mesh_after_map_generated() -> void:
 	var mi: MeshInstance3D = renderer.get_node("MeshInstance3D")
 	assert_bool(mi.mesh != null).override_failure_message(
 		"MeshInstance3D must have a mesh after map_generated with visible tiles"
-	).is_true()
-	renderer.queue_free()
-
-
-func test_renderer_hidden_tiles_only_produce_no_mesh() -> void:
-	HexGrid._tiles.clear()
-	var tile := _HexTile.new()
-	tile.coords = Vector2i(0, 0)
-	tile.biome = _HexTile.Biome.GRASSLAND
-	tile.fog_state = _HexTile.FogState.HIDDEN
-	HexGrid._tiles[Vector2i(0, 0)] = tile
-
-	var renderer: Node = load(RENDERER_SCENE).instantiate()
-	add_child(renderer)
-	HexGrid.map_generated.emit()
-
-	# With all tiles hidden, mesh should be null or empty.
-	var mi: MeshInstance3D = renderer.get_node("MeshInstance3D")
-	var is_empty: bool = (mi.mesh == null) or (mi.mesh.get_surface_count() == 0)
-	assert_bool(is_empty).override_failure_message(
-		"All-HIDDEN grid should produce no mesh geometry"
 	).is_true()
 	renderer.queue_free()
 
@@ -180,18 +157,3 @@ func test_highlight_tiles_replaces_previous_highlights() -> void:
 	renderer.queue_free()
 
 
-# ---------------------------------------------------------------------------
-# Fog state handling
-# ---------------------------------------------------------------------------
-
-func test_fog_visibility_changed_updates_tile_data() -> void:
-	_setup_small_grid()
-	var renderer: Node = load(RENDERER_SCENE).instantiate()
-	add_child(renderer)
-	HexGrid.map_generated.emit()
-
-	# Change fog state via signal.
-	HexGrid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
-	var data: Dictionary = renderer._tile_data[Vector2i(0, 0)]
-	assert_int(data.fog_state).is_equal(_HexTile.FogState.HIDDEN)
-	renderer.queue_free()

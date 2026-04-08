@@ -35,8 +35,6 @@ const ID_PICKAXE: StringName = &"00202"
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -189,7 +187,6 @@ func _make_tile(coords: Vector2i, props: Array = []) -> Resource:
 	tile.coords = coords
 	tile.biome = _HexTile.Biome.FOREST
 	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = props
 	return tile
 
@@ -733,11 +730,9 @@ func test_try_gather_returns_false_without_grid() -> void:
 # TESTS: Respawn queue (always ticks — no fog gate)
 # ===================================================================
 
-func test_respawn_ticks_even_when_visible() -> void:
-	# Respawn should always tick regardless of fog_state (fog removed)
+func test_respawn_ticks() -> void:
 	var rn := _make_prop(&"00010", &"", 1, 2.0)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)

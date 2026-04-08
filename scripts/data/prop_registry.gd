@@ -4,7 +4,9 @@ extends Node
 ## Added to project.godot as autoload BEFORE HexGrid.
 ## All inventory items, tools, and gatherable props are PropDefs —
 ## there is no separate item registry or hardcoded item config.
+## Uses preload because autoloads initialize before class_name registration.
 
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 const PROPS_PATH := "res://data/props/"
 
 ## PropDef id (numeric, e.g. &"00001") → PropDef resource
@@ -23,11 +25,11 @@ func _scan_props() -> void:
 	while file_name != "":
 		if file_name.ends_with(".tres"):
 			var res := load(PROPS_PATH + file_name)
-			if res is PropDef:
+			if res is _PropDef:
 				_defs[res.id] = res
 		file_name = dir.get_next()
 
-func get_def(type: StringName) -> PropDef:
+func get_def(type: StringName) -> _PropDef:
 	return _defs.get(type)
 
 func get_all() -> Array:

@@ -10,7 +10,6 @@ class_name ScannerSystem
 ## when player leaves range (no grace period). One scan at a time, nearest first.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Scan duration per category (seconds) ---
@@ -61,16 +60,6 @@ func _ready() -> void:
 	_player = get_parent()
 	_catalog = _Catalog.new()
 	_catalog.initialize(_grid, null)
-	_connect_grid_signals()
-
-
-func _connect_grid_signals() -> void:
-	if _grid == null:
-		return
-	if _grid.has_signal("tile_revealed"):
-		_grid.tile_revealed.connect(_on_tile_revealed)
-	if _grid.has_signal("tile_visibility_changed"):
-		_grid.tile_visibility_changed.connect(_on_tile_visibility_changed)
 
 
 # --- Process (proximity auto-scan) ---
@@ -190,16 +179,7 @@ func on_fauna_fled(_fauna_id, species_type: StringName) -> void:
 	knowledge_state_changed.emit(species_type, _Catalog.KnowledgeState.UNKNOWN, _Catalog.KnowledgeState.ENCOUNTERED)
 
 
-# --- Passive identification (on tile reveal/visibility change) ---
-
-func _on_tile_revealed(coords: Vector2i) -> void:
-	_check_passive_identification(coords)
-
-
-func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	if state == _HexTile.FogState.VISIBLE:
-		_check_passive_identification(coords)
-
+# --- Passive identification ---
 
 func _check_passive_identification(coords: Vector2i) -> void:
 	if _grid == null:
@@ -267,7 +247,7 @@ func bootstrap_visible() -> void:
 		return
 	for coords in _grid._tiles:
 		var tile = _grid._tiles[coords]
-		if tile != null and tile.fog_state == _HexTile.FogState.VISIBLE:
+		if tile != null:
 			_check_passive_identification(coords)
 
 

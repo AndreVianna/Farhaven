@@ -13,8 +13,6 @@ class_name PlayerInput
 ##   TAP        — touch DOWN+UP in <tap_max_duration AND drag <tap_max_drag
 ##   JOYSTICK   — drag ≥drag_threshold (left zone only)
 
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-
 # --- Signals ---
 signal tap_tile(coords: Vector2i)
 signal joystick_started(direction: Vector2)
@@ -177,9 +175,6 @@ func _emit_tap() -> void:
 		return
 	var tile: Resource = _grid.get_tile(coords)
 	if tile == null:
-		return
-	# Only tap on VISIBLE tiles.
-	if tile.fog_state == _HexTile.FogState.HIDDEN:
 		return
 	tap_tile.emit(coords)
 

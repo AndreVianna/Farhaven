@@ -9,6 +9,8 @@ signal panel_opened()
 
 const InventorySlotUI = preload("res://ui/inventory_slot_ui.gd")
 const ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 const TOOL_SLOT_ORDER: Array[StringName] = [&"axe", &"pickaxe", &"weapon", &"scanner"]
 
@@ -140,12 +142,12 @@ func _on_toxic_confirmed() -> void:
 
 
 func _is_toxic_flora(type: StringName) -> bool:
-	# Toxicity is now driven by PropDef.toxic_amount on the consumable item itself.
+	# Toxicity is now driven by PropDef.health_restore (negative = toxic damage).
 	# Catalog reference no longer required — but kept available for future filtering.
-	var def: PropDef = PropRegistry.get_def(type)
+	var def: _PropDef = PropRegistry.get_def(type)
 	if def == null:
 		return false
-	return def.is_consumable and def.toxic_amount > 0.0
+	return def.is_consumable and def.health_restore < 0.0
 
 
 # --- Inventory signal handlers ---

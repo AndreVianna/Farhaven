@@ -21,8 +21,6 @@ const ID_BOULDER: StringName = &"00005"
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -475,27 +473,6 @@ func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
 
 	_system._check_passive_identification(Vector2i(3, 0))
 	assert_str(String(_identified_entry_id)).is_equal("anomaly_ch1_001")
-
-
-func test_passive_id_tile_revealed_triggers_check() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(ID_TREE)
-
-	_system._on_tile_revealed(Vector2i(1, 1))
-	assert_int(_unknown_count).is_equal(1)
-
-
-func test_passive_id_visibility_changed_to_visible_triggers_check() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(ID_TREE)
-
-	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.VISIBLE)
-	assert_int(_unknown_count).is_equal(1)
-
-
-func test_passive_id_visibility_changed_to_hidden_does_not_trigger() -> void:
-	_grid._tiles[Vector2i(1, 1)] = _make_tile_with_prop(ID_TREE)
-
-	_system._on_tile_visibility_changed(Vector2i(1, 1), _HexTile.FogState.HIDDEN)
-	assert_int(_unknown_count).is_equal(0)
 
 
 # --- entry_cataloged emitted on completion with correct data ---

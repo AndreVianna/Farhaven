@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## Unit tests for PropRenderer (task-019).
-## Tests MultiMesh pool creation, fog-driven instancing, depleted/respawned mesh swaps.
+## Tests MultiMesh pool creation and prop instancing via map_generated.
 ## Pools are now keyed by StringName (prop type id) via PropRegistry.
 
 const _PropRenderer = preload("res://scripts/rendering/prop_renderer.gd")
@@ -15,7 +15,6 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
 	signal prop_respawned(coords: Vector2i, prop_type: StringName)
 
@@ -29,18 +28,16 @@ var _renderer: Node3D
 var _grid: FakeGrid
 
 
-func _make_tile(prop_type: StringName, remaining: int = 3, elev: int = 0, fog: int = _HexTile.FogState.VISIBLE) -> HexTile:
+func _make_tile(prop_type: StringName, remaining: int = 3, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
-	tile.fog_state = fog
 	tile.props = [_Prop.create_prop(prop_type, remaining, 3)]
 	return tile
 
 
-func _make_tile_multi(types: Array, fog: int = _HexTile.FogState.VISIBLE) -> HexTile:
+func _make_tile_multi(types: Array) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
-	tile.fog_state = fog
 	var props_arr: Array = []
 	for t in types:
 		props_arr.append(_Prop.create_prop(t, 3, 3))
@@ -114,45 +111,27 @@ func test_crystal_pool_mesh_exists() -> void:
 
 
 # ===========================================
-# Fog-driven instancing tests
+# map_generated instancing tests
 # ===========================================
 
-func test_visible_tile_adds_prop_on_visibility_changed() -> void:
+func test_map_generated_populates_tile() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood")
-
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-
-
-func test_hidden_tile_removes_props() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood")
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)
-
-
-func test_hidden_tile_not_instanced() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 3, 0, _HexTile.FogState.HIDDEN)
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
-func test_map_generated_populates_visible_tiles() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood", 3, 0, _HexTile.FogState.VISIBLE)
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 3, 0, _HexTile.FogState.VISIBLE)
-	_grid._tiles[Vector2i(2, 0)] = _make_tile(&"berries", 3, 0, _HexTile.FogState.HIDDEN)
+func test_map_generated_populates_all_tiles() -> void:
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone")
+	_grid._tiles[Vector2i(2, 0)] = _make_tile(&"berries")
 
 	_grid.map_generated.emit()
 
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(0)
+	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 
 # ===========================================
@@ -161,43 +140,43 @@ func test_map_generated_populates_visible_tiles() -> void:
 
 func test_wood_maps_to_wood_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 
 
 func test_stone_maps_to_stone_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"stone")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"stone")).is_equal(1)
 
 
 func test_berries_maps_to_berries_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"berries")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(1)
 
 
 func test_fiber_maps_to_fiber_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"fiber")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"fiber")).is_equal(1)
 
 
 func test_ore_maps_to_ore_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"ore")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"ore")).is_equal(1)
 
 
 func test_crystal_maps_to_crystal_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"crystal")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"crystal")).is_equal(1)
 
 
 func test_loose_rock_maps_to_loose_rock_pool() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"loose_rock")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_renderer.get_pool_visible_count(&"loose_rock")).is_equal(1)
 
 
@@ -208,7 +187,7 @@ func test_loose_rock_maps_to_loose_rock_pool() -> void:
 func test_multi_prop_tile() -> void:
 	_grid._tiles[Vector2i(0, 0)] = _make_tile_multi([&"wood", &"berries"])
 
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
 	assert_int(_renderer.get_pool_visible_count(&"berries")).is_equal(1)
@@ -223,7 +202,7 @@ func test_multi_prop_tile() -> void:
 func test_prop_depleted_marks_entry() -> void:
 	var tile: HexTile = _make_tile(&"wood")
 	_grid._tiles[Vector2i(0, 0)] = tile
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	# Deplete the prop
 	tile.props[0].remaining = 0
@@ -236,7 +215,7 @@ func test_prop_depleted_marks_entry() -> void:
 func test_prop_respawned_clears_depleted() -> void:
 	var tile: HexTile = _make_tile(&"stone")
 	_grid._tiles[Vector2i(0, 0)] = tile
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	tile.props[0].remaining = 0
 	_grid.prop_depleted.emit(Vector2i(0, 0), &"stone")
@@ -265,11 +244,10 @@ func test_normal_meshes_exist_for_all_pools() -> void:
 func test_prop_with_offset_creates_entry() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = [_Prop.create_prop(&"berries", 3, 3, &"", 0.0, 45.0, Vector2i(1, -1))]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_bool(entries.has(Vector2i(0, 0))).is_true()
@@ -279,37 +257,13 @@ func test_prop_with_offset_creates_entry() -> void:
 func test_unknown_prop_type_not_instanced() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = [_Prop.create_prop(&"unknown_thing", 3, 3)]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	for def in PropRegistry.get_all():
 		assert_int(_renderer.get_pool_visible_count(def.id)).is_equal(0)
-
-
-# ===========================================
-# Swap-and-remove instance management tests
-# ===========================================
-
-func test_swap_and_remove_preserves_other_instances() -> void:
-	# Add props on two tiles
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood")
-
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(2)
-
-	# Remove first tile's prop
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
-
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-	var entries: Dictionary = _renderer.get_tile_entries()
-	assert_bool(entries.has(Vector2i(1, 0))).is_true()
-	assert_bool(not entries.has(Vector2i(0, 0))).is_true()
 
 
 # ===========================================
@@ -318,16 +272,3 @@ func test_swap_and_remove_preserves_other_instances() -> void:
 
 func test_draw_calls_prop_pools() -> void:
 	assert_int(_renderer.get_pool_count()).is_equal(PropRegistry.get_all().size())
-
-
-# ===========================================
-# Visibility transition tests
-# ===========================================
-
-func test_visible_to_hidden_removes_instances() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"wood")
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(1)
-
-	_grid.tile_visibility_changed.emit(Vector2i(0, 0), _HexTile.FogState.HIDDEN)
-	assert_int(_renderer.get_pool_visible_count(&"wood")).is_equal(0)

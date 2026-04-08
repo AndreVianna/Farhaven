@@ -13,8 +13,6 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)

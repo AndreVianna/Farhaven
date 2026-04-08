@@ -5,6 +5,8 @@ const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
 const _StatusCombinedPanel = preload("res://ui/status_combined_panel.gd")
 const _GearCombinedPanel = preload("res://ui/gear_combined_panel.gd")
 const _LogCombinedPanel = preload("res://ui/log_combined_panel.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 @onready var _stat_bars := $StatBars
 @onready var _day_counter := $DayCounter
@@ -151,7 +153,7 @@ func connect_auto_interaction(auto_interaction: Node) -> void:
 func _on_auto_gather_completed(_coords: Vector2i, prop_type: StringName, amount: int) -> void:
 	# Resolve the inventory item display name (gathering may yield a different item, e.g. tree → wood).
 	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
-	var def: PropDef = PropRegistry.get_def(yield_id)
+	var def: _PropDef = PropRegistry.get_def(yield_id)
 	var display_name: String = def.display_name if def != null and def.display_name != "" else String(yield_id)
 	var text: String = "+%d %s" % [amount, display_name]
 	var player: Node = _get_player()

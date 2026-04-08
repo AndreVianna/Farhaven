@@ -5,6 +5,9 @@ extends Control
 ## Displays a color-coded icon placeholder and quantity label.
 ## Emits slot_tapped when a consumable is tapped.
 
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
+
 signal slot_tapped(type: StringName)
 
 ## Default color when an item has no PropDef.
@@ -60,7 +63,7 @@ func refresh(slot: Dictionary) -> void:
 		_is_consumable = false
 		_apply_empty_style()
 		return
-	var def: PropDef = PropRegistry.get_def(_type)
+	var def: _PropDef = PropRegistry.get_def(_type)
 	_is_consumable = def != null and def.is_consumable
 	_apply_occupied_style()
 
@@ -87,7 +90,7 @@ func _apply_empty_style() -> void:
 
 
 func _apply_occupied_style() -> void:
-	var def: PropDef = PropRegistry.get_def(_type)
+	var def: _PropDef = PropRegistry.get_def(_type)
 	_icon_rect.color = def.placeholder_color if def != null else DEFAULT_SLOT_COLOR
 	var display_name: String = def.display_name if def != null and def.display_name != "" else String(_type)
 	_quantity_label.text = "%s (%d)" % [display_name, _quantity]

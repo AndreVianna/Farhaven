@@ -47,8 +47,6 @@ const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -142,7 +140,6 @@ func _on_sig_scan_interrupted() -> void:
 func _make_tile_with_prop(prop_type: StringName, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = [_Prop.create_prop(prop_type, 0, 0)]
 	return tile
 
@@ -150,7 +147,6 @@ func _make_tile_with_prop(prop_type: StringName, elev: int = 0) -> HexTile:
 func _make_tile_with_anomaly(anomaly_id: StringName, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = [_Prop.create_anomaly(anomaly_id)]
 	return tile
 
@@ -223,9 +219,9 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_player.current_tile = Vector2i.ZERO
 
-	# Passive ID: reveal tile → shows ❓ marker + prop mesh
+	# Passive ID: shows ❓ marker + prop mesh
 	_scanner._check_passive_identification(Vector2i(1, 0))
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
 
@@ -547,8 +543,8 @@ func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_setup_scanner_tree()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
-	_scanner._on_tile_revealed(Vector2i(1, 0))
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
+	_scanner._check_passive_identification(Vector2i(1, 0))
+	_grid.map_generated.emit()
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
 
@@ -807,23 +803,6 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 	assert_int(catalog_ids.size()).is_equal(0)  # NOT cataloged, just encountered
 	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
 	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_false()
-
-	_teardown_scanner_tree()
-
-
-# ===========================================================================
-# Prop removed on tile visibility HIDDEN
-# ===========================================================================
-
-func test_prop_removed_on_tile_hidden() -> void:
-	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-
-	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
-
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(0)
 
 	_teardown_scanner_tree()
 

@@ -17,8 +17,7 @@ extends Node3D
 ##   - Different elevation = different corner key → no color sharing → cliff edge.
 ##   - Y position = elevation * ELEVATION_STEP, with corner Y averaged for slopes (diff 1-2).
 ##   - Water tiles stay flat regardless of neighbor elevation (no curvature).
-##   - HIDDEN tiles: excluded from mesh (no geometry).
-##   - VISIBLE tiles: full vertex colors. Darkness handled by shader.
+##   - All tiles render. Darkness handled by shader.
 ##   - Highlights: vertex color override, cleared on clear_highlights().
 ##   - Wall faces on all non-water hex edges where neighbor is same-or-lower, water, or missing.
 
@@ -32,9 +31,8 @@ var _material: ShaderMaterial
 ## Loaded BiomeData resources indexed by Biome enum value.
 var _biome_data: Array = []
 
-## coords (Vector2i) → {base_color: Color, fog_state: int, highlight: Color}
-## base_color: elevation-tinted biome color, no fog applied.
-## fog_state: current HexTile.FogState value.
+## coords (Vector2i) → {base_color: Color, highlight: Color}
+## base_color: elevation-tinted biome color.
 ## highlight: Color.TRANSPARENT = inactive.
 var _tile_data: Dictionary = {}
 
@@ -67,8 +65,6 @@ func _ready() -> void:
 		_biome_data[i] = load("res://data/biomes/" + biome_files[i])
 
 	HexGrid.map_generated.connect(_on_map_generated)
-	HexGrid.tile_revealed.connect(_on_tile_revealed)
-	HexGrid.tile_visibility_changed.connect(_on_tile_visibility_changed)
 
 
 # --- Signal handlers ---
@@ -77,23 +73,6 @@ func _on_map_generated() -> void:
 	_tile_data.clear()
 	_highlights.clear()
 	_build_tile_data()
-	_rebuild_mesh()
-
-
-func _on_tile_revealed(coords: Vector2i) -> void:
-	if not _tile_data.has(coords):
-		return
-	var tile = HexGrid._tiles.get(coords, null)
-	if tile == null:
-		return
-	_tile_data[coords].fog_state = tile.fog_state
-	_rebuild_mesh()
-
-
-func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	if not _tile_data.has(coords):
-		return
-	_tile_data[coords].fog_state = state
 	_rebuild_mesh()
 
 
@@ -129,20 +108,17 @@ func _build_tile_data() -> void:
 		var base_color: Color = _pick_color(bd, coords, tile.elevation)
 		_tile_data[coords] = {
 			base_color = base_color,
-			fog_state = tile.fog_state,
 			highlight = Color.TRANSPARENT,
 		}
 
 
 ## Rebuild the entire ArrayMesh from current _tile_data.
-## Called on map_generated and on any fog/highlight change.
+## Called on map_generated and on any highlight change.
 func _rebuild_mesh() -> void:
-	# Step 1: Compute final vertex color per tile (fog + highlight applied).
+	# Step 1: Compute final vertex color per tile (highlight applied if active).
 	var tile_colors: Dictionary = {}
 	for coords: Variant in _tile_data:
 		var data: Dictionary = _tile_data[coords]
-		if data.fog_state == _HexTile.FogState.HIDDEN:
-			continue  # Hidden tiles produce no geometry.
 		var c: Color = data.base_color
 		if (data.highlight as Color).a > 0.0:
 			c = data.highlight

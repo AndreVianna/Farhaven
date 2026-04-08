@@ -7,6 +7,8 @@ class_name FlyToPlayer
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 ## Duration of the fly-to-player tween in seconds.
 const FLY_DURATION: float = 0.3
@@ -68,7 +70,7 @@ func _create_sprite(prop_type: StringName) -> MeshInstance3D:
 	var mat := StandardMaterial3D.new()
 	# Use the gathered item's color (yield) so the sphere matches what the player receives.
 	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
-	var def: PropDef = PropRegistry.get_def(yield_id)
+	var def: _PropDef = PropRegistry.get_def(yield_id)
 	mat.albedo_color = def.placeholder_color if def != null else DEFAULT_COLOR
 	mat.emission_enabled = true
 	mat.emission = mat.albedo_color

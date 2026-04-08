@@ -54,8 +54,6 @@ const _CraftingPanelScene = preload("res://scenes/ui/crafting_panel.tscn")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -128,17 +126,15 @@ func _make_prop(type: StringName, remaining: int = 3, tool_req: StringName = &""
 	return _Prop.create_prop(type, remaining, remaining, tool_req, respawn)
 
 
-func _make_tile(prop_type: StringName = &"", remaining: int = 3, tool_req: StringName = &"", fog: int = _HexTile.FogState.VISIBLE, respawn: float = 0.0) -> HexTile:
+func _make_tile(prop_type: StringName = &"", remaining: int = 3, tool_req: StringName = &"", respawn: float = 0.0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	tile.fog_state = fog
 	if prop_type != &"":
 		tile.props = [_make_prop(prop_type, remaining, tool_req, respawn)]
 	return tile
 
 
-func _make_empty_tile(fog: int = _HexTile.FogState.VISIBLE) -> HexTile:
+func _make_empty_tile() -> HexTile:
 	var tile: HexTile = _HexTile.new()
-	tile.fog_state = fog
 	return tile
 
 
@@ -363,7 +359,7 @@ func test_prop_depletion_signal_and_visual_change() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Show prop in renderer
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 	assert_int(_prop_renderer.get_pool_visible_count(ID_TREE)).is_equal(1)
 
 	# Verify the prop is NOT depleted initially
@@ -411,14 +407,14 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 
 	# Wood with remaining=1, respawn_time=2.0
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", _HexTile.FogState.VISIBLE, 2.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", 2.0)
 	# Position player at the wood prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"wood_tree")
 
 	# Show prop
-	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	# Gather to deplete
 	_auto_interaction._check_gather_proximity()
@@ -428,7 +424,7 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 	assert_int(tile.props[0].remaining).is_equal(0)
 	assert_int(_auto_interaction._respawn_queue.size()).is_equal(1)
 
-	# Tile stays VISIBLE but respawn still ticks (fog system removed)
+	# Respawn always ticks
 	var respawned_signals: Array = []
 	_grid.prop_respawned.connect(func(c: Vector2i, t: StringName) -> void:
 		respawned_signals.append({"coords": c, "type": t})
@@ -917,7 +913,7 @@ func test_prop_renderer_depleted_visual_swap() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i(2, 0)] = _make_tile(ID_BOULDER, 2)
-	_grid.tile_visibility_changed.emit(Vector2i(2, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	# Initially not depleted
 	var entries: Dictionary = _prop_renderer.get_tile_entries()
@@ -955,7 +951,7 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 1, &"", _HexTile.FogState.VISIBLE, 1.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 1, &"", 1.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"stone_deposit")
@@ -966,12 +962,10 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 
 	assert_int(_auto_interaction._respawn_queue.size()).is_equal(1)
 
-	# Tile remains VISIBLE → respawn still ticks (fog system removed)
+	# Respawn always ticks
 	_auto_interaction._tick_respawn_queue(1.5)
 	var tile: HexTile = _grid.get_tile(Vector2i(1, 0))
-	assert_int(tile.props[0].remaining).override_failure_message(
-		"Respawn must tick even while tile is VISIBLE (fog removed)"
-	).is_equal(1)
+	assert_int(tile.props[0].remaining).is_equal(1)
 
 	_teardown_full_tree()
 
@@ -985,7 +979,7 @@ func test_zero_respawn_time_never_enters_queue() -> void:
 
 	# respawn_time = 0.0 (default)
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", _HexTile.FogState.VISIBLE, 0.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", 0.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"wood_tree")
@@ -1220,7 +1214,7 @@ func test_prop_renderer_respawn_restores_visual() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i(3, 0)] = _make_tile(ID_BERRY_BUSH, 1)
-	_grid.tile_visibility_changed.emit(Vector2i(3, 0), _HexTile.FogState.VISIBLE)
+	_grid.map_generated.emit()
 
 	# Deplete: set remaining to 0 first (renderer rebuild checks rn.remaining)
 	var tile: HexTile = _grid.get_tile(Vector2i(3, 0))

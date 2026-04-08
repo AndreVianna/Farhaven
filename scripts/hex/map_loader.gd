@@ -86,7 +86,6 @@ func load_map(path: String) -> bool:
 		tile.coords = coords
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
-		tile.fog_state = _HexTile.FogState.VISIBLE
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):
@@ -147,11 +146,7 @@ func load_map(path: String) -> bool:
 	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
 
-	# Step 6: Initialize fog — all tiles VISIBLE (darkness handled by shader)
-	for c in _grid._tiles:
-		_grid._tiles[c].fog_state = _HexTile.FogState.VISIBLE
-
-	# Step 7: Emit map_generated
+	# Emit map_generated
 	_grid.map_generated.emit()
 	return true
 

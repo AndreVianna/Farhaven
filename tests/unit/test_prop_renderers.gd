@@ -17,8 +17,6 @@ const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 class FakeGrid extends Node:
 	var _tiles: Dictionary = {}
 	signal map_generated()
-	signal tile_revealed(coords: Vector2i)
-	signal tile_visibility_changed(coords: Vector2i, state: int)
 	signal tile_entered(coords: Vector2i)
 	signal tile_exited(coords: Vector2i)
 	signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -63,7 +61,6 @@ var _scanner: Node
 func _make_tile_with_prop(prop_type: StringName, elev: int = 0) -> HexTile:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = elev
-	tile.fog_state = _HexTile.FogState.VISIBLE
 	tile.props = [_Prop.create_prop(prop_type, 0, 0)]
 	return tile
 
@@ -201,24 +198,6 @@ func test_label_update_on_entry_encountered() -> void:
 
 	# Marker should now show ⚠️
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("⚠️")
-
-
-func test_labels_not_removed_when_tile_visible() -> void:
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
-
-	assert_int(_label_renderer.get_label_count()).is_equal(1)
-
-	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-
-	assert_int(_label_renderer.get_label_count()).is_equal(1)
-
-
-func test_labels_removed_when_tile_becomes_hidden() -> void:
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
-
-	_label_renderer._on_tile_visibility_changed(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-
-	assert_int(_label_renderer.get_label_count()).is_equal(0)
 
 
 func test_labels_billboard_enabled() -> void:

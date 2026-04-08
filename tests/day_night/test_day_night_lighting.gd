@@ -103,48 +103,6 @@ func test_lighting_applied_ambient_energy_on_register() -> void:
 	assert_float(_env.environment.ambient_light_energy).is_equal_approx(day_energy, 0.001)
 
 
-# --- Torch tile tracking ---
-
-func test_light_sources_initially_empty() -> void:
-	assert_int(_dnc._light_sources.size()).is_equal(0)
-
-
-func test_structure_placed_torch_adds_to_light_sources() -> void:
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._light_sources.size()).is_equal(1)
-	assert_bool(_dnc._light_sources.has(Vector2i(1, 2))).is_true()
-
-
-func test_structure_placed_non_torch_ignored() -> void:
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00102")
-	assert_int(_dnc._light_sources.size()).is_equal(0)
-
-
-func test_structure_placed_torch_no_duplicate() -> void:
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._light_sources.size()).is_equal(1)
-
-
-func test_structure_destroyed_torch_removes_from_light_sources() -> void:
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	_dnc._on_structure_destroyed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._light_sources.size()).is_equal(0)
-
-
-func test_structure_destroyed_non_torch_ignored() -> void:
-	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	_dnc._on_structure_destroyed(Vector2i(1, 2), &"00102")
-	assert_int(_dnc._light_sources.size()).is_equal(1)
-
-
-func test_multiple_light_sources_tracked() -> void:
-	_dnc._on_structure_placed(Vector2i(0, 0), &"00103")
-	_dnc._on_structure_placed(Vector2i(1, 0), &"00103")
-	_dnc._on_structure_placed(Vector2i(2, 1), &"00103")
-	assert_int(_dnc._light_sources.size()).is_equal(3)
-
-
 # --- phase_to_string helper ---
 
 func test_phase_to_string_day() -> void:
@@ -161,19 +119,6 @@ func test_phase_to_string_night() -> void:
 
 func test_phase_to_string_dawn() -> void:
 	assert_str(_DayNightCycle.phase_to_string(_DayNightCycle.TimePhase.DAWN)).is_equal("DAWN")
-
-
-# --- Visibility radius by phase ---
-
-func test_player_tile_updated_on_tile_entered() -> void:
-	_dnc._on_tile_entered(Vector2i(3, 4))
-	assert_int(_dnc._player_tile.x).is_equal(3)
-	assert_int(_dnc._player_tile.y).is_equal(4)
-
-
-func test_player_tile_initially_zero() -> void:
-	assert_int(_dnc._player_tile.x).is_equal(0)
-	assert_int(_dnc._player_tile.y).is_equal(0)
 
 
 # --- No-crash when lighting not registered ---

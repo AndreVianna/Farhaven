@@ -2,11 +2,11 @@ extends Node3D
 
 ## GroundItemRenderer — per-item-type colored markers at sub-hex positions.
 ## Signal-driven: subscribes to SurvivalSystem ground_item_dropped/picked_up.
-## Fog-aware: hidden if tile is HIDDEN, visible if VISIBLE.
 ## Uses per-instance custom_data for color. One MultiMesh, multiple colors.
 
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 ## Max instances for the MultiMesh pool.
 const MAX_INSTANCES: int = 10
@@ -89,8 +89,6 @@ void fragment() {
 func _connect_signals() -> void:
 	if _survival != null:
 		_connect_survival_signals()
-	if _grid != null:
-		_connect_grid_signals()
 
 
 func _connect_survival_signals() -> void:
@@ -102,14 +100,6 @@ func _connect_survival_signals() -> void:
 	if _survival.has_signal("ground_item_picked_up"):
 		if not _survival.ground_item_picked_up.is_connected(_on_ground_item_picked_up):
 			_survival.ground_item_picked_up.connect(_on_ground_item_picked_up)
-
-
-func _connect_grid_signals() -> void:
-	if _grid == null:
-		return
-	if _grid.has_signal("tile_visibility_changed"):
-		if not _grid.tile_visibility_changed.is_connected(_on_tile_visibility_changed):
-			_grid.tile_visibility_changed.connect(_on_tile_visibility_changed)
 
 
 # --- Key helpers ---
@@ -153,31 +143,9 @@ func _on_ground_item_picked_up(tile: Vector2i, _item_type: StringName, _count: i
 		_remove_marker_by_key(key)
 
 
-func _on_tile_visibility_changed(coords: Vector2i, state: int) -> void:
-	match state:
-		_HexTile.FogState.HIDDEN:
-			_remove_markers_for_tile(coords)
-		_HexTile.FogState.VISIBLE:
-			# Re-add markers if ground items exist on this tile
-			if _survival != null:
-				var items: Array = _survival.get_ground_items_at(coords)
-				for entry: Dictionary in items:
-					var sub_hex: Vector2i = entry.get("sub_hex", Vector2i.ZERO)
-					var itype: StringName = entry.get("item_type", &"")
-					if itype != &"":
-						var key: String = _make_key(coords, sub_hex, itype)
-						if not _marker_instances.has(key):
-							_add_instance(coords, sub_hex, itype)
-
-
 # --- Instance management ---
 
 func _try_add_marker(tile: Vector2i, sub_hex: Vector2i, item_type: StringName) -> void:
-	# Check fog state — don't add if HIDDEN
-	if _grid != null:
-		var hex_tile: Resource = _grid.get_tile(tile)
-		if hex_tile != null and hex_tile.fog_state == _HexTile.FogState.HIDDEN:
-			return
 	_add_instance(tile, sub_hex, item_type)
 
 
@@ -204,7 +172,7 @@ func _add_instance(tile: Vector2i, sub_hex: Vector2i, item_type: StringName) -> 
 	mm.set_instance_transform(idx, xform)
 
 	# Set per-instance color via custom data
-	var def: PropDef = PropRegistry.get_def(item_type)
+	var def: _PropDef = PropRegistry.get_def(item_type)
 	var color: Color = def.placeholder_color if def != null else DEFAULT_COLOR
 	color.a = 0.8
 	mm.set_instance_custom_data(idx, color)
@@ -218,15 +186,6 @@ func _remove_marker_by_key(key: String) -> void:
 	var idx: int = _marker_instances[key]
 	_hide_instance(idx)
 	_marker_instances.erase(key)
-
-
-func _remove_markers_for_tile(tile: Vector2i) -> void:
-	var keys_to_remove: Array = []
-	for key: String in _marker_instances:
-		if _key_starts_with_tile(key, tile):
-			keys_to_remove.append(key)
-	for key: String in keys_to_remove:
-		_remove_marker_by_key(key)
 
 
 func _hide_instance(instance_idx: int) -> void:

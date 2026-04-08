@@ -18,6 +18,8 @@ const _SurvivalSystem = preload("res://scripts/survival/survival_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _ScreenFade = preload("res://ui/screen_fade.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 # Numeric PropDef ids
 const ID_BERRIES: StringName = &"00020"
@@ -411,7 +413,7 @@ func test_death_does_not_drop_tools() -> void:
 	# Only berries should drop, no tools (validated via PropDef.tool_slot)
 	for d: Variant in dropped:
 		var item: StringName = d
-		var def: PropDef = PropRegistry.get_def(item)
+		var def: _PropDef = PropRegistry.get_def(item)
 		assert_bool(def == null or def.tool_slot == &"").override_failure_message(
 			"Dropped item %s must not be a tool" % item
 		).is_true()

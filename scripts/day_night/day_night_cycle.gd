@@ -1,8 +1,8 @@
 extends Node
 
-## Autoload singleton — day/night phase timer with signals, lighting, and visibility management.
+## Autoload singleton — day/night phase timer with signals and lighting tweens.
 ## task-024: phase timer + signals
-## task-025: lighting tweens, centralized refresh_visibility, torch tracking
+## task-025: lighting tweens
 
 enum TimePhase { DAY, DUSK, NIGHT, DAWN }
 
@@ -12,14 +12,6 @@ const PHASE_DURATIONS: Dictionary = {
 	TimePhase.NIGHT: 105.0,
 	TimePhase.DAWN: 15.0,
 }
-
-const VISIBILITY_RADIUS: Dictionary = {
-	TimePhase.DAY: 2,
-	TimePhase.DUSK: 2,
-	TimePhase.NIGHT: 1,
-	TimePhase.DAWN: 2,
-}
-
 
 ## Warm palette lighting per phase.
 ## ambient_color/energy control sky fill; sun_color/energy control the directional key light.
@@ -77,15 +69,9 @@ var _sun: DirectionalLight3D = null
 var _hex_material: ShaderMaterial = null
 var _lighting_tween: Tween = null
 
-# --- Visibility ---
-var _player_tile: Vector2i = Vector2i.ZERO
-var _light_sources: Dictionary = {}  # Vector2i -> float (radius)
-
 
 func _ready() -> void:
 	HexGrid.tile_entered.connect(_on_tile_entered)
-	HexGrid.structure_placed.connect(_on_structure_placed)
-	HexGrid.structure_destroyed.connect(_on_structure_destroyed)
 
 
 const TIME_SCALE: float = 1.0  # Set > 1.0 for timelapse testing (e.g. 20.0)
@@ -122,7 +108,6 @@ func _advance_phase() -> void:
 			phase_changed.emit(old_phase, current_phase)
 			day_started.emit()
 	_start_lighting_tween()
-	_refresh_visibility()
 
 
 # --- Lighting API ---
@@ -179,46 +164,12 @@ func _set_hex_darkness(value: float) -> void:
 		_hex_material.set_shader_parameter("darkness", value)
 
 
-# --- Visibility management ---
+# --- Player tracking (for shader player_world_pos parameter) ---
 
 func _on_tile_entered(coords: Vector2i) -> void:
-	_player_tile = coords
 	if _hex_material != null:
 		var world_pos: Vector2 = HexMath.axial_to_world(coords)
 		_hex_material.set_shader_parameter("player_world_pos", world_pos)
-	_refresh_visibility()
-
-
-func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
-	if not PropRegistry.has_def(structure_type):
-		return
-	var def: PropDef = PropRegistry.get_def(structure_type)
-	if def.emits_light and def.light_radius > 0:
-		_light_sources[coords] = def.light_radius
-		if current_phase == TimePhase.NIGHT:
-			_refresh_visibility()
-
-
-func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	# Only remove light source if the destroyed structure was actually a light-emitter
-	if not PropRegistry.has_def(structure_type):
-		return
-	var def: PropDef = PropRegistry.get_def(structure_type)
-	if not def.emits_light:
-		return
-	if _light_sources.has(coords):
-		_light_sources.erase(coords)
-		if current_phase == TimePhase.NIGHT:
-			_refresh_visibility()
-
-
-func _refresh_visibility() -> void:
-	var radius: int = VISIBILITY_RADIUS[current_phase]
-	var sources: Array[Dictionary] = [{"coords": _player_tile, "radius": radius}]
-	if current_phase == TimePhase.NIGHT:
-		for light_coords: Vector2i in _light_sources:
-			sources.append({"coords": light_coords, "radius": int(_light_sources[light_coords])})
-	HexGrid.refresh_visibility(sources)
 
 
 ## Skip directly to dawn phase. Used for night-death respawn.
@@ -233,7 +184,6 @@ func skip_to_dawn() -> void:
 	_apply_lighting_immediate()
 	if _hex_material != null:
 		_hex_material.set_shader_parameter("darkness", 0.0)
-	_refresh_visibility()
 
 
 # --- Helpers ---

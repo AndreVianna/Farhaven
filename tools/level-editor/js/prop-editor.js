@@ -75,7 +75,7 @@ export class PropDefModel {
     /** @type {number} */
     this.thirst_restore = 0;
     /** @type {number} Positive = heal, negative = damage (toxic) */
-    this.health_amount = 0;
+    this.health_restore = 0;
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -139,7 +139,7 @@ export class PropDefModel {
     model.is_consumable = !!d.is_consumable;
     model.hunger_restore = _num(d.hunger_restore);
     model.thirst_restore = _num(d.thirst_restore);
-    model.health_amount = _num(d.health_amount);
+    model.health_restore = _num(d.health_restore);
 
     return model;
   }
@@ -895,7 +895,7 @@ export function renderPropEditor(container, options) {
     _addCheckbox(grid, 'Is Consumable', 'is_consumable', model.is_consumable);
     _addField(grid, 'Hunger Restore', 'hunger_restore', 'number', model.hunger_restore, { step: 'any' });
     _addField(grid, 'Thirst Restore', 'thirst_restore', 'number', model.thirst_restore, { step: 'any' });
-    _addField(grid, 'Health Amount', 'health_amount', 'number', model.health_amount, { step: 'any' });
+    _addField(grid, 'Health Restore', 'health_restore', 'number', model.health_restore, { step: 'any' });
 
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
@@ -1187,7 +1187,7 @@ export function collectPropFormData(formElement) {
   model.is_consumable = !!formElement.querySelector('[name="is_consumable"]')?.checked;
   model.hunger_restore = floatVal('hunger_restore');
   model.thirst_restore = floatVal('thirst_restore');
-  model.health_amount = floatVal('health_amount');
+  model.health_restore = floatVal('health_restore');
 
   // Gathering
   model.gather_time = floatVal('gather_time');
@@ -1351,7 +1351,7 @@ function _modelToPlain(model) {
     is_consumable: model.is_consumable,
     hunger_restore: model.hunger_restore,
     thirst_restore: model.thirst_restore,
-    health_amount: model.health_amount,
+    health_restore: model.health_restore,
   };
 }
 
@@ -1425,7 +1425,7 @@ export function propModelToRaw(model) {
   if (model.is_consumable) fields.set('is_consumable', { type: 'bool', value: true });
   if (model.hunger_restore !== 0) fields.set('hunger_restore', { type: 'float', value: model.hunger_restore });
   if (model.thirst_restore !== 0) fields.set('thirst_restore', { type: 'float', value: model.thirst_restore });
-  if (model.health_amount !== 0) fields.set('health_amount', { type: 'float', value: model.health_amount });
+  if (model.health_restore !== 0) fields.set('health_restore', { type: 'float', value: model.health_restore });
 
   // Footprint (only if non-empty)
   if (model.footprint && model.footprint.length > 0) {

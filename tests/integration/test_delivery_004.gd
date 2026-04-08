@@ -17,7 +17,6 @@ class_name TestDelivery004
 const _DayNightCycle = preload("res://scripts/day_night/day_night_cycle.gd")
 const _SaveManager = preload("res://scripts/save/save_manager.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
-const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 const SAVE_PATH: String = "user://save.json"
 
@@ -80,7 +79,6 @@ func _build_small_grid() -> void:
 			tile.coords = Vector2i(q, r)
 			tile.biome = _HexTile.Biome.GRASSLAND
 			tile.elevation = 0
-			tile.fog_state = _HexTile.FogState.HIDDEN
 			HexGrid._tiles[Vector2i(q, r)] = tile
 
 
@@ -106,7 +104,7 @@ func test_ac7_full_cycle_returns_to_day() -> void:
 func test_ac7_full_cycle_day_count_increments() -> void:
 	assert_int(_dnc.day_count).is_equal(1)
 	_simulate(240.0)
-	assert_int(_dnc.day_count).is_equal(3)
+	assert_int(_dnc.day_count).is_equal(2)
 
 
 func test_ac7_two_full_cycles() -> void:
@@ -168,155 +166,6 @@ func test_ac7_is_daytime_true_during_dawn() -> void:
 
 
 # ===========================================================================
-# Visibility radius per phase
-# ===========================================================================
-
-func test_visibility_radius_day_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAY]).is_equal(3)
-
-
-func test_visibility_radius_dusk_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DUSK]).is_equal(3)
-
-
-func test_visibility_radius_night_is_1() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.NIGHT]).is_equal(1)
-
-
-func test_visibility_radius_dawn_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAWN]).is_equal(3)
-
-
-# ===========================================================================
-# Visibility changes across phase transitions (integration with HexGrid)
-# ===========================================================================
-
-func test_visibility_refresh_on_phase_transition_to_night() -> void:
-	_build_small_grid()
-	# Set player tile at origin (DayNightCycle tracks _player_tile).
-	_dnc._player_tile = Vector2i.ZERO
-	# Advance to NIGHT — _refresh_visibility is called with radius 1.
-	_simulate(120.0)
-	assert_int(_dnc.current_phase).is_equal(_DayNightCycle.TimePhase.NIGHT)
-	# Origin tile must be VISIBLE after refresh with radius 1.
-	var origin_tile: Resource = HexGrid.get_tile(Vector2i.ZERO)
-	if origin_tile != null:
-		assert_int(origin_tile.fog_state).is_equal(_HexTile.FogState.VISIBLE)
-
-
-func test_visibility_night_radius_1_neighbors_visible() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	_simulate(120.0)  # → NIGHT
-	# Radius 1 neighbors must be VISIBLE.
-	for coords: Variant in _HexMath.get_tiles_in_range(Vector2i.ZERO, 1):
-		var c: Vector2i = coords
-		if HexGrid._tiles.has(c):
-			assert_int(HexGrid._tiles[c].fog_state).override_failure_message(
-				"Tile %s must be VISIBLE at NIGHT radius 1" % str(c)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
-func test_visibility_night_radius_2_stays_visible() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	_simulate(120.0)  # → NIGHT (radius 1)
-	# Ring-2 tiles promoted during DAY stay VISIBLE — darkness handled by shader.
-	var ring2_tiles: Array[Vector2i] = _HexMath.get_tiles_in_range(Vector2i.ZERO, 2)
-	var ring1_tiles: Array[Vector2i] = _HexMath.get_tiles_in_range(Vector2i.ZERO, 1)
-	for coords: Vector2i in ring2_tiles:
-		if ring1_tiles.has(coords):
-			continue
-		if HexGrid._tiles.has(coords):
-			assert_int(HexGrid._tiles[coords].fog_state).override_failure_message(
-				"Tile %s at distance 2 should stay VISIBLE (darkness via shader)" % str(coords)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
-func test_visibility_day_radius_2_neighbors_visible() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	# Trigger visibility refresh during DAY by simulating tile entry.
-	HexGrid.tile_entered.emit(Vector2i.ZERO)
-	# Radius 2 neighbors must be VISIBLE during DAY.
-	for coords: Variant in _HexMath.get_tiles_in_range(Vector2i.ZERO, 2):
-		var c: Vector2i = coords
-		if HexGrid._tiles.has(c):
-			assert_int(HexGrid._tiles[c].fog_state).override_failure_message(
-				"Tile %s must be VISIBLE at DAY radius 2" % str(c)
-			).is_equal(_HexTile.FogState.VISIBLE)
-
-
-# ===========================================================================
-# Torch visibility during NIGHT
-# ===========================================================================
-
-func test_torch_light_radius_is_3() -> void:
-	# Torch light radius is defined in data/props/00103.tres (torch)
-	var torch_def: PropDef = load("res://data/props/00103.tres")
-	assert_object(torch_def).is_not_null()
-	assert_int(torch_def.light_radius).is_equal(3)
-
-
-func test_torch_registered_via_structure_placed() -> void:
-	HexGrid.structure_placed.emit(Vector2i(3, 4), &"00103")
-	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_true()
-
-
-func test_torch_removed_via_structure_destroyed() -> void:
-	HexGrid.structure_placed.emit(Vector2i(3, 4), &"00103")
-	HexGrid.structure_destroyed.emit(Vector2i(3, 4), &"00103")
-	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_false()
-
-
-func test_non_torch_structure_not_tracked() -> void:
-	HexGrid.structure_placed.emit(Vector2i(5, 5), &"99999")
-	assert_int(_dnc._light_sources.size()).is_equal(0)
-
-
-func test_torch_extends_visibility_during_night() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	# Place torch at (2, 0)
-	HexGrid.structure_placed.emit(Vector2i(2, 0), &"00103")
-	# Advance to NIGHT
-	_simulate(120.0)
-	assert_int(_dnc.current_phase).is_equal(_DayNightCycle.TimePhase.NIGHT)
-	# Torch at (2,0) with radius 2 should make tiles around it VISIBLE.
-	var torch_tile: Resource = HexGrid.get_tile(Vector2i(2, 0))
-	if torch_tile != null:
-		assert_int(torch_tile.fog_state).override_failure_message(
-			"Torch tile must be VISIBLE during NIGHT"
-		).is_equal(_HexTile.FogState.VISIBLE)
-
-
-func test_torch_not_included_in_visibility_during_day() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	HexGrid.structure_placed.emit(Vector2i(3, 0), &"00103")
-	# During DAY: torch should not add extra visibility sources.
-	# Tile at distance 3 from player should not be visible (DAY radius is 2).
-	HexGrid.tile_entered.emit(Vector2i.ZERO)
-	var far_tile: Resource = HexGrid.get_tile(Vector2i(3, 0))
-	if far_tile != null:
-		# Distance 3 from origin is beyond DAY radius 2, so not VISIBLE
-		# (unless torch adds it, which it shouldn't during DAY).
-		assert_int(far_tile.fog_state).override_failure_message(
-			"Tile at distance 3 must NOT be VISIBLE during DAY (torch inactive)"
-		).is_not_equal(_HexTile.FogState.VISIBLE)
-
-
-func test_night_player_visibility_radius_is_1() -> void:
-	_build_small_grid()
-	_dnc._player_tile = Vector2i.ZERO
-	_simulate(120.0)  # → NIGHT
-	# Player at origin, radius 1: (0,0) visible, (2,0) not visible (no torch).
-	var origin: Resource = HexGrid.get_tile(Vector2i.ZERO)
-	if origin != null:
-		assert_int(origin.fog_state).is_equal(_HexTile.FogState.VISIBLE)
-
-
-# ===========================================================================
 # Save/Load round-trip: save mid-phase, load, verify state
 # ===========================================================================
 
@@ -344,10 +193,10 @@ func test_save_load_round_trip_preserves_elapsed() -> void:
 func test_save_load_round_trip_preserves_day_count() -> void:
 	_simulate(225.0)  # → DAWN, day_count = 2
 	var save_data: Dictionary = _dnc.get_save_data()
-	assert_int(save_data["day_count"]).is_equal(3)
+	assert_int(save_data["day_count"]).is_equal(2)
 	var dnc2: Node = _DayNightCycle.new()
 	dnc2.load_save_data(save_data)
-	assert_int(dnc2.day_count).is_equal(3)
+	assert_int(dnc2.day_count).is_equal(2)
 	dnc2.free()
 
 
@@ -366,7 +215,7 @@ func test_save_load_resumes_correctly_mid_night() -> void:
 	# Resume: remaining 52.5s of NIGHT → DAWN
 	dnc2._process(52.5)
 	assert_int(dnc2.current_phase).is_equal(_DayNightCycle.TimePhase.DAWN)
-	assert_int(dnc2.day_count).is_equal(3)
+	assert_int(dnc2.day_count).is_equal(2)
 	dnc2.queue_free()
 
 
@@ -498,7 +347,7 @@ func test_ac10_save_data_initial_values() -> void:
 func test_ac10_save_data_after_full_cycle() -> void:
 	_simulate(240.0)
 	var data: Dictionary = _dnc.get_save_data()
-	assert_int(data["day_count"]).is_equal(3)
+	assert_int(data["day_count"]).is_equal(2)
 	assert_int(data["phase"]).is_equal(_DayNightCycle.TimePhase.DAY)
 	assert_float(data["phase_elapsed"]).is_equal_approx(0.0, 0.001)
 
@@ -523,7 +372,3 @@ func test_clean_state_phase_is_day() -> void:
 
 func test_clean_state_no_save_file() -> void:
 	assert_bool(FileAccess.file_exists(SAVE_PATH)).is_false()
-
-
-func test_clean_state_no_torches() -> void:
-	assert_int(_dnc._light_sources.size()).is_equal(0)

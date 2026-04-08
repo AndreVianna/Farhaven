@@ -39,8 +39,6 @@ var spawn_tile: Vector2i = Vector2i.ZERO
 
 # --- Signals ---
 signal map_generated()
-signal tile_revealed(coords: Vector2i)
-signal tile_visibility_changed(coords: Vector2i, state: int)  # int = HexTile.FogState
 signal tile_entered(coords: Vector2i)
 signal tile_exited(coords: Vector2i)
 signal prop_depleted(coords: Vector2i, prop_type: StringName)
@@ -115,39 +113,6 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 		else:
 			return TraversalType.DROP
 	return TraversalType.BLOCKED
-
-
-# --- Fog of War ---
-
-## Promote HIDDEN tiles within each source radius to VISIBLE.
-## Emits tile_revealed and tile_visibility_changed for HIDDEN→VISIBLE transitions.
-## sources: Array of {coords: Vector2i, radius: int}
-func refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]:
-	var changed: Array[Vector2i] = []
-	var VISIBLE: int = _HexTile.FogState.VISIBLE
-	var HIDDEN: int = _HexTile.FogState.HIDDEN
-
-	# Promote HIDDEN tiles within each source radius to VISIBLE
-	for source in sources:
-		var center: Vector2i = source["coords"]
-		var radius: int = source["radius"]
-		var in_range: Array[Vector2i] = _HexMath.get_tiles_in_range(center, radius)
-		for coords in in_range:
-			var tile: Resource = _tiles.get(coords, null)
-			if tile == null:
-				continue
-			if tile.fog_state == HIDDEN:
-				tile.fog_state = VISIBLE
-				tile_revealed.emit(coords)
-				changed.append(coords)
-
-	# Emit visibility changed for all affected tiles
-	for coords in changed:
-		var tile: Resource = _tiles.get(coords, null)
-		if tile != null:
-			tile_visibility_changed.emit(coords, tile.fog_state)
-
-	return changed
 
 
 # --- Coordinate conversions ---
@@ -298,7 +263,6 @@ func get_save_data() -> Dictionary:
 			"tile_row": coords.y,
 			"biome": tile.biome,
 			"elevation": tile.elevation,
-			"fog": tile.fog_state,
 			"props": props_data,
 		})
 	return {
@@ -322,7 +286,7 @@ func load_save_data(data: Dictionary) -> void:
 		tile.coords = coords
 		tile.biome = td["biome"]
 		tile.elevation = td["elevation"]
-		tile.fog_state = td["fog"]
+		# Legacy "fog" key from old saves is silently ignored.
 
 		if td.has("props"):
 			# New save format: unified props array

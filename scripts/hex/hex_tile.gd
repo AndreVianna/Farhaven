@@ -11,15 +11,9 @@ enum Biome {
 	WATER,
 }
 
-enum FogState {
-	HIDDEN,
-	VISIBLE,
-}
-
 @export var coords: Vector2i = Vector2i.ZERO
 @export var biome: Biome = Biome.GRASSLAND
 @export var elevation: int = 0
-@export var fog_state: FogState = FogState.HIDDEN
 @export var props: Array = []  # Array of Prop
 
 

@@ -6,6 +6,8 @@ extends Node
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+## Uses preload because tests can be parsed before class_name registration completes.
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 signal stat_changed(stat_name: StringName, current: float, max_val: float)
 signal player_died()
@@ -22,8 +24,8 @@ const STAT_CONFIG: Dictionary = {
 }
 
 ## Consumable values are read from PropDef (is_consumable / hunger_restore /
-## thirst_restore / health_amount). No hardcoded item table here.
-## health_amount: positive = heal, negative = damage (toxic).
+## thirst_restore / health_restore). No hardcoded item table here.
+## health_restore: positive = heal, negative = damage (toxic).
 
 const ACTIVITY_CONFIG: Dictionary = {
 	&"gathering": {
@@ -140,17 +142,17 @@ func _tick(delta: float) -> void:
 
 
 func consume(item_type: StringName) -> void:
-	var def: PropDef = PropRegistry.get_def(item_type)
+	var def: _PropDef = PropRegistry.get_def(item_type)
 	if def == null or not def.is_consumable:
 		return
 	hunger = minf(hunger + def.hunger_restore, hunger_max)
 	thirst = minf(thirst + def.thirst_restore, thirst_max)
 	# Apply health change: positive = heal, negative = damage
-	if def.health_amount > 0.0:
-		hp = minf(hp + def.health_amount, hp_max)
+	if def.health_restore > 0.0:
+		hp = minf(hp + def.health_restore, hp_max)
 		stat_changed.emit(&"hp", hp, hp_max)
-	elif def.health_amount < 0.0:
-		take_damage(-def.health_amount)
+	elif def.health_restore < 0.0:
+		take_damage(-def.health_restore)
 
 
 func take_damage(amount: float) -> void:
@@ -232,7 +234,7 @@ func _drop_items(death_tile: Vector2i) -> void:
 		if item_type == &"":
 			continue
 		# Skip tools — they are never stored in prop slots, but guard anyway
-		var def: PropDef = PropRegistry.get_def(item_type)
+		var def: _PropDef = PropRegistry.get_def(item_type)
 		if def != null and def.tool_slot != &"":
 			continue
 		var count: int = slot["quantity"]
@@ -292,7 +294,7 @@ func respawn() -> void:
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	if PropRegistry.has_def(structure_type):
-		var def: PropDef = PropRegistry.get_def(structure_type)
+		var def: _PropDef = PropRegistry.get_def(structure_type)
 		if def != null and def.is_respawn_point:
 			_respawn_tile = coords
 
@@ -301,7 +303,7 @@ func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> vo
 	# Only clear respawn if the destroyed structure was actually a respawn point
 	if not PropRegistry.has_def(structure_type):
 		return
-	var def: PropDef = PropRegistry.get_def(structure_type)
+	var def: _PropDef = PropRegistry.get_def(structure_type)
 	if def != null and def.is_respawn_point and _respawn_tile == coords:
 		_respawn_tile = Vector2i.ZERO
 

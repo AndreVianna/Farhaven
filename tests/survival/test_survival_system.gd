@@ -126,7 +126,7 @@ func test_consumable_berries_thirst() -> void:
 
 
 func test_consumable_berries_health() -> void:
-	assert_float(PropRegistry.get_def(ID_BERRIES).health_amount).is_equal(0.0)
+	assert_float(PropRegistry.get_def(ID_BERRIES).health_restore).is_equal(0.0)
 
 
 func test_consumable_toxic_berries_hunger() -> void:
@@ -134,7 +134,7 @@ func test_consumable_toxic_berries_hunger() -> void:
 
 
 func test_consumable_toxic_berries_damages_health() -> void:
-	assert_float(PropRegistry.get_def(ID_TOXIC_BERRIES).health_amount).is_equal(-25.0)
+	assert_float(PropRegistry.get_def(ID_TOXIC_BERRIES).health_restore).is_equal(-25.0)
 
 
 func test_consumable_meat_hunger() -> void:
