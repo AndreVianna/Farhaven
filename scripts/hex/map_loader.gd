@@ -64,8 +64,18 @@ func load_map(path: String) -> bool:
 		push_warning("MapLoader: missing 'tiles' dictionary in '%s'" % path)
 		return false
 
+	# Spawn format: [tile_col, tile_row, sub_hex_q, sub_hex_r, facing_deg]
+	# sub_hex and facing are optional — older maps may have just 2 elements.
 	var spawn_arr: Array = root.get("spawn", [0, 0])
-	var spawn := Vector2i(int(spawn_arr[0]), int(spawn_arr[1]))
+	var spawn := Vector2i(
+		int(spawn_arr[0]) if spawn_arr.size() > 0 else 0,
+		int(spawn_arr[1]) if spawn_arr.size() > 1 else 0,
+	)
+	var spawn_sub_hex := Vector2i(
+		int(spawn_arr[2]) if spawn_arr.size() > 2 else 0,
+		int(spawn_arr[3]) if spawn_arr.size() > 3 else 0,
+	)
+	var spawn_facing_deg: float = float(spawn_arr[4]) if spawn_arr.size() > 4 else 0.0
 
 	# Step 2 & 3: Create HexTile objects and register in HexGrid._tiles
 	_grid._tiles.clear()
@@ -142,6 +152,8 @@ func load_map(path: String) -> bool:
 
 	# Step 4: Store spawn position on the grid.
 	_grid.spawn_tile = spawn
+	_grid.spawn_sub_hex = spawn_sub_hex
+	_grid.spawn_facing_deg = spawn_facing_deg
 
 	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)

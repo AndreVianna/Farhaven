@@ -160,8 +160,15 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 	if _grid == null or _catalog == null or _inventory == null:
 		return false
 
-	var candidates: Array = _find_gather_candidates(center)
+	var scan: Dictionary = _find_gather_candidates(center)
+	var candidates: Array = scan["candidates"]
 	if candidates.is_empty():
+		# If there are cataloged props in range but the player lacks the
+		# required tool, emit auto_gather_failed so the HUD can show a hint.
+		var tool_gated: Array = scan["tool_gated"]
+		if not tool_gated.is_empty():
+			var first: Dictionary = tool_gated[0]
+			auto_gather_failed.emit(first["coords"], &"tool_required")
 		return false
 
 	# Sort: TOOL_PRIORITY desc, then world distance asc
@@ -174,9 +181,14 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 
 ## Scan current tile + 6 neighbors for gatherable props within GATHER_RADIUS.
 ## Uses world-space distance (XZ plane) instead of hex distance.
-## Returns array of candidate dictionaries.
-func _find_gather_candidates(center: Vector2i) -> Array:
+## Returns a dictionary with two arrays:
+##   "candidates": props the player can gather now (cataloged + tool available)
+##   "tool_gated": props the player could gather with the right tool
+## The tool_gated list lets callers surface a UI hint when the only reachable
+## props are blocked by the tool gate.
+func _find_gather_candidates(center: Vector2i) -> Dictionary:
 	var candidates: Array = []
+	var tool_gated: Array = []
 	var tiles_to_check: Array[Vector2i] = [center]
 	tiles_to_check.append_array(_grid.get_neighbors(center))
 
@@ -209,10 +221,6 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if not _catalog.is_cataloged(entry_id):
 				continue
 
-			# Tool gate (silent skip — no signal for tool_gated)
-			if not can_gather(prop, _inventory):
-				continue
-
 			# Compute world-space position of this prop
 			var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
 			var prop_pos_xz: Vector2 = Vector2(
@@ -225,6 +233,17 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if world_dist > GATHER_RADIUS:
 				continue  # Out of arm's reach
 
+			# Tool gate: props the player cannot gather yet are still in-range
+			# and reported separately so the caller can emit tool_required hints.
+			if not can_gather(prop, _inventory):
+				tool_gated.append({
+					"coords": tile_coords,
+					"prop_index": i,
+					"node": prop,
+					"distance": world_dist,
+				})
+				continue
+
 			var priority: int = TOOL_SLOT_PRIORITY.get(prop.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
@@ -234,7 +253,7 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 				"distance": world_dist,
 			})
 
-	return candidates
+	return {"candidates": candidates, "tool_gated": tool_gated}
 
 
 ## Comparison function for sorting candidates: higher priority first, then nearer first (world distance).

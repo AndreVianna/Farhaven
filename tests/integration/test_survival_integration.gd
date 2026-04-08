@@ -522,7 +522,7 @@ func test_remove_ground_item_emits_signal() -> void:
 	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	var picked: Array = []
 	_ss.ground_item_picked_up.connect(
-		func(tile: Vector2i, item_type: StringName, count: int) -> void:
+		func(tile: Vector2i, item_type: StringName, count: int, _sub_hex: Vector2i) -> void:
 			picked.append({"tile": tile, "type": item_type, "count": count})
 	)
 	_ss.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 3)

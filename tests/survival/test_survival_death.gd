@@ -359,7 +359,7 @@ func test_remove_ground_item_returns_zero_for_missing() -> void:
 
 func test_remove_ground_item_emits_picked_up_signal() -> void:
 	var fired: Array = []
-	_sys.ground_item_picked_up.connect(func(tile: Vector2i, item_type: StringName, count: int) -> void:
+	_sys.ground_item_picked_up.connect(func(tile: Vector2i, item_type: StringName, count: int, _sub_hex: Vector2i) -> void:
 		fired.append({"tile": tile, "item_type": item_type, "count": count})
 	)
 	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)

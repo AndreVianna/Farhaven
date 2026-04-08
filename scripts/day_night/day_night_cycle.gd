@@ -216,7 +216,15 @@ func load_save_data(data: Dictionary) -> void:
 	if data.has("day_count"):
 		day_count = int(data["day_count"])
 	if data.has("phase"):
-		current_phase = int(data["phase"]) as TimePhase
+		var phase_int: int = int(data["phase"])
+		if phase_int < 0 or phase_int >= TimePhase.size():
+			push_warning("DayNightCycle.load_save_data: invalid phase %d — defaulting to DAY" % phase_int)
+			phase_int = TimePhase.DAY
+		current_phase = phase_int as TimePhase
 		is_daytime = current_phase == TimePhase.DAY or current_phase == TimePhase.DAWN
 	if data.has("phase_elapsed"):
-		phase_elapsed = float(data["phase_elapsed"])
+		phase_elapsed = maxf(0.0, float(data["phase_elapsed"]))
+
+	# Re-apply lighting so the loaded phase is reflected visually immediately,
+	# instead of waiting for the next natural phase transition.
+	_apply_lighting_immediate()

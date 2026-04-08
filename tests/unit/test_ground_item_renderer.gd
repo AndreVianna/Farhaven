@@ -20,7 +20,7 @@ class FakeGrid extends Node:
 class FakeSurvival extends Node:
 	var _ground_items: Array[Dictionary] = []
 	signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i)
-	signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int)
+	signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i)
 
 	func get_ground_items_at(tile: Vector2i) -> Array[Dictionary]:
 		var result: Array[Dictionary] = []
@@ -154,7 +154,7 @@ func test_full_pickup_removes_marker() -> void:
 
 	# Remove all items, then emit pickup
 	_survival.remove_item(Vector2i(1, 0), &"berries")
-	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5)
+	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
 
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
@@ -169,7 +169,7 @@ func test_partial_pickup_keeps_remaining_marker() -> void:
 
 	# Remove only berries, stone remains
 	_survival.remove_item(Vector2i(1, 0), &"berries")
-	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5)
+	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
 
 	# Stone marker should remain
 	assert_int(_renderer.get_visible_count()).is_equal(1)
@@ -190,7 +190,7 @@ func test_remove_first_of_two_swaps_correctly() -> void:
 
 	# Remove first tile's items
 	_survival.remove_item(Vector2i(1, 0), &"berries")
-	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5)
+	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
 
 	assert_int(_renderer.get_visible_count()).is_equal(1)
 	# Second tile's marker should still be tracked

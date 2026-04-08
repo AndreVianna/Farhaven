@@ -1,12 +1,120 @@
 # Tech Debt
 
-> **Source:** discovery-quality-assessor
+> **Source:** discovery-quality-assessor + pre-delivery-005 audit
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-08
 
 ## Summary
 
-**Overall debt level: Medium.** The codebase is young (~60 source files, ~5,400 lines) and generally well-structured. The primary debt is in missing infrastructure (no CI/CD, no export config) and incomplete test coverage for key modules. No critical blockers, but several high-priority items will become painful as the project grows.
+**Overall debt level: Medium-Low.** Post-PR#10 cleanup and the pre-delivery-005
+functional audit closed most Critical/High save-load robustness gaps. The
+remaining debt is scattered polish + a few items formally deferred to
+delivery-005a or later.
+
+## Deferred from 2026-04-08 pre-delivery-005 audit
+
+These items were surfaced during the Fase 1 functional audit (game loop +
+save/load + editor Prop/Biome pages) and explicitly deferred after discussion
+with Andre. Critical items not listed here were fixed in the same session.
+
+### [Medium] DayNightCycle writes `chapter_id` that is never read on load
+- **Evidence:** `scripts/day_night/day_night_cycle.gd` `get_save_data()` writes
+  `"chapter_id": 1` (hardcoded constant). `load_save_data()` never reads the
+  key. Orphaned field.
+- **Impact:** No functional impact today — chapter_id is always 1. But the
+  field is misleading: it looks like multi-chapter persistence exists when it
+  doesn't.
+- **Effort:** 15 min to either remove the field or wire it into load + plumb
+  through to the game when multi-chapter arrives.
+
+### [Medium] Catalog legacy "discovered" key silently demotes ENCOUNTERED → CATALOGED
+- **Evidence:** `scripts/scanner/catalog.gd:204-208`. Supports the pre-scan-redesign
+  save format but collapses knowledge state nuance.
+- **Impact:** Old saves lose the distinction between ENCOUNTERED fauna (seen
+  but not cataloged) and CATALOGED. Acceptable for a one-time migration, but
+  should emit a push_warning so players know their save was migrated.
+- **Effort:** 10 min. Add warning when legacy key is consumed.
+
+### [Medium] SurvivalSystem.load_save_data does not validate respawn_tile
+- **Evidence:** `survival_system.gd:384-386` reads `respawn_tile_col`/`row`
+  without confirming the tile still exists in HexGrid._tiles after load.
+- **Impact:** If the shelter that set the respawn was destroyed and the save
+  loaded, respawn silently falls back to Vector2i.ZERO instead of the latest
+  valid shelter.
+- **Effort:** 20 min. Validate against HexGrid._tiles after load, walk the
+  structure list to find the current respawn point if the saved one is gone.
+
+### [Medium] CraftingSystem.load_save_data does not validate recipe names
+- **Evidence:** `crafting_system.gd:236-240` appends raw StringNames to
+  `_discovered_recipes` without checking RECIPE_CONFIG membership.
+- **Impact:** If a recipe is removed/renamed in code, stale entries persist in
+  the player's discovered list forever. Low impact today (no recipes have been
+  removed) but fragile.
+- **Effort:** 10 min. Filter against RECIPE_CONFIG during load, log warning
+  for dropped recipes.
+
+### [Medium] ELEVATION_SCALE / ELEVATION_STEP duplicated
+- **Evidence:** `player.gd:18` defines `ELEVATION_SCALE: float = 0.5` and
+  `hex_grid.gd:19` defines `ELEVATION_STEP: float = 0.5`. Both represent the
+  same value ("world Y per elevation level") with different names.
+- **Impact:** Risk of drift — if one is updated the other silently becomes
+  wrong, breaking player vs terrain Y alignment.
+- **Effort:** 15 min. Promote to a single constant in HexGrid (or a shared
+  constants module), have Player preload it, remove the duplicate.
+
+### [Medium] tres-parser.js has no schema validation
+- **Evidence:** `tools/level-editor/js/tres-parser.js:34-162, 500-560`.
+  Parser accepts any field without checking required fields, no type coercion.
+- **Impact:** Malformed `.tres` files load silently; corruption can spread on
+  save. Practical risk is low because Godot writes well-formed .tres, but
+  hand-edited files could cause silent editor corruption.
+- **Effort:** 1-2 hours. Define a schema per known resource type and validate
+  on parse. Probably worth batching with a larger editor hardening pass.
+
+### [Low] BiomeData prop_table has unused fields `chance` / `min_amount`
+- **Evidence:** `data/biomes/*.tres` entries write all four keys; `map_loader.gd`
+  only reads `type` and `max_amount`.
+- **Decision:** Kept intentionally — these fields are reserved for future
+  procedural biome generation (see comment in `biome_data.gd`). Not debt,
+  just pre-implementation data.
+- **Effort:** 0 (no action needed — update was the comment in `biome_data.gd`).
+
+### [Low] Map JSON `rotation` type inconsistency
+- **Evidence:** `data/maps/ch1.json:21` writes `"rotation": 18` (integer degrees);
+  `scripts/hex/map_loader.gd:107` reads as `float`. Implicit cast is safe.
+- **Impact:** None functionally. Inconsistent schema.
+- **Effort:** 5 min. Either normalize editor output to float or document the
+  integer-degrees convention.
+
+### [Low] Mixed numeric vs semantic StringName IDs across the code base
+- **Evidence:** PropDef IDs are numeric StringNames (`&"00001"`, `&"00010"`,
+  etc.), but catalog entry IDs, recipe keys, tool slot names, and category
+  names are still semantic strings (`&"wood_tree"`, `&"survival_knife"`,
+  `&"pickaxe"`).
+- **Impact:** Confusing for new contributors. Rename windows (like PR #10)
+  become error-prone because the same "id-like" StringName can mean different
+  things in different layers.
+- **Effort:** Architectural discussion first. Either migrate everything to
+  numeric (with a display_name lookup layer) or keep the hybrid and document
+  the convention clearly.
+
+### [Low] prop-editor.js `prop_origin` / `origin` field asymmetry
+- **Evidence:** Editor model stores `prop_origin`; `.tres` files use `origin`.
+  The fromEntry/propModelToRaw pair translates both directions correctly but
+  the asymmetry is surprising.
+- **Decision:** Intentional — the editor namespaces all Prop-placement
+  defaults with a `prop_` prefix in the model, and the .tres field is the
+  one PropDef actually exports. Comment at `prop-editor.js:127-129` explains
+  it, but could be clearer.
+- **Effort:** 5 min to add a clarifying note, or defer the naming cleanup.
+
+### [Low] No UI for yield_type variations, placeholder shape preview,
+prop rename cascade, or dirty-state window-close warning
+- **Evidence:** Editor lacks UX polish items flagged by the 2026-04-08 audit.
+- **Decision:** yield_type variations go into delivery-005a (task-041).
+  Others are defer-pending-need.
+
+## Pre-existing items (from 2026-04-03 discovery)
 
 ## Debt Items
 
@@ -22,24 +130,28 @@
 - **Impact:** Cannot produce Android APK/AAB or iOS builds. Blocks any real-device testing or store submission. The game targets mobile but has never been built for mobile.
 - **Effort:** 1-2 hours for Android export preset. iOS requires macOS access (unconfirmed availability per external-sources.md Source 5).
 
-### [High] 20 of 41 Source Files Have No Test Coverage
+### [High] Some Source Files Still Have No Direct Test Coverage
 
-- **Evidence:** Files without corresponding tests (see test-landscape.md for full list):
-  - Core: hex_grid.gd, hex_tile.gd, prop_node.gd, main.gd
-  - HUD: hud.gd, stat_bars.gd, notification_manager.gd, floating_text_manager.gd, day_counter.gd, craft_flash.gd
-  - Data: prop_def.gd, prop_registry.gd
-  - Player: player_camera.gd, player_pathfinder.gd
-  - Rendering: fly_to_player.gd, prop_label_renderer.gd, prop_utils.gd
-  - Scanner: catalog_data.gd, catalog_entry.gd
-  - Audio: gather_sound.gd
-- **Impact:** 50% of source files can break without any test catching it. Particularly concerning for hex_grid.gd (220 lines, singleton, used everywhere) and player_pathfinder.gd (core movement logic).
-- **Effort:** 8-16 hours for critical files (hex_grid, player_pathfinder, main). Lower priority files (HUD, audio) can be deferred.
+- **Evidence:** 2026-04-03 audit flagged 20 files. Post-PR#10 status:
+  - `prop_node.gd` — DELETED, replaced by unified `prop.gd` (has tests).
+  - `hex_grid.gd` — now exercised by integration tests (`test_delivery_001`,
+    `test_delivery_004`) and indirectly via every renderer test.
+  - `main.gd` — still untested (bootstrap).
+  - HUD files: still largely untested.
+  - `player_pathfinder.gd` — still untested.
+  - `prop_utils.gd`, `catalog_data.gd`, `catalog_entry.gd`, `gather_sound.gd`
+    — still untested.
+- **Impact:** Regressed files would still escape CI. Less urgent than in
+  April since critical data paths are covered, but HUD + audio are growing.
+- **Effort:** 6-10 hours for the remaining non-trivial files.
 
-### [High] Save/Load Serialization Has No Tests
+### ~~[High] Save/Load Serialization Has No Tests~~ — RESOLVED 2026-04-08
 
-- **Evidence:** 5 scripts implement get_save_data()/load_save_data() (hex_grid.gd, player.gd, inventory.gd, crafting_system.gd, catalog.gd). No test file exercises round-trip serialization.
-- **Impact:** Save corruption bugs will not be caught until players lose progress. Save/load is the most critical data integrity feature in a single-player game.
-- **Effort:** 2-4 hours to write round-trip tests for all 5 serializers.
+- **Status:** Resolved during delivery-004 + post-PR#10 cleanup. Save/load
+  round-trip is now exercised by `test_delivery_004.gd` (DayNightCycle +
+  HexGrid), `test_survival_death.gd` (SurvivalSystem + ground items),
+  `test_survival_integration.gd` (full survival stack), and `test_inventory.gd`
+  (Inventory with bonus_slots expansion).
 
 ### [High] Renderer Mismatch: Mobile vs. Compatibility
 
@@ -59,11 +171,15 @@
 - **Impact:** Complex system with proximity detection, auto-gather, and auto-scan logic in one file. Well-tested (3 test files) but size makes changes risky.
 - **Effort:** 2-3 hours to split into focused subsystems.
 
-### [Medium] Save Data Lacks Validation on Load
+### ~~[Medium] Save Data Lacks Validation on Load~~ — PARTIALLY RESOLVED 2026-04-08
 
-- **Evidence:** hex_grid.gd line 204 uses bracket access td["tile_col"] without .get() fallback -- will crash if key is missing. inventory.gd line 213 uses mini() for bounds checking (better). Inconsistent validation across the 5 serializable modules.
-- **Impact:** Corrupted or hand-edited save files could crash the game rather than failing gracefully. Users lose trust.
-- **Effort:** 2-3 hours to add defensive validation to all load_save_data() methods.
+- **Status:** HexGrid, Inventory, and DayNightCycle were hardened in the
+  post-PR#10 cleanup. HexGrid now uses `.get()` with defaults + skips
+  malformed tile entries. Inventory preserves slots beyond current capacity
+  with a push_warning instead of silent truncation. DayNightCycle validates
+  the phase enum and clamps phase_elapsed.
+- **Remaining:** SurvivalSystem respawn_tile + CraftingSystem recipe name
+  validation are still deferred — see the 2026-04-08 section above.
 
 ### [Medium] No Save Persistence Layer
 

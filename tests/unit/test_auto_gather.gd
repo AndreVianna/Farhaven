@@ -243,8 +243,10 @@ func test_cataloged_prop_triggers_gather() -> void:
 # TESTS: Tool gate (silent skip — no tool_gated signal)
 # ===================================================================
 
-func test_tool_gated_prop_silently_skipped() -> void:
-	# Ore requires stone_pickaxe, player doesn't have it — silently skipped
+func test_tool_gated_prop_emits_tool_required_failure() -> void:
+	# Ore requires pickaxe, player doesn't have it — gather is skipped but
+	# the system emits auto_gather_failed(tool_required) so the HUD can
+	# surface a hint to the player.
 	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -253,8 +255,8 @@ func test_tool_gated_prop_silently_skipped() -> void:
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_false()
-	# No tool_gated signal emitted (removed)
-	assert_int(_failed_count).is_equal(0)
+	assert_int(_failed_count).is_equal(1)
+	assert_str(String(_failed_reason)).is_equal("tool_required")
 
 
 func test_tool_equipped_gathers_gated_resource() -> void:

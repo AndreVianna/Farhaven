@@ -317,7 +317,7 @@ func test_scan_catalog_then_auto_gather() -> void:
 # 3. Tool-gated prop: ore requires pickaxe → silently skipped (no signal)
 # ===========================================================================
 
-func test_tool_gated_prop_silently_skipped() -> void:
+func test_tool_gated_prop_emits_tool_required_failure() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
@@ -333,12 +333,13 @@ func test_tool_gated_prop_silently_skipped() -> void:
 		failed.append({"coords": c, "reason": r})
 	)
 
-	# No pickaxe equipped → should be silently skipped (no tool_gated signal)
+	# No pickaxe equipped → the only reachable prop is tool-gated, so the
+	# system emits auto_gather_failed with reason "tool_required" so the HUD
+	# can surface a hint to the player.
 	_auto_interaction._check_gather_proximity()
 
-	assert_int(failed.size()).override_failure_message(
-		"No failure signal should fire for tool-gated prop (silent skip)"
-	).is_equal(0)
+	assert_int(failed.size()).is_equal(1)
+	assert_str(String(failed[0]["reason"])).is_equal("tool_required")
 	assert_bool(_auto_interaction._is_gathering).is_false()
 
 	_teardown_full_tree()

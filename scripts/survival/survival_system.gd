@@ -13,7 +13,7 @@ signal stat_changed(stat_name: StringName, current: float, max_val: float)
 signal player_died()
 signal player_respawned()
 signal ground_item_dropped(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i)
-signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int)
+signal ground_item_picked_up(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i)
 
 const STAT_CONFIG: Dictionary = {
 	"hunger_rate": 0.4,
@@ -335,7 +335,7 @@ func remove_ground_item(tile: Vector2i, item_type: StringName, count: int, sub_h
 			entry["count"] -= removed
 			if entry["count"] <= 0:
 				_ground_items.remove_at(i)
-			ground_item_picked_up.emit(tile, item_type, removed)
+			ground_item_picked_up.emit(tile, item_type, removed, sub_hex)
 			return removed
 	return 0
 

@@ -121,7 +121,7 @@ func _on_ground_item_dropped(tile: Vector2i, item_type: StringName, _count: int,
 	_try_add_marker(tile, sub_hex, item_type)
 
 
-func _on_ground_item_picked_up(tile: Vector2i, _item_type: StringName, _count: int) -> void:
+func _on_ground_item_picked_up(tile: Vector2i, _item_type: StringName, _count: int, _sub_hex: Vector2i) -> void:
 	# Check if any items remain on this tile and rebuild markers
 	if _survival == null:
 		return

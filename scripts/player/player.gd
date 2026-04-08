@@ -77,7 +77,24 @@ func _on_map_generated() -> void:
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
-	_snap_to_tile(current_tile)
+	_snap_to_spawn()
+
+
+## Place the player at the HexGrid spawn point using tile + sub-hex offset +
+## facing direction. Falls back to tile center if no sub-hex/facing is set.
+func _snap_to_spawn() -> void:
+	var tile_center_2d: Vector2 = _grid.axial_to_world(current_tile)
+	var offset_2d: Vector2 = _HexMath.sub_axial_to_world(_grid.spawn_sub_hex)
+	var world_2d: Vector2 = tile_center_2d + offset_2d
+	var terrain_y: float = _grid.get_terrain_y(world_2d.x, world_2d.y)
+	position = Vector3(world_2d.x, terrain_y, world_2d.y)
+
+	# Apply facing: editor stores degrees in canvas convention (0=up/north,
+	# 90=east). Convert to the (x, z) facing_direction vector the model uses.
+	var facing_deg: float = _grid.spawn_facing_deg
+	var angle_rad: float = deg_to_rad(facing_deg - 90.0)
+	facing_direction = Vector2(cos(angle_rad), sin(angle_rad))
+	_update_model_rotation()
 
 
 func _process(delta: float) -> void:

@@ -190,18 +190,29 @@ func get_save_data() -> Dictionary:
 
 
 func load_save_data(data: Dictionary) -> void:
-	_bonus_slots = data.get("bonus_slots", 0)
+	_bonus_slots = int(data.get("bonus_slots", 0))
+	var slots_data: Array = data.get("slots", [])
 	var total: int = _base_slots + _bonus_slots
+
+	# Preserve all saved slots even if bonus_slots was missing or smaller than
+	# the slots array — expand capacity to avoid silent data loss.
+	if slots_data.size() > total:
+		push_warning(
+			"Inventory.load_save_data: saved %d slots but total is %d — expanding capacity" \
+				% [slots_data.size(), total]
+		)
+		total = slots_data.size()
+		_bonus_slots = total - _base_slots
+
 	_slots.clear()
 	_slots.resize(total)
 	for i in total:
 		_slots[i] = { "type": &"", "quantity": 0 }
 
-	var slots_data: Array = data.get("slots", [])
 	for i in mini(slots_data.size(), total):
 		var entry: Dictionary = slots_data[i]
 		_slots[i]["type"] = StringName(entry.get("type", ""))
-		_slots[i]["quantity"] = entry.get("quantity", 0)
+		_slots[i]["quantity"] = int(entry.get("quantity", 0))
 
 	var tools_data: Dictionary = data.get("tools", {})
 	for key in tools_data:

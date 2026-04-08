@@ -35,7 +35,13 @@ enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
+
+## Spawn point (col, row) — tile where the player starts on new game.
 var spawn_tile: Vector2i = Vector2i.ZERO
+## Spawn sub-hex offset (sq, sr) within the spawn tile. Defaults to tile center.
+var spawn_sub_hex: Vector2i = Vector2i.ZERO
+## Spawn facing direction in degrees (canvas convention: 0=up/north, 90=east).
+var spawn_facing_deg: float = 0.0
 
 # --- Signals ---
 signal map_generated()
@@ -278,21 +284,28 @@ func load_map(path: String) -> bool:
 
 func load_save_data(data: Dictionary) -> void:
 	_tiles.clear()
-	_seed = data.get("seed", 0)
+	_seed = int(data.get("seed", 0))
 	var tiles_array: Array = data.get("tiles", [])
 	for td in tiles_array:
+		if not td.has("tile_col") or not td.has("tile_row"):
+			push_warning("HexGrid.load_save_data: tile entry missing coords, skipped")
+			continue
 		var tile: Resource = _HexTile.new()
-		var coords := Vector2i(td["tile_col"], td["tile_row"])
+		var coords := Vector2i(int(td["tile_col"]), int(td["tile_row"]))
 		tile.coords = coords
-		tile.biome = td["biome"]
-		tile.elevation = td["elevation"]
+		tile.biome = int(td.get("biome", _HexTile.Biome.GRASSLAND))
+		tile.elevation = int(td.get("elevation", 0))
 		# Legacy "fog" key from old saves is silently ignored.
 
 		if td.has("props"):
 			# New save format: unified props array
 			for pd in td["props"]:
+				var prop_type: StringName = StringName(pd.get("type", ""))
+				if prop_type == &"":
+					push_warning("HexGrid.load_save_data: prop entry missing type at %s, skipped" % coords)
+					continue
 				var prop: Resource = _Prop.new()
-				prop.type = StringName(pd["type"])
+				prop.type = prop_type
 				prop.category = int(pd.get("category", _Prop.Category.PLANT))
 				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
@@ -306,10 +319,13 @@ func load_save_data(data: Dictionary) -> void:
 		else:
 			# Legacy save format: "resources" + "structure" + "anomaly"
 			for rd in td.get("resources", []):
+				var legacy_type: StringName = StringName(rd.get("type", ""))
+				if legacy_type == &"":
+					continue
 				tile.props.append(_Prop.create_prop(
-					StringName(rd["type"]),
-					int(rd["remaining"]),
-					int(rd["max"]),
+					legacy_type,
+					int(rd.get("remaining", 0)),
+					int(rd.get("max", 0)),
 					StringName(rd.get("tool", "")),
 				))
 

@@ -1308,6 +1308,13 @@ export function validatePropForm(model, isNew) {
     errors.push('Max Stack must be >= 1');
   }
 
+  // Light emitter consistency: emits_light=true requires light_radius >= 1.
+  // Without a radius the light never reaches neighbors — the prop would
+  // silently produce no lighting effect at runtime.
+  if (model.emits_light && model.light_radius < 1) {
+    errors.push('Light Radius must be >= 1 when Emits Light is enabled');
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -1443,6 +1450,19 @@ export function propModelToRaw(model) {
   fields.set('placeholder_depleted_type', { type: 'stringname', value: model.placeholder_depleted_type });
   fields.set('placeholder_depleted_params', _objToTresDict(model.placeholder_depleted_params, 'string', 'float'));
   fields.set('placeholder_depleted_color', _colorToTresValue(model.placeholder_depleted_color));
+
+  // Preserve any fields from the original .tres the editor doesn't yet
+  // understand (e.g. `mesh`, `depleted_mesh`, `material` asset references).
+  // Without this pass, @export PropDef properties the editor has no UI for
+  // would be silently dropped on save, causing permanent data loss when
+  // real meshes/materials are added via the Godot editor.
+  if (model._raw && model._raw.resourceFields instanceof Map) {
+    for (const [key, value] of model._raw.resourceFields) {
+      if (!fields.has(key)) {
+        fields.set(key, value);
+      }
+    }
+  }
 
   raw.resourceFields = fields;
   return raw;
