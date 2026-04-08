@@ -7,8 +7,6 @@ import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
-const KNOWN_BIOMES = new Set(['001', '002', '003', '004', '005',
-  'crash_site', 'grassland', 'forest', 'rocky', 'water']);
 
 /**
  * Maps a parsed .tres BiomeData to an editable JS model.
@@ -356,13 +354,6 @@ export function renderBiomeEditor(container, options) {
       item.appendChild(swatch);
       item.appendChild(label);
 
-      if (!KNOWN_BIOMES.has(model.id)) {
-        const warn = document.createElement('span');
-        warn.textContent = ' !';
-        warn.title = 'Custom biome \u2014 not recognized by game MapLoader';
-        warn.style.cssText = 'color:var(--warning, #f0ad4e);font-weight:700;margin-left:auto;cursor:help;font-size:11px;';
-        item.appendChild(warn);
-      }
 
       item.addEventListener('click', () => {
         if (selectedModel && !isNewMode && selectedModel.id === model.id) return;

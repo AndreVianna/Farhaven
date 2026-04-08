@@ -6,41 +6,32 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const BIOME_NAMES: Dictionary = {
-	# Numeric IDs (current format)
-	"001": 0, "002": 1, "003": 2, "004": 3, "005": 4,
-	# Legacy string names (for backwards compatibility)
-	"crash_site": 0, "grassland": 1, "forest": 2, "rocky": 3, "water": 4,
-}
-
-const BIOME_DATA_PATHS: Dictionary = {
-	0: "res://data/biomes/001.tres",
-	1: "res://data/biomes/002.tres",
-	2: "res://data/biomes/003.tres",
-	3: "res://data/biomes/004.tres",
-	4: "res://data/biomes/005.tres",
-}
-
 const TILE_COUNT_MIN: int = 200
 const TILE_COUNT_MAX: int = 300
 
-# Legacy walkable structures — used when converting old "structure" field to Prop.blocks_movement
-# Supports both numeric IDs (current) and legacy string names
-const _WALKABLE_STRUCTURES: Array[StringName] = [
-	&"00101", &"00102", &"00103", &"00104", &"00105",
-	&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire",
-]
-
 var _grid: Node
-var _biome_data: Dictionary = {}  # int (Biome) -> BiomeData resource
+var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData resource
+var _biome_id_to_int: Dictionary = {}  # biome_id (String) -> int (HexTile.Biome enum)
 
 
 func _init(grid: Node) -> void:
 	_grid = grid
-	for biome_int in BIOME_DATA_PATHS:
-		var res: Resource = load(BIOME_DATA_PATHS[biome_int])
-		if res != null:
-			_biome_data[biome_int] = res
+	# Discover biome .tres files from data/biomes/ directory
+	var dir := DirAccess.open("res://data/biomes")
+	if dir:
+		dir.list_dir_begin()
+		var idx: int = 0
+		var fname := dir.get_next()
+		while fname != "":
+			if fname.ends_with(".tres"):
+				var biome_id: String = fname.get_basename()
+				var res: Resource = load("res://data/biomes/" + fname)
+				if res != null:
+					_biome_data[biome_id] = res
+					_biome_id_to_int[biome_id] = idx
+					idx += 1
+			fname = dir.get_next()
+		dir.list_dir_end()
 
 
 ## Load map from path. Returns true on success.
@@ -84,8 +75,8 @@ func load_map(path: String) -> bool:
 		var coords := Vector2i(int(parts[0].strip_edges()), int(parts[1].strip_edges()))
 		var td: Dictionary = tiles_dict[key]
 
-		var biome_str: String = td.get("biome", "grassland")
-		var biome_int: int = BIOME_NAMES.get(biome_str, _HexTile.Biome.GRASSLAND)
+		var biome_str: String = td.get("biome", "001")
+		var biome_int: int = _biome_id_to_int.get(biome_str, 0)
 
 		var tile: Resource = _HexTile.new()
 		tile.coords = coords
@@ -137,7 +128,7 @@ func load_map(path: String) -> bool:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					not (StringName(structure_str) in _WALKABLE_STRUCTURES),
+					false,  # Legacy structures default to walkable; blocks_movement from .tres
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")
@@ -201,9 +192,6 @@ func _validate(spawn: Vector2i) -> void:
 	var spawn_tile: Resource = _grid._tiles.get(spawn, null)
 	if spawn_tile == null:
 		push_warning("MapLoader: spawn tile %s does not exist" % str(spawn))
-	elif spawn_tile.biome != _HexTile.Biome.CRASH_SITE:
-		push_warning("MapLoader: spawn tile at %s is not CRASH_SITE" % str(spawn))
-
 	var biomes: Dictionary = {}
 	var has_anomaly: bool = false
 	for c in _grid._tiles:
@@ -215,14 +203,6 @@ func _validate(spawn: Vector2i) -> void:
 				break
 		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
-
-	for b: int in [_HexTile.Biome.CRASH_SITE, _HexTile.Biome.GRASSLAND,
-			_HexTile.Biome.FOREST, _HexTile.Biome.ROCKY]:
-		if not biomes.has(b):
-			push_warning("MapLoader: required biome %d absent from map" % b)
-
-	if not has_anomaly:
-		push_warning("MapLoader: no anomaly tile present in map")
 
 	_validate_reachability(spawn)
 

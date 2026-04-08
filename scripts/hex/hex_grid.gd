@@ -32,9 +32,6 @@ const _CORNER_NEIGHBOR_DIRS: Array = [
 
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
-# Legacy: Structures that do NOT block movement (walkable).
-# Kept for backward compat in load_save_data with old save format.
-const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
@@ -356,7 +353,7 @@ func load_save_data(data: Dictionary) -> void:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					not (StringName(structure_str) in WALKABLE_STRUCTURES),
+					false,  # Legacy structures default to walkable (blocks_movement from .tres)
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")
