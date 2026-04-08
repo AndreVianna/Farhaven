@@ -604,7 +604,7 @@ export class HexCanvas {
       ? this._previewRotation
       : (typeof prop.rotation === 'number' ? prop.rotation : 0);
     const angleRad = (rotation - 90) * Math.PI / 180;
-    const lineLen = subSize * 1.2;
+    const lineLen = 8 * this.camera.zoom * 2.4;
     const handleX = anchorScreen.x + Math.cos(angleRad) * lineLen;
     const handleY = anchorScreen.y + Math.sin(angleRad) * lineLen;
 
@@ -837,7 +837,7 @@ export class HexCanvas {
       if (tile && tile.props && tile.props[sp.propIndex]) {
         const prop = tile.props[sp.propIndex];
         const propScreen = this._subHexScreenPos(sp.hexQ, sp.hexR, prop.sq, prop.sr);
-        const propLineLen = subSize * 1.2; // matches selected render length
+        const propLineLen = 8 * this.camera.zoom * 2.4; // matches selected render length
         if (typeof prop.rotation === 'number' &&
             this._isNearRotationHandle(mx, my, propScreen.x, propScreen.y, prop.rotation, propLineLen)) {
           this._dragMode = 'rotating';
