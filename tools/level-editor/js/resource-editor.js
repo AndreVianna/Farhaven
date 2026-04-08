@@ -337,6 +337,7 @@ export function renderResourceEditor(container, options) {
 
   const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
   const onChange = options && typeof options.onChange === 'function' ? options.onChange : () => {};
+  const onSave = options && typeof options.onSave === 'function' ? options.onSave : onChange;
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -433,6 +434,25 @@ export function renderResourceEditor(container, options) {
   let isNewMode = false;
   /** @type {ResourceDefModel|null} */
   let editingModel = null;
+  /** @type {string} Serialized initial state for dirty detection */
+  let initialJson = '';
+
+  /**
+   * Check if the current form is dirty and guard navigation.
+   * If dirty, asks the user to confirm discarding changes.
+   * @returns {boolean} true if safe to proceed
+   */
+  function _guardDirty() {
+    if (!editingModel) return true;
+    const form = detailPanel.querySelector('form');
+    if (!form) return true;
+    const currentData = collectFormData(/** @type {HTMLFormElement} */ (form));
+    const currentJson = JSON.stringify(_modelToPlain(currentData));
+    if (currentJson !== initialJson) {
+      return confirm('Discard unsaved changes?');
+    }
+    return true;
+  }
 
   // --- Build the resource list ---
   /**
@@ -479,6 +499,7 @@ export function renderResourceEditor(container, options) {
       item.appendChild(span);
 
       item.addEventListener('click', () => {
+        if (!_guardDirty()) return;
         isNewMode = false;
         selectedId = prop.id;
         // Re-read from ProjectContext so we get the latest data
@@ -493,6 +514,7 @@ export function renderResourceEditor(container, options) {
           editingModel.prop_category = prop.propCat;
           editingModel.prop_origin = prop.propOrigin;
         }
+        initialJson = JSON.stringify(_modelToPlain(editingModel));
         _updateListSelection();
         _renderDetail();
       });
@@ -571,9 +593,20 @@ export function renderResourceEditor(container, options) {
     deleteBtn.type = 'button';
     deleteBtn.classList.add('editor-btn-delete');
 
-    btnGroup.appendChild(saveBtn);
-    if (!isNew) {
+    // Issue 4: Hide Save/Delete for non-resource props (no .tres file)
+    const isReadOnly = !isNew && !model._filename;
+
+    if (!isReadOnly) {
+      btnGroup.appendChild(saveBtn);
+    }
+    if (!isNew && !isReadOnly) {
       btnGroup.appendChild(deleteBtn);
+    }
+    if (isReadOnly) {
+      const readOnlyNote = document.createElement('span');
+      readOnlyNote.textContent = '(read-only \u2014 no .tres file)';
+      readOnlyNote.style.cssText = 'font-size:11px;color:var(--text-secondary);font-style:italic;';
+      btnGroup.appendChild(readOnlyNote);
     }
 
     header.appendChild(h3);
@@ -604,6 +637,9 @@ export function renderResourceEditor(container, options) {
     form.appendChild(columnsWrapper);
 
     detailPanel.appendChild(form);
+
+    // Recapture initialJson from the rendered form so comparisons are form-to-form
+    initialJson = JSON.stringify(_modelToPlain(collectFormData(/** @type {HTMLFormElement} */ (form))));
 
     // --- Save handler ---
     saveBtn.addEventListener('click', () => {
@@ -648,7 +684,7 @@ export function renderResourceEditor(container, options) {
 
       refreshList();
       _renderDetail();
-      onChange();
+      onSave();
     });
 
     // --- Delete handler ---
@@ -764,9 +800,11 @@ export function renderResourceEditor(container, options) {
   catFilter.addEventListener('change', () => refreshList());
 
   newBtn.addEventListener('click', () => {
+    if (!_guardDirty()) return;
     isNewMode = true;
     selectedId = null;
     editingModel = new ResourceDefModel();
+    initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();
     _renderDetail();
   });

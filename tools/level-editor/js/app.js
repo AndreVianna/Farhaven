@@ -484,14 +484,24 @@ function initializeAfterLoad() {
   // Render resource list in the Resources tab (task-012/013)
   const resourceTabEl = document.getElementById('tab-props');
   if (resourceTabEl) {
-    renderResourceEditor(resourceTabEl, { commandHistory, onChange: refreshPalettes });
+    renderResourceEditor(resourceTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+    });
     console.log('Resource editor rendered.');
   }
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
   if (biomeTabEl) {
-    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas, onChange: refreshPalettes });
+    renderBiomeEditor(biomeTabEl, {
+      commandHistory,
+      biomeColorMap,
+      hexCanvas,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('biomes'); },
+    });
     console.log('Biome editor rendered.');
   }
 

@@ -249,6 +249,7 @@ export function renderBiomeEditor(container, options) {
 
   const opts = options || {};
   const onChange = typeof opts.onChange === 'function' ? opts.onChange : () => {};
+  const onSave = typeof opts.onSave === 'function' ? opts.onSave : onChange;
 
   // State for the editor
   /** @type {BiomeDataModel|null} */
@@ -548,6 +549,9 @@ export function renderBiomeEditor(container, options) {
     form.appendChild(columnsWrapper);
     detailPanel.appendChild(form);
 
+    // Recapture initialJson from the rendered form so comparisons are form-to-form
+    initialJson = JSON.stringify(_modelToPlain(_collectBiomeFormData(form)));
+
     // ── Save handler ──
     saveBtn.addEventListener('click', () => {
       const collected = _collectBiomeFormData(form);
@@ -596,7 +600,7 @@ export function renderBiomeEditor(container, options) {
         isNewMode = false;
         _showEmpty();
       }
-      onChange();
+      onSave();
     });
 
     // ── Delete handler ──
