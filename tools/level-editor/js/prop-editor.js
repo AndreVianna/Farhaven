@@ -568,14 +568,14 @@ export function renderPropEditor(container, options) {
     const catVal = catFilter.value;
 
     // Build list from all prop definitions in ProjectContext (stored in files.resources map)
-    /** @type {Array<{id: string, isPropDef: boolean, propCat: string, propOrigin: string}>} */
+    /** @type {Array<{id: string, displayName: string, isPropDef: boolean, propCat: string, propOrigin: string}>} */
     const allProps = [];
 
     for (const [filename, entry] of ProjectContext.files.resources) {
       const model = PropDefModel.fromEntry(filename, entry);
-      allProps.push({ id: model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
+      allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
     }
-    allProps.sort((a, b) => a.id.localeCompare(b.id));
+    allProps.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     for (const prop of allProps) {
       // Origin filter
@@ -583,7 +583,7 @@ export function renderPropEditor(container, options) {
       // Category filter
       if (catVal !== 'all' && prop.propCat !== catVal) continue;
       // Text filter
-      if (textFilter && !prop.id.toLowerCase().includes(textFilter)) continue;
+      if (textFilter && !prop.displayName.toLowerCase().includes(textFilter) && !prop.id.toLowerCase().includes(textFilter)) continue;
 
       const item = document.createElement('div');
       item.classList.add('editor-list-item');
@@ -594,7 +594,7 @@ export function renderPropEditor(container, options) {
       item.dataset.isPropDef = String(prop.isPropDef);
 
       const span = document.createElement('span');
-      span.textContent = prop.id;
+      span.textContent = prop.displayName;
       item.appendChild(span);
 
       item.addEventListener('click', () => {

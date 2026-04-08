@@ -775,8 +775,12 @@ function _initBiomePalette() {
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
+    // Show display name from .tres if available, otherwise the ID
+    const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
+    const displayName = biomeEntry && biomeEntry.data && biomeEntry.data.biome_name
+      ? String(biomeEntry.data.biome_name) : biomeName;
     const label = document.createElement('span');
-    label.textContent = biomeName;
+    label.textContent = displayName;
 
     item.appendChild(swatch);
     item.appendChild(label);
@@ -875,7 +879,8 @@ function _initPropPalette() {
       const defaultOrig = NATURAL_CATEGORIES.has(catInt) ? 'natural' : 'crafted';
       const resOrigin = origin !== 'all' ? origin : defaultOrig;
 
-      _addTypeItem(resourceName, resCat, resOrigin);
+      const displayName = _str(entry.data.display_name) || resourceName;
+      _addTypeItem(resourceName, displayName, resCat, resOrigin);
     }
 
     if (listContainer.children.length === 0) {
@@ -888,16 +893,17 @@ function _initPropPalette() {
 
   /**
    * Add a clickable type item to the list.
-   * @param {string} typeName
+   * @param {string} typeName - The prop type ID (used for tool value)
+   * @param {string} displayName - Human-readable name shown in the list
    * @param {string} cat
    * @param {string} originName
    */
-  function _addTypeItem(typeName, cat, originName) {
+  function _addTypeItem(typeName, displayName, cat, originName) {
     const item = document.createElement('div');
     item.className = 'palette-item';
     item.dataset.value = typeName;
     const label = document.createElement('span');
-    label.textContent = typeName;
+    label.textContent = displayName;
     item.appendChild(label);
     item.addEventListener('click', () => {
       toolManager.setTool('prop', typeName);
