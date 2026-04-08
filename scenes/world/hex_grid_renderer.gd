@@ -26,15 +26,6 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 const ELEVATION_STEP: float = 0.5
 
-## BiomeData .tres paths indexed by HexTile.Biome enum value.
-const BIOME_PATHS: Array[String] = [
-	"res://data/biomes/crash_site.tres",
-	"res://data/biomes/grassland.tres",
-	"res://data/biomes/forest.tres",
-	"res://data/biomes/rocky.tres",
-	"res://data/biomes/water.tres",
-]
-
 var _mesh_instance: MeshInstance3D
 var _material: ShaderMaterial
 
@@ -59,9 +50,21 @@ func _ready() -> void:
 	_mesh_instance.material_override = _material
 	DayNightCycle.register_hex_material(_material)
 
-	_biome_data.resize(5)
-	for i: int in range(5):
-		_biome_data[i] = load(BIOME_PATHS[i])
+	# Discover biome .tres files from data/biomes/ directory
+	var biome_files: Array[String] = []
+	var dir := DirAccess.open("res://data/biomes")
+	if dir:
+		dir.list_dir_begin()
+		var fname := dir.get_next()
+		while fname != "":
+			if fname.ends_with(".tres"):
+				biome_files.append(fname)
+			fname = dir.get_next()
+		dir.list_dir_end()
+	biome_files.sort()
+	_biome_data.resize(biome_files.size())
+	for i: int in range(biome_files.size()):
+		_biome_data[i] = load("res://data/biomes/" + biome_files[i])
 
 	HexGrid.map_generated.connect(_on_map_generated)
 	HexGrid.tile_revealed.connect(_on_tile_revealed)
