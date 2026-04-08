@@ -1036,26 +1036,25 @@ function _addOriginCategoryFields(grid, model) {
   grid.appendChild(catSelect);
 
   /** Rebuild category options based on origin. */
-  function _refreshCategories() {
+  function _refreshCategories(preserveValue) {
     const origin = originSelect.value;
     const allowed = origin === 'natural' ? _NATURAL_CAT_NAMES : _NON_NATURAL_CAT_NAMES;
-    const prev = catSelect.value;
+    const target = preserveValue || catSelect.value;
     catSelect.innerHTML = '';
     for (const c of allowed) {
       const opt = document.createElement('option');
       opt.value = c;
       opt.textContent = c;
-      if (c === prev) opt.selected = true;
+      if (c === target) opt.selected = true;
       catSelect.appendChild(opt);
     }
-    // If previous value not in new list, select first
-    if (!allowed.includes(prev) && allowed.length > 0) {
+    if (!allowed.includes(target) && allowed.length > 0) {
       catSelect.value = allowed[0];
     }
   }
 
-  _refreshCategories();
-  originSelect.addEventListener('change', _refreshCategories);
+  _refreshCategories(model.prop_category);
+  originSelect.addEventListener('change', () => _refreshCategories());
 }
 
 // ============================================================
