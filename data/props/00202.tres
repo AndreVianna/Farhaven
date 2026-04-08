@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"00202"
+display_name = "Pickaxe"
+gather_time = 0.0
+gather_amount = 0
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 1
+category = &"tool"
+catalog_entry = &""
+catalog_category = &""
+prop_category = 8
+origin = 1
+tool_slot = &"pickaxe"
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.15, "size_y": 0.05, "size_z": 0.45 }
+placeholder_color = Color(0.5, 0.5, 0.55, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.15, "size_y": 0.05, "size_z": 0.45 }
+placeholder_depleted_color = Color(0.3, 0.3, 0.35, 1.0)

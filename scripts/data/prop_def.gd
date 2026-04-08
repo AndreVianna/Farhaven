@@ -1,6 +1,7 @@
 class_name PropDef extends Resource
 
-## Unique identifier — must match the StringName used in map data (e.g. &"wood")
+## Unique identifier — numeric StringName matching the .tres filename (e.g. &"00010").
+## Used as item type in inventory, prop type in maps, and tool id in equipment slots.
 @export var id: StringName
 
 ## Human-readable name for UI
@@ -15,7 +16,7 @@ class_name PropDef extends Resource
 @export var yield_type: StringName = &""
 
 # --- Tool speed multipliers (applied when tool equipped) ---
-## Key: tool StringName, Value: multiplier float. E.g. {"stone_axe": 0.5}
+## Key: tool PropDef id (numeric, e.g. &"00201" for axe). Value: multiplier float (0.5 = 2x faster).
 @export var tool_speed: Dictionary = {}
 
 # --- Inventory ---
@@ -43,6 +44,17 @@ class_name PropDef extends Resource
 @export var is_respawn_point: bool = false
 ## Whether crafting recipes can use this prop as a crafting station.
 @export var is_crafting_station: bool = false
+## Tool slot this item occupies when equipped (e.g. "axe", "pickaxe", "weapon", "scanner").
+## Empty = not a tool.
+@export var tool_slot: StringName = &""
+## Whether this item can be consumed (eaten/drunk/used-up) from the inventory.
+@export var is_consumable: bool = false
+## Hunger restored when consumed (only used if is_consumable = true).
+@export var hunger_restore: float = 0.0
+## Thirst restored when consumed (only used if is_consumable = true).
+@export var thirst_restore: float = 0.0
+## Health restored when consumed. Negative values represent damage (e.g. toxic items).
+@export var health_amount: float = 0.0
 
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh

@@ -161,9 +161,13 @@ func test_fly_to_player_no_crash_without_player() -> void:
 
 
 func test_fly_to_player_prop_colors() -> void:
-	# Verify all prop types have defined colors
-	for res_type: StringName in [&"wood", &"stone", &"berries", &"fiber", &"ore", &"crystal"]:
-		assert_bool(_FlyToPlayer.PROP_COLORS.has(res_type)).is_true()
+	# Colors come from PropDef.placeholder_color via PropRegistry, no hardcoded dict.
+	# Verify each yieldable item id has a non-empty PropDef.
+	for item_id: StringName in [&"00010", &"00013", &"00020", &"00012", &"00014", &"00015"]:
+		var def = PropRegistry.get_def(item_id)
+		assert_bool(def != null).override_failure_message(
+			"PropRegistry must have def for %s" % item_id
+		).is_true()
 
 
 # --- HUD feedback wiring tests ---

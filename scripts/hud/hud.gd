@@ -149,7 +149,10 @@ func connect_auto_interaction(auto_interaction: Node) -> void:
 
 
 func _on_auto_gather_completed(_coords: Vector2i, prop_type: StringName, amount: int) -> void:
-	var display_name: String = String(prop_type).replace("_", " ").capitalize()
+	# Resolve the inventory item display name (gathering may yield a different item, e.g. tree → wood).
+	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
+	var def: PropDef = PropRegistry.get_def(yield_id)
+	var display_name: String = def.display_name if def != null and def.display_name != "" else String(yield_id)
 	var text: String = "+%d %s" % [amount, display_name]
 	var player: Node = _get_player()
 	if player:

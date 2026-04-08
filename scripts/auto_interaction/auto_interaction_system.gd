@@ -21,18 +21,21 @@ signal auto_defend_triggered(fauna_id: int, damage: int)
 signal ground_item_picked_up(item_name: StringName, amount: int)
 
 # --- Tool Priority ---
-# Higher = gathered first when multiple candidates exist
+# Higher = gathered first when multiple candidates exist.
+# Keyed by the tool slot name on the prop (PropDef.tool_required).
+# Pickaxe-gated props are gathered before axe-gated, then bare-handed.
 
-const TOOL_PRIORITY: Dictionary = {
-	&"stone_pickaxe": 2,
-	&"stone_axe": 1,
+const TOOL_SLOT_PRIORITY: Dictionary = {
+	&"pickaxe": 2,
+	&"axe": 1,
 	&"": 0,
 }
 
 # --- Weapon Damage ---
+# Keyed by the equipped weapon's PropDef id.
 
 const WEAPON_DAMAGE: Dictionary = {
-	&"survival_knife": 10,
+	&"00204": 10,  # survival_knife
 	&"": 5,
 }
 
@@ -135,15 +138,13 @@ func _check_gather_proximity() -> void:
 
 ## Returns true if the player can gather the given prop.
 ## Bare-hands props (tool_required == "") always pass.
-## Tool-gated props require an exact match in the corresponding inventory slot.
+## Tool-gated props store a slot name (e.g. "pickaxe") in tool_required —
+## the player passes if ANY tool is equipped in that slot.
 func can_gather(node: Resource, inventory: RefCounted) -> bool:
-	if node.tool_required == &"":
-		return true
-	var cfg: Dictionary = _Inventory.ITEM_CONFIG.get(node.tool_required, {})
-	var slot: StringName = cfg.get("tool_slot", &"")
+	var slot: StringName = node.tool_required
 	if slot == &"":
-		return false
-	return inventory.get_tool(slot) == node.tool_required
+		return true
+	return inventory.get_tool(slot) != &""
 
 
 # --- Auto-Gather Flow ---
@@ -224,7 +225,7 @@ func _find_gather_candidates(center: Vector2i) -> Array:
 			if world_dist > GATHER_RADIUS:
 				continue  # Out of arm's reach
 
-			var priority: int = TOOL_PRIORITY.get(prop.tool_required, 0)
+			var priority: int = TOOL_SLOT_PRIORITY.get(prop.tool_required, 0)
 			candidates.append({
 				"coords": tile_coords,
 				"prop_index": i,
@@ -251,7 +252,8 @@ func _begin_gather(coords: Vector2i, prop_index: int, node: Resource) -> void:
 
 	# Compute effective gather time
 	var base_time: float = PropRegistry.get_def(node.type).gather_time if PropRegistry.has_def(node.type) else 1.0
-	var tool_slot: StringName = _Inventory.ITEM_CONFIG.get(node.tool_required, {}).get("tool_slot", &"")
+	# node.tool_required is now a slot name (e.g. "pickaxe"); look up equipped tool in that slot.
+	var tool_slot: StringName = node.tool_required
 	var equipped: StringName = _inventory.get_tool(tool_slot) if tool_slot != &"" else &""
 	var multiplier: float = PropRegistry.get_tool_speed(node.type, equipped)
 	var effective_time: float = base_time * multiplier

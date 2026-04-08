@@ -15,6 +15,20 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
+# World prop ids
+const ID_TREE: StringName = &"00001"
+const ID_BERRY_BUSH: StringName = &"00004"
+const ID_BOULDER: StringName = &"00005"
+const ID_IRON_DEPOSIT: StringName = &"00006"
+# Item ids
+const ID_WOOD: StringName = &"00010"
+const ID_STONE: StringName = &"00013"
+const ID_BERRIES: StringName = &"00020"
+const ID_ORE: StringName = &"00014"
+# Tool ids
+const ID_AXE: StringName = &"00201"
+const ID_PICKAXE: StringName = &"00202"
+
 
 # --- Minimal fakes ---
 
@@ -205,7 +219,7 @@ func _place_player_at(world_x: float, world_z: float, tile: Vector2i) -> void:
 
 func test_uncataloged_prop_not_gathered() -> void:
 	# Wood on player tile, but NOT cataloged — nothing should happen
-	var rn := _make_prop(&"wood")
+	var rn := _make_prop(ID_TREE)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -216,16 +230,16 @@ func test_uncataloged_prop_not_gathered() -> void:
 
 
 func test_cataloged_prop_triggers_gather() -> void:
-	var rn := _make_prop(&"wood")
+	var rn := _make_prop(ID_TREE)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
 	assert_int(_started_count).is_equal(1)
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 
 # ===================================================================
@@ -234,10 +248,10 @@ func test_cataloged_prop_triggers_gather() -> void:
 
 func test_tool_gated_prop_silently_skipped() -> void:
 	# Ore requires stone_pickaxe, player doesn't have it — silently skipped
-	var rn := _make_prop(&"ore", &"stone_pickaxe")
+	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"ore")
+	_catalog_prop(&"00014")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -247,16 +261,16 @@ func test_tool_gated_prop_silently_skipped() -> void:
 
 
 func test_tool_equipped_gathers_gated_resource() -> void:
-	_inv.set_tool(&"pickaxe", &"stone_pickaxe")
-	var rn := _make_prop(&"ore", &"stone_pickaxe")
+	_inv.set_tool(&"pickaxe", &"00202")
+	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"ore")
+	_catalog_prop(&"00014")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"ore")
+	assert_str(_started_type).is_equal(&"00014")
 
 
 # ===================================================================
@@ -265,10 +279,10 @@ func test_tool_equipped_gathers_gated_resource() -> void:
 
 func test_prop_beyond_gather_radius_not_gathered() -> void:
 	# Resource at tile (0,0) center, player 1.0 units away (> 0.75)
-	var rn := _make_prop(&"wood")
+	var rn := _make_prop(ID_TREE)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at(1.0, 0.0, Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -278,23 +292,23 @@ func test_prop_beyond_gather_radius_not_gathered() -> void:
 
 func test_prop_within_gather_radius_gathered() -> void:
 	# Resource at tile (0,0) center, player 0.5 units away (< 0.75)
-	var rn := _make_prop(&"wood")
+	var rn := _make_prop(ID_TREE)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at(0.5, 0.0, Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 
 func test_prop_at_tile_center_gathered_by_centered_player() -> void:
 	# Player exactly at tile center, prop at tile center (distance 0)
-	var rn := _make_prop(&"wood")
+	var rn := _make_prop(ID_TREE)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -305,10 +319,10 @@ func test_prop_with_offset_distance_computed_correctly() -> void:
 	# Resource at tile (0,0) with sub_hex (2, 0) — far from center.
 	# sub_hex_to_world places it well beyond GATHER_RADIUS from tile center.
 	# Player at (0, 0, 0) → distance > GATHER_RADIUS (0.75) → not gathered
-	var rn := _make_prop(&"wood", &"", 3, 0.0, Vector2i(2, 0))
+	var rn := _make_prop(ID_TREE, &"", 3, 0.0, Vector2i(2, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -318,10 +332,10 @@ func test_prop_with_offset_distance_computed_correctly() -> void:
 func test_prop_with_small_offset_within_radius() -> void:
 	# Resource at tile (0,0) with sub_hex (0, 0) — at tile center.
 	# Player at (0, 0, 0) → distance = 0 < 0.75 → gathered
-	var rn := _make_prop(&"wood", &"", 3, 0.0, Vector2i(0, 0))
+	var rn := _make_prop(ID_TREE, &"", 3, 0.0, Vector2i(0, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -334,12 +348,12 @@ func test_gathers_from_neighbor_tile_when_close_enough() -> void:
 	var player_tile := _make_tile(Vector2i.ZERO)
 	_grid._tiles[Vector2i.ZERO] = player_tile
 
-	var rn := _make_prop(&"wood", &"", 3, 0.0, Vector2i.ZERO)
+	var rn := _make_prop(ID_TREE, &"", 3, 0.0, Vector2i.ZERO)
 	var neighbor_coords := Vector2i(1, 0)
 	var neighbor_tile := _make_tile(neighbor_coords, [rn])
 	_grid._tiles[neighbor_coords] = neighbor_tile
 
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 
 	# Place player right at the neighbor tile center
 	var tile_center: Vector2 = _grid.axial_to_world(neighbor_coords)
@@ -351,10 +365,10 @@ func test_gathers_from_neighbor_tile_when_close_enough() -> void:
 
 
 func test_depleted_prop_skipped() -> void:
-	var rn := _make_prop(&"wood", &"", 0)  # remaining = 0
+	var rn := _make_prop(ID_TREE, &"", 0)  # remaining = 0
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -369,19 +383,19 @@ func test_depleted_prop_skipped() -> void:
 func test_higher_priority_prop_gathered_first() -> void:
 	# Same tile: bare-hand wood (priority 0) and pickaxe ore (priority 2)
 	# Both at tile center — player on top of both
-	_inv.set_tool(&"pickaxe", &"stone_pickaxe")
-	var wood_rn := _make_prop(&"wood")
-	var ore_rn := _make_prop(&"ore", &"stone_pickaxe")
+	_inv.set_tool(&"pickaxe", &"00202")
+	var wood_rn := _make_prop(ID_TREE)
+	var ore_rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [wood_rn, ore_rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
-	_catalog_prop(&"ore")
+	_catalog_prop(&"00010")
+	_catalog_prop(&"00014")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
 	# Ore has priority 2 > wood priority 0
-	assert_str(_started_type).is_equal(&"ore")
+	assert_str(_started_type).is_equal(&"00014")
 
 
 func test_nearer_prop_gathered_first_at_same_priority() -> void:
@@ -389,12 +403,12 @@ func test_nearer_prop_gathered_first_at_same_priority() -> void:
 	# Near one at sub_hex (0, 0) — at tile center.
 	# Far one at sub_hex (1, 0) — offset from center.
 	# Player at tile center → near dist = 0, far dist > 0
-	var rn_near := _make_prop(&"wood", &"", 3, 0.0, Vector2i.ZERO)
-	var rn_far := _make_prop(&"wood", &"", 3, 0.0, Vector2i(1, 0))
+	var rn_near := _make_prop(ID_TREE, &"", 3, 0.0, Vector2i.ZERO)
+	var rn_far := _make_prop(ID_TREE, &"", 3, 0.0, Vector2i(1, 0))
 	var tile := _make_tile(Vector2i.ZERO, [rn_far, rn_near])  # far first in array
 	_grid._tiles[Vector2i.ZERO] = tile
 
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -408,10 +422,10 @@ func test_nearer_prop_gathered_first_at_same_priority() -> void:
 # ===================================================================
 
 func test_gather_completes_adds_to_inventory() -> void:
-	var rn := _make_prop(&"wood", &"", 3)
+	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -421,31 +435,31 @@ func test_gather_completes_adds_to_inventory() -> void:
 	_sys._on_gather_tween_complete()
 
 	assert_int(_completed_count).is_equal(1)
-	assert_str(_completed_type).is_equal(&"wood")
+	assert_str(_completed_type).is_equal(&"00010")
 	assert_int(_completed_amount).is_equal(1)  # wood gather_amount = 1
 	assert_int(rn.remaining).is_equal(2)  # 3 -> 2
-	assert_int(_inv.get_count(&"wood")).is_equal(1)
+	assert_int(_inv.get_count(&"00010")).is_equal(1)
 
 
 func test_gather_completes_berries_gives_correct_amount() -> void:
-	var rn := _make_prop(&"berries", &"", 3)
+	var rn := _make_prop(ID_BERRY_BUSH, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"berries")
+	_catalog_prop(&"00020")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	_sys._on_gather_tween_complete()
 
 	assert_int(_completed_amount).is_equal(2)  # berries gather_amount = 2
-	assert_int(_inv.get_count(&"berries")).is_equal(2)
+	assert_int(_inv.get_count(&"00020")).is_equal(2)
 
 
 func test_gather_decrements_remaining() -> void:
-	var rn := _make_prop(&"wood", &"", 2)
+	var rn := _make_prop(ID_TREE, &"", 2)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -458,10 +472,10 @@ func test_gather_decrements_remaining() -> void:
 # ===================================================================
 
 func test_depletion_emits_prop_depleted() -> void:
-	var rn := _make_prop(&"wood", &"", 1)  # Will deplete on first gather
+	var rn := _make_prop(ID_TREE, &"", 1)  # Will deplete on first gather
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -470,14 +484,14 @@ func test_depletion_emits_prop_depleted() -> void:
 	assert_int(rn.remaining).is_equal(0)
 	assert_int(_depleted_count).is_equal(1)
 	assert_object(_depleted_coords).is_equal(Vector2i.ZERO)
-	assert_str(_depleted_type).is_equal(&"wood")
+	assert_str(_depleted_type).is_equal(&"00010")
 
 
 func test_depletion_with_respawn_adds_to_queue() -> void:
-	var rn := _make_prop(&"wood", &"", 1, 10.0)  # respawn_time = 10s
+	var rn := _make_prop(&"00010", &"", 1, 10.0)  # respawn_time = 10s
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -490,10 +504,10 @@ func test_depletion_with_respawn_adds_to_queue() -> void:
 
 
 func test_depletion_without_respawn_no_queue_entry() -> void:
-	var rn := _make_prop(&"wood", &"", 1, 0.0)  # no respawn
+	var rn := _make_prop(&"00010", &"", 1, 0.0)  # no respawn
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -509,12 +523,12 @@ func test_depletion_without_respawn_no_queue_entry() -> void:
 func test_inventory_full_emits_failed() -> void:
 	# Fill the inventory completely
 	for i in 12:  # 12 slots × 99 max_stack for wood
-		_inv.add_item(&"wood", 99)
+		_inv.add_item(&"00010", 99)
 
-	var rn := _make_prop(&"wood", &"", 3)
+	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -532,21 +546,21 @@ func test_inventory_full_emits_failed() -> void:
 
 func test_is_gathering_blocks_new_proximity_check() -> void:
 	# Start gathering on tile 0,0
-	var rn1 := _make_prop(&"wood", &"", 3)
+	var rn1 := _make_prop(ID_TREE, &"", 3)
 	var tile1 := _make_tile(Vector2i.ZERO, [rn1])
 	_grid._tiles[Vector2i.ZERO] = tile1
 
-	var rn2 := _make_prop(&"stone", &"", 3)
+	var rn2 := _make_prop(&"00013", &"", 3)
 	var tile2 := _make_tile(Vector2i(1, 0), [rn2])
 	_grid._tiles[Vector2i(1, 0)] = tile2
 
-	_catalog_prop(&"wood")
-	_catalog_prop(&"stone")
+	_catalog_prop(&"00010")
+	_catalog_prop(&"00013")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 	# Player moves to neighbor tile — proximity check fires but should be blocked
 	_place_player_at_tile(Vector2i(1, 0))
@@ -554,7 +568,7 @@ func test_is_gathering_blocks_new_proximity_check() -> void:
 
 	# Should still be gathering the ORIGINAL prop (no cancel)
 	assert_int(_started_count).is_equal(1)
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 
 # ===================================================================
@@ -563,11 +577,11 @@ func test_is_gathering_blocks_new_proximity_check() -> void:
 
 func test_chain_gathers_next_prop_after_completion() -> void:
 	# Two wood props on the player tile, both within radius
-	var rn1 := _make_prop(&"wood", &"", 1)  # Will deplete
-	var rn2 := _make_prop(&"wood", &"", 1)
+	var rn1 := _make_prop(ID_TREE, &"", 1)  # Will deplete
+	var rn2 := _make_prop(ID_TREE, &"", 1)
 	var tile := _make_tile(Vector2i.ZERO, [rn1, rn2])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -584,13 +598,13 @@ func test_chain_gathers_next_prop_after_completion() -> void:
 func test_chain_uses_player_current_position() -> void:
 	# Player starts at 0,0 with wood, gathers it.
 	# Player moves during gather. Chain should check from new position.
-	var rn1 := _make_prop(&"wood", &"", 1)
+	var rn1 := _make_prop(ID_TREE, &"", 1)
 	var tile1 := _make_tile(Vector2i.ZERO, [rn1])
 	_grid._tiles[Vector2i.ZERO] = tile1
 
 	# Prop on neighbor of (1,0): tile (2,0)
 	# Place prop at sub_hex (0, 0) — center of tile (2,0)
-	var rn2 := _make_prop(&"stone", &"", 3, 0.0, Vector2i.ZERO)
+	var rn2 := _make_prop(&"00013", &"", 3, 0.0, Vector2i.ZERO)
 	var tile2 := _make_tile(Vector2i(2, 0), [rn2])
 	_grid._tiles[Vector2i(2, 0)] = tile2
 
@@ -598,8 +612,8 @@ func test_chain_uses_player_current_position() -> void:
 	var tile_mid := _make_tile(Vector2i(1, 0))
 	_grid._tiles[Vector2i(1, 0)] = tile_mid
 
-	_catalog_prop(&"wood")
-	_catalog_prop(&"stone")
+	_catalog_prop(&"00010")
+	_catalog_prop(&"00013")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -614,15 +628,15 @@ func test_chain_uses_player_current_position() -> void:
 
 	# Stone at 2,0 is neighbor of 1,0, and player is close to it
 	assert_int(_started_count).is_equal(2)
-	assert_str(_started_type).is_equal(&"stone")
+	assert_str(_started_type).is_equal(&"00013")
 	assert_object(_sys._gather_target_coords).is_equal(Vector2i(2, 0))
 
 
 func test_chain_stops_when_no_more_candidates() -> void:
-	var rn := _make_prop(&"wood", &"", 1)
+	var rn := _make_prop(ID_TREE, &"", 1)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -638,10 +652,10 @@ func test_chain_stops_when_no_more_candidates() -> void:
 # ===================================================================
 
 func test_effective_time_bare_hands_wood() -> void:
-	var rn := _make_prop(&"wood", &"", 3)
+	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
@@ -651,17 +665,17 @@ func test_effective_time_bare_hands_wood() -> void:
 
 
 func test_effective_time_with_axe_for_wood() -> void:
-	_inv.set_tool(&"axe", &"stone_axe")
-	var rn := _make_prop(&"wood", &"", 3)
+	_inv.set_tool(&"axe", &"00201")
+	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	# stone_axe on wood: base 1.0 × 0.5 = 0.5s
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 
 # ===================================================================
@@ -670,17 +684,17 @@ func test_effective_time_with_axe_for_wood() -> void:
 
 func test_mixed_cataloged_and_uncataloged_only_gathers_cataloged() -> void:
 	# Wood is cataloged, stone is NOT cataloged
-	var wood_rn := _make_prop(&"wood", &"", 3)
-	var stone_rn := _make_prop(&"stone", &"", 3)
+	var wood_rn := _make_prop(ID_TREE, &"", 3)
+	var stone_rn := _make_prop(&"00013", &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [wood_rn, stone_rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	# stone NOT cataloged
 	_place_player_at_tile(Vector2i.ZERO)
 
 	_sys._check_gather_proximity()
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")
 
 
 func test_no_resources_on_any_tile_nothing_happens() -> void:
@@ -721,11 +735,11 @@ func test_try_gather_returns_false_without_grid() -> void:
 
 func test_respawn_ticks_even_when_visible() -> void:
 	# Respawn should always tick regardless of fog_state (fog removed)
-	var rn := _make_prop(&"wood", &"", 1, 2.0)
+	var rn := _make_prop(&"00010", &"", 1, 2.0)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	tile.fog_state = _HexTile.FogState.VISIBLE
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# Deplete
@@ -748,10 +762,10 @@ func test_respawn_ticks_even_when_visible() -> void:
 # ===================================================================
 
 func test_process_triggers_proximity_check_throttled() -> void:
-	var rn := _make_prop(&"wood", &"", 3)
+	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
-	_catalog_prop(&"wood")
+	_catalog_prop(&"00010")
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# Small delta — not enough to trigger check
@@ -761,4 +775,4 @@ func test_process_triggers_proximity_check_throttled() -> void:
 	# Accumulate to >= PROXIMITY_CHECK_INTERVAL (0.1s)
 	_sys._process(0.06)
 	assert_bool(_sys._is_gathering).is_true()
-	assert_str(_started_type).is_equal(&"wood")
+	assert_str(_started_type).is_equal(&"00010")

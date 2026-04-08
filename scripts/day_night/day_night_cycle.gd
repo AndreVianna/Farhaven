@@ -192,7 +192,7 @@ func _on_tile_entered(coords: Vector2i) -> void:
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	if not PropRegistry.has_def(structure_type):
 		return
-	var def: Resource = PropRegistry.get_def(structure_type)
+	var def: PropDef = PropRegistry.get_def(structure_type)
 	if def.emits_light and def.light_radius > 0:
 		_light_sources[coords] = def.light_radius
 		if current_phase == TimePhase.NIGHT:
@@ -203,7 +203,7 @@ func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> vo
 	# Only remove light source if the destroyed structure was actually a light-emitter
 	if not PropRegistry.has_def(structure_type):
 		return
-	var def: Resource = PropRegistry.get_def(structure_type)
+	var def: PropDef = PropRegistry.get_def(structure_type)
 	if not def.emits_light:
 		return
 	if _light_sources.has(coords):

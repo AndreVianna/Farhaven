@@ -86,7 +86,8 @@ func refresh(inventory, crafting_system) -> void:
 	# Determine state
 	if recipe["output_type"] == &"tool":
 		var slot: StringName = recipe["tool_slot"]
-		if inventory.get_tool(slot) == _recipe_name:
+		var output_id: StringName = recipe.get("output_id", &"")
+		if output_id != &"" and inventory.get_tool(slot) == output_id:
 			_state = State.ALREADY_OWNED
 		elif _can_afford(inventory, ingredients):
 			_state = State.AFFORDABLE
@@ -129,7 +130,8 @@ func _update_ingredients(inventory, ingredients: Dictionary) -> void:
 		var lbl := Label.new()
 		lbl.add_theme_font_size_override("font_size", 18)
 
-		var display_name: String = material.capitalize()
+		var def: PropDef = PropRegistry.get_def(material)
+		var display_name: String = def.display_name if def != null and def.display_name != "" else String(material)
 		lbl.text = "%s: %d/%d" % [display_name, owned, needed]
 
 		if owned >= needed:

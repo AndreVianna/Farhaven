@@ -21,11 +21,9 @@ const STAT_CONFIG: Dictionary = {
 	"hp_regen_day": 0.5,
 }
 
-const CONSUMABLE_CONFIG: Dictionary = {
-	&"berries":       {"hunger": 5.0, "thirst": 10.0,  "toxic": 0.0},
-	&"toxic_berries": {"hunger": 10.0, "thirst": 0.0,  "toxic": 25.0},
-	&"meat":          {"hunger": 25.0, "thirst": 0.0,  "toxic": 0.0},
-}
+## Consumable values are read from PropDef (is_consumable / hunger_restore /
+## thirst_restore / health_amount). No hardcoded item table here.
+## health_amount: positive = heal, negative = damage (toxic).
 
 const ACTIVITY_CONFIG: Dictionary = {
 	&"gathering": {
@@ -54,10 +52,8 @@ const ACTIVITY_CONFIG: Dictionary = {
 	},
 }
 
-## Tools are never dropped on death.
-const TOOL_TYPES: Array[StringName] = [
-	&"stone_axe", &"stone_pickaxe", &"survival_knife", &"scanner",
-]
+## Tools (any item with non-empty PropDef.tool_slot) are never dropped on death.
+## Lookup is data-driven via PropRegistry — no hardcoded list of tool ids.
 
 var hp: float = 100.0
 var hunger: float = 100.0
@@ -144,14 +140,17 @@ func _tick(delta: float) -> void:
 
 
 func consume(item_type: StringName) -> void:
-	if not CONSUMABLE_CONFIG.has(item_type):
+	var def: PropDef = PropRegistry.get_def(item_type)
+	if def == null or not def.is_consumable:
 		return
-	var cfg: Dictionary = CONSUMABLE_CONFIG[item_type]
-	hunger = minf(hunger + cfg["hunger"], hunger_max)
-	thirst = minf(thirst + cfg["thirst"], thirst_max)
-	var toxic: float = cfg["toxic"]
-	if toxic > 0.0:
-		take_damage(toxic)
+	hunger = minf(hunger + def.hunger_restore, hunger_max)
+	thirst = minf(thirst + def.thirst_restore, thirst_max)
+	# Apply health change: positive = heal, negative = damage
+	if def.health_amount > 0.0:
+		hp = minf(hp + def.health_amount, hp_max)
+		stat_changed.emit(&"hp", hp, hp_max)
+	elif def.health_amount < 0.0:
+		take_damage(-def.health_amount)
 
 
 func take_damage(amount: float) -> void:
@@ -232,8 +231,9 @@ func _drop_items(death_tile: Vector2i) -> void:
 		var item_type: StringName = slot["type"]
 		if item_type == &"":
 			continue
-		# Skip tools — they are not dropped
-		if item_type in TOOL_TYPES:
+		# Skip tools — they are never stored in prop slots, but guard anyway
+		var def: PropDef = PropRegistry.get_def(item_type)
+		if def != null and def.tool_slot != &"":
 			continue
 		var count: int = slot["quantity"]
 		_inventory.remove_item(item_type, count)
@@ -292,8 +292,8 @@ func respawn() -> void:
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	if PropRegistry.has_def(structure_type):
-		var def: Resource = PropRegistry.get_def(structure_type)
-		if def.is_respawn_point:
+		var def: PropDef = PropRegistry.get_def(structure_type)
+		if def != null and def.is_respawn_point:
 			_respawn_tile = coords
 
 
@@ -301,8 +301,8 @@ func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> vo
 	# Only clear respawn if the destroyed structure was actually a respawn point
 	if not PropRegistry.has_def(structure_type):
 		return
-	var def: Resource = PropRegistry.get_def(structure_type)
-	if def.is_respawn_point and _respawn_tile == coords:
+	var def: PropDef = PropRegistry.get_def(structure_type)
+	if def != null and def.is_respawn_point and _respawn_tile == coords:
 		_respawn_tile = Vector2i.ZERO
 
 

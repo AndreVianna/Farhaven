@@ -21,6 +21,23 @@ const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
+# Numeric prop ids on the world map: trees/boulders/etc.
+const ID_TREE: StringName = &"00001"
+const ID_BERRY_BUSH: StringName = &"00004"
+const ID_BOULDER: StringName = &"00005"
+const ID_TOXIC_BUSH: StringName = &"00008"
+# Numeric inventory item ids.
+const ID_WOOD: StringName = &"00010"
+const ID_STONE: StringName = &"00013"
+const ID_FIBER: StringName = &"00012"
+const ID_ORE: StringName = &"00014"
+const ID_CRYSTAL: StringName = &"00015"
+const ID_BERRIES: StringName = &"00020"
+const ID_TOXIC_BERRIES: StringName = &"00021"
+const ID_MEAT: StringName = &"00022"
+# Numeric tool ids.
+const ID_AXE: StringName = &"00201"
+
 const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
 
@@ -203,14 +220,14 @@ func test_walk_near_unknown_flora_full_flow() -> void:
 
 	# Place unknown berry tile adjacent to player
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_player.current_tile = Vector2i.ZERO
 
 	# Passive ID: reveal tile → shows ❓ marker + prop mesh
 	_scanner._check_passive_identification(Vector2i(1, 0))
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_prop_renderer.get_pool_visible_count(&"berries")).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
 
 	# Proximity scan starts automatically
 	_scanner._process(0.016)
@@ -245,7 +262,7 @@ func test_leave_range_during_scan_interrupts() -> void:
 	_setup_scanner_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_grid._tiles[Vector2i(4, 0)] = _HexTile.new()
 	_player.current_tile = Vector2i.ZERO
 
@@ -275,8 +292,8 @@ func test_leave_range_during_scan_interrupts() -> void:
 func test_one_scan_at_a_time_nearest_first() -> void:
 	_setup_scanner_tree()
 
-	_grid._tiles[Vector2i.ZERO] = _make_tile_with_prop(&"berries")  # distance 0
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"stone")  # distance 1
+	_grid._tiles[Vector2i.ZERO] = _make_tile_with_prop(ID_BERRY_BUSH)  # distance 0
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BOULDER)  # distance 1
 	_player.current_tile = Vector2i.ZERO
 
 	_scanner._process(0.016)  # should pick nearest (distance 0)
@@ -302,11 +319,11 @@ func test_bulk_label_update_on_catalog() -> void:
 
 	# Three berry tiles
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
-	_grid._tiles[Vector2i(2, 1)] = _make_tile_with_prop(&"berries")
-	_grid._tiles[Vector2i(0, -1)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
+	_grid._tiles[Vector2i(2, 1)] = _make_tile_with_prop(ID_BERRY_BUSH)
+	_grid._tiles[Vector2i(0, -1)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	# One stone tile
-	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_prop(&"stone")
+	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_prop(ID_BOULDER)
 	_player.current_tile = Vector2i.ZERO
 
 	# Passive ID marks all
@@ -355,7 +372,7 @@ func test_encountered_fauna_label() -> void:
 
 func test_three_state_labels() -> void:
 	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
 	# UNKNOWN
 	_scanner._check_passive_identification(Vector2i(1, 0))
@@ -398,8 +415,8 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 	panel.set_inventory(inv)
 
 	# Add items
-	inv.add_item(&"wood", 10)
-	assert_int(inv.get_count(&"wood")).is_equal(10)
+	inv.add_item(ID_WOOD, 10)
+	assert_int(inv.get_count(ID_WOOD)).is_equal(10)
 
 	# Panel displays correct state
 	panel.open()
@@ -413,22 +430,22 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 	)
 
 	# Fill slots
-	inv.add_item(&"stone", 99)
-	inv.add_item(&"berries", 20)
-	inv.add_item(&"toxic_berries", 20)
-	inv.add_item(&"fiber", 99)
-	inv.add_item(&"ore", 99)
-	inv.add_item(&"crystal", 50)
-	inv.add_item(&"meat", 20)
-	inv.add_item(&"wood", 99)
-	inv.add_item(&"stone", 99)
-	inv.add_item(&"berries", 20)
-	inv.add_item(&"meat", 20)
+	inv.add_item(ID_STONE, 99)
+	inv.add_item(ID_BERRIES, 20)
+	inv.add_item(ID_TOXIC_BERRIES, 20)
+	inv.add_item(ID_FIBER, 99)
+	inv.add_item(ID_ORE, 99)
+	inv.add_item(ID_CRYSTAL, 50)
+	inv.add_item(ID_MEAT, 20)
+	inv.add_item(ID_WOOD, 99)
+	inv.add_item(ID_STONE, 99)
+	inv.add_item(ID_BERRIES, 20)
+	inv.add_item(ID_MEAT, 20)
 
 	# Try to add more
-	inv.add_item(&"meat", 20)
+	inv.add_item(ID_MEAT, 20)
 	if inv.is_full():
-		inv.add_item(&"wood", 10)
+		inv.add_item(ID_WOOD, 10)
 		assert_bool(full_fired.size() > 0).override_failure_message(
 			"inventory_full signal must fire when inventory is full"
 		).is_true()
@@ -486,31 +503,31 @@ func test_ac5_12_base_slots() -> void:
 
 func test_ac5_stacking_within_max_stack() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(&"wood", 50)
-	inv.add_item(&"wood", 30)
-	assert_int(inv.get_count(&"wood")).is_equal(80)
+	inv.add_item(ID_WOOD, 50)
+	inv.add_item(ID_WOOD, 30)
+	assert_int(inv.get_count(ID_WOOD)).is_equal(80)
 	assert_int(inv.get_used_slot_count()).is_equal(1)
 
 
 func test_ac5_stacking_overflow_creates_new_slot() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(&"wood", 99)
-	inv.add_item(&"wood", 10)
-	assert_int(inv.get_count(&"wood")).is_equal(109)
+	inv.add_item(ID_WOOD, 99)
+	inv.add_item(ID_WOOD, 10)
+	assert_int(inv.get_count(ID_WOOD)).is_equal(109)
 	assert_int(inv.get_used_slot_count()).is_equal(2)
 
 
 func test_ac5_tool_slots_starting_state() -> void:
 	var inv: Inventory = _Inventory.new()
-	assert_object(inv.get_tool(&"weapon")).is_equal(&"survival_knife")
-	assert_object(inv.get_tool(&"scanner")).is_equal(&"scanner")
+	assert_object(inv.get_tool(&"weapon")).is_equal(&"00204")  # survival_knife
+	assert_object(inv.get_tool(&"scanner")).is_equal(&"00205")  # scanner
 	assert_object(inv.get_tool(&"axe")).is_equal(&"")
 	assert_object(inv.get_tool(&"pickaxe")).is_equal(&"")
 
 
 func test_ac5_tool_routing_rejection() -> void:
 	var inv: Inventory = _Inventory.new()
-	var added: int = inv.add_item(&"stone_axe", 1)
+	var added: int = inv.add_item(ID_AXE, 1)
 	assert_int(added).is_equal(0)
 	assert_int(inv.get_used_slot_count()).is_equal(0)
 
@@ -528,12 +545,12 @@ func test_ac5_expansion_adds_12_slots() -> void:
 
 func test_ac11_unknown_label_on_tile_reveal() -> void:
 	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
 	_scanner._on_tile_revealed(Vector2i(1, 0))
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
-	assert_int(_prop_renderer.get_pool_visible_count(&"berries")).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
 
 	_teardown_scanner_tree()
 
@@ -541,7 +558,7 @@ func test_ac11_unknown_label_on_tile_reveal() -> void:
 func test_ac11_proximity_scan_flow() -> void:
 	_setup_scanner_tree()
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_player.current_tile = Vector2i.ZERO
 
 	assert_bool(_scanner.is_scanning()).is_false()
@@ -562,7 +579,7 @@ func test_ac11_auto_identify_after_catalog() -> void:
 	_reset_sig_captures()
 	_scanner._catalog.catalog_entry(&"berry_bush")
 
-	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
 	_scanner.element_identified.connect(_on_sig_element_identified)
 	_scanner.element_unknown.connect(_on_sig_element_unknown)
@@ -578,7 +595,7 @@ func test_ac11_mineral_scan_complete() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"stone")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BOULDER)
 	_player.current_tile = Vector2i.ZERO
 
 	_scanner.entry_cataloged.connect(_on_sig_entry_cataloged)
@@ -634,7 +651,7 @@ func test_ac11_encountered_state_on_surprise_attack() -> void:
 
 func test_toxic_berries_tap_shows_warning_dialog() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(&"toxic_berries", 5)
+	inv.add_item(ID_TOXIC_BERRIES, 5)
 
 	var cat := _Catalog.new()
 	cat.initialize()
@@ -646,13 +663,13 @@ func test_toxic_berries_tap_shows_warning_dialog() -> void:
 	panel.set_catalog(cat)
 	panel.open()
 
-	panel._on_slot_tapped(&"toxic_berries")
+	panel._on_slot_tapped(ID_TOXIC_BERRIES)
 
-	assert_str(String(panel._pending_use_type)).is_equal("toxic_berries")
+	assert_str(String(panel._pending_use_type)).is_equal(String(ID_TOXIC_BERRIES))
 	assert_bool(panel._confirm_dialog != null).is_true()
 
 	panel._on_toxic_confirmed()
-	assert_int(inv.get_count(&"toxic_berries")).is_equal(4)
+	assert_int(inv.get_count(ID_TOXIC_BERRIES)).is_equal(4)
 	assert_str(String(panel._pending_use_type)).is_equal("")
 
 	panel.queue_free()
@@ -660,7 +677,7 @@ func test_toxic_berries_tap_shows_warning_dialog() -> void:
 
 func test_non_toxic_berries_tap_uses_directly() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(&"berries", 5)
+	inv.add_item(ID_BERRIES, 5)
 
 	var cat := _Catalog.new()
 	cat.initialize()
@@ -672,9 +689,9 @@ func test_non_toxic_berries_tap_uses_directly() -> void:
 	panel.set_catalog(cat)
 	panel.open()
 
-	panel._on_slot_tapped(&"berries")
+	panel._on_slot_tapped(ID_BERRIES)
 
-	assert_int(inv.get_count(&"berries")).is_equal(4)
+	assert_int(inv.get_count(ID_BERRIES)).is_equal(4)
 
 	panel.queue_free()
 
@@ -688,8 +705,8 @@ func test_catalog_panel_correct_categories_and_encountered() -> void:
 
 	# Catalog flora and mineral
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
-	_grid._tiles[Vector2i(0, 1)] = _make_tile_with_prop(&"stone")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
+	_grid._tiles[Vector2i(0, 1)] = _make_tile_with_prop(ID_BOULDER)
 	_player.current_tile = Vector2i.ZERO
 
 	# Scan berries
@@ -757,11 +774,11 @@ func test_inventory_panel_rerenders_on_inventory_changed() -> void:
 
 	assert_int(panel._slot_nodes.size()).is_equal(12)
 
-	inv.add_item(&"wood", 25)
+	inv.add_item(ID_WOOD, 25)
 
 	var slots: Array = inv.get_slots()
 	var first_slot: Dictionary = slots[0]
-	assert_object(first_slot["type"]).is_equal(&"wood")
+	assert_object(first_slot["type"]).is_equal(ID_WOOD)
 	assert_int(first_slot["quantity"]).is_equal(25)
 
 	panel.queue_free()
@@ -800,13 +817,13 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 
 func test_prop_removed_on_tile_hidden() -> void:
 	_setup_scanner_tree()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
 
-	assert_int(_prop_renderer.get_pool_visible_count(&"berries")).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(1)
 
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.HIDDEN)
-	assert_int(_prop_renderer.get_pool_visible_count(&"berries")).is_equal(0)
+	assert_int(_prop_renderer.get_pool_visible_count(ID_BERRY_BUSH)).is_equal(0)
 
 	_teardown_scanner_tree()
 
@@ -817,9 +834,9 @@ func test_prop_removed_on_tile_hidden() -> void:
 
 func test_inventory_save_load_round_trip() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(&"wood", 50)
-	inv.add_item(&"berries", 10)
-	inv.set_tool(&"axe", &"stone_axe")
+	inv.add_item(ID_WOOD, 50)
+	inv.add_item(ID_BERRIES, 10)
+	inv.set_tool(&"axe", ID_AXE)
 	inv.expand(12)
 
 	var save_data: Dictionary = inv.get_save_data()
@@ -827,9 +844,9 @@ func test_inventory_save_load_round_trip() -> void:
 	var inv2: Inventory = _Inventory.new()
 	inv2.load_save_data(save_data)
 
-	assert_int(inv2.get_count(&"wood")).is_equal(50)
-	assert_int(inv2.get_count(&"berries")).is_equal(10)
-	assert_object(inv2.get_tool(&"axe")).is_equal(&"stone_axe")
+	assert_int(inv2.get_count(ID_WOOD)).is_equal(50)
+	assert_int(inv2.get_count(ID_BERRIES)).is_equal(10)
+	assert_object(inv2.get_tool(&"axe")).is_equal(ID_AXE)
 	assert_int(inv2.get_max_slots()).is_equal(24)
 
 
@@ -887,21 +904,21 @@ func test_hud_inventory_full_shows_notification() -> void:
 	hud.connect_inventory(inv)
 
 	# Fill all 12 slots
-	inv.add_item(&"wood", 99)
-	inv.add_item(&"wood", 99)
-	inv.add_item(&"stone", 99)
-	inv.add_item(&"stone", 99)
-	inv.add_item(&"berries", 20)
-	inv.add_item(&"berries", 20)
-	inv.add_item(&"toxic_berries", 20)
-	inv.add_item(&"toxic_berries", 20)
-	inv.add_item(&"fiber", 99)
-	inv.add_item(&"fiber", 99)
-	inv.add_item(&"ore", 99)
-	inv.add_item(&"ore", 99)
+	inv.add_item(ID_WOOD, 99)
+	inv.add_item(ID_WOOD, 99)
+	inv.add_item(ID_STONE, 99)
+	inv.add_item(ID_STONE, 99)
+	inv.add_item(ID_BERRIES, 20)
+	inv.add_item(ID_BERRIES, 20)
+	inv.add_item(ID_TOXIC_BERRIES, 20)
+	inv.add_item(ID_TOXIC_BERRIES, 20)
+	inv.add_item(ID_FIBER, 99)
+	inv.add_item(ID_FIBER, 99)
+	inv.add_item(ID_ORE, 99)
+	inv.add_item(ID_ORE, 99)
 
 	# Overflow
-	inv.add_item(&"crystal", 10)
+	inv.add_item(ID_CRYSTAL, 10)
 
 	var notif_container: Node = hud.get_node_or_null("NotificationContainer")
 	assert_bool(notif_container != null).is_true()

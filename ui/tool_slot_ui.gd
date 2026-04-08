@@ -5,12 +5,8 @@ extends Control
 ## Displays slot label (Axe/Pick/Wpn/Scn) and icon placeholder.
 ## No tap — tools are auto-used.
 
-const SLOT_COLORS: Dictionary = {
-	&"stone_axe":      Color(0.55, 0.45, 0.35),
-	&"stone_pickaxe":  Color(0.50, 0.50, 0.45),
-	&"survival_knife": Color(0.70, 0.70, 0.70),
-	&"scanner":        Color(0.20, 0.65, 0.80),
-}
+## Default tool color when a tool's PropDef is missing.
+const DEFAULT_TOOL_COLOR: Color = Color(0.5, 0.5, 0.5)
 
 const SLOT_LABELS: Dictionary = {
 	&"axe":     "Axe",
@@ -74,4 +70,5 @@ func refresh(tool_type: StringName) -> void:
 	if tool_type == &"":
 		_icon_rect.color = Color(0.10, 0.10, 0.12)
 	else:
-		_icon_rect.color = SLOT_COLORS.get(tool_type, Color(0.5, 0.5, 0.5))
+		var def: PropDef = PropRegistry.get_def(tool_type)
+		_icon_rect.color = def.placeholder_color if def != null else DEFAULT_TOOL_COLOR

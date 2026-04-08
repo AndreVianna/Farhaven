@@ -9,8 +9,6 @@ signal panel_opened()
 
 const InventorySlotUI = preload("res://ui/inventory_slot_ui.gd")
 const ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
-const _InventoryScript = preload("res://scripts/inventory/inventory.gd")
-const _CatalogScript = preload("res://scripts/scanner/catalog.gd")
 
 const TOOL_SLOT_ORDER: Array[StringName] = [&"axe", &"pickaxe", &"weapon", &"scanner"]
 
@@ -116,7 +114,7 @@ func _refresh_all() -> void:
 		slots = _inventory.get_slots()
 	for i: int in _slot_nodes.size():
 		if i < slots.size():
-			(_slot_nodes[i] as InventorySlotUI).refresh(slots[i], _InventoryScript.ITEM_CONFIG)
+			(_slot_nodes[i] as InventorySlotUI).refresh(slots[i])
 	for slot_name: StringName in TOOL_SLOT_ORDER:
 		var tool_type: StringName = _inventory.get_tool(slot_name)
 		if _tool_slot_nodes.has(slot_name):
@@ -142,16 +140,12 @@ func _on_toxic_confirmed() -> void:
 
 
 func _is_toxic_flora(type: StringName) -> bool:
-	if _catalog == null:
+	# Toxicity is now driven by PropDef.toxic_amount on the consumable item itself.
+	# Catalog reference no longer required — but kept available for future filtering.
+	var def: PropDef = PropRegistry.get_def(type)
+	if def == null:
 		return false
-	var entry_id: StringName = PropRegistry.get_def(type).catalog_entry if PropRegistry.has_def(type) else &""
-	if entry_id == &"":
-		return false
-	var entry = _catalog.get_entry(entry_id)
-	if entry == null:
-		return false
-	return entry.category == _CatalogScript.CatalogCategory.FLORA \
-		and entry.properties.get("toxic", false)
+	return def.is_consumable and def.toxic_amount > 0.0
 
 
 # --- Inventory signal handlers ---

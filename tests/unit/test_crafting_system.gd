@@ -6,6 +6,12 @@ const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
+# Numeric PropDef ids
+const ID_WOOD: StringName = &"00010"
+const ID_STONE: StringName = &"00013"
+const ID_AXE: StringName = &"00201"
+const ID_PICKAXE: StringName = &"00202"
+
 var _sys: Node
 var _inv: RefCounted
 var _grid: Node
@@ -110,13 +116,13 @@ func _set_player_tile(coords: Vector2i) -> void:
 
 
 func _give_materials_for_axe() -> void:
-	_inv.add_item(&"wood", 2)
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_WOOD, 2)
+	_inv.add_item(ID_STONE, 1)
 
 
 func _give_materials_for_pickaxe() -> void:
-	_inv.add_item(&"wood", 3)
-	_inv.add_item(&"stone", 2)
+	_inv.add_item(ID_WOOD, 3)
+	_inv.add_item(ID_STONE, 2)
 
 
 # === RECIPE CONFIG ===
@@ -132,15 +138,25 @@ func test_recipe_config_has_stone_pickaxe() -> void:
 func test_stone_axe_ingredients() -> void:
 	var recipe: Dictionary = _CraftingSystem.RECIPE_CONFIG[&"stone_axe"]
 	var ingredients: Dictionary = recipe["ingredients"]
-	assert_int(ingredients[&"wood"]).is_equal(2)
-	assert_int(ingredients[&"stone"]).is_equal(1)
+	assert_int(ingredients[ID_WOOD]).is_equal(2)
+	assert_int(ingredients[ID_STONE]).is_equal(1)
 
 
 func test_stone_pickaxe_ingredients() -> void:
 	var recipe: Dictionary = _CraftingSystem.RECIPE_CONFIG[&"stone_pickaxe"]
 	var ingredients: Dictionary = recipe["ingredients"]
-	assert_int(ingredients[&"wood"]).is_equal(3)
-	assert_int(ingredients[&"stone"]).is_equal(2)
+	assert_int(ingredients[ID_WOOD]).is_equal(3)
+	assert_int(ingredients[ID_STONE]).is_equal(2)
+
+
+func test_stone_axe_output_id() -> void:
+	var recipe: Dictionary = _CraftingSystem.RECIPE_CONFIG[&"stone_axe"]
+	assert_object(recipe["output_id"]).is_equal(ID_AXE)
+
+
+func test_stone_pickaxe_output_id() -> void:
+	var recipe: Dictionary = _CraftingSystem.RECIPE_CONFIG[&"stone_pickaxe"]
+	assert_object(recipe["output_id"]).is_equal(ID_PICKAXE)
 
 
 func test_stone_axe_tool_slot() -> void:
@@ -156,7 +172,7 @@ func test_stone_pickaxe_tool_slot() -> void:
 func test_both_recipes_discovery_material_stone() -> void:
 	for name: StringName in [&"stone_axe", &"stone_pickaxe"]:
 		var recipe: Dictionary = _CraftingSystem.RECIPE_CONFIG[name]
-		assert_object(recipe["discovery_material"]).is_equal(&"stone")
+		assert_object(recipe["discovery_material"]).is_equal(ID_STONE)
 
 
 # === DISCOVERY ===
@@ -168,7 +184,7 @@ func test_recipes_pre_discovered_initially() -> void:
 
 
 func test_adding_stone_discovers_both_recipes() -> void:
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	var discovered: Array[StringName] = _sys.get_discovered_recipes()
 	assert_int(discovered.size()).is_equal(2)
 	assert_bool(&"stone_axe" in discovered).is_true()
@@ -176,13 +192,13 @@ func test_adding_stone_discovers_both_recipes() -> void:
 
 
 func test_adding_wood_does_not_change_discovery() -> void:
-	_inv.add_item(&"wood", 5)
+	_inv.add_item(ID_WOOD, 5)
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
 
 
 func test_adding_stone_twice_does_not_duplicate() -> void:
-	_inv.add_item(&"stone", 1)
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
+	_inv.add_item(ID_STONE, 1)
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
 
 
@@ -191,7 +207,7 @@ func test_discovery_does_not_emit_for_pre_discovered() -> void:
 	_sys.recipe_discovered.connect(func(name: StringName) -> void:
 		fired.append(name)
 	)
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	assert_int(fired.size()).is_equal(0)
 
 
@@ -222,8 +238,8 @@ func test_craft_without_workbench_emits_completed() -> void:
 func test_craft_without_workbench_consumes_materials() -> void:
 	_give_materials_for_axe()
 	_sys.craft(&"stone_axe")
-	assert_int(_inv.get_count(&"wood")).is_equal(0)
-	assert_int(_inv.get_count(&"stone")).is_equal(0)
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(0)
+	assert_int(_inv.get_count(ID_STONE)).is_equal(0)
 
 
 # === CRAFT — ALREADY OWNED ===
@@ -233,9 +249,9 @@ func test_craft_fails_already_owned() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	_give_materials_for_axe()
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.set_tool(&"axe", ID_AXE)
 	var result: bool = _sys.craft(&"stone_axe")
 	assert_bool(result).is_false()
 
@@ -245,9 +261,9 @@ func test_craft_already_owned_emits_reason() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	_give_materials_for_axe()
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.set_tool(&"axe", ID_AXE)
 	var fired: Array = []
 	_sys.craft_failed.connect(func(name: StringName, reason: StringName) -> void:
 		fired.append(reason)
@@ -261,11 +277,11 @@ func test_craft_already_owned_does_not_consume() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	_give_materials_for_axe()
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.set_tool(&"axe", ID_AXE)
 	_sys.craft(&"stone_axe")
-	assert_int(_inv.get_count(&"wood")).is_equal(2)
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(2)
 
 
 # === CRAFT — INSUFFICIENT MATERIALS ===
@@ -275,7 +291,7 @@ func test_craft_fails_insufficient_materials() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)  # discover + 1 stone, but need wood too
+	_inv.add_item(ID_STONE, 1)  # discover + 1 stone, but need wood too
 	var result: bool = _sys.craft(&"stone_axe")
 	assert_bool(result).is_false()
 
@@ -285,7 +301,7 @@ func test_craft_insufficient_emits_reason() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	var fired: Array = []
 	_sys.craft_failed.connect(func(name: StringName, reason: StringName) -> void:
 		fired.append(reason)
@@ -301,7 +317,7 @@ func test_craft_stone_axe_succeeds() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)  # discover
+	_inv.add_item(ID_STONE, 1)  # discover
 	_give_materials_for_axe()
 	var result: bool = _sys.craft(&"stone_axe")
 	assert_bool(result).is_true()
@@ -312,11 +328,11 @@ func test_craft_consumes_ingredients() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)  # triggers discovery (1 stone now)
+	_inv.add_item(ID_STONE, 1)  # triggers discovery (1 stone now)
 	_give_materials_for_axe()   # adds 2 wood + 1 stone (total: 2 wood, 2 stone)
 	_sys.craft(&"stone_axe")    # consumes 2 wood + 1 stone
-	assert_int(_inv.get_count(&"wood")).is_equal(0)
-	assert_int(_inv.get_count(&"stone")).is_equal(1)  # 2 - 1 = 1 remaining
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(0)
+	assert_int(_inv.get_count(ID_STONE)).is_equal(1)  # 2 - 1 = 1 remaining
 
 
 func test_craft_sets_tool() -> void:
@@ -324,10 +340,10 @@ func test_craft_sets_tool() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	_give_materials_for_axe()
 	_sys.craft(&"stone_axe")
-	assert_object(_inv.get_tool(&"axe")).is_equal(&"stone_axe")
+	assert_object(_inv.get_tool(&"axe")).is_equal(ID_AXE)
 
 
 func test_craft_emits_completed() -> void:
@@ -335,7 +351,7 @@ func test_craft_emits_completed() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	_give_materials_for_axe()
 	var fired: Array = []
 	_sys.craft_completed.connect(func(name: StringName) -> void:
@@ -351,12 +367,12 @@ func test_craft_stone_pickaxe_succeeds() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_sys._check_station_proximity()
-	_inv.add_item(&"stone", 2)  # discover + ingredients
-	_inv.add_item(&"wood", 3)
+	_inv.add_item(ID_STONE, 2)  # discover + ingredients
+	_inv.add_item(ID_WOOD, 3)
 	_sys.craft(&"stone_pickaxe")
-	assert_object(_inv.get_tool(&"pickaxe")).is_equal(&"stone_pickaxe")
-	assert_int(_inv.get_count(&"wood")).is_equal(0)
-	assert_int(_inv.get_count(&"stone")).is_equal(0)
+	assert_object(_inv.get_tool(&"pickaxe")).is_equal(ID_PICKAXE)
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(0)
+	assert_int(_inv.get_count(ID_STONE)).is_equal(0)
 
 
 func test_craft_unknown_recipe_fails() -> void:
@@ -481,7 +497,7 @@ func test_save_pre_discovered() -> void:
 
 
 func test_save_after_discovery() -> void:
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	var data: Dictionary = _sys.get_save_data()
 	assert_int(data["discovered_recipes"].size()).is_equal(2)
 	assert_bool("stone_axe" in data["discovered_recipes"]).is_true()
@@ -498,14 +514,14 @@ func test_load_restores_discovered() -> void:
 
 
 func test_load_clears_previous() -> void:
-	_inv.add_item(&"stone", 1)  # discover both
+	_inv.add_item(ID_STONE, 1)  # discover both
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
 	_sys.load_save_data({"discovered_recipes": ["stone_axe"]})
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(1)
 
 
 func test_save_load_roundtrip() -> void:
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 	var saved: Dictionary = _sys.get_save_data()
 	_sys.load_save_data({"discovered_recipes": []})
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(0)

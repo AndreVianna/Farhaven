@@ -12,22 +12,26 @@ signal craft_completed(recipe_name: StringName)
 signal craft_failed(recipe_name: StringName, reason: StringName)
 signal station_proximity_changed(near: bool)
 
-## Recipes reference INVENTORY item IDs (semantic names set by PropDef.yield_type),
-## not prop type IDs. E.g. gathering prop "00001" (Small Tree) yields "wood" in inventory.
+## Recipes use numeric PropDef IDs for ingredients, discovery, and output.
+## Recipe keys remain semantic for discoverability (e.g. "stone_axe").
+## Ingredients reference resource PropDefs (00010 wood, 00013 stone, etc.),
+## output_id references the produced tool's PropDef id (00201 axe, 00202 pickaxe).
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"wood": 2, &"stone": 1 },
+		"ingredients": { &"00010": 2, &"00013": 1 },  # 2 wood + 1 stone
 		"output_type": &"tool",
+		"output_id": &"00201",  # axe prop
 		"tool_slot": &"axe",
-		"discovery_material": &"stone",
+		"discovery_material": &"00013",  # stone
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"wood": 3, &"stone": 2 },
+		"ingredients": { &"00010": 3, &"00013": 2 },  # 3 wood + 2 stone
 		"output_type": &"tool",
+		"output_id": &"00202",  # pickaxe prop
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"stone",
+		"discovery_material": &"00013",  # stone
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
@@ -108,7 +112,7 @@ func craft(recipe_name: StringName) -> bool:
 	# 2. Already owned (tools only)
 	if recipe["output_type"] == &"tool":
 		var slot: StringName = recipe["tool_slot"]
-		if _inventory.get_tool(slot) == recipe_name:
+		if _inventory.get_tool(slot) == recipe["output_id"]:
 			craft_failed.emit(recipe_name, &"already_owned")
 			return false
 
@@ -125,7 +129,7 @@ func craft(recipe_name: StringName) -> bool:
 
 	# 5. Produce
 	if recipe["output_type"] == &"tool":
-		_inventory.set_tool(recipe["tool_slot"], recipe_name)
+		_inventory.set_tool(recipe["tool_slot"], recipe["output_id"])
 
 	craft_completed.emit(recipe_name)
 	# Apply crafting survival cost
@@ -194,7 +198,7 @@ func _tile_has_crafting_station(coords: Vector2i) -> bool:
 		return false
 	for prop in tile.props:
 		if PropRegistry.has_def(prop.type):
-			var def: Resource = PropRegistry.get_def(prop.type)
+			var def: PropDef = PropRegistry.get_def(prop.type)
 			if def.is_crafting_station:
 				return true
 	return false

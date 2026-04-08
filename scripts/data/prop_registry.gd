@@ -2,10 +2,13 @@ extends Node
 
 ## Scans data/props/ and indexes all PropDef .tres files by id.
 ## Added to project.godot as autoload BEFORE HexGrid.
+## All inventory items, tools, and gatherable props are PropDefs —
+## there is no separate item registry or hardcoded item config.
 
 const PROPS_PATH := "res://data/props/"
 
-var _defs: Dictionary = {}  # StringName → PropDef
+## PropDef id (numeric, e.g. &"00001") → PropDef resource
+var _defs: Dictionary = {}
 
 func _ready() -> void:
 	_scan_props()
@@ -33,14 +36,15 @@ func get_all() -> Array:
 func has_def(type: StringName) -> bool:
 	return _defs.has(type)
 
-## Convenience: get yield type (returns self if no mapping)
+## Resolve a prop to the id of the item it produces when gathered.
+## If yield_type is empty, the prop yields itself.
 func get_yield_type(type: StringName) -> StringName:
 	var def := get_def(type)
 	if def and def.yield_type != &"":
 		return def.yield_type
 	return type
 
-## Convenience: get tool speed multiplier for a tool on a prop
+## Get tool speed multiplier for a tool on a prop (1.0 = normal speed).
 func get_tool_speed(type: StringName, tool_name: StringName) -> float:
 	var def := get_def(type)
 	if def and def.tool_speed.has(tool_name):

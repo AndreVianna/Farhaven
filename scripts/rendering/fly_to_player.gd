@@ -14,18 +14,8 @@ const FLY_DURATION: float = 0.3
 ## Vertical arc height for a slight parabolic effect.
 const ARC_HEIGHT: float = 2.0
 
-## Color mapping for prop types.
-const PROP_COLORS: Dictionary = {
-	&"wood": Color(0.4, 0.26, 0.13),
-	&"stone": Color(0.6, 0.6, 0.6),
-	&"berries": Color(0.85, 0.1, 0.2),
-	&"fiber": Color(0.5, 0.75, 0.2),
-	&"ore": Color(0.3, 0.3, 0.35),
-	&"crystal": Color(0.3, 0.85, 0.95),
-	&"toxic_berries": Color(0.6, 0.1, 0.6),
-	&"anomaly_fragment": Color(0.9, 0.4, 0.9),
-	&"loose_rock": Color(0.7, 0.65, 0.55),
-}
+## Default color when a prop type has no PropDef.
+const DEFAULT_COLOR: Color = Color.WHITE
 
 var _player: Node = null
 
@@ -76,7 +66,10 @@ func _create_sprite(prop_type: StringName) -> MeshInstance3D:
 	mesh_instance.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = PROP_COLORS.get(prop_type, Color.WHITE)
+	# Use the gathered item's color (yield) so the sphere matches what the player receives.
+	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
+	var def: PropDef = PropRegistry.get_def(yield_id)
+	mat.albedo_color = def.placeholder_color if def != null else DEFAULT_COLOR
 	mat.emission_enabled = true
 	mat.emission = mat.albedo_color
 	mat.emission_energy_multiplier = 2.0

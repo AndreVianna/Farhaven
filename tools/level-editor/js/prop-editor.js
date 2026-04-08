@@ -65,6 +65,17 @@ export class PropDefModel {
     this.is_respawn_point = false;
     /** @type {boolean} */
     this.is_crafting_station = false;
+    /** @type {string} Tool slot name (e.g. "axe", "pickaxe", "shovel", "weapon", "scanner"). Empty = not a tool. */
+    this.tool_slot = '';
+    // Consumable properties
+    /** @type {boolean} */
+    this.is_consumable = false;
+    /** @type {number} */
+    this.hunger_restore = 0;
+    /** @type {number} */
+    this.thirst_restore = 0;
+    /** @type {number} Positive = heal, negative = damage (toxic) */
+    this.health_amount = 0;
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -123,6 +134,12 @@ export class PropDefModel {
     model.light_radius = _num(d.light_radius);
     model.is_respawn_point = !!d.is_respawn_point;
     model.is_crafting_station = !!d.is_crafting_station;
+    model.tool_slot = _str(d.tool_slot);
+    // Consumable properties
+    model.is_consumable = !!d.is_consumable;
+    model.hunger_restore = _num(d.hunger_restore);
+    model.thirst_restore = _num(d.thirst_restore);
+    model.health_amount = _num(d.health_amount);
 
     return model;
   }
@@ -871,6 +888,14 @@ export function renderPropEditor(container, options) {
     _addSeparator(grid, 'Gameplay');
     _addCheckbox(grid, 'Respawn Point', 'is_respawn_point', model.is_respawn_point);
     _addCheckbox(grid, 'Crafting Station', 'is_crafting_station', model.is_crafting_station);
+    _addField(grid, 'Tool Slot', 'tool_slot', 'text', model.tool_slot);
+
+    // -- Consumable Properties --
+    _addSeparator(grid, 'Consumable');
+    _addCheckbox(grid, 'Is Consumable', 'is_consumable', model.is_consumable);
+    _addField(grid, 'Hunger Restore', 'hunger_restore', 'number', model.hunger_restore, { step: 'any' });
+    _addField(grid, 'Thirst Restore', 'thirst_restore', 'number', model.thirst_restore, { step: 'any' });
+    _addField(grid, 'Health Amount', 'health_amount', 'number', model.health_amount, { step: 'any' });
 
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
@@ -1157,6 +1182,12 @@ export function collectPropFormData(formElement) {
   model.light_radius = intVal('light_radius');
   model.is_respawn_point = !!formElement.querySelector('[name="is_respawn_point"]')?.checked;
   model.is_crafting_station = !!formElement.querySelector('[name="is_crafting_station"]')?.checked;
+  model.tool_slot = val('tool_slot').trim();
+  // Consumable properties
+  model.is_consumable = !!formElement.querySelector('[name="is_consumable"]')?.checked;
+  model.hunger_restore = floatVal('hunger_restore');
+  model.thirst_restore = floatVal('thirst_restore');
+  model.health_amount = floatVal('health_amount');
 
   // Gathering
   model.gather_time = floatVal('gather_time');
@@ -1316,6 +1347,11 @@ function _modelToPlain(model) {
     light_radius: model.light_radius,
     is_respawn_point: model.is_respawn_point,
     is_crafting_station: model.is_crafting_station,
+    tool_slot: model.tool_slot,
+    is_consumable: model.is_consumable,
+    hunger_restore: model.hunger_restore,
+    thirst_restore: model.thirst_restore,
+    health_amount: model.health_amount,
   };
 }
 
@@ -1379,11 +1415,17 @@ export function propModelToRaw(model) {
   fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
   fields.set('origin', { type: 'int', value: ORIGIN_TO_INT[model.prop_origin] ?? 0 });
 
-  // Gameplay properties
+  // Gameplay properties (bools only written when true to keep files minimal)
   if (model.emits_light) fields.set('emits_light', { type: 'bool', value: true });
   if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
   if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
   if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
+  if (model.tool_slot) fields.set('tool_slot', { type: 'stringname', value: model.tool_slot });
+  // Consumable properties
+  if (model.is_consumable) fields.set('is_consumable', { type: 'bool', value: true });
+  if (model.hunger_restore !== 0) fields.set('hunger_restore', { type: 'float', value: model.hunger_restore });
+  if (model.thirst_restore !== 0) fields.set('thirst_restore', { type: 'float', value: model.thirst_restore });
+  if (model.health_amount !== 0) fields.set('health_amount', { type: 'float', value: model.health_amount });
 
   // Footprint (only if non-empty)
   if (model.footprint && model.footprint.length > 0) {

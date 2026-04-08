@@ -19,6 +19,12 @@ const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _ScreenFade = preload("res://ui/screen_fade.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
+# Numeric PropDef ids
+const ID_BERRIES: StringName = &"00020"
+const ID_TOXIC_BERRIES: StringName = &"00021"
+const ID_MEAT: StringName = &"00022"
+const ID_AXE: StringName = &"00201"
+
 
 # --- Mock classes ---
 
@@ -240,7 +246,7 @@ func test_hp_clamps_at_max() -> void:
 func test_consume_berries_restores_hunger_and_thirst() -> void:
 	_ss.hunger = 50.0
 	_ss.thirst = 50.0
-	_ss.consume(&"berries")
+	_ss.consume(ID_BERRIES)
 	assert_float(_ss.hunger).is_equal(55.0)  # +5
 	assert_float(_ss.thirst).is_equal(60.0)  # +10
 
@@ -248,21 +254,21 @@ func test_consume_berries_restores_hunger_and_thirst() -> void:
 func test_consume_toxic_berries_restores_hunger_damages_hp() -> void:
 	_ss.hunger = 50.0
 	_ss.hp = 100.0
-	_ss.consume(&"toxic_berries")
+	_ss.consume(ID_TOXIC_BERRIES)
 	assert_float(_ss.hunger).is_equal(60.0)  # +10
 	assert_float(_ss.hp).is_equal(75.0)  # -25 toxic
 
 
 func test_consume_meat_restores_hunger() -> void:
 	_ss.hunger = 50.0
-	_ss.consume(&"meat")
+	_ss.consume(ID_MEAT)
 	assert_float(_ss.hunger).is_equal(75.0)  # +25
 
 
 func test_consume_clamps_at_max() -> void:
 	_ss.hunger = 95.0
 	_ss.thirst = 98.0
-	_ss.consume(&"berries")
+	_ss.consume(ID_BERRIES)
 	assert_float(_ss.hunger).is_equal(100.0)
 	assert_float(_ss.thirst).is_equal(100.0)
 
@@ -279,7 +285,7 @@ func test_toxic_berries_can_kill() -> void:
 	var died: Array = []
 	_ss.player_died.connect(func() -> void: died.append(true))
 	_ss.hp = 20.0
-	_ss.consume(&"toxic_berries")
+	_ss.consume(ID_TOXIC_BERRIES)
 	# Death triggers then auto-respawn restores stats
 	assert_int(died.size()).is_equal(1)
 	assert_float(_ss.hp).is_equal(100.0)
@@ -294,7 +300,7 @@ func test_inventory_use_item_triggers_consume() -> void:
 	_ss.hunger = 50.0
 	_ss.thirst = 50.0
 	# add_item needs PropRegistry for berries — use item_used signal directly
-	_inv.item_used.emit(&"berries")
+	_inv.item_used.emit(ID_BERRIES)
 	assert_float(_ss.hunger).is_equal(55.0)
 	assert_float(_ss.thirst).is_equal(60.0)
 
@@ -370,8 +376,8 @@ func test_death_drops_100_percent_of_stacks() -> void:
 	# Manually set up inventory slots with berries
 	# Use item_used to bypass PropRegistry, but for drop testing
 	# we need actual slots. Directly manipulate _inv._slots.
-	_inv._slots[0] = {"type": &"berries", "quantity": 10}
-	_inv._slots[1] = {"type": &"meat", "quantity": 6}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
+	_inv._slots[1] = {"type": ID_MEAT, "quantity": 6}
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -390,9 +396,9 @@ func test_death_drops_100_percent_of_stacks() -> void:
 
 
 func test_death_does_not_drop_tools() -> void:
-	_inv._slots[0] = {"type": &"berries", "quantity": 10}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
 	# Set a tool in a regular slot — shouldn't happen normally, but verify safety
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.set_tool(&"axe", ID_AXE)
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -402,14 +408,17 @@ func test_death_does_not_drop_tools() -> void:
 
 	_ss.take_damage(100.0)
 
-	# Only berries should drop, no tools
+	# Only berries should drop, no tools (validated via PropDef.tool_slot)
 	for d: Variant in dropped:
 		var item: StringName = d
-		assert_bool(item in _SurvivalSystem.TOOL_TYPES).is_false()
+		var def: PropDef = PropRegistry.get_def(item)
+		assert_bool(def == null or def.tool_slot == &"").override_failure_message(
+			"Dropped item %s must not be a tool" % item
+		).is_true()
 
 
 func test_death_drops_all_items() -> void:
-	_inv._slots[0] = {"type": &"berries", "quantity": 7}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 7}
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -423,7 +432,7 @@ func test_death_drops_all_items() -> void:
 
 
 func test_death_single_item_drops_one() -> void:
-	_inv._slots[0] = {"type": &"berries", "quantity": 1}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 1}
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -464,80 +473,80 @@ func test_day_death_respawns_immediately() -> void:
 # ===========================================================================
 
 func test_add_ground_item() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	var items: Array[Dictionary] = _ss.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(1)
 	assert_int(items[0]["count"]).is_equal(5)
 
 
 func test_add_ground_item_merges_same_tile_and_type() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 3)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
 	var items: Array[Dictionary] = _ss.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(1)
 	assert_int(items[0]["count"]).is_equal(8)
 
 
 func test_add_different_types_separate_entries() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_ss.add_ground_item(Vector2i(1, 0), &"meat", 3)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_ss.add_ground_item(Vector2i(1, 0), ID_MEAT, 3)
 	var items: Array[Dictionary] = _ss.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(2)
 
 
 func test_remove_ground_item_returns_count() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 10)
-	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), &"berries", 4)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 10)
+	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 4)
 	assert_int(removed).is_equal(4)
 	var items: Array[Dictionary] = _ss.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items[0]["count"]).is_equal(6)
 
 
 func test_remove_ground_item_full_removal() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), &"berries", 5)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	assert_int(removed).is_equal(5)
 	var items: Array[Dictionary] = _ss.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(0)
 
 
 func test_remove_ground_item_over_count() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 3)
-	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), &"berries", 10)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
+	var removed: int = _ss.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 10)
 	assert_int(removed).is_equal(3)  # Only removes what exists
 
 
 func test_remove_ground_item_emits_signal() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	var picked: Array = []
 	_ss.ground_item_picked_up.connect(
 		func(tile: Vector2i, item_type: StringName, count: int) -> void:
 			picked.append({"tile": tile, "type": item_type, "count": count})
 	)
-	_ss.remove_ground_item(Vector2i(1, 0), &"berries", 3)
+	_ss.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
 	assert_int(picked.size()).is_equal(1)
 	assert_int(picked[0]["count"]).is_equal(3)
 
 
 func test_remove_nonexistent_returns_zero() -> void:
-	var removed: int = _ss.remove_ground_item(Vector2i(9, 9), &"berries", 5)
+	var removed: int = _ss.remove_ground_item(Vector2i(9, 9), ID_BERRIES, 5)
 	assert_int(removed).is_equal(0)
 
 
 func test_get_all_ground_items() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_ss.add_ground_item(Vector2i(2, 0), &"meat", 3)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_ss.add_ground_item(Vector2i(2, 0), ID_MEAT, 3)
 	var all_items: Array[Dictionary] = _ss.get_all_ground_items()
 	assert_int(all_items.size()).is_equal(2)
 
 
 func test_death_creates_ground_items() -> void:
-	_inv._slots[0] = {"type": &"berries", "quantity": 10}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
 	_ss.take_damage(100.0)
 	# Items should now exist on the ground at death tile
 	var all_items: Array[Dictionary] = _ss.get_all_ground_items()
 	assert_int(all_items.size()).is_greater(0)
-	assert_str(all_items[0]["item_type"]).is_equal("berries")
+	assert_str(String(all_items[0]["item_type"])).is_equal(String(ID_BERRIES))
 	assert_int(all_items[0]["count"]).is_equal(10)
 
 
@@ -582,8 +591,8 @@ func test_save_load_preserves_respawn_tile() -> void:
 
 
 func test_save_load_preserves_ground_items() -> void:
-	_ss.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_ss.add_ground_item(Vector2i(2, 1), &"meat", 3)
+	_ss.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_ss.add_ground_item(Vector2i(2, 1), ID_MEAT, 3)
 	var data: Dictionary = _ss.get_save_data()
 
 	var ss2: Node = _SurvivalSystem.new()
@@ -593,12 +602,12 @@ func test_save_load_preserves_ground_items() -> void:
 
 	# Verify first item
 	assert_object(items[0]["tile"]).is_equal(Vector2i(1, 0))
-	assert_str(items[0]["item_type"]).is_equal("berries")
+	assert_str(String(items[0]["item_type"])).is_equal(String(ID_BERRIES))
 	assert_int(items[0]["count"]).is_equal(5)
 
 	# Verify second item
 	assert_object(items[1]["tile"]).is_equal(Vector2i(2, 1))
-	assert_str(items[1]["item_type"]).is_equal("meat")
+	assert_str(String(items[1]["item_type"])).is_equal(String(ID_MEAT))
 	assert_int(items[1]["count"]).is_equal(3)
 	ss2.free()
 
@@ -712,8 +721,8 @@ func test_screen_fade_flash_sets_color() -> void:
 
 func test_full_lifecycle_deplete_die_respawn() -> void:
 	# Stock inventory
-	_inv._slots[0] = {"type": &"berries", "quantity": 20}
-	_inv._slots[1] = {"type": &"meat", "quantity": 10}
+	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 20}
+	_inv._slots[1] = {"type": ID_MEAT, "quantity": 10}
 
 	# Track all lifecycle events
 	var events: Array = []
@@ -768,7 +777,7 @@ func test_full_lifecycle_eat_to_survive() -> void:
 	assert_float(_ss.hunger).is_equal_approx(3.8, 0.1)
 
 	# Eat berries to restore (+5)
-	_ss.consume(&"berries")
+	_ss.consume(ID_BERRIES)
 	assert_float(_ss.hunger).is_equal_approx(8.8, 0.1)
 
 	# Continue simulating — player stays alive

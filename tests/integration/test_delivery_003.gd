@@ -31,6 +31,21 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
+# World prop ids (placed on tiles)
+const ID_TREE: StringName = &"00001"
+const ID_LOOSE_ROCKS: StringName = &"00002"
+const ID_BERRY_BUSH: StringName = &"00004"
+const ID_BOULDER: StringName = &"00005"
+const ID_IRON_DEPOSIT: StringName = &"00006"
+# Inventory item ids (yielded when gathered)
+const ID_WOOD: StringName = &"00010"
+const ID_STONE: StringName = &"00013"
+const ID_BERRIES: StringName = &"00020"
+const ID_ORE: StringName = &"00014"
+# Tool ids
+const ID_AXE: StringName = &"00201"
+const ID_PICKAXE: StringName = &"00202"
+
 const _CraftingPanelScene = preload("res://scenes/ui/crafting_panel.tscn")
 
 
@@ -231,7 +246,7 @@ func test_uncataloged_prop_no_auto_gather() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 3)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 3)
 	# Position player at neighbor tile's prop (close enough)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
@@ -268,7 +283,7 @@ func test_scan_catalog_then_auto_gather() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"berries", 3)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BERRY_BUSH, 3)
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# Step 1: Scan and catalog berry_bush
@@ -295,9 +310,9 @@ func test_scan_catalog_then_auto_gather() -> void:
 	assert_int(completed.size()).override_failure_message(
 		"auto_gather_completed must fire after scan→catalog→gather"
 	).is_equal(1)
-	assert_str(String(completed[0]["type"])).is_equal("berries")
-	assert_int(completed[0]["amount"]).is_equal(2)  # berries gather_amount = 2
-	assert_int(_inventory.get_count(&"berries")).is_equal(2)
+	assert_str(String(completed[0]["type"])).is_equal(String(ID_BERRY_BUSH))
+	assert_int(completed[0]["amount"]).is_equal(2)  # berry bush gather_amount = 2
+	assert_int(_inventory.get_count(ID_BERRIES)).is_equal(2)
 
 	_teardown_full_tree()
 
@@ -310,7 +325,7 @@ func test_tool_gated_prop_silently_skipped() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"ore", 3, &"stone_pickaxe")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_IRON_DEPOSIT, 3, &"pickaxe")
 	# Position player at the ore prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
@@ -343,13 +358,13 @@ func test_prop_depletion_signal_and_visual_change() -> void:
 
 	# Single wood node with remaining=1 for quick depletion
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 1)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1)
 	# Position player at the wood prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Show prop in renderer
 	_grid.tile_visibility_changed.emit(Vector2i(1, 0), _HexTile.FogState.VISIBLE)
-	assert_int(_prop_renderer.get_pool_visible_count(&"wood")).is_equal(1)
+	assert_int(_prop_renderer.get_pool_visible_count(ID_TREE)).is_equal(1)
 
 	# Verify the prop is NOT depleted initially
 	var entries: Dictionary = _prop_renderer.get_tile_entries()
@@ -374,7 +389,7 @@ func test_prop_depletion_signal_and_visual_change() -> void:
 	assert_int(depleted_signals.size()).override_failure_message(
 		"prop_depleted signal must fire when remaining hits 0"
 	).is_equal(1)
-	assert_str(String(depleted_signals[0]["type"])).is_equal("wood")
+	assert_str(String(depleted_signals[0]["type"])).is_equal(String(ID_TREE))
 
 	# Visual change: PropRenderer should show depleted state after rebuild
 	# The signal triggers _on_prop_depleted which rebuilds the tile
@@ -396,7 +411,7 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 
 	# Wood with remaining=1, respawn_time=2.0
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 1, &"", _HexTile.FogState.VISIBLE, 2.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", _HexTile.FogState.VISIBLE, 2.0)
 	# Position player at the wood prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
@@ -446,9 +461,9 @@ func test_chain_gathering_multiple_props() -> void:
 	# forcing the chain to move to the next prop type.
 	# Place both props on the same tile so player is within radius of both
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 1)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1)
 	# Add stone as second prop on the SAME tile
-	_grid._tiles[Vector2i(1, 0)].props.append(_make_prop(&"stone", 1))
+	_grid._tiles[Vector2i(1, 0)].props.append(_make_prop(ID_BOULDER, 1))
 	# Position player at the prop tile
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
@@ -482,12 +497,12 @@ func test_chain_gathering_multiple_props() -> void:
 		"Second gather in chain must complete"
 	).is_equal(2)
 
-	# Verify both types were gathered
+	# Verify both types were gathered (chain test placed tree + boulder on the same tile)
 	var types: Array = []
 	for c in completed:
 		types.append(String(c["type"]))
-	assert_bool("wood" in types and "stone" in types).override_failure_message(
-		"Both wood and stone must be gathered in chain"
+	assert_bool(String(ID_TREE) in types and String(ID_BOULDER) in types).override_failure_message(
+		"Both tree and boulder must be gathered in chain"
 	).is_true()
 
 	_teardown_full_tree()
@@ -502,7 +517,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	# Ore tile with tool requirement
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"ore", 3, &"stone_pickaxe")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_IRON_DEPOSIT, 3, &"pickaxe")
 	# Add a workbench neighbor for crafting
 	var wb_tile: HexTile = _make_empty_tile()
 	wb_tile.props = [_Prop.create_structure(&"00105")]
@@ -520,8 +535,8 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	).is_false()
 
 	# Step 2: Give player materials for stone_pickaxe (3 wood + 2 stone)
-	_inventory.add_item(&"wood", 3)
-	_inventory.add_item(&"stone", 2)
+	_inventory.add_item(ID_WOOD, 3)
+	_inventory.add_item(ID_STONE, 2)
 
 	# Discover recipes (stone triggers discovery)
 	assert_bool(_crafting.is_recipe_discovered(&"stone_pickaxe")).override_failure_message(
@@ -537,7 +552,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	assert_bool(craft_ok).override_failure_message(
 		"Crafting stone_pickaxe must succeed with materials + workbench"
 	).is_true()
-	assert_object(_inventory.get_tool(&"pickaxe")).is_equal(&"stone_pickaxe")
+	assert_object(_inventory.get_tool(&"pickaxe")).is_equal(ID_PICKAXE)
 
 	# Step 3: Now ore should be gatherable
 	var completed: Array = []
@@ -551,7 +566,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_auto_interaction._on_gather_tween_complete()
 
 	assert_int(completed.size()).is_equal(1)
-	assert_str(String(completed[0])).is_equal("ore")
+	assert_str(String(completed[0])).is_equal(String(ID_IRON_DEPOSIT))
 
 	_teardown_full_tree()
 
@@ -575,7 +590,7 @@ func test_recipes_pre_discovered_from_start() -> void:
 	_crafting.recipe_discovered.connect(func(name: StringName) -> void:
 		discovered.append(String(name))
 	)
-	_inventory.add_item(&"stone", 1)
+	_inventory.add_item(ID_STONE, 1)
 	assert_int(discovered.size()).override_failure_message(
 		"No discovery signal should fire for pre-discovered recipes"
 	).is_equal(0)
@@ -627,8 +642,8 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 			).is_equal(1)  # State.UNAFFORDABLE = 1
 
 	# Add materials for stone_axe (2W + 1S)
-	_inventory.add_item(&"wood", 2)
-	_inventory.add_item(&"stone", 1)
+	_inventory.add_item(ID_WOOD, 2)
+	_inventory.add_item(ID_STONE, 1)
 	panel._refresh_all()
 
 	for entry_name: StringName in recipe_entries:
@@ -646,7 +661,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 	_crafting.craft(&"stone_axe")
 
 	assert_int(craft_completed_fired.size()).is_equal(1)
-	assert_object(_inventory.get_tool(&"axe")).is_equal(&"stone_axe")
+	assert_object(_inventory.get_tool(&"axe")).is_equal(ID_AXE)
 
 	# After crafting, entry should show already_owned
 	panel._refresh_all()
@@ -744,7 +759,7 @@ func test_fly_to_player_spawns_and_cleans_up() -> void:
 	assert_int(fly.get_child_count()).is_equal(0)
 
 	# Spawn fly-to-player
-	fly.spawn_fly(Vector2i(1, 0), &"wood", grid)
+	fly.spawn_fly(Vector2i(1, 0), ID_TREE, grid)
 
 	# Sprite created as child
 	assert_int(fly.get_child_count()).override_failure_message(
@@ -772,7 +787,7 @@ func test_stubs_safe_no_crash_without_fauna_or_survival() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 3)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 3)
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# FaunaManager and SurvivalSystem are both absent (not in tree)
@@ -803,8 +818,8 @@ func test_craft_succeeds_without_workbench() -> void:
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# Add materials for stone_pickaxe (3W + 2S)
-	_inventory.add_item(&"stone", 2)
-	_inventory.add_item(&"wood", 3)
+	_inventory.add_item(ID_STONE, 2)
+	_inventory.add_item(ID_WOOD, 3)
 
 	# Not near workbench — but requires_station is false for current recipes
 	_crafting._check_station_proximity()
@@ -841,11 +856,11 @@ func test_craft_fails_when_already_owned() -> void:
 	_crafting._check_station_proximity()
 
 	# Give tool directly
-	_inventory.set_tool(&"axe", &"stone_axe")
+	_inventory.set_tool(&"axe", ID_AXE)
 
 	# Discover recipe + add materials
-	_inventory.add_item(&"stone", 1)
-	_inventory.add_item(&"wood", 2)
+	_inventory.add_item(ID_STONE, 1)
+	_inventory.add_item(ID_WOOD, 2)
 
 	var failed_reasons: Array = []
 	_crafting.craft_failed.connect(func(n: StringName, r: StringName) -> void:
@@ -857,8 +872,8 @@ func test_craft_fails_when_already_owned() -> void:
 	assert_str(failed_reasons[0]).is_equal("already_owned")
 
 	# Verify materials were NOT consumed
-	assert_int(_inventory.get_count(&"wood")).is_equal(2)
-	assert_int(_inventory.get_count(&"stone")).is_equal(1)
+	assert_int(_inventory.get_count(ID_WOOD)).is_equal(2)
+	assert_int(_inventory.get_count(ID_STONE)).is_equal(1)
 
 	_teardown_full_tree()
 
@@ -879,7 +894,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_crafting._check_station_proximity()
 
 	# Discover recipe but insufficient materials
-	_inventory.add_item(&"stone", 1)
+	_inventory.add_item(ID_STONE, 1)
 	# stone_pickaxe needs 3W + 2S, we have 0W + 1S
 
 	var failed_reasons: Array = []
@@ -901,7 +916,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 func test_prop_renderer_depleted_visual_swap() -> void:
 	_setup_full_tree()
 
-	_grid._tiles[Vector2i(2, 0)] = _make_tile(&"stone", 2)
+	_grid._tiles[Vector2i(2, 0)] = _make_tile(ID_BOULDER, 2)
 	_grid.tile_visibility_changed.emit(Vector2i(2, 0), _HexTile.FogState.VISIBLE)
 
 	# Initially not depleted
@@ -913,7 +928,7 @@ func test_prop_renderer_depleted_visual_swap() -> void:
 	# (PropRenderer._rebuild_tile checks rn.remaining <= 0)
 	var tile: HexTile = _grid.get_tile(Vector2i(2, 0))
 	tile.props[0].remaining = 0
-	_grid.prop_depleted.emit(Vector2i(2, 0), &"stone")
+	_grid.prop_depleted.emit(Vector2i(2, 0), ID_BOULDER)
 
 	entries = _prop_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(2, 0)][0]["depleted"]).override_failure_message(
@@ -922,7 +937,7 @@ func test_prop_renderer_depleted_visual_swap() -> void:
 
 	# Simulate respawn: restore remaining, then fire signal
 	tile.props[0].remaining = tile.props[0].max_amount
-	_grid.prop_respawned.emit(Vector2i(2, 0), &"stone")
+	_grid.prop_respawned.emit(Vector2i(2, 0), ID_BOULDER)
 
 	entries = _prop_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(2, 0)][0]["depleted"]).override_failure_message(
@@ -940,7 +955,7 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 1, &"", _HexTile.FogState.VISIBLE, 1.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 1, &"", _HexTile.FogState.VISIBLE, 1.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"stone_deposit")
@@ -970,7 +985,7 @@ func test_zero_respawn_time_never_enters_queue() -> void:
 
 	# respawn_time = 0.0 (default)
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 1, &"", _HexTile.FogState.VISIBLE, 0.0)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", _HexTile.FogState.VISIBLE, 0.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"wood_tree")
@@ -1064,13 +1079,13 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 
 	# Setup world: player at center, props on nearby tiles
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 3)
-	_grid._tiles[Vector2i(0, 1)] = _make_tile(&"ore", 3, &"stone_pickaxe")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 3)
+	_grid._tiles[Vector2i(0, 1)] = _make_tile(ID_IRON_DEPOSIT, 3, &"pickaxe")
 	var wb_tile: HexTile = _make_empty_tile()
 	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Extra wood tile for crafting materials
-	_grid._tiles[Vector2i(0, -1)] = _make_tile(&"wood", 5)
+	_grid._tiles[Vector2i(0, -1)] = _make_tile(ID_TREE, 5)
 	_place_player_at_tile(Vector2i.ZERO)
 
 	# Step 1: Scan stone
@@ -1098,7 +1113,7 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_auto_interaction._on_gather_tween_complete()
 
 	# After first stone gathered, inventory has stone and recipes are discovered
-	assert_bool(_inventory.get_count(&"stone") > 0).is_true()
+	assert_bool(_inventory.get_count(ID_STONE) > 0).is_true()
 
 	# Continue gathering stone (chain continues since player is still near)
 	if _auto_interaction._is_gathering:
@@ -1123,12 +1138,12 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 
 	# Step 5: Craft stone_pickaxe (need 3W + 2S)
 	# Make sure we have enough materials
-	var wood_count: int = _inventory.get_count(&"wood")
-	var stone_count: int = _inventory.get_count(&"stone")
+	var wood_count: int = _inventory.get_count(ID_WOOD)
+	var stone_count: int = _inventory.get_count(ID_STONE)
 	if wood_count < 3:
-		_inventory.add_item(&"wood", 3 - wood_count)
+		_inventory.add_item(ID_WOOD, 3 - wood_count)
 	if stone_count < 2:
-		_inventory.add_item(&"stone", 2 - stone_count)
+		_inventory.add_item(ID_STONE, 2 - stone_count)
 
 	_crafting._check_station_proximity()
 	assert_bool(_crafting.is_near_station()).is_true()
@@ -1137,14 +1152,14 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	assert_bool(craft_ok).override_failure_message(
 		"Crafting stone_pickaxe must succeed in full loop"
 	).is_true()
-	assert_object(_inventory.get_tool(&"pickaxe")).is_equal(&"stone_pickaxe")
+	assert_object(_inventory.get_tool(&"pickaxe")).is_equal(ID_PICKAXE)
 
 	# Step 6: Move to ore and auto-gather — now works
 	_place_player_near_prop(Vector2i(0, 1), Vector2.ZERO, Vector2i.ZERO)
 
 	var ore_completed: Array = []
 	_auto_interaction.auto_gather_completed.connect(func(c: Vector2i, t: StringName, a: int) -> void:
-		if t == &"ore":
+		if t == ID_IRON_DEPOSIT:
 			ore_completed.append(true)
 	)
 
@@ -1171,14 +1186,14 @@ func test_inventory_full_blocks_auto_gather() -> void:
 	_setup_full_tree()
 
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"wood", 3)
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 3)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	_catalog.catalog_entry(&"wood_tree")
 
 	# Fill inventory completely
 	for i in range(12):
-		_inventory.add_item(&"stone", 99)
+		_inventory.add_item(ID_STONE, 99)
 
 	var failed: Array = []
 	_auto_interaction.auto_gather_failed.connect(func(c: Vector2i, r: StringName) -> void:
@@ -1204,19 +1219,19 @@ func test_inventory_full_blocks_auto_gather() -> void:
 func test_prop_renderer_respawn_restores_visual() -> void:
 	_setup_full_tree()
 
-	_grid._tiles[Vector2i(3, 0)] = _make_tile(&"berries", 1)
+	_grid._tiles[Vector2i(3, 0)] = _make_tile(ID_BERRY_BUSH, 1)
 	_grid.tile_visibility_changed.emit(Vector2i(3, 0), _HexTile.FogState.VISIBLE)
 
 	# Deplete: set remaining to 0 first (renderer rebuild checks rn.remaining)
 	var tile: HexTile = _grid.get_tile(Vector2i(3, 0))
 	tile.props[0].remaining = 0
-	_grid.prop_depleted.emit(Vector2i(3, 0), &"berries")
+	_grid.prop_depleted.emit(Vector2i(3, 0), ID_BERRY_BUSH)
 	var entries: Dictionary = _prop_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(3, 0)][0]["depleted"]).is_true()
 
 	# Respawn: restore remaining
 	tile.props[0].remaining = tile.props[0].max_amount
-	_grid.prop_respawned.emit(Vector2i(3, 0), &"berries")
+	_grid.prop_respawned.emit(Vector2i(3, 0), ID_BERRY_BUSH)
 	entries = _prop_renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(3, 0)][0]["depleted"]).override_failure_message(
 		"PropRenderer must restore berries visual on prop_respawned"
