@@ -1,5 +1,5 @@
 // ============================================================
-// ResourceEditor — Master-Detail Split Layout (A2 Tabbed Detail)
+// ResourceEditor — Master-Detail Split Layout (Side-by-Side Detail)
 // ============================================================
 
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
@@ -376,8 +376,6 @@ export function renderResourceEditor(container, options) {
   // --- State ---
   /** @type {string|null} */
   let selectedId = null;
-  /** @type {string} */
-  let activeTab = 'general';
   /** @type {boolean} */
   let isNewMode = false;
   /** @type {ResourceDefModel|null} */
@@ -423,7 +421,6 @@ export function renderResourceEditor(container, options) {
       item.addEventListener('click', () => {
         isNewMode = false;
         selectedId = model.id;
-        activeTab = 'general';
         // Re-read from ProjectContext so we get the latest data
         const entry = ProjectContext.files.resources.get(model.id + '.tres');
         if (entry) {
@@ -523,46 +520,23 @@ export function renderResourceEditor(container, options) {
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
     form.appendChild(errorArea);
 
-    // --- Sub-tabs ---
-    const tabsRow = document.createElement('div');
-    tabsRow.classList.add('editor-detail-tabs');
+    // --- Two-column body ---
+    const columnsWrapper = document.createElement('div');
+    columnsWrapper.style.cssText = 'display:flex;flex:1;overflow:hidden;';
 
-    const generalTab = document.createElement('button');
-    generalTab.textContent = 'General';
-    generalTab.type = 'button';
-    generalTab.classList.add('editor-detail-tab');
-    if (activeTab === 'general') generalTab.classList.add('active');
+    const leftBody = document.createElement('div');
+    leftBody.classList.add('editor-detail-body');
+    leftBody.style.cssText = 'flex:1;overflow-y:auto;';
+    _renderGeneralTab(leftBody, model, isNew);
 
-    const visualsTab = document.createElement('button');
-    visualsTab.textContent = 'Visuals';
-    visualsTab.type = 'button';
-    visualsTab.classList.add('editor-detail-tab');
-    if (activeTab === 'visuals') visualsTab.classList.add('active');
+    const rightBody = document.createElement('div');
+    rightBody.classList.add('editor-detail-body');
+    rightBody.style.cssText = 'flex:1;overflow-y:auto;border-left:1px solid var(--border);';
+    _renderVisualsTab(rightBody, model);
 
-    generalTab.addEventListener('click', () => {
-      activeTab = 'general';
-      _renderTabBody(body, model, isNew);
-      generalTab.classList.add('active');
-      visualsTab.classList.remove('active');
-    });
-
-    visualsTab.addEventListener('click', () => {
-      activeTab = 'visuals';
-      _renderTabBody(body, model, isNew);
-      visualsTab.classList.remove('active');
-      generalTab.classList.remove('active');
-      visualsTab.classList.add('active');
-    });
-
-    tabsRow.appendChild(generalTab);
-    tabsRow.appendChild(visualsTab);
-    form.appendChild(tabsRow);
-
-    // --- Body ---
-    const body = document.createElement('div');
-    body.classList.add('editor-detail-body');
-    _renderTabBody(body, model, isNew);
-    form.appendChild(body);
+    columnsWrapper.appendChild(leftBody);
+    columnsWrapper.appendChild(rightBody);
+    form.appendChild(columnsWrapper);
 
     detailPanel.appendChild(form);
 
@@ -589,7 +563,6 @@ export function renderResourceEditor(container, options) {
         // Switch to editing the newly created resource
         isNewMode = false;
         selectedId = collected.id;
-        activeTab = 'general';
         const entry = ProjectContext.files.resources.get(collected.id + '.tres');
         if (entry) {
           editingModel = ResourceDefModel.fromEntry(collected.id + '.tres', entry);
@@ -653,50 +626,6 @@ export function renderResourceEditor(container, options) {
     refreshList();
     _showEmpty();
     onChange();
-  }
-
-  /**
-   * Render the active tab content into the body element.
-   * Reads current form values first so switching tabs preserves edits.
-   * @param {HTMLElement} body
-   * @param {ResourceDefModel} model
-   * @param {boolean} isNew
-   * @returns {void}
-   */
-  function _renderTabBody(body, model, isNew) {
-    // Before clearing, collect current form data to preserve edits across tab switches.
-    // Only overwrite fields whose inputs exist in the current tab's DOM.
-    const form = body.closest('form');
-    if (form && body.children.length > 0) {
-      try {
-        const partial = collectFormData(form);
-        // General tab fields
-        const generalFields = ['id', 'display_name', 'prop_category', 'prop_origin',
-          'gather_time', 'gather_amount',
-          'tool_required', 'respawn_time', 'yield_type', 'tool_speed',
-          'max_stack', 'category', 'catalog_entry', 'catalog_category'];
-        // Visuals tab fields
-        const visualFields = ['placeholder_mesh_type', 'placeholder_params',
-          'placeholder_color', 'placeholder_depleted_type',
-          'placeholder_depleted_params', 'placeholder_depleted_color'];
-        // activeTab is already set to the NEW tab, so collect the OLD tab's fields
-        // (the ones still in the DOM) onto the model
-        const oldTabFields = activeTab === 'general' ? visualFields : generalFields;
-        for (const f of oldTabFields) {
-          model[f] = partial[f];
-        }
-      } catch (_e) {
-        // ignore collection errors
-      }
-    }
-
-    body.innerHTML = '';
-
-    if (activeTab === 'general') {
-      _renderGeneralTab(body, model, isNew);
-    } else {
-      _renderVisualsTab(body, model);
-    }
   }
 
   /**
@@ -771,7 +700,6 @@ export function renderResourceEditor(container, options) {
     isNewMode = true;
     selectedId = null;
     editingModel = new ResourceDefModel();
-    activeTab = 'general';
     _updateListSelection();
     _renderDetail();
   });

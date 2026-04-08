@@ -259,9 +259,6 @@ export function renderBiomeEditor(container, options) {
   let originalColorRgb = null;
   /** @type {string} */
   let initialJson = '';
-  /** @type {string} */
-  let activeTab = 'general';
-
   // Build split layout
   const split = document.createElement('div');
   split.className = 'editor-split';
@@ -425,7 +422,6 @@ export function renderBiomeEditor(container, options) {
   function _selectExisting(model) {
     selectedModel = model;
     isNewMode = false;
-    activeTab = 'general';
     originalColorRgb = (model.id && opts.biomeColorMap)
       ? opts.biomeColorMap.get(model.id) || null
       : null;
@@ -438,7 +434,6 @@ export function renderBiomeEditor(container, options) {
   function _selectNew() {
     selectedModel = new BiomeDataModel();
     isNewMode = true;
-    activeTab = 'general';
     originalColorRgb = null;
     initialJson = JSON.stringify(_modelToPlain(selectedModel));
     _setActiveItem(null);
@@ -519,64 +514,39 @@ export function renderBiomeEditor(container, options) {
 
     header.appendChild(h3);
     header.appendChild(btnGroup);
-    detailPanel.appendChild(header);
+
+    // Wrap everything in a form
+    const form = document.createElement('form');
+    form.style.cssText = 'display:flex;flex-direction:column;height:100%;';
+    form.addEventListener('submit', (e) => e.preventDefault());
+    form.appendChild(header);
 
     // ── Error area ──
     const errorArea = document.createElement('div');
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
-    detailPanel.appendChild(errorArea);
+    form.appendChild(errorArea);
 
-    // ── Sub-tabs ──
-    const tabBar = document.createElement('div');
-    tabBar.className = 'editor-detail-tabs';
+    // ── Two-column body ──
+    const columnsWrapper = document.createElement('div');
+    columnsWrapper.style.cssText = 'display:flex;flex:1;overflow:hidden;';
 
-    const generalTab = document.createElement('button');
-    generalTab.textContent = 'General';
-    generalTab.type = 'button';
-    generalTab.className = 'editor-detail-tab' + (activeTab === 'general' ? ' active' : '');
-    generalTab.addEventListener('click', () => {
-      if (activeTab === 'general') return;
-      activeTab = 'general';
-      _updateTabs();
-    });
+    const leftBody = document.createElement('div');
+    leftBody.classList.add('editor-detail-body');
+    leftBody.style.cssText = 'flex:1;overflow-y:auto;';
 
-    const colorsTab = document.createElement('button');
-    colorsTab.textContent = 'Colors';
-    colorsTab.type = 'button';
-    colorsTab.className = 'editor-detail-tab' + (activeTab === 'colors' ? ' active' : '');
-    colorsTab.addEventListener('click', () => {
-      if (activeTab === 'colors') return;
-      activeTab = 'colors';
-      _updateTabs();
-    });
+    const rightBody = document.createElement('div');
+    rightBody.classList.add('editor-detail-body');
+    rightBody.style.cssText = 'flex:1;overflow-y:auto;border-left:1px solid var(--border);';
 
-    tabBar.appendChild(generalTab);
-    tabBar.appendChild(colorsTab);
-    detailPanel.appendChild(tabBar);
-
-    // ── Body (form) ──
-    const form = document.createElement('form');
-    form.addEventListener('submit', (e) => e.preventDefault());
-
-    const body = document.createElement('div');
-    body.className = 'editor-detail-body';
-    body.appendChild(form);
-    detailPanel.appendChild(body);
-
-    // Build both tab contents — toggle visibility
     const generalContent = _buildGeneralTab(model, isNew, form, errorArea);
     const colorsContent = _buildColorsTab(model, form, errorArea, headerSwatch);
-    form.appendChild(generalContent);
-    form.appendChild(colorsContent);
+    leftBody.appendChild(generalContent);
+    rightBody.appendChild(colorsContent);
 
-    _updateTabVisibility(generalContent, colorsContent);
-
-    /** Update tab button styles and content visibility. */
-    function _updateTabs() {
-      generalTab.className = 'editor-detail-tab' + (activeTab === 'general' ? ' active' : '');
-      colorsTab.className = 'editor-detail-tab' + (activeTab === 'colors' ? ' active' : '');
-      _updateTabVisibility(generalContent, colorsContent);
-    }
+    columnsWrapper.appendChild(leftBody);
+    columnsWrapper.appendChild(rightBody);
+    form.appendChild(columnsWrapper);
+    detailPanel.appendChild(form);
 
     // ── Save handler ──
     saveBtn.addEventListener('click', () => {
@@ -666,16 +636,6 @@ export function renderBiomeEditor(container, options) {
         onChange();
       },
     });
-  }
-
-  /**
-   * Show/hide tab content based on activeTab.
-   * @param {HTMLElement} generalEl
-   * @param {HTMLElement} colorsEl
-   */
-  function _updateTabVisibility(generalEl, colorsEl) {
-    generalEl.style.display = activeTab === 'general' ? '' : 'none';
-    colorsEl.style.display = activeTab === 'colors' ? '' : 'none';
   }
 
   // ============================================================
