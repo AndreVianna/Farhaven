@@ -1,17 +1,17 @@
 // ============================================================
-// ResourceEditor — Master-Detail Split Layout (Side-by-Side Detail)
+// PropEditor — Master-Detail Split Layout (Side-by-Side Detail)
 // ============================================================
 
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
+import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
 
 /**
- * Maps a parsed .tres ResourceDef to an editable JS model.
+ * Maps a parsed .tres ResourceDef to an editable JS prop model.
  * All fields mirror the ResourceDef GDScript class.
  */
-export class ResourceDefModel {
+export class PropDefModel {
   constructor() {
     /** @type {string} Filename stem e.g. 'wood' */
     this.id = '';
@@ -51,7 +51,7 @@ export class ResourceDefModel {
     this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
     /** @type {Array<{x: number, y: number}>} Footprint offsets (Vector2i values) */
     this.footprint = [];
-    // Editor-only placement defaults (not serialized to .tres)
+    // Placement defaults (serialized as int to .tres)
     /** @type {string} Default prop category for placement */
     this.prop_category = 'plant';
     /** @type {string} Default origin for placement */
@@ -64,13 +64,13 @@ export class ResourceDefModel {
   }
 
   /**
-   * Create a ResourceDefModel from a ProjectContext resource entry.
+   * Create a PropDefModel from a ProjectContext prop definition entry.
    * @param {string} filename - e.g. 'wood.tres'
    * @param {{data: Object, raw: import('./tres-parser.js').TresFile}} entry
-   * @returns {ResourceDefModel}
+   * @returns {PropDefModel}
    */
   static fromEntry(filename, entry) {
-    const model = new ResourceDefModel();
+    const model = new PropDefModel();
     model.id = filename.replace('.tres', '');
     model._filename = filename;
     model._raw = entry.raw;
@@ -104,6 +104,10 @@ export class ResourceDefModel {
 
     // Footprint (array of TresValue vector2i or plain {x,y})
     model.footprint = _footprintArray(d.footprint);
+
+    // Prop placement defaults (int in .tres -> string name in editor)
+    model.prop_category = CATEGORIES[_num(d.prop_category)] || 'plant';
+    model.prop_origin = ORIGINS[_num(d.origin)] || 'natural';
 
     return model;
   }
@@ -424,13 +428,13 @@ function _createColorField(labelText, name, color) {
 // ============================================================
 
 /**
- * Render the resource editor as a persistent master-detail split view.
- * @param {HTMLElement} container - The #tab-resources element
+ * Render the prop editor as a persistent master-detail split view.
+ * @param {HTMLElement} container - The #tab-props element
  * @param {Object} [options] - Options object
  * @param {import('./commands.js').CommandHistory} [options.commandHistory] - Command history for undo/redo
  * @returns {void}
  */
-export function renderResourceEditor(container, options) {
+export function renderPropEditor(container, options) {
   container.innerHTML = '';
 
   const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
@@ -530,7 +534,7 @@ export function renderResourceEditor(container, options) {
   let selectedId = null;
   /** @type {boolean} */
   let isNewMode = false;
-  /** @type {ResourceDefModel|null} */
+  /** @type {PropDefModel|null} */
   let editingModel = null;
   /** @type {string} Serialized initial state for dirty detection */
   let initialJson = '';
@@ -544,7 +548,7 @@ export function renderResourceEditor(container, options) {
     if (!editingModel) return true;
     const form = detailPanel.querySelector('form');
     if (!form) return true;
-    const currentData = collectFormData(/** @type {HTMLFormElement} */ (form));
+    const currentData = collectPropFormData(/** @type {HTMLFormElement} */ (form));
     const currentJson = JSON.stringify(_modelToPlain(currentData));
     if (currentJson !== initialJson) {
       return confirm('Discard unsaved changes?');
@@ -552,7 +556,7 @@ export function renderResourceEditor(container, options) {
     return true;
   }
 
-  // --- Build the resource list ---
+  // --- Build the prop list ---
   /**
    * Rebuild the list items, optionally filtering.
    * @returns {void}
@@ -563,13 +567,13 @@ export function renderResourceEditor(container, options) {
     const originVal = originFilter.value;
     const catVal = catFilter.value;
 
-    // Build list from all resources in ProjectContext
-    /** @type {Array<{id: string, isResource: boolean, propCat: string, propOrigin: string}>} */
+    // Build list from all prop definitions in ProjectContext (stored in files.resources map)
+    /** @type {Array<{id: string, isPropDef: boolean, propCat: string, propOrigin: string}>} */
     const allProps = [];
 
     for (const [filename, entry] of ProjectContext.files.resources) {
-      const model = ResourceDefModel.fromEntry(filename, entry);
-      allProps.push({ id: model.id, isResource: true, propCat: model.prop_category, propOrigin: model.prop_origin });
+      const model = PropDefModel.fromEntry(filename, entry);
+      allProps.push({ id: model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
     }
     allProps.sort((a, b) => a.id.localeCompare(b.id));
 
@@ -587,7 +591,7 @@ export function renderResourceEditor(container, options) {
         item.classList.add('active');
       }
       item.dataset.id = prop.id;
-      item.dataset.isResource = String(prop.isResource);
+      item.dataset.isPropDef = String(prop.isPropDef);
 
       const span = document.createElement('span');
       span.textContent = prop.id;
@@ -600,10 +604,10 @@ export function renderResourceEditor(container, options) {
         // Re-read from ProjectContext so we get the latest data
         const entry = ProjectContext.files.resources.get(prop.id + '.tres');
         if (entry) {
-          editingModel = ResourceDefModel.fromEntry(prop.id + '.tres', entry);
+          editingModel = PropDefModel.fromEntry(prop.id + '.tres', entry);
         } else {
-          // Non-resource prop (e.g. structure) — create a minimal model
-          editingModel = new ResourceDefModel();
+          // Non-definition prop (e.g. structure) — create a minimal model
+          editingModel = new PropDefModel();
           editingModel.id = prop.id;
           editingModel.display_name = prop.id;
           editingModel.prop_category = prop.propCat;
@@ -638,12 +642,12 @@ export function renderResourceEditor(container, options) {
     detailPanel.innerHTML = '';
     const empty = document.createElement('div');
     empty.classList.add('editor-detail-empty');
-    empty.textContent = 'Select a resource';
+    empty.textContent = 'Select a prop';
     detailPanel.appendChild(empty);
   }
 
   /**
-   * Render the detail panel for the currently selected / new resource.
+   * Render the detail panel for the currently selected / new prop.
    * @returns {void}
    */
   function _renderDetail() {
@@ -657,7 +661,7 @@ export function renderResourceEditor(container, options) {
     const model = editingModel;
     const isNew = isNewMode;
 
-    // Wrap in a form for collectFormData compatibility
+    // Wrap in a form for collectPropFormData compatibility
     const form = document.createElement('form');
     form.style.cssText = 'display:flex;flex-direction:column;height:100%;';
     form.addEventListener('submit', (e) => e.preventDefault());
@@ -671,7 +675,7 @@ export function renderResourceEditor(container, options) {
     headerSwatch.classList.add('swatch');
     headerSwatch.style.cssText = `width:14px;height:14px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
     const headerName = document.createElement('span');
-    headerName.textContent = isNew ? 'New Resource' : model.id;
+    headerName.textContent = isNew ? 'New Prop' : model.id;
     h3.appendChild(headerSwatch);
     h3.appendChild(headerName);
 
@@ -688,7 +692,7 @@ export function renderResourceEditor(container, options) {
     deleteBtn.type = 'button';
     deleteBtn.classList.add('editor-btn-delete');
 
-    // Issue 4: Hide Save/Delete for non-resource props (no .tres file)
+    // Issue 4: Hide Save/Delete for props without a .tres file
     const isReadOnly = !isNew && !model._filename;
 
     if (!isReadOnly) {
@@ -734,15 +738,15 @@ export function renderResourceEditor(container, options) {
     detailPanel.appendChild(form);
 
     // Recapture initialJson from the rendered form so comparisons are form-to-form
-    initialJson = JSON.stringify(_modelToPlain(collectFormData(/** @type {HTMLFormElement} */ (form))));
+    initialJson = JSON.stringify(_modelToPlain(collectPropFormData(/** @type {HTMLFormElement} */ (form))));
 
     // --- Save handler ---
     saveBtn.addEventListener('click', () => {
-      const collected = collectFormData(form);
+      const collected = collectPropFormData(form);
       collected._filename = isNew ? collected.id + '.tres' : model._filename;
       collected._raw = model._raw;
 
-      const validation = validateResourceForm(collected, isNew);
+      const validation = validatePropForm(collected, isNew);
       if (!validation.valid) {
         errorArea.style.display = 'block';
         errorArea.textContent = validation.errors.join('; ');
@@ -750,21 +754,21 @@ export function renderResourceEditor(container, options) {
       }
 
       if (isNew) {
-        const cmd = new CreateResourceDefCommand(collected, cmdHistory);
+        const cmd = new CreatePropDefCommand(collected, cmdHistory);
         if (cmdHistory) {
           cmdHistory.execute(cmd);
         } else {
           cmd.execute();
         }
-        // Switch to editing the newly created resource
+        // Switch to editing the newly created prop
         isNewMode = false;
         selectedId = collected.id;
         const entry = ProjectContext.files.resources.get(collected.id + '.tres');
         if (entry) {
-          editingModel = ResourceDefModel.fromEntry(collected.id + '.tres', entry);
+          editingModel = PropDefModel.fromEntry(collected.id + '.tres', entry);
         }
       } else {
-        const cmd = new EditResourceDefCommand(model._filename, model, collected, cmdHistory);
+        const cmd = new EditPropDefCommand(model._filename, model, collected, cmdHistory);
         if (cmdHistory) {
           cmdHistory.execute(cmd);
         } else {
@@ -773,7 +777,7 @@ export function renderResourceEditor(container, options) {
         // Refresh the editing model from ProjectContext
         const entry = ProjectContext.files.resources.get(model._filename);
         if (entry) {
-          editingModel = ResourceDefModel.fromEntry(model._filename, entry);
+          editingModel = PropDefModel.fromEntry(model._filename, entry);
         }
       }
 
@@ -784,11 +788,11 @@ export function renderResourceEditor(container, options) {
 
     // --- Delete handler ---
     deleteBtn.addEventListener('click', () => {
-      const usages = findResourceUsage(model.id);
+      const usages = findPropUsage(model.id);
       if (usages.length > 0) {
         const usageList = usages.map(u => `${u.map} (${u.count} ref${u.count > 1 ? 's' : ''})`).join(', ');
         showInlineModal(
-          `Resource "${model.id}" is referenced in: ${usageList}. Type "DELETE" to confirm deletion:`,
+          `Prop "${model.id}" is referenced in: ${usageList}. Type "DELETE" to confirm deletion:`,
           '',
           (val) => {
             if (val === 'DELETE') {
@@ -797,7 +801,7 @@ export function renderResourceEditor(container, options) {
           }
         );
       } else {
-        if (confirm(`Delete resource "${model.id}"? This cannot be undone without undo.`)) {
+        if (confirm(`Delete prop "${model.id}"? This cannot be undone without undo.`)) {
           _doDelete(model);
         }
       }
@@ -806,11 +810,11 @@ export function renderResourceEditor(container, options) {
 
   /**
    * Execute delete and update UI.
-   * @param {ResourceDefModel} model
+   * @param {PropDefModel} model
    * @returns {void}
    */
   function _doDelete(model) {
-    const cmd = new DeleteResourceDefCommand(model._filename, model, cmdHistory);
+    const cmd = new DeletePropDefCommand(model._filename, model, cmdHistory);
     if (cmdHistory) {
       cmdHistory.execute(cmd);
     } else {
@@ -827,7 +831,7 @@ export function renderResourceEditor(container, options) {
   /**
    * Render the General tab content.
    * @param {HTMLElement} body
-   * @param {ResourceDefModel} model
+   * @param {PropDefModel} model
    * @param {boolean} isNew
    * @returns {void}
    */
@@ -873,7 +877,7 @@ export function renderResourceEditor(container, options) {
   /**
    * Render the Visuals tab content.
    * @param {HTMLElement} body
-   * @param {ResourceDefModel} model
+   * @param {PropDefModel} model
    * @returns {void}
    */
   function _renderVisualsTab(body, model) {
@@ -902,7 +906,7 @@ export function renderResourceEditor(container, options) {
     if (!_guardDirty()) return;
     isNewMode = true;
     selectedId = null;
-    editingModel = new ResourceDefModel();
+    editingModel = new PropDefModel();
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();
     _renderDetail();
@@ -1000,7 +1004,7 @@ const _NON_NATURAL_CAT_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.h
  * Changing origin resets category to the first valid option.
  * Natural origin → natural categories only; other origins → non-natural only.
  * @param {HTMLElement} grid
- * @param {ResourceDefModel} model
+ * @param {PropDefModel} model
  * @returns {void}
  */
 function _addOriginCategoryFields(grid, model) {
@@ -1059,12 +1063,12 @@ function _addOriginCategoryFields(grid, model) {
 // ============================================================
 
 /**
- * Collect form data from a resource edit form and return a populated ResourceDefModel.
+ * Collect form data from a prop edit form and return a populated PropDefModel.
  * @param {HTMLFormElement} formElement
- * @returns {ResourceDefModel}
+ * @returns {PropDefModel}
  */
-export function collectFormData(formElement) {
-  const model = new ResourceDefModel();
+export function collectPropFormData(formElement) {
+  const model = new PropDefModel();
 
   /**
    * Get the value of a named input.
@@ -1186,12 +1190,12 @@ function _collectFootprintData(formElement) {
 // ============================================================
 
 /**
- * Validate a resource form model.
- * @param {ResourceDefModel} model
+ * Validate a prop form model.
+ * @param {PropDefModel} model
  * @param {boolean} isNew
  * @returns {{ valid: boolean, errors: string[] }}
  */
-export function validateResourceForm(model, isNew) {
+export function validatePropForm(model, isNew) {
   /** @type {string[]} */
   const errors = [];
 
@@ -1201,7 +1205,7 @@ export function validateResourceForm(model, isNew) {
   } else if (!/^[a-zA-Z0-9_]+$/.test(model.id)) {
     errors.push('ID must contain only alphanumeric characters and underscores');
   } else if (isNew && ProjectContext.files.resources.has(model.id + '.tres')) {
-    errors.push(`Resource "${model.id}" already exists`);
+    errors.push(`Prop "${model.id}" already exists`);
   }
 
   // Display name
@@ -1232,7 +1236,7 @@ export function validateResourceForm(model, isNew) {
 
 /**
  * Convert a model to a plain object for dirty comparison (excluding metadata fields).
- * @param {ResourceDefModel} model
+ * @param {PropDefModel} model
  * @returns {Object}
  */
 function _modelToPlain(model) {
@@ -1256,16 +1260,18 @@ function _modelToPlain(model) {
     placeholder_depleted_params: model.placeholder_depleted_params,
     placeholder_depleted_color: model.placeholder_depleted_color,
     footprint: model.footprint,
+    prop_category: model.prop_category,
+    prop_origin: model.prop_origin,
   };
 }
 
 /**
- * Update a TresFile's resourceFields from a ResourceDefModel.
- * For new resources, creates a fresh TresFile with the standard ResourceDef structure.
- * @param {ResourceDefModel} model
+ * Update a TresFile's resourceFields from a PropDefModel.
+ * For new props, creates a fresh TresFile with the standard ResourceDef structure.
+ * @param {PropDefModel} model
  * @returns {TresFile}
  */
-export function modelToRaw(model) {
+export function propModelToRaw(model) {
   /** @type {TresFile} */
   let raw;
 
@@ -1273,7 +1279,7 @@ export function modelToRaw(model) {
     // Update existing raw — preserve structure
     raw = model._raw;
   } else {
-    // Create fresh TresFile for new resource
+    // Create fresh TresFile for new prop
     raw = new TresFile();
     raw.scriptClass = 'ResourceDef';
     raw.headerLine = '[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]';
@@ -1281,7 +1287,7 @@ export function modelToRaw(model) {
     raw.lineEnding = '\n';
   }
 
-  // Build the resource fields map
+  // Build the prop fields map
   const fields = new Map();
 
   // Script line is always first
@@ -1314,6 +1320,10 @@ export function modelToRaw(model) {
   fields.set('category', { type: 'stringname', value: model.category });
   fields.set('catalog_entry', { type: 'stringname', value: model.catalog_entry });
   fields.set('catalog_category', { type: 'stringname', value: model.catalog_category });
+
+  // Prop placement defaults (int in .tres)
+  fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
+  fields.set('origin', { type: 'int', value: ORIGIN_TO_INT[model.prop_origin] ?? 0 });
 
   // Footprint (only if non-empty)
   if (model.footprint && model.footprint.length > 0) {
@@ -1368,22 +1378,22 @@ function _colorToTresValue(c) {
 // ============================================================
 
 /**
- * Command to create a new resource definition.
+ * Command to create a new prop definition.
  */
-export class CreateResourceDefCommand {
+export class CreatePropDefCommand {
   /**
-   * @param {ResourceDefModel} model
+   * @param {PropDefModel} model
    * @param {import('./commands.js').CommandHistory} [commandHistory]
    */
   constructor(model, commandHistory) {
     this._model = model;
     this._filename = model.id + '.tres';
     this.tab = 'props';
-    this.type = 'CreateResourceDef';
+    this.type = 'CreatePropDef';
   }
 
   execute() {
-    const raw = modelToRaw(this._model);
+    const raw = propModelToRaw(this._model);
     const content = TresParser.serialize(raw);
 
     // Build data object from resourceFields (mirrors _parseTresFile logic)
@@ -1402,7 +1412,7 @@ export class CreateResourceDefCommand {
 
     // Write file
     FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
-      console.warn(`CreateResourceDefCommand: Failed to save "${this._filename}": ${err.message}`);
+      console.warn(`CreatePropDefCommand: Failed to save "${this._filename}": ${err.message}`);
     });
   }
 
@@ -1412,13 +1422,13 @@ export class CreateResourceDefCommand {
 }
 
 /**
- * Command to edit an existing resource definition.
+ * Command to edit an existing prop definition.
  */
-export class EditResourceDefCommand {
+export class EditPropDefCommand {
   /**
    * @param {string} filename
-   * @param {ResourceDefModel} oldModel
-   * @param {ResourceDefModel} newModel
+   * @param {PropDefModel} oldModel
+   * @param {PropDefModel} newModel
    * @param {import('./commands.js').CommandHistory} [commandHistory]
    */
   constructor(filename, oldModel, newModel, commandHistory) {
@@ -1427,11 +1437,11 @@ export class EditResourceDefCommand {
     this._newModel = newModel;
     this._oldRaw = oldModel._raw;
     this.tab = 'props';
-    this.type = 'EditResourceDef';
+    this.type = 'EditPropDef';
   }
 
   execute() {
-    const raw = modelToRaw(this._newModel);
+    const raw = propModelToRaw(this._newModel);
     const content = TresParser.serialize(raw);
 
     const data = {};
@@ -1446,12 +1456,12 @@ export class EditResourceDefCommand {
     }
 
     FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
-      console.warn(`EditResourceDefCommand: Failed to save "${this._filename}": ${err.message}`);
+      console.warn(`EditPropDefCommand: Failed to save "${this._filename}": ${err.message}`);
     });
   }
 
   undo() {
-    const raw = modelToRaw(this._oldModel);
+    const raw = propModelToRaw(this._oldModel);
     // Restore the original raw if available
     if (this._oldRaw) {
       const entry = ProjectContext.files.resources.get(this._filename);
@@ -1466,11 +1476,11 @@ export class EditResourceDefCommand {
 
       const content = TresParser.serialize(this._oldRaw);
       FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
-        console.warn(`EditResourceDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
+        console.warn(`EditPropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     } else {
       // Fall back to re-serializing old model
-      const oldRaw = modelToRaw(this._oldModel);
+      const oldRaw = propModelToRaw(this._oldModel);
       const content = TresParser.serialize(oldRaw);
 
       const data = {};
@@ -1485,19 +1495,19 @@ export class EditResourceDefCommand {
       }
 
       FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
-        console.warn(`EditResourceDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
+        console.warn(`EditPropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     }
   }
 }
 
 /**
- * Command to delete a resource definition.
+ * Command to delete a prop definition.
  */
-export class DeleteResourceDefCommand {
+export class DeletePropDefCommand {
   /**
    * @param {string} filename
-   * @param {ResourceDefModel} model
+   * @param {PropDefModel} model
    * @param {import('./commands.js').CommandHistory} [commandHistory]
    */
   constructor(filename, model, commandHistory) {
@@ -1505,7 +1515,7 @@ export class DeleteResourceDefCommand {
     this._model = model;
     this._savedEntry = null;
     this.tab = 'props';
-    this.type = 'DeleteResourceDef';
+    this.type = 'DeletePropDef';
   }
 
   execute() {
@@ -1521,7 +1531,7 @@ export class DeleteResourceDefCommand {
       // Re-write the file
       const content = TresParser.serialize(this._savedEntry.raw);
       FileDiscovery.saveFile('data/resources', content, this._filename).catch((err) => {
-        console.warn(`DeleteResourceDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
+        console.warn(`DeletePropDefCommand.undo: Failed to save "${this._filename}": ${err.message}`);
       });
     }
   }
@@ -1532,18 +1542,18 @@ export class DeleteResourceDefCommand {
 // ============================================================
 
 /**
- * Scan all loaded maps for props referencing this resource type.
- * @param {string} resourceId
+ * Scan all loaded maps for props referencing this prop type.
+ * @param {string} propId
  * @returns {Array<{map: string, count: number}>}
  */
-export function findResourceUsage(resourceId) {
+export function findPropUsage(propId) {
   /** @type {Array<{map: string, count: number}>} */
   const usages = [];
   for (const [mapName, mapEntry] of ProjectContext.files.maps) {
     let count = 0;
     for (const [key, tile] of Object.entries(mapEntry.data.tiles || {})) {
       if (tile.props) {
-        count += tile.props.filter(p => p.type === resourceId).length;
+        count += tile.props.filter(p => p.type === propId).length;
       }
     }
     if (count > 0) usages.push({ map: mapName, count });

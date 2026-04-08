@@ -14,7 +14,7 @@ import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
 import { validateMap } from './validator.js';
-import { renderResourceEditor } from './resource-editor.js';
+import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
 
 // ============================================================
@@ -36,8 +36,8 @@ const camera = { offsetX: 0, offsetY: 0, zoom: 1.0 };
 /** @type {Map<string, string>} Biome name -> CSS color string, populated from .tres data */
 const biomeColorMap = new Map();
 
-/** @type {Map<string, string>} Resource type -> CSS color string, from placeholder_color */
-const resourceColorMap = new Map();
+/** @type {Map<string, string>} Prop type -> CSS color string, from placeholder_color */
+const propColorMap = new Map();
 
 /** @type {CommandHistory} */
 const commandHistory = new CommandHistory();
@@ -446,8 +446,8 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
-  // Build resource color map from loaded .tres data
-  resourceColorMap.clear();
+  // Build prop color map from loaded .tres data (stored in files.resources)
+  propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.resources) {
     const colorField = entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
@@ -456,13 +456,13 @@ function initializeAfterLoad() {
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
-      console.log(`  Resource color: "${resourceName}" -> rgb(${r},${g},${b})`);
+      propColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      console.log(`  Prop color: "${resourceName}" -> rgb(${r},${g},${b})`);
     } else {
       console.warn(`  Resource "${filename}" has no valid placeholder_color field.`);
     }
   }
-  console.log(`Resource color map built — ${resourceColorMap.size} entries.`);
+  console.log(`Prop color map built — ${propColorMap.size} entries.`);
 
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
@@ -491,15 +491,15 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
-  // Render resource list in the Resources tab (task-012/013)
-  const resourceTabEl = document.getElementById('tab-props');
-  if (resourceTabEl) {
-    renderResourceEditor(resourceTabEl, {
+  // Render prop list in the Props tab (task-012/013)
+  const propTabEl = document.getElementById('tab-props');
+  if (propTabEl) {
+    renderPropEditor(propTabEl, {
       commandHistory,
       onChange: refreshPalettes,
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
     });
-    console.log('Resource editor rendered.');
+    console.log('Prop editor rendered.');
   }
 
   // Render biome list in the Biomes tab (task-014/015)
@@ -538,7 +538,7 @@ function initializeAfterLoad() {
 {
   const canvasEl = document.getElementById('hex-canvas');
   if (canvasEl && typeof canvasEl.getContext === 'function') {
-    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, resourceColorMap);
+    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, propColorMap);
     hexCanvas.toolManager = toolManager;
     hexCanvas.init();
   }
@@ -607,7 +607,7 @@ function initSidebar() {
 }
 
 /**
- * Rebuild biomeColorMap and resourceColorMap from current ProjectContext.
+ * Rebuild biomeColorMap and propColorMap from current ProjectContext.
  * Called after resource/biome edits so the canvas and palettes update.
  * @returns {void}
  */
@@ -624,7 +624,7 @@ function _rebuildColorMaps() {
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
     }
   }
-  resourceColorMap.clear();
+  propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.resources) {
     const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
@@ -633,7 +633,7 @@ function _rebuildColorMaps() {
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      propColorMap.set(resourceName, `rgb(${r},${g},${b})`);
     }
   }
 }

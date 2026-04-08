@@ -27,6 +27,10 @@ class_name ResourceDef extends Resource
 @export var catalog_category: StringName  # "minerals", "flora", "fauna", "anomalies"
 
 # --- Placement ---
+## Prop.Category index (0=Plant..9=Storage). Determines behavior when placed on map.
+@export var prop_category: int = 0
+## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
+@export var origin: int = 0
 ## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
 @export var footprint: Array[Vector2i] = []
 

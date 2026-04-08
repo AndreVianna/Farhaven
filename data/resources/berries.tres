@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"berries"
-display_name = "Berries"
+display_name = "Berry Bush"
 gather_time = 0.5
 gather_amount = 2
 tool_required = &""
@@ -16,9 +16,11 @@ max_stack = 20
 category = &"consumable"
 catalog_entry = &"berry_bush"
 catalog_category = &"flora"
+prop_category = 0
+origin = 0
 placeholder_mesh_type = &"sphere"
 placeholder_params = { "radius": 0.3 }
-placeholder_color = Color(0.8, 0.15, 0.15, 1.0)
+placeholder_color = Color(0.8, 0.14901960784313725, 0.14901960784313725, 1.0)
 placeholder_depleted_type = &"sphere"
 placeholder_depleted_params = { "radius": 0.15 }
-placeholder_depleted_color = Color(0.8, 0.15, 0.15, 1.0)
+placeholder_depleted_color = Color(0.8, 0.14901960784313725, 0.14901960784313725, 1.0)

@@ -13,7 +13,8 @@ export const ProjectContext = {
   files: {
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object}>} */
     maps: new Map(),
-    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>} */
+    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
+     * Holds prop definitions (ResourceDef .tres files). Key name kept as 'resources' for server API compatibility. */
     resources: new Map(),
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>} */
     biomes: new Map(),
@@ -50,7 +51,7 @@ function _parseTresFile(name, text, expectedClass) {
 
 /**
  * Load .tres files from FSA handles into a storage map using _parseTresFile.
- * Used by discoverProject to avoid duplicating the resource/biome parse loop.
+ * Used by discoverProject to avoid duplicating the prop/biome parse loop.
  * @param {Array<{name: string, handle: FileSystemFileHandle}>} files
  * @param {string} expectedClass - Expected scriptClass for _parseTresFile
  * @param {Map<string, Object>} storageMap - Target map in ProjectContext.files
@@ -74,7 +75,7 @@ async function _loadTresFilesFromHandles(files, expectedClass, storageMap, label
 
 /**
  * Load .tres files via fetch into a storage map using _parseTresFile.
- * Used by discoverViaApi to avoid duplicating the resource/biome parse loop.
+ * Used by discoverViaApi to avoid duplicating the prop/biome parse loop.
  * @param {string[]} fileNames
  * @param {string} dir - Directory path for API URL
  * @param {string} expectedClass
@@ -99,7 +100,7 @@ async function _loadTresFilesViaApi(fileNames, dir, expectedClass, storageMap, l
 
 // Note on D3 duplication: The three discovery methods (discoverProject, discoverFromFileList,
 // discoverViaApi) each use fundamentally different file-access strategies (FSA handles, FileList
-// with FileReader, and fetch API). The .tres parse-and-store loops for resources/biomes have been
+// with FileReader, and fetch API). The .tres parse-and-store loops for props/biomes have been
 // extracted into _loadTresFilesFromHandles and _loadTresFilesViaApi. The FileList method inlines
 // its logic because it intermixes path-based file categorization with parsing, making extraction
 // impractical without over-engineering.
@@ -187,7 +188,7 @@ export class FileDiscovery {
       }
     }
 
-    // Parse resource and biome .tres files
+    // Parse prop and biome .tres files
     await _loadTresFilesFromHandles(resourceFiles, 'ResourceDef', ProjectContext.files.resources, 'Resource');
     await _loadTresFilesFromHandles(biomeFiles, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
@@ -337,7 +338,7 @@ export class FileDiscovery {
       }
     }
 
-    // Load resource and biome .tres files
+    // Load prop and biome .tres files
     await _loadTresFilesViaApi(manifest.resources.files, manifest.resources.dir, 'ResourceDef', ProjectContext.files.resources, 'Resource');
     await _loadTresFilesViaApi(manifest.biomes.files, manifest.biomes.dir, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 

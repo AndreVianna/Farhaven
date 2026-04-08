@@ -48,15 +48,15 @@ export class HexCanvas {
    * @param {{ offsetX: number, offsetY: number, zoom: number }} camera
    * @param {Map<string, string>} biomeColorMap
    */
-  constructor(canvasElement, grid, camera, biomeColorMap, resourceColorMap) {
+  constructor(canvasElement, grid, camera, biomeColorMap, propColorMap) {
     this.canvas = canvasElement;
     this.ctx = canvasElement && typeof canvasElement.getContext === 'function'
       ? canvasElement.getContext('2d') : null;
     this.grid = grid;
     this.camera = camera;
     this.biomeColorMap = biomeColorMap;
-    /** @type {Map<string, string>} Resource type -> CSS color string */
-    this.resourceColorMap = resourceColorMap || new Map();
+    /** @type {Map<string, string>} Prop type -> CSS color string */
+    this.propColorMap = propColorMap || new Map();
     this.selectedHex = null;
     this.hoveredHex = null;
     /** @type {Set<string>} Ghost hex positions (recomputed each render) */
@@ -482,11 +482,11 @@ export class HexCanvas {
     if (!tile.props) return;
 
     for (const prop of tile.props) {
-      // Use per-resource color from resourceColorMap when available, else fall back to category color
+      // Use per-resource color from propColorMap when available, else fall back to category color
       let color;
       const catInt = CATEGORY_TO_INT[prop.category];
-      if (catInt != null && NATURAL_CATEGORIES.has(catInt) && this.resourceColorMap.has(prop.type)) {
-        color = this.resourceColorMap.get(prop.type);
+      if (catInt != null && NATURAL_CATEGORIES.has(catInt) && this.propColorMap.has(prop.type)) {
+        color = this.propColorMap.get(prop.type);
       } else {
         color = CATEGORY_COLORS[prop.category]
           ? CATEGORY_COLORS[prop.category].fill
