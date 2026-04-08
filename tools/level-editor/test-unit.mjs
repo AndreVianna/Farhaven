@@ -162,7 +162,7 @@ test('DirtyTracker — markClean', () => {
 test('DirtyTracker — markAllClean', () => {
   const dt = new DirtyTracker();
   dt.markDirty('map');
-  dt.markDirty('resources');
+  dt.markDirty('props');
   dt.markDirty('biomes');
   dt.markAllClean();
   assert(!dt.hasUnsavedChanges(), 'all should be clean after markAllClean');

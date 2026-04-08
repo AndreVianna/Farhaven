@@ -21,7 +21,7 @@ import { renderBiomeEditor } from './biome-editor.js';
 // Module-level state
 // ============================================================
 
-/** @type {string} Currently active tab — 'map' | 'resources' | 'biomes' */
+/** @type {string} Currently active tab — 'map' | 'props' | 'biomes' */
 let activeTab = 'map';
 
 /** @type {HexGrid} Global hex grid model instance */
@@ -64,13 +64,13 @@ let hexInspector = null;
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
   map: 'Map Editor',
-  resources: 'Resources',
+  props: 'Props',
   biomes: 'Biomes',
 };
 
 /**
  * Switch to the specified tab.
- * @param {string} tabName - 'map' | 'resources' | 'biomes'
+ * @param {string} tabName - 'map' | 'props' | 'biomes'
  * @returns {void}
  */
 function switchTab(tabName) {
@@ -316,7 +316,7 @@ async function saveAll() {
     return;
   }
 
-  const tabs = ['map', 'resources', 'biomes'];
+  const tabs = ['map', 'props', 'biomes'];
   let hadError = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
@@ -336,7 +336,7 @@ async function saveAll() {
 
 /**
  * Save files for a specific tab.
- * @param {string} tab - 'map' | 'resources' | 'biomes'
+ * @param {string} tab - 'map' | 'props' | 'biomes'
  * @returns {Promise<void>}
  */
 async function saveTab(tab) {
@@ -349,7 +349,7 @@ async function saveTab(tab) {
       const json = JSON.stringify(entry.data, null, '\t');
       await FileDiscovery.saveFile(entry.dir || 'data/maps', json, activeMapFilename);
     }
-  } else if (tab === 'resources') {
+  } else if (tab === 'props') {
     for (const [filename, entry] of ProjectContext.files.resources) {
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/resources', text, filename);
@@ -482,7 +482,7 @@ function initializeAfterLoad() {
   }
 
   // Render resource list in the Resources tab (task-012/013)
-  const resourceTabEl = document.getElementById('tab-resources');
+  const resourceTabEl = document.getElementById('tab-props');
   if (resourceTabEl) {
     renderResourceEditor(resourceTabEl, { commandHistory, onChange: refreshPalettes });
     console.log('Resource editor rendered.');

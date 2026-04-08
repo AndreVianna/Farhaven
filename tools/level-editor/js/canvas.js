@@ -421,7 +421,7 @@ export class HexCanvas {
     const facing = spawn.length >= 5 ? spawn[4] : 0;
     if (typeof facing === 'number') {
       const angleRad = (facing - 90) * Math.PI / 180;
-      const lineLen = size * 1.2;
+      const lineLen = size * 1;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(angleRad) * lineLen, cy + Math.sin(angleRad) * lineLen);
@@ -510,7 +510,7 @@ export class HexCanvas {
           const acx = screen.x + anchorOffset.x * this.camera.zoom;
           const acy = screen.y + anchorOffset.y * this.camera.zoom;
           const angleRad = (prop.rotation - 90) * Math.PI / 180;
-          const lineLen = subSize * 0.6;
+          const lineLen = subSize * 1;
           ctx.beginPath();
           ctx.moveTo(acx, acy);
           ctx.lineTo(acx + Math.cos(angleRad) * lineLen, acy + Math.sin(angleRad) * lineLen);
@@ -530,7 +530,7 @@ export class HexCanvas {
         // Draw facing indicator line
         if (typeof prop.rotation === 'number') {
           const angleRad = (prop.rotation - 90) * Math.PI / 180;
-          const lineLen = subSize * 0.6;
+          const lineLen = subSize * 1;
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.lineTo(cx + Math.cos(angleRad) * lineLen, cy + Math.sin(angleRad) * lineLen);
@@ -604,7 +604,7 @@ export class HexCanvas {
       ? this._previewRotation
       : (typeof prop.rotation === 'number' ? prop.rotation : 0);
     const angleRad = (rotation - 90) * Math.PI / 180;
-    const lineLen = 8 * this.camera.zoom * 2.4;
+    const lineLen = 8 * this.camera.zoom * 2;
     const handleX = anchorScreen.x + Math.cos(angleRad) * lineLen;
     const handleY = anchorScreen.y + Math.sin(angleRad) * lineLen;
 
@@ -669,7 +669,7 @@ export class HexCanvas {
     const rotation = this._dragMode === 'rotating' && this._previewRotation != null
       ? this._previewRotation : facing;
     const angleRad = (rotation - 90) * Math.PI / 180;
-    const lineLen = size * 2.4;
+    const lineLen = size * 2;
     const handleX = screenPos.x + Math.cos(angleRad) * lineLen;
     const handleY = screenPos.y + Math.sin(angleRad) * lineLen;
 
@@ -823,7 +823,7 @@ export class HexCanvas {
         const spawnSr = spawn.length > 3 ? spawn[3] : 0;
         const spawnRot = spawn.length >= 5 ? spawn[4] : 0;
         const spawnScreen = this._subHexScreenPos(spawn[0], spawn[1], spawnSq, spawnSr);
-        const spawnLineLen = 8 * this.camera.zoom * 2.4; // matches selected render length
+        const spawnLineLen = 8 * this.camera.zoom * 2; // matches selected render length
         if (this._isNearRotationHandle(mx, my, spawnScreen.x, spawnScreen.y, spawnRot, spawnLineLen)) {
           this._dragMode = 'rotating';
           this._previewRotation = spawnRot;
@@ -837,7 +837,7 @@ export class HexCanvas {
       if (tile && tile.props && tile.props[sp.propIndex]) {
         const prop = tile.props[sp.propIndex];
         const propScreen = this._subHexScreenPos(sp.hexQ, sp.hexR, prop.sq, prop.sr);
-        const propLineLen = 8 * this.camera.zoom * 2.4; // matches selected render length
+        const propLineLen = 8 * this.camera.zoom * 2; // matches selected render length
         if (typeof prop.rotation === 'number' &&
             this._isNearRotationHandle(mx, my, propScreen.x, propScreen.y, prop.rotation, propLineLen)) {
           this._dragMode = 'rotating';

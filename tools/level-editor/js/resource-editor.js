@@ -5,6 +5,7 @@
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
+import { CATEGORIES, ORIGINS } from './hex-grid.js';
 
 /**
  * Maps a parsed .tres ResourceDef to an editable JS model.
@@ -48,6 +49,11 @@ export class ResourceDefModel {
     this.placeholder_depleted_params = {};
     /** @type {{r: number, g: number, b: number, a: number}} */
     this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
+    // Editor-only placement defaults (not serialized to .tres)
+    /** @type {string} Default prop category for placement */
+    this.prop_category = 'plant';
+    /** @type {string} Default origin for placement */
+    this.prop_origin = 'natural';
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -665,7 +671,8 @@ export function renderResourceEditor(container, options) {
       try {
         const partial = collectFormData(form);
         // General tab fields
-        const generalFields = ['id', 'display_name', 'gather_time', 'gather_amount',
+        const generalFields = ['id', 'display_name', 'prop_category', 'prop_origin',
+          'gather_time', 'gather_amount',
           'tool_required', 'respawn_time', 'yield_type', 'tool_speed',
           'max_stack', 'category', 'catalog_entry', 'catalog_category'];
         // Visuals tab fields
@@ -707,6 +714,11 @@ export function renderResourceEditor(container, options) {
     _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
     // Display Name
     _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
+
+    // -- Placement Defaults (editor-only) --
+    _addSeparator(grid, 'Placement Defaults');
+    _addSelectField(grid, 'Prop Category', 'prop_category', model.prop_category, CATEGORIES);
+    _addSelectField(grid, 'Origin', 'prop_origin', model.prop_origin, ORIGINS);
 
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
@@ -820,6 +832,33 @@ function _addSeparator(grid, text) {
   grid.appendChild(sep);
 }
 
+/**
+ * Add a label + select dropdown row to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string} value - Currently selected value
+ * @param {string[]} options - Available option values
+ * @returns {void}
+ */
+function _addSelectField(grid, labelText, name, value, options) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  const select = document.createElement('select');
+  select.name = name;
+  select.classList.add('prop-input');
+  for (const opt of options) {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    if (opt === value) option.selected = true;
+    select.appendChild(option);
+  }
+  grid.appendChild(label);
+  grid.appendChild(select);
+}
+
 // ============================================================
 // Form Data Collection
 // ============================================================
@@ -865,6 +904,10 @@ export function collectFormData(formElement) {
   // Identity
   model.id = val('id').trim();
   model.display_name = val('display_name').trim();
+
+  // Placement defaults (editor-only)
+  model.prop_category = val('prop_category') || 'plant';
+  model.prop_origin = val('prop_origin') || 'natural';
 
   // Gathering
   model.gather_time = floatVal('gather_time');
@@ -1105,7 +1148,7 @@ export class CreateResourceDefCommand {
   constructor(model, commandHistory) {
     this._model = model;
     this._filename = model.id + '.tres';
-    this.tab = 'resources';
+    this.tab = 'props';
     this.type = 'CreateResourceDef';
   }
 
@@ -1153,7 +1196,7 @@ export class EditResourceDefCommand {
     this._oldModel = oldModel;
     this._newModel = newModel;
     this._oldRaw = oldModel._raw;
-    this.tab = 'resources';
+    this.tab = 'props';
     this.type = 'EditResourceDef';
   }
 
@@ -1231,7 +1274,7 @@ export class DeleteResourceDefCommand {
     this._filename = filename;
     this._model = model;
     this._savedEntry = null;
-    this.tab = 'resources';
+    this.tab = 'props';
     this.type = 'DeleteResourceDef';
   }
 

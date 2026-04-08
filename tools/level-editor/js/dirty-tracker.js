@@ -12,7 +12,7 @@ export class DirtyTracker {
 
   /**
    * Mark a tab as dirty.
-   * @param {string} tab - 'map' | 'resources' | 'biomes'
+   * @param {string} tab - 'map' | 'props' | 'biomes'
    * @returns {void}
    */
   markDirty(tab) {
