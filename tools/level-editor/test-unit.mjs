@@ -12,6 +12,7 @@ import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMa
 import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
+import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -1276,6 +1277,585 @@ test('subHexCorners returns 6 points with pointy-top orientation (first corner a
     assert(Math.abs(dist - 10) < 1e-9, `corner ${i} distance should be 10, got ${dist}`);
   }
 });
+
+// ============================================================
+// TresParser — sub_resource parsing (task-046b)
+// ============================================================
+
+test('TresParser — parseValue SubResource', () => {
+  const v = TresParser.parseValue('SubResource("placeable_1")');
+  assert(v.type === 'sub_resource', 'type should be sub_resource');
+  assert(v.value === 'placeable_1', 'value should be placeable_1');
+});
+
+test('TresParser — serializeValue sub_resource', () => {
+  const s = TresParser.serializeValue({ type: 'sub_resource', value: 'portable_1' });
+  assert(s === 'SubResource("portable_1")', `expected SubResource("portable_1"), got "${s}"`);
+});
+
+test('TresParser — parse file with sub_resource blocks', () => {
+  const text = [
+    '[gd_resource type="Resource" script_class="PropDef" load_steps=4 format=3]',
+    '',
+    '[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="2_portable"]',
+    '',
+    '[sub_resource type="Resource" id="portable_1"]',
+    'script = ExtResource("2_portable")',
+    'weight = 2.5',
+    '',
+    '[resource]',
+    'script = ExtResource("1_script")',
+    'id = &"test"',
+    'portable = SubResource("portable_1")',
+    '',
+  ].join('\n');
+
+  const file = TresParser.parse(text);
+  assert(file.subResources.length === 1, 'should have 1 sub_resource');
+  assert(file.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
+  assert(file.subResources[0].type === 'Resource', 'sub_resource type should be Resource');
+  assert(file.subResources[0].fields.get('weight').type === 'float', 'weight should be float');
+  assert(file.subResources[0].fields.get('weight').value === 2.5, 'weight value should be 2.5');
+
+  const portableRef = file.resourceFields.get('portable');
+  assert(portableRef.type === 'sub_resource', 'portable field should be sub_resource reference');
+  assert(portableRef.value === 'portable_1', 'portable ref should point to portable_1');
+});
+
+test('TresParser — serialize file with sub_resource blocks round-trips', () => {
+  const text = [
+    '[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]',
+    '',
+    '[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]',
+    '',
+    '[sub_resource type="Resource" id="placeable_1"]',
+    'script = ExtResource("2_placeable")',
+    'footprint = [Vector2i(0, 0)]',
+    'blocks_movement = true',
+    '',
+    '[sub_resource type="Resource" id="catalogable_1"]',
+    'script = ExtResource("3_catalogable")',
+    'scan_time = 1.0',
+    'display_tag = &"flora"',
+    '',
+    '[resource]',
+    'script = ExtResource("1_script")',
+    'id = &"00001"',
+    'placeable = SubResource("placeable_1")',
+    'catalogable = SubResource("catalogable_1")',
+    '',
+  ].join('\n');
+
+  const parsed = TresParser.parse(text);
+  const serialized = TresParser.serialize(parsed);
+  assert(serialized === text, 'round-trip should match');
+});
+
+test('TresParser — parse multiple sub_resources', () => {
+  const text = [
+    '[gd_resource type="Resource" script_class="PropDef" load_steps=8 format=3]',
+    '',
+    '[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="3_container"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/light_cap.gd" id="4_light"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/station_cap.gd" id="5_station"]',
+    '[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="6_catalogable"]',
+    '',
+    '[sub_resource type="Resource" id="placeable_1"]',
+    'script = ExtResource("2_placeable")',
+    'footprint = [Vector2i(0, 0)]',
+    'blocks_movement = true',
+    '',
+    '[sub_resource type="Resource" id="container_1"]',
+    'script = ExtResource("3_container")',
+    'capacity_weight = 20.0',
+    'accepts_filter = [&"BURNABLE"]',
+    '',
+    '[sub_resource type="Resource" id="light_1"]',
+    'script = ExtResource("4_light")',
+    'radius = 4.0',
+    'color = Color(1.0, 0.7, 0.3, 1.0)',
+    'flicker = true',
+    '',
+    '[sub_resource type="Resource" id="station_1"]',
+    'script = ExtResource("5_station")',
+    'station_tags = [&"fire", &"cook", &"light"]',
+    '',
+    '[sub_resource type="Resource" id="catalogable_1"]',
+    'script = ExtResource("6_catalogable")',
+    'scan_time = 1.0',
+    'display_tag = &"survival"',
+    '',
+    '[resource]',
+    'script = ExtResource("1_script")',
+    'id = &"00101"',
+    '',
+  ].join('\n');
+
+  const parsed = TresParser.parse(text);
+  assert(parsed.subResources.length === 5, `expected 5 sub_resources, got ${parsed.subResources.length}`);
+  assert(parsed.subResources[0].id === 'placeable_1', 'first sub should be placeable');
+  assert(parsed.subResources[1].id === 'container_1', 'second sub should be container');
+  assert(parsed.subResources[2].id === 'light_1', 'third sub should be light');
+  assert(parsed.subResources[3].id === 'station_1', 'fourth sub should be station');
+  assert(parsed.subResources[4].id === 'catalogable_1', 'fifth sub should be catalogable');
+
+  // Verify round-trip
+  const serialized = TresParser.serialize(parsed);
+  assert(serialized === text, 'round-trip should match for multi-sub_resource file');
+});
+
+test('TresParser — file without sub_resources still works', () => {
+  const text = [
+    '[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]',
+    '',
+    '[ext_resource type="Script" path="res://scripts/data/biome_data.gd" id="1_script"]',
+    '',
+    '[resource]',
+    'script = ExtResource("1_script")',
+    'name = &"forest"',
+    '',
+  ].join('\n');
+
+  const parsed = TresParser.parse(text);
+  assert(parsed.subResources.length === 0, 'should have 0 sub_resources');
+  const serialized = TresParser.serialize(parsed);
+  assert(serialized === text, 'round-trip should match for file without sub_resources');
+});
+
+// ============================================================
+// PropDefModel — capability parsing (task-046b)
+// ============================================================
+
+test('PropDefModel — fromEntry reads tags', () => {
+  const entry = _makePropEntry({
+    tags: ['SOURCE', 'WOOD'],
+  });
+  const model = PropDefModel.fromEntry('00001.tres', entry);
+  assert(model.tags.length === 2, 'should have 2 tags');
+  assert(model.tags[0] === 'SOURCE', 'first tag should be SOURCE');
+  assert(model.tags[1] === 'WOOD', 'second tag should be WOOD');
+});
+
+test('PropDefModel — fromEntry reads portable capability', () => {
+  const entry = _makePropEntry({
+    portable: { weight: 2.5 },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.portable !== null, 'portable should not be null');
+  assert(model.portable.weight === 2.5, 'weight should be 2.5');
+});
+
+test('PropDefModel — fromEntry reads placeable capability', () => {
+  const entry = _makePropEntry({
+    placeable: { footprint: [{ x: 0, y: 0 }, { x: 1, y: 0 }], blocks_movement: true, rotation_snap: 60 },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.placeable !== null, 'placeable should not be null');
+  assert(model.placeable.footprint.length === 2, 'footprint should have 2 cells');
+  assert(model.placeable.blocks_movement === true, 'blocks_movement should be true');
+  assert(model.placeable.rotation_snap === 60, 'rotation_snap should be 60');
+});
+
+test('PropDefModel — fromEntry reads container capability', () => {
+  const entry = _makePropEntry({
+    container: { capacity_weight: 50, accepts_filter: ['BURNABLE', 'WOOD'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.container !== null, 'container should not be null');
+  assert(model.container.capacity_weight === 50, 'capacity_weight should be 50');
+  assert(model.container.accepts_filter.length === 2, 'accepts_filter should have 2 items');
+  assert(model.container.accepts_filter[0] === 'BURNABLE', 'first filter should be BURNABLE');
+});
+
+test('PropDefModel — fromEntry reads light capability', () => {
+  const entry = _makePropEntry({
+    light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.light !== null, 'light should not be null');
+  assert(model.light.radius === 4, 'radius should be 4');
+  assert(model.light.flicker === true, 'flicker should be true');
+  assert(model.light.color.r === 1, 'color r should be 1');
+});
+
+test('PropDefModel — fromEntry reads movable capability', () => {
+  const entry = _makePropEntry({
+    movable: { push_cost: 3.5 },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movable !== null, 'movable should not be null');
+  assert(model.movable.push_cost === 3.5, 'push_cost should be 3.5');
+});
+
+test('PropDefModel — fromEntry reads station capability', () => {
+  const entry = _makePropEntry({
+    station: { station_tags: ['fire', 'cook'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.station !== null, 'station should not be null');
+  assert(model.station.station_tags.length === 2, 'should have 2 station tags');
+  assert(model.station.station_tags[0] === 'fire', 'first tag should be fire');
+});
+
+test('PropDefModel — fromEntry reads catalogable capability', () => {
+  const entry = _makePropEntry({
+    catalogable: { scan_time: 2.5, display_tag: 'flora' },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.catalogable !== null, 'catalogable should not be null');
+  assert(model.catalogable.scan_time === 2.5, 'scan_time should be 2.5');
+  assert(model.catalogable.display_tag === 'flora', 'display_tag should be flora');
+});
+
+test('PropDefModel — fromEntry null capabilities when not present', () => {
+  const entry = _makePropEntry({});
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.portable === null, 'portable should be null');
+  assert(model.placeable === null, 'placeable should be null');
+  assert(model.container === null, 'container should be null');
+  assert(model.light === null, 'light should be null');
+  assert(model.movable === null, 'movable should be null');
+  assert(model.station === null, 'station should be null');
+  assert(model.catalogable === null, 'catalogable should be null');
+});
+
+// ============================================================
+// validatePropForm — capability validation (task-046b)
+// ============================================================
+
+test('validatePropForm — PORTABLE.weight >= 0', () => {
+  const model = _makeModel({ portable: { weight: -1 } });
+  const result = validatePropForm(model, false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('PORTABLE weight')), 'should mention PORTABLE weight');
+});
+
+test('validatePropForm — PORTABLE.weight = 0 is valid', () => {
+  const model = _makeModel({ portable: { weight: 0 } });
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'weight 0 should be valid');
+});
+
+test('validatePropForm — PLACEABLE.footprint must be non-empty', () => {
+  const model = _makeModel({ placeable: { footprint: [], blocks_movement: false, rotation_snap: 0 } });
+  const result = validatePropForm(model, false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('PLACEABLE footprint')), 'should mention PLACEABLE footprint');
+});
+
+test('validatePropForm — PLACEABLE with footprint is valid', () => {
+  const model = _makeModel({ placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: false, rotation_snap: 0 } });
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'should be valid');
+});
+
+test('validatePropForm — EMITS_LIGHT.radius >= 1', () => {
+  const model = _makeModel({ light: { radius: 0, color: { r: 1, g: 1, b: 1, a: 1 }, flicker: false } });
+  const result = validatePropForm(model, false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('EMITS_LIGHT radius')), 'should mention EMITS_LIGHT radius');
+});
+
+test('validatePropForm — EMITS_LIGHT.radius = 1 is valid', () => {
+  const model = _makeModel({ light: { radius: 1, color: { r: 1, g: 1, b: 1, a: 1 }, flicker: false } });
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'should be valid');
+});
+
+test('validatePropForm — STATION.station_tags must be non-empty', () => {
+  const model = _makeModel({ station: { station_tags: [] } });
+  const result = validatePropForm(model, false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('STATION station_tags')), 'should mention STATION station_tags');
+});
+
+test('validatePropForm — STATION with tags is valid', () => {
+  const model = _makeModel({ station: { station_tags: ['fire'] } });
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'should be valid');
+});
+
+test('validatePropForm — no capabilities = valid', () => {
+  const model = _makeModel({});
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'should be valid with no capabilities');
+});
+
+// ============================================================
+// propModelToRaw — capability serialization (task-046b)
+// ============================================================
+
+test('propModelToRaw — serializes tags', () => {
+  const model = _makeModel({ tags: ['SOURCE', 'WOOD'] });
+  const raw = propModelToRaw(model);
+  const tagsField = raw.resourceFields.get('tags');
+  assert(tagsField !== undefined, 'tags field should exist');
+  assert(tagsField.type === 'array', 'tags should be array type');
+  assert(tagsField.value.length === 2, 'tags should have 2 elements');
+  assert(tagsField.value[0].value === 'SOURCE', 'first tag should be SOURCE');
+});
+
+test('propModelToRaw — serializes portable as sub_resource', () => {
+  const model = _makeModel({ portable: { weight: 2.0 } });
+  const raw = propModelToRaw(model);
+  assert(raw.subResources.length === 1, 'should have 1 sub_resource');
+  assert(raw.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
+  const portableRef = raw.resourceFields.get('portable');
+  assert(portableRef.type === 'sub_resource', 'portable field should be sub_resource ref');
+  assert(portableRef.value === 'portable_1', 'should point to portable_1');
+});
+
+test('propModelToRaw — serializes multiple capabilities', () => {
+  const model = _makeModel({
+    portable: { weight: 1.0 },
+    placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
+    catalogable: { scan_time: 1.0, display_tag: 'flora' },
+  });
+  const raw = propModelToRaw(model);
+  assert(raw.subResources.length === 3, `should have 3 sub_resources, got ${raw.subResources.length}`);
+  assert(raw.extResources.length === 4, `should have 4 ext_resources (script + 3 caps), got ${raw.extResources.length}`);
+});
+
+test('propModelToRaw — no capabilities = no sub_resources', () => {
+  const model = _makeModel({});
+  const raw = propModelToRaw(model);
+  assert(raw.subResources.length === 0, 'should have 0 sub_resources');
+  assert(raw.extResources.length === 1, 'should have 1 ext_resource (script only)');
+});
+
+test('propModelToRaw — serialized output is valid .tres', () => {
+  const model = _makeModel({
+    tags: ['STRUCTURE', 'STATION.fire'],
+    placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
+    light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
+    station: { station_tags: ['fire', 'cook'] },
+    catalogable: { scan_time: 1.0, display_tag: 'survival' },
+  });
+  const raw = propModelToRaw(model);
+  const text = TresParser.serialize(raw);
+
+  // Re-parse should succeed
+  const reparsed = TresParser.parse(text);
+  assert(reparsed.scriptClass === 'PropDef', 'should parse as PropDef');
+  assert(reparsed.subResources.length === 4, 'should have 4 sub_resources');
+  assert(reparsed.resourceFields.get('id').value === 'test', 'id should round-trip');
+});
+
+// ============================================================
+// PropDefModel round-trip: fromEntry -> propModelToRaw -> parse -> fromEntry (task-046b)
+// ============================================================
+
+test('PropDefModel — full round-trip with capabilities', () => {
+  const original = _makeModel({
+    tags: ['SOURCE', 'WOOD', 'BURNABLE.log'],
+    portable: { weight: 1.5 },
+    placeable: { footprint: [{ x: 0, y: 0 }, { x: 1, y: 0 }], blocks_movement: true, rotation_snap: 60 },
+    container: { capacity_weight: 20, accepts_filter: ['BURNABLE'] },
+    light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
+    station: { station_tags: ['fire', 'cook'] },
+    catalogable: { scan_time: 2.0, display_tag: 'survival' },
+  });
+
+  // Serialize
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(text);
+
+  // Build data object (simulates what file-discovery does)
+  const subResourceMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) {
+      subData[k] = v.value;
+    }
+    subResourceMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') {
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
+  }
+
+  // Reconstruct model
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+
+  // Verify capabilities survived
+  assert(restored.tags.length === 3, `tags should have 3 items, got ${restored.tags.length}`);
+  assert(restored.portable !== null, 'portable should survive');
+  assert(restored.portable.weight === 1.5, 'portable weight should be 1.5');
+  assert(restored.placeable !== null, 'placeable should survive');
+  assert(restored.placeable.footprint.length === 2, 'footprint should have 2 cells');
+  assert(restored.placeable.blocks_movement === true, 'blocks_movement should survive');
+  assert(restored.container !== null, 'container should survive');
+  assert(restored.container.capacity_weight === 20, 'capacity_weight should be 20');
+  assert(restored.container.accepts_filter.length === 1, 'accepts_filter should have 1 item');
+  assert(restored.light !== null, 'light should survive');
+  assert(restored.light.radius === 4, 'light radius should be 4');
+  assert(restored.light.flicker === true, 'flicker should be true');
+  assert(restored.station !== null, 'station should survive');
+  assert(restored.station.station_tags.length === 2, 'station_tags should have 2 items');
+  assert(restored.catalogable !== null, 'catalogable should survive');
+  assert(restored.catalogable.scan_time === 2.0, 'scan_time should be 2.0');
+  assert(restored.catalogable.display_tag === 'survival', 'display_tag should be survival');
+});
+
+test('PropDefModel — round-trip with no capabilities', () => {
+  const original = _makeModel({});
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    data[key] = tv.value;
+  }
+
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+  assert(restored.portable === null, 'portable should be null');
+  assert(restored.placeable === null, 'placeable should be null');
+  assert(restored.container === null, 'container should be null');
+  assert(restored.light === null, 'light should be null');
+  assert(restored.movable === null, 'movable should be null');
+  assert(restored.station === null, 'station should be null');
+  assert(restored.catalogable === null, 'catalogable should be null');
+  assert(restored.id === 'test', 'id should survive');
+  assert(restored.display_name === 'Test Prop', 'display_name should survive');
+});
+
+// ============================================================
+// PropDefModel round-trip from actual .tres files (task-046b)
+// ============================================================
+
+import { readFileSync, readdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __test_filename = fileURLToPath(import.meta.url);
+const __test_dirname = dirname(__test_filename);
+const __projectRoot = join(__test_dirname, '..', '..');
+const __propsDir = join(__projectRoot, 'data', 'props');
+const __propFiles = readdirSync(__propsDir).filter(f => f.endsWith('.tres'));
+
+for (const propFile of __propFiles) {
+  test(`PropDefModel round-trip — ${propFile}`, () => {
+    const filePath = join(__propsDir, propFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    // Parse
+    const parsed = TresParser.parse(text);
+
+    // Build data object (same as file-discovery)
+    const subResourceMap = new Map();
+    if (parsed.subResources) {
+      for (const sub of parsed.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) {
+          subData[k] = v.value;
+        }
+        subResourceMap.set(sub.id, subData);
+      }
+    }
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      if (tv.type === 'sub_resource') {
+        data[key] = subResourceMap.get(tv.value) || null;
+      } else {
+        data[key] = tv.value;
+      }
+    }
+
+    // Create model
+    const model = PropDefModel.fromEntry(propFile, { data, raw: parsed });
+
+    // Verify basic fields survived
+    assert(model.id === propFile.replace('.tres', ''), `id should match filename for ${propFile}`);
+    assert(model.display_name.length > 0, `display_name should be non-empty for ${propFile}`);
+
+    // Verify capabilities match what's in the file
+    if (parsed.resourceFields.has('portable')) {
+      assert(model.portable !== null, `${propFile}: portable should be parsed`);
+    }
+    if (parsed.resourceFields.has('placeable')) {
+      assert(model.placeable !== null, `${propFile}: placeable should be parsed`);
+    }
+    if (parsed.resourceFields.has('container')) {
+      assert(model.container !== null, `${propFile}: container should be parsed`);
+    }
+    if (parsed.resourceFields.has('light')) {
+      assert(model.light !== null, `${propFile}: light should be parsed`);
+    }
+    if (parsed.resourceFields.has('station')) {
+      assert(model.station !== null, `${propFile}: station should be parsed`);
+    }
+    if (parsed.resourceFields.has('catalogable')) {
+      assert(model.catalogable !== null, `${propFile}: catalogable should be parsed`);
+    }
+  });
+}
+
+// ============================================================
+// Test Helpers (task-046b)
+// ============================================================
+
+/**
+ * Create a mock prop entry for testing PropDefModel.fromEntry.
+ * @param {Object} overrides - Fields to set on the data object
+ * @returns {{data: Object, raw: TresFile}}
+ */
+function _makePropEntry(overrides) {
+  const data = {
+    script: 'ExtResource("1_script")',
+    id: 'test',
+    display_name: 'Test Prop',
+    max_stack: 99,
+    catalog_entry: '',
+    catalog_category: '',
+    origin: 0,
+    prop_category: 0,
+    placeholder_mesh_type: 'cube',
+    placeholder_params: new Map(),
+    placeholder_color: { r: 1, g: 1, b: 1, a: 1 },
+    placeholder_depleted_type: 'cube',
+    placeholder_depleted_params: new Map(),
+    placeholder_depleted_color: { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+    ...overrides,
+  };
+  const raw = new TresFile();
+  raw.scriptClass = 'PropDef';
+  raw.headerLine = '[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]'];
+  return { data, raw };
+}
+
+/**
+ * Create a model with overrides for validation testing.
+ * @param {Object} overrides - Fields to set on the model
+ * @returns {PropDefModel}
+ */
+function _makeModel(overrides) {
+  const model = new PropDefModel();
+  model.id = 'test';
+  model.display_name = 'Test Prop';
+  model.max_stack = 99;
+  model.placeholder_mesh_type = 'cube';
+  model.placeholder_color = { r: 1, g: 1, b: 1, a: 1 };
+  model.placeholder_depleted_type = 'cube';
+  model.placeholder_depleted_color = { r: 0.5, g: 0.5, b: 0.5, a: 1 };
+  for (const [key, val] of Object.entries(overrides)) {
+    model[key] = val;
+  }
+  return model;
+}
 
 // ============================================================
 // Summary

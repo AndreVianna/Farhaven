@@ -42,9 +42,26 @@ function _parseTresFile(name, text, expectedClass) {
   if (roundTrip !== text) {
     console.warn(`FileDiscovery: "${name}" round-trip MISMATCH.`);
   }
+  // Build a lookup for sub_resource blocks by id
+  const subResourceMap = new Map();
+  if (raw.subResources) {
+    for (const sub of raw.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) {
+        subData[k] = v.value;
+      }
+      subResourceMap.set(sub.id, subData);
+    }
+  }
+
   const data = {};
   for (const [key, tv] of raw.resourceFields) {
-    data[key] = tv.value;
+    if (tv.type === 'sub_resource') {
+      // Resolve sub_resource reference to its field data
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
   }
   return { data, raw };
 }

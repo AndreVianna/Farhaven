@@ -10,33 +10,57 @@ import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT
 /**
  * Maps a parsed .tres PropDef to an editable JS prop model.
  * All fields mirror the PropDef GDScript class.
+ *
+ * Capability fields are nullable objects — null means the capability is not present.
  */
 export class PropDefModel {
   constructor() {
-    /** @type {string} Filename stem e.g. 'wood' */
+    /** @type {string} Filename stem e.g. '00010' */
     this.id = '';
     /** @type {string} */
     this.display_name = '';
+
+    // --- Tags ---
+    /** @type {string[]} Free-form tag list */
+    this.tags = [];
+
+    // --- Capabilities (null = not enabled) ---
+    /** @type {{ weight: number }|null} */
+    this.portable = null;
+    /** @type {{ footprint: Array<{x:number,y:number}>, blocks_movement: boolean, rotation_snap: number }|null} */
+    this.placeable = null;
+    /** @type {{ capacity_weight: number, accepts_filter: string[] }|null} */
+    this.container = null;
+    /** @type {{ radius: number, color: {r:number,g:number,b:number,a:number}, flicker: boolean }|null} */
+    this.light = null;
+    /** @type {{ push_cost: number }|null} */
+    this.movable = null;
+    /** @type {{ station_tags: string[] }|null} */
+    this.station = null;
+    /** @type {{ scan_time: number, display_tag: string }|null} */
+    this.catalogable = null;
+
+    // --- Inventory ---
     /** @type {number} */
-    this.gather_time = 0;
-    /** @type {number} */
-    this.gather_amount = 0;
-    /** @type {string} */
-    this.tool_required = '';
-    /** @type {number} */
-    this.respawn_time = 0;
-    /** @type {string} */
-    this.yield_type = '';
-    /** @type {Object<string, number>} tool name -> speed multiplier */
-    this.tool_speed = {};
-    /** @type {number} */
-    this.max_stack = 0;
-    /** @type {string} */
-    this.category = '';
+    this.max_stack = 99;
+
+    // --- Catalog ---
     /** @type {string} */
     this.catalog_entry = '';
     /** @type {string} */
     this.catalog_category = '';
+
+    // --- Placement ---
+    /** @type {string} Default origin for placement */
+    this.prop_origin = 'natural';
+    /** @type {Array<{x: number, y: number}>} Legacy footprint (top-level, alongside PLACEABLE) */
+    this.footprint = [];
+
+    // --- Tool ---
+    /** @type {string} Tool slot name (e.g. "axe", "pickaxe"). Empty = not a tool. */
+    this.tool_slot = '';
+
+    // --- Visuals ---
     /** @type {string} */
     this.placeholder_mesh_type = '';
     /** @type {Object<string, number>} */
@@ -49,14 +73,24 @@ export class PropDefModel {
     this.placeholder_depleted_params = {};
     /** @type {{r: number, g: number, b: number, a: number}} */
     this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {Array<{x: number, y: number}>} Footprint offsets (Vector2i values) */
-    this.footprint = [];
-    // Placement defaults (serialized as int to .tres)
-    /** @type {string} Default prop category for placement */
+
+    // --- Legacy fields (DEPRECATED — kept for round-trip during transition) ---
+    /** @type {string} */
     this.prop_category = 'plant';
-    /** @type {string} Default origin for placement */
-    this.prop_origin = 'natural';
-    // Gameplay properties
+    /** @type {number} */
+    this.gather_time = 0;
+    /** @type {number} */
+    this.gather_amount = 0;
+    /** @type {string} */
+    this.tool_required = '';
+    /** @type {number} */
+    this.respawn_time = 0;
+    /** @type {string} */
+    this.yield_type = '';
+    /** @type {Object<string, number>} */
+    this.tool_speed = {};
+    /** @type {string} */
+    this.category = '';
     /** @type {boolean} */
     this.emits_light = false;
     /** @type {number} */
@@ -65,17 +99,15 @@ export class PropDefModel {
     this.is_respawn_point = false;
     /** @type {boolean} */
     this.is_crafting_station = false;
-    /** @type {string} Tool slot name (e.g. "axe", "pickaxe", "shovel", "weapon", "scanner"). Empty = not a tool. */
-    this.tool_slot = '';
-    // Consumable properties
     /** @type {boolean} */
     this.is_consumable = false;
     /** @type {number} */
     this.hunger_restore = 0;
     /** @type {number} */
     this.thirst_restore = 0;
-    /** @type {number} Positive = heal, negative = damage (toxic) */
+    /** @type {number} */
     this.health_restore = 0;
+
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -85,7 +117,7 @@ export class PropDefModel {
 
   /**
    * Create a PropDefModel from a ProjectContext prop definition entry.
-   * @param {string} filename - e.g. 'wood.tres'
+   * @param {string} filename - e.g. '00010.tres'
    * @param {{data: Object, raw: import('./tres-parser.js').TresFile}} entry
    * @returns {PropDefModel}
    */
@@ -97,45 +129,96 @@ export class PropDefModel {
 
     const d = entry.data;
 
-    // Simple string fields (stored as stringname values in .tres, plain strings in data)
+    // Simple string fields
     model.display_name = _str(d.display_name);
-    model.tool_required = _str(d.tool_required);
-    model.yield_type = _str(d.yield_type);
-    model.category = _str(d.category);
     model.catalog_entry = _str(d.catalog_entry);
     model.catalog_category = _str(d.catalog_category);
     model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
     model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
+    model.tool_slot = _str(d.tool_slot);
+
+    // Tags (array of stringname values -> string[])
+    model.tags = _strArray(d.tags);
 
     // Numeric fields
-    model.gather_time = _num(d.gather_time);
-    model.gather_amount = _num(d.gather_amount);
-    model.respawn_time = _num(d.respawn_time);
-    model.max_stack = _num(d.max_stack);
+    model.max_stack = _num(d.max_stack) || 99;
 
     // Dict fields (TresParser stores as Map<string, TresValue>)
-    model.tool_speed = _dictToObj(d.tool_speed);
     model.placeholder_params = _dictToObj(d.placeholder_params);
     model.placeholder_depleted_params = _dictToObj(d.placeholder_depleted_params);
 
-    // Color fields (TresParser stores as {r, g, b, a})
+    // Color fields
     model.placeholder_color = _color(d.placeholder_color);
     model.placeholder_depleted_color = _color(d.placeholder_depleted_color);
 
-    // Footprint (array of TresValue vector2i or plain {x,y})
+    // Legacy footprint (top-level)
     model.footprint = _footprintArray(d.footprint);
 
-    // Prop placement defaults (int in .tres -> string name in editor)
+    // Placement defaults
     model.prop_category = CATEGORIES[_num(d.prop_category)] || 'plant';
     model.prop_origin = ORIGINS[_num(d.origin)] || 'natural';
 
-    // Gameplay properties (booleans and numbers)
+    // --- Capabilities (resolved sub_resource data from file-discovery) ---
+    if (d.portable && typeof d.portable === 'object') {
+      model.portable = {
+        weight: _num(d.portable.weight != null ? d.portable.weight : 1.0),
+      };
+    }
+
+    if (d.placeable && typeof d.placeable === 'object') {
+      model.placeable = {
+        footprint: _footprintArray(d.placeable.footprint),
+        blocks_movement: !!d.placeable.blocks_movement,
+        rotation_snap: _num(d.placeable.rotation_snap),
+      };
+    }
+
+    if (d.container && typeof d.container === 'object') {
+      model.container = {
+        capacity_weight: _num(d.container.capacity_weight),
+        accepts_filter: _strArray(d.container.accepts_filter),
+      };
+    }
+
+    if (d.light && typeof d.light === 'object') {
+      model.light = {
+        radius: _num(d.light.radius),
+        color: _color(d.light.color),
+        flicker: !!d.light.flicker,
+      };
+    }
+
+    if (d.movable && typeof d.movable === 'object') {
+      model.movable = {
+        push_cost: _num(d.movable.push_cost != null ? d.movable.push_cost : 1.0),
+      };
+    }
+
+    if (d.station && typeof d.station === 'object') {
+      model.station = {
+        station_tags: _strArray(d.station.station_tags),
+      };
+    }
+
+    if (d.catalogable && typeof d.catalogable === 'object') {
+      model.catalogable = {
+        scan_time: _num(d.catalogable.scan_time != null ? d.catalogable.scan_time : 1.0),
+        display_tag: _str(d.catalogable.display_tag),
+      };
+    }
+
+    // --- Legacy fields (still in .tres during transition, kept for round-trip) ---
+    model.gather_time = _num(d.gather_time);
+    model.gather_amount = _num(d.gather_amount);
+    model.tool_required = _str(d.tool_required);
+    model.respawn_time = _num(d.respawn_time);
+    model.yield_type = _str(d.yield_type);
+    model.tool_speed = _dictToObj(d.tool_speed);
+    model.category = _str(d.category);
     model.emits_light = !!d.emits_light;
     model.light_radius = _num(d.light_radius);
     model.is_respawn_point = !!d.is_respawn_point;
     model.is_crafting_station = !!d.is_crafting_station;
-    model.tool_slot = _str(d.tool_slot);
-    // Consumable properties
     model.is_consumable = !!d.is_consumable;
     model.hunger_restore = _num(d.hunger_restore);
     model.thirst_restore = _num(d.thirst_restore);
@@ -169,6 +252,20 @@ export class PropDefModel {
 function _str(val) {
   if (val == null) return '';
   return String(val);
+}
+
+/**
+ * Safely extract a string array value. Handles TresValue arrays and plain arrays.
+ * @param {*} val
+ * @returns {string[]}
+ */
+function _strArray(val) {
+  if (!Array.isArray(val)) return [];
+  return val.map(item => {
+    if (item && typeof item === 'object' && 'value' in item) return String(item.value);
+    if (item == null) return '';
+    return String(item);
+  });
 }
 
 /**
@@ -451,6 +548,271 @@ function _createColorField(labelText, name, color) {
   row.appendChild(alphaLabel);
   row.appendChild(alphaInput);
   wrapper.appendChild(row);
+
+  return wrapper;
+}
+
+// ============================================================
+// Tag Editor
+// ============================================================
+
+/**
+ * Create a chip/tag input editor for StringName tags.
+ * @param {string[]} tags - Current tag values
+ * @returns {HTMLElement}
+ */
+function _createTagEditor(tags) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.tagEditor = '';
+
+  const label = document.createElement('div');
+  label.textContent = 'Tags';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const chipsContainer = document.createElement('div');
+  chipsContainer.dataset.tagChips = '';
+  chipsContainer.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;';
+  wrapper.appendChild(chipsContainer);
+
+  /** @param {string} tag */
+  function addChip(tag) {
+    const chip = document.createElement('span');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:2px;padding:2px 6px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;font-size:11px;color:var(--text-primary);';
+    chip.dataset.tagValue = tag;
+
+    const text = document.createElement('span');
+    text.textContent = tag;
+    chip.appendChild(text);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '\u00d7';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'border:none;background:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;';
+    removeBtn.addEventListener('click', () => chip.remove());
+    chip.appendChild(removeBtn);
+
+    chipsContainer.appendChild(chip);
+  }
+
+  for (const tag of tags) {
+    addChip(tag);
+  }
+
+  const addRow = document.createElement('div');
+  addRow.style.cssText = 'display:flex;gap:4px;';
+
+  const addInput = document.createElement('input');
+  addInput.type = 'text';
+  addInput.placeholder = 'New tag...';
+  addInput.classList.add('prop-input');
+  addInput.style.flex = '1';
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;';
+  addBtn.addEventListener('click', () => {
+    const val = addInput.value.trim();
+    if (val) {
+      addChip(val);
+      addInput.value = '';
+    }
+  });
+
+  addInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addBtn.click();
+    }
+  });
+
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  wrapper.appendChild(addRow);
+
+  return wrapper;
+}
+
+// ============================================================
+// Capability Panel
+// ============================================================
+
+/**
+ * Create a collapsible capability panel with enable/disable checkbox.
+ * Fields are only shown when the capability is enabled.
+ * @param {string} capName - Capability name (e.g. 'portable')
+ * @param {string} label - Display label (e.g. 'Portable')
+ * @param {Object|null} capData - Current capability data (null = disabled)
+ * @param {function(HTMLElement): void} renderFields - Function to render fields into the panel
+ * @returns {HTMLElement}
+ */
+function _createCapabilityPanel(capName, label, capData, renderFields) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.capPanel = capName;
+  wrapper.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.name = 'cap_' + capName + '_enabled';
+  checkbox.checked = capData != null;
+
+  const headerLabel = document.createElement('span');
+  headerLabel.textContent = label;
+  headerLabel.style.cssText = 'font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);';
+
+  header.appendChild(checkbox);
+  header.appendChild(headerLabel);
+  wrapper.appendChild(header);
+
+  const fieldsContainer = document.createElement('div');
+  fieldsContainer.classList.add('prop-grid');
+  fieldsContainer.dataset.capFields = capName;
+  fieldsContainer.style.display = capData != null ? '' : 'none';
+
+  renderFields(fieldsContainer);
+  wrapper.appendChild(fieldsContainer);
+
+  checkbox.addEventListener('change', () => {
+    fieldsContainer.style.display = checkbox.checked ? '' : 'none';
+  });
+
+  return wrapper;
+}
+
+// ============================================================
+// Capability Footprint Editor (for PLACEABLE)
+// ============================================================
+
+/**
+ * Create a footprint editor for a capability's footprint field.
+ * @param {Array<{x: number, y: number}>} footprint
+ * @returns {HTMLElement}
+ */
+function _createCapFootprintEditor(footprint) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+
+  const label = document.createElement('div');
+  label.textContent = 'Footprint cells (x, y)';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const rowsContainer = document.createElement('div');
+  rowsContainer.dataset.capFootprintRows = '';
+  wrapper.appendChild(rowsContainer);
+
+  function addRow(x, y) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+
+    const xInput = document.createElement('input');
+    xInput.type = 'number';
+    xInput.value = String(x);
+    xInput.step = '1';
+    xInput.placeholder = 'x';
+    xInput.dataset.capFpX = '';
+    xInput.classList.add('prop-input');
+    xInput.style.flex = '1';
+
+    const yInput = document.createElement('input');
+    yInput.type = 'number';
+    yInput.value = String(y);
+    yInput.step = '1';
+    yInput.placeholder = 'y';
+    yInput.dataset.capFpY = '';
+    yInput.classList.add('prop-input');
+    yInput.style.flex = '1';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(xInput);
+    row.appendChild(yInput);
+    row.appendChild(removeBtn);
+    rowsContainer.appendChild(row);
+  }
+
+  for (const cell of footprint) {
+    addRow(cell.x, cell.y);
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add Cell';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.addEventListener('click', () => addRow(0, 0));
+  wrapper.appendChild(addBtn);
+
+  return wrapper;
+}
+
+// ============================================================
+// String Array Editor (for accepts_filter, station_tags)
+// ============================================================
+
+/**
+ * Create a string array editor (add/remove items).
+ * @param {string} name - Base name for data attributes
+ * @param {string} labelText - Display label
+ * @param {string[]} values - Current values
+ * @returns {HTMLElement}
+ */
+function _createStringArrayEditor(name, labelText, values) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.stringArrayName = name;
+
+  const label = document.createElement('div');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const rowsContainer = document.createElement('div');
+  rowsContainer.dataset.stringArrayRows = name;
+  wrapper.appendChild(rowsContainer);
+
+  function addRow(val) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = val;
+    input.placeholder = 'value';
+    input.dataset.stringArrayVal = name;
+    input.classList.add('prop-input');
+    input.style.flex = '1';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(input);
+    row.appendChild(removeBtn);
+    rowsContainer.appendChild(row);
+  }
+
+  for (const v of values) {
+    addRow(v);
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.addEventListener('click', () => addRow(''));
+  wrapper.appendChild(addBtn);
 
   return wrapper;
 }
@@ -876,45 +1238,74 @@ export function renderPropEditor(container, options) {
     // Display Name
     _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
 
+    // -- Tags --
+    _addSeparator(grid, 'Tags');
+    grid.appendChild(_createTagEditor(model.tags));
+
     // -- Placement Defaults (editor-only) --
     _addSeparator(grid, 'Placement Defaults');
     _addOriginCategoryFields(grid, model);
 
-    // -- Footprint --
-    _addSeparator(grid, 'Footprint');
+    // -- Footprint (legacy top-level) --
+    _addSeparator(grid, 'Footprint (legacy)');
     grid.appendChild(_createFootprintEditor(model.footprint));
 
-    // -- Gameplay Properties --
+    // -- Gameplay --
     _addSeparator(grid, 'Gameplay');
-    _addCheckbox(grid, 'Respawn Point', 'is_respawn_point', model.is_respawn_point);
-    _addCheckbox(grid, 'Crafting Station', 'is_crafting_station', model.is_crafting_station);
     _addField(grid, 'Tool Slot', 'tool_slot', 'text', model.tool_slot);
 
-    // -- Consumable Properties --
-    _addSeparator(grid, 'Consumable');
-    _addCheckbox(grid, 'Is Consumable', 'is_consumable', model.is_consumable);
-    _addField(grid, 'Hunger Restore', 'hunger_restore', 'number', model.hunger_restore, { step: 'any' });
-    _addField(grid, 'Thirst Restore', 'thirst_restore', 'number', model.thirst_restore, { step: 'any' });
-    _addField(grid, 'Health Restore', 'health_restore', 'number', model.health_restore, { step: 'any' });
-
-    // -- Gathering separator --
-    _addSeparator(grid, 'Gathering');
-    _addField(grid, 'Gather Time', 'gather_time', 'number', model.gather_time, { step: 'any', min: '0' });
-    _addField(grid, 'Gather Amount', 'gather_amount', 'number', model.gather_amount, { step: '1', min: '0' });
-    _addField(grid, 'Tool Required', 'tool_required', 'text', model.tool_required);
-    _addField(grid, 'Respawn Time', 'respawn_time', 'number', model.respawn_time, { step: 'any', min: '0' });
-    _addField(grid, 'Yield Type', 'yield_type', 'text', model.yield_type);
-    grid.appendChild(_createKvEditor('tool_speed', model.tool_speed));
-
-    // -- Inventory separator --
+    // -- Inventory --
     _addSeparator(grid, 'Inventory');
     _addField(grid, 'Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' });
-    _addField(grid, 'Category', 'category', 'text', model.category);
 
-    // -- Catalog separator --
+    // -- Catalog --
     _addSeparator(grid, 'Catalog');
     _addField(grid, 'Catalog Entry', 'catalog_entry', 'text', model.catalog_entry);
     _addField(grid, 'Catalog Cat', 'catalog_category', 'text', model.catalog_category);
+
+    // -- Capabilities --
+    _addSeparator(grid, 'Capabilities');
+
+    // PORTABLE
+    grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
+      _addField(panel, 'Weight', 'cap_portable_weight', 'number', model.portable ? model.portable.weight : 1.0, { step: 'any', min: '0' });
+    }));
+
+    // PLACEABLE
+    grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
+      panel.appendChild(_createCapFootprintEditor(model.placeable ? model.placeable.footprint : []));
+      _addCheckbox(panel, 'Blocks Movement', 'cap_placeable_blocks_movement', model.placeable ? model.placeable.blocks_movement : false);
+      _addField(panel, 'Rotation Snap', 'cap_placeable_rotation_snap', 'number', model.placeable ? model.placeable.rotation_snap : 0, { step: '1', min: '0' });
+    }));
+
+    // CONTAINER
+    grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
+      _addField(panel, 'Capacity Weight', 'cap_container_capacity_weight', 'number', model.container ? model.container.capacity_weight : 0, { step: 'any', min: '0' });
+      panel.appendChild(_createStringArrayEditor('cap_container_accepts_filter', 'Accepts Filter', model.container ? model.container.accepts_filter : []));
+    }));
+
+    // EMITS_LIGHT
+    grid.appendChild(_createCapabilityPanel('light', 'Emits Light', model.light, (panel) => {
+      _addField(panel, 'Radius', 'cap_light_radius', 'number', model.light ? model.light.radius : 0, { step: 'any', min: '0' });
+      panel.appendChild(_createColorField('Color', 'cap_light_color', model.light ? model.light.color : { r: 1, g: 0.7, b: 0.3, a: 1 }));
+      _addCheckbox(panel, 'Flicker', 'cap_light_flicker', model.light ? model.light.flicker : false);
+    }));
+
+    // MOVABLE
+    grid.appendChild(_createCapabilityPanel('movable', 'Movable', model.movable, (panel) => {
+      _addField(panel, 'Push Cost', 'cap_movable_push_cost', 'number', model.movable ? model.movable.push_cost : 1.0, { step: 'any', min: '0' });
+    }));
+
+    // STATION
+    grid.appendChild(_createCapabilityPanel('station', 'Station', model.station, (panel) => {
+      panel.appendChild(_createStringArrayEditor('cap_station_station_tags', 'Station Tags', model.station ? model.station.station_tags : []));
+    }));
+
+    // CATALOGABLE
+    grid.appendChild(_createCapabilityPanel('catalogable', 'Catalogable', model.catalogable, (panel) => {
+      _addField(panel, 'Scan Time', 'cap_catalogable_scan_time', 'number', model.catalogable ? model.catalogable.scan_time : 1.0, { step: 'any', min: '0' });
+      _addField(panel, 'Display Tag', 'cap_catalogable_display_tag', 'text', model.catalogable ? model.catalogable.display_tag : '');
+    }));
 
     body.appendChild(grid);
   }
@@ -932,11 +1323,6 @@ export function renderPropEditor(container, options) {
     _addField(grid, 'Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type);
     grid.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
     grid.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
-
-    // -- Light --
-    _addSeparator(grid, 'Light');
-    _addCheckbox(grid, 'Emits Light', 'emits_light', model.emits_light);
-    _addField(grid, 'Light Radius (rings)', 'light_radius', 'number', model.light_radius, { step: '1', min: '0' });
 
     // -- Depleted separator --
     _addSeparator(grid, 'Depleted');
@@ -1169,41 +1555,79 @@ export function collectPropFormData(formElement) {
     return isNaN(v) ? 0 : v;
   }
 
+  /**
+   * Get a checkbox checked state.
+   * @param {string} name
+   * @returns {boolean}
+   */
+  function isChecked(name) {
+    const el = formElement.querySelector(`[name="${name}"]`);
+    return el ? /** @type {HTMLInputElement} */ (el).checked : false;
+  }
+
   // Identity
   model.id = val('id').trim();
   model.display_name = val('display_name').trim();
 
+  // Tags
+  model.tags = _collectTagData(formElement);
+
   // Placement defaults (editor-only)
   model.prop_category = val('prop_category') || 'plant';
   model.prop_origin = val('prop_origin') || 'natural';
-
-  // Gameplay properties
-  model.emits_light = !!formElement.querySelector('[name="emits_light"]')?.checked;
-  model.light_radius = intVal('light_radius');
-  model.is_respawn_point = !!formElement.querySelector('[name="is_respawn_point"]')?.checked;
-  model.is_crafting_station = !!formElement.querySelector('[name="is_crafting_station"]')?.checked;
   model.tool_slot = val('tool_slot').trim();
-  // Consumable properties
-  model.is_consumable = !!formElement.querySelector('[name="is_consumable"]')?.checked;
-  model.hunger_restore = floatVal('hunger_restore');
-  model.thirst_restore = floatVal('thirst_restore');
-  model.health_restore = floatVal('health_restore');
-
-  // Gathering
-  model.gather_time = floatVal('gather_time');
-  model.gather_amount = intVal('gather_amount');
-  model.tool_required = val('tool_required').trim();
-  model.respawn_time = floatVal('respawn_time');
-  model.yield_type = val('yield_type').trim();
-  model.tool_speed = _collectKvData(formElement, 'tool_speed');
 
   // Inventory
-  model.max_stack = intVal('max_stack');
-  model.category = val('category').trim();
+  model.max_stack = intVal('max_stack') || 99;
 
   // Catalog
   model.catalog_entry = val('catalog_entry').trim();
   model.catalog_category = val('catalog_category').trim();
+
+  // --- Capabilities ---
+  if (isChecked('cap_portable_enabled')) {
+    model.portable = { weight: floatVal('cap_portable_weight') };
+  }
+
+  if (isChecked('cap_placeable_enabled')) {
+    model.placeable = {
+      footprint: _collectCapFootprintData(formElement),
+      blocks_movement: isChecked('cap_placeable_blocks_movement'),
+      rotation_snap: intVal('cap_placeable_rotation_snap'),
+    };
+  }
+
+  if (isChecked('cap_container_enabled')) {
+    model.container = {
+      capacity_weight: floatVal('cap_container_capacity_weight'),
+      accepts_filter: _collectStringArrayData(formElement, 'cap_container_accepts_filter'),
+    };
+  }
+
+  if (isChecked('cap_light_enabled')) {
+    model.light = {
+      radius: floatVal('cap_light_radius'),
+      color: _hexToColor(val('cap_light_color'), floatVal('cap_light_color_alpha')),
+      flicker: isChecked('cap_light_flicker'),
+    };
+  }
+
+  if (isChecked('cap_movable_enabled')) {
+    model.movable = { push_cost: floatVal('cap_movable_push_cost') };
+  }
+
+  if (isChecked('cap_station_enabled')) {
+    model.station = {
+      station_tags: _collectStringArrayData(formElement, 'cap_station_station_tags'),
+    };
+  }
+
+  if (isChecked('cap_catalogable_enabled')) {
+    model.catalogable = {
+      scan_time: floatVal('cap_catalogable_scan_time'),
+      display_tag: val('cap_catalogable_display_tag').trim(),
+    };
+  }
 
   // Visuals
   model.placeholder_mesh_type = val('placeholder_mesh_type').trim();
@@ -1213,7 +1637,7 @@ export function collectPropFormData(formElement) {
   model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
   model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
 
-  // Footprint
+  // Legacy footprint (top-level)
   model.footprint = _collectFootprintData(formElement);
 
   return model;
@@ -1266,6 +1690,63 @@ function _collectFootprintData(formElement) {
   return result;
 }
 
+/**
+ * Collect tag data from the tag editor.
+ * @param {HTMLFormElement} formElement
+ * @returns {string[]}
+ */
+function _collectTagData(formElement) {
+  const result = [];
+  const container = formElement.querySelector('[data-tag-chips]');
+  if (!container) return result;
+  for (const chip of container.children) {
+    const tag = /** @type {HTMLElement} */ (chip).dataset.tagValue;
+    if (tag) result.push(tag);
+  }
+  return result;
+}
+
+/**
+ * Collect footprint data from a capability footprint editor.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{x: number, y: number}>}
+ */
+function _collectCapFootprintData(formElement) {
+  const result = [];
+  const container = formElement.querySelector('[data-cap-footprint-rows]');
+  if (!container) return result;
+  for (const row of container.children) {
+    const xInput = row.querySelector('[data-cap-fp-x]');
+    const yInput = row.querySelector('[data-cap-fp-y]');
+    if (xInput && yInput) {
+      const x = parseInt(/** @type {HTMLInputElement} */ (xInput).value, 10);
+      const y = parseInt(/** @type {HTMLInputElement} */ (yInput).value, 10);
+      result.push({ x: isNaN(x) ? 0 : x, y: isNaN(y) ? 0 : y });
+    }
+  }
+  return result;
+}
+
+/**
+ * Collect string array data from a string array editor.
+ * @param {HTMLFormElement} formElement
+ * @param {string} name - The string array editor name
+ * @returns {string[]}
+ */
+function _collectStringArrayData(formElement, name) {
+  const result = [];
+  const container = formElement.querySelector(`[data-string-array-rows="${name}"]`);
+  if (!container) return result;
+  for (const row of container.children) {
+    const input = row.querySelector(`[data-string-array-val="${name}"]`);
+    if (input) {
+      const v = /** @type {HTMLInputElement} */ (input).value.trim();
+      if (v) result.push(v);
+    }
+  }
+  return result;
+}
+
 // ============================================================
 // Form Validation
 // ============================================================
@@ -1294,25 +1775,33 @@ export function validatePropForm(model, isNew) {
     errors.push('Display Name is required');
   }
 
-  // Numeric validations
-  if (model.gather_time < 0) {
-    errors.push('Gather Time must be >= 0');
-  }
-  if (model.gather_amount < 0) {
-    errors.push('Gather Amount must be >= 0');
-  }
-  if (model.respawn_time < 0) {
-    errors.push('Respawn Time must be >= 0');
-  }
   if (model.max_stack < 1) {
     errors.push('Max Stack must be >= 1');
   }
 
-  // Light emitter consistency: emits_light=true requires light_radius >= 1.
-  // Without a radius the light never reaches neighbors — the prop would
-  // silently produce no lighting effect at runtime.
-  if (model.emits_light && model.light_radius < 1) {
-    errors.push('Light Radius must be >= 1 when Emits Light is enabled');
+  // --- Capability validations ---
+  if (model.portable) {
+    if (model.portable.weight < 0) {
+      errors.push('PORTABLE weight must be >= 0');
+    }
+  }
+
+  if (model.placeable) {
+    if (!model.placeable.footprint || model.placeable.footprint.length === 0) {
+      errors.push('PLACEABLE footprint must be non-empty');
+    }
+  }
+
+  if (model.light) {
+    if (model.light.radius < 1) {
+      errors.push('EMITS_LIGHT radius must be >= 1');
+    }
+  }
+
+  if (model.station) {
+    if (!model.station.station_tags || model.station.station_tags.length === 0) {
+      errors.push('STATION station_tags must be non-empty');
+    }
   }
 
   return { valid: errors.length === 0, errors };
@@ -1331,14 +1820,15 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
-    gather_time: model.gather_time,
-    gather_amount: model.gather_amount,
-    tool_required: model.tool_required,
-    respawn_time: model.respawn_time,
-    yield_type: model.yield_type,
-    tool_speed: model.tool_speed,
+    tags: model.tags,
+    portable: model.portable,
+    placeable: model.placeable,
+    container: model.container,
+    light: model.light,
+    movable: model.movable,
+    station: model.station,
+    catalogable: model.catalogable,
     max_stack: model.max_stack,
-    category: model.category,
     catalog_entry: model.catalog_entry,
     catalog_category: model.catalog_category,
     placeholder_mesh_type: model.placeholder_mesh_type,
@@ -1350,15 +1840,7 @@ function _modelToPlain(model) {
     footprint: model.footprint,
     prop_category: model.prop_category,
     prop_origin: model.prop_origin,
-    emits_light: model.emits_light,
-    light_radius: model.light_radius,
-    is_respawn_point: model.is_respawn_point,
-    is_crafting_station: model.is_crafting_station,
     tool_slot: model.tool_slot,
-    is_consumable: model.is_consumable,
-    hunger_restore: model.hunger_restore,
-    thirst_restore: model.thirst_restore,
-    health_restore: model.health_restore,
   };
 }
 
@@ -1379,62 +1861,162 @@ export function propModelToRaw(model) {
     // Create fresh TresFile for new prop
     raw = new TresFile();
     raw.scriptClass = 'PropDef';
-    raw.headerLine = '[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]';
-    raw.extResources = ['[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]'];
     raw.lineEnding = '\n';
   }
 
-  // Build the prop fields map
+  // --- Build ext_resources and sub_resources from capabilities ---
+  const extResources = [];
+  const subResources = [];
   const fields = new Map();
+  let extId = 1;
+
+  // Script is always ext_resource #1
+  const scriptExtId = '1_script';
+  extResources.push(`[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="${scriptExtId}"]`);
+  extId++;
+
+  /** @type {Array<{capName: string, scriptPath: string, subId: string, subFields: Map<string, import('./tres-parser.js').TresValue>}>} */
+  const capEntries = [];
+
+  // Build capability entries in the order defined by the GDScript schema
+  if (model.portable) {
+    const eid = `${extId}_portable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.portable.weight !== 1.0) subFields.set('weight', { type: 'float', value: model.portable.weight });
+    capEntries.push({ capName: 'portable', subId: 'portable_1', subFields });
+    extId++;
+  }
+
+  if (model.placeable) {
+    const eid = `${extId}_placeable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.placeable.footprint && model.placeable.footprint.length > 0) {
+      subFields.set('footprint', {
+        type: 'array', elementType: null,
+        value: model.placeable.footprint.map(p => ({ type: 'vector2i', value: { x: p.x, y: p.y } })),
+      });
+    }
+    if (model.placeable.blocks_movement) subFields.set('blocks_movement', { type: 'bool', value: true });
+    if (model.placeable.rotation_snap) subFields.set('rotation_snap', { type: 'int', value: model.placeable.rotation_snap });
+    capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
+    extId++;
+  }
+
+  if (model.container) {
+    const eid = `${extId}_container`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.container.capacity_weight) subFields.set('capacity_weight', { type: 'float', value: model.container.capacity_weight });
+    if (model.container.accepts_filter && model.container.accepts_filter.length > 0) {
+      subFields.set('accepts_filter', {
+        type: 'array', elementType: null,
+        value: model.container.accepts_filter.map(f => ({ type: 'stringname', value: f })),
+      });
+    }
+    capEntries.push({ capName: 'container', subId: 'container_1', subFields });
+    extId++;
+  }
+
+  if (model.light) {
+    const eid = `${extId}_light`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/light_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.light.radius) subFields.set('radius', { type: 'float', value: model.light.radius });
+    if (model.light.color) subFields.set('color', _colorToTresValue(model.light.color));
+    if (model.light.flicker) subFields.set('flicker', { type: 'bool', value: true });
+    capEntries.push({ capName: 'light', subId: 'light_1', subFields });
+    extId++;
+  }
+
+  if (model.movable) {
+    const eid = `${extId}_movable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/movable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.movable.push_cost !== 1.0) subFields.set('push_cost', { type: 'float', value: model.movable.push_cost });
+    capEntries.push({ capName: 'movable', subId: 'movable_1', subFields });
+    extId++;
+  }
+
+  if (model.station) {
+    const eid = `${extId}_station`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/station_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.station.station_tags && model.station.station_tags.length > 0) {
+      subFields.set('station_tags', {
+        type: 'array', elementType: null,
+        value: model.station.station_tags.map(t => ({ type: 'stringname', value: t })),
+      });
+    }
+    capEntries.push({ capName: 'station', subId: 'station_1', subFields });
+    extId++;
+  }
+
+  if (model.catalogable) {
+    const eid = `${extId}_catalogable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.catalogable.scan_time !== 1.0) subFields.set('scan_time', { type: 'float', value: model.catalogable.scan_time });
+    if (model.catalogable.display_tag) subFields.set('display_tag', { type: 'stringname', value: model.catalogable.display_tag });
+    capEntries.push({ capName: 'catalogable', subId: 'catalogable_1', subFields });
+    extId++;
+  }
+
+  // Build sub_resources
+  for (const cap of capEntries) {
+    subResources.push({ type: 'Resource', id: cap.subId, fields: cap.subFields });
+  }
+
+  // Update header load_steps: 1 (format) + ext_resources count + sub_resources count
+  const loadSteps = extResources.length + subResources.length;
+  raw.headerLine = `[gd_resource type="Resource" script_class="PropDef" load_steps=${loadSteps} format=3]`;
+  raw.extResources = extResources;
+  raw.subResources = subResources;
+
+  // --- Build [resource] fields ---
 
   // Script line is always first
-  fields.set('script', { type: 'ext_resource', value: 'ExtResource("1_script")' });
+  fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
 
   // StringName fields
   fields.set('id', { type: 'stringname', value: model.id });
   fields.set('display_name', { type: 'string', value: model.display_name });
 
-  // Float fields
-  fields.set('gather_time', { type: 'float', value: model.gather_time });
-  fields.set('gather_amount', { type: 'int', value: model.gather_amount });
+  // Tags
+  if (model.tags && model.tags.length > 0) {
+    fields.set('tags', {
+      type: 'array', elementType: null,
+      value: model.tags.map(t => ({ type: 'stringname', value: t })),
+    });
+  }
 
-  // StringName fields
-  fields.set('tool_required', { type: 'stringname', value: model.tool_required });
-
-  // Float fields
-  fields.set('respawn_time', { type: 'float', value: model.respawn_time });
-
-  // StringName fields
-  fields.set('yield_type', { type: 'stringname', value: model.yield_type });
-
-  // Dict: tool_speed
-  fields.set('tool_speed', _objToTresDict(model.tool_speed, 'stringname', 'float'));
+  // Capability references (SubResource("xxx"))
+  for (const cap of capEntries) {
+    fields.set(cap.capName, { type: 'sub_resource', value: cap.subId });
+  }
 
   // Int field
   fields.set('max_stack', { type: 'int', value: model.max_stack });
 
   // StringName fields
-  fields.set('category', { type: 'stringname', value: model.category });
   fields.set('catalog_entry', { type: 'stringname', value: model.catalog_entry });
   fields.set('catalog_category', { type: 'stringname', value: model.catalog_category });
 
   // Prop placement defaults (int in .tres)
-  fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
   fields.set('origin', { type: 'int', value: ORIGIN_TO_INT[model.prop_origin] ?? 0 });
 
-  // Gameplay properties (bools only written when true to keep files minimal)
-  if (model.emits_light) fields.set('emits_light', { type: 'bool', value: true });
-  if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
-  if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
-  if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
+  // Tool slot (only if non-empty)
   if (model.tool_slot) fields.set('tool_slot', { type: 'stringname', value: model.tool_slot });
-  // Consumable properties
-  if (model.is_consumable) fields.set('is_consumable', { type: 'bool', value: true });
-  if (model.hunger_restore !== 0) fields.set('hunger_restore', { type: 'float', value: model.hunger_restore });
-  if (model.thirst_restore !== 0) fields.set('thirst_restore', { type: 'float', value: model.thirst_restore });
-  if (model.health_restore !== 0) fields.set('health_restore', { type: 'float', value: model.health_restore });
 
-  // Footprint (only if non-empty)
+  // Legacy footprint (top-level, only if non-empty)
   if (model.footprint && model.footprint.length > 0) {
     const fpValues = model.footprint.map(p => ({
       type: 'vector2i',
@@ -1442,6 +2024,26 @@ export function propModelToRaw(model) {
     }));
     fields.set('footprint', { type: 'array', value: fpValues, elementType: null });
   }
+
+  // --- Legacy fields (written when non-default for backward compat during transition) ---
+  if (model.gather_time) fields.set('gather_time', { type: 'float', value: model.gather_time });
+  if (model.gather_amount) fields.set('gather_amount', { type: 'int', value: model.gather_amount });
+  if (model.tool_required) fields.set('tool_required', { type: 'stringname', value: model.tool_required });
+  if (model.respawn_time) fields.set('respawn_time', { type: 'float', value: model.respawn_time });
+  if (model.yield_type) fields.set('yield_type', { type: 'stringname', value: model.yield_type });
+  if (model.tool_speed && Object.keys(model.tool_speed).length > 0) {
+    fields.set('tool_speed', _objToTresDict(model.tool_speed, 'stringname', 'float'));
+  }
+  if (model.is_consumable) fields.set('is_consumable', { type: 'bool', value: true });
+  if (model.hunger_restore) fields.set('hunger_restore', { type: 'float', value: model.hunger_restore });
+  if (model.thirst_restore) fields.set('thirst_restore', { type: 'float', value: model.thirst_restore });
+  if (model.health_restore) fields.set('health_restore', { type: 'float', value: model.health_restore });
+  if (model.emits_light) fields.set('emits_light', { type: 'bool', value: true });
+  if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
+  if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
+  if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
+  if (model.category) fields.set('category', { type: 'stringname', value: model.category });
+  if (model.prop_category) fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
 
   // Placeholder fields
   fields.set('placeholder_mesh_type', { type: 'stringname', value: model.placeholder_mesh_type });

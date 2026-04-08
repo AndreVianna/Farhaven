@@ -11,6 +11,14 @@
  */
 
 /**
+ * A sub_resource block inside a .tres file.
+ * @typedef {Object} SubResource
+ * @property {string} type - The type attribute (e.g. "Resource")
+ * @property {string} id - The id attribute (e.g. "placeable_1")
+ * @property {Map<string, TresValue>} fields - Ordered map of key-value pairs
+ */
+
+/**
  * Intermediate representation preserving the full .tres file structure.
  */
 export class TresFile {
@@ -19,6 +27,8 @@ export class TresFile {
     this.headerLine = '';
     /** @type {string[]} */
     this.extResources = [];
+    /** @type {SubResource[]} Ordered array of [sub_resource] blocks */
+    this.subResources = [];
     /** @type {Map<string, TresValue>} Ordered map of [resource] key-value pairs */
     this.resourceFields = new Map();
     /** @type {string|null} */
@@ -54,8 +64,10 @@ export class TresParser {
     const normalized = text.replace(/\r\n/g, '\n');
     const lines = normalized.split('\n');
 
-    /** @type {'header'|'between_header_ext'|'ext_resources'|'between_ext_resource'|'resource'} */
+    /** @type {'header'|'between_header_ext'|'ext_resources'|'between_ext_resource'|'sub_resource'|'between_sub_resource'|'resource'} */
     let section = 'header';
+    /** @type {import('./tres-parser.js').SubResource|null} */
+    let currentSubResource = null;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -85,7 +97,7 @@ export class TresParser {
         throw new Error(`TresParser: Expected [gd_resource ...] header at line ${i + 1}, got: "${line}"`);
       }
 
-      // Between header and ext_resource / [resource] section
+      // Between header and ext_resource / [sub_resource] / [resource] section
       if (section === 'between_header_ext') {
         if (line.trim() === '') {
           continue;
@@ -93,6 +105,11 @@ export class TresParser {
         if (line.startsWith('[ext_resource')) {
           file.extResources.push(line);
           section = 'ext_resources';
+          continue;
+        }
+        if (line.startsWith('[sub_resource')) {
+          currentSubResource = TresParser._parseSubResourceHeader(line);
+          section = 'sub_resource';
           continue;
         }
         if (line === '[resource]') {
@@ -112,6 +129,11 @@ export class TresParser {
           section = 'between_ext_resource';
           continue;
         }
+        if (line.startsWith('[sub_resource')) {
+          currentSubResource = TresParser._parseSubResourceHeader(line);
+          section = 'sub_resource';
+          continue;
+        }
         if (line === '[resource]') {
           section = 'resource';
           continue;
@@ -119,9 +141,67 @@ export class TresParser {
         continue;
       }
 
-      // Between ext_resources and [resource]
+      // Between ext_resources and [sub_resource] / [resource]
       if (section === 'between_ext_resource') {
         if (line.trim() === '') continue;
+        if (line.startsWith('[sub_resource')) {
+          currentSubResource = TresParser._parseSubResourceHeader(line);
+          section = 'sub_resource';
+          continue;
+        }
+        if (line === '[resource]') {
+          section = 'resource';
+          continue;
+        }
+        continue;
+      }
+
+      // Collecting sub_resource key = value pairs
+      if (section === 'sub_resource') {
+        if (line.trim() === '') {
+          // End of this sub_resource block
+          if (currentSubResource) {
+            file.subResources.push(currentSubResource);
+            currentSubResource = null;
+          }
+          section = 'between_sub_resource';
+          continue;
+        }
+        if (line.startsWith('[sub_resource')) {
+          // New sub_resource block starts — push previous
+          if (currentSubResource) {
+            file.subResources.push(currentSubResource);
+          }
+          currentSubResource = TresParser._parseSubResourceHeader(line);
+          continue;
+        }
+        if (line === '[resource]') {
+          // Resource section starts — push any current sub_resource
+          if (currentSubResource) {
+            file.subResources.push(currentSubResource);
+            currentSubResource = null;
+          }
+          section = 'resource';
+          continue;
+        }
+        // Parse key = value within sub_resource
+        const eqIndex = line.indexOf(' = ');
+        if (eqIndex !== -1 && currentSubResource) {
+          const key = line.substring(0, eqIndex);
+          const valueStr = line.substring(eqIndex + 3);
+          currentSubResource.fields.set(key, TresParser.parseValue(valueStr));
+        }
+        continue;
+      }
+
+      // Between sub_resource blocks and [resource]
+      if (section === 'between_sub_resource') {
+        if (line.trim() === '') continue;
+        if (line.startsWith('[sub_resource')) {
+          currentSubResource = TresParser._parseSubResourceHeader(line);
+          section = 'sub_resource';
+          continue;
+        }
         if (line === '[resource]') {
           section = 'resource';
           continue;
@@ -160,6 +240,12 @@ export class TresParser {
     // ExtResource: ExtResource("...")
     if (s.startsWith('ExtResource(')) {
       return { type: 'ext_resource', value: s };
+    }
+
+    // SubResource: SubResource("id")
+    if (s.startsWith('SubResource(')) {
+      const inner = s.slice(13, -2); // Extract id from SubResource("id")
+      return { type: 'sub_resource', value: inner };
     }
 
     // Color: Color(r, g, b, a)
@@ -396,6 +482,21 @@ export class TresParser {
   }
 
   /**
+   * Parse a [sub_resource ...] header line into a SubResource object.
+   * @param {string} line - e.g. '[sub_resource type="Resource" id="placeable_1"]'
+   * @returns {SubResource}
+   */
+  static _parseSubResourceHeader(line) {
+    const typeMatch = line.match(/type="([^"]+)"/);
+    const idMatch = line.match(/id="([^"]+)"/);
+    return {
+      type: typeMatch ? typeMatch[1] : 'Resource',
+      id: idMatch ? idMatch[1] : '',
+      fields: new Map(),
+    };
+  }
+
+  /**
    * Serialize a TresFile back to a .tres string.
    * @param {TresFile} tresFile
    * @returns {string}
@@ -412,6 +513,17 @@ export class TresParser {
       parts.push('');
       for (const ext of tresFile.extResources) {
         parts.push(ext);
+      }
+    }
+
+    // Sub-resource blocks
+    if (tresFile.subResources && tresFile.subResources.length > 0) {
+      for (const sub of tresFile.subResources) {
+        parts.push('');
+        parts.push(`[sub_resource type="${sub.type}" id="${sub.id}"]`);
+        for (const [key, value] of sub.fields) {
+          parts.push(key + ' = ' + TresParser.serializeValue(value));
+        }
       }
     }
 
@@ -456,6 +568,8 @@ export class TresParser {
         return 'Vector2i(' + tv.value.x + ', ' + tv.value.y + ')';
       case 'ext_resource':
         return tv.value;
+      case 'sub_resource':
+        return 'SubResource("' + tv.value + '")';
       case 'dict':
         return TresParser._serializeDict(tv);
       case 'array':
