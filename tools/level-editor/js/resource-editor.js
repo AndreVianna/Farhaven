@@ -5,7 +5,7 @@
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-import { CATEGORIES, ORIGINS } from './hex-grid.js';
+import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
 
 /**
  * Maps a parsed .tres ResourceDef to an editable JS model.
@@ -717,8 +717,7 @@ export function renderResourceEditor(container, options) {
 
     // -- Placement Defaults (editor-only) --
     _addSeparator(grid, 'Placement Defaults');
-    _addSelectField(grid, 'Prop Category', 'prop_category', model.prop_category, CATEGORIES);
-    _addSelectField(grid, 'Origin', 'prop_origin', model.prop_origin, ORIGINS);
+    _addOriginCategoryFields(grid, model);
 
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
@@ -857,6 +856,70 @@ function _addSelectField(grid, labelText, name, value, options) {
   }
   grid.appendChild(label);
   grid.appendChild(select);
+}
+
+/** Natural category names. */
+const _NATURAL_CAT_NAMES = CATEGORIES.filter((_, i) => NATURAL_CATEGORIES.has(i));
+/** Non-natural category names. */
+const _NON_NATURAL_CAT_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.has(i));
+
+/**
+ * Add linked Origin → Category dropdowns to the prop-grid.
+ * Changing origin resets category to the first valid option.
+ * Natural origin → natural categories only; other origins → non-natural only.
+ * @param {HTMLElement} grid
+ * @param {ResourceDefModel} model
+ * @returns {void}
+ */
+function _addOriginCategoryFields(grid, model) {
+  // Origin
+  const originLabel = document.createElement('label');
+  originLabel.textContent = 'Origin';
+  originLabel.classList.add('prop-label');
+  const originSelect = document.createElement('select');
+  originSelect.name = 'prop_origin';
+  originSelect.classList.add('prop-input');
+  for (const o of ORIGINS) {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    if (o === model.prop_origin) opt.selected = true;
+    originSelect.appendChild(opt);
+  }
+  grid.appendChild(originLabel);
+  grid.appendChild(originSelect);
+
+  // Category
+  const catLabel = document.createElement('label');
+  catLabel.textContent = 'Prop Category';
+  catLabel.classList.add('prop-label');
+  const catSelect = document.createElement('select');
+  catSelect.name = 'prop_category';
+  catSelect.classList.add('prop-input');
+  grid.appendChild(catLabel);
+  grid.appendChild(catSelect);
+
+  /** Rebuild category options based on origin. */
+  function _refreshCategories() {
+    const origin = originSelect.value;
+    const allowed = origin === 'natural' ? _NATURAL_CAT_NAMES : _NON_NATURAL_CAT_NAMES;
+    const prev = catSelect.value;
+    catSelect.innerHTML = '';
+    for (const c of allowed) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      if (c === prev) opt.selected = true;
+      catSelect.appendChild(opt);
+    }
+    // If previous value not in new list, select first
+    if (!allowed.includes(prev) && allowed.length > 0) {
+      catSelect.value = allowed[0];
+    }
+  }
+
+  _refreshCategories();
+  originSelect.addEventListener('change', _refreshCategories);
 }
 
 // ============================================================

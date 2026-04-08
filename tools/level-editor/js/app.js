@@ -5,7 +5,7 @@
 // ============================================================
 
 import { TresParser } from './tres-parser.js';
-import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
+import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
@@ -772,117 +772,180 @@ function _initBiomePalette() {
   }
 }
 
+/** Natural category names (indices 0-5). */
+const NATURAL_CATEGORY_NAMES = CATEGORIES.filter((_, i) => NATURAL_CATEGORIES.has(i));
+/** Non-natural category names (indices 6-9). */
+const NON_NATURAL_CATEGORY_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.has(i));
+
 /**
- * Populate the prop palette with category dropdown and type list.
+ * Populate the prop palette with origin + category dropdowns and type list.
+ * Origin → Category (filtered) → Type list (filtered).
  * @returns {void}
  */
 function _initPropPalette() {
+  const originSelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('prop-origin-select'));
   const categorySelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('prop-category-select'));
   const listContainer = document.getElementById('palette-prop-list');
-  if (!categorySelect || !listContainer) return;
+  if (!originSelect || !categorySelect || !listContainer) return;
 
-  // Populate category dropdown
-  categorySelect.innerHTML = '';
-  for (let i = 0; i < CATEGORIES.length; i++) {
+  // --- Populate origin dropdown ---
+  originSelect.innerHTML = '';
+  const originAll = document.createElement('option');
+  originAll.value = 'all';
+  originAll.textContent = 'All';
+  originAll.selected = true;
+  originSelect.appendChild(originAll);
+  for (const o of ORIGINS) {
     const opt = document.createElement('option');
-    opt.value = CATEGORIES[i];
-    opt.textContent = CATEGORIES[i];
-    if (CATEGORIES[i] === toolManager.activeCategory) opt.selected = true;
-    categorySelect.appendChild(opt);
+    opt.value = o;
+    opt.textContent = o;
+    originSelect.appendChild(opt);
   }
 
   /**
-   * Rebuild the type list based on the selected category.
-   * @param {string} category
+   * Get the list of categories allowed for the selected origin.
+   * @param {string} origin - origin name or 'all'
+   * @returns {string[]}
+   */
+  function _categoriesForOrigin(origin) {
+    if (origin === 'all') return [...CATEGORIES];
+    if (origin === 'natural') return [...NATURAL_CATEGORY_NAMES];
+    return [...NON_NATURAL_CATEGORY_NAMES];
+  }
+
+  /**
+   * Rebuild the category dropdown for the current origin selection.
+   * @param {string} origin
    * @returns {void}
    */
-  function _populateTypeList(category) {
-    listContainer.innerHTML = '';
-    const catInt = CATEGORY_TO_INT[category];
-
-    if (NATURAL_CATEGORIES.has(catInt)) {
-      // Natural categories: populate from project resources
-      for (const [filename] of ProjectContext.files.resources) {
-        const resourceName = filename.replace('.tres', '');
-        const item = document.createElement('div');
-        item.className = 'palette-item';
-        item.dataset.value = resourceName;
-
-        const label = document.createElement('span');
-        label.textContent = resourceName;
-        item.appendChild(label);
-
-        item.addEventListener('click', () => {
-          toolManager.setTool('prop', resourceName);
-          toolManager.activeCategory = category;
-          if (hexCanvas) hexCanvas.toolManager = toolManager;
-          updateSidebar();
-          setStatus(`Tool: prop — ${category}/${resourceName}`);
-        });
-
-        listContainer.appendChild(item);
-      }
-    } else if (category === 'structure') {
-      // Structure category: populate from STRUCTURE_FOOTPRINTS
-      for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
-        const item = document.createElement('div');
-        item.className = 'palette-item';
-        item.dataset.value = structName;
-
-        const label = document.createElement('span');
-        label.textContent = `${structName} (${footprint.length})`;
-        item.appendChild(label);
-
-        item.addEventListener('click', () => {
-          toolManager.setTool('prop', structName);
-          toolManager.activeCategory = category;
-          if (hexCanvas) hexCanvas.toolManager = toolManager;
-          updateSidebar();
-          setStatus(`Tool: prop — ${category}/${structName}`);
-        });
-
-        listContainer.appendChild(item);
-      }
-    } else {
-      // Non-natural, non-structure: free-text entry
-      const inputRow = document.createElement('div');
-      inputRow.style.cssText = 'display:flex;gap:4px;';
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'Type name...';
-      input.style.cssText = 'flex:1;padding:3px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;font-size:12px;';
-
-      const applyBtn = document.createElement('button');
-      applyBtn.textContent = 'Set';
-      applyBtn.style.cssText = 'padding:3px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:3px;font-size:11px;cursor:pointer;';
-
-      const applyType = () => {
-        const typeName = input.value.trim();
-        if (!typeName) return;
-        toolManager.setTool('prop', typeName);
-        toolManager.activeCategory = category;
-        if (hexCanvas) hexCanvas.toolManager = toolManager;
-        updateSidebar();
-        setStatus(`Tool: prop — ${category}/${typeName}`);
-      };
-
-      applyBtn.addEventListener('click', applyType);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyType(); });
-
-      inputRow.appendChild(input);
-      inputRow.appendChild(applyBtn);
-      listContainer.appendChild(inputRow);
+  function _populateCategories(origin) {
+    categorySelect.innerHTML = '';
+    const catAll = document.createElement('option');
+    catAll.value = 'all';
+    catAll.textContent = 'All';
+    catAll.selected = true;
+    categorySelect.appendChild(catAll);
+    for (const c of _categoriesForOrigin(origin)) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      categorySelect.appendChild(opt);
     }
   }
 
-  // Initial population
-  _populateTypeList(categorySelect.value || 'plant');
+  /**
+   * Rebuild the type list based on the selected origin and category.
+   * @param {string} origin - 'all' or an origin name
+   * @param {string} category - 'all' or a category name
+   * @returns {void}
+   */
+  function _populateTypeList(origin, category) {
+    listContainer.innerHTML = '';
+    const allowedCats = _categoriesForOrigin(origin);
+    const showCats = category === 'all' ? allowedCats : [category];
 
-  // Wire category change
+    for (const cat of showCats) {
+      const catInt = CATEGORY_TO_INT[cat];
+      if (NATURAL_CATEGORIES.has(catInt)) {
+        // Natural categories: populate from project resources
+        for (const [filename] of ProjectContext.files.resources) {
+          const resourceName = filename.replace('.tres', '');
+          _addTypeItem(resourceName, cat, origin === 'all' ? INT_TO_ORIGIN[defaultOrigin(catInt)] : origin);
+        }
+      } else if (cat === 'structure') {
+        for (const [structName] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+          _addTypeItem(structName, cat, origin === 'all' ? 'crafted' : origin);
+        }
+      } else {
+        // Other non-natural: free-text entry
+        _addFreeTextEntry(cat, origin === 'all' ? 'crafted' : origin);
+      }
+    }
+
+    if (listContainer.children.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:8px;color:var(--text-secondary);font-size:11px;';
+      empty.textContent = 'No prop types available for this filter.';
+      listContainer.appendChild(empty);
+    }
+  }
+
+  /**
+   * Add a clickable type item to the list.
+   * @param {string} typeName
+   * @param {string} cat
+   * @param {string} originName
+   */
+  function _addTypeItem(typeName, cat, originName) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.value = typeName;
+    const label = document.createElement('span');
+    label.textContent = typeName;
+    item.appendChild(label);
+    item.addEventListener('click', () => {
+      toolManager.setTool('prop', typeName);
+      toolManager.activeCategory = cat;
+      toolManager.activeOrigin = originName;
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: prop — ${originName}/${cat}/${typeName}`);
+    });
+    listContainer.appendChild(item);
+  }
+
+  /**
+   * Add a free-text type entry row for non-natural, non-structure categories.
+   * @param {string} cat
+   * @param {string} originName
+   */
+  function _addFreeTextEntry(cat, originName) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;';
+    const catLabel = document.createElement('span');
+    catLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);min-width:60px;padding-top:4px;';
+    catLabel.textContent = cat + ':';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Type name...';
+    input.style.cssText = 'flex:1;padding:3px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;font-size:12px;';
+    const applyBtn = document.createElement('button');
+    applyBtn.textContent = 'Set';
+    applyBtn.style.cssText = 'padding:3px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:3px;font-size:11px;cursor:pointer;';
+    const applyType = () => {
+      const typeName = input.value.trim();
+      if (!typeName) return;
+      toolManager.setTool('prop', typeName);
+      toolManager.activeCategory = cat;
+      toolManager.activeOrigin = originName;
+      if (hexCanvas) hexCanvas.toolManager = toolManager;
+      updateSidebar();
+      setStatus(`Tool: prop — ${originName}/${cat}/${typeName}`);
+    };
+    applyBtn.addEventListener('click', applyType);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyType(); });
+    row.appendChild(catLabel);
+    row.appendChild(input);
+    row.appendChild(applyBtn);
+    listContainer.appendChild(row);
+  }
+
+  // Initial population
+  _populateCategories('all');
+  _populateTypeList('all', 'all');
+
+  // Wire origin change → reset category to All, rebuild both
+  originSelect.addEventListener('change', () => {
+    const origin = originSelect.value;
+    _populateCategories(origin);
+    _populateTypeList(origin, 'all');
+  });
+
+  // Wire category change → rebuild type list
   categorySelect.addEventListener('change', () => {
-    toolManager.activeCategory = categorySelect.value;
-    _populateTypeList(categorySelect.value);
+    const origin = originSelect.value;
+    const category = categorySelect.value;
+    _populateTypeList(origin, category);
   });
 }
 

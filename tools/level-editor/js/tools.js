@@ -3,7 +3,7 @@
 // ============================================================
 
 import { HexMath } from './hex-math.js';
-import { createTileData, createProp, defaultOrigin, CATEGORY_TO_INT } from './hex-grid.js';
+import { createTileData, createProp, defaultOrigin, CATEGORY_TO_INT, INT_TO_ORIGIN } from './hex-grid.js';
 import {
   SetBiomeCommand,
   SetElevationCommand,
@@ -294,9 +294,10 @@ export class PropPlacer extends BaseTool {
       }
 
       const catInt = CATEGORY_TO_INT[category] != null ? CATEGORY_TO_INT[category] : 0;
+      const origin = this.toolManager.activeOrigin || INT_TO_ORIGIN[defaultOrigin(catInt)];
       const prop = createProp(type, sq, sr, category, {
         footprint: absoluteFootprint,
-        origin: defaultOrigin(catInt),
+        origin,
       });
       const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
       this.commandHistory.execute(cmd);
@@ -307,9 +308,10 @@ export class PropPlacer extends BaseTool {
     if (isSubHexOccupied(tile, sq, sr)) return;
 
     const catInt = CATEGORY_TO_INT[category] != null ? CATEGORY_TO_INT[category] : 0;
+    const origin = this.toolManager.activeOrigin || INT_TO_ORIGIN[defaultOrigin(catInt)];
     const prop = createProp(type, sq, sr, category, {
       rotation: 0,
-      origin: defaultOrigin(catInt),
+      origin,
     });
 
     const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
@@ -369,6 +371,8 @@ export class ToolManager {
     this.elevationDelta = 1;
     /** @type {string} Active prop category for the Prop tool */
     this.activeCategory = 'plant';
+    /** @type {string} Active origin for the Prop tool */
+    this.activeOrigin = 'natural';
     /** @type {function(string):void|null} */
     this.onStatus = null;
     /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */
