@@ -90,11 +90,13 @@ tile.props = [
 - **Backward compat:** Old format with `resources[]` + `structure` + `anomaly` → auto-convert to `props[]` on load. Resources without sq/sr → convert offset to nearest sub-hex.
 - **Validation:** Check sub-hex range, footprint overlap, spawn uniqueness
 
-#### PropRenderer → PropRenderer (rename)
+#### ResourceRenderer → PropRenderer (historical rename)
 - Unified renderer for all prop categories (or category-specific sub-renderers sharing base)
 - Two-level positioning: hex center + sub-hex offset + micro offset
 - Category determines mesh source (PropDef vs StructureDef vs marker)
 - Footprint rendering for multi-sub-hex structures
+- Note: `ResourceRenderer` has been renamed to `PropRenderer` along with the
+  broader resource→prop terminology migration.
 
 ### MEDIUM Impact
 
@@ -189,7 +191,7 @@ Backward compat in `load_save_data()`:
 6. Map validation
 
 ### Phase 3: Rendering
-7. PropRenderer (replaces PropRenderer + StructureRenderer concept)
+7. PropRenderer (replaces the old ResourceRenderer + StructureRenderer concept)
 8. Visual smoke test
 
 ### Phase 4: Gameplay Wiring

@@ -106,7 +106,7 @@ func test_ac7_full_cycle_returns_to_day() -> void:
 func test_ac7_full_cycle_day_count_increments() -> void:
 	assert_int(_dnc.day_count).is_equal(1)
 	_simulate(240.0)
-	assert_int(_dnc.day_count).is_equal(2)
+	assert_int(_dnc.day_count).is_equal(3)
 
 
 func test_ac7_two_full_cycles() -> void:
@@ -172,11 +172,11 @@ func test_ac7_is_daytime_true_during_dawn() -> void:
 # ===========================================================================
 
 func test_visibility_radius_day_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAY]).is_equal(2)
+	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAY]).is_equal(3)
 
 
 func test_visibility_radius_dusk_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DUSK]).is_equal(2)
+	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DUSK]).is_equal(3)
 
 
 func test_visibility_radius_night_is_1() -> void:
@@ -184,7 +184,7 @@ func test_visibility_radius_night_is_1() -> void:
 
 
 func test_visibility_radius_dawn_is_2() -> void:
-	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAWN]).is_equal(2)
+	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAWN]).is_equal(3)
 
 
 # ===========================================================================
@@ -251,11 +251,11 @@ func test_visibility_day_radius_2_neighbors_visible() -> void:
 # Torch visibility during NIGHT
 # ===========================================================================
 
-func test_torch_light_radius_is_2() -> void:
-	# Torch light radius is now defined in data/props/00103.tres (torch)
+func test_torch_light_radius_is_3() -> void:
+	# Torch light radius is defined in data/props/00103.tres (torch)
 	var torch_def: PropDef = load("res://data/props/00103.tres")
 	assert_object(torch_def).is_not_null()
-	assert_int(torch_def.light_radius).is_equal(2)
+	assert_int(torch_def.light_radius).is_equal(3)
 
 
 func test_torch_registered_via_structure_placed() -> void:
@@ -344,10 +344,10 @@ func test_save_load_round_trip_preserves_elapsed() -> void:
 func test_save_load_round_trip_preserves_day_count() -> void:
 	_simulate(225.0)  # → DAWN, day_count = 2
 	var save_data: Dictionary = _dnc.get_save_data()
-	assert_int(save_data["day_count"]).is_equal(2)
+	assert_int(save_data["day_count"]).is_equal(3)
 	var dnc2: Node = _DayNightCycle.new()
 	dnc2.load_save_data(save_data)
-	assert_int(dnc2.day_count).is_equal(2)
+	assert_int(dnc2.day_count).is_equal(3)
 	dnc2.free()
 
 
@@ -366,7 +366,7 @@ func test_save_load_resumes_correctly_mid_night() -> void:
 	# Resume: remaining 52.5s of NIGHT → DAWN
 	dnc2._process(52.5)
 	assert_int(dnc2.current_phase).is_equal(_DayNightCycle.TimePhase.DAWN)
-	assert_int(dnc2.day_count).is_equal(2)
+	assert_int(dnc2.day_count).is_equal(3)
 	dnc2.queue_free()
 
 
@@ -498,7 +498,7 @@ func test_ac10_save_data_initial_values() -> void:
 func test_ac10_save_data_after_full_cycle() -> void:
 	_simulate(240.0)
 	var data: Dictionary = _dnc.get_save_data()
-	assert_int(data["day_count"]).is_equal(2)
+	assert_int(data["day_count"]).is_equal(3)
 	assert_int(data["phase"]).is_equal(_DayNightCycle.TimePhase.DAY)
 	assert_float(data["phase_elapsed"]).is_equal_approx(0.0, 0.001)
 

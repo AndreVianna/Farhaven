@@ -29,7 +29,7 @@ The editor gives us a **WYSIWYG canvas** where we paint hexes, set properties, p
 The editor has **three tabs**, each managing a different layer of game data:
 
 1. **Map Editor** — paint hexes, place resources/structures, set elevation
-2. **Resource Editor** — define resource types (reads/writes `data/resources/*.tres`)
+2. **Resource Editor** — define resource types (reads/writes `data/props/*.tres`)
 3. **Biome Editor** — define biomes and their resource tables (reads/writes `data/biomes/*.tres`)
 
 All three are interconnected: creating a resource in the Resource Editor makes it available in the Map Editor palette. Editing a biome's color in the Biome Editor updates the map canvas immediately.
@@ -113,7 +113,7 @@ On export, check:
 
 ## Tab 2: Resource Editor
 
-Manages `data/resources/*.tres` files. Each resource is a `PropDef` with:
+Manages `data/props/*.tres` files. Each resource is a `PropDef` with:
 
 | Field | Type | Example |
 |-------|------|---------|
@@ -229,7 +229,7 @@ The editor parses these on load and serializes back on save. Key rules:
 
 On startup, the editor asks the user to select the **Farhaven project root** (the folder containing `data/`, `scripts/`, `project.godot`). From there:
 - Maps: `data/maps/*.json`
-- Resources: `data/resources/*.tres`
+- Resources: `data/props/*.tres`
 - Biomes: `data/biomes/*.tres`
 
 All file handles are retained via File System Access API for direct save.

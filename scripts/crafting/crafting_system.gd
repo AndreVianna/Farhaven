@@ -12,20 +12,22 @@ signal craft_completed(recipe_name: StringName)
 signal craft_failed(recipe_name: StringName, reason: StringName)
 signal station_proximity_changed(near: bool)
 
+## Recipes reference INVENTORY item IDs (semantic names set by PropDef.yield_type),
+## not prop type IDs. E.g. gathering prop "00001" (Small Tree) yields "wood" in inventory.
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"00005": 2, &"00001": 1 },
+		"ingredients": { &"wood": 2, &"stone": 1 },
 		"output_type": &"tool",
 		"tool_slot": &"axe",
-		"discovery_material": &"00005",
+		"discovery_material": &"stone",
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"00001": 3, &"00005": 2 },
+		"ingredients": { &"wood": 3, &"stone": 2 },
 		"output_type": &"tool",
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"00005",
+		"discovery_material": &"stone",
 		"requires_station": &"",
 		"pre_discovered": true,
 	},

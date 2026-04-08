@@ -200,6 +200,12 @@ func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
+	# Only remove light source if the destroyed structure was actually a light-emitter
+	if not PropRegistry.has_def(structure_type):
+		return
+	var def: Resource = PropRegistry.get_def(structure_type)
+	if not def.emits_light:
+		return
 	if _light_sources.has(coords):
 		_light_sources.erase(coords)
 		if current_phase == TimePhase.NIGHT:

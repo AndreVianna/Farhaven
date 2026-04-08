@@ -16,22 +16,26 @@ var _biome_id_to_int: Dictionary = {}  # biome_id (String) -> int (HexTile.Biome
 
 func _init(grid: Node) -> void:
 	_grid = grid
-	# Discover biome .tres files from data/biomes/ directory
+	# Discover biome .tres files from data/biomes/ directory.
+	# Collect filenames first, then sort for deterministic ordering across
+	# platforms/filesystems. Must match HexGridRenderer's sort order.
+	var biome_files: Array[String] = []
 	var dir := DirAccess.open("res://data/biomes")
 	if dir:
 		dir.list_dir_begin()
-		var idx: int = 0
 		var fname := dir.get_next()
 		while fname != "":
 			if fname.ends_with(".tres"):
-				var biome_id: String = fname.get_basename()
-				var res: Resource = load("res://data/biomes/" + fname)
-				if res != null:
-					_biome_data[biome_id] = res
-					_biome_id_to_int[biome_id] = idx
-					idx += 1
+				biome_files.append(fname)
 			fname = dir.get_next()
 		dir.list_dir_end()
+	biome_files.sort()
+	for i: int in range(biome_files.size()):
+		var biome_id: String = biome_files[i].get_basename()
+		var res: Resource = load("res://data/biomes/" + biome_files[i])
+		if res != null:
+			_biome_data[biome_id] = res
+			_biome_id_to_int[biome_id] = i
 
 
 ## Load map from path. Returns true on success.

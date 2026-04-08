@@ -31,7 +31,12 @@ All world objects fall into 4 categories. This is the authoritative reference.
 | FaunaRenderer | Entity | 005 | ~3-10 | Individual Node3D per fauna |
 | DecorationRenderer | Decoration | post-MVP | TBD | MultiMesh scatter |
 
-**PropRenderer (delivery-002) is replaced by PropRenderer (delivery-003).** PropRenderer used generic cubes per category (flora/fauna/mineral/anomaly). PropRenderer uses specific meshes per resource type (tree/rock/bush/etc.) — strictly better. PropRenderer to be deleted when PropRenderer is implemented.
+**Historical note on the Renderer rename.** The original `ResourceRenderer`
+(delivery-002) used generic cubes per category (flora/fauna/mineral/anomaly).
+It was replaced by `PropRenderer` (delivery-003), which uses specific meshes
+per prop type (tree/rock/bush/etc.) — strictly better. Both classes have
+since been unified under the `PropRenderer` name as part of the
+resource→prop terminology migration.
 
 ## Collision Architecture
 

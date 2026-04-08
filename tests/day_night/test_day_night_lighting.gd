@@ -105,44 +105,44 @@ func test_lighting_applied_ambient_energy_on_register() -> void:
 
 # --- Torch tile tracking ---
 
-func test_torch_tiles_initially_empty() -> void:
-	assert_int(_dnc._torch_tiles.size()).is_equal(0)
+func test_light_sources_initially_empty() -> void:
+	assert_int(_dnc._light_sources.size()).is_equal(0)
 
 
-func test_structure_placed_torch_adds_to_torch_tiles() -> void:
+func test_structure_placed_torch_adds_to_light_sources() -> void:
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._torch_tiles.size()).is_equal(1)
-	assert_bool(_dnc._torch_tiles.has(Vector2i(1, 2))).is_true()
+	assert_int(_dnc._light_sources.size()).is_equal(1)
+	assert_bool(_dnc._light_sources.has(Vector2i(1, 2))).is_true()
 
 
 func test_structure_placed_non_torch_ignored() -> void:
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00102")
-	assert_int(_dnc._torch_tiles.size()).is_equal(0)
+	assert_int(_dnc._light_sources.size()).is_equal(0)
 
 
 func test_structure_placed_torch_no_duplicate() -> void:
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._torch_tiles.size()).is_equal(1)
+	assert_int(_dnc._light_sources.size()).is_equal(1)
 
 
-func test_structure_destroyed_torch_removes_from_torch_tiles() -> void:
+func test_structure_destroyed_torch_removes_from_light_sources() -> void:
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
 	_dnc._on_structure_destroyed(Vector2i(1, 2), &"00103")
-	assert_int(_dnc._torch_tiles.size()).is_equal(0)
+	assert_int(_dnc._light_sources.size()).is_equal(0)
 
 
 func test_structure_destroyed_non_torch_ignored() -> void:
 	_dnc._on_structure_placed(Vector2i(1, 2), &"00103")
 	_dnc._on_structure_destroyed(Vector2i(1, 2), &"00102")
-	assert_int(_dnc._torch_tiles.size()).is_equal(1)
+	assert_int(_dnc._light_sources.size()).is_equal(1)
 
 
-func test_multiple_torch_tiles_tracked() -> void:
+func test_multiple_light_sources_tracked() -> void:
 	_dnc._on_structure_placed(Vector2i(0, 0), &"00103")
 	_dnc._on_structure_placed(Vector2i(1, 0), &"00103")
 	_dnc._on_structure_placed(Vector2i(2, 1), &"00103")
-	assert_int(_dnc._torch_tiles.size()).is_equal(3)
+	assert_int(_dnc._light_sources.size()).is_equal(3)
 
 
 # --- phase_to_string helper ---

@@ -298,7 +298,11 @@ func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	if _respawn_tile == coords:
+	# Only clear respawn if the destroyed structure was actually a respawn point
+	if not PropRegistry.has_def(structure_type):
+		return
+	var def: Resource = PropRegistry.get_def(structure_type)
+	if def.is_respawn_point and _respawn_tile == coords:
 		_respawn_tile = Vector2i.ZERO
 
 

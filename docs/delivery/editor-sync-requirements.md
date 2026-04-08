@@ -201,7 +201,7 @@ informational only. Low priority.
 | `scripts/hex/hex_grid.gd` | `WALK_MAX_DIFF=2`, `JUMP_MAX_DIFF=4`, traversal logic |
 | `scripts/hex/prop.gd` | Prop resource class (category, origin, type, etc.) |
 | `scripts/hex/map_loader.gd` | Map JSON parser, elevation clamp, prop loading |
-| `data/resources/*.tres` | PropDef files with tool_required, respawn, yields |
+| `data/props/*.tres` | PropDef files with tool_required, respawn, yields |
 | `.aid/knowledge/data-model.md` | Data model documentation |
 
 ---
