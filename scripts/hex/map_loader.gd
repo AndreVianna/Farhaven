@@ -158,7 +158,7 @@ func _get_prop_defaults(type: StringName, biome_int: int) -> Array:
 	var max_amount: int = 3
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:
-		for entry_data in bd.resource_table:
+		for entry_data in bd.prop_table:
 			if StringName(entry_data.get("type", "")) == type:
 				max_amount = int(entry_data.get("max_amount", 3))
 				remaining = max_amount
@@ -174,7 +174,7 @@ func _make_prop(type: StringName, biome_int: int) -> Resource:
 
 	var bd: Resource = _biome_data.get(biome_int, null)
 	if bd != null:
-		for entry_data in bd.resource_table:
+		for entry_data in bd.prop_table:
 			if StringName(entry_data.get("type", "")) == type:
 				max_amount = int(entry_data.get("max_amount", 3))
 				remaining = max_amount

@@ -310,7 +310,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Source:** `scripts/data/prop_def.gd`
 
 ### BiomeData (Resource)
-- **Properties:** biome_name, elevation_range, resource_table, color, color_variations
+- **Properties:** biome_name, elevation_range, prop_table, color, color_variations
 - **Source:** `scripts/hex/biome_data.gd`
 
 ### CatalogEntry (Resource)

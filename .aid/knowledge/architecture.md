@@ -34,7 +34,7 @@ Farhaven/
 |   +-- biomes/         # BiomeData .tres (5 biomes: crash_site, grassland, forest, rocky, water)
 |   +-- catalog/        # CatalogEntry .tres (anomalies, fauna, flora, minerals)
 |   +-- maps/           # Hand-designed map JSON (ch1.json)
-|   +-- resources/      # PropDef .tres (9 files: wood, stone, berries, etc.)
+|   +-- props/         # PropDef .tres (~28 files: source props, items, structures, tools, consumables)
 +-- shaders/           # GLSL shaders (3: hex_tile, icon_billboard, scan_progress)
 +-- tests/             # gdUnit4 test suites (23 .gd files)
 |   +-- integration/    # 3 delivery-level integration tests
@@ -68,7 +68,7 @@ There is also a clear **data/presentation separation:**
 ## Module Boundaries
 
 ### hex/ -- Hex Grid Core
-- **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, prop_node.gd
+- **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, prop.gd
 - **Responsibility:** Map data model, coordinate math, tile queries, fog of war, traversal rules, serialization
 - **Dependencies:** None (self-contained)
 - **Consumers:** Every other module reads from HexGrid autoload

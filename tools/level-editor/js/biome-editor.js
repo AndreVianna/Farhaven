@@ -19,7 +19,7 @@ export class BiomeDataModel {
     /** @type {{ min: number, max: number }} From Vector2i(min, max) */
     this.elevation_range = { min: -32000, max: 32000 };
     /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
-    this.resource_table = [];
+    this.prop_table = [];
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
     /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
@@ -70,10 +70,10 @@ export class BiomeDataModel {
       };
     }
 
-    // resource_table: TresParser stores as TresValue[] (untyped array).
+    // prop_table: TresParser stores as TresValue[] (untyped array).
     // Each element is a TresValue { type: 'dict', value: Map<string, TresValue> }.
-    if (Array.isArray(d.resource_table)) {
-      model.resource_table = d.resource_table.map(tv => {
+    if (Array.isArray(d.prop_table)) {
+      model.prop_table = d.prop_table.map(tv => {
         // Each tv is a TresValue with type 'dict' and value as Map<string, TresValue>
         if (tv && tv.type === 'dict' && tv.value instanceof Map) {
           return _dictEntryToResourceRow(tv.value);
@@ -224,7 +224,7 @@ function _modelToPlain(model) {
   return {
     biome_name: model.biome_name,
     elevation_range: model.elevation_range,
-    resource_table: model.resource_table,
+    prop_table: model.prop_table,
     color: model.color,
     color_variations: model.color_variations,
   };
@@ -738,7 +738,7 @@ export function renderBiomeEditor(container, options) {
    */
   function _buildResourceTable(model, errorArea) {
     const tableWrapper = document.createElement('div');
-    tableWrapper.dataset.resourceTableContainer = 'true';
+    tableWrapper.dataset.propTableContainer = 'true';
 
     // Get known prop types from ProjectContext
     const knownProps = [];
@@ -853,7 +853,7 @@ export function renderBiomeEditor(container, options) {
     }
 
     // Populate existing entries
-    for (const entry of model.resource_table) {
+    for (const entry of model.prop_table) {
       addPropRow(entry);
     }
 
@@ -1056,7 +1056,7 @@ function _collectBiomeFormData(formElement) {
   }
 
   // Resource table
-  model.resource_table = [];
+  model.prop_table = [];
   const propRows = formElement.querySelectorAll('[data-prop-row]');
   for (const row of propRows) {
     const typeSelect = /** @type {HTMLSelectElement|null} */ (row.querySelector('[data-rt-type]'));
@@ -1065,7 +1065,7 @@ function _collectBiomeFormData(formElement) {
     const maxInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-max]'));
 
     if (typeSelect && chanceInput && minInput && maxInput) {
-      model.resource_table.push({
+      model.prop_table.push({
         type: typeSelect.value,
         chance: parseFloat(chanceInput.value) || 0,
         min_amount: parseInt(minInput.value, 10) || 0,
@@ -1114,8 +1114,8 @@ function _validateBiomeForm(model, isNew) {
   }
 
   // Resource table validation
-  for (let i = 0; i < model.resource_table.length; i++) {
-    const entry = model.resource_table[i];
+  for (let i = 0; i < model.prop_table.length; i++) {
+    const entry = model.prop_table[i];
     if (entry.chance < 0 || entry.chance > 1) {
       errors.push(`Resource row ${i + 1}: Chance must be between 0.0 and 1.0`);
     }
@@ -1170,9 +1170,9 @@ export function biomeModelToRaw(model) {
   // elevation_range: Vector2i
   fields.set('elevation_range', { type: 'vector2i', value: { x: model.elevation_range.min, y: model.elevation_range.max } });
 
-  // resource_table: untyped array of dicts
+  // prop_table: untyped array of dicts
   // Each dict has string keys: "chance", "max_amount", "min_amount", "type"
-  const resourceTableEntries = model.resource_table.map(entry => {
+  const propTableEntries = model.prop_table.map(entry => {
     const dictMap = new Map();
     // Alphabetical key order to match Godot's output
     dictMap.set('chance', { type: 'float', value: entry.chance });
@@ -1181,7 +1181,7 @@ export function biomeModelToRaw(model) {
     dictMap.set('type', { type: 'string', value: entry.type });
     return { type: 'dict', value: dictMap, keyStyle: 'string', braceSpaces: false };
   });
-  fields.set('resource_table', { type: 'array', value: resourceTableEntries, elementType: null });
+  fields.set('prop_table', { type: 'array', value: propTableEntries, elementType: null });
 
   // color: Color
   fields.set('color', {

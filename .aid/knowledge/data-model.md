@@ -86,7 +86,7 @@ Godot Resource defining per-biome configuration.
 |-------|------|---------|-------------|-------|
 | biome_name | String | "" | Display name | e.g. "Crash Site", "Forest" |
 | elevation_range | Vector2i | (0,0) | Min/max elevation | Currently all set to (0,9) |
-| resource_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
+| prop_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
 | color | Color | WHITE | Base biome color | Used for terrain rendering |
 | color_variations | Array[Color] | [] | 3 color variants per biome | Hash-selected per tile for visual variety |
 
@@ -249,8 +249,8 @@ Source: `data/maps/ch1.json`, `scripts/hex/map_loader.gd`
 - e.g. wood -> wood_tree, stone -> stone_deposit, berries -> berry_bush
 - Source: `scripts/data/prop_def.gd` (catalog_entry field), `data/catalog/*.tres`
 
-### BiomeData -> PropDef (1:many via resource_table)
-- BiomeData.resource_table contains {type: string} entries referencing resource types
+### BiomeData -> PropDef (1:many via prop_table)
+- BiomeData.prop_table contains {type: string} entries referencing resource types
 - Used by MapLoader to set max_amount on PropNodes
 - Source: `scripts/hex/biome_data.gd`, `data/biomes/*.tres`
 

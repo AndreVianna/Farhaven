@@ -6,6 +6,6 @@
 script = ExtResource("1_biome")
 biome_name = "Grassland"
 elevation_range = Vector2i(0, 32000)
-resource_table = [{"chance": 0.5, "max_amount": 4, "min_amount": 1, "type": "00002"}, {"chance": 0.6, "max_amount": 4, "min_amount": 1, "type": "00003"}, {"chance": 0.3, "max_amount": 3, "min_amount": 1, "type": "00001"}]
+prop_table = [{"chance": 0.5, "max_amount": 4, "min_amount": 1, "type": "00002"}, {"chance": 0.6, "max_amount": 4, "min_amount": 1, "type": "00003"}, {"chance": 0.3, "max_amount": 3, "min_amount": 1, "type": "00001"}]
 color = Color(0.4, 0.7490196078431373, 0.30196078431372547, 1.0)
 color_variations = [Color(0.48627450980392156, 0.7333333333333333, 0.19607843137254902, 1.0), Color(0.4196078431372549, 0.5568627450980392, 0.13725490196078433, 1.0), Color(0.0, 0.792156862745098, 0.3843137254901961, 1.0)]

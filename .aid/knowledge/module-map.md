@@ -26,10 +26,10 @@
 - **Key Files:**
   - `hex_grid.gd` -- autoload singleton, tile dictionary, signals, traversal, fog of war, serialization (220 lines)
   - `hex_math.gd` -- pure static math: axial/cube conversions, distance, neighbors, ring, range (92 lines)
-  - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, fog state, structure, prop_nodes, anomaly (26 lines)
+  - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, props (unified) (26 lines)
   - `map_loader.gd` -- loads JSON maps, creates tiles, validates reachability (193 lines)
-  - `biome_data.gd` -- per-biome config resource: color, resource_table, elevation_range (11 lines)
-  - `prop_node.gd` -- per-tile resource instance: type, remaining, max_amount, tool_required, respawn_time, offset, rotation (10 lines)
+  - `biome_data.gd` -- per-biome config resource: color, prop_table, elevation_range (11 lines)
+  - `prop.gd` -- per-tile prop instance: type, category, origin, remaining, max_amount, tool_required, respawn_time, sub_hex, rotation, blocks_movement (replaces deprecated prop_node.gd)
 
 ## Data Layer
 - **Path:** `scripts/data/`
@@ -84,7 +84,7 @@
 - **Purpose:** Proximity-based automatic resource gathering, auto-defend (stub), auto-pickup (stub). Continuously checks player position against nearby resources within GATHER_RADIUS (0.75 world units). Handles tool gating, catalog gating, gather timing via tweens, resource depletion, and respawn queue.
 - **Size:** 1 file, 409 lines
 - **Dependencies:**
-  - Internal: `inventory/inventory.gd`, `hex/prop_node.gd`, `hex/hex_tile.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, `hex/hex_math.gd`, PropRegistry autoload, HexGrid autoload
+  - Internal: `inventory/inventory.gd`, `hex/prop.gd`, `hex/hex_tile.gd`, `scanner/catalog.gd`, `rendering/prop_utils.gd`, `hex/hex_math.gd`, PropRegistry autoload, HexGrid autoload
   - External: Godot Node, Tween
 - **Test Coverage:** `test_auto_gather.gd` (781 lines), `test_auto_interaction_stubs.gd` (639 lines), `test_auto_interaction_system.gd` (235 lines)
 - **Key Files:**
@@ -187,7 +187,7 @@
   - `maps/ch1.json` -- Chapter 1 hand-designed map (~250 tiles with biomes, elevations, resources, structures, anomalies)
   - `biomes/*.tres` -- 5 biome configs (crash_site, forest, grassland, rocky, water) with colors and resource tables
   - `catalog/*.tres` -- 4 catalog files (flora: 4 entries, fauna: 1 entry, minerals: 4 entries, anomalies: 1 entry)
-  - `resources/*.tres` -- 9 resource definitions (wood, stone, berries, toxic_berries, fiber, ore, crystal, loose_rock, anomaly_fragment)
+  - `props/*.tres` -- ~28 prop definitions (source props 00001-00008, items 00010-00015, consumables 00020-00022, structures 00101-00105, tools 00201-00205)
 
 ## Tests
 - **Path:** `tests/`
