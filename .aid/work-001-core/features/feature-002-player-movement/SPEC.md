@@ -1,5 +1,7 @@
 # Player Movement & Controls
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the fog-of-war removal. References to `refresh_visibility` and fog-related signals have been removed from HexGrid — movement no longer triggers a fog refresh. See `.aid/knowledge/api-contracts.md` for the current HexGrid API. The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |

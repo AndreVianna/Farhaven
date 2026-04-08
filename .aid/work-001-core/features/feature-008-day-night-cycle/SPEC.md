@@ -1,5 +1,7 @@
 # Day/Night Cycle & Save System
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the fog-of-war removal. The original design had DayNightCycle owning all `refresh_visibility` calls; that ownership no longer exists because fog was removed entirely. DayNightCycle now owns phase transitions + lighting tweens only, and the full lighting implementation is deferred to delivery-005a. See `.aid/knowledge/api-contracts.md` and `.aid/work-001-core/delivery-005a/DETAIL.md` for the current scope. The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |

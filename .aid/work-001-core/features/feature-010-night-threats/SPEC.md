@@ -1,5 +1,7 @@
 # Night Threats
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the fog-of-war removal. Any references to fog state or visibility-gated threat behavior should be read in light of the current design where threats are gated by phase + local lighting (delivery-005a) rather than fog state. See `.aid/knowledge/api-contracts.md` for current HexGrid signals. The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |

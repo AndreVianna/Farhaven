@@ -1,5 +1,7 @@
 # Hex Grid & World Generation
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the PR#10 unified-props refactor and the fog-of-war removal. References below to `fog_state`, `FogState` enum, `tile_revealed`, `tile_visibility_changed`, `refresh_visibility`, `resource_depleted`, `resource_respawned`, and `tile_contents_changed` have been replaced by the unified `Prop` resource (with `Category` + `footprint`) and the renamed `prop_depleted` / `prop_respawned` signals — see `.aid/knowledge/api-contracts.md` and `.aid/knowledge/data-model.md` for the current schema. The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |

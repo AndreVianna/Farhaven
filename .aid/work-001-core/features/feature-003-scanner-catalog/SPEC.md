@@ -1,5 +1,7 @@
 # Scanner & Catalog System
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the fog-of-war removal and the PR#10 unified-props refactor. References to `tile_revealed`, `tile_visibility_changed`, and `fog_state` are no longer accurate — ScannerSystem now listens only to `HexGrid.map_generated` for bootstrap. See `.aid/knowledge/api-contracts.md` for the current ScannerSystem API. The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |

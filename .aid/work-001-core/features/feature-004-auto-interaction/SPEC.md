@@ -1,5 +1,7 @@
 # Auto-Interaction System
 
+> **SUPERSEDED NOTE (2026-04-08):** This feature spec predates the PR#10 unified-props refactor and the fog-of-war removal. References to `resource_depleted`, `resource_respawned`, `fog_state`, and visibility signals have been replaced by `prop_depleted` / `prop_respawned` operating on unified `Prop` resources; auto-gather no longer gates on fog state. See `.aid/knowledge/api-contracts.md` for the current AutoInteractionSystem API and `auto_gather_failed` reason variants (`&"tool_required"`, `&"inventory_full"`). The historical plan is preserved as-is; do not rewrite.
+
 ## Change Log
 
 | Date | Change | Source |
