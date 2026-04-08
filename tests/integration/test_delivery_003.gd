@@ -505,7 +505,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	# Add a workbench neighbor for crafting
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Position player at the ore prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -593,7 +593,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 
 	# Workbench adjacent
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -806,7 +806,7 @@ func test_craft_succeeds_without_workbench() -> void:
 	_inventory.add_item(&"stone", 2)
 	_inventory.add_item(&"wood", 3)
 
-	# Not near workbench — but requires_workbench is false for current recipes
+	# Not near workbench — but requires_station is false for current recipes
 	_crafting._check_station_proximity()
 	assert_bool(_crafting.is_near_station()).is_false()
 
@@ -817,7 +817,7 @@ func test_craft_succeeds_without_workbench() -> void:
 
 	var result: bool = _crafting.craft(&"stone_pickaxe")
 	assert_bool(result).override_failure_message(
-		"Craft must succeed without workbench when requires_workbench is false"
+		"Craft must succeed without workbench when requires_station is false"
 	).is_true()
 	assert_int(completed.size()).is_equal(1)
 	assert_str(completed[0]).is_equal("stone_pickaxe")
@@ -833,7 +833,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -871,7 +871,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -1006,7 +1006,7 @@ func test_workbench_proximity_signal_on_change() -> void:
 
 	# Add workbench neighbor
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 
 	_crafting._check_station_proximity()
@@ -1067,7 +1067,7 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"stone", 3)
 	_grid._tiles[Vector2i(0, 1)] = _make_tile(&"ore", 3, &"stone_pickaxe")
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"workbench")]
+	wb_tile.props = [_Prop.create_structure(&"00105")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Extra wood tile for crafting materials
 	_grid._tiles[Vector2i(0, -1)] = _make_tile(&"wood", 5)

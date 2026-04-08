@@ -94,7 +94,7 @@ func after_test() -> void:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.props = [_Prop.create_structure(&"workbench")]
+	tile.props = [_Prop.create_structure(&"00105")]
 	_grid.set_tile(coords, tile)
 
 
@@ -232,7 +232,7 @@ func test_craft_fails_already_owned() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	_give_materials_for_axe()
 	_inv.set_tool(&"axe", &"stone_axe")
@@ -244,7 +244,7 @@ func test_craft_already_owned_emits_reason() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	_give_materials_for_axe()
 	_inv.set_tool(&"axe", &"stone_axe")
@@ -260,7 +260,7 @@ func test_craft_already_owned_does_not_consume() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	_give_materials_for_axe()
 	_inv.set_tool(&"axe", &"stone_axe")
@@ -274,7 +274,7 @@ func test_craft_fails_insufficient_materials() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)  # discover + 1 stone, but need wood too
 	var result: bool = _sys.craft(&"stone_axe")
 	assert_bool(result).is_false()
@@ -284,7 +284,7 @@ func test_craft_insufficient_emits_reason() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	var fired: Array = []
 	_sys.craft_failed.connect(func(name: StringName, reason: StringName) -> void:
@@ -300,7 +300,7 @@ func test_craft_stone_axe_succeeds() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)  # discover
 	_give_materials_for_axe()
 	var result: bool = _sys.craft(&"stone_axe")
@@ -311,7 +311,7 @@ func test_craft_consumes_ingredients() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)  # triggers discovery (1 stone now)
 	_give_materials_for_axe()   # adds 2 wood + 1 stone (total: 2 wood, 2 stone)
 	_sys.craft(&"stone_axe")    # consumes 2 wood + 1 stone
@@ -323,7 +323,7 @@ func test_craft_sets_tool() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	_give_materials_for_axe()
 	_sys.craft(&"stone_axe")
@@ -334,7 +334,7 @@ func test_craft_emits_completed() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 1)
 	_give_materials_for_axe()
 	var fired: Array = []
@@ -350,7 +350,7 @@ func test_craft_stone_pickaxe_succeeds() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	_inv.add_item(&"stone", 2)  # discover + ingredients
 	_inv.add_item(&"wood", 3)
 	_sys.craft(&"stone_pickaxe")
@@ -371,42 +371,42 @@ func test_craft_unknown_recipe_fails() -> void:
 # === WORKBENCH PROXIMITY ===
 
 func test_not_near_workbench_initially() -> void:
-	assert_bool(_sys.is_near_workbench()).is_false()
+	assert_bool(_sys.is_near_station()).is_false()
 
 
 func test_near_workbench_on_neighbor() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
-	assert_bool(_sys.is_near_workbench()).is_true()
+	_sys._check_station_proximity()
+	assert_bool(_sys.is_near_station()).is_true()
 
 
 func test_near_workbench_on_player_tile() -> void:
 	_place_workbench(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
-	assert_bool(_sys.is_near_workbench()).is_true()
+	_sys._check_station_proximity()
+	assert_bool(_sys.is_near_station()).is_true()
 
 
 func test_not_near_workbench_when_far() -> void:
 	_place_workbench(Vector2i(3, 3))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
-	assert_bool(_sys.is_near_workbench()).is_false()
+	_sys._check_station_proximity()
+	assert_bool(_sys.is_near_station()).is_false()
 
 
 func test_proximity_changed_signal_fires() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()  # ensure starts false
+	_sys._check_station_proximity()  # ensure starts false
 	var fired: Array = []
-	_sys.workbench_proximity_changed.connect(func(near: bool) -> void:
+	_sys.station_proximity_changed.connect(func(near: bool) -> void:
 		fired.append(near)
 	)
 	_place_workbench(Vector2i(1, 0))
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	assert_int(fired.size()).is_equal(1)
 	assert_bool(fired[0]).is_true()
 
@@ -416,13 +416,13 @@ func test_proximity_changed_fires_false_on_leave() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_place_empty_tile(Vector2i(5, 5))
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()  # near = true
+	_sys._check_station_proximity()  # near = true
 	var fired: Array = []
-	_sys.workbench_proximity_changed.connect(func(near: bool) -> void:
+	_sys.station_proximity_changed.connect(func(near: bool) -> void:
 		fired.append(near)
 	)
 	_set_player_tile(Vector2i(5, 5))
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 	assert_int(fired.size()).is_equal(1)
 	assert_bool(fired[0]).is_false()
 
@@ -431,12 +431,12 @@ func test_proximity_does_not_fire_when_unchanged() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()  # near = true
+	_sys._check_station_proximity()  # near = true
 	var fired: Array = []
-	_sys.workbench_proximity_changed.connect(func(near: bool) -> void:
+	_sys.station_proximity_changed.connect(func(near: bool) -> void:
 		fired.append(near)
 	)
-	_sys._check_workbench_proximity()  # still near = true
+	_sys._check_station_proximity()  # still near = true
 	assert_int(fired.size()).is_equal(0)
 
 
@@ -445,30 +445,30 @@ func test_tile_entered_triggers_proximity_check() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
 	_grid.tile_entered.emit(Vector2i.ZERO)
-	assert_bool(_sys.is_near_workbench()).is_true()
+	assert_bool(_sys.is_near_station()).is_true()
 
 
 func test_structure_placed_triggers_proximity_check() -> void:
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
-	assert_bool(_sys.is_near_workbench()).is_false()
+	_sys._check_station_proximity()
+	assert_bool(_sys.is_near_station()).is_false()
 	_place_workbench(Vector2i(1, 0))
-	_grid.structure_placed.emit(Vector2i(1, 0), &"workbench")
-	assert_bool(_sys.is_near_workbench()).is_true()
+	_grid.structure_placed.emit(Vector2i(1, 0), &"00105")
+	assert_bool(_sys.is_near_station()).is_true()
 
 
 func test_structure_destroyed_triggers_proximity_check() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
-	assert_bool(_sys.is_near_workbench()).is_true()
+	_sys._check_station_proximity()
+	assert_bool(_sys.is_near_station()).is_true()
 	# Remove the workbench
 	var tile: Resource = _grid.get_tile(Vector2i(1, 0))
 	tile.props = []
-	_grid.structure_destroyed.emit(Vector2i(1, 0), &"workbench")
-	assert_bool(_sys.is_near_workbench()).is_false()
+	_grid.structure_destroyed.emit(Vector2i(1, 0), &"00105")
+	assert_bool(_sys.is_near_station()).is_false()
 
 
 # === SAVE / LOAD ===

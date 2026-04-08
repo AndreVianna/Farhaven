@@ -251,23 +251,26 @@ func test_visibility_day_radius_2_neighbors_visible() -> void:
 # Torch visibility during NIGHT
 # ===========================================================================
 
-func test_torch_visibility_radius_is_2() -> void:
-	assert_int(_DayNightCycle.TORCH_VISIBILITY_RADIUS).is_equal(2)
+func test_torch_light_radius_is_2() -> void:
+	# Torch light radius is now defined in data/props/00103.tres (torch)
+	var torch_def: PropDef = load("res://data/props/00103.tres")
+	assert_object(torch_def).is_not_null()
+	assert_int(torch_def.light_radius).is_equal(2)
 
 
 func test_torch_registered_via_structure_placed() -> void:
-	HexGrid.structure_placed.emit(Vector2i(3, 4), &"torch")
+	HexGrid.structure_placed.emit(Vector2i(3, 4), &"00103")
 	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_true()
 
 
 func test_torch_removed_via_structure_destroyed() -> void:
-	HexGrid.structure_placed.emit(Vector2i(3, 4), &"torch")
-	HexGrid.structure_destroyed.emit(Vector2i(3, 4), &"torch")
+	HexGrid.structure_placed.emit(Vector2i(3, 4), &"00103")
+	HexGrid.structure_destroyed.emit(Vector2i(3, 4), &"00103")
 	assert_bool(_dnc._light_sources.has(Vector2i(3, 4))).is_false()
 
 
 func test_non_torch_structure_not_tracked() -> void:
-	HexGrid.structure_placed.emit(Vector2i(5, 5), &"wall")
+	HexGrid.structure_placed.emit(Vector2i(5, 5), &"99999")
 	assert_int(_dnc._light_sources.size()).is_equal(0)
 
 
@@ -275,7 +278,7 @@ func test_torch_extends_visibility_during_night() -> void:
 	_build_small_grid()
 	_dnc._player_tile = Vector2i.ZERO
 	# Place torch at (2, 0)
-	HexGrid.structure_placed.emit(Vector2i(2, 0), &"torch")
+	HexGrid.structure_placed.emit(Vector2i(2, 0), &"00103")
 	# Advance to NIGHT
 	_simulate(120.0)
 	assert_int(_dnc.current_phase).is_equal(_DayNightCycle.TimePhase.NIGHT)
@@ -290,7 +293,7 @@ func test_torch_extends_visibility_during_night() -> void:
 func test_torch_not_included_in_visibility_during_day() -> void:
 	_build_small_grid()
 	_dnc._player_tile = Vector2i.ZERO
-	HexGrid.structure_placed.emit(Vector2i(3, 0), &"torch")
+	HexGrid.structure_placed.emit(Vector2i(3, 0), &"00103")
 	# During DAY: torch should not add extra visibility sources.
 	# Tile at distance 3 from player should not be visible (DAY radius is 2).
 	HexGrid.tile_entered.emit(Vector2i.ZERO)

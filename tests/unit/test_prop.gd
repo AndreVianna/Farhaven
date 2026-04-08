@@ -49,7 +49,7 @@ func test_prop_fields() -> void:
 
 func test_prop_structure_with_footprint() -> void:
 	var prop: Prop = PropClass.new()
-	prop.type = &"shelter"
+	prop.type = &"00102"
 	prop.category = Prop.Category.STRUCTURE
 	prop.footprint = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	prop.blocks_movement = true

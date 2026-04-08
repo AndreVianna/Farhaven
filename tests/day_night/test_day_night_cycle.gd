@@ -75,8 +75,12 @@ func test_visibility_radius_dawn() -> void:
 	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAWN]).is_equal(2)
 
 
-func test_torch_visibility_radius() -> void:
-	assert_int(_DayNightCycle.TORCH_VISIBILITY_RADIUS).is_equal(2)
+func test_torch_light_radius_from_prop_def() -> void:
+	# Torch light radius is now defined in data/props/00103.tres (torch)
+	var torch_def: PropDef = load("res://data/props/00103.tres")
+	assert_object(torch_def).is_not_null()
+	assert_bool(torch_def.emits_light).is_true()
+	assert_int(torch_def.light_radius).is_equal(2)
 
 
 # --- Phase transition: DAY → DUSK ---

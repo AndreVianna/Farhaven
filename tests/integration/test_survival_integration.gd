@@ -352,13 +352,13 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 
 
 func test_shelter_updates_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(4, 2), &"shelter")
+	_grid.structure_placed.emit(Vector2i(4, 2), &"00102")
 	assert_object(_ss._respawn_tile).is_equal(Vector2i(4, 2))
 
 
 func test_shelter_destroy_resets_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(4, 2), &"shelter")
-	_grid.structure_destroyed.emit(Vector2i(4, 2), &"shelter")
+	_grid.structure_placed.emit(Vector2i(4, 2), &"00102")
+	_grid.structure_destroyed.emit(Vector2i(4, 2), &"00102")
 	assert_object(_ss._respawn_tile).is_equal(Vector2i.ZERO)
 
 

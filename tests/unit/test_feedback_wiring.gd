@@ -24,7 +24,7 @@ class FakeCraftingSystem extends Node:
 	signal recipe_discovered(recipe_name: StringName)
 	signal craft_completed(recipe_name: StringName)
 	signal craft_failed(recipe_name: StringName, reason: StringName)
-	signal workbench_proximity_changed(near: bool)
+	signal station_proximity_changed(near: bool)
 
 
 class FakePlayer extends Node3D:

@@ -257,24 +257,24 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 
 func test_shelter_placed_updates_respawn_tile() -> void:
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 
 
 func test_shelter_destroyed_resets_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
-	_grid.structure_destroyed.emit(Vector2i(2, 3), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_destroyed.emit(Vector2i(2, 3), &"00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_non_shelter_structure_does_not_update_respawn() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"torch")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00103")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_destroy_different_shelter_does_not_reset() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
-	_grid.structure_destroyed.emit(Vector2i(5, 5), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_destroyed.emit(Vector2i(5, 5), &"00102")
 	# Different coords — should keep the original
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 

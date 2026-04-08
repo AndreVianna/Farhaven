@@ -75,7 +75,7 @@ class MockPlayer extends Node:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.props = [_Prop.create_structure(&"workbench")]
+	tile.props = [_Prop.create_structure(&"00105")]
 	_grid.set_tile(coords, tile)
 
 
@@ -94,7 +94,7 @@ func _make_near_workbench() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 
 
 func _discover_recipes() -> void:
