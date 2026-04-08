@@ -371,6 +371,8 @@ export class ToolManager {
     this.activeCategory = 'plant';
     /** @type {function(string):void|null} */
     this.onStatus = null;
+    /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */
+    this.canvas = null;
   }
 
   /**
@@ -380,6 +382,13 @@ export class ToolManager {
    * @returns {void}
    */
   setTool(toolType, value = null) {
+    // Clear prop/spawn selection when switching away from Select
+    if (this.activeToolType === ToolType.SELECT && toolType !== ToolType.SELECT) {
+      if (this.canvas) {
+        this.canvas.clearPropSelection();
+      }
+    }
+
     this.activeToolType = toolType;
     this.activeValue = value;
 
