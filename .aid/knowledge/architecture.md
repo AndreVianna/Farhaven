@@ -12,7 +12,7 @@ Single-player mobile game (portrait, 1080x1920). Monolithic Godot 4.6 project, n
 
 ```
 Farhaven/
-+-- scripts/           # Core game logic (32 .gd files), organized by system
++-- scripts/           # Core game logic (51 .gd files in scripts/ + ui/), organized by system
 |   +-- main.gd        # Bootstrap: loads map, wires all systems together
 |   +-- audio/          # Sound effects (gather ding, craft success)
 |   +-- auto_interaction/  # Proximity-based auto-gather, auto-defend, respawn queue
@@ -69,7 +69,7 @@ There is also a clear **data/presentation separation:**
 
 ### hex/ -- Hex Grid Core
 - **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, prop.gd
-- **Responsibility:** Map data model, coordinate math, tile queries, fog of war, traversal rules, serialization
+- **Responsibility:** Map data model, coordinate math, tile queries, traversal rules, serialization
 - **Dependencies:** None (self-contained)
 - **Consumers:** Every other module reads from HexGrid autoload
 
@@ -152,8 +152,7 @@ Touch input (PlayerInput._unhandled_input)
           -> JUMP/DROP: tween arc animation
           -> BLOCKED: slide along boundary
         -> _emit_tile_transition():
-          -> HexGrid.tile_exited(old) + tile_entered(new)
-          -> HexGrid.refresh_visibility() -> fog updates -> renderer rebuilds
+          -> HexGrid.tile_exited(old) + HexGrid.tile_entered(new)
           -> player_moved signal
 ```
 
@@ -172,7 +171,7 @@ AutoInteractionSystem._process() [throttled 0.1s]
       -> Resolve yield_type (e.g. loose_rock -> stone)
       -> Inventory.add_item()
       -> auto_gather_completed signal -> HUD floating text + fly-to-player VFX
-      -> If depleted: resource_depleted signal -> add to respawn queue
+      -> If depleted: prop_depleted signal -> add to respawn queue
       -> Chain: re-check for next nearby resource
 ```
 

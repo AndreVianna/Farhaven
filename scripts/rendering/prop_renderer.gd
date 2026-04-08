@@ -8,7 +8,6 @@ extends Node3D
 ## On prop_respawned: swap back to original mesh.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Constants ---
 

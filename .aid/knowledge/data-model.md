@@ -14,7 +14,6 @@ Godot Resource representing a single hex tile in the game world.
 | coords | Vector2i | (0,0) | Axial coordinates (q, r) | Primary key in HexGrid._tiles dictionary |
 | biome | Biome enum (int) | GRASSLAND (1) | 0-4 | CRASH_SITE=0, GRASSLAND=1, FOREST=2, ROCKY=3, WATER=4 |
 | elevation | int | 0 | -32000..32000 (clamped in MapLoader) | World Y = elevation * 0.5 |
-| fog_state | FogState enum (int) | HIDDEN (0) | 0-1 | HIDDEN=0, VISIBLE=1. Darkness handled by shader, not fog state. |
 | props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `prop_nodes`, `anomaly` fields. |
 
 **Deprecated fields (replaced by props[]):**
@@ -173,12 +172,19 @@ Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy
 **Root:**
 ```json
 {
-  "spawn": [0, 0],
+  "spawn": [tile_col, tile_row, sub_hex_q, sub_hex_r, facing_deg],
   "tiles": {
     "q,r": { ... }
   }
 }
 ```
+
+**Spawn format:** `[col, row, sub_hex_q, sub_hex_r, facing_deg]`
+- `col`, `row` — spawn tile axial coords (required; older maps may have only these two fields)
+- `sub_hex_q`, `sub_hex_r` — sub-hex offset within the spawn tile (optional, default 0)
+- `facing_deg` — initial facing in degrees, canvas convention: 0 = up/north, 90 = east (optional, default 0.0)
+
+Fields after the first two are optional; missing fields default to 0. `HexGrid` exposes them as `spawn_tile`, `spawn_sub_hex`, `spawn_facing_deg`.
 
 **Tile (new format — unified props):**
 ```json

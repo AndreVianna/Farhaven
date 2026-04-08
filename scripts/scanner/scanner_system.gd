@@ -10,7 +10,6 @@ class_name ScannerSystem
 ## when player leaves range (no grace period). One scan at a time, nearest first.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Scan duration per category (seconds) ---
 

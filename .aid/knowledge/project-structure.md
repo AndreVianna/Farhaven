@@ -41,7 +41,7 @@ Farhaven/
 |   +-- player/                    # Player scene
 |   +-- ui/                        # UI panel scenes
 |   +-- world/                     # World renderer scenes + scripts
-+-- scripts/                       # GDScript source (32 .gd files)
++-- scripts/                       # GDScript source (38 .gd files)
 |   +-- auto_interaction/          # Proximity-based auto-gather/scan
 |   +-- crafting/                  # Crafting system
 |   +-- hex/                       # Hex grid core (math, tiles, biomes, map loader)

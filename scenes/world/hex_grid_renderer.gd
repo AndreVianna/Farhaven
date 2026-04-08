@@ -51,7 +51,9 @@ func _ready() -> void:
 	# Discover biome .tres files from data/biomes/ directory
 	var biome_files: Array[String] = []
 	var dir := DirAccess.open("res://data/biomes")
-	if dir:
+	if dir == null:
+		push_warning("HexGridRenderer: cannot open 'res://data/biomes' — biome population skipped (error: %d)" % DirAccess.get_open_error())
+	else:
 		dir.list_dir_begin()
 		var fname := dir.get_next()
 		while fname != "":
@@ -62,7 +64,10 @@ func _ready() -> void:
 	biome_files.sort()
 	_biome_data.resize(biome_files.size())
 	for i: int in range(biome_files.size()):
-		_biome_data[i] = load("res://data/biomes/" + biome_files[i])
+		var bd_res: Resource = load("res://data/biomes/" + biome_files[i])
+		if bd_res == null:
+			push_warning("HexGridRenderer: failed to load biome '%s' — index %d left null" % [biome_files[i], i])
+		_biome_data[i] = bd_res
 
 	HexGrid.map_generated.connect(_on_map_generated)
 

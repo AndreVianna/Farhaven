@@ -6,10 +6,7 @@ class_name AutoInteractionSystem
 ## auto-gather flow (continuous world-space proximity, tween timer, chaining),
 ## respawn queue, auto-defend stub, and auto-pickup stub.
 
-const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _Prop = preload("res://scripts/hex/prop.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 # --- Signals ---

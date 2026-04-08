@@ -48,11 +48,11 @@ pointing/emulate_mouse_from_touch=true
 Inline array literals like `[{"key": value}]` create untyped `Array`. If a function expects `Array[Dictionary]`, you must declare the variable first:
 ```gdscript
 # Wrong — runtime type error
-grid.refresh_visibility([{"coords": pos, "radius": 2}])
+some_system.apply_overlays([{"coords": pos, "radius": 2}])
 
 # Correct
 var sources: Array[Dictionary] = [{"coords": pos, "radius": 2}]
-grid.refresh_visibility(sources)
+some_system.apply_overlays(sources)
 ```
 
 ### Scene tree wiring is not automatic
@@ -78,14 +78,9 @@ mesh = SubResource("box")
 
 ## Project-Specific Issues
 
-### Fog reveal ownership transition
-- **delivery-001:** Player._complete_tile_transition calls refresh_visibility directly (temporary)
-- **delivery-004:** DayNightCycle takes ownership of ALL refresh_visibility calls. Player's direct call must be removed and replaced with signal-driven refresh from DayNightCycle
-- **Risk:** If delivery-004 doesn't explicitly remove the player's direct call, fog will refresh twice per movement
-
 ### Autoload initialization order
 Godot processes autoloads in the order listed in project.godot. If systems depend on each other during _ready(), order matters:
 1. PropRegistry (no dependencies — scans data/props/ at startup, project.godot line 25)
 2. HexGrid (depends on PropRegistry for resource definitions, project.godot line 26)
-3. DayNightCycle (depends on HexGrid for visibility — stubbed)
-4. SaveManager (depends on all other systems for get_save_data — stubbed)
+3. DayNightCycle (registers hex/prop materials for lighting updates)
+4. SaveManager (depends on all other systems for get_save_data)

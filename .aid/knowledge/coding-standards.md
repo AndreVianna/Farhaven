@@ -28,19 +28,19 @@
 - Source: consistent across all 44 scripts
 
 ### Variables
-- **snake_case** for all variables: `current_tile`, `move_speed`, `fog_state`
+- **snake_case** for all variables: `current_tile`, `move_speed`, `spawn_facing_deg`
 - Private variables prefixed with underscore: `_tiles`, `_grid`, `_is_gathering`, `_gather_tween`
 - Constants in UPPER_SNAKE_CASE: `HEX_SIZE`, `WALK_MAX_DIFF`, `GATHER_RADIUS`, `MAX_INSTANCES`
 - Source: consistent across all scripts
 
 ### Signals
-- **snake_case** for signal names: `map_generated`, `tile_revealed`, `auto_gather_completed`
+- **snake_case** for signal names: `map_generated`, `tile_entered`, `auto_gather_completed`
 - Signal names describe the event in past tense or present state: `craft_completed`, `inventory_full`, `workbench_proximity_changed`
 - Source: all `signal` declarations in `scripts/`
 
 ### Enums
-- **PascalCase** for enum names, **UPPER_SNAKE_CASE** for enum values: `Biome.CRASH_SITE`, `FogState.HIDDEN`, `TraversalType.WALK`, `MoveState.IDLE`
-- Source: `hex_tile.gd`, `hex_grid.gd`, `player.gd`, `player_input.gd`
+- **PascalCase** for enum names, **UPPER_SNAKE_CASE** for enum values: `Biome.CRASH_SITE`, `Prop.Origin.NATURAL`, `HexGrid.TraversalType.WALK`, `MoveState.IDLE`
+- Source: `hex_tile.gd`, `hex_grid.gd`, `prop.gd`, `player.gd`, `player_input.gd`
 
 ### StringName Identifiers
 - Resource types, tool names, structure names, and slot names use StringName literals: `&"wood"`, `&"stone_axe"`, `&"workbench"`, `&"axe"`
@@ -177,7 +177,7 @@
 
 ### Signal-Driven Architecture
 - Systems communicate via Godot signals, not direct method calls
-- HexGrid emits core events: `map_generated`, `tile_revealed`, `tile_visibility_changed`, `tile_entered`, `tile_exited`, `resource_depleted`, `resource_respawned`, `structure_placed`, `structure_destroyed`
+- HexGrid emits core events: `map_generated`, `tile_entered`, `tile_exited`, `prop_depleted`, `prop_respawned`, `structure_placed`, `structure_destroyed`
 - Renderers subscribe to HexGrid signals and react independently
 - HUD connects to subsystem signals via `connect_*` methods
 - Source: all signal declarations and connections

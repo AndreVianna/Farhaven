@@ -1,5 +1,7 @@
 # delivery-001: Foundation — Walk the World
 
+> **SUPERSEDED NOTE (2026-04-08):** This delivery snapshot predates the PR#10 unified-props refactor and the fog-of-war removal. Specific field names referenced below (`fog_state`, `structure`, `prop_nodes`, `anomaly`) have been superseded by the unified `Prop` resource with `category` + `footprint` — see `.aid/knowledge/data-model.md` for the current schema. The historical plan is preserved as-is; do not rewrite.
+
 **Status:** Approved
 **Created:** 2026-03-31
 **Features:** feature-001-hex-grid, feature-002-player-movement, feature-012-hud

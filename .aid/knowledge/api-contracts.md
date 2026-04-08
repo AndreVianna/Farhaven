@@ -24,13 +24,10 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Purpose:** Central map container and public API for all hex grid operations. All cross-feature interaction with the hex grid goes through this node.
 - **Signals:**
   - `map_generated()` -- emitted after MapLoader finishes loading a map
-  - `tile_revealed(coords: Vector2i)` -- HIDDEN to non-HIDDEN transition
-  - `tile_visibility_changed(coords: Vector2i, state: int)` -- any fog state change
   - `tile_entered(coords: Vector2i)` -- player entered a tile
   - `tile_exited(coords: Vector2i)` -- player exited a tile
-  - `resource_depleted(coords: Vector2i, resource_type: StringName)` -- resource node exhausted
-  - `resource_respawned(coords: Vector2i, resource_type: StringName)` -- resource node regenerated
-  - `tile_contents_changed(coords: Vector2i)` -- generic content change
+  - `prop_depleted(coords: Vector2i, prop_type: StringName)` -- prop (resource node) exhausted
+  - `prop_respawned(coords: Vector2i, prop_type: StringName)` -- prop regenerated
   - `structure_placed(coords: Vector2i, structure_type: StringName)` -- structure built
   - `structure_destroyed(coords: Vector2i, structure_type: StringName)` -- structure removed
 - **Public Methods:**
@@ -41,7 +38,6 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
   - `is_passable(from: Vector2i, to: Vector2i) -> bool` -- traversability check
   - `get_traversal(from: Vector2i, to: Vector2i) -> int` -- TraversalType enum (WALK/JUMP/DROP/BLOCKED)
   - `get_elevation_diff(from: Vector2i, to: Vector2i) -> int` -- absolute elevation difference
-  - `refresh_visibility(sources: Array[Dictionary]) -> Array[Vector2i]` -- fog of war update
   - `axial_to_world(coords: Vector2i) -> Vector2` -- coordinate conversion
   - `world_to_axial(world_pos: Vector2) -> Vector2i` -- coordinate conversion
   - `axial_to_cube(coords: Vector2i) -> Vector3i` -- coordinate conversion
@@ -180,7 +176,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
   - `bootstrap_visible() -> void` -- initial tile identification after map load
   - `on_fauna_attacked_player(fauna_id, damage, species_type: StringName)` -- surprise catalog
   - `on_fauna_fled(fauna_id, species_type: StringName)` -- passive fauna encounter
-- **Listens to:** HexGrid.tile_revealed, HexGrid.tile_visibility_changed
+- **Listens to:** HexGrid.map_generated (bootstrap only)
 - **Source:** `scripts/scanner/scanner_system.gd`
 
 ### Catalog (RefCounted)
@@ -210,11 +206,13 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ### AutoInteractionSystem (Node)
 - **Purpose:** Proximity-based auto-gather, auto-defend stub, auto-pickup stub, respawn queue
 - **Signals:**
-  - `auto_gather_started(coords: Vector2i, resource_type: StringName)`
-  - `auto_gather_completed(coords: Vector2i, resource_type: StringName, amount: int)`
-  - `auto_gather_failed(coords: Vector2i, reason: StringName)` -- reasons: inventory_full
+  - `auto_gather_started(coords: Vector2i, prop_type: StringName)`
+  - `auto_gather_completed(coords: Vector2i, prop_type: StringName, amount: int)`
+  - `auto_gather_failed(coords: Vector2i, reason: StringName)` -- reason variants:
+    - `&"tool_required"` -- player is within range of a cataloged prop but lacks the required tool slot
+    - `&"inventory_full"` -- gather completed but the yield couldn't be added
   - `auto_defend_triggered(fauna_id: int, damage: int)`
-  - `ground_item_picked_up(item_name: StringName, amount: int)`
+  - `ground_item_picked_up(item_name: StringName, amount: int)` -- NOTE: distinct from `SurvivalSystem.ground_item_picked_up(tile, item_type, count, sub_hex)`; they fire in different layers
 - **Public Methods:**
   - `can_gather(node: Resource, inventory: RefCounted) -> bool` -- tool gate check
 - **Constants:**
@@ -264,22 +262,22 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Rendering APIs
 
 ### HexGridRenderer (Node3D)
-- **Purpose:** Single-draw-call ArrayMesh for entire hex terrain with vertex color blending and fog
+- **Purpose:** Single-draw-call ArrayMesh for entire hex terrain with vertex color blending
 - **Public Methods:**
   - `highlight_tiles(coords: Array[Vector2i], color: Color)` -- building placement preview
   - `clear_highlights()`
-- **Listens to:** HexGrid.map_generated, HexGrid.tile_revealed, HexGrid.tile_visibility_changed
+- **Listens to:** HexGrid.map_generated
 - **Source:** `scenes/world/hex_grid_renderer.gd`
 
 ### PropRenderer (Node3D)
 - **Purpose:** MultiMesh pools for 3D resource props, one pool per PropDef
-- **Listens to:** HexGrid.map_generated, HexGrid.tile_visibility_changed, HexGrid.resource_depleted, HexGrid.resource_respawned
+- **Listens to:** HexGrid.map_generated, HexGrid.prop_depleted, HexGrid.prop_respawned
 - **Testing API:** get_pool_visible_count(), get_tile_entries(), get_pool_count(), etc.
 - **Source:** `scripts/rendering/prop_renderer.gd`
 
 ### PropLabelRenderer (Node3D)
 - **Purpose:** 3D marker icons above props (question mark for UNKNOWN, warning for ENCOUNTERED, none for CATALOGED)
-- **Listens to:** ScannerSystem element/entry signals, HexGrid.tile_visibility_changed
+- **Listens to:** ScannerSystem element/entry signals
 - **Source:** `scripts/rendering/prop_label_renderer.gd`
 
 ### ScanProgressRenderer (Node3D)
@@ -297,13 +295,14 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Data Layer APIs
 
 ### HexTile (Resource)
-- **Properties:** coords, biome (Biome enum), elevation, fog_state (FogState enum), structure, prop_nodes, anomaly
-- **Enums:** Biome (CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER), FogState (HIDDEN, REVEALED, VISIBLE)
+- **Properties:** coords, biome (Biome enum), elevation, props (Array[Prop])
+- **Enums:** Biome (CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER)
 - **Source:** `scripts/hex/hex_tile.gd`
 
-### PropNode (Resource)
-- **Properties:** type, remaining, max_amount, tool_required, respawn_time, offset, rotation_deg
-- **Source:** `scripts/hex/prop_node.gd`
+### Prop (Resource)
+- **Properties:** type, sub_hex, category (Category enum), origin (Origin enum), remaining, max_amount, tool_required, respawn_time, rotation_deg, footprint, blocks_movement
+- **Enums:** Category (PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE, STRUCTURE, VEHICLE, EQUIPMENT, STORAGE), Origin (NATURAL, CRAFTED, HUMAN, NATIVE_ALIEN, UNKNOWN)
+- **Source:** `scripts/hex/prop.gd`
 
 ### PropDef (Resource)
 - **Properties:** id, display_name, gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed, max_stack, category, catalog_entry, visual properties (mesh, material, placeholder config)
@@ -357,12 +356,6 @@ PlayerInput.joystick_* -> Player._on_joystick_*
     -> HexGrid.tile_entered(new)
       -> AutoInteractionSystem._on_tile_entered (auto-pickup)
       -> CraftingSystem._on_tile_entered (workbench check)
-    -> HexGrid.refresh_visibility
-      -> HexGrid.tile_revealed / tile_visibility_changed
-        -> HexGridRenderer (update terrain)
-        -> PropRenderer (show/hide props)
-        -> ScannerSystem (passive ID)
-          -> element_* -> PropLabelRenderer
     -> Player.player_moved (informational)
 ```
 
@@ -378,10 +371,10 @@ AutoInteractionSystem._check_gather_proximity (every 0.1s)
       -> HUD (floating text)
       -> FlyToPlayer.spawn_fly (visual)
       -> GatherSound.play_gather_ding (audio)
-    -> HexGrid.resource_depleted (if remaining <= 0)
+    -> HexGrid.prop_depleted (if remaining <= 0)
       -> PropRenderer (swap mesh)
       -> respawn_queue (if respawn_time > 0)
-        -> HexGrid.resource_respawned (after timer)
+        -> HexGrid.prop_respawned (after timer)
     -> _try_gather_nearby (chain to next resource)
 ```
 

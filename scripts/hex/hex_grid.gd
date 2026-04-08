@@ -49,7 +49,6 @@ signal tile_entered(coords: Vector2i)
 signal tile_exited(coords: Vector2i)
 signal prop_depleted(coords: Vector2i, prop_type: StringName)
 signal prop_respawned(coords: Vector2i, prop_type: StringName)
-signal tile_contents_changed(coords: Vector2i)
 signal structure_placed(coords: Vector2i, structure_type: StringName)
 signal structure_destroyed(coords: Vector2i, structure_type: StringName)
 

@@ -2,7 +2,6 @@ class_name Catalog
 extends RefCounted
 
 const CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
-const _Prop = preload("res://scripts/hex/prop.gd")
 
 enum CatalogCategory { FLORA, FAUNA, MINERAL, ANOMALY }
 enum KnowledgeState { UNKNOWN, ENCOUNTERED, CATALOGED }

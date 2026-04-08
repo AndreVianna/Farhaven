@@ -21,7 +21,9 @@ func _init(grid: Node) -> void:
 	# platforms/filesystems. Must match HexGridRenderer's sort order.
 	var biome_files: Array[String] = []
 	var dir := DirAccess.open("res://data/biomes")
-	if dir:
+	if dir == null:
+		push_warning("MapLoader: cannot open 'res://data/biomes' — biome discovery skipped (error: %d)" % DirAccess.get_open_error())
+	else:
 		dir.list_dir_begin()
 		var fname := dir.get_next()
 		while fname != "":

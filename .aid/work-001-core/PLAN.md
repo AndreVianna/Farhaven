@@ -16,7 +16,7 @@
 | 005 Inventory | -- (standalone RefCounted) | 004 (add_item), 006 (has/remove/set_tool), 007 (item_used, drops), 009 (has/remove for building) |
 | 004 Auto-Interaction | 003 (catalog gate), 005 (inventory). Auto-defend stub: 010. Auto-pickup stub: 007. | 012 (floating text feedback) |
 | 006 Crafting | 005 (inventory API), 009 (workbench must exist) | 004 (tools unlock gated resources) |
-| 008 Day/Night + Save | 001 (refresh_visibility), 002 (tile_entered) | 007 (is_daytime, dawn), 010 (night/dawn signals), 011 (day_started) |
+| 008 Day/Night + Save | 001 (tile queries), 002 (tile_entered), lighting system (delivery-005a) | 007 (is_daytime, dawn), 010 (night/dawn signals), 011 (day_started) |
 | 007 Survival Stats | 005 (item_used, remove_item), 008 (is_daytime, dawn) | 004 (ground item API) |
 | 009 Building | 001 (tile queries), 005 (materials) | 002 (pathfind update), 006 (workbench), 007 (shelter respawn), 008 (torch tracking), 010 (wall/shelter/torch) |
 | 010 Night Threats | 001, 008 (night/dawn), 003 (surprise catalog) | 004 (auto-defend activates), 007 (meat drops, take_damage) |
@@ -33,14 +33,14 @@
 
 **Features:** 001 (Hex Grid) + 002 (Player Movement) + 012 (HUD & UI Framework)
 **Depends on:** --
-**Cumulative state:** Walk around an alien hex world with fog of war, camera follow, HUD shell
+**Cumulative state:** Walk around an alien hex world, camera follow, HUD shell
 
 Build order:
 1. feature-001 (Hex Grid) — world exists
 2. feature-012 (HUD) — UI framework ready for all future features to plug into
 3. feature-002 (Player Movement) — player can explore
 
-Playable: generate map, walk around, reveal fog, see biomes and elevation. HUD shows
+Playable: generate map, walk around, see biomes and elevation. HUD shows
 placeholder stat bars, day counter, button slots. Every subsequent feature plugs into
 this foundation.
 
@@ -116,6 +116,8 @@ Build order (tasks 039–045, parallel where possible):
 This is a pure engine refactor. No new gameplay. Enables delivery-005b.
 
 **AC coverage:** none directly (infrastructure for AC6, AC9)
+
+> **Note:** delivery-005 was split; see delivery-005a (engine refactor) first.
 
 ### delivery-005b: Night Falls — Building + Threats
 

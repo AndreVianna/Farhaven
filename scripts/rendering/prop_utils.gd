@@ -5,7 +5,6 @@ extends RefCounted
 ## Provides prop type → entry_id reverse lookup and tile sub-hex calculation.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
-const _Prop = preload("res://scripts/hex/prop.gd")
 
 ## Legacy offset scale factor: maps normalized [-1,1] to world units.
 ## Kept for backward compatibility with any remaining callers.
