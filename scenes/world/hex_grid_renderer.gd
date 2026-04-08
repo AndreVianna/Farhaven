@@ -39,6 +39,9 @@ var _tile_data: Dictionary = {}
 ## Currently highlighted tile coords → true.
 var _highlights: Dictionary = {}
 
+## Cached light count to avoid redundant shader updates.
+var _last_light_count: int = 0
+
 
 func _ready() -> void:
 	_mesh_instance = $MeshInstance3D
@@ -70,6 +73,38 @@ func _ready() -> void:
 		_biome_data[i] = bd_res
 
 	HexGrid.map_generated.connect(_on_map_generated)
+
+
+# --- Light sync (task-039) ---
+
+func _process(_delta: float) -> void:
+	_sync_lights_to_shader()
+
+
+## Push active light sources from LightingManager into shader uniforms.
+## Runs every frame but only writes uniforms when lights are active or just cleared.
+func _sync_lights_to_shader() -> void:
+	if _material == null:
+		return
+	var lights: Array[Dictionary] = LightingManager.get_active_lights()
+	var count: int = mini(lights.size(), 8)
+	# Skip update if no lights last frame and no lights this frame
+	if count == 0 and _last_light_count == 0:
+		return
+	_last_light_count = count
+	_material.set_shader_parameter("light_count", count)
+	if count == 0:
+		return
+	var positions: PackedVector2Array = PackedVector2Array()
+	positions.resize(count)
+	var radii: PackedFloat32Array = PackedFloat32Array()
+	radii.resize(count)
+	for i: int in range(count):
+		var light: Dictionary = lights[i]
+		positions[i] = light["position"]
+		radii[i] = light["radius"]
+	_material.set_shader_parameter("light_positions", positions)
+	_material.set_shader_parameter("light_radii", radii)
 
 
 # --- Signal handlers ---

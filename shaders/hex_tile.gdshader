@@ -12,12 +12,21 @@
 //   darkness uniform (0.0 = bright, 1.0 = pitch black) is driven by DayNightCycle.
 //   At night (darkness > 0.3), a distance-based lantern falloff from the player
 //   keeps nearby tiles brighter while distant tiles go very dark.
+//
+// Local lighting (task-039):
+//   Up to 8 point lights passed as uniform arrays. Each light has a world XZ
+//   position and a radius. Smooth quadratic falloff from center to edge.
 
 shader_type spatial;
 render_mode unshaded, cull_back;
 
 uniform float darkness : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 player_world_pos = vec2(0.0, 0.0);
+
+// Local lighting uniforms (task-039). Max 8 simultaneous lights.
+uniform int light_count : hint_range(0, 8) = 0;
+uniform vec2 light_positions[8];
+uniform float light_radii[8];
 
 varying vec4 v_color;
 varying vec3 v_world_pos;
@@ -38,7 +47,23 @@ void fragment() {
         float dist = distance(v_world_pos.xz, player_world_pos);
         // Smooth falloff: full at 0, 0.8 at ~3.6, 0.6 at ~7.2, 0.3 beyond
         float lantern = clamp(1.0 - dist / 12.0, 0.3, 1.0);
-        brightness *= lantern;
+
+        // Local light sources: accumulate brightness from each active light
+        float local_light = 0.0;
+        for (int i = 0; i < 8; i++) {
+            if (i >= light_count) break;
+            float d = distance(v_world_pos.xz, light_positions[i]);
+            float r = light_radii[i];
+            if (d < r) {
+                // Quadratic falloff: bright at center, zero at radius edge
+                float t = 1.0 - d / r;
+                local_light = max(local_light, t * t);
+            }
+        }
+
+        // Combine player lantern with local lights (take maximum brightness)
+        float combined = max(lantern, local_light);
+        brightness *= combined;
     }
 
     ALBEDO = base * brightness;
