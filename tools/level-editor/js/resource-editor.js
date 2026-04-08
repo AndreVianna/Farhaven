@@ -480,13 +480,18 @@ export function renderResourceEditor(container, options) {
 
       item.addEventListener('click', () => {
         isNewMode = false;
-        selectedId = model.id;
+        selectedId = prop.id;
         // Re-read from ProjectContext so we get the latest data
-        const entry = ProjectContext.files.resources.get(model.id + '.tres');
+        const entry = ProjectContext.files.resources.get(prop.id + '.tres');
         if (entry) {
-          editingModel = ResourceDefModel.fromEntry(model.id + '.tres', entry);
+          editingModel = ResourceDefModel.fromEntry(prop.id + '.tres', entry);
         } else {
-          editingModel = model;
+          // Non-resource prop (e.g. structure) — create a minimal model
+          editingModel = new ResourceDefModel();
+          editingModel.id = prop.id;
+          editingModel.display_name = prop.id;
+          editingModel.prop_category = prop.propCat;
+          editingModel.prop_origin = prop.propOrigin;
         }
         _updateListSelection();
         _renderDetail();
