@@ -499,6 +499,7 @@ func test_ac5_12_base_slots() -> void:
 
 func test_ac5_stacking_within_max_stack() -> void:
 	var inv: Inventory = _Inventory.new()
+	inv.capacity_weight = 200.0  # Override for stack test — need room for 80 wood (80 * 1.0)
 	inv.add_item(ID_WOOD, 50)
 	inv.add_item(ID_WOOD, 30)
 	assert_int(inv.get_count(ID_WOOD)).is_equal(80)
@@ -507,6 +508,7 @@ func test_ac5_stacking_within_max_stack() -> void:
 
 func test_ac5_stacking_overflow_creates_new_slot() -> void:
 	var inv: Inventory = _Inventory.new()
+	inv.capacity_weight = 200.0  # Override for stack test — need room for 109 wood (109 * 1.0)
 	inv.add_item(ID_WOOD, 99)
 	inv.add_item(ID_WOOD, 10)
 	assert_int(inv.get_count(ID_WOOD)).is_equal(109)
@@ -813,8 +815,8 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 
 func test_inventory_save_load_round_trip() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(ID_WOOD, 50)
-	inv.add_item(ID_BERRIES, 10)
+	inv.add_item(ID_WOOD, 40)       # 40 * 1.0 = 40.0
+	inv.add_item(ID_BERRIES, 10)    # 10 * 0.01 = 0.1
 	inv.set_tool(&"axe", ID_AXE)
 	inv.expand(12)
 
@@ -823,7 +825,7 @@ func test_inventory_save_load_round_trip() -> void:
 	var inv2: Inventory = _Inventory.new()
 	inv2.load_save_data(save_data)
 
-	assert_int(inv2.get_count(ID_WOOD)).is_equal(50)
+	assert_int(inv2.get_count(ID_WOOD)).is_equal(40)
 	assert_int(inv2.get_count(ID_BERRIES)).is_equal(10)
 	assert_object(inv2.get_tool(&"axe")).is_equal(ID_AXE)
 	assert_int(inv2.get_max_slots()).is_equal(24)
