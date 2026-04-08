@@ -12,7 +12,7 @@ import { HexCanvas } from './canvas.js';
 import { HexInspector, showInlineModal, showErrorListModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
-import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
+import { ToolManager } from './tools.js';
 import { validateMap } from './validator.js';
 import { renderResourceEditor } from './resource-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
@@ -106,6 +106,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ============================================================
 // UI Helpers
 // ============================================================
+
+/**
+ * Safely extract a string value, handling undefined/null.
+ * @param {*} val
+ * @returns {string}
+ */
+function _str(val) {
+  if (val == null) return '';
+  return String(val);
+}
 
 /**
  * Show an error message in the status bar.
@@ -853,24 +863,19 @@ function _initPropPalette() {
     listContainer.innerHTML = '';
     const allowedCats = _categoriesForOrigin(origin);
     const showCats = category === 'all' ? allowedCats : [category];
-    const hasNatural = showCats.some(c => NATURAL_CATEGORIES.has(CATEGORY_TO_INT[c]));
-    const hasStructure = showCats.includes('structure');
 
-    // Natural resources: show once (not per-category), with the selected category or 'plant' default
-    if (hasNatural) {
-      const naturalCat = category !== 'all' ? category : 'plant';
-      const naturalOrigin = origin !== 'all' ? origin : 'natural';
-      for (const [filename] of ProjectContext.files.resources) {
-        const resourceName = filename.replace('.tres', '');
-        _addTypeItem(resourceName, naturalCat, naturalOrigin);
-      }
-    }
+    // All props come from ProjectContext.files.resources
+    for (const [filename, entry] of ProjectContext.files.resources) {
+      const resourceName = filename.replace('.tres', '');
+      const resCat = _str(entry.data.category) || 'plant';
+      if (!showCats.includes(resCat)) continue;
 
-    // Structures: show from STRUCTURE_FOOTPRINTS
-    if (hasStructure) {
-      for (const [structName] of Object.entries(STRUCTURE_FOOTPRINTS)) {
-        _addTypeItem(structName, 'structure', origin !== 'all' ? origin : 'crafted');
-      }
+      // Determine origin: natural categories default to 'natural', others to 'crafted'
+      const catInt = CATEGORY_TO_INT[resCat];
+      const defaultOrig = NATURAL_CATEGORIES.has(catInt) ? 'natural' : 'crafted';
+      const resOrigin = origin !== 'all' ? origin : defaultOrig;
+
+      _addTypeItem(resourceName, resCat, resOrigin);
     }
 
     if (listContainer.children.length === 0) {

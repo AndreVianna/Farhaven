@@ -6,7 +6,6 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
-import { STRUCTURE_FOOTPRINTS } from './tools.js';
 
 /**
  * Maps a parsed .tres ResourceDef to an editable JS model.
@@ -50,6 +49,8 @@ export class ResourceDefModel {
     this.placeholder_depleted_params = {};
     /** @type {{r: number, g: number, b: number, a: number}} */
     this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
+    /** @type {Array<{x: number, y: number}>} Footprint offsets (Vector2i values) */
+    this.footprint = [];
     // Editor-only placement defaults (not serialized to .tres)
     /** @type {string} Default prop category for placement */
     this.prop_category = 'plant';
@@ -100,6 +101,9 @@ export class ResourceDefModel {
     // Color fields (TresParser stores as {r, g, b, a})
     model.placeholder_color = _color(d.placeholder_color);
     model.placeholder_depleted_color = _color(d.placeholder_depleted_color);
+
+    // Footprint (array of TresValue vector2i or plain {x,y})
+    model.footprint = _footprintArray(d.footprint);
 
     return model;
   }
@@ -166,6 +170,27 @@ function _color(val) {
     return { r: val.r || 0, g: val.g || 0, b: val.b || 0, a: val.a != null ? val.a : 1 };
   }
   return { r: 0, g: 0, b: 0, a: 1 };
+}
+
+/**
+ * Parse a footprint field into an array of {x, y} offsets.
+ * Handles TresValue objects and plain {x,y} objects.
+ * @param {*} val
+ * @returns {Array<{x: number, y: number}>}
+ */
+function _footprintArray(val) {
+  if (!Array.isArray(val)) return [];
+  return val.map(item => {
+    // TresValue: { type: 'vector2i', value: { x, y } }
+    if (item && typeof item === 'object' && item.type === 'vector2i' && item.value) {
+      return { x: item.value.x, y: item.value.y };
+    }
+    // Plain { x, y }
+    if (item && typeof item === 'object' && 'x' in item) {
+      return { x: item.x, y: item.y };
+    }
+    return { x: 0, y: 0 };
+  });
 }
 
 /**
@@ -269,6 +294,79 @@ function _createKvEditor(name, data) {
   addBtn.type = 'button';
   addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
   addBtn.addEventListener('click', () => addRow('', 0));
+  wrapper.appendChild(addBtn);
+
+  return wrapper;
+}
+
+/**
+ * Create a footprint editor with Vector2i rows (x, y pairs).
+ * @param {Array<{x: number, y: number}>} footprint
+ * @returns {HTMLElement}
+ */
+function _createFootprintEditor(footprint) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+
+  const label = document.createElement('div');
+  label.textContent = 'Footprint cells (x, y)';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const rowsContainer = document.createElement('div');
+  rowsContainer.dataset.footprintRows = '';
+  wrapper.appendChild(rowsContainer);
+
+  /**
+   * Add a footprint row.
+   * @param {number} x
+   * @param {number} y
+   * @returns {void}
+   */
+  function addRow(x, y) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+
+    const xInput = document.createElement('input');
+    xInput.type = 'number';
+    xInput.value = String(x);
+    xInput.step = '1';
+    xInput.placeholder = 'x';
+    xInput.dataset.fpX = '';
+    xInput.classList.add('prop-input');
+    xInput.style.flex = '1';
+
+    const yInput = document.createElement('input');
+    yInput.type = 'number';
+    yInput.value = String(y);
+    yInput.step = '1';
+    yInput.placeholder = 'y';
+    yInput.dataset.fpY = '';
+    yInput.classList.add('prop-input');
+    yInput.style.flex = '1';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(xInput);
+    row.appendChild(yInput);
+    row.appendChild(removeBtn);
+    rowsContainer.appendChild(row);
+  }
+
+  // Populate existing entries
+  for (const cell of footprint) {
+    addRow(cell.x, cell.y);
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add Cell';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.addEventListener('click', () => addRow(0, 0));
   wrapper.appendChild(addBtn);
 
   return wrapper;
@@ -465,16 +563,13 @@ export function renderResourceEditor(container, options) {
     const originVal = originFilter.value;
     const catVal = catFilter.value;
 
-    // Build combined list: resources (.tres) + structures (STRUCTURE_FOOTPRINTS)
+    // Build list from all resources in ProjectContext
     /** @type {Array<{id: string, isResource: boolean, propCat: string, propOrigin: string}>} */
     const allProps = [];
 
     for (const [filename, entry] of ProjectContext.files.resources) {
       const model = ResourceDefModel.fromEntry(filename, entry);
       allProps.push({ id: model.id, isResource: true, propCat: model.prop_category, propOrigin: model.prop_origin });
-    }
-    for (const structName of Object.keys(STRUCTURE_FOOTPRINTS)) {
-      allProps.push({ id: structName, isResource: false, propCat: 'structure', propOrigin: 'crafted' });
     }
     allProps.sort((a, b) => a.id.localeCompare(b.id));
 
@@ -748,6 +843,10 @@ export function renderResourceEditor(container, options) {
     // -- Placement Defaults (editor-only) --
     _addSeparator(grid, 'Placement Defaults');
     _addOriginCategoryFields(grid, model);
+
+    // -- Footprint --
+    _addSeparator(grid, 'Footprint');
+    grid.appendChild(_createFootprintEditor(model.footprint));
 
     // -- Gathering separator --
     _addSeparator(grid, 'Gathering');
@@ -1029,6 +1128,9 @@ export function collectFormData(formElement) {
   model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
   model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
 
+  // Footprint
+  model.footprint = _collectFootprintData(formElement);
+
   return model;
 }
 
@@ -1052,6 +1154,28 @@ function _collectKvData(formElement, name) {
       if (k) {
         result[k] = isNaN(v) ? 0 : v;
       }
+    }
+  }
+  return result;
+}
+
+/**
+ * Collect footprint data from a footprint editor section.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{x: number, y: number}>}
+ */
+function _collectFootprintData(formElement) {
+  const result = [];
+  const container = formElement.querySelector('[data-footprint-rows]');
+  if (!container) return result;
+  const rows = container.children;
+  for (const row of rows) {
+    const xInput = row.querySelector('[data-fp-x]');
+    const yInput = row.querySelector('[data-fp-y]');
+    if (xInput && yInput) {
+      const x = parseInt(/** @type {HTMLInputElement} */ (xInput).value, 10);
+      const y = parseInt(/** @type {HTMLInputElement} */ (yInput).value, 10);
+      result.push({ x: isNaN(x) ? 0 : x, y: isNaN(y) ? 0 : y });
     }
   }
   return result;
@@ -1131,6 +1255,7 @@ function _modelToPlain(model) {
     placeholder_depleted_type: model.placeholder_depleted_type,
     placeholder_depleted_params: model.placeholder_depleted_params,
     placeholder_depleted_color: model.placeholder_depleted_color,
+    footprint: model.footprint,
   };
 }
 
@@ -1189,6 +1314,15 @@ export function modelToRaw(model) {
   fields.set('category', { type: 'stringname', value: model.category });
   fields.set('catalog_entry', { type: 'stringname', value: model.catalog_entry });
   fields.set('catalog_category', { type: 'stringname', value: model.catalog_category });
+
+  // Footprint (only if non-empty)
+  if (model.footprint && model.footprint.length > 0) {
+    const fpValues = model.footprint.map(p => ({
+      type: 'vector2i',
+      value: { x: p.x, y: p.y },
+    }));
+    fields.set('footprint', { type: 'array', value: fpValues, elementType: null });
+  }
 
   // Placeholder fields
   fields.set('placeholder_mesh_type', { type: 'stringname', value: model.placeholder_mesh_type });

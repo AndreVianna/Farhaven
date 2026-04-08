@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"storage_chest"
+display_name = "Storage Chest"
+gather_time = 0.0
+gather_amount = 0
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 1
+category = &"structure"
+catalog_entry = &"storage_chest"
+catalog_category = &"storage"
+footprint = [Vector2i(0, 0)]
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
+placeholder_color = Color(0.5, 0.35, 0.15, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
+placeholder_depleted_color = Color(0.35, 0.25, 0.1, 1.0)

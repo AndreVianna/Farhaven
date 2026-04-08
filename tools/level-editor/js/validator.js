@@ -4,7 +4,6 @@
 
 import { HexMath } from './hex-math.js';
 import { HexGrid, CATEGORIES, ORIGINS, CATEGORY_TO_INT } from './hex-grid.js';
-import { STRUCTURE_FOOTPRINTS } from './tools.js';
 
 /**
  * @typedef {Object} ValidationError
@@ -18,13 +17,9 @@ import { STRUCTURE_FOOTPRINTS } from './tools.js';
  * @param {import('./hex-grid.js').HexGrid} hexGrid
  * @param {Set<string>} knownBiomes - Set of known biome names (without .tres extension)
  * @param {Set<string>} knownResources - Set of known resource names (without .tres extension)
- * @param {Set<string>} [knownStructures] - Set of known structure types (optional, defaults to STRUCTURE_FOOTPRINTS keys)
  * @returns {{ valid: boolean, errors: ValidationError[] }}
  */
-export function validateMap(hexGrid, knownBiomes, knownResources, knownStructures) {
-  if (!knownStructures) {
-    knownStructures = new Set(Object.keys(STRUCTURE_FOOTPRINTS));
-  }
+export function validateMap(hexGrid, knownBiomes, knownResources) {
   /** @type {ValidationError[]} */
   const errors = [];
 

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"campfire"
+display_name = "Campfire"
+gather_time = 0.0
+gather_amount = 0
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 1
+category = &"structure"
+catalog_entry = &"campfire"
+catalog_category = &"survival"
+footprint = [Vector2i(0, 0)]
+placeholder_mesh_type = &"cylinder"
+placeholder_params = { "radius": 0.3, "height": 0.15 }
+placeholder_color = Color(0.9, 0.4, 0.1, 1.0)
+placeholder_depleted_type = &"cylinder"
+placeholder_depleted_params = { "radius": 0.3, "height": 0.1 }
+placeholder_depleted_color = Color(0.3, 0.3, 0.3, 1.0)

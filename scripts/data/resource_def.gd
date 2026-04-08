@@ -26,6 +26,10 @@ class_name ResourceDef extends Resource
 @export var catalog_entry: StringName
 @export var catalog_category: StringName  # "minerals", "flora", "fauna", "anomalies"
 
+# --- Placement ---
+## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
+@export var footprint: Array[Vector2i] = []
+
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh
 @export var depleted_mesh: Mesh

@@ -14,6 +14,7 @@ import {
   DeleteHexCommand,
   BatchCommand,
 } from './commands.js';
+import { ProjectContext } from './file-discovery.js';
 
 /**
  * Check if a sub-hex position is occupied by any prop on the tile.
@@ -50,21 +51,43 @@ export const ElevationMode = {
   INCREMENT: 'increment',
 };
 
-/** @type {string[]} Known structure types matching game's WALKABLE_STRUCTURES */
-export const STRUCTURE_TYPES = ['workbench', 'storage_chest', 'campfire', 'shelter', 'torch'];
+/**
+ * Look up footprint offsets for a resource type from ProjectContext.
+ * Returns an array of {q, r} offsets, or null if no footprint is defined.
+ * @param {string} type - Resource type name (e.g. 'workbench')
+ * @returns {Array<{q: number, r: number}>|null}
+ */
+export function getFootprintForType(type) {
+  const entry = ProjectContext.files.resources.get(type + '.tres');
+  if (!entry || !entry.data) return null;
+  const fp = entry.data.footprint;
+  if (!fp || !Array.isArray(fp) || fp.length === 0) return null;
+  return _parseFootprint(fp);
+}
 
 /**
- * Per-type footprint offsets from anchor sub-hex position.
- * Each entry is an array of {q, r} offsets relative to the anchor.
- * @type {Object<string, Array<{q: number, r: number}>>}
+ * Parse a footprint array from ProjectContext data into {q, r} offsets.
+ * Handles TresValue objects ({type:'vector2i', value:{x,y}}) and plain {x,y} objects.
+ * @param {Array<*>} fp
+ * @returns {Array<{q: number, r: number}>}
  */
-export const STRUCTURE_FOOTPRINTS = {
-  workbench: [{ q: 0, r: 0 }, { q: 1, r: 0 }],       // 2-cell
-  storage_chest: [{ q: 0, r: 0 }],                     // 1-cell
-  campfire: [{ q: 0, r: 0 }],                          // 1-cell
-  shelter: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }], // 3-cell
-  torch: [{ q: 0, r: 0 }],                             // 1-cell
-};
+function _parseFootprint(fp) {
+  return fp.map(item => {
+    // TresValue: { type: 'vector2i', value: { x, y } }
+    if (item && typeof item === 'object' && item.type === 'vector2i' && item.value) {
+      return { q: item.value.x, r: item.value.y };
+    }
+    // Plain { x, y } (if data layer already extracted .value)
+    if (item && typeof item === 'object' && 'x' in item) {
+      return { q: item.x, r: item.y };
+    }
+    // Already { q, r }
+    if (item && typeof item === 'object' && 'q' in item) {
+      return { q: item.q, r: item.r };
+    }
+    return { q: 0, r: 0 };
+  });
+}
 
 // ============================================================
 // Tool Classes (task-009)
@@ -282,9 +305,9 @@ export class PropPlacer extends BaseTool {
     const category = this.toolManager.activeCategory || 'plant';
     const type = this.toolManager.activeValue;
 
-    // For structures with known footprints, use footprint logic
-    if (STRUCTURE_FOOTPRINTS[type]) {
-      const offsets = STRUCTURE_FOOTPRINTS[type];
+    // For resources with known footprints, use footprint logic
+    const offsets = getFootprintForType(type);
+    if (offsets && offsets.length > 0) {
       const absoluteFootprint = offsets.map(o => ({ q: sq + o.q, r: sr + o.r }));
 
       // Check ALL footprint cells for validity and occupancy
