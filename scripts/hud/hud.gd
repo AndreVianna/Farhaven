@@ -115,13 +115,13 @@ func connect_catalog(cat) -> void:
 func connect_crafting(crafting_system: Node, inv) -> void:
 	_gear_panel.set_crafting_system(crafting_system)
 	_gear_panel.set_inventory(inv)
-	crafting_system.workbench_proximity_changed.connect(_on_workbench_proximity_changed)
+	crafting_system.station_proximity_changed.connect(_on_station_proximity_changed)
 	crafting_system.recipe_discovered.connect(_on_recipe_discovered)
 	crafting_system.craft_completed.connect(_on_craft_completed)
 
 
-func _on_workbench_proximity_changed(_near: bool) -> void:
-	# Craft button visible whenever recipes are discovered (not just near workbench)
+func _on_station_proximity_changed(_near: bool) -> void:
+	# Craft button visible whenever recipes are discovered (not just near station)
 	pass
 
 
@@ -148,8 +148,11 @@ func connect_auto_interaction(auto_interaction: Node) -> void:
 	auto_interaction.auto_defend_triggered.connect(_on_auto_defend_triggered)
 
 
-func _on_auto_gather_completed(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
-	var display_name: String = String(resource_type).replace("_", " ").capitalize()
+func _on_auto_gather_completed(_coords: Vector2i, prop_type: StringName, amount: int) -> void:
+	# Resolve the inventory item display name (gathering may yield a different item, e.g. tree → wood).
+	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
+	var def: PropDef = PropRegistry.get_def(yield_id)
+	var display_name: String = def.display_name if def != null and def.display_name != "" else String(yield_id)
 	var text: String = "+%d %s" % [amount, display_name]
 	var player: Node = _get_player()
 	if player:

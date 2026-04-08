@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"00201"
+display_name = "Axe"
+gather_time = 0.0
+gather_amount = 0
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 1
+category = &"tool"
+catalog_entry = &""
+catalog_category = &""
+prop_category = 8
+origin = 1
+tool_slot = &"axe"
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.1, "size_y": 0.05, "size_z": 0.4 }
+placeholder_color = Color(0.55, 0.4, 0.25, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.1, "size_y": 0.05, "size_z": 0.4 }
+placeholder_depleted_color = Color(0.3, 0.25, 0.15, 1.0)

@@ -1,22 +1,14 @@
 class_name InventorySlotUI
 extends Control
 
-## Single resource/consumable slot in the inventory grid.
+## Single prop/consumable slot in the inventory grid.
 ## Displays a color-coded icon placeholder and quantity label.
 ## Emits slot_tapped when a consumable is tapped.
 
 signal slot_tapped(type: StringName)
 
-const SLOT_COLORS: Dictionary = {
-	&"wood":           Color(0.55, 0.30, 0.10),
-	&"stone":          Color(0.60, 0.60, 0.60),
-	&"berries":        Color(0.90, 0.20, 0.30),
-	&"toxic_berries":  Color(0.35, 0.75, 0.15),
-	&"fiber":          Color(0.75, 0.85, 0.25),
-	&"ore":            Color(0.40, 0.50, 0.60),
-	&"crystal":        Color(0.40, 0.60, 0.95),
-	&"meat":           Color(0.80, 0.25, 0.20),
-}
+## Default color when an item has no PropDef.
+const DEFAULT_SLOT_COLOR: Color = Color(0.5, 0.5, 0.5)
 
 var _type: StringName = &""
 var _quantity: int = 0
@@ -61,18 +53,15 @@ func _ready() -> void:
 	_apply_empty_style()
 
 
-func refresh(slot: Dictionary, item_config: Dictionary) -> void:
+func refresh(slot: Dictionary) -> void:
 	_type = slot.get("type", &"")
 	_quantity = slot.get("quantity", 0)
 	if _type == &"":
 		_is_consumable = false
 		_apply_empty_style()
 		return
-	var cfg: Dictionary = item_config.get(_type, {})
-	if cfg.is_empty() and ResourceRegistry.has_def(_type):
-		var def = ResourceRegistry.get_def(_type)
-		cfg = {"category": def.category}
-	_is_consumable = cfg.get("category", &"") == &"consumable"
+	var def: PropDef = PropRegistry.get_def(_type)
+	_is_consumable = def != null and def.is_consumable
 	_apply_occupied_style()
 
 
@@ -98,8 +87,9 @@ func _apply_empty_style() -> void:
 
 
 func _apply_occupied_style() -> void:
-	_icon_rect.color = SLOT_COLORS.get(_type, Color(0.5, 0.5, 0.5))
-	var display_name: String = (_type as String).replace("_", " ").capitalize()
+	var def: PropDef = PropRegistry.get_def(_type)
+	_icon_rect.color = def.placeholder_color if def != null else DEFAULT_SLOT_COLOR
+	var display_name: String = def.display_name if def != null and def.display_name != "" else String(_type)
 	_quantity_label.text = "%s (%d)" % [display_name, _quantity]
 	_quantity_label.visible = true
 	var style := StyleBoxFlat.new()

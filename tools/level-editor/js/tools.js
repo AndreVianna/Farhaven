@@ -3,7 +3,7 @@
 // ============================================================
 
 import { HexMath } from './hex-math.js';
-import { createTileData, createProp } from './hex-grid.js';
+import { createTileData, createProp, defaultOrigin, CATEGORY_TO_INT, INT_TO_ORIGIN } from './hex-grid.js';
 import {
   SetBiomeCommand,
   SetElevationCommand,
@@ -14,10 +14,7 @@ import {
   DeleteHexCommand,
   BatchCommand,
 } from './commands.js';
-// S1 coupling note: AnomalyMarker imports showInlineModal from panels.js for
-// type-name prompts. This is a pragmatic coupling for an internal tool — a full
-// event/callback system would be over-engineered given the small module count.
-import { showInlineModal } from './panels.js';
+import { ProjectContext } from './file-discovery.js';
 
 /**
  * Check if a sub-hex position is occupied by any prop on the tile.
@@ -42,9 +39,7 @@ export const ToolType = {
   SELECT: 'select',
   BIOME: 'biome',
   ELEVATION: 'elevation',
-  RESOURCE: 'resource',
-  STRUCTURE: 'structure',
-  ANOMALY: 'anomaly',
+  PROP: 'prop',
   SPAWN: 'spawn',
   ERASER: 'eraser',
   DELETE_HEX: 'delete_hex',
@@ -56,21 +51,43 @@ export const ElevationMode = {
   INCREMENT: 'increment',
 };
 
-/** @type {string[]} Known structure types matching game's WALKABLE_STRUCTURES */
-export const STRUCTURE_TYPES = ['workbench', 'storage_chest', 'campfire', 'shelter', 'torch'];
+/**
+ * Look up footprint offsets for a prop type from ProjectContext.
+ * Returns an array of {q, r} offsets, or null if no footprint is defined.
+ * @param {string} type - Prop type name (e.g. 'workbench')
+ * @returns {Array<{q: number, r: number}>|null}
+ */
+export function getFootprintForType(type) {
+  const entry = ProjectContext.files.props.get(type + '.tres');
+  if (!entry || !entry.data) return null;
+  const fp = entry.data.footprint;
+  if (!fp || !Array.isArray(fp) || fp.length === 0) return null;
+  return _parseFootprint(fp);
+}
 
 /**
- * Per-type footprint offsets from anchor sub-hex position.
- * Each entry is an array of {q, r} offsets relative to the anchor.
- * @type {Object<string, Array<{q: number, r: number}>>}
+ * Parse a footprint array from ProjectContext data into {q, r} offsets.
+ * Handles TresValue objects ({type:'vector2i', value:{x,y}}) and plain {x,y} objects.
+ * @param {Array<*>} fp
+ * @returns {Array<{q: number, r: number}>}
  */
-export const STRUCTURE_FOOTPRINTS = {
-  workbench: [{ q: 0, r: 0 }, { q: 1, r: 0 }],       // 2-cell
-  storage_chest: [{ q: 0, r: 0 }],                     // 1-cell
-  campfire: [{ q: 0, r: 0 }],                          // 1-cell
-  shelter: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }], // 3-cell
-  torch: [{ q: 0, r: 0 }],                             // 1-cell
-};
+function _parseFootprint(fp) {
+  return fp.map(item => {
+    // TresValue: { type: 'vector2i', value: { x, y } }
+    if (item && typeof item === 'object' && item.type === 'vector2i' && item.value) {
+      return { q: item.value.x, r: item.value.y };
+    }
+    // Plain { x, y } (if data layer already extracted .value)
+    if (item && typeof item === 'object' && 'x' in item) {
+      return { q: item.x, r: item.y };
+    }
+    // Already { q, r }
+    if (item && typeof item === 'object' && 'q' in item) {
+      return { q: item.q, r: item.r };
+    }
+    return { q: 0, r: 0 };
+  });
+}
 
 // ============================================================
 // Tool Classes (task-009)
@@ -182,7 +199,7 @@ export class ElevationBrush extends DragBrushTool {
     } else {
       newElevation = oldElevation + this.toolManager.elevationDelta;
     }
-    newElevation = Math.max(0, Math.min(9, newElevation));
+    newElevation = Math.max(-32000, Math.min(32000, newElevation));
 
     if (oldElevation === newElevation) return;
 
@@ -273,87 +290,55 @@ export class EraserTool extends DragBrushTool {
 // Placement Tools (task-010)
 // ============================================================
 
-export class ResourcePlacer extends BaseTool {
+export class PropPlacer extends BaseTool {
   onMouseDown(hex) {
     if (!hex) return;
     if (!this.toolManager.activeValue) return;
     let tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) {
-      // Create tile with default biome
-      tile = createTileData('');
-      this.grid.setTile(hex.q, hex.r, tile);
-    }
-
-    // Use sub-hex from hex object (set by canvas when placement tool is active)
-    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
-    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
-
-    // Check if sub-hex is occupied by any prop
-    if (isSubHexOccupied(tile, sq, sr)) return;
-
-    const prop = createProp(this.toolManager.activeValue || '', sq, sr, 'resource', {
-      rotation: Math.floor(Math.random() * 360),
-    });
-
-    const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
-    this.commandHistory.execute(cmd);
-  }
-}
-
-export class StructurePlacer extends BaseTool {
-  onMouseDown(hex) {
-    if (!hex) return;
-    let tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) {
-      tile = createTileData('');
-      this.grid.setTile(hex.q, hex.r, tile);
-    }
-
-    const structureType = this.toolManager.activeValue || null;
-    if (!structureType) return;
-
-    // Use sub-hex as anchor point
-    const sq = typeof hex.sq === 'number' ? hex.sq : 0;
-    const sr = typeof hex.sr === 'number' ? hex.sr : 0;
-
-    // Compute absolute footprint from per-type offsets
-    const offsets = STRUCTURE_FOOTPRINTS[structureType] || [{ q: 0, r: 0 }];
-    const absoluteFootprint = offsets.map(o => ({ q: sq + o.q, r: sr + o.r }));
-
-    // Check ALL footprint cells for validity and occupancy
-    for (const cell of absoluteFootprint) {
-      if (!HexMath.isValidSubHex(cell.q, cell.r)) return;
-      if (isSubHexOccupied(tile, cell.q, cell.r)) return;
-    }
-
-    const prop = createProp(structureType, sq, sr, 'structure', {
-      footprint: absoluteFootprint,
-    });
-    const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
-    this.commandHistory.execute(cmd);
-  }
-}
-
-export class AnomalyMarker extends BaseTool {
-  onMouseDown(hex) {
-    if (!hex) return;
-    let tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) {
       tile = createTileData('');
       this.grid.setTile(hex.q, hex.r, tile);
     }
 
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
-    const tileRef = tile; // capture for async callback
+    const category = this.toolManager.activeCategory || 'plant';
+    const type = this.toolManager.activeValue;
 
-    showInlineModal('Enter anomaly ID:', '', (value) => {
-      if (value === null || value.trim() === '') return;
-      if (isSubHexOccupied(tileRef, sq, sr)) return;
-      const prop = createProp(value.trim(), sq, sr, 'anomaly');
+    // For resources with known footprints, use footprint logic
+    const offsets = getFootprintForType(type);
+    if (offsets && offsets.length > 0) {
+      const absoluteFootprint = offsets.map(o => ({ q: sq + o.q, r: sr + o.r }));
+
+      // Check ALL footprint cells for validity and occupancy
+      for (const cell of absoluteFootprint) {
+        if (!HexMath.isValidSubHex(cell.q, cell.r)) return;
+        if (isSubHexOccupied(tile, cell.q, cell.r)) return;
+      }
+
+      const catInt = CATEGORY_TO_INT[category] != null ? CATEGORY_TO_INT[category] : 0;
+      const origin = this.toolManager.activeOrigin || INT_TO_ORIGIN[defaultOrigin(catInt)];
+      const prop = createProp(type, sq, sr, category, {
+        footprint: absoluteFootprint,
+        origin,
+      });
       const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
       this.commandHistory.execute(cmd);
+      return;
+    }
+
+    // Check sub-hex occupancy for non-footprint props
+    if (isSubHexOccupied(tile, sq, sr)) return;
+
+    const catInt = CATEGORY_TO_INT[category] != null ? CATEGORY_TO_INT[category] : 0;
+    const origin = this.toolManager.activeOrigin || INT_TO_ORIGIN[defaultOrigin(catInt)];
+    const prop = createProp(type, sq, sr, category, {
+      rotation: 0,
+      origin,
     });
+
+    const cmd = new AddPropCommand(this.grid, hex.q, hex.r, prop);
+    this.commandHistory.execute(cmd);
   }
 }
 
@@ -364,9 +349,11 @@ export class SpawnMarker extends BaseTool {
     const sq = typeof hex.sq === 'number' ? hex.sq : 0;
     const sr = typeof hex.sr === 'number' ? hex.sr : 0;
     const oldSpawn = [...this.grid.meta.spawn];
-    const newSpawn = [hex.q, hex.r, sq, sr];
+    const facing = oldSpawn.length >= 5 ? oldSpawn[4] : 0;
+    const newSpawn = [hex.q, hex.r, sq, sr, facing];
     if (oldSpawn[0] === newSpawn[0] && oldSpawn[1] === newSpawn[1]
-      && oldSpawn[2] === newSpawn[2] && oldSpawn[3] === newSpawn[3]) return;
+      && oldSpawn[2] === newSpawn[2] && oldSpawn[3] === newSpawn[3]
+      && oldSpawn[4] === newSpawn[4]) return;
 
     const cmd = new SetSpawnCommand(this.grid, oldSpawn, newSpawn);
     this.commandHistory.execute(cmd);
@@ -405,8 +392,14 @@ export class ToolManager {
     this.elevationMode = ElevationMode.SET;
     this.elevationValue = 0;
     this.elevationDelta = 1;
+    /** @type {string} Active prop category for the Prop tool */
+    this.activeCategory = 'plant';
+    /** @type {string} Active origin for the Prop tool */
+    this.activeOrigin = 'natural';
     /** @type {function(string):void|null} */
     this.onStatus = null;
+    /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */
+    this.canvas = null;
   }
 
   /**
@@ -416,6 +409,13 @@ export class ToolManager {
    * @returns {void}
    */
   setTool(toolType, value = null) {
+    // Clear prop/spawn selection when switching away from Select
+    if (this.activeToolType === ToolType.SELECT && toolType !== ToolType.SELECT) {
+      if (this.canvas) {
+        this.canvas.clearPropSelection();
+      }
+    }
+
     this.activeToolType = toolType;
     this.activeValue = value;
 
@@ -434,14 +434,8 @@ export class ToolManager {
       case ToolType.ELEVATION:
         this.activeTool = new ElevationBrush(this.grid, this.commandHistory, this);
         break;
-      case ToolType.RESOURCE:
-        this.activeTool = new ResourcePlacer(this.grid, this.commandHistory, this);
-        break;
-      case ToolType.STRUCTURE:
-        this.activeTool = new StructurePlacer(this.grid, this.commandHistory, this);
-        break;
-      case ToolType.ANOMALY:
-        this.activeTool = new AnomalyMarker(this.grid, this.commandHistory, this);
+      case ToolType.PROP:
+        this.activeTool = new PropPlacer(this.grid, this.commandHistory, this);
         break;
       case ToolType.SPAWN:
         this.activeTool = new SpawnMarker(this.grid, this.commandHistory, this);

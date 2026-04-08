@@ -2,7 +2,7 @@ class_name Prop
 extends Resource
 
 ## Unified game object placed in a hex tile.
-## Replaces ResourceNode. Category defines behavior.
+## Replaces the old ResourceNode class. Category defines behavior.
 
 enum Category {
 	PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE,
@@ -18,7 +18,7 @@ enum Origin {
 @export var category: Category = Category.PLANT
 @export var origin: Origin = Origin.NATURAL
 
-# Resource-specific fields
+# Prop-specific fields
 @export var remaining: int = 0
 @export var max_amount: int = 0
 @export var tool_required: StringName = &""
@@ -40,7 +40,7 @@ func is_natural_category() -> bool:
 	return category >= Category.PLANT and category <= Category.OOZE
 
 
-static func create_resource(type: StringName, remaining: int, max_amount: int,
+static func create_prop(type: StringName, remaining: int, max_amount: int,
 		tool_required: StringName = &"", respawn_time: float = 0.0,
 		rotation_deg: float = 0.0, sub_hex: Vector2i = Vector2i.ZERO) -> Prop:
 	var p := Prop.new()

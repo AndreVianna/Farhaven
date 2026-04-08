@@ -8,14 +8,14 @@ import './test-dom-mocks.mjs';
 
 // ES module imports
 import { HEX_SIZE, HexMath } from './js/hex-math.js';
-import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORY_COLORS, CATEGORY_TO_INT, INT_TO_CATEGORY } from './js/hex-grid.js';
+import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, CATEGORY_COLORS, CATEGORY_TO_INT, INT_TO_CATEGORY } from './js/hex-grid.js';
 import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
-import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, ResourcePlacer, StructurePlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
 import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
 // Alias HexGrid as HexGridClass to match existing test usage
@@ -162,7 +162,7 @@ test('DirtyTracker — markClean', () => {
 test('DirtyTracker — markAllClean', () => {
   const dt = new DirtyTracker();
   dt.markDirty('map');
-  dt.markDirty('resources');
+  dt.markDirty('props');
   dt.markDirty('biomes');
   dt.markAllClean();
   assert(!dt.hasUnsavedChanges(), 'all should be clean after markAllClean');
@@ -467,7 +467,7 @@ test('HexGrid — clear removes all tiles', () => {
   assert(grid.tiles.size === 0, 'tiles should be empty after clear');
 });
 
-test('loadMapIntoGrid — loads legacy map JSON correctly (x,y resources, string structure)', () => {
+test('loadMapIntoGrid — loads legacy map JSON correctly (x,y props, string structure)', () => {
   const grid = new HexGridClass();
   const mapData = {
     chapter_id: 'ch1',
@@ -505,16 +505,16 @@ test('loadMapIntoGrid — loads new props format', () => {
     spawn: [0, 0],
     tiles: {
       '0,0': { biome: 'forest', elevation: 1, props: [
-        { type: 'stone', sq: 1, sr: -1, category: 'resource', rotation: 90 },
+        { type: 'stone', sq: 1, sr: -1, category: 'mineral', rotation: 90 },
         { type: 'workbench', sq: 0, sr: 0, category: 'structure', footprint: [{ q: 0, r: 0 }] },
       ] },
     },
   };
   loadMapIntoGrid(grid, mapData);
   const tile = grid.getTile(0, 0);
-  const resources = tile.props.filter(p => p.category === 'resource');
-  assert(resources[0].sq === 1, 'sq should be 1');
-  assert(resources[0].sr === -1, 'sr should be -1');
+  const minerals = tile.props.filter(p => p.category === 'mineral');
+  assert(minerals[0].sq === 1, 'sq should be 1');
+  assert(minerals[0].sr === -1, 'sr should be -1');
   const struct = tile.props.find(p => p.category === 'structure');
   assert(struct.type === 'workbench', 'structure type should be workbench');
   assert(struct.footprint[0].q === 0, 'structure footprint q should be 0');
@@ -573,9 +573,9 @@ test('EraseContentCommand — erases all props but preserves hex biome/elevation
   const tile = createTileData('forest');
   tile.elevation = 5;
   tile.props = [
-    createProp('wood', 0, 0, 'resource', { rotation: 45 }),
+    createProp('wood', 0, 0, 'plant', { rotation: 45 }),
     createProp('workbench', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] }),
-    createProp('test_anomaly', 0, 0, 'anomaly'),
+    createProp('scanner', 0, 0, 'equipment', { origin: 'unknown' }),
   ];
   grid.setTile(0, 0, tile);
 
@@ -589,9 +589,9 @@ test('EraseContentCommand — erases all props but preserves hex biome/elevation
   cmd.undo();
   const restored = grid.getTile(0, 0);
   assert(restored.props.length === 3, 'props should be restored');
-  assert(restored.props.find(p => p.category === 'resource').type === 'wood', 'resource should be restored');
+  assert(restored.props.find(p => p.category === 'plant').type === 'wood', 'plant should be restored');
   assert(restored.props.find(p => p.category === 'structure').type === 'workbench', 'structure should be restored');
-  assert(restored.props.find(p => p.category === 'anomaly').type === 'test_anomaly', 'anomaly should be restored');
+  assert(restored.props.find(p => p.category === 'equipment').type === 'scanner', 'equipment should be restored');
 });
 
 test('DeleteHexCommand — deletes and restores hex', () => {
@@ -622,17 +622,17 @@ test('AddPropCommand — add structure prop and undo', () => {
   assert(grid.getTile(0, 0).props.find(p => p.category === 'structure') === undefined, 'structure prop should be removed after undo');
 });
 
-test('AddPropCommand — add anomaly prop and undo', () => {
+test('AddPropCommand — add equipment prop and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const anomalyProp = createProp('anomaly_01', 0, 0, 'anomaly');
-  const cmd = new AddPropCommand(grid, 0, 0, anomalyProp);
+  const equipProp = createProp('scanner', 0, 0, 'equipment', { origin: 'unknown' });
+  const cmd = new AddPropCommand(grid, 0, 0, equipProp);
   cmd.execute();
-  const anomaly = grid.getTile(0, 0).props.find(p => p.category === 'anomaly');
-  assert(anomaly !== undefined, 'anomaly prop should exist');
-  assert(anomaly.type === 'anomaly_01', 'anomaly type should be anomaly_01');
+  const equip = grid.getTile(0, 0).props.find(p => p.category === 'equipment');
+  assert(equip !== undefined, 'equipment prop should exist');
+  assert(equip.type === 'scanner', 'equipment type should be scanner');
   cmd.undo();
-  assert(grid.getTile(0, 0).props.find(p => p.category === 'anomaly') === undefined, 'anomaly prop should be removed after undo');
+  assert(grid.getTile(0, 0).props.find(p => p.category === 'equipment') === undefined, 'equipment prop should be removed after undo');
 });
 
 test('SetSpawnCommand — execute and undo', () => {
@@ -645,25 +645,25 @@ test('SetSpawnCommand — execute and undo', () => {
   assert(grid.meta.spawn[0] === 0 && grid.meta.spawn[1] === 0, 'spawn should be [0,0] after undo');
 });
 
-test('AddPropCommand — add resource and undo', () => {
+test('AddPropCommand — add plant prop and undo', () => {
   const grid = new HexGridClass();
   grid.setTile(0, 0, createTileData('forest'));
-  const res = createProp('wood', 1, -1, 'resource', { rotation: 90 });
+  const res = createProp('wood', 1, -1, 'plant', { rotation: 90 });
   const cmd = new AddPropCommand(grid, 0, 0, res);
   cmd.execute();
-  const resources = grid.getTile(0, 0).props.filter(p => p.category === 'resource');
-  assert(resources.length === 1, 'should have 1 resource');
-  assert(resources[0].type === 'wood', 'resource type should be wood');
-  assert(resources[0].sq === 1, 'sq should be 1');
-  assert(resources[0].sr === -1, 'sr should be -1');
+  const plants = grid.getTile(0, 0).props.filter(p => p.category === 'plant');
+  assert(plants.length === 1, 'should have 1 plant');
+  assert(plants[0].type === 'wood', 'plant type should be wood');
+  assert(plants[0].sq === 1, 'sq should be 1');
+  assert(plants[0].sr === -1, 'sr should be -1');
   cmd.undo();
-  assert(grid.getTile(0, 0).props.filter(p => p.category === 'resource').length === 0, 'should have 0 resources after undo');
+  assert(grid.getTile(0, 0).props.filter(p => p.category === 'plant').length === 0, 'should have 0 plants after undo');
 });
 
 test('EditPropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
-  tile.props = [createProp('wood', 1, 0, 'resource', { rotation: 90 })];
+  tile.props = [createProp('wood', 1, 0, 'plant', { rotation: 90 })];
   grid.setTile(0, 0, tile);
   const cmd = new EditPropCommand(grid, 0, 0, 0, { sq: 1 }, { sq: -1 });
   cmd.execute();
@@ -676,8 +676,8 @@ test('DeletePropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.props = [
-    createProp('wood', 0, 0, 'resource', { rotation: 90 }),
-    createProp('stone', 1, 0, 'resource', { rotation: 180 }),
+    createProp('wood', 0, 0, 'plant', { rotation: 90 }),
+    createProp('stone', 1, 0, 'mineral', { rotation: 180 }),
   ];
   grid.setTile(0, 0, tile);
   const removed = { ...tile.props[0] };
@@ -713,11 +713,8 @@ test('ToolManager — setTool creates correct tool instances', () => {
   tm.setTool('eraser');
   assert(tm.activeTool instanceof EraserTool, 'should be EraserTool');
 
-  tm.setTool('resource', 'wood');
-  assert(tm.activeTool instanceof ResourcePlacer, 'should be ResourcePlacer');
-
-  tm.setTool('structure', 'campfire');
-  assert(tm.activeTool instanceof StructurePlacer, 'should be StructurePlacer');
+  tm.setTool('prop', 'wood');
+  assert(tm.activeTool instanceof PropPlacer, 'should be PropPlacer');
 
   tm.setTool('spawn');
   assert(tm.activeTool instanceof SpawnMarker, 'should be SpawnMarker');
@@ -787,14 +784,14 @@ test('ElevationBrush — SET mode sets exact value, clamped to [0,9]', () => {
   tm.onMouseUp({ q: 0, r: 0 });
   assert(grid.getTile(0, 0).elevation === 5, 'elevation should be 5');
 
-  // Clamping
-  tm.elevationValue = 15;
+  // Clamping — elevation can go up to 32000 now
+  tm.elevationValue = 40000;
   tm.setTool('elevation'); // reset tool for fresh paintedHexes
   tm.elevationMode = ElevationMode.SET;
-  tm.elevationValue = 15;
+  tm.elevationValue = 40000;
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).elevation === 9, 'elevation should clamp to 9');
+  assert(grid.getTile(0, 0).elevation === 32000, 'elevation should clamp to 32000');
 });
 
 test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
@@ -901,7 +898,7 @@ test('validateMap — valid map passes', () => {
   const grid = new HexGridClass();
   grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
   const tile = createTileData('forest');
-  tile.props = [createProp('wood', 0, 0, 'resource', { rotation: 45 })];
+  tile.props = [createProp('wood', 0, 0, 'plant', { rotation: 45 })];
   grid.setTile(0, 0, tile);
 
   const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
@@ -935,8 +932,8 @@ test('validateMap — overlapping props fails', () => {
   grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
   const tile = createTileData('forest');
   tile.props = [
-    createProp('wood', 0, 0, 'resource', { rotation: 0 }),
-    createProp('stone', 0, 0, 'resource', { rotation: 90 }),
+    createProp('wood', 0, 0, 'plant', { rotation: 0 }),
+    createProp('stone', 0, 0, 'mineral', { rotation: 90 }),
   ];
   grid.setTile(0, 0, tile);
 
@@ -950,7 +947,7 @@ test('validateMap — invalid sub-hex fails', () => {
   grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
   const tile = createTileData('forest');
   // (2, 2) is distance 4 from origin in axial, which is > 2
-  tile.props = [{ type: 'wood', sq: 2, sr: 2, category: 'resource', rotation: 0 }];
+  tile.props = [{ type: 'wood', sq: 2, sr: 2, category: 'plant', rotation: 0, origin: 'natural' }];
   grid.setTile(0, 0, tile);
 
   const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
@@ -962,7 +959,7 @@ test('validateMap — invalid rotation range fails', () => {
   const grid = new HexGridClass();
   grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
   const tile = createTileData('forest');
-  tile.props = [{ type: 'wood', sq: 0, sr: 0, category: 'resource', rotation: 400 }];
+  tile.props = [{ type: 'wood', sq: 0, sr: 0, category: 'plant', rotation: 400, origin: 'natural' }];
   grid.setTile(0, 0, tile);
 
   const result = validateMap(grid, new Set(['forest']), new Set(['wood']));
@@ -970,16 +967,16 @@ test('validateMap — invalid rotation range fails', () => {
   assert(result.errors.some(e => e.message.includes('rotation')), 'should mention rotation');
 });
 
-test('validateMap — unknown structure type fails', () => {
+test('validateMap — unknown category fails', () => {
   const grid = new HexGridClass();
   grid.meta = { chapter_id: 'ch1', name: 'Test', spawn: [0, 0] };
   const tile = createTileData('forest');
-  tile.props = [createProp('nonexistent_structure', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }] })];
+  tile.props = [{ type: 'mystery', sq: 0, sr: 0, category: 'bogus_category', origin: 'natural', rotation: 0 }];
   grid.setTile(0, 0, tile);
 
   const result = validateMap(grid, new Set(['forest']), new Set());
-  assert(result.valid === false, 'should fail with unknown structure');
-  assert(result.errors.some(e => e.message.includes('unknown structure')), 'should mention unknown structure');
+  assert(result.valid === false, 'should fail with unknown category');
+  assert(result.errors.some(e => e.message.includes('unknown category')), 'should mention unknown category');
 });
 
 test('validateMap — structured error format', () => {
@@ -1002,11 +999,12 @@ test('HexGrid.parseKey — parses key correctly', () => {
 });
 
 test('CATEGORY_COLORS — has expected categories', () => {
-  assert(CATEGORY_COLORS.resource !== undefined, 'should have resource');
+  assert(CATEGORY_COLORS.plant !== undefined, 'should have plant');
+  assert(CATEGORY_COLORS.mineral !== undefined, 'should have mineral');
   assert(CATEGORY_COLORS.structure !== undefined, 'should have structure');
-  assert(CATEGORY_COLORS.anomaly !== undefined, 'should have anomaly');
-  assert(typeof CATEGORY_COLORS.resource.badge === 'string', 'resource should have badge color');
-  assert(typeof CATEGORY_COLORS.resource.fill === 'string', 'resource should have fill color');
+  assert(CATEGORY_COLORS.equipment !== undefined, 'should have equipment');
+  assert(typeof CATEGORY_COLORS.plant.badge === 'string', 'plant should have badge color');
+  assert(typeof CATEGORY_COLORS.plant.fill === 'string', 'plant should have fill color');
 });
 
 // ============================================================
@@ -1014,35 +1012,51 @@ test('CATEGORY_COLORS — has expected categories', () => {
 // ============================================================
 
 test('CATEGORY_TO_INT — maps string categories to integers', () => {
-  assert(CATEGORY_TO_INT.resource === 0, 'resource should be 0');
-  assert(CATEGORY_TO_INT.structure === 1, 'structure should be 1');
-  assert(CATEGORY_TO_INT.anomaly === 2, 'anomaly should be 2');
-  assert(CATEGORY_TO_INT.spawn === 3, 'spawn should be 3');
+  assert(CATEGORY_TO_INT.plant === 0, 'plant should be 0');
+  assert(CATEGORY_TO_INT.mineral === 1, 'mineral should be 1');
+  assert(CATEGORY_TO_INT.animal === 2, 'animal should be 2');
+  assert(CATEGORY_TO_INT.fungi === 3, 'fungi should be 3');
+  assert(CATEGORY_TO_INT.liquid === 4, 'liquid should be 4');
+  assert(CATEGORY_TO_INT.ooze === 5, 'ooze should be 5');
+  assert(CATEGORY_TO_INT.structure === 6, 'structure should be 6');
+  assert(CATEGORY_TO_INT.vehicle === 7, 'vehicle should be 7');
+  assert(CATEGORY_TO_INT.equipment === 8, 'equipment should be 8');
+  assert(CATEGORY_TO_INT.storage === 9, 'storage should be 9');
 });
 
 test('INT_TO_CATEGORY — maps integers to string categories', () => {
-  assert(INT_TO_CATEGORY[0] === 'resource', '0 should be resource');
-  assert(INT_TO_CATEGORY[1] === 'structure', '1 should be structure');
-  assert(INT_TO_CATEGORY[2] === 'anomaly', '2 should be anomaly');
-  assert(INT_TO_CATEGORY[3] === 'spawn', '3 should be spawn');
+  assert(INT_TO_CATEGORY[0] === 'plant', '0 should be plant');
+  assert(INT_TO_CATEGORY[1] === 'mineral', '1 should be mineral');
+  assert(INT_TO_CATEGORY[2] === 'animal', '2 should be animal');
+  assert(INT_TO_CATEGORY[3] === 'fungi', '3 should be fungi');
+  assert(INT_TO_CATEGORY[4] === 'liquid', '4 should be liquid');
+  assert(INT_TO_CATEGORY[5] === 'ooze', '5 should be ooze');
+  assert(INT_TO_CATEGORY[6] === 'structure', '6 should be structure');
+  assert(INT_TO_CATEGORY[7] === 'vehicle', '7 should be vehicle');
+  assert(INT_TO_CATEGORY[8] === 'equipment', '8 should be equipment');
+  assert(INT_TO_CATEGORY[9] === 'storage', '9 should be storage');
 });
 
 // ============================================================
 // createProp — new optional fields
 // ============================================================
 
-test('createProp — resource with optional fields', () => {
-  const p = createProp('iron', 1, -1, 'resource', {
+test('createProp — mineral with optional fields', () => {
+  const p = createProp('iron', 1, -1, 'mineral', {
     rotation: 45, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300,
   });
+  assert(p.category === 'mineral', 'category should be mineral');
+  assert(p.origin === 'natural', 'origin should default to natural for mineral');
   assert(p.remaining === 5, 'remaining should be 5');
   assert(p.max_amount === 10, 'max_amount should be 10');
   assert(p.tool_required === 'pickaxe', 'tool_required should be pickaxe');
   assert(p.respawn_time === 300, 'respawn_time should be 300');
 });
 
-test('createProp — resource without optional fields omits them', () => {
-  const p = createProp('wood', 0, 0, 'resource', { rotation: 0 });
+test('createProp — plant without optional fields omits them', () => {
+  const p = createProp('wood', 0, 0, 'plant', { rotation: 0 });
+  assert(p.category === 'plant', 'category should be plant');
+  assert(p.origin === 'natural', 'origin should default to natural for plant');
   assert(!('remaining' in p), 'remaining should not be present');
   assert(!('max_amount' in p), 'max_amount should not be present');
   assert(!('tool_required' in p), 'tool_required should not be present');
@@ -1053,24 +1067,26 @@ test('createProp — structure with blocks_movement', () => {
   const p = createProp('wall', 0, 0, 'structure', { blocks_movement: true });
   assert(p.blocks_movement === true, 'blocks_movement should be true');
   assert(p.rotation === 0, 'structure should have rotation');
+  assert(p.origin === 'crafted', 'origin should default to crafted for structure');
 });
 
-test('createProp — anomaly gets rotation', () => {
-  const p = createProp('rift', 0, 0, 'anomaly', { rotation: 180 });
-  assert(p.rotation === 180, 'anomaly rotation should be 180');
+test('createProp — equipment gets rotation and origin', () => {
+  const p = createProp('scanner', 0, 0, 'equipment', { rotation: 180, origin: 'unknown' });
+  assert(p.rotation === 180, 'equipment rotation should be 180');
+  assert(p.origin === 'unknown', 'origin should be unknown when explicitly set');
 });
 
 // ============================================================
 // Serialization — engine JSON format
 // ============================================================
 
-test('serializeGridToMapJson — outputs integer categories and sub_hex_q/sub_hex_r', () => {
+test('serializeGridToMapJson — outputs integer categories, origin, and sub_hex_q/sub_hex_r', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.props = [
-    createProp('wood', 1, -1, 'resource', { rotation: 90 }),
+    createProp('wood', 1, -1, 'plant', { rotation: 90 }),
     createProp('wall', 0, 0, 'structure', { footprint: [{ q: 0, r: 0 }], blocks_movement: true }),
-    createProp('rift', 0, 0, 'anomaly', { rotation: 45 }),
+    createProp('scanner', 0, 0, 'equipment', { rotation: 45, origin: 'unknown' }),
   ];
   grid.setTile(0, 0, tile);
   grid.meta.spawn = [0, 0];
@@ -1080,8 +1096,9 @@ test('serializeGridToMapJson — outputs integer categories and sub_hex_q/sub_he
   const json = serializeGridToMapJson(grid);
   const props = json.tiles['0,0'].props;
 
-  // Resource prop
-  assert(props[0].category === 0, 'resource category should be integer 0');
+  // Plant prop
+  assert(props[0].category === 0, 'plant category should be integer 0');
+  assert(props[0].origin === 0, 'plant origin should be integer 0 (natural)');
   assert(props[0].sub_hex_q === 1, 'sub_hex_q should be 1');
   assert(props[0].sub_hex_r === -1, 'sub_hex_r should be -1');
   assert(!('sq' in props[0]), 'should not have sq field');
@@ -1089,21 +1106,23 @@ test('serializeGridToMapJson — outputs integer categories and sub_hex_q/sub_he
   assert(props[0].rotation === 90, 'rotation should be 90');
 
   // Structure prop — sub_hex omitted when (0,0)
-  assert(props[1].category === 1, 'structure category should be integer 1');
+  assert(props[1].category === 6, 'structure category should be integer 6');
+  assert(props[1].origin === 1, 'structure origin should be integer 1 (crafted)');
   assert(!('sub_hex_q' in props[1]), 'sub_hex_q omitted for (0,0)');
   assert(!('sub_hex_r' in props[1]), 'sub_hex_r omitted for (0,0)');
   assert(!('footprint' in props[1]), 'footprint should not be serialized');
   assert(props[1].blocks_movement === true, 'blocks_movement should be true');
 
-  // Anomaly prop
-  assert(props[2].category === 2, 'anomaly category should be integer 2');
-  assert(props[2].rotation === 45, 'anomaly rotation should be 45');
+  // Equipment prop
+  assert(props[2].category === 8, 'equipment category should be integer 8');
+  assert(props[2].origin === 4, 'equipment origin should be integer 4 (unknown)');
+  assert(props[2].rotation === 45, 'equipment rotation should be 45');
 });
 
 test('serializeGridToMapJson — omits rotation when zero', () => {
   const grid = new HexGridClass();
   const tile = createTileData('plains');
-  tile.props = [createProp('stone', 0, 0, 'resource', { rotation: 0 })];
+  tile.props = [createProp('stone', 0, 0, 'mineral', { rotation: 0 })];
   grid.setTile(0, 0, tile);
   grid.meta.spawn = [0, 0];
   const json = serializeGridToMapJson(grid);
@@ -1111,10 +1130,10 @@ test('serializeGridToMapJson — omits rotation when zero', () => {
   assert(!('rotation' in prop), 'rotation should be omitted when zero');
 });
 
-test('serializeGridToMapJson — resource optional fields round-trip', () => {
+test('serializeGridToMapJson — prop optional fields round-trip', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
-  tile.props = [createProp('iron', 0, 0, 'resource', {
+  tile.props = [createProp('iron', 0, 0, 'mineral', {
     rotation: 0, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300,
   })];
   grid.setTile(0, 0, tile);
@@ -1159,18 +1178,18 @@ test('loadMapIntoGrid — loads engine format with integer categories and sub_he
     spawn: [0, 0],
     tiles: {
       '0,0': { biome: 'forest', elevation: 1, props: [
-        { type: 'iron', category: 0, sub_hex_q: 2, sub_hex_r: -1, rotation: 45, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300 },
-        { type: 'wall', category: 1, blocks_movement: true },
-        { type: 'rift', category: 2, rotation: 90 },
+        { type: 'iron', category: 1, sub_hex_q: 2, sub_hex_r: -1, rotation: 45, remaining: 5, max_amount: 10, tool_required: 'pickaxe', respawn_time: 300 },
+        { type: 'wall', category: 6, blocks_movement: true },
+        { type: 'scanner', category: 8, rotation: 90, origin: 4 },
       ] },
     },
   };
   loadMapIntoGrid(grid, mapData);
   const tile = grid.getTile(0, 0);
 
-  // Resource
-  const res = tile.props.find(p => p.category === 'resource');
-  assert(res.type === 'iron', 'resource type should be iron');
+  // Mineral
+  const res = tile.props.find(p => p.category === 'mineral');
+  assert(res.type === 'iron', 'mineral type should be iron');
   assert(res.sq === 2, 'sq should be 2 (from sub_hex_q)');
   assert(res.sr === -1, 'sr should be -1 (from sub_hex_r)');
   assert(res.remaining === 5, 'remaining should load');
@@ -1185,10 +1204,11 @@ test('loadMapIntoGrid — loads engine format with integer categories and sub_he
   assert(st.sq === 0, 'default sq for structure should be 0');
   assert(st.sr === 0, 'default sr for structure should be 0');
 
-  // Anomaly
-  const an = tile.props.find(p => p.category === 'anomaly');
-  assert(an.type === 'rift', 'anomaly type should be rift');
-  assert(an.rotation === 90, 'anomaly rotation should load');
+  // Equipment
+  const eq = tile.props.find(p => p.category === 'equipment');
+  assert(eq.type === 'scanner', 'equipment type should be scanner');
+  assert(eq.rotation === 90, 'equipment rotation should load');
+  assert(eq.origin === 4, 'equipment origin should be 4 (unknown) when loaded from integer');
 });
 
 test('loadMapIntoGrid — full round-trip: load engine format, serialize back', () => {
@@ -1198,7 +1218,7 @@ test('loadMapIntoGrid — full round-trip: load engine format, serialize back', 
     tiles: {
       '0,0': { biome: 'forest', elevation: 3, props: [
         { type: 'wood', category: 0, sub_hex_q: 1, sub_hex_r: -1, rotation: 45, remaining: 8 },
-        { type: 'campfire', category: 1, blocks_movement: false },
+        { type: 'campfire', category: 6, blocks_movement: false },
       ] },
     },
   };
@@ -1207,11 +1227,11 @@ test('loadMapIntoGrid — full round-trip: load engine format, serialize back', 
 
   assert(output.spawn[0] === 1 && output.spawn[1] === 2, 'spawn round-trips');
   const props = output.tiles['0,0'].props;
-  assert(props[0].category === 0, 'resource category round-trips as int');
+  assert(props[0].category === 0, 'plant category round-trips as int');
   assert(props[0].sub_hex_q === 1, 'sub_hex_q round-trips');
   assert(props[0].sub_hex_r === -1, 'sub_hex_r round-trips');
   assert(props[0].remaining === 8, 'remaining round-trips');
-  assert(props[1].category === 1, 'structure category round-trips as int');
+  assert(props[1].category === 6, 'structure category round-trips as int');
   // blocks_movement=false should not be serialized (only truthy)
   assert(!('blocks_movement' in props[1]), 'blocks_movement=false not serialized');
 });

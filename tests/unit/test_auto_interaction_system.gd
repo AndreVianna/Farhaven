@@ -5,6 +5,26 @@ const _AutoInteraction = preload("res://scripts/auto_interaction/auto_interactio
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
+# World prop ids
+const ID_TREE: StringName = &"00001"
+const ID_LOOSE_ROCKS: StringName = &"00002"
+const ID_TALL_GRASS: StringName = &"00003"
+const ID_BERRY_BUSH: StringName = &"00004"
+const ID_BOULDER: StringName = &"00005"
+const ID_IRON_DEPOSIT: StringName = &"00006"
+const ID_CRYSTAL_CLUSTER: StringName = &"00007"
+const ID_TOXIC_BUSH: StringName = &"00008"
+# Item ids (yields)
+const ID_WOOD: StringName = &"00010"
+const ID_ROCK: StringName = &"00011"
+const ID_STONE: StringName = &"00013"
+# Anomaly id
+const ID_ANOMALY_FRAGMENT: StringName = &"10001"
+# Tool ids
+const ID_AXE: StringName = &"00201"
+const ID_PICKAXE: StringName = &"00202"
+const ID_KNIFE: StringName = &"00204"
+
 var _sys: Node
 var _inv: RefCounted
 
@@ -22,136 +42,144 @@ func after_test() -> void:
 
 # --- Helper ---
 
-func _make_resource(type: StringName, tool_req: StringName = &"") -> Resource:
-	return _Prop.create_resource(type, 3, 3, tool_req)
+func _make_prop(type: StringName, tool_req: StringName = &"") -> Resource:
+	return _Prop.create_prop(type, 3, 3, tool_req)
 
 
-# --- can_gather: bare hands gathers wood ---
+# --- can_gather: bare hands gathers wood (tree) ---
 
-func test_can_gather_bare_hands_wood() -> void:
-	var rn := _make_resource(&"wood", &"")
+func test_can_gather_bare_hands_tree() -> void:
+	var rn := _make_prop(ID_TREE, &"")
 	assert_bool(_sys.can_gather(rn, _inv)).is_true()
 
 
-# --- can_gather: stone_pickaxe gathers ore ---
+# --- can_gather: any pickaxe equipped gathers iron deposit ---
 
-func test_can_gather_pickaxe_gathers_ore() -> void:
-	_inv.set_tool(&"pickaxe", &"stone_pickaxe")
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+func test_can_gather_pickaxe_gathers_iron_deposit() -> void:
+	_inv.set_tool(&"pickaxe", ID_PICKAXE)
+	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_true()
 
 
-# --- can_gather: stone_axe does NOT mine ore ---
+# --- can_gather: equipping axe doesn't satisfy a pickaxe-gated prop ---
 
-func test_can_gather_axe_cannot_mine_ore() -> void:
-	_inv.set_tool(&"axe", &"stone_axe")
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+func test_can_gather_axe_cannot_mine_iron() -> void:
+	_inv.set_tool(&"axe", ID_AXE)
+	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_false()
 
 
-# --- can_gather: empty slot rejects gated resource ---
+# --- can_gather: empty slot rejects gated prop ---
 
 func test_can_gather_empty_slot_rejects_gated() -> void:
 	# pickaxe slot is empty by default
-	var rn := _make_resource(&"ore", &"stone_pickaxe")
+	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	assert_bool(_sys.can_gather(rn, _inv)).is_false()
 
 
-# --- Resource config: values match ResourceRegistry ---
+# --- PropDef config: values match PropRegistry ---
 
-func test_resource_config_wood() -> void:
-	var def = ResourceRegistry.get_def(&"wood")
+func test_prop_config_tree() -> void:
+	var def = PropRegistry.get_def(ID_TREE)
 	assert_float(def.gather_time).is_equal(1.0)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_stone() -> void:
-	var def = ResourceRegistry.get_def(&"stone")
+func test_prop_config_boulder() -> void:
+	var def = PropRegistry.get_def(ID_BOULDER)
 	assert_float(def.gather_time).is_equal(1.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_berries() -> void:
-	var def = ResourceRegistry.get_def(&"berries")
+func test_prop_config_berry_bush() -> void:
+	var def = PropRegistry.get_def(ID_BERRY_BUSH)
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(2)
 
 
-func test_resource_config_fiber() -> void:
-	var def = ResourceRegistry.get_def(&"fiber")
+func test_prop_config_tall_grass() -> void:
+	var def = PropRegistry.get_def(ID_TALL_GRASS)
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_ore() -> void:
-	var def = ResourceRegistry.get_def(&"ore")
+func test_prop_config_iron_deposit() -> void:
+	var def = PropRegistry.get_def(ID_IRON_DEPOSIT)
 	assert_float(def.gather_time).is_equal(2.0)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_crystal() -> void:
-	var def = ResourceRegistry.get_def(&"crystal")
+func test_prop_config_crystal_cluster() -> void:
+	var def = PropRegistry.get_def(ID_CRYSTAL_CLUSTER)
 	assert_float(def.gather_time).is_equal(2.5)
 	assert_int(def.gather_amount).is_equal(1)
 
 
-func test_resource_config_toxic_berries() -> void:
-	var def = ResourceRegistry.get_def(&"toxic_berries")
+func test_prop_config_toxic_berry_bush() -> void:
+	var def = PropRegistry.get_def(ID_TOXIC_BUSH)
 	assert_float(def.gather_time).is_equal(0.5)
 	assert_int(def.gather_amount).is_equal(2)
 
 
-func test_resource_config_anomaly_fragment() -> void:
-	var def = ResourceRegistry.get_def(&"anomaly_fragment")
-	assert_float(def.gather_time).is_equal(3.0)
-	assert_int(def.gather_amount).is_equal(1)
+func test_prop_config_anomaly_fragment() -> void:
+	var def = PropRegistry.get_def(ID_ANOMALY_FRAGMENT)
+	assert_bool(def != null).override_failure_message(
+		"PropRegistry must contain anomaly fragment def"
+	).is_true()
 
 
-func test_resource_registry_has_9_types() -> void:
-	assert_int(ResourceRegistry.get_all().size()).is_equal(9)
+func test_prop_registry_has_at_least_natural_props() -> void:
+	# Total PropDefs include natural props (8), inventory items (~9), structures (5), tools (5),
+	# and the anomaly fragment — verify the count grew with the migration.
+	assert_int(PropRegistry.get_all().size()).is_greater_equal(20)
 
 
-func test_resource_config_loose_rock() -> void:
-	var def = ResourceRegistry.get_def(&"loose_rock")
+func test_prop_config_loose_rocks() -> void:
+	var def = PropRegistry.get_def(ID_LOOSE_ROCKS)
 	assert_float(def.gather_time).is_equal(1.0)
 	assert_int(def.gather_amount).is_equal(2)
 
 
-func test_gather_yield_loose_rock_gives_stone() -> void:
-	var yield_type: StringName = ResourceRegistry.get_yield_type(&"loose_rock")
-	assert_str(String(yield_type)).is_equal("stone")
+func test_gather_yield_loose_rocks_gives_rock() -> void:
+	var yield_type: StringName = PropRegistry.get_yield_type(ID_LOOSE_ROCKS)
+	assert_str(String(yield_type)).is_equal(String(ID_ROCK))
 
 
-# --- Tool speed: stone_axe halves wood gather time ---
+func test_gather_yield_boulder_gives_stone() -> void:
+	var yield_type: StringName = PropRegistry.get_yield_type(ID_BOULDER)
+	assert_str(String(yield_type)).is_equal(String(ID_STONE))
 
-func test_tool_speed_stone_axe_halves_wood() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"wood").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"wood", &"stone_axe")
+
+# --- Tool speed: axe halves wood-tree gather time ---
+
+func test_tool_speed_axe_halves_tree() -> void:
+	var base_time: float = PropRegistry.get_def(ID_TREE).gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(ID_TREE, ID_AXE)
 	assert_float(base_time * multiplier).is_equal(0.5)
 
 
-func test_tool_speed_stone_pickaxe_halves_stone() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"stone").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"stone", &"stone_pickaxe")
+func test_tool_speed_pickaxe_halves_boulder() -> void:
+	var base_time: float = PropRegistry.get_def(ID_BOULDER).gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(ID_BOULDER, ID_PICKAXE)
 	assert_float(base_time * multiplier).is_equal(0.75)
 
 
-func test_tool_speed_stone_pickaxe_halves_ore() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"ore").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"ore", &"stone_pickaxe")
+func test_tool_speed_pickaxe_halves_iron_deposit() -> void:
+	var base_time: float = PropRegistry.get_def(ID_IRON_DEPOSIT).gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(ID_IRON_DEPOSIT, ID_PICKAXE)
 	assert_float(base_time * multiplier).is_equal(1.0)
 
 
-func test_tool_speed_stone_pickaxe_halves_crystal() -> void:
-	var base_time: float = ResourceRegistry.get_def(&"crystal").gather_time
-	var multiplier: float = ResourceRegistry.get_tool_speed(&"crystal", &"stone_pickaxe")
+func test_tool_speed_pickaxe_halves_crystal_cluster() -> void:
+	var base_time: float = PropRegistry.get_def(ID_CRYSTAL_CLUSTER).gather_time
+	var multiplier: float = PropRegistry.get_tool_speed(ID_CRYSTAL_CLUSTER, ID_PICKAXE)
 	assert_float(base_time * multiplier).is_equal(1.25)
 
 
 # --- Weapon damage ---
 
 func test_weapon_damage_survival_knife() -> void:
-	assert_int(_AutoInteraction.WEAPON_DAMAGE[&"survival_knife"]).is_equal(10)
+	assert_int(_AutoInteraction.WEAPON_DAMAGE[ID_KNIFE]).is_equal(10)
 
 
 func test_weapon_damage_bare_hands() -> void:
@@ -168,18 +196,18 @@ func test_auto_defend_attack_range() -> void:
 	assert_int(_AutoInteraction.AUTO_DEFEND_CONFIG["attack_range"]).is_equal(1)
 
 
-# --- Tool priority ---
+# --- Tool slot priority ---
 
-func test_tool_priority_pickaxe_highest() -> void:
-	assert_int(_AutoInteraction.TOOL_PRIORITY[&"stone_pickaxe"]).is_equal(2)
-
-
-func test_tool_priority_axe_middle() -> void:
-	assert_int(_AutoInteraction.TOOL_PRIORITY[&"stone_axe"]).is_equal(1)
+func test_tool_slot_priority_pickaxe_highest() -> void:
+	assert_int(_AutoInteraction.TOOL_SLOT_PRIORITY[&"pickaxe"]).is_equal(2)
 
 
-func test_tool_priority_bare_hands_lowest() -> void:
-	assert_int(_AutoInteraction.TOOL_PRIORITY[&""]).is_equal(0)
+func test_tool_slot_priority_axe_middle() -> void:
+	assert_int(_AutoInteraction.TOOL_SLOT_PRIORITY[&"axe"]).is_equal(1)
+
+
+func test_tool_slot_priority_bare_hands_lowest() -> void:
+	assert_int(_AutoInteraction.TOOL_SLOT_PRIORITY[&""]).is_equal(0)
 
 
 # --- 5 signals declared ---

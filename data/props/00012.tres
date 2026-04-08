@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"00012"
+display_name = "Fiber"
+gather_time = 0.0
+gather_amount = 0
+tool_required = &""
+respawn_time = 0.0
+yield_type = &""
+tool_speed = {}
+max_stack = 99
+category = &"resource"
+catalog_entry = &""
+catalog_category = &""
+prop_category = 0
+origin = 0
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.08, "size_y": 0.04, "size_z": 0.08 }
+placeholder_color = Color(0.7, 0.8, 0.4, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.08, "size_y": 0.04, "size_z": 0.08 }
+placeholder_depleted_color = Color(0.5, 0.55, 0.25, 1.0)

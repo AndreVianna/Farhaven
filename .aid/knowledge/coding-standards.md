@@ -16,8 +16,8 @@
 - Source: all files in `scripts/`, `ui/`, `tests/`, `data/`
 
 ### Classes
-- **PascalCase** for class_name declarations: `HexMath`, `HexTile`, `BiomeData`, `ResourceNode`, `PlayerInput`, `AutoInteractionSystem`, `CatalogEntry`, `InventorySlotUI`, `RecipeEntryUI`
-- **Most scripts register class_name.** 30 of 41 source files use `class_name` (22 in scripts/, 8 in ui/). The 11 exceptions are: autoloads (`hex_grid.gd`, `resource_registry.gd`) which cannot use class_name due to initialization ordering, the bootstrap (`main.gd`), player core (`player.gd`, `player_camera.gd`), map loader (`map_loader.gd`), renderers (`resource_renderer.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`, `hex_grid_renderer.gd`), and crafting (`crafting_system.gd`).
+- **PascalCase** for class_name declarations: `HexMath`, `HexTile`, `BiomeData`, `PropNode`, `PlayerInput`, `AutoInteractionSystem`, `CatalogEntry`, `InventorySlotUI`, `RecipeEntryUI`
+- **Most scripts register class_name.** 30 of 41 source files use `class_name` (22 in scripts/, 8 in ui/). The 11 exceptions are: autoloads (`hex_grid.gd`, `prop_registry.gd`) which cannot use class_name due to initialization ordering, the bootstrap (`main.gd`), player core (`player.gd`, `player_camera.gd`), map loader (`map_loader.gd`), renderers (`prop_renderer.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`, `hex_grid_renderer.gd`), and crafting (`crafting_system.gd`).
 - Source: anchored grep `^class_name` across `scripts/`, `ui/`, `scenes/world/`
 
 ### Functions
@@ -52,8 +52,8 @@
 ### Pattern: push_warning for non-fatal issues
 - The codebase uses `push_warning()` for validation failures that should not crash the game but indicate data issues
 - Examples: `push_warning("MapLoader: cannot open '%s'" % path)` in `map_loader.gd` line 46, `push_warning("MapLoader: tile count %d not in [%d,%d]")` in `map_loader.gd` line 143
-- `push_error()` used only for critical failures: `push_error("ResourceRegistry: cannot open %s")` in `resource_registry.gd` line 14
-- Source: `scripts/hex/map_loader.gd`, `scripts/data/resource_registry.gd`, `scripts/scanner/catalog.gd`
+- `push_error()` used only for critical failures: `push_error("PropRegistry: cannot open %s")` in `prop_registry.gd` line 14
+- Source: `scripts/hex/map_loader.gd`, `scripts/data/prop_registry.gd`, `scripts/scanner/catalog.gd`
 
 ### Pattern: Null guards with early return
 - All cross-system references check for null before use, returning silently rather than crashing
@@ -80,21 +80,21 @@
 ### What Gets Logged
 - Map validation issues (missing biomes, unreachable tiles, tile count out of range)
 - File I/O failures (cannot open map file, JSON parse errors)
-- Resource loading failures (ResourceRegistry cannot open directory)
+- Resource loading failures (PropRegistry cannot open directory)
 - Invalid API calls (encounter_entry on non-fauna entry: `catalog.gd` line 126)
 - No runtime gameplay logging (no "player moved to X", no "gathered Y")
-- Source: `map_loader.gd`, `resource_registry.gd`, `catalog.gd`
+- Source: `map_loader.gd`, `prop_registry.gd`, `catalog.gd`
 
 ### Log Format
 - String interpolation with `%` operator: `"MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation]`
-- Messages prefixed with system name: `"MapLoader: ..."`, `"ResourceRegistry: ..."`
+- Messages prefixed with system name: `"MapLoader: ..."`, `"PropRegistry: ..."`
 - Source: all push_warning/push_error calls
 
 ## Configuration
 
 ### Autoloads (project.godot)
 - Two autoloads, loaded in order:
-  1. `ResourceRegistry` -- `scripts/data/resource_registry.gd` (scans data/resources/ at startup)
+  1. `PropRegistry` -- `scripts/data/prop_registry.gd` (scans data/props/ at startup)
   2. `HexGrid` -- `scripts/hex/hex_grid.gd` (map container singleton)
 - Source: `project.godot` lines 24-26
 
@@ -109,7 +109,7 @@
 - Source: all `@export` declarations
 
 ### Data-Driven Configuration
-- Resource definitions in `data/resources/*.tres` files (scanned by ResourceRegistry)
+- Resource definitions in `data/props/*.tres` files (scanned by PropRegistry)
 - Biome definitions in `data/biomes/*.tres` files
 - Catalog entries in `data/catalog/*.tres` files
 - Map layout in `data/maps/ch1.json`
@@ -138,7 +138,7 @@
 
 ### Data Organization
 - All game data in `data/` organized by type: `biomes/`, `catalog/`, `maps/`, `resources/`
-- Each ResourceDef is a separate .tres file in `data/resources/`
+- Each PropDef is a separate .tres file in `data/props/`
 - Each biome is a separate .tres file in `data/biomes/`
 - Catalog entries grouped by category (flora.tres, fauna.tres, minerals.tres, anomalies.tres) -- each file contains multiple CatalogEntry sub-resources
 - Source: `data/` directory
@@ -170,8 +170,8 @@
 - Source: all const preload declarations
 
 ### Dependency Injection for Testability
-- External dependencies (HexGrid, ResourceRegistry) are stored in `var _grid: Node` with fallback to autoload in `_ready()`: `if _grid == null: _grid = HexGrid`
-- This pattern is universal -- used in `player.gd`, `player_input.gd`, `crafting_system.gd`, `auto_interaction_system.gd`, `scanner_system.gd`, `resource_renderer.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`
+- External dependencies (HexGrid, PropRegistry) are stored in `var _grid: Node` with fallback to autoload in `_ready()`: `if _grid == null: _grid = HexGrid`
+- This pattern is universal -- used in `player.gd`, `player_input.gd`, `crafting_system.gd`, `auto_interaction_system.gd`, `scanner_system.gd`, `prop_renderer.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`
 - Tests inject mock objects by setting `_grid` before `_ready()` runs
 - Source: all scripts that reference autoloads
 
@@ -211,8 +211,8 @@
 - Source: `hex_grid.gd`, `player.gd`, `inventory.gd`, `crafting_system.gd`, `catalog.gd`
 
 ### Duplicate Constant Warning
-- `ELEVATION_SCALE = 0.5` in `player.gd` and `ELEVATION_STEP = 0.5` in `hex_grid_renderer.gd` are documented as needing manual synchronization ("MUST match HexGridRenderer.ELEVATION_STEP"). `HEX_SIZE = 3.0` appears in `hex_math.gd`, `resource_renderer.gd`, and `prop_label_renderer.gd` independently.
-- Source: `player.gd` line 18, `hex_grid_renderer.gd` line 20, `resource_renderer.gd` line 24, `prop_label_renderer.gd` line 19
+- `ELEVATION_SCALE = 0.5` in `player.gd` and `ELEVATION_STEP = 0.5` in `hex_grid_renderer.gd` are documented as needing manual synchronization ("MUST match HexGridRenderer.ELEVATION_STEP"). `HEX_SIZE = 3.0` appears in `hex_math.gd`, `prop_renderer.gd`, and `prop_label_renderer.gd` independently.
+- Source: `player.gd` line 18, `hex_grid_renderer.gd` line 20, `prop_renderer.gd` line 24, `prop_label_renderer.gd` line 19
 
 ## Discrepancies: Documentation vs Code
 

@@ -20,19 +20,7 @@ const MARKER_RADIUS: float = 0.4
 ## Marker mesh height (thin disc).
 const MARKER_HEIGHT: float = 0.05
 
-## Per-item-type marker colors (matches inventory slot colors).
-const ITEM_COLORS: Dictionary = {
-	&"wood":           Color(0.55, 0.30, 0.10),
-	&"stone":          Color(0.60, 0.60, 0.60),
-	&"berries":        Color(0.90, 0.20, 0.30),
-	&"toxic_berries":  Color(0.35, 0.75, 0.15),
-	&"fiber":          Color(0.75, 0.85, 0.25),
-	&"ore":            Color(0.40, 0.50, 0.60),
-	&"crystal":        Color(0.40, 0.60, 0.95),
-	&"meat":           Color(0.80, 0.25, 0.20),
-}
-
-## Default color for unknown item types.
+## Default color for items with no PropDef.
 const DEFAULT_COLOR: Color = Color(1.0, 0.85, 0.0)
 
 # --- State ---
@@ -216,7 +204,8 @@ func _add_instance(tile: Vector2i, sub_hex: Vector2i, item_type: StringName) -> 
 	mm.set_instance_transform(idx, xform)
 
 	# Set per-instance color via custom data
-	var color: Color = ITEM_COLORS.get(item_type, DEFAULT_COLOR)
+	var def: PropDef = PropRegistry.get_def(item_type)
+	var color: Color = def.placeholder_color if def != null else DEFAULT_COLOR
 	color.a = 0.8
 	mm.set_instance_custom_data(idx, color)
 

@@ -6,38 +6,36 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const BIOME_NAMES: Dictionary = {
-	"crash_site": 0,
-	"grassland": 1,
-	"forest": 2,
-	"rocky": 3,
-	"water": 4,
-}
-
-const BIOME_DATA_PATHS: Dictionary = {
-	0: "res://data/biomes/crash_site.tres",
-	1: "res://data/biomes/grassland.tres",
-	2: "res://data/biomes/forest.tres",
-	3: "res://data/biomes/rocky.tres",
-	4: "res://data/biomes/water.tres",
-}
-
 const TILE_COUNT_MIN: int = 200
 const TILE_COUNT_MAX: int = 300
 
-# Legacy walkable structures — used when converting old "structure" field to Prop.blocks_movement
-const _WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
-
 var _grid: Node
-var _biome_data: Dictionary = {}  # int (Biome) -> BiomeData resource
+var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData
+var _biome_id_to_int: Dictionary = {}  # biome_id (String) -> int (HexTile.Biome enum)
 
 
 func _init(grid: Node) -> void:
 	_grid = grid
-	for biome_int in BIOME_DATA_PATHS:
-		var res: Resource = load(BIOME_DATA_PATHS[biome_int])
+	# Discover biome .tres files from data/biomes/ directory.
+	# Collect filenames first, then sort for deterministic ordering across
+	# platforms/filesystems. Must match HexGridRenderer's sort order.
+	var biome_files: Array[String] = []
+	var dir := DirAccess.open("res://data/biomes")
+	if dir:
+		dir.list_dir_begin()
+		var fname := dir.get_next()
+		while fname != "":
+			if fname.ends_with(".tres"):
+				biome_files.append(fname)
+			fname = dir.get_next()
+		dir.list_dir_end()
+	biome_files.sort()
+	for i: int in range(biome_files.size()):
+		var biome_id: String = biome_files[i].get_basename()
+		var res: Resource = load("res://data/biomes/" + biome_files[i])
 		if res != null:
-			_biome_data[biome_int] = res
+			_biome_data[biome_id] = res
+			_biome_id_to_int[biome_id] = i
 
 
 ## Load map from path. Returns true on success.
@@ -81,8 +79,8 @@ func load_map(path: String) -> bool:
 		var coords := Vector2i(int(parts[0].strip_edges()), int(parts[1].strip_edges()))
 		var td: Dictionary = tiles_dict[key]
 
-		var biome_str: String = td.get("biome", "grassland")
-		var biome_int: int = BIOME_NAMES.get(biome_str, _HexTile.Biome.GRASSLAND)
+		var biome_str: String = td.get("biome", "001")
+		var biome_int: int = _biome_id_to_int.get(biome_str, 0)
 
 		var tile: Resource = _HexTile.new()
 		tile.coords = coords
@@ -101,17 +99,17 @@ func load_map(path: String) -> bool:
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				if pd.has("tool_required") and pd["tool_required"] != "":
 					prop.tool_required = StringName(pd["tool_required"])
-				elif ResourceRegistry.has_def(prop.type):
-					prop.tool_required = ResourceRegistry.get_def(prop.type).tool_required
+				elif PropRegistry.has_def(prop.type):
+					prop.tool_required = PropRegistry.get_def(prop.type).tool_required
 				if pd.has("respawn_time"):
 					prop.respawn_time = float(pd["respawn_time"])
-				elif ResourceRegistry.has_def(prop.type):
-					prop.respawn_time = ResourceRegistry.get_def(prop.type).respawn_time
+				elif PropRegistry.has_def(prop.type):
+					prop.respawn_time = PropRegistry.get_def(prop.type).respawn_time
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
 				if prop.is_natural_category():
-					var defaults: Array = _get_resource_defaults(prop.type, biome_int)
+					var defaults: Array = _get_prop_defaults(prop.type, biome_int)
 					prop.remaining = int(pd.get("remaining", defaults[0]))
 					prop.max_amount = int(pd.get("max_amount", defaults[1]))
 				else:
@@ -122,9 +120,9 @@ func load_map(path: String) -> bool:
 			# Legacy format: "resources" + "structure" + "anomaly"
 			for res_entry in td.get("resources", []):
 				if res_entry is String:
-					tile.props.append(_make_resource_prop(StringName(str(res_entry)), biome_int))
+					tile.props.append(_make_prop(StringName(str(res_entry)), biome_int))
 				elif res_entry is Dictionary:
-					var prop: Resource = _make_resource_prop(StringName(str(res_entry.get("type", ""))), biome_int)
+					var prop: Resource = _make_prop(StringName(str(res_entry.get("type", ""))), biome_int)
 					var offset := Vector2(float(res_entry.get("x", 0.0)), float(res_entry.get("y", 0.0)))
 					prop.sub_hex = _HexMath.world_to_sub_axial(offset * _HexMath.HEX_SIZE * 0.4)
 					prop.rotation_deg = float(res_entry.get("rotation", 0.0))
@@ -134,7 +132,7 @@ func load_map(path: String) -> bool:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					not (StringName(structure_str) in _WALKABLE_STRUCTURES),
+					false,  # Legacy structures default to walkable; blocks_movement from .tres
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")
@@ -159,8 +157,8 @@ func load_map(path: String) -> bool:
 
 
 
-## Get default [remaining, max_amount] for a resource type from biome data.
-func _get_resource_defaults(type: StringName, biome_int: int) -> Array:
+## Get default [remaining, max_amount] for a prop type from biome data.
+func _get_prop_defaults(type: StringName, biome_int: int) -> Array:
 	var remaining: int = 3
 	var max_amount: int = 3
 	var bd: Resource = _biome_data.get(biome_int, null)
@@ -173,9 +171,9 @@ func _get_resource_defaults(type: StringName, biome_int: int) -> Array:
 	return [remaining, max_amount]
 
 
-func _make_resource_prop(type: StringName, biome_int: int) -> Resource:
-	var tool_req: StringName = ResourceRegistry.get_def(type).tool_required if ResourceRegistry.has_def(type) else &""
-	var respawn: float = ResourceRegistry.get_def(type).respawn_time if ResourceRegistry.has_def(type) else 0.0
+func _make_prop(type: StringName, biome_int: int) -> Resource:
+	var tool_req: StringName = PropRegistry.get_def(type).tool_required if PropRegistry.has_def(type) else &""
+	var respawn: float = PropRegistry.get_def(type).respawn_time if PropRegistry.has_def(type) else 0.0
 	var remaining: int = 3
 	var max_amount: int = 3
 
@@ -187,7 +185,7 @@ func _make_resource_prop(type: StringName, biome_int: int) -> Resource:
 				remaining = max_amount
 				break
 
-	return _Prop.create_resource(type, remaining, max_amount, tool_req, respawn)
+	return _Prop.create_prop(type, remaining, max_amount, tool_req, respawn)
 
 
 func _validate(spawn: Vector2i) -> void:
@@ -198,9 +196,6 @@ func _validate(spawn: Vector2i) -> void:
 	var spawn_tile: Resource = _grid._tiles.get(spawn, null)
 	if spawn_tile == null:
 		push_warning("MapLoader: spawn tile %s does not exist" % str(spawn))
-	elif spawn_tile.biome != _HexTile.Biome.CRASH_SITE:
-		push_warning("MapLoader: spawn tile at %s is not CRASH_SITE" % str(spawn))
-
 	var biomes: Dictionary = {}
 	var has_anomaly: bool = false
 	for c in _grid._tiles:
@@ -212,14 +207,6 @@ func _validate(spawn: Vector2i) -> void:
 				break
 		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
-
-	for b: int in [_HexTile.Biome.CRASH_SITE, _HexTile.Biome.GRASSLAND,
-			_HexTile.Biome.FOREST, _HexTile.Biome.ROCKY]:
-		if not biomes.has(b):
-			push_warning("MapLoader: required biome %d absent from map" % b)
-
-	if not has_anomaly:
-		push_warning("MapLoader: no anomaly tile present in map")
 
 	_validate_reachability(spawn)
 

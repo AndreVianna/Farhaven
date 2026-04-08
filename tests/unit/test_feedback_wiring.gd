@@ -15,7 +15,7 @@ const _CraftFlash = preload("res://scripts/hud/craft_flash.gd")
 
 
 class FakeAutoInteraction extends Node:
-	signal auto_gather_completed(coords: Vector2i, resource_type: StringName, amount: int)
+	signal auto_gather_completed(coords: Vector2i, prop_type: StringName, amount: int)
 	signal auto_gather_failed(coords: Vector2i, reason: StringName)
 	signal auto_defend_triggered(fauna_id: int, damage: int)
 
@@ -24,7 +24,7 @@ class FakeCraftingSystem extends Node:
 	signal recipe_discovered(recipe_name: StringName)
 	signal craft_completed(recipe_name: StringName)
 	signal craft_failed(recipe_name: StringName, reason: StringName)
-	signal workbench_proximity_changed(near: bool)
+	signal station_proximity_changed(near: bool)
 
 
 class FakePlayer extends Node3D:
@@ -33,7 +33,7 @@ class FakePlayer extends Node3D:
 
 class FakeGrid extends Node:
 	signal tile_entered(coords: Vector2i)
-	signal resource_depleted(coords: Vector2i, resource_type: StringName)
+	signal prop_depleted(coords: Vector2i, prop_type: StringName)
 
 	func axial_to_world(coords: Vector2i) -> Vector2:
 		return Vector2(float(coords.x) * 4.5, float(coords.y) * 5.196)
@@ -160,10 +160,14 @@ func test_fly_to_player_no_crash_without_player() -> void:
 	grid.queue_free()
 
 
-func test_fly_to_player_resource_colors() -> void:
-	# Verify all resource types have defined colors
-	for res_type: StringName in [&"wood", &"stone", &"berries", &"fiber", &"ore", &"crystal"]:
-		assert_bool(_FlyToPlayer.RESOURCE_COLORS.has(res_type)).is_true()
+func test_fly_to_player_prop_colors() -> void:
+	# Colors come from PropDef.placeholder_color via PropRegistry, no hardcoded dict.
+	# Verify each yieldable item id has a non-empty PropDef.
+	for item_id: StringName in [&"00010", &"00013", &"00020", &"00012", &"00014", &"00015"]:
+		var def = PropRegistry.get_def(item_id)
+		assert_bool(def != null).override_failure_message(
+			"PropRegistry must have def for %s" % item_id
+		).is_true()
 
 
 # --- HUD feedback wiring tests ---
@@ -178,8 +182,8 @@ func test_hud_auto_gather_completed_shows_green_text() -> void:
 
 	# Wire manually (simulating what connect_auto_interaction does)
 	auto.auto_gather_completed.connect(
-		func(_coords: Vector2i, resource_type: StringName, amount: int) -> void:
-			var display_name: String = resource_type.replace("_", " ").capitalize()
+		func(_coords: Vector2i, prop_type: StringName, amount: int) -> void:
+			var display_name: String = prop_type.replace("_", " ").capitalize()
 			hud.show_text(Vector3.ZERO, "+%d %s" % [amount, display_name], Color.GREEN)
 	)
 
@@ -444,8 +448,8 @@ func test_fly_spawns_on_gather_completed() -> void:
 
 	# Wire like main.gd does
 	auto.auto_gather_completed.connect(
-		func(coords: Vector2i, resource_type: StringName, _amount: int) -> void:
-			fly.spawn_fly(coords, resource_type, grid)
+		func(coords: Vector2i, prop_type: StringName, _amount: int) -> void:
+			fly.spawn_fly(coords, prop_type, grid)
 	)
 
 	auto.auto_gather_completed.emit(Vector2i(1, 0), &"stone", 1)

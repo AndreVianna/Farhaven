@@ -23,8 +23,8 @@
 | 2026-04-01 | [PIVOT] Renderer: 5 MultiMesh per biome → single ArrayMesh with per-vertex color blending. 1 draw call. Scatter props deferred. | /design-pivot |
 | 2026-04-01 | [PIVOT] Elevation 0-9 all biomes. 3-tier traversal (walk/jump/blocked). Hand-crafted maps via MapLoader (replaces WorldGenerator). | /design-pivot |
 | 2026-04-01 | C1: HEX_SIZE=3.0 added to Constants table. C6: ELEVATION_STEP=0.5 added to Constants table. C2: Cliff faces moved from deferred to current scope — flat vertical quads, higher tile biome color × 0.6, same ArrayMesh (0 extra draw calls). I7: Elevation lightening (+5%/level) marked [TUNING_REQUIRED]. I2: Touch pixel estimate marked [TUNING_REQUIRED] for HEX_SIZE=3.0. M3: Cliff faces noted as 0 extra draw calls. Fog of War range: transitioning to circular world-unit area [TUNING_REQUIRED]. | /pivot-cascade |
-| 2026-04-03 | Review fixes: HEX_SIZE/ELEVATION_STEP ownership notes, ResourceNode fields (offset, rotation_deg) added | /aid-specify review |
-| 2026-04-04 | Sub-hex grid (19 sub-hexes per tile, SUB_HEX_SIZE=0.6). Unified props: tile.props[] replaces resource_nodes/structure/anomaly. Prop data structure added. Serialization updated. Signals kept for backward compat, now operate on props. | /arch-update |
+| 2026-04-03 | Review fixes: HEX_SIZE/ELEVATION_STEP ownership notes, PropNode fields (offset, rotation_deg) added | /aid-specify review |
+| 2026-04-04 | Sub-hex grid (19 sub-hexes per tile, SUB_HEX_SIZE=0.6). Unified props: tile.props[] replaces prop_nodes/structure/anomaly. Prop data structure added. Serialization updated. Signals kept for backward compat, now operate on props. | /arch-update |
 
 ## Source
 
@@ -129,7 +129,7 @@ spawn points. The hex is a container; the prop's `type` and `category` define be
 | `tool_required` | `StringName` | `&""` = bare hands, `&"stone_axe"`, `&"stone_pickaxe"` (resources only) |
 | `respawn_time` | `float` | Seconds until respawn after depletion (0 = no respawn; resources only) |
 
-`respawn_time` is set from `ResourceRegistry` during map load. `sub_hex` and `rotation` are set from map JSON (or assigned by MapLoader for string-form resources).
+`respawn_time` is set from `PropRegistry` during map load. `sub_hex` and `rotation` are set from map JSON (or assigned by MapLoader for string-form resources).
 
 **Category governs behavior:**
 - `&"resource"` — gatherable. Uses `remaining`, `max_amount`, `tool_required`, `respawn_time`.
@@ -156,9 +156,9 @@ Props are placed at sub-hex positions within tiles. The main hex remains the uni
 for movement, fog, biome, and elevation. Sub-hex positioning is for prop placement
 granularity only.
 
-#### Legacy ResourceNode (Removed)
+#### Legacy PropNode (Removed)
 
-**Replaced by Prop with `category == &"resource"`.** All fields from ResourceNode
+**Replaced by Prop with `category == &"resource"`.** All fields from PropNode
 are now on Prop. The `offset`/`rotation_deg` fields are replaced by `sub_hex`/`rotation`.
 
 #### Elevation
@@ -366,7 +366,7 @@ MAP FILE (res://data/maps/ch1.json)
 **biome:** String matching Biome enum name (lowercase).
 **elevation:** Integer 0–9.
 **props:** Optional array of prop objects. Each has `type`, `sub_hex` (axial coords
-within the sub-hex grid), and `category`. Resource props use ResourceRegistry for
+within the sub-hex grid), and `category`. Resource props use PropRegistry for
 remaining/max_amount/tool_required. Structure props include `footprint`.
 MapLoader assigns sub_hex positions (or randomizes them for legacy string-form resources).
 **Missing tile = off-map.** Not rendered, not accessible.
@@ -391,7 +391,7 @@ not silently at runtime.
 
 **Resource tables are data-driven:** BiomeData .tres files define what resources
 exist per biome and their properties. Map files list props with types and sub-hex
-positions — MapLoader looks up config from BiomeData/ResourceRegistry.
+positions — MapLoader looks up config from BiomeData/PropRegistry.
 
 ### Layers & Components
 
@@ -424,7 +424,7 @@ Pure data + logic. No visuals. Accessible globally.
 scripts/
   hex/
     hex_grid.gd           # Autoload — map container, API, signals
-    hex_tile.gd           # Resource — tile data (props[] replaces resource_nodes/structure/anomaly)
+    hex_tile.gd           # Resource — tile data (props[] replaces prop_nodes/structure/anomaly)
     prop.gd               # Resource — unified prop (resource, structure, anomaly, spawn)
     hex_math.gd           # Static utility (class_name HexMath) — includes sub-hex coordinate helpers
     map_loader.gd         # RefCounted — loads JSON level files, populates HexGrid

@@ -14,7 +14,7 @@ func _ready() -> void:
 	HexGrid.load_map("res://data/maps/ch1.json")
 	# Auto-load save if exists (cold resume).
 	# Deferred so all systems are fully ready before loading state.
-	# MUST run before bootstrap so renderers reflect loaded state (catalog, fog, resources).
+	# MUST run before bootstrap so renderers reflect loaded state (catalog, fog, props).
 	SaveManager.load_game.call_deferred()
 	# After save load, populate renderers for already-visible tiles.
 	# MapLoader sets initial tiles to VISIBLE but doesn't emit tile_revealed,
@@ -99,9 +99,9 @@ func _wire_systems() -> void:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
 
 
-func _on_gather_fly(coords: Vector2i, resource_type: StringName, _amount: int, _player: Node) -> void:
+func _on_gather_fly(coords: Vector2i, prop_type: StringName, _amount: int, _player: Node) -> void:
 	if _fly_to_player != null:
-		_fly_to_player.spawn_fly(coords, resource_type, HexGrid)
+		_fly_to_player.spawn_fly(coords, prop_type, HexGrid)
 
 
 func _bootstrap_visible_tiles() -> void:

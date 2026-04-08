@@ -6,6 +6,12 @@ class_name TestSurvivalDeath
 const _SurvivalSystem = preload("res://scripts/survival/survival_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
+# Numeric PropDef ids
+const ID_BERRIES: StringName = &"00020"
+const ID_MEAT: StringName = &"00022"
+const ID_AXE: StringName = &"00201"
+const ID_PICKAXE: StringName = &"00202"
+
 var _sys: _SurvivalSystem
 var _inv: _Inventory
 var _dnc: MockDayNightCycle
@@ -122,57 +128,57 @@ func after_test() -> void:
 # --- Drop calculation (100% drop on death) ---
 
 func test_drop_100_percent_of_10() -> void:
-	_inv.add_item(&"berries", 10)
+	_inv.add_item(ID_BERRIES, 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	# 10 berries → drop all 10, keep 0
-	assert_int(_inv.get_count(&"berries")).is_equal(0)
+	assert_int(_inv.get_count(ID_BERRIES)).is_equal(0)
 
 
 func test_drop_100_percent_of_7() -> void:
-	_inv.add_item(&"berries", 7)
+	_inv.add_item(ID_BERRIES, 7)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	# 7 berries → drop all 7, keep 0
-	assert_int(_inv.get_count(&"berries")).is_equal(0)
+	assert_int(_inv.get_count(ID_BERRIES)).is_equal(0)
 
 
 func test_drop_100_percent_of_1() -> void:
-	_inv.add_item(&"berries", 1)
+	_inv.add_item(ID_BERRIES, 1)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	# 1 berry → drop 1, keep 0
-	assert_int(_inv.get_count(&"berries")).is_equal(0)
+	assert_int(_inv.get_count(ID_BERRIES)).is_equal(0)
 
 
 func test_tools_are_not_dropped() -> void:
-	# stone_axe and stone_pickaxe are tools — set them directly
-	_inv.set_tool(&"axe", &"stone_axe")
-	_inv.set_tool(&"pickaxe", &"stone_pickaxe")
+	# Axe and pickaxe are tools — set them directly via numeric ids
+	_inv.set_tool(&"axe", ID_AXE)
+	_inv.set_tool(&"pickaxe", ID_PICKAXE)
 	# Add some berries too
-	_inv.add_item(&"berries", 10)
+	_inv.add_item(ID_BERRIES, 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	# Tools still equipped
-	assert_str(_inv.get_tool(&"axe")).is_equal(&"stone_axe")
-	assert_str(_inv.get_tool(&"pickaxe")).is_equal(&"stone_pickaxe")
+	assert_str(_inv.get_tool(&"axe")).is_equal(ID_AXE)
+	assert_str(_inv.get_tool(&"pickaxe")).is_equal(ID_PICKAXE)
 
 
 func test_dropped_items_appear_on_ground() -> void:
-	_inv.add_item(&"berries", 10)
+	_inv.add_item(ID_BERRIES, 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	var all_items: Array[Dictionary] = _sys.get_all_ground_items()
 	assert_int(all_items.size()).is_greater(0)
 	var total_ground: int = 0
 	for entry: Dictionary in all_items:
-		if entry["item_type"] == &"berries":
+		if entry["item_type"] == ID_BERRIES:
 			total_ground += entry["count"]
 	assert_int(total_ground).is_equal(10)
 
 
 func test_dropped_items_at_death_tile() -> void:
-	_inv.add_item(&"berries", 10)
+	_inv.add_item(ID_BERRIES, 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	var all_items: Array[Dictionary] = _sys.get_all_ground_items()
@@ -196,7 +202,7 @@ func test_ground_item_dropped_signal_emits() -> void:
 	_sys.ground_item_dropped.connect(func(tile: Vector2i, item_type: StringName, count: int, sub_hex: Vector2i) -> void:
 		fired.append({"tile": tile, "item_type": item_type, "count": count, "sub_hex": sub_hex})
 	)
-	_inv.add_item(&"berries", 10)
+	_inv.add_item(ID_BERRIES, 10)
 	_sys.hp = 1.0
 	_sys.take_damage(10.0)
 	assert_int(fired.size()).is_greater(0)
@@ -257,24 +263,24 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 
 func test_shelter_placed_updates_respawn_tile() -> void:
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 
 
 func test_shelter_destroyed_resets_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
-	_grid.structure_destroyed.emit(Vector2i(2, 3), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_destroyed.emit(Vector2i(2, 3), &"00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_non_shelter_structure_does_not_update_respawn() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"torch")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00103")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_destroy_different_shelter_does_not_reset() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"shelter")
-	_grid.structure_destroyed.emit(Vector2i(5, 5), &"shelter")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_destroyed.emit(Vector2i(5, 5), &"00102")
 	# Different coords — should keep the original
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 
@@ -310,44 +316,44 @@ func test_dawn_without_waiting_does_nothing() -> void:
 # --- Ground items CRUD ---
 
 func test_add_ground_item() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	var items: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(1)
 	assert_int(items[0]["count"]).is_equal(5)
 
 
 func test_add_ground_item_merges_same_tile_and_type() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 3)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
 	var items: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(1)
 	assert_int(items[0]["count"]).is_equal(8)
 
 
 func test_add_ground_item_different_types_separate() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_sys.add_ground_item(Vector2i(1, 0), &"meat", 3)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_sys.add_ground_item(Vector2i(1, 0), ID_MEAT, 3)
 	var items: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(2)
 
 
 func test_remove_ground_item() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	var removed: int = _sys.remove_ground_item(Vector2i(1, 0), &"berries", 3)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	var removed: int = _sys.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
 	assert_int(removed).is_equal(3)
 	var items: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items[0]["count"]).is_equal(2)
 
 
 func test_remove_ground_item_removes_entry_when_zero() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_sys.remove_ground_item(Vector2i(1, 0), &"berries", 5)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_sys.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
 	var items: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(1, 0))
 	assert_int(items.size()).is_equal(0)
 
 
 func test_remove_ground_item_returns_zero_for_missing() -> void:
-	var removed: int = _sys.remove_ground_item(Vector2i(9, 9), &"berries", 1)
+	var removed: int = _sys.remove_ground_item(Vector2i(9, 9), ID_BERRIES, 1)
 	assert_int(removed).is_equal(0)
 
 
@@ -356,8 +362,8 @@ func test_remove_ground_item_emits_picked_up_signal() -> void:
 	_sys.ground_item_picked_up.connect(func(tile: Vector2i, item_type: StringName, count: int) -> void:
 		fired.append({"tile": tile, "item_type": item_type, "count": count})
 	)
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_sys.remove_ground_item(Vector2i(1, 0), &"berries", 3)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_sys.remove_ground_item(Vector2i(1, 0), ID_BERRIES, 3)
 	assert_int(fired.size()).is_equal(1)
 	assert_int(fired[0]["count"]).is_equal(3)
 
@@ -410,8 +416,8 @@ func test_save_load_preserves_respawn_tile() -> void:
 
 
 func test_save_load_preserves_ground_items() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 5)
-	_sys.add_ground_item(Vector2i(2, 0), &"meat", 3)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 5)
+	_sys.add_ground_item(Vector2i(2, 0), ID_MEAT, 3)
 	var data: Dictionary = _sys.get_save_data()
 	# Clear and reload
 	_sys.load_save_data(data)
@@ -424,9 +430,9 @@ func test_save_load_preserves_ground_items() -> void:
 
 
 func test_save_load_clears_previous_ground_items() -> void:
-	_sys.add_ground_item(Vector2i(1, 0), &"berries", 10)
+	_sys.add_ground_item(Vector2i(1, 0), ID_BERRIES, 10)
 	var data: Dictionary = _sys.get_save_data()
-	_sys.add_ground_item(Vector2i(3, 3), &"meat", 99)
+	_sys.add_ground_item(Vector2i(3, 3), ID_MEAT, 99)
 	_sys.load_save_data(data)
 	# The extra meat added after save should be gone
 	var meat: Array[Dictionary] = _sys.get_ground_items_at(Vector2i(3, 3))

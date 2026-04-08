@@ -4,6 +4,11 @@ class_name TestSurvivalSystem
 const _SurvivalSystem = preload("res://scripts/survival/survival_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
+# Numeric PropDef ids for consumables.
+const ID_BERRIES: StringName = &"00020"
+const ID_TOXIC_BERRIES: StringName = &"00021"
+const ID_MEAT: StringName = &"00022"
+
 var _sys: _SurvivalSystem
 var _inv: _Inventory
 var _dnc: MockDayNightCycle
@@ -110,30 +115,30 @@ func test_stat_config_hp_regen_day() -> void:
 	assert_float(_SurvivalSystem.STAT_CONFIG["hp_regen_day"]).is_equal(0.5)
 
 
-# --- CONSUMABLE_CONFIG constants ---
+# --- Consumable PropDef constants (data-driven via PropRegistry) ---
 
 func test_consumable_berries_hunger() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["hunger"]).is_equal(5.0)
+	assert_float(PropRegistry.get_def(ID_BERRIES).hunger_restore).is_equal(5.0)
 
 
 func test_consumable_berries_thirst() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["thirst"]).is_equal(10.0)
+	assert_float(PropRegistry.get_def(ID_BERRIES).thirst_restore).is_equal(10.0)
 
 
-func test_consumable_berries_toxic() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"berries"]["toxic"]).is_equal(0.0)
+func test_consumable_berries_health() -> void:
+	assert_float(PropRegistry.get_def(ID_BERRIES).health_amount).is_equal(0.0)
 
 
 func test_consumable_toxic_berries_hunger() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"toxic_berries"]["hunger"]).is_equal(10.0)
+	assert_float(PropRegistry.get_def(ID_TOXIC_BERRIES).hunger_restore).is_equal(10.0)
 
 
-func test_consumable_toxic_berries_toxic() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"toxic_berries"]["toxic"]).is_equal(25.0)
+func test_consumable_toxic_berries_damages_health() -> void:
+	assert_float(PropRegistry.get_def(ID_TOXIC_BERRIES).health_amount).is_equal(-25.0)
 
 
 func test_consumable_meat_hunger() -> void:
-	assert_float(_SurvivalSystem.CONSUMABLE_CONFIG[&"meat"]["hunger"]).is_equal(25.0)
+	assert_float(PropRegistry.get_def(ID_MEAT).hunger_restore).is_equal(25.0)
 
 
 # --- Depletion rates ---
@@ -263,31 +268,31 @@ func test_hp_regen_clamps_at_max() -> void:
 
 func test_consume_berries_increases_hunger() -> void:
 	_sys.hunger = 50.0
-	_sys.consume(&"berries")
+	_sys.consume(ID_BERRIES)
 	assert_float(_sys.hunger).is_equal_approx(55.0, 0.001)
 
 
 func test_consume_berries_increases_thirst() -> void:
 	_sys.thirst = 80.0
-	_sys.consume(&"berries")
+	_sys.consume(ID_BERRIES)
 	assert_float(_sys.thirst).is_equal_approx(90.0, 0.001)
 
 
 func test_consume_berries_clamps_thirst_at_max() -> void:
 	_sys.thirst = 98.0
-	_sys.consume(&"berries")
+	_sys.consume(ID_BERRIES)
 	assert_float(_sys.thirst).is_equal_approx(100.0, 0.001)
 
 
 func test_consume_berries_clamps_hunger_at_max() -> void:
 	_sys.hunger = 97.0
-	_sys.consume(&"berries")
+	_sys.consume(ID_BERRIES)
 	assert_float(_sys.hunger).is_equal_approx(100.0, 0.001)
 
 
 func test_consume_berries_no_hp_damage() -> void:
 	_sys.hp = 100.0
-	_sys.consume(&"berries")
+	_sys.consume(ID_BERRIES)
 	assert_float(_sys.hp).is_equal_approx(100.0, 0.001)
 
 
@@ -295,19 +300,19 @@ func test_consume_berries_no_hp_damage() -> void:
 
 func test_consume_toxic_berries_increases_hunger() -> void:
 	_sys.hunger = 50.0
-	_sys.consume(&"toxic_berries")
+	_sys.consume(ID_TOXIC_BERRIES)
 	assert_float(_sys.hunger).is_equal_approx(60.0, 0.001)
 
 
 func test_consume_toxic_berries_no_thirst_restore() -> void:
 	_sys.thirst = 80.0
-	_sys.consume(&"toxic_berries")
+	_sys.consume(ID_TOXIC_BERRIES)
 	assert_float(_sys.thirst).is_equal_approx(80.0, 0.001)
 
 
 func test_consume_toxic_berries_deals_25_damage() -> void:
 	_sys.hp = 100.0
-	_sys.consume(&"toxic_berries")
+	_sys.consume(ID_TOXIC_BERRIES)
 	assert_float(_sys.hp).is_equal_approx(75.0, 0.001)
 
 
@@ -317,7 +322,7 @@ func test_consume_toxic_berries_can_kill() -> void:
 	_sys.player_died.connect(func() -> void: died.append(true))
 	_sys.player_respawned.connect(func() -> void: respawned.append(true))
 	_sys.hp = 20.0
-	_sys.consume(&"toxic_berries")
+	_sys.consume(ID_TOXIC_BERRIES)
 	# Death triggers then auto-respawn restores stats
 	assert_int(died.size()).is_equal(1)
 	assert_int(respawned.size()).is_equal(1)
@@ -329,19 +334,19 @@ func test_consume_toxic_berries_can_kill() -> void:
 
 func test_consume_meat_increases_hunger() -> void:
 	_sys.hunger = 50.0
-	_sys.consume(&"meat")
+	_sys.consume(ID_MEAT)
 	assert_float(_sys.hunger).is_equal_approx(75.0, 0.001)
 
 
 func test_consume_meat_no_thirst_restore() -> void:
 	_sys.thirst = 80.0
-	_sys.consume(&"meat")
+	_sys.consume(ID_MEAT)
 	assert_float(_sys.thirst).is_equal_approx(80.0, 0.001)
 
 
 func test_consume_meat_no_hp_damage() -> void:
 	_sys.hp = 100.0
-	_sys.consume(&"meat")
+	_sys.consume(ID_MEAT)
 	assert_float(_sys.hp).is_equal_approx(100.0, 0.001)
 
 
@@ -500,13 +505,13 @@ func test_death_only_triggers_once() -> void:
 
 func test_inventory_item_used_triggers_consume() -> void:
 	_sys.hunger = 50.0
-	_inv.add_item(&"berries", 1)
-	_inv.use_item(&"berries")
+	_inv.add_item(ID_BERRIES, 1)
+	_inv.use_item(ID_BERRIES)
 	assert_float(_sys.hunger).is_equal_approx(55.0, 0.001)
 
 
 func test_inventory_toxic_berries_used_deals_damage() -> void:
 	_sys.hp = 100.0
-	_inv.add_item(&"toxic_berries", 1)
-	_inv.use_item(&"toxic_berries")
+	_inv.add_item(ID_TOXIC_BERRIES, 1)
+	_inv.use_item(ID_TOXIC_BERRIES)
 	assert_float(_sys.hp).is_equal_approx(75.0, 0.001)

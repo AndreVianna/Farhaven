@@ -15,10 +15,10 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | Cube Coordinates | Three-axis hex coordinate system (q, r, s) with constraint q+r+s=0. Used internally for distance calculations. | `scripts/hex/hex_math.gd:20` |
 | HEX_SIZE | World-space radius of each hexagon (3.0 Godot units). Controls tile spacing and all hex-to-world conversions. | `scripts/hex/hex_math.gd:7` |
 | Tile | A single hexagonal cell in the grid, represented by a HexTile Resource. Has biome, elevation, fog state, and a unified props array containing all placed content (resources, structures, anomalies, spawn markers). | `scripts/hex/hex_tile.gd` |
-| Prop | A unified game object placed in a hex tile. All world content (resources, structures, anomalies, spawn markers) are props stored in `tile.props[]`. Each prop has a type, category, sub-hex coordinate, and optional footprint. Replaces the former separate `structure`, `resource_nodes`, and `anomaly` fields. | `scripts/hex/hex_tile.gd`, `docs/design/prop-taxonomy.md` |
+| Prop | A unified game object placed in a hex tile. All world content (resources, structures, anomalies, spawn markers) are props stored in `tile.props[]`. Each prop has a type, category, sub-hex coordinate, and optional footprint. Replaces the former separate `structure`, `prop_nodes`, and `anomaly` fields. | `scripts/hex/hex_tile.gd`, `docs/design/prop-taxonomy.md` |
 | Sub-hex | A 0.6m hexagonal subdivision within a main 6m hex tile. Each tile contains 19 sub-hexes (1 center + 6 inner ring + 12 outer ring) addressed by axial coordinates (sq, sr). Sub-hex size = HEX_SIZE / 5.0 (SUB_HEX_SIZE = 0.6 at HEX_SIZE = 3.0). Used for precise prop placement within tiles. | `scripts/hex/hex_math.gd` |
 | Footprint | An array of sub-hex coordinates `Array[Vector2i]` that a structure prop occupies within its parent hex tile. Used for placement validation — structures can coexist on the same tile as long as their footprints don't overlap. Small structures (torch, campfire) occupy 1 sub-hex; large structures (shelter) occupy multiple. | `scripts/hex/hex_tile.gd`, feature-009 SPEC |
-| Props List | The `tile.props[]` array on each HexTile containing all placed content as prop dictionaries. Replaces the former separate `tile.structure`, `tile.resource_nodes`, and `tile.anomaly` fields. Queried by category for backward-compatible operations (e.g., checking for blocking structures). | `scripts/hex/hex_tile.gd` |
+| Props List | The `tile.props[]` array on each HexTile containing all placed content as prop dictionaries. Replaces the former separate `tile.structure`, `tile.prop_nodes`, and `tile.anomaly` fields. Queried by category for backward-compatible operations (e.g., checking for blocking structures). | `scripts/hex/hex_tile.gd` |
 | Biome | The terrain type of a hex tile. Determines visual color, available resources, and traversability. Chapter 1 has 5: CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER. | `scripts/hex/hex_tile.gd:6-12` |
 | Elevation | Integer height level (0-9) of a tile. Affects traversability (walking vs jumping), visual rendering (Y position = elevation * 0.5), and cliff face generation. | `scripts/hex/hex_tile.gd:20`, `scripts/player/player.gd:18` |
 | Fog of War | Visibility system with three states: HIDDEN (no geometry rendered), REVEALED (seen before but not currently visible, dimmed), VISIBLE (currently in view range). | `scripts/hex/hex_tile.gd:14-18` |
@@ -52,14 +52,14 @@ Terms extracted from code: class names, method names, constants, enums, comments
 
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
-| Resource Node | A gatherable resource instance on a tile, now stored as a prop with `category="resource"` in `tile.props[]`. Has type, remaining count, max amount, tool requirement, respawn time, and sub-hex position. Multiple can exist per tile. | `scripts/hex/resource_node.gd` |
-| Resource Def (ResourceDef) | Static definition for a resource type. Defines gather time, gather amount, tool requirement, respawn time, yield mapping, tool speed multipliers, stack size, catalog entry link, and visual appearance. | `scripts/data/resource_def.gd` |
-| Resource Registry | Autoload singleton that indexes all ResourceDef .tres files from data/resources/ at startup. Central lookup for resource metadata. | `scripts/data/resource_registry.gd` |
+| Resource Node | A gatherable resource instance on a tile, now stored as a prop with `category="resource"` in `tile.props[]`. Has type, remaining count, max amount, tool requirement, respawn time, and sub-hex position. Multiple can exist per tile. | `scripts/hex/prop_node.gd` |
+| Resource Def (PropDef) | Static definition for a resource type. Defines gather time, gather amount, tool requirement, respawn time, yield mapping, tool speed multipliers, stack size, catalog entry link, and visual appearance. | `scripts/data/prop_def.gd` |
+| Resource Registry | Autoload singleton that indexes all PropDef .tres files from data/props/ at startup. Central lookup for resource metadata. | `scripts/data/prop_registry.gd` |
 | Gather | The act of collecting resources from a Resource Node. Automatic (proximity-based), requires the node to be CATALOGED, and may require a specific tool. | `scripts/auto_interaction/auto_interaction_system.gd:130-143` |
 | Gather Radius | World-space distance (0.75 Godot units) within which auto-gather activates. Represents arm's reach. | `scripts/auto_interaction/auto_interaction_system.gd:42` |
 | Tool Gate | Resources that require a specific tool (e.g., stone_axe for wood, stone_pickaxe for ore) cannot be gathered without that tool equipped. Silently skipped. | `scripts/auto_interaction/auto_interaction_system.gd:135-143` |
 | Catalog Gate | Resources cannot be gathered until their catalog entry is CATALOGED (fully scanned). Prevents gathering unknown props. | `scripts/auto_interaction/auto_interaction_system.gd:198-204` |
-| Yield Type | Some resources yield a different item when gathered (e.g., loose_rock yields stone). If empty, the resource yields itself. | `scripts/data/resource_def.gd:14` |
+| Yield Type | Some resources yield a different item when gathered (e.g., loose_rock yields stone). If empty, the resource yields itself. | `scripts/data/prop_def.gd:14` |
 | Depleted | A resource node with remaining = 0. Renders with a swapped mesh variant (e.g., tree stump instead of tree). May respawn after respawn_time seconds. | `scripts/auto_interaction/auto_interaction_system.gd:289-298` |
 | Respawn | After depletion, resource nodes with respawn_time > 0 are added to a respawn queue. When the timer expires, remaining is reset to max_amount. Common: 30s, rare: 60s. | `scripts/auto_interaction/auto_interaction_system.gd:313-329` |
 | Tool Priority | When multiple gatherable resources are within range, higher-priority tools are gathered first: stone_pickaxe=2, stone_axe=1, bare-hands=0. | `scripts/auto_interaction/auto_interaction_system.gd:27-31` |
@@ -68,15 +68,15 @@ Terms extracted from code: class names, method names, constants, enums, comments
 
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
-| Wood | Common resource from forest/grassland biomes. Gathered bare-handed or faster with stone_axe. Used in crafting. | `data/resources/wood.tres` |
-| Stone | Common mineral resource. Gathered bare-handed. Used in crafting stone tools. | `data/resources/stone.tres` |
-| Berries | Edible flora resource. Gathered bare-handed. Consumable item. | `data/resources/berries.tres` |
-| Toxic Berries | Poisonous flora resource. Gathered bare-handed. Consumable with toxic warning dialog. | `data/resources/toxic_berries.tres` |
-| Fiber | Plant-based resource from forest/grassland. Gathered bare-handed. Crafting material. | `data/resources/fiber.tres` |
-| Ore | Mineral resource from rocky biomes. Requires stone_pickaxe to gather. | `data/resources/ore.tres` |
-| Crystal | Rare mineral resource. Requires stone_pickaxe to gather. | `data/resources/crystal.tres` |
-| Loose Rock | A rocky biome resource that yields stone when gathered. Example of yield_type mapping. | `data/resources/loose_rock.tres` |
-| Anomaly Fragment | Mysterious alien artifact resource. Linked to anomaly entries in the catalog. | `data/resources/anomaly_fragment.tres` |
+| Wood | Common resource from forest/grassland biomes. Gathered bare-handed or faster with stone_axe. Used in crafting. | `data/props/wood.tres` |
+| Stone | Common mineral resource. Gathered bare-handed. Used in crafting stone tools. | `data/props/stone.tres` |
+| Berries | Edible flora resource. Gathered bare-handed. Consumable item. | `data/props/berries.tres` |
+| Toxic Berries | Poisonous flora resource. Gathered bare-handed. Consumable with toxic warning dialog. | `data/props/toxic_berries.tres` |
+| Fiber | Plant-based resource from forest/grassland. Gathered bare-handed. Crafting material. | `data/props/fiber.tres` |
+| Ore | Mineral resource from rocky biomes. Requires stone_pickaxe to gather. | `data/props/ore.tres` |
+| Crystal | Rare mineral resource. Requires stone_pickaxe to gather. | `data/props/crystal.tres` |
+| Loose Rock | A rocky biome resource that yields stone when gathered. Example of yield_type mapping. | `data/props/loose_rock.tres` |
+| Anomaly Fragment | Mysterious alien artifact resource. Linked to anomaly entries in the catalog. | `data/props/anomaly_fragment.tres` |
 | Meat | Fauna drop (not a gatherable resource). Category: consumable. Max stack: 20. | `scripts/inventory/inventory.gd:16` |
 
 ## Inventory and Tools
@@ -130,12 +130,12 @@ Terms extracted from code: class names, method names, constants, enums, comments
 | Term | Definition (inferred from usage) | Source |
 |------|----------------------------------|--------|
 | ArrayMesh | Godot mesh type used for the hex terrain. Built programmatically from SurfaceTool. One draw call for the entire grid. | `scenes/world/hex_grid_renderer.gd:1-4` |
-| MultiMesh | Godot instancing system used for resource props. One MultiMesh pool per resource type, max 128 instances each. Efficient batch rendering. | `scripts/rendering/resource_renderer.gd:1-4` |
+| MultiMesh | Godot instancing system used for resource props. One MultiMesh pool per resource type, max 128 instances each. Efficient batch rendering. | `scripts/rendering/prop_renderer.gd:1-4` |
 | Elevation Step | World-space Y offset per elevation level: 0.5 Godot units. Must match between HexGridRenderer and Player. | `scenes/world/hex_grid_renderer.gd:20`, `scripts/player/player.gd:18` |
 | Cliff Face | Vertical geometry generated between adjacent tiles at different elevations. Darkened to 60% of tile color. | `scenes/world/hex_grid_renderer.gd:265-320` |
 | Inner Ring | At 85% of hex radius, a ring of vertices with pure tile color. The outer 15% band transitions/blends with neighbor tile colors. | `scenes/world/hex_grid_renderer.gd:190` |
-| Prop (render) | A 3D object placed on a tile representing any game object (resource, structure, anomaly). Currently placeholder meshes (cubes, cylinders, spheres). The term "prop" in rendering context refers to the visual instance; in data context it refers to a unified game object in `tile.props[]`. | `scripts/rendering/resource_renderer.gd` |
-| Placeholder Mesh | Programmatic low-poly mesh shapes (cube, cylinder, sphere, octahedron, prism, box) used until real 3D art assets are created. | `scripts/rendering/resource_renderer.gd:81-89` |
+| Prop (render) | A 3D object placed on a tile representing any game object (resource, structure, anomaly). Currently placeholder meshes (cubes, cylinders, spheres). The term "prop" in rendering context refers to the visual instance; in data context it refers to a unified game object in `tile.props[]`. | `scripts/rendering/prop_renderer.gd` |
+| Placeholder Mesh | Programmatic low-poly mesh shapes (cube, cylinder, sphere, octahedron, prism, box) used until real 3D art assets are created. | `scripts/rendering/prop_renderer.gd:81-89` |
 | Fly-to-Player | Visual effect: a colored sphere tweens from the gathered resource position to the player with a parabolic arc, providing satisfying feedback. | `scripts/rendering/fly_to_player.gd` |
 | Prop Label | 3D billboard marker above a prop showing knowledge state. Question mark for UNKNOWN (color-coded by category), warning for ENCOUNTERED, nothing for CATALOGED. | `scripts/rendering/prop_label_renderer.gd` |
 

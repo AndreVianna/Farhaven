@@ -2,7 +2,7 @@ class_name Inventory
 extends RefCounted
 
 ## Inventory data layer — owned by Player, not in scene tree.
-## Manages resource/consumable slots and 4 fixed tool slots.
+## Manages prop/consumable slots and 4 fixed tool slots.
 
 signal inventory_changed()
 signal item_added(type: StringName, amount: int)
@@ -11,25 +11,19 @@ signal inventory_full(type: StringName, rejected: int)
 signal item_used(type: StringName)
 signal tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)
 
-const ITEM_CONFIG: Dictionary = {
-	# Non-resource items (meat is a fauna drop, not a gatherable resource)
-	&"meat":           { "max_stack": 20, "category": &"consumable" },
-	# Tools
-	&"stone_axe":      { "tool_slot": &"axe",      "category": &"tool" },
-	&"stone_pickaxe":  { "tool_slot": &"pickaxe",  "category": &"tool" },
-	&"survival_knife": { "tool_slot": &"weapon",   "category": &"tool" },
-	&"scanner":        { "tool_slot": &"scanner",  "category": &"tool" },
-}
+## All items (gathered resources, consumables, tools) are PropDefs loaded by
+## PropRegistry from data/props/*.tres. No hardcoded item configuration.
 
 var _slots: Array[Dictionary]
 var _base_slots: int = 12
 var _bonus_slots: int = 0
 
+## Tool slots store PropDef ids (numeric, e.g. &"00204" for survival_knife).
 var _tool_slots: Dictionary = {
 	&"axe":      &"",
 	&"pickaxe":  &"",
-	&"weapon":   &"survival_knife",
-	&"scanner":  &"scanner",
+	&"weapon":   &"00204",  # survival_knife
+	&"scanner":  &"00205",  # scanner
 }
 
 
@@ -42,17 +36,13 @@ func _init() -> void:
 # --- Resource/Consumable API ---
 
 func add_item(type: StringName, amount: int = 1) -> int:
-	var cfg: Dictionary = ITEM_CONFIG.get(type, {})
-	# Check ResourceRegistry as fallback for resource types
-	if cfg.is_empty():
-		var def = ResourceRegistry.get_def(type)
-		if def == null:
-			return 0
-		cfg = { "max_stack": def.max_stack, "category": def.category }
-	if cfg.has(&"tool_slot"):
-		# Tools must use set_tool — reject from resource slots
+	var def: PropDef = PropRegistry.get_def(type)
+	if def == null:
 		return 0
-	var max_stack: int = cfg["max_stack"]
+	if def.tool_slot != &"":
+		# Tools must use set_tool — reject from prop slots
+		return 0
+	var max_stack: int = def.max_stack
 	var remaining: int = amount
 
 	# Fill partial stacks first
@@ -128,15 +118,10 @@ func is_full() -> bool:
 	for slot in _slots:
 		if slot["type"] == &"":
 			return false
-		# Check for partial stack — ITEM_CONFIG first, then ResourceRegistry
-		var cfg: Dictionary = ITEM_CONFIG.get(slot["type"], {})
-		if cfg.has("max_stack"):
-			if slot["quantity"] < cfg["max_stack"]:
-				return false
-		else:
-			var def = ResourceRegistry.get_def(slot["type"])
-			if def != null and slot["quantity"] < def.max_stack:
-				return false
+		# Check for partial stack using PropDef.max_stack
+		var def: PropDef = PropRegistry.get_def(slot["type"])
+		if def != null and slot["quantity"] < def.max_stack:
+			return false
 	return true
 
 

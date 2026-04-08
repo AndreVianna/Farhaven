@@ -24,14 +24,19 @@ All world objects fall into 4 categories. This is the authoritative reference.
 | Renderer | Category | Delivery | Draw Calls | Notes |
 |----------|----------|----------|------------|-------|
 | HexGridRenderer | Terrain | 001 ✅ | ~1 | Single ArrayMesh |
-| ResourceRenderer | Resource | 003 | ~6 | MultiMesh per resource type |
+| PropRenderer | Resource | 003 | ~6 | MultiMesh per resource type |
 | PropLabelRenderer | Resource + Entity | 002 ✅ | ~1 | Label3D markers (❓/⚠️/name) |
 | ScanProgressRenderer | Resource + Entity | 002 ✅ | ~1 | Shader-based progress bar |
 | StructureRenderer | Structure | 005 | ~5-6 | Individual Node3D per structure prop |
 | FaunaRenderer | Entity | 005 | ~3-10 | Individual Node3D per fauna |
 | DecorationRenderer | Decoration | post-MVP | TBD | MultiMesh scatter |
 
-**PropRenderer (delivery-002) is replaced by ResourceRenderer (delivery-003).** PropRenderer used generic cubes per category (flora/fauna/mineral/anomaly). ResourceRenderer uses specific meshes per resource type (tree/rock/bush/etc.) — strictly better. PropRenderer to be deleted when ResourceRenderer is implemented.
+**Historical note on the Renderer rename.** The original `ResourceRenderer`
+(delivery-002) used generic cubes per category (flora/fauna/mineral/anomaly).
+It was replaced by `PropRenderer` (delivery-003), which uses specific meshes
+per prop type (tree/rock/bush/etc.) — strictly better. Both classes have
+since been unified under the `PropRenderer` name as part of the
+resource→prop terminology migration.
 
 ## Collision Architecture
 

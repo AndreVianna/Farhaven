@@ -5,7 +5,7 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-03 | Feature identified from REQUIREMENTS.md §5 F10, F12; §9 AC2, AC4 | /aid-interview |
-| 2026-04-03 | Updated field list to match actual resource_def.gd; added F15/AC9 references | /aid-interview (cross-reference) |
+| 2026-04-03 | Updated field list to match actual prop_def.gd; added F15/AC9 references | /aid-interview (cross-reference) |
 | 2026-04-03 | Technical specification written | /aid-specify |
 | 2026-04-03 | Review fixes: default mesh types cube not cylinder, explicit catalog defaults, alpha handling, delete scan dual format, ProjectContext naming | /aid-specify review |
 
@@ -15,9 +15,9 @@
 
 ## Description
 
-The Resource Editor tab for managing `data/resources/*.tres` ResourceDef files. Provides a list view of all resources with key properties, create/edit/delete operations with form UI, and deletion validation (warns if any map references the resource). Reads and writes .tres files with round-trip safety — preserving uid, ext_resource, and script lines.
+The Resource Editor tab for managing `data/props/*.tres` PropDef files. Provides a list view of all resources with key properties, create/edit/delete operations with form UI, and deletion validation (warns if any map references the resource). Reads and writes .tres files with round-trip safety — preserving uid, ext_resource, and script lines.
 
-**Editable fields** (from `resource_def.gd`): `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color — with color picker + swatch preview), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color).
+**Editable fields** (from `prop_def.gd`): `id` (StringName), `display_name` (String), `gather_time` (float), `gather_amount` (int), `tool_required` (StringName), `respawn_time` (float), `yield_type` (StringName), `tool_speed` (Dictionary), `max_stack` (int), `category` (StringName), `catalog_entry` (StringName), `catalog_category` (StringName), `placeholder_mesh_type` (StringName), `placeholder_params` (Dictionary), `placeholder_color` (Color — with color picker + swatch preview), `placeholder_depleted_type` (StringName), `placeholder_depleted_params` (Dictionary), `placeholder_depleted_color` (Color).
 
 **Read-only fields:** `mesh`, `depleted_mesh`, `material` (Godot resource references — displayed as path or "not set", cannot be authored in a web editor).
 
@@ -35,10 +35,10 @@ Must
 ## Acceptance Criteria
 
 - [ ] Given a resource .tres loaded and saved with no changes, then the file preserves uid, ext_resource, and script lines exactly (AC2)
-- [ ] Given a new resource created, when saved, then a valid .tres file appears in data/resources/ and the resource shows in the Map Editor palette (AC4)
+- [ ] Given a new resource created, when saved, then a valid .tres file appears in data/props/ and the resource shows in the Map Editor palette (AC4)
 - [ ] Given a resource in use by a map, when attempting to delete, then a warning dialog shows which map references it
 - [ ] Given a resource edit, when saved, then re-parsing the written file matches the in-memory model
-- [ ] Given a malformed .tres file in data/resources/, when loaded, then the editor shows a clear error message and skips the file without crashing (AC9)
+- [ ] Given a malformed .tres file in data/props/, when loaded, then the editor shows a clear error message and skips the file without crashing (AC9)
 
 ---
 
@@ -46,7 +46,7 @@ Must
 
 ### Data Model
 
-**ResourceDefModel** — JS representation of a single ResourceDef .tres file:
+**PropDefModel** — JS representation of a single PropDef .tres file:
 ```js
 {
   // Round-trip metadata (not user-editable)
@@ -81,7 +81,7 @@ Must
 }
 ```
 
-**In-memory store:** `Map<string, ResourceDefModel>` keyed by `id`. Exposed as `ProjectContext.files.resources` (see feature-007 for `ProjectContext` definition).
+**In-memory store:** `Map<string, PropDefModel>` keyed by `id`. Exposed as `ProjectContext.files.resources` (see feature-007 for `ProjectContext` definition).
 
 **Color representation:** Colors are stored as `{r, g, b, a}` with values 0.0-1.0 internally. Converted to/from hex string `#rrggbb` for HTML color picker inputs. The HTML color picker does not support alpha, so the UI always shows/sets alpha as 1.0 for new resources. However, the parser must read and preserve alpha from existing .tres files (write it back as-is). The .tres format uses `Color(r, g, b, a)`.
 
@@ -173,10 +173,10 @@ Must
 - Preserve original `_headerLines` exactly (the `[gd_resource ...]` and `[ext_resource ...]` lines).
 - For new files, generate standard header:
   ```
-  [gd_resource type="Resource" script_class="ResourceDef" load_steps=2 format=3]
-  [ext_resource type="Script" path="res://scripts/data/resource_def.gd" id="1_script"]
+  [gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+  [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
   ```
-- `[resource]` section: write `script = ExtResource("1_script")` first, then each field in the order defined in resource_def.gd.
+- `[resource]` section: write `script = ExtResource("1_script")` first, then each field in the order defined in prop_def.gd.
 - StringName values: formatted as `&"value"`.
 - Float values: always include decimal (e.g. `1.0` not `1`).
 - Dictionary values: formatted as `{ &"key": value, ... }` (Godot dictionary syntax).
@@ -189,14 +189,14 @@ Must
 - Manages the Resource Editor tab content: switches between list view and edit form.
 - `renderList()` — builds the resource table from `EditorState.resources`.
 - `renderEditForm(resourceId|null)` — builds the edit form. `null` means new resource.
-- `collectFormData() -> ResourceDefModel` — reads current form inputs into a model.
+- `collectFormData() -> PropDefModel` — reads current form inputs into a model.
 - `validateForm(model) -> ValidationResult` — checks required fields, id uniqueness, numeric ranges.
 - Listens for `resource-store-changed` event to re-render list.
 
-**ResourceDefModel** (data class, no DOM):
-- Static `fromTres(tresString, handle) -> ResourceDefModel` — delegates to TresParser for parsing.
+**PropDefModel** (data class, no DOM):
+- Static `fromTres(tresString, handle) -> PropDefModel` — delegates to TresParser for parsing.
 - `toTres() -> string` — delegates to TresParser for serialization.
-- `clone() -> ResourceDefModel` — deep copy for command undo snapshots.
+- `clone() -> PropDefModel` — deep copy for command undo snapshots.
 - `equals(other) -> boolean` — field-by-field comparison for dirty checking.
 
 **Implementation dependency:** Feature-007 (File Discovery + TresParser) must be implemented before this feature, as it provides the shared .tres parsing infrastructure.
@@ -204,7 +204,7 @@ Must
 **Integration with TresParser (feature-007):**
 - `TresParser.parseResource(tresString) -> { headers, fields }` — extracts header lines and key-value pairs from `[resource]` section.
 - `TresParser.serializeResource(headers, fields) -> string` — reconstructs the .tres file text.
-- The ResourceDefModel maps between the parsed key-value pairs and its typed JS fields (e.g., parsing `Color(0.2, 0.7, 0.2, 1.0)` into `{r: 0.2, g: 0.7, b: 0.2, a: 1.0}`).
+- The PropDefModel maps between the parsed key-value pairs and its typed JS fields (e.g., parsing `Color(0.2, 0.7, 0.2, 1.0)` into `{r: 0.2, g: 0.7, b: 0.2, a: 1.0}`).
 
 **Integration with Map Editor:**
 - When a resource is created or renamed, the Map Editor's resource palette is updated (resource type dropdown).
@@ -212,14 +212,14 @@ Must
 
 ### Import Validation (F15/AC9)
 
-During file discovery (feature-007), each `.tres` file in `data/resources/` is parsed:
+During file discovery (feature-007), each `.tres` file in `data/props/` is parsed:
 
 | Condition | Behavior |
 |-----------|----------|
 | File cannot be read | Skip, log warning: `"Skipped {filename}: unable to read file"` |
 | Not valid .tres (no `[gd_resource ...]` header) | Skip, show warning: `"Skipped {filename}: not a valid .tres file"` |
 | Missing `[resource]` section | Skip, show warning: `"Skipped {filename}: missing [resource] section"` |
-| `script_class` is not `"ResourceDef"` | Skip silently (it is a different resource type) |
+| `script_class` is not `"PropDef"` | Skip silently (it is a different resource type) |
 | Missing `id` field in `[resource]` | Skip, show warning: `"Skipped {filename}: missing 'id' field"` |
 | Duplicate `id` (already loaded) | Skip, show warning: `"Skipped {filename}: duplicate id '{id}' (already loaded from {other_filename})"` |
 | Individual field parse error (e.g., malformed Color) | Use default value for that field, show warning: `"Resource '{id}': could not parse field '{field}', using default"` |

@@ -15,7 +15,7 @@
 
 ## Description
 
-The sidebar panel showing biome palette (color swatches from .tres files), resource palette (all ResourceDef types), structure palette, active tool indicator, and biome statistics (tile count per biome, total tiles, resource count). Also includes map properties editing (chapter ID, chapter name, spawn point highlight). Palettes are live — changes in Resource/Biome Editor tabs update the Map Editor palette immediately.
+The sidebar panel showing biome palette (color swatches from .tres files), resource palette (all PropDef types), structure palette, active tool indicator, and biome statistics (tile count per biome, total tiles, resource count). Also includes map properties editing (chapter ID, chapter name, spawn point highlight). Palettes are live — changes in Resource/Biome Editor tabs update the Map Editor palette immediately.
 
 ## User Stories
 
@@ -56,7 +56,7 @@ const BiomeEntry = {
 
 /**
  * ResourceEntry — one entry in the resource palette.
- * Populated from loaded ResourceDef .tres files (via feature-007).
+ * Populated from loaded PropDef .tres files (via feature-007).
  */
 const ResourceEntry = {
   name: "",         // string, e.g. "wood", "stone", "fiber"
@@ -201,7 +201,7 @@ class Statistics {
 
 ### Feature Flow
 
-1. **On project load** (feature-007 completes loading .tres files): `sidebar.updatePalettes(biomes, resources)` is called. `BiomePalette.setBiomes()` receives the array of `BiomeEntry` objects parsed from BiomeData .tres files. `ResourcePalette.setResources()` receives `ResourceEntry` objects parsed from ResourceDef .tres files. Both palettes re-render.
+1. **On project load** (feature-007 completes loading .tres files): `sidebar.updatePalettes(biomes, resources)` is called. `BiomePalette.setBiomes()` receives the array of `BiomeEntry` objects parsed from BiomeData .tres files. `ResourcePalette.setResources()` receives `ResourceEntry` objects parsed from PropDef .tres files. Both palettes re-render.
 
 2. **Clicking a palette item:**
    - User clicks a biome swatch (e.g., "forest"): `BiomePalette.onBiomeClick("forest")` calls `toolManager.setTool(ToolType.BIOME, "forest")`. The swatch gets a highlight border. Other palette selections (resource, structure) are deselected.

@@ -12,6 +12,11 @@ const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
+# Numeric PropDef ids
+const ID_WOOD: StringName = &"00010"
+const ID_STONE: StringName = &"00013"
+const ID_AXE: StringName = &"00201"
+
 var _panel: PanelContainer = null
 var _inv: RefCounted = null
 var _sys: Node = null
@@ -75,7 +80,7 @@ class MockPlayer extends Node:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.props = [_Prop.create_structure(&"workbench")]
+	tile.props = [_Prop.create_structure(&"00105")]
 	_grid.set_tile(coords, tile)
 
 
@@ -94,11 +99,11 @@ func _make_near_workbench() -> void:
 	_place_workbench(Vector2i(1, 0))
 	_place_empty_tile(Vector2i.ZERO)
 	_set_player_tile(Vector2i.ZERO)
-	_sys._check_workbench_proximity()
+	_sys._check_station_proximity()
 
 
 func _discover_recipes() -> void:
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_STONE, 1)
 
 
 # --- Setup / Teardown ---
@@ -228,7 +233,7 @@ func test_recipe_unaffordable_when_no_materials() -> void:
 
 func test_recipe_affordable_with_materials() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)  # now have 2 wood + 1 stone (discovery)
+	_inv.add_item(ID_WOOD, 2)  # now have 2 wood + 1 stone (discovery)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.AFFORDABLE)
@@ -236,8 +241,8 @@ func test_recipe_affordable_with_materials() -> void:
 
 func test_recipe_already_owned() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.add_item(ID_WOOD, 2)
+	_inv.set_tool(&"axe", ID_AXE)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.ALREADY_OWNED)
@@ -254,7 +259,7 @@ func test_craft_button_disabled_when_unaffordable() -> void:
 
 func test_craft_button_enabled_when_affordable() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)
+	_inv.add_item(ID_WOOD, 2)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_bool(entry._craft_button.disabled).is_false()
@@ -262,7 +267,7 @@ func test_craft_button_enabled_when_affordable() -> void:
 
 func test_craft_button_shows_owned_text() -> void:
 	_discover_recipes()
-	_inv.set_tool(&"axe", &"stone_axe")
+	_inv.set_tool(&"axe", ID_AXE)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_str(entry._craft_button.text).is_equal("OWNED")
@@ -270,7 +275,7 @@ func test_craft_button_shows_owned_text() -> void:
 
 func test_craft_button_shows_craft_text_when_affordable() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)
+	_inv.add_item(ID_WOOD, 2)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_str(entry._craft_button.text).is_equal("CRAFT")
@@ -288,7 +293,7 @@ func test_ingredient_labels_exist() -> void:
 
 func test_ingredient_shows_owned_slash_needed() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 1)
+	_inv.add_item(ID_WOOD, 1)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	var found_wood := false
@@ -301,7 +306,7 @@ func test_ingredient_shows_owned_slash_needed() -> void:
 
 func test_ingredient_green_when_enough() -> void:
 	_discover_recipes()
-	_inv.add_item(&"wood", 5)
+	_inv.add_item(ID_WOOD, 5)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	for child in entry._ingredients_container.get_children():
@@ -330,11 +335,11 @@ func test_ingredient_red_when_short() -> void:
 func test_craft_requested_triggers_crafting_system() -> void:
 	_make_near_workbench()
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)
+	_inv.add_item(ID_WOOD, 2)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	entry.craft_requested.emit(&"stone_axe")
-	assert_object(_inv.get_tool(&"axe")).is_equal(&"stone_axe")
+	assert_object(_inv.get_tool(&"axe")).is_equal(ID_AXE)
 
 
 # === REFRESH ON SIGNALS ===
@@ -345,7 +350,7 @@ func test_refresh_on_inventory_changed() -> void:
 	var entry = _find_entry(&"stone_axe")
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.UNAFFORDABLE)
 	# Add enough materials
-	_inv.add_item(&"wood", 2)
+	_inv.add_item(ID_WOOD, 2)
 	# inventory_changed should have triggered refresh
 	entry = _find_entry(&"stone_axe")
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.AFFORDABLE)
@@ -354,7 +359,7 @@ func test_refresh_on_inventory_changed() -> void:
 func test_refresh_on_craft_completed() -> void:
 	_make_near_workbench()
 	_discover_recipes()
-	_inv.add_item(&"wood", 2)
+	_inv.add_item(ID_WOOD, 2)
 	_panel.open()
 	var entry = _find_entry(&"stone_axe")
 	assert_int(entry.get_state()).is_equal(_RecipeEntryUI.State.AFFORDABLE)
@@ -408,8 +413,8 @@ func test_recipe_entry_emits_craft_requested() -> void:
 	add_child(entry)
 	entry.setup(&"stone_axe")
 	entry.refresh(_inv, _sys)
-	_inv.add_item(&"wood", 2)
-	_inv.add_item(&"stone", 1)
+	_inv.add_item(ID_WOOD, 2)
+	_inv.add_item(ID_STONE, 1)
 	entry.refresh(_inv, _sys)
 	var fired: Array = []
 	entry.craft_requested.connect(func(name: StringName): fired.append(name))

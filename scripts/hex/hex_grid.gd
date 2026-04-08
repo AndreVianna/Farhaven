@@ -32,9 +32,6 @@ const _CORNER_NEIGHBOR_DIRS: Array = [
 
 enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
-# Legacy: Structures that do NOT block movement (walkable).
-# Kept for backward compat in load_save_data with old save format.
-const WALKABLE_STRUCTURES: Array[StringName] = [&"shelter", &"torch", &"workbench", &"storage_chest", &"campfire"]
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
@@ -46,8 +43,8 @@ signal tile_revealed(coords: Vector2i)
 signal tile_visibility_changed(coords: Vector2i, state: int)  # int = HexTile.FogState
 signal tile_entered(coords: Vector2i)
 signal tile_exited(coords: Vector2i)
-signal resource_depleted(coords: Vector2i, resource_type: StringName)
-signal resource_respawned(coords: Vector2i, resource_type: StringName)
+signal prop_depleted(coords: Vector2i, prop_type: StringName)
+signal prop_respawned(coords: Vector2i, prop_type: StringName)
 signal tile_contents_changed(coords: Vector2i)
 signal structure_placed(coords: Vector2i, structure_type: StringName)
 signal structure_destroyed(coords: Vector2i, structure_type: StringName)
@@ -345,7 +342,7 @@ func load_save_data(data: Dictionary) -> void:
 		else:
 			# Legacy save format: "resources" + "structure" + "anomaly"
 			for rd in td.get("resources", []):
-				tile.props.append(_Prop.create_resource(
+				tile.props.append(_Prop.create_prop(
 					StringName(rd["type"]),
 					int(rd["remaining"]),
 					int(rd["max"]),
@@ -356,7 +353,7 @@ func load_save_data(data: Dictionary) -> void:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					not (StringName(structure_str) in WALKABLE_STRUCTURES),
+					false,  # Legacy structures default to walkable (blocks_movement from .tres)
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")

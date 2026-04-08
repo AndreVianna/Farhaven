@@ -44,9 +44,9 @@
 | 12 | F-002 signal wiring diagram shows `update_fog()` | ✅ RESOLVED | (Same fix as #3 — diagram now shows `tile_entered`/`tile_exited` with DayNightCycle note) |
 | 13 | F-007 cycle 310s tight margin on 5min±15s | — ACKNOWLEDGED | Comment now explicitly notes: `(within AC7's 5 min ±15s — tight margin, 5s to spare)`. Was observation, not a required fix. Still 310s, still passes AC7. |
 | 14 | `fade_in_completed` signal no consumer | ✅ RESOLVED | Signal now annotated: `signal fade_in_completed()  # available for future use (no current consumer)` |
-| 15 | F-001 ResourceNode table missing cross-ref to F-003 | ✅ RESOLVED | Text added after ResourceNode table: `Feature-003 extends ResourceNode with respawn_time: float (seconds until respawn after depletion).` |
+| 15 | F-001 PropNode table missing cross-ref to F-003 | ✅ RESOLVED | Text added after PropNode table: `Feature-003 extends PropNode with respawn_time: float (seconds until respawn after depletion).` |
 | 16 | F-003 `process_priority` description confusing | ✅ RESOLVED | Text now reads: `gather_system.gd has a lower process_priority value than player_input.gd (lower value = higher priority in Godot) — it receives _unhandled_input first.` |
-| 17 | F-003 two `can_gather` signatures | ✅ RESOLVED | Only one signature remains: `func can_gather(node: ResourceNode, inventory: Inventory) -> bool`. Old `equipped: StringName` version removed. |
+| 17 | F-003 two `can_gather` signatures | ✅ RESOLVED | Only one signature remains: `func can_gather(node: PropNode, inventory: Inventory) -> bool`. Old `equipped: StringName` version removed. |
 | 18 | F-006 respawn flow `update_fog` | ✅ RESOLVED | (Same fix as #3 — respawn flow now emits `tile_entered` only, no `update_fog()`) |
 
 ---

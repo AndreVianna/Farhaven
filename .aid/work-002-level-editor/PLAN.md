@@ -95,13 +95,13 @@ task-011b (Ghost Grid & Empty-Cell Interaction) can run in parallel with task-01
 
 **Features:** 003-partial (Tool Selector + Map List) + 005 (Resource Editor) + 006 (Biome Editor)
 **Depends on:** delivery-001, delivery-002
-**Cumulative state:** Painting tools fully usable via sidebar palette (biome/resource/structure/anomaly selectors), map list with switching, full CRUD for ResourceDef and BiomeData .tres files, live biome color preview on map canvas
+**Cumulative state:** Painting tools fully usable via sidebar palette (biome/resource/structure/anomaly selectors), map list with switching, full CRUD for PropDef and BiomeData .tres files, live biome color preview on map canvas
 
 **2026-04-04:** Moved tool selector and map list from delivery-004 to delivery-003. Without these, delivery-002's painting tools are barely testable — tools activate via keyboard but have no way to select which type to paint with.
 
 Build order:
 1. feature-003-partial (Tool Selector + Map List) — toolbar with tool buttons + type dropdowns populated from loaded data, map list dropdown for switching active map
-2. feature-005 (Resource Editor) — list/edit/create/delete ResourceDef, .tres serialization
+2. feature-005 (Resource Editor) — list/edit/create/delete PropDef, .tres serialization
 3. feature-006 (Biome Editor) — list/edit/create/delete BiomeData, resource table editor, live color preview
 
 F-003-partial depends on delivery-002 (needs canvas + tools). F-005 and F-006 depend only on delivery-001 (TresParser). F-005 must precede F-006 (biome resource_table dropdown needs resource IDs).

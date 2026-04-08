@@ -10,7 +10,7 @@
 
 ```
       CHAIN A                 CHAIN B              CHAIN C
-   (Auto-Interaction)     (ResourceRenderer)      (Crafting)
+   (Auto-Interaction)     (PropRenderer)      (Crafting)
       (parallel)             (parallel)           (parallel)
 
 task-016 (data layer)    task-019 (MultiMesh     task-020 (data layer +
@@ -33,7 +33,7 @@ task-018 (respawn +        │                       │
 
 **3 parallel chains:**
 - Chain A: task-016 → 017 → 018 (Auto-Interaction system)
-- Chain B: task-019 (ResourceRenderer — standalone, needs only HexGrid from delivery-001)
+- Chain B: task-019 (PropRenderer — standalone, needs only HexGrid from delivery-001)
 - Chain C: task-020 → 021 (Crafting system + UI)
 
 **Merge:** task-022 depends on Chains A + C (needs auto-gather + crafting signals).
@@ -46,7 +46,7 @@ task-023 depends on everything.
 | 016 | Auto-Interaction data layer + resource config | IMPLEMENT | delivery-002 | 019, 020 |
 | 017 | Auto-gather flow — proximity, tween, chain | IMPLEMENT | 016 | 019, 020 |
 | 018 | Respawn queue + auto-defend stub + auto-pickup stub | IMPLEMENT | 017 | 019, 020, 021 |
-| 019 | ResourceRenderer — MultiMesh per type | IMPLEMENT | delivery-001 | 016, 017, 018, 020, 021 |
+| 019 | PropRenderer — MultiMesh per type | IMPLEMENT | delivery-001 | 016, 017, 018, 020, 021 |
 | 020 | Crafting data layer — recipes, discovery, craft action | IMPLEMENT | delivery-002 | 016, 017, 018, 019 |
 | 021 | Crafting panel UI + HUD integration | IMPLEMENT | 020 | 016, 017, 018, 019 |
 | 022 | Feedback wiring — floating text + fly-to-player | IMPLEMENT | 017, 020 | -- |
@@ -100,7 +100,7 @@ task-023 depends on everything.
 - **Gather always completes** — no cancel, no range check after start
 - On tween complete: decrement remaining, `Inventory.add_item` (at arrival, not start),
   emit `auto_gather_completed`. If remaining==0: emit `HexGrid.resource_depleted`
-  (HexGrid owns tile data and the canonical signal — ResourceRenderer listens there),
+  (HexGrid owns tile data and the canonical signal — PropRenderer listens there),
   add to respawn queue if respawn_time>0.
 - **Chain:** re-check from player's CURRENT position after each completion.
   Player may have moved. Chain continues while resources available.
@@ -131,7 +131,7 @@ task-023 depends on everything.
 - **Respawn queue** in `_process`:
   - Tick `time_remaining` always (fog-based pausing removed in implementation — world heals steadily regardless of player position)
   - On expire: `node.remaining = max_amount`, emit `HexGrid.resource_respawned`
-    (HexGrid owns the canonical signal — ResourceRenderer listens there)
+    (HexGrid owns the canonical signal — PropRenderer listens there)
   - `respawn_time == 0` → never enters queue
   - NOT saved (intentional — world heals on load)
 - **Auto-defend stub:**
@@ -159,16 +159,16 @@ task-023 depends on everything.
 
 ---
 
-### task-019: ResourceRenderer — MultiMesh per Type [IMPLEMENT]
+### task-019: PropRenderer — MultiMesh per Type [IMPLEMENT]
 
 **Source:** feature-004 → Layers & Components (renderer)
 
 **Scope:**
-- `scripts/rendering/resource_renderer.gd` — Node3D
-- `scenes/world/resource_renderer.tscn` — 6 MultiMeshInstance3D children:
+- `scripts/rendering/prop_renderer.gd` — Node3D
+- `scenes/world/prop_renderer.tscn` — 6 MultiMeshInstance3D children:
   wood/tree, stone/rock, berries/bush, fiber/grass, ore/vein, crystal/cluster
 - Placeholder meshes: colored primitives (<500 tris each)
-- On `map_generated`: allocate instances for all tile resource_nodes
+- On `map_generated`: allocate instances for all tile prop_nodes
 - On `tile_revealed`/`tile_visibility_changed`: show/hide per fog
   (HIDDEN=not instanced, REVEALED=dimmed via custom data, VISIBLE=full)
 - On `resource_depleted`: swap mesh variant (tree→stump, rock→rubble)
@@ -176,9 +176,9 @@ task-023 depends on everything.
 - Per-node deterministic random offset within hex (seeded from coords+index)
 - **Replaces PropRenderer** (delivery-002 placeholder): Delete `scripts/rendering/prop_renderer.gd`,
   `scenes/world/prop_renderer.tscn`, and remove from `main.tscn`. PropRenderer's generic category
-  cubes are superseded by ResourceRenderer's per-type meshes.
+  cubes are superseded by PropRenderer's per-type meshes.
 - **PropLabelRenderer stays** — labels (❓/⚠️/name) serve resources AND future fauna.
-  Signal source changes: labels now driven by ResourceRenderer signals instead of PropRenderer.
+  Signal source changes: labels now driven by PropRenderer signals instead of PropRenderer.
 - **PropUtils stays** — shared offset/type-lookup utilities still used by PropLabelRenderer.
 
 **Criteria:**
@@ -306,7 +306,7 @@ Integration tests verifying the complete core loop:
 - CraftButton: hidden by default, visible after recipe_discovered (MVP: pre-discovered at startup)
 - Panel mutual exclusion: Crafting + Inventory + Catalog
 - Fly-to-player visual fires and cleans up
-- Resource depletion → visual change in ResourceRenderer
+- Resource depletion → visual change in PropRenderer
 
 **Criteria:**
 - [ ] AC3 fully covered (uncataloged inert, scan→catalog→auto-gather, tool gate, depletion, respawn)
@@ -329,8 +329,8 @@ Cumulative (adds to delivery-002):
   - AutoInteractionSystem (Node) — NEW
   - CraftingSystem (Node) — NEW
 - World
-  - ResourceRenderer (Node3D) — NEW, ~6 MultiMesh pools for resource visuals (replaces PropRenderer from delivery-002)
-  - ~~PropRenderer~~ — REMOVED (superseded by ResourceRenderer)
+  - PropRenderer (Node3D) — NEW, ~6 MultiMesh pools for resource visuals (replaces PropRenderer from delivery-002)
+  - ~~PropRenderer~~ — REMOVED (superseded by PropRenderer)
 
 ### Bootstrap Changes
 - AutoInteractionSystem._ready() → connects to HexGrid.tile_entered for proximity checks
@@ -357,4 +357,4 @@ No additional requirements beyond delivery-001.
 |------|--------|--------|
 | 2026-03-31 | 8 tasks created (016-023) — 3 parallel chains documented | /aid-detail |
 | 2026-04-02 | Scan redesign: task-017 catalog gate uses `is_cataloged` (CATALOGED only for auto-gather). task-018 auto-defend fires on ENCOUNTERED or CATALOGED hostile. | /scan-redesign-apply |
-| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. Resources are props with `category="resource"`. Auto-interaction queries props instead of `tile.resource_nodes`. Tasks already implemented — this note is for future reference. | /arch-update |
+| 2026-04-04 | [NOTE] Architecture update: tile data model now uses unified `tile.props[]` array and sub-hex grid. Resources are props with `category="resource"`. Auto-interaction queries props instead of `tile.prop_nodes`. Tasks already implemented — this note is for future reference. | /arch-update |

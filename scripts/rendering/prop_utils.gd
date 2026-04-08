@@ -1,8 +1,8 @@
 class_name PropUtils
 extends RefCounted
 
-## Shared utilities for ResourceRenderer and PropLabelRenderer.
-## Provides resource type → entry_id reverse lookup and tile sub-hex calculation.
+## Shared utilities for PropRenderer and PropLabelRenderer.
+## Provides prop type → entry_id reverse lookup and tile sub-hex calculation.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
@@ -11,9 +11,9 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 ## Kept for backward compatibility with any remaining callers.
 const OFFSET_SCALE: float = 0.4
 
-## Reverse lookup: resource type → catalog entry_id via ResourceRegistry.
+## Reverse lookup: prop type → catalog entry_id via PropRegistry.
 static func get_entry_id_for_type(type: StringName) -> StringName:
-	var def = ResourceRegistry.get_def(type)
+	var def = PropRegistry.get_def(type)
 	if def != null:
 		return def.catalog_entry
 	return &""
@@ -23,7 +23,7 @@ static func get_entry_id_for_type(type: StringName) -> StringName:
 static func get_prop_placement(tile: Resource, entry_id: StringName) -> Array:
 	if tile == null:
 		return [Vector2.ZERO, 0.0]
-	for prop in tile.get_resources():
+	for prop in tile.get_props():
 		var prop_entry_id: StringName = get_entry_id_for_type(prop.type)
 		if prop_entry_id == entry_id:
 			return [_HexMath.sub_axial_to_world(prop.sub_hex), prop.rotation_deg]

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"00007"
+display_name = "Crystal Cluster"
+gather_time = 2.5
+gather_amount = 1
+tool_required = &"pickaxe"
+respawn_time = 60.0
+yield_type = &"00015"
+tool_speed = { &"00202": 0.5 }
+max_stack = 50
+category = &"prop"
+catalog_entry = &"crystal_cluster"
+catalog_category = &"minerals"
+prop_category = 1
+origin = 0
+placeholder_mesh_type = &"prism"
+placeholder_params = { "radius": 0.2, "height": 0.7 }
+placeholder_color = Color(0.2, 0.8, 0.8509803921568627, 1.0)
+placeholder_depleted_type = &"prism"
+placeholder_depleted_params = { "radius": 0.12, "height": 0.25 }
+placeholder_depleted_color = Color(0.2, 0.8, 0.8509803921568627, 1.0)

@@ -3,8 +3,7 @@
 // ============================================================
 
 import { HexMath } from './hex-math.js';
-import { HexGrid } from './hex-grid.js';
-import { STRUCTURE_FOOTPRINTS } from './tools.js';
+import { HexGrid, CATEGORIES, ORIGINS, CATEGORY_TO_INT } from './hex-grid.js';
 
 /**
  * @typedef {Object} ValidationError
@@ -17,14 +16,10 @@ import { STRUCTURE_FOOTPRINTS } from './tools.js';
  * Validate a HexGrid map before export/save.
  * @param {import('./hex-grid.js').HexGrid} hexGrid
  * @param {Set<string>} knownBiomes - Set of known biome names (without .tres extension)
- * @param {Set<string>} knownResources - Set of known resource names (without .tres extension)
- * @param {Set<string>} [knownStructures] - Set of known structure types (optional, defaults to STRUCTURE_FOOTPRINTS keys)
+ * @param {Set<string>} knownProps - Set of known prop names (without .tres extension)
  * @returns {{ valid: boolean, errors: ValidationError[] }}
  */
-export function validateMap(hexGrid, knownBiomes, knownResources, knownStructures) {
-  if (!knownStructures) {
-    knownStructures = new Set(Object.keys(STRUCTURE_FOOTPRINTS));
-  }
+export function validateMap(hexGrid, knownBiomes, knownProps) {
   /** @type {ValidationError[]} */
   const errors = [];
 
@@ -45,8 +40,8 @@ export function validateMap(hexGrid, knownBiomes, knownResources, knownStructure
     }
 
     // Validate elevation range
-    if (typeof tile.elevation !== 'number' || tile.elevation < 0 || tile.elevation > 9) {
-      errors.push({ hex: [q, r], field: 'elevation', message: `elevation ${tile.elevation} out of range 0-9.` });
+    if (typeof tile.elevation !== 'number' || !Number.isInteger(tile.elevation) || tile.elevation < -32000 || tile.elevation > 32000) {
+      errors.push({ hex: [q, r], field: 'elevation', message: `elevation ${tile.elevation} out of range -32000..32000.` });
     }
 
     if (!tile.props) continue;
@@ -58,16 +53,18 @@ export function validateMap(hexGrid, knownBiomes, knownResources, knownStructure
     for (let i = 0; i < tile.props.length; i++) {
       const prop = tile.props[i];
 
-      // Validate prop type exists in known definitions for its category
-      if (prop.category === 'resource' && knownResources.size > 0 && !knownResources.has(prop.type)) {
-        errors.push({ hex: [q, r], field: `props[${i}].type`, message: `unknown resource type "${prop.type}".` });
-      }
-      if (prop.category === 'structure' && knownStructures.size > 0 && !knownStructures.has(prop.type)) {
-        errors.push({ hex: [q, r], field: `props[${i}].type`, message: `unknown structure type "${prop.type}".` });
+      // Validate category is known
+      if (!CATEGORIES.includes(prop.category)) {
+        errors.push({ hex: [q, r], field: `props[${i}].category`, message: `unknown category "${prop.category}".` });
       }
 
-      // Validate rotation range for resources
-      if (prop.category === 'resource' && typeof prop.rotation === 'number') {
+      // Validate origin is known (if present)
+      if (prop.origin != null && typeof prop.origin === 'string' && !ORIGINS.includes(prop.origin)) {
+        errors.push({ hex: [q, r], field: `props[${i}].origin`, message: `unknown origin "${prop.origin}".` });
+      }
+
+      // Validate rotation range (all categories)
+      if (typeof prop.rotation === 'number') {
         if (prop.rotation < 0 || prop.rotation >= 360) {
           errors.push({ hex: [q, r], field: `props[${i}].rotation`, message: `rotation ${prop.rotation} outside range [0, 360).` });
         }

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"00005"
+display_name = "Stone Boulder"
+gather_time = 1.5
+gather_amount = 1
+tool_required = &"pickaxe"
+respawn_time = 30.0
+yield_type = &"00013"
+tool_speed = { &"00202": 0.5 }
+max_stack = 99
+category = &"prop"
+catalog_entry = &"stone_deposit"
+catalog_category = &"minerals"
+prop_category = 1
+origin = 0
+placeholder_mesh_type = &"cube"
+placeholder_params = { "half_size": 0.35 }
+placeholder_color = Color(0.6, 0.6, 0.6, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = { "half_size": 0.15 }
+placeholder_depleted_color = Color(0.6, 0.6, 0.6, 1.0)

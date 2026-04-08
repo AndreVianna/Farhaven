@@ -14,7 +14,7 @@
 
 ## Description
 
-Project root selection and automatic file discovery on startup. The user selects the Farhaven project root folder (containing `data/`, `scripts/`, `project.godot`). The editor auto-discovers maps (`data/maps/*.json`), resources (`data/resources/*.tres`), and biomes (`data/biomes/*.tres`). File handles are retained via File System Access API for direct save (Chrome/Edge). Fallback to standard file download for browsers without File System Access (Firefox/Safari).
+Project root selection and automatic file discovery on startup. The user selects the Farhaven project root folder (containing `data/`, `scripts/`, `project.godot`). The editor auto-discovers maps (`data/maps/*.json`), resources (`data/props/*.tres`), and biomes (`data/biomes/*.tres`). File handles are retained via File System Access API for direct save (Chrome/Edge). Fallback to standard file download for browsers without File System Access (Firefox/Safari).
 
 ## User Stories
 
@@ -71,7 +71,7 @@ class TresFile {
     this.extResources = [];    // array of raw ext_resource lines (strings)
     this.resourceFields = {};  // ordered Map<string, TresValue> of [resource] key-value pairs
     this.uid = null;           // extracted uid string or null
-    this.scriptClass = '';     // e.g. 'ResourceDef', 'BiomeData'
+    this.scriptClass = '';     // e.g. 'PropDef', 'BiomeData'
   }
 }
 ```
@@ -112,13 +112,13 @@ Wrapper for typed .tres values to enable round-trip serialization.
 
 4. **Scan Directories**
    - `FileDiscovery.scanDirectory(rootHandle, 'data/maps', '.json')` — discovers map files.
-   - `FileDiscovery.scanDirectory(rootHandle, 'data/resources', '.tres')` — discovers resource files.
+   - `FileDiscovery.scanDirectory(rootHandle, 'data/props', '.tres')` — discovers resource files.
    - `FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres')` — discovers biome files.
    - Each scan: navigate subdirectories via `getDirectoryHandle()`, iterate entries via `for await (const [name, handle] of dirHandle)`, filter by extension, retain `FileSystemFileHandle`.
 
 5. **Parse Discovered Files**
    - For each map `.json`: read text via `handle.getFile()` then `file.text()`, call `JSON.parse()`. On parse error, log warning and skip file.
-   - For each resource `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'ResourceDef'`. On parse error, log warning and skip file.
+   - For each resource `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'PropDef'`. On parse error, log warning and skip file.
    - For each biome `.tres`: read text, call `TresParser.parse(text)`. Validate `scriptClass === 'BiomeData'`. On parse error, log warning and skip file.
    - Populate `ProjectContext.files.maps`, `.resources`, `.biomes` with `{ handle, data, raw }`.
 
@@ -130,7 +130,7 @@ Wrapper for typed .tres values to enable round-trip serialization.
    - "Open Project" renders `<input type="file" webkitdirectory>` instead of calling `showDirectoryPicker()`.
    - On `change` event, read `input.files` — a flat `FileList` with `webkitRelativePath` on each entry.
    - Validate: at least one file has a relative path containing `project.godot` at the root level.
-   - Filter files by path prefix (`data/maps/`, `data/resources/`, `data/biomes/`) and extension.
+   - Filter files by path prefix (`data/maps/`, `data/props/`, `data/biomes/`) and extension.
    - Parse each file via `FileReader.readAsText()`.
    - `ProjectContext.hasFileSystemAccess` remains `false` — save operations will use download (Blob + `<a download>`).
    - No `FileSystemFileHandle` stored; `handle` fields are `null`.
@@ -301,7 +301,7 @@ Feature-007 owns the HTML skeleton, tab switching, toolbar, and initialization o
 | User cancels folder picker | Stay on welcome state, no error message |
 | Selected folder missing `project.godot` | Show error banner: "Not a Godot project. Select the folder containing project.godot." Return to welcome state. |
 | `data/maps/` directory missing | Log warning, `ProjectContext.files.maps` stays empty. Editor still loads. |
-| `data/resources/` directory missing | Log warning, `ProjectContext.files.resources` stays empty. |
+| `data/props/` directory missing | Log warning, `ProjectContext.files.resources` stays empty. |
 | `data/biomes/` directory missing | Log warning, `ProjectContext.files.biomes` stays empty. |
 | Individual file parse error | Log warning with filename and error. Skip file. Other files still load. |
 | File System Access API unavailable | Fallback to `<input webkitdirectory>`. Save uses download. |

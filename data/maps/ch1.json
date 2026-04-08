@@ -1,547 +1,581 @@
 {
+	"chapter_id": "ch1",
+	"name": "Crash Landing",
 	"spawn": [
+		0,
+		0,
+		0,
 		0,
 		0
 	],
 	"tiles": {
 		"0,0": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "wood",
+					"type": "00001",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 18
+					"rotation": 18,
+					"origin": 0
 				}
 			]
 		},
 		"1,0": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "loose_rock",
-					"category": 0,
+					"type": "00002",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 142
+					"rotation": 142,
+					"origin": 0
 				},
 				{
-					"type": "workbench",
-					"category": 6
+					"type": "00101",
+					"category": 6,
+					"origin": 1
 				}
 			]
 		},
 		"-1,0": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "fiber",
+					"type": "00003",
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": -1,
-					"rotation": 273
+					"rotation": 273,
+					"origin": 0
 				}
 			]
 		},
 		"0,1": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0
 		},
 		"0,-1": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 1
 		},
 		"1,-1": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0
 		},
 		"-1,1": {
-			"biome": "crash_site",
+			"biome": "001",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 92
+					"rotation": 92,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 165
+					"rotation": 165,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 301
+					"rotation": 301,
+					"origin": 0
 				}
 			]
 		},
 		"2,0": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "berries",
+					"type": "00004",
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 0,
-					"rotation": 67
+					"rotation": 67,
+					"origin": 0
 				}
 			]
 		},
 		"2,-1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"2,-2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"1,-2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1,
 			"props": [
 				{
-					"type": "fiber",
+					"type": "00003",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 195
+					"rotation": 195,
+					"origin": 0
 				}
 			]
 		},
 		"0,-2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"-1,-1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"-2,0": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0,
 			"props": [
 				{
-					"type": "berries",
+					"type": "00004",
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": 0,
-					"rotation": 312
+					"rotation": 312,
+					"origin": 0
 				}
 			]
 		},
 		"-2,1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"-2,2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1,
 			"props": [
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 317
+					"rotation": 317,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 165
+					"rotation": 165,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 134
+					"rotation": 134,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 183
+					"rotation": 183,
+					"origin": 0
 				},
 				{
-					"type": "crystal",
-					"category": 0,
+					"type": "00007",
+					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
-					"rotation": 148
+					"rotation": 148,
+					"origin": 0
 				}
 			]
 		},
 		"-1,2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1,
 			"props": [
 				{
-					"type": "fiber",
+					"type": "00003",
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 2,
-					"rotation": 88
+					"rotation": 88,
+					"origin": 0
 				}
 			]
 		},
 		"0,2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"1,1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"3,-1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"3,-2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"3,0": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 2
 		},
 		"-3,0": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"-3,1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"-3,2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"0,-3": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1,
 			"props": [
 				{
-					"type": "toxic_berries",
+					"type": "00008",
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
-					"rotation": 137
+					"rotation": 137,
+					"origin": 0
 				},
 				{
-					"type": "toxic_berries",
+					"type": "00008",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 104
+					"rotation": 104,
+					"origin": 0
 				}
 			]
 		},
 		"-1,-2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"-2,-1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 0
 		},
 		"1,2": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"2,1": {
-			"biome": "grassland",
+			"biome": "002",
 			"elevation": 1
 		},
 		"2,-3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 2,
 			"props": [
 				{
-					"type": "wood",
+					"type": "00001",
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
-					"rotation": 237
+					"rotation": 237,
+					"origin": 0
 				}
 			]
 		},
 		"3,-3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"4,-3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3,
 			"props": [
 				{
-					"type": "wood",
+					"type": "00001",
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": 2,
-					"rotation": 54
+					"rotation": 54,
+					"origin": 0
 				}
 			]
 		},
 		"4,-2": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"4,-1": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"4,0": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"3,1": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 2,
 			"props": [
 				{
-					"type": "wood",
+					"type": "00001",
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 161
+					"rotation": 161,
+					"origin": 0
 				}
 			]
 		},
 		"2,2": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 2
 		},
 		"1,3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"0,4": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"-1,4": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3,
 			"props": [
 				{
-					"type": "wood",
+					"type": "00001",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 329
+					"rotation": 329,
+					"origin": 0
 				}
 			]
 		},
 		"-2,4": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"-3,3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 2
 		},
 		"-4,3": {
-			"biome": "forest",
+			"biome": "003",
 			"elevation": 3
 		},
 		"5,-3": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 4,
 			"props": [
 				{
-					"type": "stone",
-					"category": 0,
+					"type": "00005",
+					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
-					"rotation": 102
+					"rotation": 102,
+					"origin": 0
 				}
 			]
 		},
 		"5,-2": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 5,
 			"props": [
 				{
-					"type": "ore",
-					"category": 0,
+					"type": "00006",
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
-					"rotation": 140
+					"rotation": 140,
+					"origin": 0
 				}
 			]
 		},
 		"5,-1": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 4,
 			"props": [
 				{
-					"type": "stone",
-					"category": 0,
+					"type": "00005",
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": 1,
-					"rotation": 359
+					"rotation": 359,
+					"origin": 0
 				}
 			]
 		},
 		"5,0": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 6,
 			"props": [
 				{
-					"type": "ore",
-					"category": 0,
+					"type": "00006",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
-					"rotation": 52
+					"rotation": 52,
+					"origin": 0
 				}
 			]
 		},
 		"4,1": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 4,
 			"props": [
 				{
-					"type": "stone",
-					"category": 0,
+					"type": "00005",
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
-					"rotation": 301
+					"rotation": 301,
+					"origin": 0
 				}
 			]
 		},
 		"2,3": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 4,
 			"props": [
 				{
-					"type": "ore",
-					"category": 0,
+					"type": "00006",
+					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": 1,
-					"rotation": 44
+					"rotation": 44,
+					"origin": 0
 				}
 			]
 		},
 		"1,4": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 5
 		},
 		"-1,5": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 5
 		},
 		"-2,5": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 6,
 			"props": [
 				{
-					"type": "ore",
-					"category": 0,
+					"type": "00005",
+					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
-					"rotation": 47
+					"rotation": 47,
+					"origin": 0
 				}
 			]
 		},
 		"-3,5": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 6,
 			"props": [
 				{
-					"type": "stone",
-					"category": 0,
+					"type": "00006",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
-					"rotation": 81
+					"rotation": 81,
+					"origin": 0
 				},
 				{
-					"type": "anomaly_ch1_001",
-					"category": 1,
+					"type": "10001",
+					"category": 8,
 					"origin": 4
 				}
 			]
 		},
 		"-4,4": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 5,
 			"props": [
 				{
-					"type": "ore",
-					"category": 0,
+					"type": "00006",
+					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 1,
-					"rotation": 13
+					"rotation": 13,
+					"origin": 0
 				}
 			]
 		},
 		"-5,4": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 5
 		},
 		"6,-3": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"6,-2": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"6,-1": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"5,1": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 7
 		},
 		"4,2": {
-			"biome": "rocky",
+			"biome": "004",
 			"elevation": 9
 		},
 		"-6,5": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"-5,5": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"-4,5": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"-3,4": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"-2,3": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"-1,3": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		},
 		"0,3": {
-			"biome": "water",
+			"biome": "005",
 			"elevation": 0
 		}
-	},
-	"chapter_id": "ch1",
-	"name": "Crash Landing"
+	}
 }

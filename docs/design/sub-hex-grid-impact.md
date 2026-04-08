@@ -29,7 +29,7 @@ Ring 2 (outer 12): (-2,0) (-1,-1) (0,-2) (1,-2) (2,-2) (2,-1)
 
 **The old model (REMOVED):**
 ```
-tile.resources = [ResourceNode, ...]
+tile.resources = [PropNode, ...]
 tile.structure = StringName       # one per hex
 tile.anomaly = StringName         # one per hex
 ```
@@ -44,7 +44,7 @@ tile.props = [
 ]
 ```
 
-**Principle:** The hex doesn't know what things ARE — it knows what things are IN it and WHERE they sit. The type's registry entry (ResourceDef, StructureDef, etc.) defines behavior. The hex is just a container of positioned props.
+**Principle:** The hex doesn't know what things ARE — it knows what things are IN it and WHERE they sit. The type's registry entry (PropDef, StructureDef, etc.) defines behavior. The hex is just a container of positioned props.
 
 ### 3. Gameplay Boundaries
 
@@ -68,7 +68,7 @@ tile.props = [
 ### HIGH Impact
 
 #### HexTile Data Model
-- **Remove:** `resource_nodes: Array[ResourceNode]`, `structure: StringName`, `anomaly: StringName`
+- **Remove:** `prop_nodes: Array[PropNode]`, `structure: StringName`, `anomaly: StringName`
 - **Add:** `props: Array[Prop]`
 - **Prop structure:** `{type: StringName, sub_hex: Vector2i, category: int (Prop.Category enum), footprint: Array[Vector2i], rotation_deg: float, remaining: int, max_amount: int, ...}`
 - **Category values:** `Category.RESOURCE = 0`, `Category.STRUCTURE = 1`, `Category.ANOMALY = 2` (int enum, extensible)
@@ -90,11 +90,13 @@ tile.props = [
 - **Backward compat:** Old format with `resources[]` + `structure` + `anomaly` → auto-convert to `props[]` on load. Resources without sq/sr → convert offset to nearest sub-hex.
 - **Validation:** Check sub-hex range, footprint overlap, spawn uniqueness
 
-#### ResourceRenderer → PropRenderer (rename)
+#### ResourceRenderer → PropRenderer (historical rename)
 - Unified renderer for all prop categories (or category-specific sub-renderers sharing base)
 - Two-level positioning: hex center + sub-hex offset + micro offset
-- Category determines mesh source (ResourceDef vs StructureDef vs marker)
+- Category determines mesh source (PropDef vs StructureDef vs marker)
 - Footprint rendering for multi-sub-hex structures
+- Note: `ResourceRenderer` has been renamed to `PropRenderer` along with the
+  broader resource→prop terminology migration.
 
 ### MEDIUM Impact
 
@@ -122,7 +124,7 @@ tile.props = [
 #### AutoInteractionSystem
 - **Gather proximity:** Distance calculation uses sub-hex world position instead of hex center + offset
 - **Respawn queue:** Track (coords, sub_hex) instead of just coords
-- **Resource lookup:** `tile.props.filter(category == "resource")` instead of `tile.resource_nodes`
+- **Resource lookup:** `tile.props.filter(category == "resource")` instead of `tile.prop_nodes`
 
 #### SurvivalSystem (ground items)
 - **Ground items stay main-hex** for MVP (death drops don't use sub-hex)
@@ -144,7 +146,7 @@ tile.props = [
 - `load_save_data()` deserializes with backward compat (old saves → convert to props)
 
 #### Existing Tests
-- Tests referencing `tile.resource_nodes`, `tile.structure`, `tile.anomaly` need updating
+- Tests referencing `tile.prop_nodes`, `tile.structure`, `tile.anomaly` need updating
 - Test helper mocks need props-based API
 - **Estimated:** ~50-80 test modifications across all suites
 
@@ -189,7 +191,7 @@ Backward compat in `load_save_data()`:
 6. Map validation
 
 ### Phase 3: Rendering
-7. PropRenderer (replaces ResourceRenderer + StructureRenderer concept)
+7. PropRenderer (replaces the old ResourceRenderer + StructureRenderer concept)
 8. Visual smoke test
 
 ### Phase 4: Gameplay Wiring

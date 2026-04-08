@@ -4,19 +4,60 @@
 
 import { HEX_SIZE, HexMath } from './hex-math.js';
 
+/**
+ * Prop category names indexed by engine integer value.
+ * Natural (0-5) and Non-Natural (6-9).
+ * @type {string[]}
+ */
+export const CATEGORIES = [
+  'plant', 'mineral', 'animal', 'fungi', 'liquid', 'ooze',
+  'structure', 'vehicle', 'equipment', 'storage',
+];
+
 /** Maps internal string categories to engine JSON integer values. */
-export const CATEGORY_TO_INT = { resource: 0, structure: 1, anomaly: 2, spawn: 3 };
+export const CATEGORY_TO_INT = Object.fromEntries(CATEGORIES.map((name, i) => [name, i]));
 /** Maps engine JSON integer category values to internal string categories. */
-export const INT_TO_CATEGORY = { 0: 'resource', 1: 'structure', 2: 'anomaly', 3: 'spawn' };
+export const INT_TO_CATEGORY = Object.fromEntries(CATEGORIES.map((name, i) => [i, name]));
+
+/** Natural category indices (0-5). */
+export const NATURAL_CATEGORIES = new Set([0, 1, 2, 3, 4, 5]);
+
+/**
+ * Origin names indexed by engine integer value.
+ * @type {string[]}
+ */
+export const ORIGINS = ['natural', 'crafted', 'human', 'native_alien', 'unknown'];
+
+/** Maps origin string to integer. */
+export const ORIGIN_TO_INT = Object.fromEntries(ORIGINS.map((name, i) => [name, i]));
+/** Maps origin integer to string. */
+export const INT_TO_ORIGIN = Object.fromEntries(ORIGINS.map((name, i) => [i, name]));
+
+/**
+ * Default origin for a given category index.
+ * Natural categories (0-5) → 0 (natural), Non-Natural (6-9) → 1 (crafted).
+ * @param {number} categoryInt
+ * @returns {number}
+ */
+export function defaultOrigin(categoryInt) {
+  return NATURAL_CATEGORIES.has(categoryInt) ? 0 : 1;
+}
 
 /**
  * Shared category color definitions used by canvas rendering and UI panels.
  * @type {Object<string, { fill: string, badge: string, label: string }>}
  */
 export const CATEGORY_COLORS = {
-  resource: { fill: 'rgba(68,136,255,0.3)', badge: '#4488ff', label: 'blue' },
-  structure: { fill: 'rgba(255,170,68,0.3)', badge: '#ffaa44', label: 'orange' },
-  anomaly: { fill: 'rgba(180,68,255,0.3)', badge: '#b444ff', label: 'purple' },
+  plant:     { fill: 'rgba(68,200,68,0.3)',  badge: '#44c844', label: 'green' },
+  mineral:   { fill: 'rgba(160,160,180,0.3)', badge: '#a0a0b4', label: 'grey' },
+  animal:    { fill: 'rgba(220,120,60,0.3)',  badge: '#dc783c', label: 'brown' },
+  fungi:     { fill: 'rgba(180,120,220,0.3)', badge: '#b478dc', label: 'lavender' },
+  liquid:    { fill: 'rgba(68,160,255,0.3)',  badge: '#44a0ff', label: 'blue' },
+  ooze:      { fill: 'rgba(160,220,60,0.3)',  badge: '#a0dc3c', label: 'lime' },
+  structure: { fill: 'rgba(255,170,68,0.3)',  badge: '#ffaa44', label: 'orange' },
+  vehicle:   { fill: 'rgba(255,220,68,0.3)',  badge: '#ffdc44', label: 'yellow' },
+  equipment: { fill: 'rgba(68,220,220,0.3)',  badge: '#44dcdc', label: 'cyan' },
+  storage:   { fill: 'rgba(200,140,100,0.3)', badge: '#c88c64', label: 'tan' },
 };
 
 /**
@@ -30,41 +71,41 @@ export function createTileData(biome = '') {
 
 /**
  * Creates a PropInstance.
- * @param {string} type - Resource/structure/anomaly identifier
+ * @param {string} type - Prop identifier (e.g. 'thornwood_tree')
  * @param {number} [sq=0] - Sub-hex q coordinate
  * @param {number} [sr=0] - Sub-hex r coordinate
- * @param {string} [category='resource'] - 'resource' | 'structure' | 'anomaly'
- * @param {Object} [options={}] - Per-category optional fields:
- *   **All categories:**
- *   @param {number} [options.rotation] - Rotation in degrees (default 0)
- *   **resource only:**
- *   @param {number} [options.remaining] - Current resource amount
- *   @param {number} [options.max_amount] - Maximum resource amount
+ * @param {string} [category='plant'] - Category name from CATEGORIES
+ * @param {Object} [options={}] - Optional fields:
+ *   @param {number} [options.rotation] - Rotation 0-359°
+ *   @param {number|string} [options.origin] - Origin index or name. Default derived from category.
+ *   @param {number} [options.remaining] - Current prop amount
+ *   @param {number} [options.max_amount] - Maximum prop amount
  *   @param {string} [options.tool_required] - Tool needed to harvest
  *   @param {number} [options.respawn_time] - Respawn time in seconds
- *   **structure only:**
- *   @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets
- *   @param {boolean} [options.blocks_movement] - Whether structure blocks movement
+ *   @param {Array<{q: number, r: number}>} [options.footprint] - Occupied sub-hex offsets (structures)
+ *   @param {boolean} [options.blocks_movement] - Whether prop blocks movement
  * @returns {Object}
  */
-export function createProp(type, sq = 0, sr = 0, category = 'resource', options = {}) {
+export function createProp(type, sq = 0, sr = 0, category = 'plant', options = {}) {
+  const catInt = CATEGORY_TO_INT[category] != null ? CATEGORY_TO_INT[category] : 0;
   const prop = { type, sq, sr, category };
-  if (category === 'resource') {
-    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
-    // Resource-specific optional fields (populated from biome data or map JSON)
-    if (typeof options.remaining === 'number') prop.remaining = options.remaining;
-    if (typeof options.max_amount === 'number') prop.max_amount = options.max_amount;
-    if (options.tool_required) prop.tool_required = options.tool_required;
-    if (typeof options.respawn_time === 'number') prop.respawn_time = options.respawn_time;
+  // Origin: explicit > default from category
+  if (typeof options.origin === 'number') {
+    prop.origin = options.origin;
+  } else if (typeof options.origin === 'string' && ORIGIN_TO_INT[options.origin] != null) {
+    prop.origin = INT_TO_ORIGIN[ORIGIN_TO_INT[options.origin]];
+  } else {
+    prop.origin = INT_TO_ORIGIN[defaultOrigin(catInt)];
   }
-  if (category === 'structure') {
-    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
-    if (options.footprint) prop.footprint = options.footprint;
-    if (typeof options.blocks_movement === 'boolean') prop.blocks_movement = options.blocks_movement;
-  }
-  if (category === 'anomaly') {
-    prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
-  }
+  // Rotation (all categories)
+  prop.rotation = typeof options.rotation === 'number' ? options.rotation : 0;
+  // Optional fields (applicable to any category depending on type)
+  if (typeof options.remaining === 'number') prop.remaining = options.remaining;
+  if (typeof options.max_amount === 'number') prop.max_amount = options.max_amount;
+  if (options.tool_required) prop.tool_required = options.tool_required;
+  if (typeof options.respawn_time === 'number') prop.respawn_time = options.respawn_time;
+  if (options.footprint) prop.footprint = options.footprint;
+  if (typeof options.blocks_movement === 'boolean') prop.blocks_movement = options.blocks_movement;
   return prop;
 }
 
@@ -170,7 +211,7 @@ export class HexGrid {
 function _parseLegacyTile(tileJson) {
   const props = [];
 
-  // Legacy resources
+  // Legacy props
   if (Array.isArray(tileJson.resources)) {
     for (const res of tileJson.resources) {
       // B5/Q5: Handle plain-string resource format
@@ -247,14 +288,15 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   hexGrid.meta.name = mapData.name || '';
   if (Array.isArray(mapData.spawn)) {
     const s = mapData.spawn;
-    // Preserve original length: only store 4 elements if sub-hex was present
-    if (s.length >= 4 && (s[2] || s[3])) {
-      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0];
+    if (s.length >= 5) {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0, s[4] || 0];
+    } else if (s.length >= 4 && (s[2] || s[3])) {
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, s[2] || 0, s[3] || 0, 0];
     } else {
-      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0];
+      hexGrid.meta.spawn = [s[0] || 0, s[1] || 0, 0, 0, 0];
     }
   } else {
-    hexGrid.meta.spawn = [0, 0];
+    hexGrid.meta.spawn = [0, 0, 0, 0, 0];
   }
 
   if (mapData.tiles && typeof mapData.tiles === 'object') {
@@ -274,18 +316,16 @@ export function loadMapIntoGrid(hexGrid, mapData) {
           const rotation = typeof p.rotation === 'number' ? p.rotation : 0;
 
           const options = { rotation };
-          // Resource-specific fields
-          if (categoryStr === 'resource') {
-            if (typeof p.remaining === 'number') options.remaining = p.remaining;
-            if (typeof p.max_amount === 'number') options.max_amount = p.max_amount;
-            if (p.tool_required) options.tool_required = p.tool_required;
-            if (typeof p.respawn_time === 'number') options.respawn_time = p.respawn_time;
-          }
-          // Structure-specific fields
-          if (categoryStr === 'structure') {
-            if (typeof p.blocks_movement === 'boolean') options.blocks_movement = p.blocks_movement;
-            if (p.footprint) options.footprint = p.footprint;
-          }
+          // Origin (integer or string)
+          if (typeof p.origin === 'number') options.origin = p.origin;
+          else if (typeof p.origin === 'string') options.origin = p.origin;
+          // Optional fields (applicable to any category)
+          if (typeof p.remaining === 'number') options.remaining = p.remaining;
+          if (typeof p.max_amount === 'number') options.max_amount = p.max_amount;
+          if (p.tool_required) options.tool_required = p.tool_required;
+          if (typeof p.respawn_time === 'number') options.respawn_time = p.respawn_time;
+          if (typeof p.blocks_movement === 'boolean') options.blocks_movement = p.blocks_movement;
+          if (p.footprint) options.footprint = p.footprint;
 
           return createProp(p.type || '', sq, sr, categoryStr, options);
         });
@@ -323,26 +363,31 @@ export function serializeGridToMapJson(hexGrid) {
           obj.sub_hex_q = p.sq;
           obj.sub_hex_r = p.sr;
         }
+        // Origin
+        if (typeof p.origin === 'string' && ORIGIN_TO_INT[p.origin] != null) {
+          obj.origin = ORIGIN_TO_INT[p.origin];
+        } else if (typeof p.origin === 'number') {
+          obj.origin = p.origin;
+        }
         // Only include rotation if non-zero
         if (p.rotation) obj.rotation = p.rotation;
-        // Resource-specific
-        if (p.category === 'resource') {
-          if (typeof p.remaining === 'number') obj.remaining = p.remaining;
-          if (typeof p.max_amount === 'number') obj.max_amount = p.max_amount;
-          if (p.tool_required) obj.tool_required = p.tool_required;
-          if (typeof p.respawn_time === 'number' && p.respawn_time > 0) obj.respawn_time = p.respawn_time;
-        }
-        // Structure-specific (footprint is internal only — not serialized)
-        if (p.category === 'structure') {
-          if (p.blocks_movement) obj.blocks_movement = true;
-        }
+        // Optional fields (any category)
+        if (typeof p.remaining === 'number') obj.remaining = p.remaining;
+        if (typeof p.max_amount === 'number') obj.max_amount = p.max_amount;
+        if (p.tool_required) obj.tool_required = p.tool_required;
+        if (typeof p.respawn_time === 'number' && p.respawn_time > 0) obj.respawn_time = p.respawn_time;
+        if (p.blocks_movement) obj.blocks_movement = true;
+        // footprint is internal only — not serialized
         return obj;
       });
     }
     tiles[key] = entry;
   }
-  // Trim trailing zero sub-hex elements from spawn to reduce diff noise
+  // Trim trailing zero elements from spawn to reduce diff noise
   const spawn = [...hexGrid.meta.spawn];
+  if (spawn.length === 5 && spawn[4] === 0) {
+    spawn.length = 4;
+  }
   if (spawn.length === 4 && spawn[2] === 0 && spawn[3] === 0) {
     spawn.length = 2;
   }

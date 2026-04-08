@@ -78,9 +78,9 @@ The Knowledge Base is thorough, well-sourced, and accurate. All critical, high, 
 | Inventory extends RefCounted | data-model.md | Yes | inventory.gd line 2: extends RefCounted |
 | Player owns Inventory at line 26 | architecture.md | Yes | player.gd line 26: var inventory: _Inventory = _Inventory.new() |
 | WALKABLE_STRUCTURES has 5 items at line 20 | api-contracts.md | Yes | hex_grid.gd line 20: shelter, torch, workbench, storage_chest, campfire |
-| ResourceRegistry at project.godot line 25 | architecture.md | Yes | project.godot line 25 confirmed |
+| PropRegistry at project.godot line 25 | architecture.md | Yes | project.godot line 25 confirmed |
 | HexGrid at project.godot line 26 | architecture.md | Yes | project.godot line 26 confirmed |
-| resource_renderer.gd is 473 lines | module-map.md | Yes | wc -l confirms 473 |
+| prop_renderer.gd is 473 lines | module-map.md | Yes | wc -l confirms 473 |
 | main.gd is 76 lines | module-map.md | Yes | wc -l confirms 76 |
 | hex_grid.gd is 220 lines | module-map.md | Yes | wc -l confirms 220 |
 | auto_interaction_system.gd is 409 lines | module-map.md | Yes | wc -l confirms 409 |
@@ -88,7 +88,7 @@ The Knowledge Base is thorough, well-sourced, and accurate. All critical, high, 
 | Knowledge states: UNKNOWN/ENCOUNTERED/CATALOGED | feature-inventory.md | Yes | catalog.gd line 7: enum KnowledgeState { UNKNOWN, ENCOUNTERED, CATALOGED } |
 | SCAN_RANGE = 1 at line 26 | domain-glossary.md | Yes | scanner_system.gd line 26: const SCAN_RANGE: int = 1 |
 | _wire_systems at main.gd line 23 | architecture.md | Yes | grep confirms func _wire_systems at line 23 |
-| Two autoloads: ResourceRegistry and HexGrid | external-sources.md | Yes | project.godot lines 25-26 confirmed |
+| Two autoloads: PropRegistry and HexGrid | external-sources.md | Yes | project.godot lines 25-26 confirmed |
 | Touch emulation at line 44 | external-sources.md | No | Actual line is 45, not 44 |
 | "Farhaven avoids class_name for most scripts" | external-sources.md | No | 30 of 41 files use class_name. Most scripts DO use it. |
 | FaunaManager stubbed in main.gd | feature-inventory.md | No | FaunaManager is in auto_interaction_system.gd:340, not main.gd |
@@ -225,14 +225,14 @@ The Knowledge Base is thorough, well-sourced, and accurate. All critical, high, 
 **Status:** Answered
 **Context:** coding-standards.md states "Only 16 of 44 scripts use class_name" and implies most scripts deliberately avoid it. Actual count is 30 of 41 source files use class_name. The convention description is misleading. Is the intent to move toward universal class_name registration, or are autoloads/renderers intentionally excluded?
 **Suggested:** Update the convention docs to reflect reality: most scripts DO use class_name. The exceptions are autoloads (which cannot due to initialization ordering) and main.gd.
-**Answer:** 31 of 40 source files use class_name (verified via grep). Most scripts DO register class_name. Exceptions are autoloads (hex_grid.gd, resource_registry.gd) and bootstrap (main.gd) plus a few renderers. Update docs to reflect majority convention.
+**Answer:** 31 of 40 source files use class_name (verified via grep). Most scripts DO register class_name. Exceptions are autoloads (hex_grid.gd, prop_registry.gd) and bootstrap (main.gd) plus a few renderers. Update docs to reflect majority convention.
 
 ## Discovery -- Review Cycle 2
 
 ### Q15: [Data Quality: High] class_name count still wrong after fix -- 31/40 or 30/41?
 **Status:** Answered
 **Context:** The fix cycle updated class_name count to "31 of 40" across coding-standards.md and tech-debt.md, citing "verified via grep." However, an anchored grep (^class_name) shows only 30 files with class_name declarations (22 in scripts/, 8 in ui/, 0 in scenes/world/). hex_grid_renderer.gd does NOT have class_name. Total source files are 41 (32 scripts + 8 ui + 1 scenes/world), not 40. The non-anchored grep likely matched hex_grid.gd comment mentioning "class_name registration" as a false positive.
-**Suggested:** Correct to "30 of 41." The 11 files without class_name are: hex_grid.gd, resource_registry.gd, main.gd, player.gd, player_camera.gd, map_loader.gd, resource_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, crafting_system.gd, hex_grid_renderer.gd.
+**Suggested:** Correct to "30 of 41." The 11 files without class_name are: hex_grid.gd, prop_registry.gd, main.gd, player.gd, player_camera.gd, map_loader.gd, prop_renderer.gd, prop_label_renderer.gd, scan_progress_renderer.gd, crafting_system.gd, hex_grid_renderer.gd.
 **Answer:** 30 of 41 confirmed via anchored grep (^class_name). Fix applied to all docs.
 
 ### Q16: [Data Quality: Medium] feature-inventory.md uses wrong knowledge state names

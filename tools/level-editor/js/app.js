@@ -5,23 +5,23 @@
 // ============================================================
 
 import { TresParser } from './tres-parser.js';
-import { HexGrid, loadMapIntoGrid, serializeGridToMapJson } from './hex-grid.js';
+import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
 import { HexInspector, showInlineModal, showErrorListModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
-import { ToolManager, STRUCTURE_FOOTPRINTS } from './tools.js';
+import { ToolManager } from './tools.js';
 import { validateMap } from './validator.js';
-import { renderResourceEditor } from './resource-editor.js';
+import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
 
 // ============================================================
 // Module-level state
 // ============================================================
 
-/** @type {string} Currently active tab — 'map' | 'resources' | 'biomes' */
+/** @type {string} Currently active tab — 'map' | 'props' | 'biomes' */
 let activeTab = 'map';
 
 /** @type {HexGrid} Global hex grid model instance */
@@ -36,8 +36,8 @@ const camera = { offsetX: 0, offsetY: 0, zoom: 1.0 };
 /** @type {Map<string, string>} Biome name -> CSS color string, populated from .tres data */
 const biomeColorMap = new Map();
 
-/** @type {Map<string, string>} Resource type -> CSS color string, from placeholder_color */
-const resourceColorMap = new Map();
+/** @type {Map<string, string>} Prop type -> CSS color string, from placeholder_color */
+const propColorMap = new Map();
 
 /** @type {CommandHistory} */
 const commandHistory = new CommandHistory();
@@ -64,13 +64,13 @@ let hexInspector = null;
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
   map: 'Map Editor',
-  resources: 'Resources',
+  props: 'Props',
   biomes: 'Biomes',
 };
 
 /**
  * Switch to the specified tab.
- * @param {string} tabName - 'map' | 'resources' | 'biomes'
+ * @param {string} tabName - 'map' | 'props' | 'biomes'
  * @returns {void}
  */
 function switchTab(tabName) {
@@ -106,6 +106,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ============================================================
 // UI Helpers
 // ============================================================
+
+/**
+ * Safely extract a string value, handling undefined/null.
+ * @param {*} val
+ * @returns {string}
+ */
+function _str(val) {
+  if (val == null) return '';
+  return String(val);
+}
 
 /**
  * Show an error message in the status bar.
@@ -165,9 +175,7 @@ const mapOnly = (fn) => () => { if (activeTab !== 'map') return; fn(); };
 keyboardManager.register('v', mapOnly(() => selectTool('select')));
 keyboardManager.register('b', mapOnly(() => selectTool('biome')));
 keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
-keyboardManager.register('r', mapOnly(() => selectTool('resource')));
-keyboardManager.register('s', mapOnly(() => selectTool('structure')));
-keyboardManager.register('a', mapOnly(() => selectTool('anomaly')));
+keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
@@ -259,8 +267,8 @@ function newMap() {
 function saveMapAs() {
   // Validate first so we don't create a broken file
   const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
-  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
-  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  const knownProps = new Set([...ProjectContext.files.props.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownProps);
   if (!validation.valid) {
     showErrorListModal('Map validation failed — Save As blocked', validation.errors);
     setStatus(`Save As blocked: ${validation.errors.length} validation error(s)`);
@@ -310,15 +318,15 @@ function saveMapAs() {
 async function saveAll() {
   // Validate map before saving
   const knownBiomes = new Set([...ProjectContext.files.biomes.keys()].map(f => f.replace('.tres', '')));
-  const knownResources = new Set([...ProjectContext.files.resources.keys()].map(f => f.replace('.tres', '')));
-  const validation = validateMap(hexGrid, knownBiomes, knownResources);
+  const knownProps = new Set([...ProjectContext.files.props.keys()].map(f => f.replace('.tres', '')));
+  const validation = validateMap(hexGrid, knownBiomes, knownProps);
   if (!validation.valid) {
     showErrorListModal('Map validation failed — save blocked', validation.errors);
     setStatus(`Save blocked: ${validation.errors.length} validation error(s)`);
     return;
   }
 
-  const tabs = ['map', 'resources', 'biomes'];
+  const tabs = ['map', 'props', 'biomes'];
   let hadError = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
@@ -338,7 +346,7 @@ async function saveAll() {
 
 /**
  * Save files for a specific tab.
- * @param {string} tab - 'map' | 'resources' | 'biomes'
+ * @param {string} tab - 'map' | 'props' | 'biomes'
  * @returns {Promise<void>}
  */
 async function saveTab(tab) {
@@ -351,10 +359,10 @@ async function saveTab(tab) {
       const json = JSON.stringify(entry.data, null, '\t');
       await FileDiscovery.saveFile(entry.dir || 'data/maps', json, activeMapFilename);
     }
-  } else if (tab === 'resources') {
-    for (const [filename, entry] of ProjectContext.files.resources) {
+  } else if (tab === 'props') {
+    for (const [filename, entry] of ProjectContext.files.props) {
       const text = TresParser.serialize(entry.raw);
-      await FileDiscovery.saveFile(entry.dir || 'data/resources', text, filename);
+      await FileDiscovery.saveFile(entry.dir || 'data/props', text, filename);
     }
   } else if (tab === 'biomes') {
     for (const [filename, entry] of ProjectContext.files.biomes) {
@@ -405,9 +413,9 @@ async function autoLoadProject() {
   initializeAfterLoad();
 
   const mapCount = ProjectContext.files.maps.size;
-  const resCount = ProjectContext.files.resources.size;
+  const propCount = ProjectContext.files.props.size;
   const biomeCount = ProjectContext.files.biomes.size;
-  setStatus(`Project loaded: ${mapCount} map(s), ${resCount} resource(s), ${biomeCount} biome(s)`);
+  setStatus(`Project loaded: ${mapCount} map(s), ${propCount} prop(s), ${biomeCount} biome(s)`);
   console.log('autoLoadProject: Workspace ready.');
 }
 
@@ -438,23 +446,23 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
-  // Build resource color map from loaded .tres data
-  resourceColorMap.clear();
-  for (const [filename, entry] of ProjectContext.files.resources) {
+  // Build prop color map from loaded .tres data (stored in files.props)
+  propColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
-      const resourceName = filename.replace('.tres', '');
+      const propName = filename.replace('.tres', '');
       const c = colorField.value;
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
-      console.log(`  Resource color: "${resourceName}" -> rgb(${r},${g},${b})`);
+      propColorMap.set(propName, `rgb(${r},${g},${b})`);
+      console.log(`  Prop color: "${propName}" -> rgb(${r},${g},${b})`);
     } else {
-      console.warn(`  Resource "${filename}" has no valid placeholder_color field.`);
+      console.warn(`  Prop "${filename}" has no valid placeholder_color field.`);
     }
   }
-  console.log(`Resource color map built — ${resourceColorMap.size} entries.`);
+  console.log(`Prop color map built — ${propColorMap.size} entries.`);
 
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
@@ -483,17 +491,27 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
-  // Render resource list in the Resources tab (task-012/013)
-  const resourceTabEl = document.getElementById('tab-resources');
-  if (resourceTabEl) {
-    renderResourceEditor(resourceTabEl, { commandHistory, onChange: refreshPalettes });
-    console.log('Resource editor rendered.');
+  // Render prop list in the Props tab (task-012/013)
+  const propTabEl = document.getElementById('tab-props');
+  if (propTabEl) {
+    renderPropEditor(propTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+    });
+    console.log('Prop editor rendered.');
   }
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
   if (biomeTabEl) {
-    renderBiomeEditor(biomeTabEl, { commandHistory, biomeColorMap, hexCanvas, onChange: refreshPalettes });
+    renderBiomeEditor(biomeTabEl, {
+      commandHistory,
+      biomeColorMap,
+      hexCanvas,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('biomes'); },
+    });
     console.log('Biome editor rendered.');
   }
 
@@ -507,6 +525,9 @@ function initializeAfterLoad() {
     console.log('Hex inspector map stats updated.');
   }
 
+  // Start with Select tool active
+  selectTool('select');
+
   console.groupEnd();
 }
 
@@ -517,7 +538,7 @@ function initializeAfterLoad() {
 {
   const canvasEl = document.getElementById('hex-canvas');
   if (canvasEl && typeof canvasEl.getContext === 'function') {
-    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, resourceColorMap);
+    hexCanvas = new HexCanvas(/** @type {HTMLCanvasElement} */ (canvasEl), hexGrid, camera, biomeColorMap, propColorMap);
     hexCanvas.toolManager = toolManager;
     hexCanvas.init();
   }
@@ -562,9 +583,7 @@ const TOOL_GROUPS = [
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
-    { type: 'resource',   label: 'Resource',    shortcut: 'R' },
-    { type: 'structure',  label: 'Structure',   shortcut: 'S' },
-    { type: 'anomaly',    label: 'Anomaly',     shortcut: 'A' },
+    { type: 'prop',       label: 'Prop',        shortcut: 'R' },
     { type: 'spawn',      label: 'Spawn',       shortcut: 'P' },
     { type: 'eraser',     label: 'Eraser',      shortcut: 'X' },
   ]},
@@ -579,8 +598,7 @@ function initSidebar() {
   _initToolButtons();
   _initMapSelector();
   _initBiomePalette();
-  _initResourcePalette();
-  _initStructurePalette();
+  _initPropPalette();
   _initElevationControls();
   updateSidebar();
 
@@ -589,8 +607,8 @@ function initSidebar() {
 }
 
 /**
- * Rebuild biomeColorMap and resourceColorMap from current ProjectContext.
- * Called after resource/biome edits so the canvas and palettes update.
+ * Rebuild biomeColorMap and propColorMap from current ProjectContext.
+ * Called after prop/biome edits so the canvas and palettes update.
  * @returns {void}
  */
 function _rebuildColorMaps() {
@@ -606,30 +624,29 @@ function _rebuildColorMaps() {
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
     }
   }
-  resourceColorMap.clear();
-  for (const [filename, entry] of ProjectContext.files.resources) {
+  propColorMap.clear();
+  for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
     if (colorField && colorField.type === 'color') {
-      const resourceName = filename.replace('.tres', '');
+      const propName = filename.replace('.tres', '');
       const c = colorField.value;
       const r = Math.round(c.r * 255);
       const g = Math.round(c.g * 255);
       const b = Math.round(c.b * 255);
-      resourceColorMap.set(resourceName, `rgb(${r},${g},${b})`);
+      propColorMap.set(propName, `rgb(${r},${g},${b})`);
     }
   }
 }
 
 /**
- * Rebuild the sidebar palettes and color maps. Called by the resource/biome
+ * Rebuild the sidebar palettes and color maps. Called by the prop/biome
  * editors after create/edit/delete operations so the map tab reflects changes.
  * @returns {void}
  */
 function refreshPalettes() {
   _rebuildColorMaps();
   _initBiomePalette();
-  _initResourcePalette();
-  _initStructurePalette();
+  _initPropPalette();
   updateSidebar();
   if (hexCanvas) hexCanvas.requestRender();
   if (hexInspector) hexInspector.updateMapStats();
@@ -658,8 +675,8 @@ function _initToolButtons() {
       btn.textContent = `${def.label} (${def.shortcut})`;
       btn.title = `${def.label} — shortcut: ${def.shortcut}`;
       btn.addEventListener('click', () => {
-        if (toolManager.activeToolType === def.type) {
-          selectTool(null);
+        if (toolManager.activeToolType === def.type && def.type !== 'select') {
+          selectTool('select');
         } else {
           selectTool(def.type);
         }
@@ -758,8 +775,12 @@ function _initBiomePalette() {
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
+    // Show display name from .tres if available, otherwise the ID
+    const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
+    const displayName = biomeEntry && biomeEntry.data && biomeEntry.data.biome_name
+      ? String(biomeEntry.data.biome_name) : biomeName;
     const label = document.createElement('span');
-    label.textContent = biomeName;
+    label.textContent = displayName;
 
     item.appendChild(swatch);
     item.appendChild(label);
@@ -775,63 +796,143 @@ function _initBiomePalette() {
   }
 }
 
-/**
- * Populate the resource palette from ProjectContext.files.resources.
- * @returns {void}
- */
-function _initResourcePalette() {
-  const container = document.getElementById('palette-resource-list');
-  if (!container) return;
-  container.innerHTML = '';
-
-  for (const [filename] of ProjectContext.files.resources) {
-    const resourceName = filename.replace('.tres', '');
-    const item = document.createElement('div');
-    item.className = 'palette-item';
-    item.dataset.value = resourceName;
-
-    const label = document.createElement('span');
-    label.textContent = resourceName;
-    item.appendChild(label);
-
-    item.addEventListener('click', () => {
-      toolManager.setTool('resource', resourceName);
-      if (hexCanvas) hexCanvas.toolManager = toolManager;
-      updateSidebar();
-      setStatus(`Tool: resource — ${resourceName}`);
-    });
-
-    container.appendChild(item);
-  }
-}
+/** Natural category names (indices 0-5). */
+const NATURAL_CATEGORY_NAMES = CATEGORIES.filter((_, i) => NATURAL_CATEGORIES.has(i));
+/** Non-natural category names (indices 6-9). */
+const NON_NATURAL_CATEGORY_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.has(i));
 
 /**
- * Populate the structure palette from STRUCTURE_FOOTPRINTS.
+ * Populate the prop palette with origin + category dropdowns and type list.
+ * Origin → Category (filtered) → Type list (filtered).
  * @returns {void}
  */
-function _initStructurePalette() {
-  const container = document.getElementById('palette-structure-list');
-  if (!container) return;
-  container.innerHTML = '';
+function _initPropPalette() {
+  const originSelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('prop-origin-select'));
+  const categorySelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('prop-category-select'));
+  const listContainer = document.getElementById('palette-prop-list');
+  if (!originSelect || !categorySelect || !listContainer) return;
 
-  for (const [structName, footprint] of Object.entries(STRUCTURE_FOOTPRINTS)) {
+  // --- Populate origin dropdown ---
+  originSelect.innerHTML = '';
+  const originAll = document.createElement('option');
+  originAll.value = 'all';
+  originAll.textContent = 'All';
+  originAll.selected = true;
+  originSelect.appendChild(originAll);
+  for (const o of ORIGINS) {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    originSelect.appendChild(opt);
+  }
+
+  /**
+   * Get the list of categories allowed for the selected origin.
+   * @param {string} origin - origin name or 'all'
+   * @returns {string[]}
+   */
+  function _categoriesForOrigin(origin) {
+    if (origin === 'all') return [...CATEGORIES];
+    if (origin === 'natural') return [...NATURAL_CATEGORY_NAMES];
+    return [...NON_NATURAL_CATEGORY_NAMES];
+  }
+
+  /**
+   * Rebuild the category dropdown for the current origin selection.
+   * @param {string} origin
+   * @returns {void}
+   */
+  function _populateCategories(origin) {
+    categorySelect.innerHTML = '';
+    const catAll = document.createElement('option');
+    catAll.value = 'all';
+    catAll.textContent = 'All';
+    catAll.selected = true;
+    categorySelect.appendChild(catAll);
+    for (const c of _categoriesForOrigin(origin)) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      categorySelect.appendChild(opt);
+    }
+  }
+
+  /**
+   * Rebuild the type list based on the selected origin and category.
+   * @param {string} origin - 'all' or an origin name
+   * @param {string} category - 'all' or a category name
+   * @returns {void}
+   */
+  function _populateTypeList(origin, category) {
+    listContainer.innerHTML = '';
+    const allowedCats = _categoriesForOrigin(origin);
+    const showCats = category === 'all' ? allowedCats : [category];
+
+    // All props come from ProjectContext.files.props
+    for (const [filename, entry] of ProjectContext.files.props) {
+      const propName = filename.replace('.tres', '');
+      const resCat = _str(entry.data.category) || 'plant';
+      if (!showCats.includes(resCat)) continue;
+
+      // Determine origin: natural categories default to 'natural', others to 'crafted'
+      const catInt = CATEGORY_TO_INT[resCat];
+      const defaultOrig = NATURAL_CATEGORIES.has(catInt) ? 'natural' : 'crafted';
+      const resOrigin = origin !== 'all' ? origin : defaultOrig;
+
+      const displayName = _str(entry.data.display_name) || propName;
+      _addTypeItem(propName, displayName, resCat, resOrigin);
+    }
+
+    if (listContainer.children.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:8px;color:var(--text-secondary);font-size:11px;';
+      empty.textContent = 'No prop types available for this filter.';
+      listContainer.appendChild(empty);
+    }
+  }
+
+  /**
+   * Add a clickable type item to the list.
+   * @param {string} typeName - The prop type ID (used for tool value)
+   * @param {string} displayName - Human-readable name shown in the list
+   * @param {string} cat
+   * @param {string} originName
+   */
+  function _addTypeItem(typeName, displayName, cat, originName) {
     const item = document.createElement('div');
     item.className = 'palette-item';
-    item.dataset.value = structName;
-
+    item.dataset.value = typeName;
     const label = document.createElement('span');
-    label.textContent = `${structName} (${footprint.length})`;
+    label.textContent = displayName;
     item.appendChild(label);
-
     item.addEventListener('click', () => {
-      toolManager.setTool('structure', structName);
+      toolManager.setTool('prop', typeName);
+      toolManager.activeCategory = cat;
+      toolManager.activeOrigin = originName;
       if (hexCanvas) hexCanvas.toolManager = toolManager;
       updateSidebar();
-      setStatus(`Tool: structure — ${structName}`);
+      setStatus(`Tool: prop — ${originName}/${cat}/${typeName}`);
     });
-
-    container.appendChild(item);
+    listContainer.appendChild(item);
   }
+
+  // Initial population
+  _populateCategories('all');
+  _populateTypeList('all', 'all');
+
+  // Wire origin change → reset category to All, rebuild both
+  originSelect.addEventListener('change', () => {
+    const origin = originSelect.value;
+    _populateCategories(origin);
+    _populateTypeList(origin, 'all');
+  });
+
+  // Wire category change → rebuild type list
+  categorySelect.addEventListener('change', () => {
+    const origin = originSelect.value;
+    const category = categorySelect.value;
+    _populateTypeList(origin, category);
+  });
 }
 
 /**
@@ -868,7 +969,7 @@ function _initElevationControls() {
     elevValue.addEventListener('input', () => {
       const val = parseInt(elevValue.value, 10);
       if (!isNaN(val)) {
-        toolManager.elevationValue = Math.max(0, Math.min(9, val));
+        toolManager.elevationValue = Math.max(-32000, Math.min(32000, val));
       }
     });
   }
@@ -909,7 +1010,7 @@ function updateSidebar() {
   });
 
   // Show/hide palettes based on active tool
-  const palettes = ['biome', 'resource', 'structure', 'elevation'];
+  const palettes = ['biome', 'prop', 'elevation'];
   for (const p of palettes) {
     const el = document.getElementById('palette-' + p);
     if (!el) continue;

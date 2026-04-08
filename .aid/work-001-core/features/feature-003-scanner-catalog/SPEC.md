@@ -10,7 +10,7 @@
 | 2026-04-02 | Architecture: ElementIconRenderer → PropRenderer + PropLabelRenderer. 3D prop meshes replace billboard icons; floating pill labels show ❓/name. Catalog changes label text, not mesh. | /spec-update |
 | 2026-04-02 | Major redesign: press-and-hold → proximity auto-scan. Three-state knowledge (UNKNOWN/ENCOUNTERED/CATALOGED). Trap + Sneak mechanics designed but deferred post-MVP. See docs/design/scan-redesign-2026-04-02.md | /design-session |
 | 2026-04-02 | Full spec rewrite: proximity auto-scan, 3-state knowledge system, ENCOUNTERED labels, resolved design decisions applied. Old press-and-hold flow, ScanState machine, scan_hold signals, scan_rejected, drift/range checks all removed. | /scan-redesign-apply |
-| 2026-04-04 | Sub-hex + unified props: scanning targets are now `tile.props[]` filtered by category. `get_scannable_at()` queries props instead of `resource_nodes[]`/`anomaly`. Passive identification operates on `tile.props`. Element signals reference props. | /spec-update |
+| 2026-04-04 | Sub-hex + unified props: scanning targets are now `tile.props[]` filtered by category. `get_scannable_at()` queries props instead of `prop_nodes[]`/`anomaly`. Passive identification operates on `tile.props`. Element signals reference props. | /spec-update |
 
 > **📐 Design Note (2026-04-02):** The scan system has been fundamentally redesigned from press-and-hold to proximity-based auto-scan. Props now have three knowledge states (UNKNOWN → ENCOUNTERED → CATALOGED) instead of two. Fauna scanning introduces Trap (passive) and Sneak Scan (hostile) mechanics, both deferred post-MVP. Full design rationale and state transition details: [`docs/design/scan-redesign-2026-04-02.md`](../../../../docs/design/scan-redesign-2026-04-02.md)
 

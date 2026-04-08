@@ -5,7 +5,7 @@ so the editor can load the project automatically without a directory picker.
 
 Endpoints:
   GET  /                          → serves index.html
-  GET  /api/discover              → lists maps, resources, biomes
+  GET  /api/discover              → lists maps, props, biomes
   GET  /api/file?path=<rel_path>  → reads a project file
   POST /api/file?path=<rel_path>  → writes a project file
   GET  /*                         → static files from level-editor/
@@ -25,12 +25,12 @@ EDITOR_DIR = SCRIPT_DIR
 # Directories to scan (relative to project root)
 SCAN_DIRS = {
     'maps': ('data/maps', '.json'),
-    'resources': ('data/resources', '.tres'),
+    'props': ('data/props', '.tres'),
     'biomes': ('data/biomes', '.tres'),
 }
 
 # Only allow access to files under these prefixes
-ALLOWED_PREFIXES = ['data/maps/', 'data/resources/', 'data/biomes/', 'data/catalog/']
+ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/']
 
 
 def is_safe_path(rel_path):

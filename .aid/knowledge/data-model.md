@@ -15,17 +15,17 @@ Godot Resource representing a single hex tile in the game world.
 | biome | Biome enum (int) | GRASSLAND (1) | 0-4 | CRASH_SITE=0, GRASSLAND=1, FOREST=2, ROCKY=3, WATER=4 |
 | elevation | int | 0 | -32000..32000 (clamped in MapLoader) | World Y = elevation * 0.5 |
 | fog_state | FogState enum (int) | HIDDEN (0) | 0-1 | HIDDEN=0, VISIBLE=1. Darkness handled by shader, not fog state. |
-| props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `resource_nodes`, `anomaly` fields. |
+| props | Array | [] | Array of prop Dictionaries | Unified: resources, structures, anomalies, spawn markers. Each prop has type, category, sub-hex coords (sq, sr), and optional footprint. Replaces former `structure`, `prop_nodes`, `anomaly` fields. |
 
 **Deprecated fields (replaced by props[]):**
 - ~~`structure`~~ — now a prop with `category=STRUCTURE` (6) in `props[]`
-- ~~`resource_nodes`~~ — now props with natural categories (PLANT=0..OOZE=5) in `props[]`
+- ~~`prop_nodes`~~ — now props with natural categories (PLANT=0..OOZE=5) in `props[]`
 - ~~`anomaly`~~ — now a derived state via `prop.is_anomaly()` (origin is not NATURAL or CRAFTED)
 
 Source: `scripts/hex/hex_tile.gd`
 
 ### Prop (scripts/hex/prop.gd)
-Godot Resource representing any game object placed in a hex tile. Replaces the former separate ResourceNode, structure, and anomaly fields with a unified model.
+Godot Resource representing any game object placed in a hex tile. Replaces the former separate PropNode, structure, and anomaly fields with a unified model.
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
@@ -47,20 +47,20 @@ Godot Resource representing any game object placed in a hex tile. Replaces the f
 
 Source: `scripts/hex/prop.gd`
 
-### ~~ResourceNode (scripts/hex/resource_node.gd)~~ — DEPRECATED
+### ~~PropNode (scripts/hex/prop_node.gd)~~ — DEPRECATED
 Replaced by Prop with `category=RESOURCE`. File may still exist as orphan.
 
-### ResourceDef (scripts/data/resource_def.gd)
-Godot Resource defining a resource type's static properties. Loaded from `data/resources/*.tres`.
+### PropDef (scripts/data/prop_def.gd)
+Godot Resource defining a resource type's static properties. Loaded from `data/props/*.tres`.
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
-| id | StringName | - | Unique, matches map data | Primary key in ResourceRegistry |
+| id | StringName | - | Unique, matches map data | Primary key in PropRegistry |
 | display_name | String | - | Human-readable | Shown in UI |
 | gather_time | float | 1.0 | Seconds | Base time before tool multiplier |
 | gather_amount | int | 1 | Per gather action | Added to inventory per harvest |
 | tool_required | StringName | &"" | Empty = bare hands | Tool needed to gather |
-| respawn_time | float | 30.0 | Seconds; 0 = no respawn | Copied to ResourceNode on map load |
+| respawn_time | float | 30.0 | Seconds; 0 = no respawn | Copied to PropNode on map load |
 | yield_type | StringName | &"" | Empty = yields self | e.g. loose_rock yields &"stone" |
 | tool_speed | Dictionary | {} | StringName -> float | Multiplier; e.g. {&"stone_axe": 0.5} = 2x speed |
 | max_stack | int | 99 | Inventory stack limit | 20 for berries/toxic_berries, 50 for crystal |
@@ -77,7 +77,7 @@ Godot Resource defining a resource type's static properties. Loaded from `data/r
 | placeholder_depleted_params | Dictionary | {} | Same as params | Depleted variant params |
 | placeholder_depleted_color | Color | GRAY | RGB color | Depleted variant color |
 
-Source: `scripts/data/resource_def.gd`, `data/resources/*.tres`
+Source: `scripts/data/prop_def.gd`, `data/props/*.tres`
 
 ### BiomeData (scripts/hex/biome_data.gd)
 Godot Resource defining per-biome configuration.
@@ -110,11 +110,11 @@ Godot Resource representing a discoverable entity in the scanner catalog.
 |----------|----------|------|-------|
 | FLORA | edible | bool | Whether it can be consumed |
 | FLORA | toxic | bool | Triggers confirmation dialog |
-| FLORA | resource_type | StringName | Links to ResourceDef |
+| FLORA | resource_type | StringName | Links to PropDef |
 | FAUNA | hostile | bool | Determines auto-defend behavior |
 | FAUNA | damage | int | Attack damage value |
 | FAUNA | hp | int | Health points |
-| MINERAL | resource_type | StringName | Links to ResourceDef |
+| MINERAL | resource_type | StringName | Links to PropDef |
 | MINERAL | tool_required | StringName | Display info for catalog |
 | ANOMALY | journal_entry_id | StringName | Links to journal system (future) |
 | ANOMALY | cutscene_id | StringName | Links to cutscene system (future) |
@@ -153,7 +153,7 @@ Hardcoded configuration for non-resource items.
 | survival_knife | - | tool | weapon | Starting tool |
 | scanner | - | tool | scanner | Starting tool |
 
-Resource items look up max_stack from ResourceRegistry instead of ITEM_CONFIG.
+Resource items look up max_stack from PropRegistry instead of ITEM_CONFIG.
 
 Source: `scripts/inventory/inventory.gd` ITEM_CONFIG
 
@@ -197,7 +197,7 @@ Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy
 
 | Field | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
-| type | string | yes | - | Must match a ResourceDef id, structure name, or anomaly id |
+| type | string | yes | - | Must match a PropDef id, structure name, or anomaly id |
 | category | int | yes | 0 | 0=PLANT, 1=MINERAL, 2=ANIMAL, 3=FUNGI, 4=LIQUID, 5=OOZE, 6=STRUCTURE, 7=VEHICLE, 8=EQUIPMENT, 9=STORAGE |
 | origin | int | no | 0 | 0=NATURAL, 1=CRAFTED, 2=HUMAN, 3=NATIVE_ALIEN, 4=UNKNOWN |
 | sub_hex_q | int | no | 0 | Sub-hex axial q (pointy-top layout, range: distance <= 2) |
@@ -239,19 +239,19 @@ Source: `data/maps/ch1.json`, `scripts/hex/map_loader.gd`
 - Accessed via helper methods: `tile.get_resources()`, `tile.get_structures()`, `tile.get_anomalies()`
 - Source: `scripts/hex/hex_tile.gd`
 
-### Prop (RESOURCE) -> ResourceDef (many:1)
-- Prop.type matches ResourceDef.id via ResourceRegistry autoload
-- ResourceRegistry.get_def(type) retrieves the definition
-- Source: `scripts/hex/prop.gd` (type field), `scripts/data/resource_registry.gd` (lookup)
+### Prop (RESOURCE) -> PropDef (many:1)
+- Prop.type matches PropDef.id via PropRegistry autoload
+- PropRegistry.get_def(type) retrieves the definition
+- Source: `scripts/hex/prop.gd` (type field), `scripts/data/prop_registry.gd` (lookup)
 
-### ResourceDef -> CatalogEntry (1:1)
-- ResourceDef.catalog_entry matches CatalogEntry.entry_id
+### PropDef -> CatalogEntry (1:1)
+- PropDef.catalog_entry matches CatalogEntry.entry_id
 - e.g. wood -> wood_tree, stone -> stone_deposit, berries -> berry_bush
-- Source: `scripts/data/resource_def.gd` (catalog_entry field), `data/catalog/*.tres`
+- Source: `scripts/data/prop_def.gd` (catalog_entry field), `data/catalog/*.tres`
 
-### BiomeData -> ResourceDef (1:many via resource_table)
+### BiomeData -> PropDef (1:many via resource_table)
 - BiomeData.resource_table contains {type: string} entries referencing resource types
-- Used by MapLoader to set max_amount on ResourceNodes
+- Used by MapLoader to set max_amount on PropNodes
 - Source: `scripts/hex/biome_data.gd`, `data/biomes/*.tres`
 
 ### Catalog -> CatalogEntry (1:many)
@@ -263,8 +263,8 @@ Source: `data/maps/ch1.json`, `scripts/hex/map_loader.gd`
 - Player owns an Inventory instance (created at declaration time, not a scene node)
 - Source: `scripts/player/player.gd` line 26
 
-### Inventory -> ResourceDef (many:many, via ResourceRegistry)
-- Inventory.add_item() looks up ResourceDef for max_stack and category
+### Inventory -> PropDef (many:many, via PropRegistry)
+- Inventory.add_item() looks up PropDef for max_stack and category
 - Source: `scripts/inventory/inventory.gd` lines 47-51
 
 ### CraftingSystem -> Inventory (uses)
@@ -288,7 +288,7 @@ No migration system exists. This is a Godot game project, not a database applica
 - **Save data:** Uses Dictionary-based serialization via get_save_data()/load_save_data(). Catalog has backward compatibility for old "discovered" format (`catalog.gd` lines 205-209).
 - **No automated migration tooling.**
 
-Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/data/resource_def.gd` (@export defaults)
+Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/data/prop_def.gd` (@export defaults)
 
 ## Indexes
 
@@ -297,20 +297,20 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 | Index | Structure | Key | Value | Source |
 |-------|-----------|-----|-------|--------|
 | HexGrid._tiles | Dictionary | Vector2i (axial coords) | HexTile Resource | `hex_grid.gd` line 22 |
-| ResourceRegistry._defs | Dictionary | StringName (resource id) | ResourceDef Resource | `resource_registry.gd` line 8 |
+| PropRegistry._defs | Dictionary | StringName (resource id) | PropDef Resource | `prop_registry.gd` line 8 |
 | Catalog._all_entries | Dictionary | StringName (entry_id) | CatalogEntry Resource | `catalog.gd` line 15 |
 | Catalog._knowledge | Dictionary | StringName (entry_id) | KnowledgeState int | `catalog.gd` line 13 |
 | ~~PlayerPathfinder._coord_to_id~~ | ~~Dictionary~~ | ~~Vector2i~~ | ~~int~~ | `player_pathfinder.gd` — **ORPHAN:** Player no longer uses A* pathfinding (joystick pivot). File exists but is unreferenced. May be repurposed for FaunaManager (feature-010). |
 | ~~PlayerPathfinder._id_to_coord_map~~ | ~~Dictionary~~ | ~~int~~ | ~~Vector2i~~ | See above. |
-| ResourceRenderer._pools | Dictionary | StringName (resource type) | MultiMeshInstance3D | `resource_renderer.gd` line 29 |
-| ResourceRenderer._tile_entries | Dictionary | Vector2i (coords) | Array of instance info | `resource_renderer.gd` line 43 |
+| PropRenderer._pools | Dictionary | StringName (resource type) | MultiMeshInstance3D | `prop_renderer.gd` line 29 |
+| PropRenderer._tile_entries | Dictionary | Vector2i (coords) | Array of instance info | `prop_renderer.gd` line 43 |
 | PropLabelRenderer._tile_labels | Dictionary | Vector2i (coords) | Array of label info | `prop_label_renderer.gd` line 44 |
 
 ### File-Based Indexes
 
 | Index | Mechanism | Source |
 |-------|-----------|--------|
-| ResourceDef lookup | ResourceRegistry scans data/resources/ directory at startup | `resource_registry.gd` lines 10-21 |
+| PropDef lookup | PropRegistry scans data/props/ directory at startup | `prop_registry.gd` lines 10-21 |
 | CatalogEntry lookup | Catalog loads 4 hardcoded .tres file paths | `catalog.gd` lines 28-40 |
 | BiomeData lookup | MapLoader and HexGridRenderer use hardcoded path arrays | `map_loader.gd` lines 17-23, `hex_grid_renderer.gd` lines 24-30 |
 
@@ -331,7 +331,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | All non-water tiles reachable from spawn via BFS | `map_loader.gd` lines 172-192 |
 
 ### Inventory Validation
-- add_item() validates item type exists in ITEM_CONFIG or ResourceRegistry before adding (`inventory.gd` lines 47-53)
+- add_item() validates item type exists in ITEM_CONFIG or PropRegistry before adding (`inventory.gd` lines 47-53)
 - Tools rejected from resource slots (must use set_tool) (`inventory.gd` lines 53-54)
 - Stack overflow tracked; excess returned as int, inventory_full signal emitted (`inventory.gd` lines 82-83)
 
@@ -367,7 +367,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | loose_rock | Loose Rock | 1.0s | 2 | - | 30s | stone | 99 | loose_rocks |
 | anomaly_fragment | Anomaly Fragment | 3.0s | 1 | - | 0 (none) | self | 99 | - |
 
-Source: `data/resources/*.tres`
+Source: `data/props/*.tres`
 
 ## Current Catalog Entries
 

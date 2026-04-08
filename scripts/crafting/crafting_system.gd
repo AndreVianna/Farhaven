@@ -10,29 +10,35 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 signal recipe_discovered(recipe_name: StringName)
 signal craft_completed(recipe_name: StringName)
 signal craft_failed(recipe_name: StringName, reason: StringName)
-signal workbench_proximity_changed(near: bool)
+signal station_proximity_changed(near: bool)
 
+## Recipes use numeric PropDef IDs for ingredients, discovery, and output.
+## Recipe keys remain semantic for discoverability (e.g. "stone_axe").
+## Ingredients reference resource PropDefs (00010 wood, 00013 stone, etc.),
+## output_id references the produced tool's PropDef id (00201 axe, 00202 pickaxe).
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"wood": 2, &"stone": 1 },
+		"ingredients": { &"00010": 2, &"00013": 1 },  # 2 wood + 1 stone
 		"output_type": &"tool",
+		"output_id": &"00201",  # axe prop
 		"tool_slot": &"axe",
-		"discovery_material": &"stone",
-		"requires_workbench": false,
+		"discovery_material": &"00013",  # stone
+		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"wood": 3, &"stone": 2 },
+		"ingredients": { &"00010": 3, &"00013": 2 },  # 3 wood + 2 stone
 		"output_type": &"tool",
+		"output_id": &"00202",  # pickaxe prop
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"stone",
-		"requires_workbench": false,
+		"discovery_material": &"00013",  # stone
+		"requires_station": &"",
 		"pre_discovered": true,
 	},
 }
 
 var _discovered_recipes: Array[StringName] = []
-var _near_workbench: bool = false
+var _near_station: bool = false
 
 var _inventory: _Inventory
 var _grid: Node  # HexGrid autoload or test substitute
@@ -97,15 +103,16 @@ func craft(recipe_name: StringName) -> bool:
 
 	var recipe: Dictionary = RECIPE_CONFIG[recipe_name]
 
-	# 1. Workbench proximity (only for recipes that require it)
-	if recipe.get("requires_workbench", true) and not _near_workbench:
-		craft_failed.emit(recipe_name, &"no_workbench")
+	# 1. Station proximity (only for recipes that require a crafting station)
+	var required_station: StringName = recipe.get("requires_station", &"")
+	if required_station != &"" and not _is_near_crafting_station(required_station):
+		craft_failed.emit(recipe_name, &"no_station")
 		return false
 
 	# 2. Already owned (tools only)
 	if recipe["output_type"] == &"tool":
 		var slot: StringName = recipe["tool_slot"]
-		if _inventory.get_tool(slot) == recipe_name:
+		if _inventory.get_tool(slot) == recipe["output_id"]:
 			craft_failed.emit(recipe_name, &"already_owned")
 			return false
 
@@ -122,7 +129,7 @@ func craft(recipe_name: StringName) -> bool:
 
 	# 5. Produce
 	if recipe["output_type"] == &"tool":
-		_inventory.set_tool(recipe["tool_slot"], recipe_name)
+		_inventory.set_tool(recipe["tool_slot"], recipe["output_id"])
 
 	craft_completed.emit(recipe_name)
 	# Apply crafting survival cost
@@ -145,47 +152,72 @@ func _get_survival_system() -> Node:
 	return null
 
 
-# --- Workbench Proximity ---
+# --- Crafting Station Proximity ---
 
-func is_near_workbench() -> bool:
-	return _near_workbench
+func is_near_station() -> bool:
+	return _near_station
 
 
-func _check_workbench_proximity() -> void:
+func _check_station_proximity() -> void:
 	if _player == null or _grid == null:
 		return
-	var was_near: bool = _near_workbench
-	_near_workbench = _compute_near_workbench(_player.current_tile)
-	if _near_workbench != was_near:
-		workbench_proximity_changed.emit(_near_workbench)
+	var was_near: bool = _near_station
+	_near_station = _has_nearby_crafting_station(_player.current_tile)
+	if _near_station != was_near:
+		station_proximity_changed.emit(_near_station)
 
 
-func _compute_near_workbench(player_tile: Vector2i) -> bool:
-	# Check player's own tile
-	if _grid.has_structure(player_tile, &"workbench"):
+## Check if any prop with is_crafting_station=true is on or adjacent to the tile.
+func _has_nearby_crafting_station(player_tile: Vector2i) -> bool:
+	if _tile_has_crafting_station(player_tile):
 		return true
-	# Check 6 neighbors
 	var neighbors: Array[Vector2i] = _grid.get_neighbors(player_tile)
 	for neighbor: Vector2i in neighbors:
-		if _grid.has_structure(neighbor, &"workbench"):
+		if _tile_has_crafting_station(neighbor):
 			return true
 	return false
 
 
+## Check if a specific station type is on or adjacent to the tile.
+func _is_near_crafting_station(station_type: StringName) -> bool:
+	if _player == null or _grid == null:
+		return false
+	if _grid.has_structure(_player.current_tile, station_type):
+		return true
+	var neighbors: Array[Vector2i] = _grid.get_neighbors(_player.current_tile)
+	for neighbor: Vector2i in neighbors:
+		if _grid.has_structure(neighbor, station_type):
+			return true
+	return false
+
+
+## Check if any prop on this tile has is_crafting_station in its PropDef.
+func _tile_has_crafting_station(coords: Vector2i) -> bool:
+	var tile: Resource = _grid._tiles.get(coords, null)
+	if tile == null:
+		return false
+	for prop in tile.props:
+		if PropRegistry.has_def(prop.type):
+			var def: PropDef = PropRegistry.get_def(prop.type)
+			if def.is_crafting_station:
+				return true
+	return false
+
+
 func _on_tile_entered(_coords: Vector2i) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_tile_exited(_coords: Vector2i) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_structure_placed(_coords: Vector2i, _structure_type: StringName) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 func _on_structure_destroyed(_coords: Vector2i, _structure_type: StringName) -> void:
-	_check_workbench_proximity()
+	_check_station_proximity()
 
 
 # --- Save / Load ---

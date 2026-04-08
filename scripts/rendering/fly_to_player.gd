@@ -1,7 +1,7 @@
 extends Node3D
 class_name FlyToPlayer
 
-## Spawns a temporary sprite that tweens from a resource world position
+## Spawns a temporary sprite that tweens from a prop world position
 ## to the Player's CURRENT position over ~0.3s, then queue_frees itself.
 ## Used as visual feedback on auto_gather_completed.
 
@@ -14,18 +14,8 @@ const FLY_DURATION: float = 0.3
 ## Vertical arc height for a slight parabolic effect.
 const ARC_HEIGHT: float = 2.0
 
-## Color mapping for resource types.
-const RESOURCE_COLORS: Dictionary = {
-	&"wood": Color(0.4, 0.26, 0.13),
-	&"stone": Color(0.6, 0.6, 0.6),
-	&"berries": Color(0.85, 0.1, 0.2),
-	&"fiber": Color(0.5, 0.75, 0.2),
-	&"ore": Color(0.3, 0.3, 0.35),
-	&"crystal": Color(0.3, 0.85, 0.95),
-	&"toxic_berries": Color(0.6, 0.1, 0.6),
-	&"anomaly_fragment": Color(0.9, 0.4, 0.9),
-	&"loose_rock": Color(0.7, 0.65, 0.55),
-}
+## Default color when a prop type has no PropDef.
+const DEFAULT_COLOR: Color = Color.WHITE
 
 var _player: Node = null
 
@@ -35,20 +25,20 @@ func setup(player: Node) -> void:
 
 
 ## Spawn a fly-to-player particle from the given coordinates.
-## coords: axial hex coordinates of the gathered resource.
-## resource_type: type of resource (for color).
+## coords: axial hex coordinates of the gathered prop.
+## prop_type: type of prop (for color).
 ## grid: HexGrid or mock with axial_to_world.
-func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
+func spawn_fly(coords: Vector2i, prop_type: StringName, grid: Node) -> void:
 	if _player == null:
 		return
 
 	var world_2d: Vector2 = grid.axial_to_world(coords)
 	var tile: Resource = grid.get_tile(coords) if grid.has_method("get_tile") else null
-	# Find the resource prop's sub-hex offset to start from prop position (not hex center)
+	# Find the prop's sub-hex offset to start from prop position (not hex center)
 	var prop_offset := Vector2.ZERO
 	if tile != null:
-		for prop in tile.get_resources():
-			if prop.type == resource_type:
+		for prop in tile.get_props():
+			if prop.type == prop_type:
 				prop_offset = _HexMath.sub_axial_to_world(prop.sub_hex)
 				break
 
@@ -61,14 +51,14 @@ func spawn_fly(coords: Vector2i, resource_type: StringName, grid: Node) -> void:
 		elevation_y = float(tile.elevation) * 0.5
 	var start_pos := Vector3(wx, elevation_y + 0.6, wz)
 
-	var sprite := _create_sprite(resource_type)
+	var sprite := _create_sprite(prop_type)
 	sprite.position = start_pos
 	add_child(sprite)
 
 	_tween_to_player(sprite, start_pos)
 
 
-func _create_sprite(resource_type: StringName) -> MeshInstance3D:
+func _create_sprite(prop_type: StringName) -> MeshInstance3D:
 	var mesh_instance := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.15
@@ -76,7 +66,10 @@ func _create_sprite(resource_type: StringName) -> MeshInstance3D:
 	mesh_instance.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = RESOURCE_COLORS.get(resource_type, Color.WHITE)
+	# Use the gathered item's color (yield) so the sphere matches what the player receives.
+	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
+	var def: PropDef = PropRegistry.get_def(yield_id)
+	mat.albedo_color = def.placeholder_color if def != null else DEFAULT_COLOR
 	mat.emission_enabled = true
 	mat.emission = mat.albedo_color
 	mat.emission_energy_multiplier = 2.0

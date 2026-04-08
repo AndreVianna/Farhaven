@@ -88,14 +88,14 @@ Farhaven/
 |------|------|----------|
 | `scenes/main.tscn` | Main scene (game start) | `project.godot` line 19: `run/main_scene` |
 | `scripts/main.gd` | Bootstrap script -- wires all systems, loads map | Attached to main.tscn root node |
-| `scripts/data/resource_registry.gd` | Autoload singleton (`ResourceRegistry`) -- indexes all ResourceDef files | `project.godot` line 25: autoload declaration |
+| `scripts/data/prop_registry.gd` | Autoload singleton (`PropRegistry`) -- indexes all PropDef files | `project.godot` line 25: autoload declaration |
 | `scripts/hex/hex_grid.gd` | Autoload singleton (`HexGrid`) -- map container, fog of war, resource state | `project.godot` line 26: autoload declaration |
 
 ### Scene Structure (from main.tscn)
 - `Main` (Node) -- root, runs `main.gd`
   - `World` (Node3D) -- 3D game world
     - `HexGridRenderer` -- terrain rendering
-    - `ResourceRenderer` -- resource prop rendering
+    - `PropRenderer` -- resource prop rendering
     - `PropLabelRenderer` -- label markers
     - `ScanProgressRenderer` -- scan progress overlay
     - `Player` (player.tscn) -- player character with sub-systems
@@ -145,7 +145,7 @@ Farhaven/
 - Texture compression: ETC2/ASTC enabled (for Android/iOS)
 
 ### Autoloads
-- `ResourceRegistry` -- singleton, loaded from `scripts/data/resource_registry.gd` (project.godot line 25). Scans data/resources/ at startup and indexes all ResourceDef files.
+- `PropRegistry` -- singleton, loaded from `scripts/data/prop_registry.gd` (project.godot line 25). Scans data/props/ at startup and indexes all PropDef files.
 - `HexGrid` -- singleton, loaded from `scripts/hex/hex_grid.gd` (project.godot line 26). Map container, stores tiles, manages fog of war and resource state.
 
 ### Editor Plugins

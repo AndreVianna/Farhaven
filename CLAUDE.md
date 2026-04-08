@@ -6,7 +6,7 @@ Crash-land on an alien planet. Explore hex tiles, gather, craft, build, survive,
 
 ## Project Overview
 <!-- AID-DISCOVER project-overview -->
-Monolithic Godot 4.6 single-player mobile game (portrait, 1080x1920). GDScript with static typing throughout. Scene-tree architecture with signal-driven communication. Two autoload singletons: HexGrid (world state) and ResourceRegistry (resource definitions). Targets Android and iOS (no export presets configured yet). 5,519 lines source code across 13 modules, 9,594 lines test code (gdUnit4 v6.0.3).
+Monolithic Godot 4.6 single-player mobile game (portrait, 1080x1920). GDScript with static typing throughout. Scene-tree architecture with signal-driven communication. Two autoload singletons: HexGrid (world state) and PropRegistry (resource definitions). Targets Android and iOS (no export presets configured yet). 5,519 lines source code across 13 modules, 9,594 lines test code (gdUnit4 v6.0.3).
 <!-- /AID-DISCOVER -->
 
 ## Build & Test
@@ -35,7 +35,7 @@ Monolithic Godot 4.6 single-player mobile game (portrait, 1080x1920). GDScript w
 <!-- AID-DISCOVER architecture -->
 - **Pattern:** Monolithic scene tree with component-based composition and signal-driven communication
 - **Entry point:** `scripts/main.gd` — loads map, wires all subsystems
-- **Autoloads:** HexGrid (world state singleton), ResourceRegistry (resource definitions)
+- **Autoloads:** HexGrid (world state singleton), PropRegistry (resource definitions)
 - **Key modules:** Hex Grid Core, Player (input/pathfinding/camera), Inventory, Crafting, Scanner/Catalog, Auto-Interaction, HUD, Rendering, Audio, UI Panels
 - **Data flow:** Map JSON → MapLoader → HexGrid → Renderer. Player input → Pathfinder → HexGrid → signals → all systems
 - See .aid/knowledge/architecture.md for full details

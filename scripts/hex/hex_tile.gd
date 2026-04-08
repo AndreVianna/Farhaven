@@ -31,7 +31,7 @@ func get_props_by_category(category: int) -> Array:
 	return result
 
 
-func get_resources() -> Array:
+func get_props() -> Array:
 	var result: Array = []
 	for prop in props:
 		if prop.is_natural_category():

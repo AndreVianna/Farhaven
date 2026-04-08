@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BiomeData" format=3 uid="uid://cwater0000001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+biome_name = "Water"
+elevation_range = Vector2i(0, 9)
+resource_table = []
+color = Color(0.3, 0.55, 0.85, 1)
+color_variations = [Color(0.25, 0.5, 0.85, 1), Color(0.2, 0.55, 0.8, 1), Color(0.3, 0.6, 0.9, 1)]

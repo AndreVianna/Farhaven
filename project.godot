@@ -22,7 +22,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-ResourceRegistry="*res://scripts/data/resource_registry.gd"
+PropRegistry="*res://scripts/data/prop_registry.gd"
 HexGrid="*res://scripts/hex/hex_grid.gd"
 DayNightCycle="*res://scripts/day_night/day_night_cycle.gd"
 SaveManager="*res://scripts/save/save_manager.gd"

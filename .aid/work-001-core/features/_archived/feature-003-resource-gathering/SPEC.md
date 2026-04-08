@@ -49,9 +49,9 @@ Adds per-tile resource state (type, remaining gathers, respawn timers) to save d
 
 ### Data Model
 
-#### Additions to ResourceNode (defined in feature-001)
+#### Additions to PropNode (defined in feature-001)
 
-Feature-001 defined `ResourceNode` with: `type`, `remaining`, `max_amount`, `tool_required`.
+Feature-001 defined `PropNode` with: `type`, `remaining`, `max_amount`, `tool_required`.
 
 This feature adds one property:
 
@@ -65,7 +65,7 @@ properties, not per-node — they live in the resource config table (see below).
 #### Resource Config Table
 
 A single data Dictionary (or Resource file) keyed by resource type. Looked up at gather
-time — not stored per `ResourceNode` instance.
+time — not stored per `PropNode` instance.
 
 ```gdscript
 # resource_config: Dictionary[StringName, Dictionary]
@@ -101,13 +101,13 @@ equipped tool name, then `resource_config[type].gather_time * tool_speed.get(too
 
 #### Tool-Gating — Direct StringName Matching (via Inventory)
 
-No tier system. MVP uses direct matching between `ResourceNode.tool_required` and
+No tier system. MVP uses direct matching between `PropNode.tool_required` and
 the tool in the corresponding Inventory slot. Gathering queries tool slots via
 `Inventory.get_tool()`, not a player property:
 
 ```gdscript
 # Check if player can gather a resource node:
-func can_gather(node: ResourceNode, inventory: Inventory) -> bool:
+func can_gather(node: PropNode, inventory: Inventory) -> bool:
     if node.tool_required == &"":
         return true  # bare hands
     var slot = item_config[node.tool_required].get("tool_slot", &"")
@@ -126,7 +126,7 @@ var _respawn_queue: Array[Dictionary]
 # Each entry:
 # {
 #   "coords": Vector2i,      # tile location
-#   "resource_index": int,    # index into tile.resource_nodes
+#   "resource_index": int,    # index into tile.prop_nodes
 #   "time_remaining": float,  # seconds until respawn
 # }
 ```
@@ -151,7 +151,7 @@ Respawn queue saved so depleted resources survive app restarts:
 }
 ```
 
-`ResourceNode.remaining` values are already saved per-tile (feature-001). The respawn
+`PropNode.remaining` values are already saved per-tile (feature-001). The respawn
 queue is the only new save data from this feature.
 
 ### Feature Flow
@@ -217,7 +217,7 @@ const TOOL_PRIORITY: Dictionary = {
 #### Gather Action
 
 ```
-Gather begins (target_coords, resource_node determined):
+Gather begins (target_coords, prop_node determined):
   │
   ├─ Set gather_system.is_gathering = true (player locked — movement rejects input)
   │     Face toward target tile
@@ -291,7 +291,7 @@ Every frame (_process on gathering system):
   │     entry.time_remaining -= delta
   │
   │     if time_remaining <= 0:
-  │       node = tile.resource_nodes[entry.resource_index]
+  │       node = tile.prop_nodes[entry.resource_index]
   │       node.remaining = node.max_amount
   │       Remove entry from _respawn_queue
   │       Emit HexGrid.resource_respawned(entry.coords, node.type)
@@ -329,7 +329,7 @@ Main (Node)
   └─ World (Node3D)
        ├─ HexGridRenderer (Node3D)             [feature-001]
        │    └─ (MultiMeshInstance3D × 5 biomes)
-       ├─ ResourceRenderer (Node3D)             ← NEW
+       ├─ PropRenderer (Node3D)             ← NEW
        │    ├─ MultiMeshInstance3D [wood/tree]
        │    ├─ MultiMeshInstance3D [stone/rock]
        │    ├─ MultiMeshInstance3D [berries/bush]
@@ -352,11 +352,11 @@ scripts/
   gathering/
     gather_system.gd        # Node (child of Player) — gather action, respawn queue,
                              #   input claim, is_gathering flag
-    resource_renderer.gd    # Node3D — MultiMesh per resource type, signal-driven updates
+    prop_renderer.gd    # Node3D — MultiMesh per resource type, signal-driven updates
 
 scenes/
   world/
-    resource_renderer.tscn  # Scene — 6 MultiMeshInstance3D children
+    prop_renderer.tscn  # Scene — 6 MultiMeshInstance3D children
 
 ui/
   gather_feedback.gd        # CanvasLayer — floating "+1 Wood" labels
@@ -371,7 +371,7 @@ data/
 | Component | Responsibility | Depends On |
 |-----------|---------------|------------|
 | `gather_system.gd` | Child Node of Player. Owns `is_gathering` flag, gather action lifecycle (start, cancel, complete), respawn queue tick, input disambiguation (claim tap vs fall through to movement). | `HexGrid` (API + signals), `Player` (current_tile), `Inventory` (get_tool, add_item) |
-| `resource_renderer.gd` | Manages one `MultiMeshInstance3D` per resource type (~6 types = ~6 draw calls). Spawns/hides/swaps resource visuals based on HexGrid signals. Event-driven, no per-frame work. | `HexGrid` (signals only) |
+| `prop_renderer.gd` | Manages one `MultiMeshInstance3D` per resource type (~6 types = ~6 draw calls). Spawns/hides/swaps resource visuals based on HexGrid signals. Event-driven, no per-frame work. | `HexGrid` (signals only) |
 | `gather_feedback.gd` | CanvasLayer. Spawns floating "+N Type" labels at screen position of gathered tile. Labels tween up + fade, then `queue_free`. | Screen position from `Camera3D.unproject_position()` |
 
 #### Signal Wiring
@@ -382,7 +382,7 @@ HexGrid signals                          gather_system.gd
   resource_depleted(coords, type)     ◄── (gather_system emits via HexGrid on depletion)
   resource_respawned(coords, type)    ◄── (gather_system emits via HexGrid on respawn)
 
-HexGrid signals                          resource_renderer.gd
+HexGrid signals                          prop_renderer.gd
   map_generated()                    ──►  allocate MultiMesh instances for initial resources
   tile_revealed(coords)              ──►  add resource instances for newly discovered tile
   tile_visibility_changed(coords, s) ──►  show/hide resource instances per fog state
@@ -404,7 +404,7 @@ within the remaining ~95 draw call budget after hex tiles.
 
 **How it works:**
 
-1. On `map_generated()`, resource_renderer allocates MultiMesh instances sized to the
+1. On `map_generated()`, prop_renderer allocates MultiMesh instances sized to the
    total count of each resource type across all tiles.
 2. Each instance transform: position from `HexGrid.axial_to_world()` + small offset
    within the hex (resources don't sit dead-center — slight random offset per node for

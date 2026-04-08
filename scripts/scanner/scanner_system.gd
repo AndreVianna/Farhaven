@@ -208,8 +208,8 @@ func _check_passive_identification(coords: Vector2i) -> void:
 	if tile == null:
 		return
 
-	for prop in tile.get_resources():
-		var entry_id: StringName = ResourceRegistry.get_def(prop.type).catalog_entry if ResourceRegistry.has_def(prop.type) else &""
+	for prop in tile.get_props():
+		var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
 		if entry_id == &"":
 			continue
 		var state: int = _catalog.get_knowledge_state(entry_id)

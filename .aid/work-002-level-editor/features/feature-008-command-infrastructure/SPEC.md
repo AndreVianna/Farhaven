@@ -133,9 +133,9 @@ CommandHistory.execute(new PaintBiomeCommand(pendingBatch.hexes));
 
 | Command Class | `type` | Before State | `execute()` | `undo()` |
 |---|---|---|---|---|
-| `CreateResourceDefCommand` | `create_resource` | n/a | Add new ResourceDef to `ProjectContext.files.resources` | Remove it |
-| `EditResourceDefCommand` | `edit_resource` | `{ filename, oldFields }` | Update fields in ResourceDef | Restore old fields |
-| `DeleteResourceDefCommand` | `delete_resource` | `{ filename, fullData, raw }` | Remove from ProjectContext | Re-add with full data |
+| `CreatePropDefCommand` | `create_resource` | n/a | Add new PropDef to `ProjectContext.files.resources` | Remove it |
+| `EditPropDefCommand` | `edit_resource` | `{ filename, oldFields }` | Update fields in PropDef | Restore old fields |
+| `DeletePropDefCommand` | `delete_resource` | `{ filename, fullData, raw }` | Remove from ProjectContext | Re-add with full data |
 
 **Biome Editor commands (tab: 'biomes'):**
 

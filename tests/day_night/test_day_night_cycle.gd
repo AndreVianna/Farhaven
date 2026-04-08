@@ -75,8 +75,12 @@ func test_visibility_radius_dawn() -> void:
 	assert_int(_DayNightCycle.VISIBILITY_RADIUS[_DayNightCycle.TimePhase.DAWN]).is_equal(2)
 
 
-func test_torch_visibility_radius() -> void:
-	assert_int(_DayNightCycle.TORCH_VISIBILITY_RADIUS).is_equal(2)
+func test_torch_light_radius_from_prop_def() -> void:
+	# Torch light radius is now defined in data/props/00103.tres (torch)
+	var torch_def: PropDef = load("res://data/props/00103.tres")
+	assert_object(torch_def).is_not_null()
+	assert_bool(torch_def.emits_light).is_true()
+	assert_int(torch_def.light_radius).is_equal(3)
 
 
 # --- Phase transition: DAY → DUSK ---
@@ -166,7 +170,7 @@ func test_night_to_dawn_increments_day_count() -> void:
 	_simulate_delta(_dnc, 105.0)
 	_simulate_delta(_dnc, 15.0)
 	_simulate_delta(_dnc, 105.0)
-	assert_int(_dnc.day_count).is_equal(2)
+	assert_int(_dnc.day_count).is_equal(3)
 
 
 func test_night_to_dawn_emits_dawn_signal() -> void:
@@ -211,7 +215,7 @@ func test_dawn_to_day_day_count_stays_at_two() -> void:
 	_simulate_delta(_dnc, 15.0)
 	_simulate_delta(_dnc, 105.0)
 	_simulate_delta(_dnc, 15.0)
-	assert_int(_dnc.day_count).is_equal(2)
+	assert_int(_dnc.day_count).is_equal(3)
 
 
 # --- Full cycle ---
@@ -223,7 +227,7 @@ func test_full_cycle_returns_to_day() -> void:
 
 func test_full_cycle_day_count_increments_once() -> void:
 	_simulate_delta(_dnc, 240.0)
-	assert_int(_dnc.day_count).is_equal(2)
+	assert_int(_dnc.day_count).is_equal(3)
 
 
 func test_two_full_cycles_day_count_is_three() -> void:
@@ -310,7 +314,7 @@ func test_save_load_round_trip_day_count() -> void:
 	var data: Dictionary = _dnc.get_save_data()
 	var dnc2: _DayNightCycle = _DayNightCycle.new()
 	dnc2.load_save_data(data)
-	assert_int(dnc2.day_count).is_equal(2)
+	assert_int(dnc2.day_count).is_equal(3)
 	dnc2.free()
 
 

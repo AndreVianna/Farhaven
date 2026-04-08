@@ -14,7 +14,7 @@ This is a Godot 4.6 mobile game. "UI" refers to the in-game HUD and panel system
 Main (Node) -- scripts/main.gd
 +-- World (Node3D) -- 3D game world
 |   +-- HexGridRenderer -- terrain mesh (ArrayMesh, single draw call)
-|   +-- ResourceRenderer -- resource props (MultiMesh instancing)
+|   +-- PropRenderer -- resource props (MultiMesh instancing)
 |   +-- PropLabelRenderer -- floating text labels above props
 |   +-- ScanProgressRenderer -- scan progress bar overlay
 |   +-- Player (Node3D) -- scripts/player/player.gd
@@ -182,7 +182,7 @@ All UI styling is **programmatic** (GDScript code), not declarative:
 - **Lazy loading:** Scenes use preload() for dependencies needed at startup, load() for deferred loading (e.g., map_loader.gd line 195 uses load() for the MapLoader script)
 - **Performance optimizations in code:**
   - HexGridRenderer: Single ArrayMesh draw call for entire terrain (scenes/world/hex_grid_renderer.gd)
-  - ResourceRenderer: MultiMesh instancing for resource props
+  - PropRenderer: MultiMesh instancing for resource props
   - AutoInteractionSystem: Throttled proximity checks at 0.1s intervals (auto_interaction_system.gd line 46)
   - Panels: Only refresh when visible (inventory_panel.gd line 159: if visible: _refresh_all())
 - **No performance budget defined** beyond GDD targets (<200MB RAM, <100MB APK)

@@ -13,8 +13,9 @@ export const ProjectContext = {
   files: {
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object}>} */
     maps: new Map(),
-    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>} */
-    resources: new Map(),
+    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
+     * Holds prop definitions (PropDef .tres files). */
+    props: new Map(),
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>} */
     biomes: new Map(),
   },
@@ -50,7 +51,7 @@ function _parseTresFile(name, text, expectedClass) {
 
 /**
  * Load .tres files from FSA handles into a storage map using _parseTresFile.
- * Used by discoverProject to avoid duplicating the resource/biome parse loop.
+ * Used by discoverProject to avoid duplicating the prop/biome parse loop.
  * @param {Array<{name: string, handle: FileSystemFileHandle}>} files
  * @param {string} expectedClass - Expected scriptClass for _parseTresFile
  * @param {Map<string, Object>} storageMap - Target map in ProjectContext.files
@@ -74,7 +75,7 @@ async function _loadTresFilesFromHandles(files, expectedClass, storageMap, label
 
 /**
  * Load .tres files via fetch into a storage map using _parseTresFile.
- * Used by discoverViaApi to avoid duplicating the resource/biome parse loop.
+ * Used by discoverViaApi to avoid duplicating the prop/biome parse loop.
  * @param {string[]} fileNames
  * @param {string} dir - Directory path for API URL
  * @param {string} expectedClass
@@ -99,7 +100,7 @@ async function _loadTresFilesViaApi(fileNames, dir, expectedClass, storageMap, l
 
 // Note on D3 duplication: The three discovery methods (discoverProject, discoverFromFileList,
 // discoverViaApi) each use fundamentally different file-access strategies (FSA handles, FileList
-// with FileReader, and fetch API). The .tres parse-and-store loops for resources/biomes have been
+// with FileReader, and fetch API). The .tres parse-and-store loops for props/biomes have been
 // extracted into _loadTresFilesFromHandles and _loadTresFilesViaApi. The FileList method inlines
 // its logic because it intermixes path-based file categorization with parsing, making extraction
 // impractical without over-engineering.
@@ -169,9 +170,9 @@ export class FileDiscovery {
 
     // Scan directories
     const mapFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/maps', '.json');
-    const resourceFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/resources', '.tres');
+    const propFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/props', '.tres');
     const biomeFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres');
-    console.log(`Scan results — maps: ${mapFiles.length}, resources: ${resourceFiles.length}, biomes: ${biomeFiles.length}`);
+    console.log(`Scan results — maps: ${mapFiles.length}, props: ${propFiles.length}, biomes: ${biomeFiles.length}`);
 
     // Parse map files
     for (const { name, handle } of mapFiles) {
@@ -187,11 +188,11 @@ export class FileDiscovery {
       }
     }
 
-    // Parse resource and biome .tres files
-    await _loadTresFilesFromHandles(resourceFiles, 'ResourceDef', ProjectContext.files.resources, 'Resource');
+    // Parse prop and biome .tres files
+    await _loadTresFilesFromHandles(propFiles, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesFromHandles(biomeFiles, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
-    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}`);
     console.groupEnd();
     return { success: true };
   }
@@ -244,12 +245,12 @@ export class FileDiscovery {
           const text = await readFileText(file);
           const data = JSON.parse(text);
           ProjectContext.files.maps.set(name, { handle: null, data });
-        } else if (relPath.startsWith('data/resources/') && relPath.endsWith('.tres')) {
+        } else if (relPath.startsWith('data/props/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
-          const result = _parseTresFile(name, text, 'ResourceDef');
+          const result = _parseTresFile(name, text, 'PropDef');
           if (!result) continue;
-          ProjectContext.files.resources.set(name, { handle: null, data: result.data, raw: result.raw });
+          ProjectContext.files.props.set(name, { handle: null, data: result.data, raw: result.raw });
         } else if (relPath.startsWith('data/biomes/') && relPath.endsWith('.tres')) {
           const name = relPath.split('/').pop();
           const text = await readFileText(file);
@@ -321,7 +322,7 @@ export class FileDiscovery {
       return { success: false, error: `Server API unavailable: ${err.message}` };
     }
 
-    console.log(`Manifest — maps: ${manifest.maps.files.length}, resources: ${manifest.resources.files.length}, biomes: ${manifest.biomes.files.length}`);
+    console.log(`Manifest — maps: ${manifest.maps.files.length}, props: ${manifest.props.files.length}, biomes: ${manifest.biomes.files.length}`);
 
     // Load map files
     for (const name of manifest.maps.files) {
@@ -337,11 +338,11 @@ export class FileDiscovery {
       }
     }
 
-    // Load resource and biome .tres files
-    await _loadTresFilesViaApi(manifest.resources.files, manifest.resources.dir, 'ResourceDef', ProjectContext.files.resources, 'Resource');
+    // Load prop and biome .tres files
+    await _loadTresFilesViaApi(manifest.props.files, manifest.props.dir, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesViaApi(manifest.biomes.files, manifest.biomes.dir, 'BiomeData', ProjectContext.files.biomes, 'Biome');
 
-    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, resources: ${ProjectContext.files.resources.size}, biomes: ${ProjectContext.files.biomes.size}`);
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}`);
     console.groupEnd();
     return { success: true };
   }

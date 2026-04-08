@@ -18,7 +18,7 @@
 | Hex Grid Renderer (`hex_grid_renderer.gd`) | **MEDIUM** | Cliff faces need side-angle visual pass; normals review |
 | FloatingText (`floating_text_manager.gd`) | **MEDIUM** | `_world_to_screen` affected by new camera projection |
 | Day/Night Shader (`hex_tile.gdshader`) | **LOW** | `player_world_pos` uniform unchanged; lantern falloff unaffected |
-| Resource Renderer (`resource_renderer.gd`) | **LOW** | Unshaded MultiMesh; may want shaded materials later |
+| Resource Renderer (`prop_renderer.gd`) | **LOW** | Unshaded MultiMesh; may want shaded materials later |
 | Prop Label Renderer (`prop_label_renderer.gd`) | **LOW** | Billboard labels already camera-independent |
 | Scan Progress Renderer (`scan_progress_renderer.gd`) | **LOW** | Billboard bar already camera-independent |
 | Ground Item Renderer (`ground_item_renderer.gd`) | **LOW** | Flat disc markers; no visual change needed |
@@ -322,7 +322,7 @@ window/handheld/orientation=0     (landscape)
 | `test_player_input.gd` | HIGH | Tests single-touch state machine; multi-touch changes everything |
 | `test_player.gd` | MEDIUM | Tests movement; camera-relative direction changes expected values |
 | `test_hex_grid_renderer.gd` | LOW | Tests mesh generation; geometry unchanged |
-| `test_resource_renderer.gd` | NONE | Tests MultiMesh instance management; no camera dependency |
+| `test_prop_renderer.gd` | NONE | Tests MultiMesh instance management; no camera dependency |
 | `test_prop_renderers.gd` | NONE | Tests label creation; billboard labels are camera-independent |
 | `test_scan_progress_renderer.gd` | NONE | Tests progress bar show/hide; no camera dependency |
 | `test_ground_item_renderer.gd` | NONE | Tests marker instance management; no camera dependency |
@@ -356,7 +356,7 @@ Minor consideration: at lower camera angles, the visual effect of lantern fallof
 
 ### 11. Resource Renderer
 
-**File:** `scripts/rendering/resource_renderer.gd`
+**File:** `scripts/rendering/prop_renderer.gd`
 
 MultiMesh pools with `StandardMaterial3D` + `shading_mode = SHADING_MODE_UNSHADED`. Instance transforms are world-space. **No changes needed for the delivery.** At side angles, unshaded flat-color meshes may look less convincing -- future improvement to consider shaded materials.
 

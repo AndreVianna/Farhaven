@@ -374,7 +374,7 @@ Main (Node)
        ├─ PropRenderer (Node3D)                  [feature-003]
        ├─ PropLabelRenderer (Node3D)              [feature-003]
        ├─ ScanProgressRenderer (Node3D)         [feature-003]
-       ├─ ResourceRenderer (Node3D)             [feature-004]
+       ├─ PropRenderer (Node3D)             [feature-004]
        ├─ StructureRenderer (Node3D)            [feature-009]
        ├─ FaunaRenderer (Node3D)                ← THIS FEATURE
        ├─ GroundItemRenderer (Node3D)           [feature-007]

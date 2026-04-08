@@ -205,7 +205,7 @@ The furrow itself exposed these — the pod tore up the ground:
 Fog state system (`HIDDEN`/`REVEALED`/`VISIBLE`) to be refactored:
 - `HexTile.fog_state` → replace with `visited: bool` (for mini-map)
 - `tile_visibility_changed` signal → replace with `tile_visited`
-- ResourceRenderer fog dimming → remove (all props render at full color)
+- PropRenderer fog dimming → remove (all props render at full color)
 - PropLabelRenderer fog checks → remove
 - Respawn queue fog check → rethink (maybe distance-based instead)
 

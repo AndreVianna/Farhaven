@@ -94,9 +94,9 @@ func _format_properties(entry: CatalogEntry) -> String:
 				parts.append("Edible")
 			if entry.properties.get("toxic", false):
 				parts.append("Toxic")
-			var res: StringName = entry.properties.get("resource_type", &"")
+			var res: StringName = entry.properties.get("prop_type", &"")
 			if res != &"":
-				parts.append("Resource: %s" % String(res).replace("_", " "))
+				parts.append("Prop: %s" % String(res).replace("_", " "))
 		1:  # FAUNA
 			if entry.properties.get("hostile", false):
 				parts.append("Hostile")
@@ -106,7 +106,7 @@ func _format_properties(entry: CatalogEntry) -> String:
 			if dmg > 0:
 				parts.append("DMG %d" % dmg)
 		2:  # MINERAL
-			var res: StringName = entry.properties.get("resource_type", &"")
+			var res: StringName = entry.properties.get("prop_type", &"")
 			if res != &"":
 				parts.append(String(res).capitalize())
 			var tool: StringName = entry.properties.get("tool_required", &"")
