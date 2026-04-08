@@ -813,22 +813,45 @@ export class HexCanvas {
     const subHex = HexMath.pixelToSubHex(offsetX, offsetY);
     const subSize = HEX_SIZE * HexMath.SUB_HEX_SCALE * this.camera.zoom;
 
-    // Check spawn first
+    // --- Priority 1: Check rotation handle of ALREADY-SELECTED prop/spawn ---
+    // The selected handle is drawn at extended length and may be outside the prop's sub-hex,
+    // so we must check it first before any new-selection logic.
+    if (this.selectedSpawn) {
+      const spawn = this.grid.meta.spawn;
+      if (spawn) {
+        const spawnSq = spawn.length > 2 ? spawn[2] : 0;
+        const spawnSr = spawn.length > 3 ? spawn[3] : 0;
+        const spawnRot = spawn.length >= 5 ? spawn[4] : 0;
+        const spawnScreen = this._subHexScreenPos(spawn[0], spawn[1], spawnSq, spawnSr);
+        const spawnLineLen = 8 * this.camera.zoom * 2.4; // matches selected render length
+        if (this._isNearRotationHandle(mx, my, spawnScreen.x, spawnScreen.y, spawnRot, spawnLineLen)) {
+          this._dragMode = 'rotating';
+          this._previewRotation = spawnRot;
+          return;
+        }
+      }
+    }
+    if (this.selectedProp) {
+      const sp = this.selectedProp;
+      const tile = this.grid.getTile(sp.hexQ, sp.hexR);
+      if (tile && tile.props && tile.props[sp.propIndex]) {
+        const prop = tile.props[sp.propIndex];
+        const propScreen = this._subHexScreenPos(sp.hexQ, sp.hexR, prop.sq, prop.sr);
+        const propLineLen = subSize * 1.2; // matches selected render length
+        if (typeof prop.rotation === 'number' &&
+            this._isNearRotationHandle(mx, my, propScreen.x, propScreen.y, prop.rotation, propLineLen)) {
+          this._dragMode = 'rotating';
+          this._previewRotation = prop.rotation;
+          return;
+        }
+      }
+    }
+
+    // --- Priority 2: Check spawn body ---
     const spawn = this.grid.meta.spawn;
     if (spawn && spawn[0] === hex.q && spawn[1] === hex.r) {
       const spawnSq = spawn.length > 2 ? spawn[2] : 0;
       const spawnSr = spawn.length > 3 ? spawn[3] : 0;
-      const spawnRot = spawn.length >= 5 ? spawn[4] : 0;
-      const spawnScreen = this._subHexScreenPos(hex.q, hex.r, spawnSq, spawnSr);
-      const spawnLineLen = 8 * this.camera.zoom * 1.2;
-
-      if (this._isNearRotationHandle(mx, my, spawnScreen.x, spawnScreen.y, spawnRot, spawnLineLen)) {
-        this.selectedSpawn = true;
-        this.selectedProp = null;
-        this._dragMode = 'rotating';
-        this._previewRotation = spawnRot;
-        return;
-      }
       if (subHex.q === spawnSq && subHex.r === spawnSr) {
         this.selectedSpawn = true;
         this.selectedProp = null;
@@ -839,26 +862,13 @@ export class HexCanvas {
       }
     }
 
-    // Check props
+    // --- Priority 3: Check props ---
     const found = this._findPropAtSubHex(hex.q, hex.r, subHex.q, subHex.r);
     if (found) {
-      const prop = found.prop;
-      const propScreen = this._subHexScreenPos(hex.q, hex.r, prop.sq, prop.sr);
-      const propLineLen = subSize * 0.6;
-
-      if (typeof prop.rotation === 'number' &&
-          this._isNearRotationHandle(mx, my, propScreen.x, propScreen.y, prop.rotation, propLineLen)) {
-        this.selectedProp = { hexQ: hex.q, hexR: hex.r, propIndex: found.propIndex };
-        this.selectedSpawn = false;
-        this._dragMode = 'rotating';
-        this._previewRotation = prop.rotation;
-        return;
-      }
-
       this.selectedProp = { hexQ: hex.q, hexR: hex.r, propIndex: found.propIndex };
       this.selectedSpawn = false;
       this._dragMode = 'moving';
-      this._dragStartPos = { sq: prop.sq, sr: prop.sr };
+      this._dragStartPos = { sq: found.prop.sq, sr: found.prop.sr };
       this._movePreview = null;
       return;
     }
