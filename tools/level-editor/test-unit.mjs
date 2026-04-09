@@ -1504,12 +1504,15 @@ test('PropDefModel — fromEntry reads station capability', () => {
 
 test('PropDefModel — fromEntry reads catalogable capability', () => {
   const entry = _makePropEntry({
-    catalogable: { scan_time: 2.5, display_tag: 'flora' },
+    catalogable: { scan_time: 2.5, display_tag: 'flora', category: 0, display_name: 'Test Plant', description: 'A test plant.', properties: new Map() },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.catalogable !== null, 'catalogable should not be null');
   assert(model.catalogable.scan_time === 2.5, 'scan_time should be 2.5');
   assert(model.catalogable.display_tag === 'flora', 'display_tag should be flora');
+  assert(model.catalogable.category === 0, 'category should be 0');
+  assert(model.catalogable.display_name === 'Test Plant', 'display_name should be Test Plant');
+  assert(model.catalogable.description === 'A test plant.', 'description should be A test plant.');
 });
 
 test('PropDefModel — fromEntry null capabilities when not present', () => {
@@ -1614,7 +1617,7 @@ test('propModelToRaw — serializes multiple capabilities', () => {
   const model = _makeModel({
     portable: { weight: 1.0 },
     placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
-    catalogable: { scan_time: 1.0, display_tag: 'flora' },
+    catalogable: { scan_time: 1.0, display_tag: 'flora', category: 0, display_name: '', description: '', properties: {} },
   });
   const raw = propModelToRaw(model);
   assert(raw.subResources.length === 3, `should have 3 sub_resources, got ${raw.subResources.length}`);
@@ -1634,7 +1637,7 @@ test('propModelToRaw — serialized output is valid .tres', () => {
     placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
-    catalogable: { scan_time: 1.0, display_tag: 'survival' },
+    catalogable: { scan_time: 1.0, display_tag: 'survival', category: 0, display_name: '', description: '', properties: {} },
   });
   const raw = propModelToRaw(model);
   const text = TresParser.serialize(raw);
@@ -1658,7 +1661,7 @@ test('PropDefModel — full round-trip with capabilities', () => {
     container: { capacity_weight: 20, accepts_filter: ['BURNABLE'] },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
-    catalogable: { scan_time: 2.0, display_tag: 'survival' },
+    catalogable: { scan_time: 2.0, display_tag: 'survival', category: 2, display_name: 'Test Mineral', description: 'A test mineral.', properties: {} },
   });
 
   // Serialize
@@ -1707,6 +1710,9 @@ test('PropDefModel — full round-trip with capabilities', () => {
   assert(restored.catalogable !== null, 'catalogable should survive');
   assert(restored.catalogable.scan_time === 2.0, 'scan_time should be 2.0');
   assert(restored.catalogable.display_tag === 'survival', 'display_tag should be survival');
+  assert(restored.catalogable.category === 2, 'category should be 2');
+  assert(restored.catalogable.display_name === 'Test Mineral', 'display_name should be Test Mineral');
+  assert(restored.catalogable.description === 'A test mineral.', 'description should be A test mineral.');
 });
 
 test('PropDefModel — round-trip with no capabilities', () => {
@@ -1818,8 +1824,6 @@ function _makePropEntry(overrides) {
     id: 'test',
     display_name: 'Test Prop',
     max_stack: 99,
-    catalog_entry: '',
-    catalog_category: '',
     origin: 0,
     prop_category: 0,
     placeholder_mesh_type: 'cube',

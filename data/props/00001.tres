@@ -13,6 +13,10 @@ blocks_movement = true
 script = ExtResource("3_catalogable")
 scan_time = 1.0
 display_tag = &"flora"
+category = 0
+display_name = "Thornwood Tree"
+description = "A twisted alien tree with dense bark. Burns well."
+properties = {"edible": false, "toxic": false, "resource_type": &"wood"}
 
 [resource]
 script = ExtResource("1_script")
@@ -22,8 +26,6 @@ tags = [&"SOURCE", &"WOOD"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 max_stack = 99
-catalog_entry = &"wood_tree"
-catalog_category = &"flora"
 origin = 0
 gather_time = 1.0
 gather_amount = 1

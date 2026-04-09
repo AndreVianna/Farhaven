@@ -3,10 +3,10 @@ class_name TestScannerSystem
 
 ## Unit tests for ScannerSystem (task-012).
 ## Tests proximity auto-scan, 3-state passive ID, surprise encounter.
+## After catalog merge: entry IDs are PropDef IDs for flora/mineral/anomaly.
 
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
@@ -218,7 +218,7 @@ func test_proximity_detects_adjacent_uncataloged_prop() -> void:
 	_system._process(0.016)
 
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("berry_bush")
+	assert_str(String(_started_entry_id)).is_equal("00004")
 	assert_int(_started_coords.x).is_equal(1)
 
 
@@ -234,7 +234,7 @@ func test_proximity_no_scan_when_no_uncataloged_nearby() -> void:
 func test_proximity_no_scan_when_all_cataloged() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
-	_system._catalog.catalog_entry(&"berry_bush")
+	_system._catalog.catalog_entry(&"00004")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -249,7 +249,7 @@ func test_proximity_detects_on_player_tile() -> void:
 	_system._process(0.016)
 
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("berry_bush")
+	assert_str(String(_started_entry_id)).is_equal("00004")
 
 
 func test_proximity_nearest_first() -> void:
@@ -261,7 +261,7 @@ func test_proximity_nearest_first() -> void:
 	_system._process(0.016)
 
 	# Should pick player tile (distance 0) over adjacent (distance 1)
-	assert_str(String(_started_entry_id)).is_equal("berry_bush")
+	assert_str(String(_started_entry_id)).is_equal("00004")
 
 
 # --- Scan lifecycle: start on proximity → progress → complete ---
@@ -276,7 +276,7 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	# Start scan via proximity
 	_system._process(0.016)
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("berry_bush")
+	assert_str(String(_started_entry_id)).is_equal("00004")
 
 	# Advance progress (flora = 2.0s)
 	_system._process(1.0)
@@ -287,8 +287,8 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	_system._process(1.5)  # total > 2.0s
 
 	assert_bool(_system.is_scanning()).is_false()
-	assert_str(String(_completed_entry_id)).is_equal("berry_bush")
-	assert_str(String(_cataloged_entry_id)).is_equal("berry_bush")
+	assert_str(String(_completed_entry_id)).is_equal("00004")
+	assert_str(String(_cataloged_entry_id)).is_equal("00004")
 	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.FLORA)
 
 
@@ -366,7 +366,7 @@ func test_scan_duration_mineral_is_2s() -> void:
 
 func test_scan_duration_anomaly_is_3s() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
+	tile.props = [_Prop.create_anomaly(&"10001")]
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = tile
 	_player.current_tile = Vector2i.ZERO
@@ -417,17 +417,17 @@ func test_flora_goes_unknown_to_cataloged_directly() -> void:
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.CATALOGED)
 	# Should NOT be ENCOUNTERED
-	assert_bool(_system._catalog.is_encountered(&"berry_bush")).is_false()
+	assert_bool(_system._catalog.is_encountered(&"00004")).is_false()
 
 
 # --- Passive identification with 3 states ---
 
 func test_passive_id_cataloged_emits_element_identified() -> void:
-	_system._catalog.catalog_entry(&"berry_bush")
+	_system._catalog.catalog_entry(&"00004")
 	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
 	_system._check_passive_identification(Vector2i(2, 0))
-	assert_str(String(_identified_entry_id)).is_equal("berry_bush")
+	assert_str(String(_identified_entry_id)).is_equal("00004")
 	assert_int(_identified_count).is_equal(1)
 
 
@@ -436,28 +436,19 @@ func test_passive_id_unknown_emits_element_unknown_with_category() -> void:
 
 	_system._check_passive_identification(Vector2i(2, 0))
 	assert_int(_unknown_count).is_equal(1)
-	assert_str(String(_unknown_entry_id)).is_equal("berry_bush")
+	assert_str(String(_unknown_entry_id)).is_equal("00004")
 	assert_int(_unknown_category).is_equal(_Catalog.CatalogCategory.FLORA)
 
 
 func test_passive_id_encountered_emits_element_encountered() -> void:
-	# Manually encounter thornback (fauna) — note: fauna isn't on prop nodes
-	# typically, but test the signal path through a prop mapped to fauna
-	# In practice, this tests the code path for ENCOUNTERED props
-	_system._catalog.encounter_entry(&"thornback", "Hostile")
-	# Since thornback is not a prop type, we test with anomaly instead
-	# Actually let's test with tiles that have the right setup
-	# The passive ID only checks prop_nodes and anomalies.
 	# Fauna are checked via FaunaManager (deferred).
-	# Let's verify that the encounter signal path works for a prop
-	# that was manually encountered (even though flora/mineral shouldn't be)
-	# This is more of a code path test.
+	# This test covers the code path verification.
 	pass  # Covered by element_encountered signal tests below
 
 
 func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
+	tile.props = [_Prop.create_anomaly(&"10001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
@@ -466,13 +457,13 @@ func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 
 
 func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
-	_system._catalog.catalog_entry(&"anomaly_ch1_001")
+	_system._catalog.catalog_entry(&"10001")
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"anomaly_ch1_001")]
+	tile.props = [_Prop.create_anomaly(&"10001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
-	assert_str(String(_identified_entry_id)).is_equal("anomaly_ch1_001")
+	assert_str(String(_identified_entry_id)).is_equal("10001")
 
 
 # --- entry_cataloged emitted on completion with correct data ---
@@ -486,7 +477,7 @@ func test_entry_cataloged_emitted_with_correct_data() -> void:
 	_system._scan_progress = 0.99
 	_system._process(0.05)  # complete
 
-	assert_str(String(_cataloged_entry_id)).is_equal("stone_deposit")
+	assert_str(String(_cataloged_entry_id)).is_equal("00005")
 	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.MINERAL)
 
 
@@ -501,7 +492,7 @@ func test_knowledge_state_changed_on_scan_complete() -> void:
 	_system._scan_progress = 0.99
 	_system._process(0.05)
 
-	assert_str(String(_ksc_entry_id)).is_equal("berry_bush")
+	assert_str(String(_ksc_entry_id)).is_equal("00004")
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.CATALOGED)
 

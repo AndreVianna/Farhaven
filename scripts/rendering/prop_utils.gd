@@ -11,10 +11,11 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const OFFSET_SCALE: float = 0.4
 
 ## Reverse lookup: prop type → catalog entry_id via PropRegistry.
+## After catalog merge, the entry_id IS the PropDef id (when catalogable).
 static func get_entry_id_for_type(type: StringName) -> StringName:
 	var def = PropRegistry.get_def(type)
-	if def != null:
-		return def.catalog_entry
+	if def != null and def.catalogable != null:
+		return def.id
 	return &""
 
 ## Look up the sub_hex position and rotation for a specific entry on a tile.

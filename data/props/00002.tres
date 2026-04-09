@@ -13,6 +13,10 @@ blocks_movement = false
 script = ExtResource("3_catalogable")
 scan_time = 1.0
 display_tag = &"minerals"
+category = 2
+display_name = "Loose Rocks"
+description = "Scattered rock fragments. Easy to pick up by hand."
+properties = {"resource_type": &"loose_rock", "tool_required": &""}
 
 [resource]
 script = ExtResource("1_script")
@@ -22,8 +26,6 @@ tags = [&"SOURCE", &"STONE"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 max_stack = 99
-catalog_entry = &"loose_rocks"
-catalog_category = &"minerals"
 origin = 0
 gather_time = 1.0
 gather_amount = 2

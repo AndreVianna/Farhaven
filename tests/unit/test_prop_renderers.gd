@@ -6,7 +6,6 @@ extends GdUnitTestSuite
 const _PropLabelRenderer = preload("res://scripts/rendering/prop_label_renderer.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")

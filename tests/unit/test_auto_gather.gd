@@ -192,9 +192,11 @@ func _make_tile(coords: Vector2i, props: Array = []) -> Resource:
 
 
 func _catalog_prop(type: StringName) -> void:
-	var entry_id: StringName = PropRegistry.get_def(type).catalog_entry if PropRegistry.has_def(type) else &""
-	if entry_id != &"":
-		_catalog._knowledge[entry_id] = _Catalog.KnowledgeState.CATALOGED
+	if not PropRegistry.has_def(type):
+		return
+	var def = PropRegistry.get_def(type)
+	if def.catalogable != null and String(def.catalogable.display_name) != "":
+		_catalog._knowledge[def.id] = _Catalog.KnowledgeState.CATALOGED
 
 
 ## Position the player at the world-space center of the given tile.

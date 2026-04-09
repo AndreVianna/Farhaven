@@ -1,6 +1,8 @@
 class_name Catalog
 extends RefCounted
 
+const CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
+# TODO: remove CatalogEntry import when fauna PropDefs exist
 const CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 
 enum CatalogCategory { FLORA, FAUNA, MINERAL, ANOMALY }
@@ -12,7 +14,7 @@ signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: 
 
 var _knowledge: Dictionary = {}           # StringName → KnowledgeState
 var _encounter_labels: Dictionary = {}    # StringName → String ("Hostile" or "Shy")
-var _all_entries: Dictionary = {}         # StringName → CatalogEntry
+var _all_entries: Dictionary = {}         # StringName → CatalogableCap (or CatalogEntry for fauna fallback)
 var _total_count: int = 0
 var _hex_grid = null
 var _fauna_manager = null
@@ -25,18 +27,18 @@ func initialize(hex_grid = null, fauna_manager = null) -> void:
 
 
 func _load_all_entries() -> void:
-	var paths: Array = [
-		"res://data/catalog/flora.tres",
-		"res://data/catalog/fauna.tres",
-		"res://data/catalog/minerals.tres",
-		"res://data/catalog/anomalies.tres",
-	]
-	for path in paths:
-		var data = load(path)
-		if data == null:
-			continue
-		for entry in data.entries:
+	# Load from PropRegistry — all PropDefs with CATALOGABLE capability and non-empty display_name
+	for def in PropRegistry.get_all():
+		if def.catalogable != null and String(def.catalogable.display_name) != "":
+			var entry_id: StringName = def.id  # Use PropDef id directly
+			_all_entries[entry_id] = def.catalogable  # Store CatalogableCap directly
+
+	# TODO: remove when fauna PropDefs exist — fauna fallback from .tres file
+	var fauna_data = load("res://data/catalog/fauna.tres")
+	if fauna_data != null:
+		for entry in fauna_data.entries:
 			_all_entries[entry.entry_id] = entry
+
 	_total_count = _all_entries.size()
 
 
@@ -58,7 +60,7 @@ func is_known(entry_id: StringName) -> bool:
 	return get_knowledge_state(entry_id) >= KnowledgeState.ENCOUNTERED
 
 
-func get_entry(entry_id: StringName) -> CatalogEntry:
+func get_entry(entry_id: StringName):
 	return _all_entries.get(entry_id, null)
 
 
@@ -66,7 +68,7 @@ func get_discovered_entries() -> Array:
 	var result: Array = []
 	for id in _knowledge:
 		if _knowledge[id] >= KnowledgeState.ENCOUNTERED and _all_entries.has(id):
-			result.append(_all_entries[id])
+			result.append({entry_id = id, entry = _all_entries[id]})
 	return result
 
 
@@ -75,9 +77,9 @@ func get_discovered_by_category(category: int) -> Array:
 	for id in _knowledge:
 		if _knowledge[id] < KnowledgeState.ENCOUNTERED:
 			continue
-		var entry: CatalogEntry = _all_entries.get(id, null)
+		var entry = _all_entries.get(id, null)
 		if entry != null and entry.category == category:
-			result.append(entry)
+			result.append({entry_id = id, entry = entry})
 	return result
 
 
@@ -113,14 +115,14 @@ func catalog_entry(entry_id: StringName) -> void:
 	_knowledge[entry_id] = KnowledgeState.CATALOGED
 	# Remove encounter label if upgrading from ENCOUNTERED
 	_encounter_labels.erase(entry_id)
-	var entry: CatalogEntry = _all_entries.get(entry_id, null)
+	var entry = _all_entries.get(entry_id, null)
 	var category: int = entry.category if entry != null else CatalogCategory.FLORA
 	entry_cataloged.emit(entry_id, category)
 	knowledge_state_changed.emit(entry_id, old_state, KnowledgeState.CATALOGED)
 
 
 func encounter_entry(entry_id: StringName, label: String) -> void:
-	var entry := get_entry(entry_id)
+	var entry = get_entry(entry_id)
 	if entry == null:
 		push_warning("encounter_entry called for unknown entry: %s" % entry_id)
 		return
@@ -147,12 +149,17 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 		return &""
 
 	for prop in tile.get_props():
-		var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
-		if entry_id == &"":
+		if not PropRegistry.has_def(prop.type):
+			continue
+		var def = PropRegistry.get_def(prop.type)
+		if def.catalogable == null:
+			continue
+		var entry_id: StringName = def.id
+		if entry_id == &"" or String(def.catalogable.display_name) == "":
 			continue
 		if not is_cataloged(entry_id) and _all_entries.has(entry_id):
 			# Skip ENCOUNTERED fauna (needs Trap/Sneak, not proximity scan)
-			var entry: CatalogEntry = _all_entries[entry_id]
+			var entry = _all_entries[entry_id]
 			if entry.category == CatalogCategory.FAUNA and is_encountered(entry_id):
 				continue
 			return entry_id

@@ -65,7 +65,8 @@ func _ready() -> void:
 
 
 ## Setup for CATALOGED entries — full info display.
-func setup(entry: CatalogEntry) -> void:
+## Accepts CatalogableCap or CatalogEntry (fauna fallback).
+func setup(entry: Resource) -> void:
 	_is_encountered = false
 	_name_label.text = entry.display_name
 	_desc_label.text = entry.description
@@ -86,7 +87,7 @@ func is_encountered() -> bool:
 	return _is_encountered
 
 
-func _format_properties(entry: CatalogEntry) -> String:
+func _format_properties(entry: Resource) -> String:
 	var parts: Array[String] = []
 	match entry.category:
 		0:  # FLORA

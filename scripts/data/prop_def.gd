@@ -25,12 +25,6 @@ class_name PropDef extends Resource
 ## Temporary — kept during transition, will be replaced by PORTABLE.weight in task-049.
 @export var max_stack: int = 99
 
-# --- Catalog ---
-@export var catalog_entry: StringName
-## UI-only catalog grouping label (e.g. "flora", "minerals", "survival", "anomalies").
-## This is what DESIGN.md §3.3 calls "category_tag". Purely for display, never controls behavior.
-@export var catalog_category: StringName
-
 # --- Placement ---
 ## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
 @export var origin: int = 0
