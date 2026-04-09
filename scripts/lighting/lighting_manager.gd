@@ -146,12 +146,15 @@ func clear_player_light() -> void:
 
 
 ## Update player torch state from current inventory.
-## Called when tool equipment changes or on tile enter.
+## Called when tool equipment changes, on tile enter, or after load.
 func update_player_torch() -> void:
 	var player: Node = _find_player()
 	if player == null:
 		_clear_player_light_internal()
 		return
+	# Sync player world position (needed on load when no tile_entered has fired yet)
+	if "current_tile" in player:
+		_player_world_pos = HexMath.axial_to_world(player.current_tile)
 	var inv: RefCounted = player.get_inventory() if player.has_method("get_inventory") else null
 	if inv == null:
 		_clear_player_light_internal()
