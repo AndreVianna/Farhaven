@@ -14,7 +14,7 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 
 # Numeric PropDef ids
 const ID_WOOD: StringName = &"00010"
-const ID_STONE: StringName = &"00013"
+const ID_ROCK: StringName = &"00011"
 const ID_AXE: StringName = &"00201"
 
 var _panel: PanelContainer = null
@@ -103,7 +103,7 @@ func _make_near_workbench() -> void:
 
 
 func _discover_recipes() -> void:
-	_inv.add_item(ID_STONE, 1)
+	_inv.add_item(ID_ROCK, 1)
 
 
 # --- Setup / Teardown ---
@@ -414,7 +414,7 @@ func test_recipe_entry_emits_craft_requested() -> void:
 	entry.setup(&"stone_axe")
 	entry.refresh(_inv, _sys)
 	_inv.add_item(ID_WOOD, 2)
-	_inv.add_item(ID_STONE, 1)
+	_inv.add_item(ID_ROCK, 1)
 	entry.refresh(_inv, _sys)
 	var fired: Array = []
 	entry.craft_requested.connect(func(name: StringName): fired.append(name))

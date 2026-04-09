@@ -38,6 +38,7 @@ const ID_BOULDER: StringName = &"00005"
 const ID_IRON_DEPOSIT: StringName = &"00006"
 # Inventory item ids (yielded when gathered)
 const ID_WOOD: StringName = &"00010"
+const ID_ROCK: StringName = &"00011"
 const ID_STONE: StringName = &"00013"
 const ID_BERRIES: StringName = &"00020"
 const ID_ORE: StringName = &"00014"
@@ -530,11 +531,11 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 		"Ore must not be gatherable without stone_pickaxe"
 	).is_false()
 
-	# Step 2: Give player materials for stone_pickaxe (3 wood + 2 stone)
+	# Step 2: Give player materials for stone_pickaxe (3 wood + 2 rock)
 	_inventory.add_item(ID_WOOD, 3)
-	_inventory.add_item(ID_STONE, 2)
+	_inventory.add_item(ID_ROCK, 2)
 
-	# Discover recipes (stone triggers discovery)
+	# Discover recipes (rock triggers discovery)
 	assert_bool(_crafting.is_recipe_discovered(&"stone_pickaxe")).override_failure_message(
 		"stone_pickaxe recipe must be discovered after adding stone"
 	).is_true()
@@ -581,12 +582,12 @@ func test_recipes_pre_discovered_from_start() -> void:
 	assert_bool(_crafting.is_recipe_discovered(&"stone_axe")).is_true()
 	assert_bool(_crafting.is_recipe_discovered(&"stone_pickaxe")).is_true()
 
-	# Adding stone should NOT emit discovery signal (already known)
+	# Adding rock should NOT emit discovery signal (already known)
 	var discovered: Array = []
 	_crafting.recipe_discovered.connect(func(name: StringName) -> void:
 		discovered.append(String(name))
 	)
-	_inventory.add_item(ID_STONE, 1)
+	_inventory.add_item(ID_ROCK, 1)
 	assert_int(discovered.size()).override_failure_message(
 		"No discovery signal should fire for pre-discovered recipes"
 	).is_equal(0)
@@ -637,9 +638,9 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 				"stone_axe must be UNAFFORDABLE with 0 stone, 0 wood"
 			).is_equal(1)  # State.UNAFFORDABLE = 1
 
-	# Add materials for stone_axe (2W + 1S)
+	# Add materials for stone_axe (2W + 1R)
 	_inventory.add_item(ID_WOOD, 2)
-	_inventory.add_item(ID_STONE, 1)
+	_inventory.add_item(ID_ROCK, 1)
 	panel._refresh_all()
 
 	for entry_name: StringName in recipe_entries:
@@ -813,8 +814,8 @@ func test_craft_succeeds_without_workbench() -> void:
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_place_player_at_tile(Vector2i.ZERO)
 
-	# Add materials for stone_pickaxe (3W + 2S)
-	_inventory.add_item(ID_STONE, 2)
+	# Add materials for stone_pickaxe (3W + 2R)
+	_inventory.add_item(ID_ROCK, 2)
 	_inventory.add_item(ID_WOOD, 3)
 
 	# Not near workbench — but requires_station is false for current recipes
@@ -855,7 +856,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_inventory.set_tool(&"axe", ID_AXE)
 
 	# Discover recipe + add materials
-	_inventory.add_item(ID_STONE, 1)
+	_inventory.add_item(ID_ROCK, 1)
 	_inventory.add_item(ID_WOOD, 2)
 
 	var failed_reasons: Array = []
@@ -869,7 +870,7 @@ func test_craft_fails_when_already_owned() -> void:
 
 	# Verify materials were NOT consumed
 	assert_int(_inventory.get_count(ID_WOOD)).is_equal(2)
-	assert_int(_inventory.get_count(ID_STONE)).is_equal(1)
+	assert_int(_inventory.get_count(ID_ROCK)).is_equal(1)
 
 	_teardown_full_tree()
 
@@ -890,8 +891,8 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_crafting._check_station_proximity()
 
 	# Discover recipe but insufficient materials
-	_inventory.add_item(ID_STONE, 1)
-	# stone_pickaxe needs 3W + 2S, we have 0W + 1S
+	_inventory.add_item(ID_ROCK, 1)
+	# stone_pickaxe needs 3W + 2R, we have 0W + 1R
 
 	var failed_reasons: Array = []
 	_crafting.craft_failed.connect(func(n: StringName, r: StringName) -> void:
@@ -1130,14 +1131,14 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 		"stone_pickaxe recipe must be discovered after gathering stone"
 	).is_true()
 
-	# Step 5: Craft stone_pickaxe (need 3W + 2S)
-	# Make sure we have enough materials
+	# Step 5: Craft stone_pickaxe (need 3W + 2R)
+	# Make sure we have enough materials (recipe uses rocks, not stones)
 	var wood_count: int = _inventory.get_count(ID_WOOD)
-	var stone_count: int = _inventory.get_count(ID_STONE)
+	var rock_count: int = _inventory.get_count(ID_ROCK)
 	if wood_count < 3:
 		_inventory.add_item(ID_WOOD, 3 - wood_count)
-	if stone_count < 2:
-		_inventory.add_item(ID_STONE, 2 - stone_count)
+	if rock_count < 2:
+		_inventory.add_item(ID_ROCK, 2 - rock_count)
 
 	_crafting._check_station_proximity()
 	assert_bool(_crafting.is_near_station()).is_true()

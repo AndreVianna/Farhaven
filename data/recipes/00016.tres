@@ -12,7 +12,7 @@ count = 2
 
 [sub_resource type="Resource" id="input_2"]
 script = ExtResource("2_input")
-ref_or_tag = &"00013"
+ref_or_tag = &"00011"
 count = 1
 
 [sub_resource type="Resource" id="output_1"]

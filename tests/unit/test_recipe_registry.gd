@@ -265,7 +265,7 @@ func test_craft_stone_axe_fields() -> void:
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(2)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00013")  # stone
+	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(1)
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_str(String(r.outputs[0].prop_ref)).is_equal("00201")  # axe
@@ -285,7 +285,7 @@ func test_craft_stone_pickaxe_fields() -> void:
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(3)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00013")  # stone
+	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(2)
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_str(String(r.outputs[0].prop_ref)).is_equal("00202")  # pickaxe

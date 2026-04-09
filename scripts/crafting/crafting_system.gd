@@ -20,20 +20,20 @@ signal station_proximity_changed(near: bool)
 ## output_id references the produced tool's PropDef id (00201 axe, 00202 pickaxe).
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"00010": 2, &"00013": 1 },  # 2 wood + 1 stone
+		"ingredients": { &"00010": 2, &"00011": 1 },  # 2 wood + 1 rock
 		"output_type": &"tool",
 		"output_id": &"00201",  # axe prop
 		"tool_slot": &"axe",
-		"discovery_material": &"00013",  # stone
+		"discovery_material": &"00011",  # rock
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"00010": 3, &"00013": 2 },  # 3 wood + 2 stone
+		"ingredients": { &"00010": 3, &"00011": 2 },  # 3 wood + 2 rock
 		"output_type": &"tool",
 		"output_id": &"00202",  # pickaxe prop
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"00013",  # stone
+		"discovery_material": &"00011",  # rock
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
