@@ -147,37 +147,40 @@ This is a natural cutscene trigger. The most important `EVENT` in the game. The 
 
 ---
 
-## Biological Compatibility Question
+## Biological Compatibility — DECIDED
 
-**Why can the player eat berries on an alien moon?**
+**Chemistry is universal. RNA/DNA is universal.** (Andre's call, 2026-04-09)
 
-Options (Andre to decide):
-1. **Convergent biochemistry** — the binary system's shared formation from the same protoplanetary disk means similar chemistry. Carbon-based, water-solvent, amino acid overlap. Not identical but compatible enough that some foods work and some are toxic. (Scientifically plausible for a shared-origin system.)
-2. **Terraforming** — the ancient aliens partially terraformed the moon with Earth-compatible biology (they knew humans would come? they found Earth? time travel?). Explains the mix of edible and toxic flora.
-3. **Panspermia within the system** — biological material exchanged between the Super-Earth and the moon via impacts. Similar to Mars-Earth meteorite exchange theories. Base biochemistry is shared.
-4. **Don't explain it** — gameplay convenience. The scanning/cataloging system IS the explanation: you scan to find out what's safe. Some things are, some aren't. The "why" is a mystery the player can discover in journal entries.
+Proteins are analogous across both worlds. Some things are edible, some are toxic — the scanner detects compatibility. This isn't coincidence or terraforming — it's the natural consequence of universal biochemistry. Carbon-based, water-solvent, nucleic-acid-coded life converges across any world with similar conditions.
 
-**Recommendation:** Option 1 or 3. They're scientifically grounded and don't require narrative gymnastics. The scan-to-discover mechanic makes it feel earned either way.
+The gameplay mechanic (scan to discover edible vs toxic) is the in-game expression of this principle: the player's scanner analyzes molecular compatibility, not "alien vs familiar."
 
 ---
 
-## The Ancient Civilization
+## The Ancient Civilization — DECIDED
 
-**Origin:** Super-Earth natives. Evolved at 1.1-1.2g — physically stocky, dense-boned, strong. Advanced technology — spacefaring within their binary system.
+**Origin:** Super-Earth natives. Evolved at 1.1-1.2g — physically stocky, dense-boned, strong.
 
-**Why on the moon?**
-- Resource extraction (the moon's geology, especially tidal-heated minerals)
-- Scientific outpost (studying the star, the orbital mechanics, the moon's unique ecosystem)
-- Colony/refuge (something happened on the Super-Earth — plague? war? environmental collapse?)
-- Transcendence (they left physical form — the beacons are what remains)
+**Technology level:** Comparable to Earth's 20th century. Rockets, radio, nuclear power. NOT hyper-advanced — recognizable to the player. "That's a radio." "That's a motor."
+
+**Extinction:** Nuclear war, tens of thousands of years before the player arrives. Self-destruction — the universal tragedy. Ruins are eroded but identifiable. Radiological contamination persists in some zones (gameplay: radiation hazard areas, especially on Super-Earth).
+
+**Inter-body travel:** Trivially achievable with their tech level:
+- Only 57,000 km separation (vs Earth-Moon 384,000 km = 6.7× closer)
+- Barycenter in space = lower delta-v for orbital transfers
+- Moon's 0.8g = easier to escape than Earth's 1.0g
+- Chemical rockets sufficient for regular shuttle service
+- Settlements on BOTH bodies — the moon was not just a base, it was a colony with permanent population
 
 **What the player finds:**
-- Act 1 (far side): scattered beacons — navigation aids, communication relays
-- Act 2 (terminator): larger structures — research stations, mining operations
-- Act 3 (near side): architectural ruins — residential, cultural, governmental
-- Act 4 (Super-Earth): the civilization itself — cities, archives, the answer to "what happened?"
+- Act 1 (far side): scattered beacons — automated navigation/communication relays, solar-powered, still operational after millennia because they were built to last
+- Act 2 (terminator): larger structures — research stations, mining operations, supply depots for the inter-body shuttle route
+- Act 3 (near side): architectural ruins — residential districts, cultural centers, the spaceport that connected the two worlds
+- Act 4 (Super-Earth): the civilization's homeland — cities (ruined), archives (partially intact), impact craters from the war, radiation zones, the answer to "what happened"
 
-**The big question:** Are they gone? Or are they still here in some form?
+**The narrative irony:** A civilization with TWO worlds destroyed itself. The player, a lone human crash-landed on the remains, has to survive using what they left behind. The beacons still transmit to a civilization that no longer listens.
+
+**The beacons still work because:** automated systems running on solar/geothermal power. Simple, robust, designed for millennia of unattended operation. Like Voyager probes — built once, run forever. Nobody turned them off because nobody was left to.
 
 ---
 
