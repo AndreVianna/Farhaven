@@ -64,13 +64,14 @@ not on each other.
 
 | # | Name | Type | Depends On | Parallel With |
 |---|------|------|-----------|---------------|
-| 032 | Build recipes + BuildingSystem placement wrapper | IMPLEMENT | delivery-005a | 037 |
-| 033 | Placement mode + input + highlights | IMPLEMENT | 032 | 034, 037 |
-| 034 | Structure renderer (signal-driven) | IMPLEMENT | 032 | 033, 037 |
-| 035 | Build panel UI | IMPLEMENT | 033 | 037, 038 |
-| 036 | Building cross-feature integration test | TEST | 032, 034, 035 | 038 |
-| 037 | FaunaManager — spawn, AI, contact, despawn | IMPLEMENT | delivery-005a | 032, 033, 034 |
-| 038 | Fauna renderer + signal wiring | IMPLEMENT | 037 | 035, 036 |
+| 032 | Build recipes + BuildingSystem placement wrapper | IMPLEMENT | delivery-005a | 037, 039b |
+| 033 | Placement mode + input + highlights | IMPLEMENT | 032 | 034, 037, 039b |
+| 034 | Structure renderer (signal-driven) | IMPLEMENT | 032 | 033, 037, 039b |
+| 035 | Build panel UI | IMPLEMENT | 033 | 037, 038, 039b |
+| 036 | Building cross-feature integration test | TEST | 032, 034, 035 | 038, 039b |
+| 037 | FaunaManager — spawn, AI, contact, despawn | IMPLEMENT | delivery-005a | 032, 033, 034, 039b |
+| 038 | Fauna renderer + signal wiring | IMPLEMENT | 037 | 035, 036, 039b |
+| 039b | Recipe editor page (level editor) | IMPLEMENT | delivery-005a | All other 005b tasks |
 
 ## Task Details
 
@@ -369,6 +370,45 @@ PropRenderer uses MultiMesh pools (one pool per PropDef, up to 128 instances). S
 - [ ] All existing tests pass
 - [ ] Build passes with zero warnings
 
+### task-039b: Recipe Editor Page (Level Editor) [IMPLEMENT]
+
+**Source:** delivery-005a DESIGN.md (Recipe system), delivery-005b needs recipes editable
+
+**Scope:**
+- New page in `tools/level-editor/` alongside the existing Prop and Biome editor pages
+- **List view:** shows all recipes from `data/recipes/*.tres` with id, display_name, kind
+- **Create/Edit form:**
+  - id (numeric, auto-increment)
+  - display_name (text)
+  - kind (dropdown: Assemble, Transform, Breakdown, Combine)
+  - inputs (list editor: each entry has ref_or_tag picker + count + source dropdown + is_tag checkbox)
+  - outputs (list editor: each entry has prop_ref picker + count + prob slider 0-1)
+  - effects (list editor: kind dropdown + params key-value)
+  - conditions (list editor: predicate kind dropdown + params + must_sustain checkbox)
+  - actions (tag list: craft, build, eat, chop, use, gather, etc.)
+  - time (float input)
+  - unlock_when (list editor: predicate kind + params)
+- **Prop ref picker:** dropdown/search that lists PropDef ids + display_names from `data/props/`
+- **Validation:** inputs reference valid prop IDs or known tags, outputs reference valid prop IDs, prob in [0,1]
+- **Round-trip:** load .tres → edit → save → reload without data loss
+- **Delete:** with confirmation
+- Follow same patterns as prop-editor.js (tres-parser, file-discovery, validation, unknown-field passthrough)
+
+**Criteria:**
+- [ ] Recipe list page shows all recipes with id, display_name, kind
+- [ ] Create new recipe from the editor
+- [ ] Edit existing recipe — all fields editable
+- [ ] Delete recipe with confirmation
+- [ ] Prop ref picker shows PropDef ids + names
+- [ ] Validation catches: missing inputs, invalid prop refs, prob out of range
+- [ ] Round-trip: every existing recipe .tres survives load → edit → save → reload
+- [ ] All JS tests pass (existing + new recipe editor tests)
+- [ ] Build passes with zero warnings
+
+**Parallel with:** all other 005b tasks (independent JS work, doesn't touch game code)
+
+---
+
 ## Integration Contract
 
 ### Scene Tree Additions
@@ -433,4 +473,5 @@ No additional requirements beyond delivery-001 + delivery-005a.
 | 2026-04-02 | task-038: fauna_spawned signal wiring updated — ElementIconRenderer → PropRenderer + PropLabelRenderer. | /spec-update |
 | 2026-04-02 | Scan redesign: task-037 "surprise auto-catalog" → "auto-register as ENCOUNTERED". task-038 auto-defend activates on ENCOUNTERED, not CATALOGED. | /scan-redesign-apply |
 | 2026-04-04 | Unified props + sub-hex architecture: structures are props in tile.props[] with footprints. Placement validates sub-hex availability. StructureRenderer uses individual Node3D (not MultiMesh). Task descriptions updated for tasks 032-036. | /arch-update |
+| 2026-04-09 | Added task-039b (Recipe editor page). Moved from tech-debt to explicit delivery task. Runs parallel with all other 005b tasks (independent JS work). |
 | 2026-04-08 | **Full rewrite for delivery-005a alignment.** Building now uses Assemble recipes via RecipeRuntime (not custom BuildingSystem logic). Inventory references updated to weight-based (capacity_weight, not slots). All fog references replaced with LightingManager light-radius checks. Fauna death drops use breakdown recipes. task-034 retained (PropRenderer only renders natural-origin props). Storage Chest effect: +50.0 capacity_weight. Surprise encounter redesigned: light-based trigger replaces fog-based. | delivery-005a alignment |
