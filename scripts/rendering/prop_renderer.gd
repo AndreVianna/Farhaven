@@ -219,7 +219,7 @@ func _on_prop_respawned(coords: Vector2i, prop_type: StringName) -> void:
 func _populate_all_visible_tiles() -> void:
 	if _grid == null:
 		return
-	var tiles: Dictionary = _grid._tiles if "_tiles" in _grid else {}
+	var tiles: Dictionary = _grid.get_all_tiles() if _grid.has_method("get_all_tiles") else {}
 	for coords in tiles:
 		var tile: Resource = tiles[coords]
 		if tile == null:

@@ -39,55 +39,57 @@ func _wire_systems() -> void:
 	var crafting: Node = player.get_node_or_null("CraftingSystem")
 	var hud: Node = $HUD/HUD
 
-	# Connect inventory to HUD
+	_wire_hud(player, scanner, auto_interaction, crafting, hud)
+	_wire_gather_feedback(player, auto_interaction)
+	_wire_survival(player, hud)
+	_wire_day_night(hud)
+	_wire_save_triggers(player, crafting)
+
+
+func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
+		crafting: Node, hud: Node) -> void:
 	if player.has_method("get_inventory"):
 		var inv = player.get_inventory()
 		if inv != null and hud.has_method("connect_inventory"):
 			hud.connect_inventory(inv)
-
-	# Connect catalog to HUD
 	if scanner != null and hud.has_method("connect_catalog"):
 		var cat = scanner.get_catalog()
 		if cat != null:
 			hud.connect_catalog(cat)
-
-	# Connect crafting to HUD
 	if crafting != null and hud.has_method("connect_crafting"):
 		var inv = player.get_inventory() if player.has_method("get_inventory") else null
 		if inv != null:
 			hud.connect_crafting(crafting, inv)
-
-	# Connect auto-interaction to HUD (floating text feedback)
 	if auto_interaction != null and hud.has_method("connect_auto_interaction"):
 		hud.connect_auto_interaction(auto_interaction)
 
-	# Setup fly-to-player visual effect
+
+func _wire_gather_feedback(player: Node, auto_interaction: Node) -> void:
 	if auto_interaction != null:
 		_fly_to_player = _FlyToPlayer.new()
 		_fly_to_player.setup(player)
 		$World.add_child(_fly_to_player)
 		auto_interaction.auto_gather_completed.connect(_on_gather_fly.bind(player))
-
-	# Setup sound hooks (gather ding + craft success)
 	_gather_sound = _GatherSound.new()
 	add_child(_gather_sound)
+	var hud: Node = $HUD/HUD
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
-	# Wire SurvivalSystem signals
-	var survival: Node = player.get_node_or_null("SurvivalSystem")
-	if survival != null:
-		# Stat bars wiring: SurvivalSystem.stat_changed → HUD.update_stat
-		survival.stat_changed.connect(hud.update_stat)
-		# GroundItemRenderer wiring
-		var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
-		if ground_renderer != null and ground_renderer.has_method("connect_survival"):
-			ground_renderer.connect_survival(survival)
-		# SaveManager: immediate save on critical events
-		survival.player_died.connect(SaveManager.save_now)
-		survival.player_respawned.connect(SaveManager.save_now)
 
-	# Wire DayNightCycle signals to HUD day counter
+func _wire_survival(player: Node, hud: Node) -> void:
+	var survival: Node = player.get_node_or_null("SurvivalSystem")
+	if survival == null:
+		return
+	survival.stat_changed.connect(hud.update_stat)
+	var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
+	if ground_renderer != null and ground_renderer.has_method("connect_survival"):
+		ground_renderer.connect_survival(survival)
+	survival.player_died.connect(SaveManager.save_now)
+	survival.player_respawned.connect(SaveManager.save_now)
+
+
+func _wire_day_night(hud: Node) -> void:
 	DayNightCycle.day_started.connect(func() -> void:
 		if is_instance_valid(hud):
 			hud.update_day(DayNightCycle.day_count)
@@ -98,7 +100,8 @@ func _wire_systems() -> void:
 		SaveManager.mark_dirty()
 	)
 
-	# Wire remaining state-change signals to SaveManager dirty flag
+
+func _wire_save_triggers(player: Node, crafting: Node) -> void:
 	if player.has_method("get_inventory"):
 		var save_inv = player.get_inventory()
 		if save_inv != null and save_inv.has_signal("inventory_changed"):

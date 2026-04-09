@@ -146,7 +146,7 @@ static func _eval_player_stat(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## player_skill — STUB (skill system doesn't exist yet).
 static func _eval_player_skill(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'player_skill' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'player_skill' predicate not yet implemented — should not be called in current data")
 	return false
 
 
@@ -184,7 +184,7 @@ static func _eval_time_of_day(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## weather — STUB (weather system doesn't exist yet).
 static func _eval_weather(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'weather' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'weather' predicate not yet implemented — should not be called in current data")
 	return false
 
 
@@ -281,7 +281,7 @@ static func _eval_world_flag(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## animal_nearby — STUB (FaunaManager doesn't exist yet).
 static func _eval_animal_nearby(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'animal_nearby' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'animal_nearby' predicate not yet implemented — should not be called in current data")
 	return false
 
 

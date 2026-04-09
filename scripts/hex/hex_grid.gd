@@ -57,6 +57,21 @@ signal structure_destroyed(coords: Vector2i, structure_type: StringName)
 
 # --- Tile queries ---
 
+## Returns the full tiles dictionary. Prefer get_tile() for single lookups.
+func get_all_tiles() -> Dictionary:
+	return _tiles
+
+
+## Returns true if a tile exists at the given coordinates.
+func has_tile(coords: Vector2i) -> bool:
+	return _tiles.has(coords)
+
+
+## Returns the total number of tiles in the grid.
+func get_tile_count() -> int:
+	return _tiles.size()
+
+
 func get_tile(coords: Vector2i) -> Resource:
 	return _tiles.get(coords, null)
 

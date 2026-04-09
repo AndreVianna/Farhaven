@@ -24,7 +24,8 @@ var _catalog: RefCounted = null
 func _ready() -> void:
 	if _registry == null:
 		_registry = _get_autoload(&"RecipeRegistry")
-	_populate_initial_known()
+	if _registry != null:
+		_populate_initial_known()
 	_connect_catalog_signal()
 
 
@@ -64,7 +65,7 @@ func load_save_data(data: Dictionary) -> void:
 
 ## Re-evaluate unlock_when for all unknown recipes.
 ## Called when external state changes (catalog, tool equip, etc.).
-func check_unlocks(ctx: WorldContext) -> void:
+func check_unlocks(ctx: _WorldContext) -> void:
 	if _registry == null:
 		return
 	var all_recipes: Array = _registry.get_all_recipes()
@@ -123,14 +124,14 @@ func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
 			grant_recipe(recipe.id)
 
 
-func _all_unlock_predicates_pass(recipe: _Recipe, ctx: WorldContext) -> bool:
+func _all_unlock_predicates_pass(recipe: _Recipe, ctx: _WorldContext) -> bool:
 	for pred in recipe.unlock_when:
 		if not _PredicateEvaluator.evaluate(pred, ctx):
 			return false
 	return true
 
 
-func _build_current_context() -> WorldContext:
+func _build_current_context() -> _WorldContext:
 	var ctx := _WorldContext.new()
 	if _catalog != null:
 		ctx.catalog = _catalog

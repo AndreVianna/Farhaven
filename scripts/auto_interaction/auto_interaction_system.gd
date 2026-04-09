@@ -123,6 +123,20 @@ func _process(delta: float) -> void:
 		_check_pickup_proximity()
 
 
+func _exit_tree() -> void:
+	if _gather_tween != null and _gather_tween.is_valid():
+		if _gather_tween.finished.is_connected(_on_gather_tween_complete):
+			_gather_tween.finished.disconnect(_on_gather_tween_complete)
+		_gather_tween.kill()
+		_gather_tween = null
+	if _grid != null:
+		if _grid.has_signal("tile_entered") and _grid.tile_entered.is_connected(_on_tile_entered):
+			_grid.tile_entered.disconnect(_on_tile_entered)
+	if _fauna_manager != null:
+		if _fauna_manager.has_signal("fauna_moved") and _fauna_manager.fauna_moved.is_connected(_on_fauna_moved):
+			_fauna_manager.fauna_moved.disconnect(_on_fauna_moved)
+
+
 func _connect_signals() -> void:
 	if _grid == null:
 		return
@@ -201,85 +215,90 @@ func _try_gather_nearby(center: Vector2i) -> bool:
 func _find_gather_candidates(center: Vector2i) -> Dictionary:
 	var candidates: Array = []
 	var tool_gated: Array = []
+	var player_pos_xz: Vector2 = _get_player_world_pos_xz()
 	var tiles_to_check: Array[Vector2i] = [center]
 	tiles_to_check.append_array(_grid.get_neighbors(center))
-
-	# Player world position on XZ plane
-	var player_pos_xz: Vector2 = Vector2.ZERO
-	if _player != null and "global_position" in _player:
-		player_pos_xz = Vector2(_player.global_position.x, _player.global_position.z)
-	elif _player != null and "position" in _player:
-		player_pos_xz = Vector2(_player.position.x, _player.position.z)
 
 	for tile_coords in tiles_to_check:
 		var tile = _grid.get_tile(tile_coords)
 		if tile == null:
 			continue
-
-		# Tile center in world space
-		var tile_center_2d: Vector2 = _grid.axial_to_world(tile_coords)
-
-		for i in tile.props.size():
-			var prop: Resource = tile.props[i]
-			# Use origin check instead of deprecated is_natural_category()
-			if prop.origin != Prop.Origin.NATURAL:
-				continue
-			if prop.remaining <= 0:
-				continue  # Depleted
-
-			# Compute world-space position of this prop
-			var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
-			var prop_pos_xz: Vector2 = Vector2(
-				tile_center_2d.x + sub_hex_offset.x,
-				tile_center_2d.y + sub_hex_offset.y
-			)
-
-			# World-space distance on XZ plane
-			var world_dist: float = player_pos_xz.distance_to(prop_pos_xz)
-			if world_dist > GATHER_RADIUS:
-				continue  # Out of arm's reach
-
-			# --- Recipe-based filtering ---
-			var matched_recipe: Resource = _find_gather_recipe(prop, tile, tile_coords)
-			if matched_recipe == null:
-				# Fallback: use legacy catalog gate if no recipe system
-				if not _try_legacy_catalog_gate(prop, candidates, tool_gated, tile_coords, i, world_dist):
-					continue
-			else:
-				# Check if recipe conditions pass (handles tool gating)
-				var ctx: _WorldContext = _build_context(tile, tile_coords)
-				var conditions_pass := true
-				var tool_blocked := false
-				for cond in matched_recipe.conditions:
-					if cond.predicate != null:
-						if not _PredicateEvaluator.evaluate(cond.predicate, ctx):
-							conditions_pass = false
-							# Check if it was a has_tool predicate that failed
-							if cond.predicate.kind == &"has_tool":
-								tool_blocked = true
-							break
-
-				if not conditions_pass:
-					if tool_blocked:
-						tool_gated.append({
-							"coords": tile_coords,
-							"prop_index": i,
-							"node": prop,
-							"distance": world_dist,
-						})
-					continue
-
-				var priority: int = _get_recipe_priority(matched_recipe)
-				candidates.append({
-					"coords": tile_coords,
-					"prop_index": i,
-					"node": prop,
-					"priority": priority,
-					"distance": world_dist,
-					"recipe": matched_recipe,
-				})
+		_scan_tile_for_candidates(tile, tile_coords, player_pos_xz, candidates, tool_gated)
 
 	return {"candidates": candidates, "tool_gated": tool_gated}
+
+
+## Returns the player's world-space position on the XZ plane.
+func _get_player_world_pos_xz() -> Vector2:
+	if _player != null and "global_position" in _player:
+		return Vector2(_player.global_position.x, _player.global_position.z)
+	elif _player != null and "position" in _player:
+		return Vector2(_player.position.x, _player.position.z)
+	return Vector2.ZERO
+
+
+## Scan a single tile's props for gather candidates within GATHER_RADIUS.
+func _scan_tile_for_candidates(tile: Resource, tile_coords: Vector2i,
+		player_pos_xz: Vector2, candidates: Array, tool_gated: Array) -> void:
+	var tile_center_2d: Vector2 = _grid.axial_to_world(tile_coords)
+
+	for i in tile.props.size():
+		var prop: Resource = tile.props[i]
+		if prop.origin != Prop.Origin.NATURAL:
+			continue
+		if prop.remaining <= 0:
+			continue
+
+		var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(prop.sub_hex)
+		var prop_pos_xz: Vector2 = Vector2(
+			tile_center_2d.x + sub_hex_offset.x,
+			tile_center_2d.y + sub_hex_offset.y
+		)
+		var world_dist: float = player_pos_xz.distance_to(prop_pos_xz)
+		if world_dist > GATHER_RADIUS:
+			continue
+
+		_evaluate_prop_candidate(prop, tile, tile_coords, i, world_dist, candidates, tool_gated)
+
+
+## Evaluate a single prop against recipe system or legacy catalog gate.
+func _evaluate_prop_candidate(prop: Resource, tile: Resource, tile_coords: Vector2i,
+		prop_index: int, world_dist: float, candidates: Array, tool_gated: Array) -> void:
+	var matched_recipe: Resource = _find_gather_recipe(prop, tile, tile_coords)
+	if matched_recipe == null:
+		_try_legacy_catalog_gate(prop, candidates, tool_gated, tile_coords, prop_index, world_dist)
+		return
+
+	var ctx: _WorldContext = _build_context(tile, tile_coords)
+	var conditions_pass := true
+	var tool_blocked := false
+	for cond in matched_recipe.conditions:
+		if cond.predicate != null:
+			if not _PredicateEvaluator.evaluate(cond.predicate, ctx):
+				conditions_pass = false
+				if cond.predicate.kind == &"has_tool":
+					tool_blocked = true
+				break
+
+	if not conditions_pass:
+		if tool_blocked:
+			tool_gated.append({
+				"coords": tile_coords,
+				"prop_index": prop_index,
+				"node": prop,
+				"distance": world_dist,
+			})
+		return
+
+	var priority: int = _get_recipe_priority(matched_recipe)
+	candidates.append({
+		"coords": tile_coords,
+		"prop_index": prop_index,
+		"node": prop,
+		"priority": priority,
+		"distance": world_dist,
+		"recipe": matched_recipe,
+	})
 
 
 ## Find a matching gather recipe for the given prop.
@@ -365,11 +384,13 @@ func _begin_gather(coords: Vector2i, prop_index: int, node: Resource, recipe: Re
 		effective_time = recipe.time
 	else:
 		# Legacy fallback: use PropDef gather_time + tool speed
-		var base_time: float = PropRegistry.get_def(node.type).gather_time if PropRegistry.has_def(node.type) else 1.0
-		var tool_slot: StringName = node.tool_required
-		var equipped: StringName = _inventory.get_tool(tool_slot) if tool_slot != &"" else &""
-		var multiplier: float = PropRegistry.get_tool_speed(node.type, equipped)
-		effective_time = base_time * multiplier
+		if PropRegistry.has_def(node.type):
+			var def = PropRegistry.get_def(node.type)
+			var base_time: float = def.gather_time
+			var tool_slot: StringName = node.tool_required
+			var equipped: StringName = _inventory.get_tool(tool_slot) if tool_slot != &"" else &""
+			var multiplier: float = PropRegistry.get_tool_speed(node.type, equipped)
+			effective_time = base_time * multiplier
 
 	auto_gather_started.emit(coords, node.type)
 

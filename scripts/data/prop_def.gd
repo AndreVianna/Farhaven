@@ -28,9 +28,9 @@ class_name PropDef extends Resource
 # --- Placement ---
 ## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
 @export var origin: int = 0
-## DEPRECATED: use placeable.footprint instead. Kept for backward compat.
+## DEPRECATED in task-053: use placeable.footprint instead. Kept for backward compat.
 ## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
-@export var footprint: Array[Vector2i] = []
+@export var footprint: Array[Vector2i] = []  # DEPRECATED: use placeable.footprint
 
 # --- Tool ---
 ## Tool slot this item occupies when equipped (e.g. "axe", "pickaxe", "weapon", "scanner").
@@ -38,32 +38,29 @@ class_name PropDef extends Resource
 @export var tool_slot: StringName = &""
 
 # --- Gathering (DEPRECATED — replaced by Recipe system; kept for legacy fallback) ---
-@export var gather_time: float = 1.0
-@export var gather_amount: int = 1
-@export var tool_required: StringName = &""
-@export var respawn_time: float = 30.0
-@export var yield_type: StringName = &""
-@export var tool_speed: Dictionary = {}
+# DEPRECATED in task-053: remove when legacy gather fallback in AutoInteractionSystem is removed.
+@export var gather_time: float = 1.0   # DEPRECATED: use Recipe.time
+@export var gather_amount: int = 1     # DEPRECATED: use RecipeOutput.count
+@export var tool_required: StringName = &""  # DEPRECATED: use Recipe condition has_tool
+@export var respawn_time: float = 30.0  # DEPRECATED: use Recipe system
+@export var yield_type: StringName = &""  # DEPRECATED: use RecipeOutput.prop_ref
+@export var tool_speed: Dictionary = {}  # DEPRECATED: use Recipe.time per tool
 
 # --- Consumable (DEPRECATED — replaced by eat_*/drink_* recipes; kept for legacy fallback) ---
-@export var is_consumable: bool = false
-@export var hunger_restore: float = 0.0
-@export var thirst_restore: float = 0.0
-@export var health_restore: float = 0.0
+# DEPRECATED in task-053: remove when eat_*/drink_* recipes fully replace consumable fields.
+@export var is_consumable: bool = false   # DEPRECATED: use Recipe with stat_delta effect
+@export var hunger_restore: float = 0.0   # DEPRECATED: use stat_delta effect params
+@export var thirst_restore: float = 0.0   # DEPRECATED: use stat_delta effect params
+@export var health_restore: float = 0.0   # DEPRECATED: use stat_delta effect params
 
 # --- Legacy fields (DEPRECATED — replaced by capabilities/tags; kept for backward compat) ---
-## Loose typology ("prop"/"resource"/"consumable"/"structure"/"tool") — replaced by capabilities + tags.
-@export var category: StringName = &"prop"
-## Prop.Category enum index (0=Plant..9=Storage) — replaced by capabilities.
-@export var prop_category: int = 0
-## Whether this prop emits light — replaced by LightCap capability.
-@export var emits_light: bool = false
-## Light radius — replaced by LightCap.radius.
-@export var light_radius: int = 0
-## Whether this prop is a respawn point — replaced by STATION capability with "respawn" tag.
-@export var is_respawn_point: bool = false
-## Whether this prop is a crafting station — replaced by STATION capability with "craft" tag.
-@export var is_crafting_station: bool = false
+# DEPRECATED in task-053: remove when all callers migrate to capabilities/tags.
+@export var category: StringName = &"prop"  # DEPRECATED: use capabilities + tags
+@export var prop_category: int = 0  # DEPRECATED: use capabilities
+@export var emits_light: bool = false  # DEPRECATED: use light != null (LightCap)
+@export var light_radius: int = 0  # DEPRECATED: use light.radius (LightCap)
+@export var is_respawn_point: bool = false  # DEPRECATED: use station cap with "respawn" tag
+@export var is_crafting_station: bool = false  # DEPRECATED: use station cap with "craft" tag
 
 # --- Visual: Real assets (override placeholders when set) ---
 @export var mesh: Mesh

@@ -165,16 +165,33 @@ func _resolve(pending: PendingRecipe) -> void:
 
 
 func _deliver_output(output: _RecipeOutput, pending: PendingRecipe) -> void:
-	# Default delivery: add to player inventory.
-	# Future: use input source to decide (world_tile → spawn on tile, container → add to container).
 	var ctx := pending.context
+	# 1. Try player inventory first.
 	if ctx.player != null:
 		var inv = _get_player_inventory(ctx.player)
 		if inv != null:
-			inv.add_item(output.prop_ref, output.count)
+			var added: int = inv.add_item(output.prop_ref, output.count)
+			if added >= output.count:
+				return
+			# Partial add — remaining overflow below.
+			var remaining: int = output.count - added
+			# 2. Try world_tile: spawn remaining on tile.
+			if ctx.tile != null:
+				var _Prop = preload("res://scripts/hex/prop.gd")
+				for _j in remaining:
+					ctx.tile.props.append(_Prop.create_prop(output.prop_ref, 1, 1))
+				return
+			# 3. Overflow — emit signal for other systems to handle.
+			push_warning("RecipeRuntime: could not deliver %d × %s — inventory full, no tile context" % [remaining, output.prop_ref])
 			return
+	# No player — try world tile directly.
+	if ctx.tile != null:
+		var _Prop = preload("res://scripts/hex/prop.gd")
+		for _j in output.count:
+			ctx.tile.props.append(_Prop.create_prop(output.prop_ref, 1, 1))
+		return
 	# Fallback: emit signal for other systems to handle output placement.
-	# This covers world_tile spawning when player/inventory isn't available.
+	push_warning("RecipeRuntime: could not deliver %d × %s — no player or tile" % [output.count, output.prop_ref])
 
 
 func _apply_effect(eff: _RecipeEffect, pending: PendingRecipe) -> void:
@@ -233,6 +250,8 @@ func _consume_inputs(recipe: _Recipe, ctx: _WorldContext, out_bound: Array) -> b
 
 
 func _consume_single_input(input: _RecipeInput, ctx: _WorldContext) -> bool:
+	assert(input.source in [&"player_inventory", &"world_tile", &"container", &"world_anywhere"],
+		"RecipeRuntime: unknown input source '%s' — must be one of: player_inventory, world_tile, container, world_anywhere" % input.source)
 	match input.source:
 		&"player_inventory":
 			return _consume_from_inventory(input, ctx)
@@ -241,7 +260,7 @@ func _consume_single_input(input: _RecipeInput, ctx: _WorldContext) -> bool:
 		&"container":
 			return _consume_from_container(input, ctx)
 		_:
-			# world_anywhere and others: not yet implemented.
+			# world_anywhere: not yet implemented.
 			push_warning("RecipeRuntime: unsupported input source '%s'" % input.source)
 			return false
 

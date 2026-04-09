@@ -91,22 +91,29 @@ func scan_existing_lights() -> void:
 	_structure_lights.clear()
 	if _grid == null or _registry == null:
 		return
-	var tiles: Dictionary = _grid._tiles if "_tiles" in _grid else {}
+	var tiles: Dictionary = _grid.get_all_tiles() if _grid.has_method("get_all_tiles") else {}
+	if tiles.is_empty():
+		return
 	for coords: Vector2i in tiles:
 		var tile: Resource = tiles[coords]
 		if tile == null:
 			continue
 		for prop in tile.props:
 			var def = _registry.get_def(prop.type) if _registry.has_method("get_def") else null
-			if def != null and def.emits_light:
-				var world_pos: Vector2 = HexMath.axial_to_world(coords)
-				var radius: float = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
-				var key: String = "%s:%s" % [str(coords), str(prop.type)]
-				_structure_lights[key] = {
-					"position": world_pos,
-					"radius": radius,
-					"color": DEFAULT_LIGHT_COLOR,
-				}
+			if def == null:
+				continue
+			if def.light == null:
+				continue
+			var world_pos: Vector2 = HexMath.axial_to_world(coords)
+			var radius: float = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
+			var sub_hex: Vector2i = prop.sub_hex if "sub_hex" in prop else Vector2i.ZERO
+			var key: String = "%s:%s:%s" % [str(coords), str(prop.type), str(sub_hex)]
+			var color: Color = def.light.color if def.light.color != Color() else DEFAULT_LIGHT_COLOR
+			_structure_lights[key] = {
+				"position": world_pos,
+				"radius": radius,
+				"color": color,
+			}
 
 
 ## Manually register a light source (for testing or dynamic lights).
@@ -172,7 +179,7 @@ func _update_torch_from_player(player: Node) -> void:
 	if inv == null:
 		_clear_player_light_internal()
 		return
-	# Check all tool slots for an item with emits_light
+	# Check all tool slots for an item with light capability
 	var found_light: bool = false
 	var light_radius: float = 3.0 * RING_TO_WORLD
 	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner", &"firestarter"]:
@@ -180,9 +187,9 @@ func _update_torch_from_player(player: Node) -> void:
 		if tool_id == &"":
 			continue
 		var def: _PropDef = _registry.get_def(tool_id) if _registry else null
-		if def != null and def.emits_light:
+		if def != null and def.light != null:
 			found_light = true
-			light_radius = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
+			light_radius = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
 			break
 	if found_light:
 		_player_light = {
@@ -198,15 +205,16 @@ func _update_torch_from_player(player: Node) -> void:
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	var def: _PropDef = _registry.get_def(structure_type) if _registry else null
-	if def == null or not def.emits_light:
+	if def == null or def.light == null:
 		return
 	var world_pos: Vector2 = HexMath.axial_to_world(coords)
-	var radius: float = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
+	var radius: float = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
+	var color: Color = def.light.color if def.light.color != Color() else DEFAULT_LIGHT_COLOR
 	var key: String = "%s:%s" % [str(coords), str(structure_type)]
 	_structure_lights[key] = {
 		"position": world_pos,
 		"radius": radius,
-		"color": DEFAULT_LIGHT_COLOR,
+		"color": color,
 	}
 	light_source_registered.emit(world_pos, radius)
 
