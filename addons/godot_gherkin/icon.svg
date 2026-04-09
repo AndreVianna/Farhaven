@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- GG Icon for GodotGherkin - Cucumber themed -->
+
+  <!-- First G - Left -->
+  <path d="M8 16 C8 8, 18 8, 24 8 C30 8, 32 12, 32 16 L26 16 C26 14, 24 12, 22 12 C18 12, 14 12, 14 16 L14 40 C14 44, 18 48, 22 48 C26 48, 28 46, 28 42 L28 36 L22 36 L22 30 L34 30 L34 44 C34 52, 26 56, 20 56 C12 56, 8 50, 8 44 Z" fill="#7CB342"/>
+  <!-- Dots on first G -->
+  <circle cx="12" cy="22" r="2" fill="#558B2F"/>
+  <circle cx="30" cy="32" r="2" fill="#558B2F"/>
+  <circle cx="12" cy="42" r="2" fill="#558B2F"/>
+  <circle cx="28" cy="46" r="1.5" fill="#558B2F"/>
+
+  <!-- Second G - Right -->
+  <path d="M36 16 C36 8, 46 8, 52 8 C58 8, 60 12, 60 16 L54 16 C54 14, 52 12, 50 12 C46 12, 42 12, 42 16 L42 40 C42 44, 46 48, 50 48 C54 48, 56 46, 56 42 L56 36 L50 36 L50 30 L62 30 L62 44 C62 52, 54 56, 48 56 C40 56, 36 50, 36 44 Z" fill="#7CB342"/>
+  <!-- Dots on second G -->
+  <circle cx="40" cy="22" r="2" fill="#558B2F"/>
+  <circle cx="58" cy="32" r="2" fill="#558B2F"/>
+  <circle cx="40" cy="42" r="2" fill="#558B2F"/>
+  <circle cx="56" cy="46" r="1.5" fill="#558B2F"/>
+</svg>
