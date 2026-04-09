@@ -25,7 +25,9 @@ func _ready() -> void:
 	# fires before ours, and they use call_deferred for signal wiring).
 	_bootstrap_visible_tiles.call_deferred()
 	# Scan existing light-emitting props after load (structure_placed doesn't fire on load).
+	# Also re-check player torch (scanner has emits_light — doesn't activate until tile_entered).
 	LightingManager.scan_existing_lights.call_deferred()
+	LightingManager.update_player_torch.call_deferred()
 
 
 func _wire_systems() -> void:
