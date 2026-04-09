@@ -132,9 +132,8 @@ func _exit_tree() -> void:
 	if _grid != null:
 		if _grid.has_signal("tile_entered") and _grid.tile_entered.is_connected(_on_tile_entered):
 			_grid.tile_entered.disconnect(_on_tile_entered)
-	if _fauna_manager != null:
-		if _fauna_manager.has_signal("fauna_moved") and _fauna_manager.fauna_moved.is_connected(_on_fauna_moved):
-			_fauna_manager.fauna_moved.disconnect(_on_fauna_moved)
+	# Note: fauna_moved connection uses a lambda, disconnected automatically on free.
+	# No manual disconnect needed.
 
 
 func _connect_signals() -> void:
@@ -498,15 +497,23 @@ var _fauna_manager: Node = null
 
 
 ## Attempt to connect to FaunaManager.fauna_moved signal.
-## If FaunaManager is not available, this is a no-op.
+## FaunaManager is a sibling node (child of Player).
+## If not available at _ready time, main.gd wires the connection instead.
 func _connect_fauna_manager() -> void:
-	var fm: Node = get_node_or_null("/root/FaunaManager")
+	if _player == null:
+		return
+	var fm: Node = _player.get_node_or_null("FaunaManager")
 	if fm == null:
 		return
 	if not fm.has_signal("fauna_moved"):
 		return
 	_fauna_manager = fm
-	fm.fauna_moved.connect(_on_fauna_moved)
+	# fauna_moved signal has 4 args: (id, old_coords, new_coords, species_type)
+	# Wrap to match our 2-arg handler.
+	fm.fauna_moved.connect(
+		func(id: int, _old: Vector2i, new_c: Vector2i, _sp: StringName) -> void:
+			_on_fauna_moved(id, new_c)
+	)
 
 
 ## Called when fauna moves. Checks adjacent tiles for cataloged hostile fauna,

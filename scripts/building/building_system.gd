@@ -24,6 +24,10 @@ var _selected_recipe: _Recipe = null
 ## Injectable dependencies for testing.
 var _grid: Node = null
 var _runtime: Node = null
+## Injectable renderer reference for highlights (scene node, not autoload).
+var _renderer: Node = null
+## Injectable HUD reference for placement label.
+var _hud: Node = null
 
 ## Pending build info: recipe_id → {coords, sub_hex}.
 ## Tracks where each in-flight build recipe should place its output.
@@ -35,7 +39,14 @@ func _ready() -> void:
 		_grid = _get_autoload(&"HexGrid")
 	if _runtime == null:
 		_runtime = _get_autoload(&"RecipeRuntime")
+	if _renderer == null:
+		_renderer = _find_renderer()
+	if _hud == null:
+		_hud = _find_hud()
 	_connect_runtime()
+	_connect_tile_entered()
+	# Use lowest process_priority so _unhandled_input runs first during placement.
+	process_priority = -100
 
 
 func _connect_runtime() -> void:
@@ -44,15 +55,25 @@ func _connect_runtime() -> void:
 			_runtime.recipe_resolved.connect(_on_recipe_resolved)
 
 
+func _connect_tile_entered() -> void:
+	if _grid != null and _grid.has_signal("tile_entered"):
+		if not _grid.is_connected("tile_entered", _on_tile_entered):
+			_grid.tile_entered.connect(_on_tile_entered)
+
+
 ## Enter placement mode with a build recipe.
 func enter_placement_mode(recipe: _Recipe) -> void:
 	_selected_recipe = recipe
 	placement_mode_entered.emit(recipe.id)
+	_update_highlights()
+	_show_placement_label(recipe)
 
 
 ## Exit placement mode without building.
 func exit_placement_mode() -> void:
 	_selected_recipe = null
+	_clear_highlights()
+	_hide_placement_label()
 	placement_mode_exited.emit()
 
 
@@ -193,6 +214,150 @@ func _on_recipe_resolved(recipe_id: StringName, outputs: Array, _effects: Array)
 
 
 # ---------------------------------------------------------------------------
+# Input handling — claims all taps during placement mode
+# ---------------------------------------------------------------------------
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _selected_recipe == null:
+		return
+	if not (event is InputEventScreenTouch):
+		return
+	var touch := event as InputEventScreenTouch
+	if not touch.pressed:
+		return
+	# Claim the input so it doesn't fall through to scanner/movement.
+	get_viewport().set_input_as_handled()
+	# Convert screen position to tile coords.
+	var coords: Vector2i = _screen_to_axial(touch.position)
+	if _is_valid_placement_tile(coords):
+		try_place_at(coords, Vector2i.ZERO)
+	else:
+		# Tap on non-valid tile → cancel placement, no materials consumed.
+		exit_placement_mode()
+
+
+func _screen_to_axial(screen_pos: Vector2) -> Vector2i:
+	var camera: Camera3D = _find_camera()
+	if camera == null:
+		return Vector2i.ZERO
+	var ray_origin: Vector3 = camera.project_ray_origin(screen_pos)
+	var ray_dir: Vector3 = camera.project_ray_normal(screen_pos)
+	if abs(ray_dir.y) < 0.0001:
+		return Vector2i.ZERO
+	var t: float = -ray_origin.y / ray_dir.y
+	var world_3d: Vector3 = ray_origin + ray_dir * t
+	if _grid != null and _grid.has_method("world_to_axial"):
+		return _grid.world_to_axial(Vector2(world_3d.x, world_3d.z))
+	return Vector2i.ZERO
+
+
+func _find_camera() -> Camera3D:
+	# Walk up to World, then find Camera3D sibling.
+	var player: Node = get_parent()
+	if player == null:
+		return null
+	var world: Node = player.get_parent()
+	if world == null:
+		return null
+	return world.get_node_or_null("Camera3D") as Camera3D
+
+
+# ---------------------------------------------------------------------------
+# Highlight management
+# ---------------------------------------------------------------------------
+
+
+## Recalculate and display highlights for valid adjacent placement tiles.
+func _update_highlights() -> void:
+	if _selected_recipe == null:
+		return
+	var valid_tiles: Array[Vector2i] = get_valid_placement_tiles()
+	if _renderer != null and _renderer.has_method("highlight_tiles"):
+		_renderer.highlight_tiles(valid_tiles, Color.CYAN)
+
+
+## Clear all placement highlights.
+func _clear_highlights() -> void:
+	if _renderer != null and _renderer.has_method("clear_highlights"):
+		_renderer.clear_highlights()
+
+
+## Called when the player enters a new tile — recalculate highlights if placing.
+func _on_tile_entered(_coords: Vector2i) -> void:
+	if _selected_recipe != null:
+		_update_highlights()
+
+
+## Returns the list of valid tiles for placement (adjacent to player, passable,
+## not water, not blocked by existing props in footprint).
+func get_valid_placement_tiles() -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if _grid == null:
+		return result
+	var player: Node = get_parent()
+	if player == null or not ("current_tile" in player):
+		return result
+	var player_coords: Vector2i = player.current_tile
+	var neighbors: Array[Vector2i] = _grid.get_neighbors(player_coords)
+	for n: Vector2i in neighbors:
+		if _is_valid_placement_tile(n):
+			result.append(n)
+	return result
+
+
+## Check if a tile is valid for placement: exists, passable, not water.
+func _is_valid_placement_tile(coords: Vector2i) -> bool:
+	if _grid == null:
+		return false
+	var player: Node = get_parent()
+	if player == null or not ("current_tile" in player):
+		return false
+	# Must be adjacent to player.
+	var player_coords: Vector2i = player.current_tile
+	var neighbors: Array[Vector2i] = _grid.get_neighbors(player_coords)
+	if not neighbors.has(coords):
+		return false
+	var tile: Resource = _grid.get_tile(coords)
+	if tile == null:
+		return false
+	# Not water.
+	if tile.biome == _HexTile.Biome.WATER:
+		return false
+	# Must be passable from player tile (walkable terrain).
+	if _grid.has_method("get_traversal"):
+		var traversal: int = _grid.get_traversal(player_coords, coords)
+		if traversal == 3:  # BLOCKED
+			return false
+	return true
+
+
+# ---------------------------------------------------------------------------
+# HUD placement label
+# ---------------------------------------------------------------------------
+
+
+func _show_placement_label(recipe: _Recipe) -> void:
+	if _hud != null and _hud.has_method("show_placement_label"):
+		var output_type: StringName = _get_recipe_output_type(recipe)
+		_hud.show_placement_label(output_type)
+
+
+func _hide_placement_label() -> void:
+	if _hud != null and _hud.has_method("hide_placement_label"):
+		_hud.hide_placement_label()
+
+
+func _get_recipe_output_type(recipe: _Recipe) -> StringName:
+	if recipe == null:
+		return &""
+	for output in recipe.outputs:
+		if output.prop_ref != &"":
+			return output.prop_ref
+	return &""
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -236,6 +401,25 @@ func _get_player_inventory(player: Node):
 	if "inventory" in player:
 		return player.inventory
 	return null
+
+
+func _find_renderer() -> Node:
+	# HexGridRenderer is a scene node at World/HexGridRenderer.
+	var player: Node = get_parent()
+	if player == null:
+		return null
+	var world: Node = player.get_parent()
+	if world == null:
+		return null
+	return world.get_node_or_null("HexGridRenderer")
+
+
+func _find_hud() -> Node:
+	# HUD is at Main/HUD/HUD.
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null("Main/HUD/HUD")
 
 
 func _get_autoload(p_name: StringName) -> Node:

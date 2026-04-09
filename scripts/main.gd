@@ -44,6 +44,7 @@ func _wire_systems() -> void:
 	_wire_survival(player, hud)
 	_wire_day_night(hud)
 	_wire_save_triggers(player, crafting)
+	_wire_fauna(player, scanner, auto_interaction)
 
 
 func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
@@ -108,6 +109,61 @@ func _wire_save_triggers(player: Node, crafting: Node) -> void:
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
+
+
+func _wire_fauna(player: Node, scanner: Node, auto_interaction: Node) -> void:
+	var fauna_mgr: Node = player.get_node_or_null("FaunaManager")
+	if fauna_mgr == null:
+		return
+
+	# fauna_attacked_player → SurvivalSystem.take_damage(damage)
+	var survival: Node = player.get_node_or_null("SurvivalSystem")
+	if survival != null and survival.has_method("take_damage"):
+		fauna_mgr.fauna_attacked_player.connect(
+			func(_id: int, damage: int, _species: StringName) -> void:
+				survival.take_damage(damage)
+		)
+
+	# fauna_attacked_player → ScannerSystem surprise encounter (UNKNOWN → ENCOUNTERED)
+	if scanner != null and scanner.has_method("on_fauna_attacked_player"):
+		fauna_mgr.fauna_attacked_player.connect(scanner.on_fauna_attacked_player)
+
+	# fauna_attacked_player → ScreenFade.flash(red)
+	var screen_fade: Node = get_node_or_null("ScreenFade")
+	if screen_fade != null and screen_fade.has_method("flash"):
+		fauna_mgr.fauna_attacked_player.connect(
+			func(_id: int, damage: int, _species: StringName) -> void:
+				if damage > 0:
+					screen_fade.flash(Color.RED)
+		)
+
+	# fauna_killed → breakdown recipe flow handled by FaunaManager itself
+	# (FaunaManager._on_fauna_death places corpse prop → RecipeRuntime auto-fires)
+	# No additional wiring needed here.
+
+	# fauna_moved → AutoInteractionSystem auto-defend adjacency check
+	# AutoInteractionSystem._on_fauna_moved expects (fauna_id, new_coords) but
+	# FaunaManager.fauna_moved emits (id, old_coords, new_coords, species_type).
+	# Wire with a lambda adapter.
+	if auto_interaction != null and auto_interaction.has_method("on_fauna_moved_for_defend"):
+		fauna_mgr.fauna_moved.connect(auto_interaction.on_fauna_moved_for_defend)
+	elif auto_interaction != null:
+		# Wire FaunaManager reference so auto-defend can query fauna data
+		if "_fauna_manager" in auto_interaction:
+			auto_interaction._fauna_manager = fauna_mgr
+		fauna_mgr.fauna_moved.connect(
+			func(id: int, _old: Vector2i, new_c: Vector2i, _sp: StringName) -> void:
+				if auto_interaction.has_method("_on_fauna_moved"):
+					auto_interaction._on_fauna_moved(id, new_c)
+		)
+
+	# fauna_spawned → PropLabelRenderer for knowledge state markers
+	# Deferred: PropLabelRenderer needs a label update API for fauna.
+	# When available, wire fauna_mgr.fauna_spawned → label_renderer.on_fauna_spawned
+
+	# auto_defend_triggered → FaunaManager.apply_damage
+	if auto_interaction != null and fauna_mgr.has_method("apply_damage"):
+		auto_interaction.auto_defend_triggered.connect(fauna_mgr.apply_damage)
 
 
 func _apply_starting_loadout() -> void:

@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/auto_interaction/auto_interaction_system.gd" id="4_auto"]
 [ext_resource type="Script" path="res://scripts/crafting/crafting_system.gd" id="5_crafting"]
 [ext_resource type="Script" path="res://scripts/survival/survival_system.gd" id="6_survival"]
+[ext_resource type="Script" path="res://scripts/fauna/fauna_manager.gd" id="7_fauna"]
 
 [sub_resource type="StandardMaterial3D" id="suit_mat"]
 albedo_color = Color(0.35, 0.45, 0.55, 1.0)
@@ -86,3 +87,6 @@ script = ExtResource("5_crafting")
 
 [node name="SurvivalSystem" type="Node" parent="."]
 script = ExtResource("6_survival")
+
+[node name="FaunaManager" type="Node" parent="."]
+script = ExtResource("7_fauna")
