@@ -29,11 +29,12 @@ var capacity_weight: float = 50.0
 var _current_weight: float = 0.0
 
 ## Tool slots store PropDef ids (numeric, e.g. &"00204" for survival_knife).
+## Defaults are empty — starting tools are applied from map's starting_loadout.
 var _tool_slots: Dictionary = {
 	&"axe":      &"",
 	&"pickaxe":  &"",
-	&"weapon":   &"00204",  # survival_knife
-	&"scanner":  &"00205",  # scanner
+	&"weapon":   &"",
+	&"scanner":  &"",
 }
 
 

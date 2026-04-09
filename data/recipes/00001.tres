@@ -27,7 +27,8 @@ params = { "prop": "00020" }
 
 [resource]
 script = ExtResource("1_recipe")
-id = &"eat_berry"
+id = &"00001"
+display_name = "Eat Berry"
 kind = 1
 inputs = [SubResource("input_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]

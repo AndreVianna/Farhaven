@@ -4,8 +4,11 @@ extends Resource
 ## Declarative classification for UI grouping and runtime filtering.
 enum Kind { ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE }
 
-## Unique identifier, e.g. &"eat_berry", &"chop_small_tree".
+## Unique identifier, e.g. &"00001", &"00003".
 @export var id: StringName
+
+## Human-readable name shown in UI, e.g. "Eat Berry", "Chop Small Tree".
+@export var display_name: String = ""
 
 ## Recipe kind — Assemble, Transform, Breakdown, or Combine.
 @export var kind: Kind

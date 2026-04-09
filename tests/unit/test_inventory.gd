@@ -58,12 +58,14 @@ func test_starting_weight_display() -> void:
 	assert_str(_inv.get_weight_display()).is_equal("0.0 / 50.0")
 
 
-func test_starting_tool_weapon_survival_knife() -> void:
-	assert_object(_inv.get_tool(&"weapon")).is_equal(ID_KNIFE)
+func test_starting_tool_weapon_empty() -> void:
+	# Starting tools are now applied from map's starting_loadout, not hardcoded.
+	assert_object(_inv.get_tool(&"weapon")).is_equal(&"")
 
 
-func test_starting_tool_scanner() -> void:
-	assert_object(_inv.get_tool(&"scanner")).is_equal(ID_SCANNER)
+func test_starting_tool_scanner_empty() -> void:
+	# Starting tools are now applied from map's starting_loadout, not hardcoded.
+	assert_object(_inv.get_tool(&"scanner")).is_equal(&"")
 
 
 func test_starting_tool_axe_empty() -> void:
@@ -511,6 +513,7 @@ func test_use_item_decreases_weight() -> void:
 # --- Tool slots ---
 
 func test_get_tool_returns_current() -> void:
+	_inv.set_tool(&"weapon", ID_KNIFE)
 	assert_object(_inv.get_tool(&"weapon")).is_equal(ID_KNIFE)
 
 
@@ -532,6 +535,7 @@ func test_set_tool_replaces_existing() -> void:
 
 
 func test_has_tool_for_true_when_set() -> void:
+	_inv.set_tool(&"weapon", ID_KNIFE)
 	assert_bool(_inv.has_tool_for(&"weapon")).is_true()
 
 
@@ -602,6 +606,8 @@ func test_save_load_round_trip_slots() -> void:
 
 func test_save_load_round_trip_tools() -> void:
 	_inv.set_tool(&"axe", ID_AXE)
+	_inv.set_tool(&"weapon", ID_KNIFE)
+	_inv.set_tool(&"scanner", ID_SCANNER)
 	var data: Dictionary = _inv.get_save_data()
 	var inv2: _Inventory = _Inventory.new()
 	inv2.load_save_data(data)

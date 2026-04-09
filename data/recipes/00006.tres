@@ -8,14 +8,14 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"00003"
+ref_or_tag = &"00004"
 count = 1
 source = &"world_tile"
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
-prop_ref = &"00012"
-count = 1
+prop_ref = &"00020"
+count = 2
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("4_effect")
@@ -25,11 +25,12 @@ params = { "sound_id": "gather" }
 [sub_resource type="Resource" id="unlock_pred_1"]
 script = ExtResource("5_predicate")
 kind = &"cataloged"
-params = { "prop": "fiber_grass" }
+params = { "prop": "berry_bush" }
 
 [resource]
 script = ExtResource("1_recipe")
-id = &"gather_tall_grass"
+id = &"00006"
+display_name = "Gather Berry Bush"
 kind = 2
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]

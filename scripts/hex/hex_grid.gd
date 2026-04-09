@@ -42,6 +42,8 @@ var spawn_tile: Vector2i = Vector2i.ZERO
 var spawn_sub_hex: Vector2i = Vector2i.ZERO
 ## Spawn facing direction in degrees (canvas convention: 0=up/north, 90=east).
 var spawn_facing_deg: float = 0.0
+## Starting loadout for fresh game (tools, inventory). Parsed from map JSON.
+var starting_loadout: Dictionary = {}
 
 # --- Signals ---
 signal map_generated()

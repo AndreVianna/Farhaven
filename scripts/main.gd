@@ -12,6 +12,10 @@ var _gather_sound: Node = null
 func _ready() -> void:
 	_wire_systems()
 	HexGrid.load_map("res://data/maps/ch1.json")
+	# Apply starting loadout for fresh game (no save file yet).
+	# Must run BEFORE save load so save data can override defaults.
+	if not SaveManager.has_save():
+		_apply_starting_loadout()
 	# Auto-load save if exists (cold resume).
 	# Deferred so all systems are fully ready before loading state.
 	# MUST run before bootstrap so renderers reflect loaded state (catalog, props).
@@ -95,6 +99,22 @@ func _wire_systems() -> void:
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
+
+
+func _apply_starting_loadout() -> void:
+	var loadout: Dictionary = HexGrid.starting_loadout
+	if loadout.is_empty():
+		return
+	var player: Node = $World/Player
+	var inv = player.get_inventory()
+	# Equip starting tools.
+	var tools: Dictionary = loadout.get("tools", {})
+	for slot: String in tools:
+		inv.set_tool(StringName(slot), StringName(tools[slot]))
+	# Add starting inventory items.
+	var items: Array = loadout.get("inventory", [])
+	for item in items:
+		inv.add_item(StringName(item["type"]), int(item["count"]))
 
 
 func _on_gather_fly(coords: Vector2i, prop_type: StringName, _amount: int, _player: Node) -> void:

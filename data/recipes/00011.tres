@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=15 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
@@ -9,54 +9,58 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"00001"
+ref_or_tag = &"00022"
 count = 1
-source = &"world_tile"
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
-prop_ref = &"00010"
-count = 3
-
-[sub_resource type="Resource" id="output_2"]
-script = ExtResource("3_output")
-prop_ref = &"branch"
-count = 2
-prob = 0.8
+prop_ref = &"cooked_meat"
+count = 1
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("4_effect")
 kind = &"sound"
-params = { "sound_id": "chop" }
+params = { "sound_id": "sizzle" }
 
 [sub_resource type="Resource" id="cond_pred_1"]
 script = ExtResource("6_predicate")
-kind = &"has_tool"
-params = { "tool": "axe" }
+kind = &"at_station"
+params = { "tag": "cook" }
 
 [sub_resource type="Resource" id="condition_1"]
 script = ExtResource("5_condition")
 predicate = SubResource("cond_pred_1")
 must_sustain = true
 
+[sub_resource type="Resource" id="cond_pred_2"]
+script = ExtResource("6_predicate")
+kind = &"prop_state"
+params = { "prop": "00101", "field": "is_lit", "op": "eq", "value": true }
+
+[sub_resource type="Resource" id="condition_2"]
+script = ExtResource("5_condition")
+predicate = SubResource("cond_pred_2")
+must_sustain = true
+
 [sub_resource type="Resource" id="unlock_pred_1"]
 script = ExtResource("6_predicate")
-kind = &"has_tool"
-params = { "tool": "axe" }
+kind = &"cataloged"
+params = { "prop": "00022" }
 
 [sub_resource type="Resource" id="unlock_pred_2"]
 script = ExtResource("6_predicate")
 kind = &"cataloged"
-params = { "prop": "00001" }
+params = { "prop": "00101" }
 
 [resource]
 script = ExtResource("1_recipe")
-id = &"chop_small_tree"
-kind = 2
+id = &"00011"
+display_name = "Cook Meat"
+kind = 1
 inputs = [SubResource("input_1")]
-outputs = [SubResource("output_1"), SubResource("output_2")]
+outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
-conditions = [SubResource("condition_1")]
-actions = [&"chop"]
-time = 4.0
+conditions = [SubResource("condition_1"), SubResource("condition_2")]
+actions = [&"place_on_fire"]
+time = 15.0
 unlock_when = [SubResource("unlock_pred_1"), SubResource("unlock_pred_2")]

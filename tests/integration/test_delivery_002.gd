@@ -515,9 +515,10 @@ func test_ac5_stacking_overflow_creates_new_slot() -> void:
 
 
 func test_ac5_tool_slots_starting_state() -> void:
+	# Starting tools are now applied from map's starting_loadout, not hardcoded.
 	var inv: Inventory = _Inventory.new()
-	assert_object(inv.get_tool(&"weapon")).is_equal(&"00204")  # survival_knife
-	assert_object(inv.get_tool(&"scanner")).is_equal(&"00205")  # scanner
+	assert_object(inv.get_tool(&"weapon")).is_equal(&"")
+	assert_object(inv.get_tool(&"scanner")).is_equal(&"")
 	assert_object(inv.get_tool(&"axe")).is_equal(&"")
 	assert_object(inv.get_tool(&"pickaxe")).is_equal(&"")
 

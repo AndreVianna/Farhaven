@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=15 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
@@ -9,52 +9,46 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"BURNABLE.log"
+ref_or_tag = &"trap"
 count = 1
-source = &"container"
-is_tag = true
+source = &"world_tile"
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
-prop_ref = &"ash"
+prop_ref = &"trapped_animal"
 count = 1
+
+[sub_resource type="Resource" id="output_2"]
+script = ExtResource("3_output")
+prop_ref = &"branch"
+count = 1
+
+[sub_resource type="Resource" id="output_3"]
+script = ExtResource("3_output")
+prop_ref = &"00012"
+count = 1
+prob = 0.9
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("4_effect")
-kind = &"emit_light"
-params = { "radius": 5, "duration": 60 }
-
-[sub_resource type="Resource" id="effect_2"]
-script = ExtResource("4_effect")
-kind = &"spawn_heat"
-params = { "radius": 2, "duration": 60 }
+kind = &"sound"
+params = { "sound_id": "snap" }
 
 [sub_resource type="Resource" id="cond_pred_1"]
 script = ExtResource("6_predicate")
-kind = &"at_station"
-params = { "tag": "fire" }
+kind = &"animal_nearby"
+params = { "radius": 1, "filter": "small_fauna" }
 
 [sub_resource type="Resource" id="condition_1"]
 script = ExtResource("5_condition")
 predicate = SubResource("cond_pred_1")
-must_sustain = true
-
-[sub_resource type="Resource" id="cond_pred_2"]
-script = ExtResource("6_predicate")
-kind = &"prop_state"
-params = { "prop": "00101", "field": "is_lit", "op": "eq", "value": true }
-
-[sub_resource type="Resource" id="condition_2"]
-script = ExtResource("5_condition")
-predicate = SubResource("cond_pred_2")
-must_sustain = true
 
 [resource]
 script = ExtResource("1_recipe")
-id = &"burn_log_in_fireplace"
+id = &"00013"
+display_name = "Trap Fires"
 kind = 2
 inputs = [SubResource("input_1")]
-outputs = [SubResource("output_1")]
-effects = [SubResource("effect_1"), SubResource("effect_2")]
-conditions = [SubResource("condition_1"), SubResource("condition_2")]
-time = 60.0
+outputs = [SubResource("output_1"), SubResource("output_2"), SubResource("output_3")]
+effects = [SubResource("effect_1")]
+conditions = [SubResource("condition_1")]

@@ -8,6 +8,13 @@
 		0,
 		0
 	],
+	"starting_loadout": {
+		"tools": {
+			"weapon": "00204",
+			"scanner": "00205"
+		},
+		"inventory": []
+	},
 	"tiles": {
 		"0,0": {
 			"biome": "001",

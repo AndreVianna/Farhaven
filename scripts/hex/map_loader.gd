@@ -151,10 +151,11 @@ func load_map(path: String) -> bool:
 
 		_grid._tiles[coords] = tile
 
-	# Step 4: Store spawn position on the grid.
+	# Step 4: Store spawn position and starting loadout on the grid.
 	_grid.spawn_tile = spawn
 	_grid.spawn_sub_hex = spawn_sub_hex
 	_grid.spawn_facing_deg = spawn_facing_deg
+	_grid.starting_loadout = root.get("starting_loadout", {})
 
 	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
