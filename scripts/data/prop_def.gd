@@ -34,7 +34,7 @@ class_name PropDef extends Resource
 # --- Placement ---
 ## Prop.Origin index (0=Natural..4=Unknown). Determines scan/anomaly state.
 @export var origin: int = 0
-## DEPRECATED: use placeable.footprint after task-051.
+## DEPRECATED: use placeable.footprint instead. Kept for backward compat.
 ## Sub-hex offsets this prop occupies relative to anchor. Empty = single cell at anchor.
 @export var footprint: Array[Vector2i] = []
 
@@ -43,7 +43,7 @@ class_name PropDef extends Resource
 ## Empty = not a tool. Kept per design decision (Open Question §11.6).
 @export var tool_slot: StringName = &""
 
-# --- Gathering (DEPRECATED — REMOVE in task-051: replaced by Recipe system) ---
+# --- Gathering (DEPRECATED — replaced by Recipe system; kept for legacy fallback) ---
 @export var gather_time: float = 1.0
 @export var gather_amount: int = 1
 @export var tool_required: StringName = &""
@@ -51,13 +51,13 @@ class_name PropDef extends Resource
 @export var yield_type: StringName = &""
 @export var tool_speed: Dictionary = {}
 
-# --- Consumable (DEPRECATED — REMOVE in task-051: replaced by eat_*/drink_* recipes) ---
+# --- Consumable (DEPRECATED — replaced by eat_*/drink_* recipes; kept for legacy fallback) ---
 @export var is_consumable: bool = false
 @export var hunger_restore: float = 0.0
 @export var thirst_restore: float = 0.0
 @export var health_restore: float = 0.0
 
-# --- Legacy fields (DEPRECATED — REMOVE in task-051: replaced by capabilities/tags) ---
+# --- Legacy fields (DEPRECATED — replaced by capabilities/tags; kept for backward compat) ---
 ## Loose typology ("prop"/"resource"/"consumable"/"structure"/"tool") — replaced by capabilities + tags.
 @export var category: StringName = &"prop"
 ## Prop.Category enum index (0=Plant..9=Storage) — replaced by capabilities.

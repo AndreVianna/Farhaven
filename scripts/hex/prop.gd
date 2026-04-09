@@ -35,10 +35,10 @@ func is_anomaly() -> bool:
 	return origin != Origin.NATURAL and origin != Origin.CRAFTED
 
 
-## REMOVE in task-051: use origin == NATURAL
-## Returns true if this prop has a natural category (PLANT through OOZE, indices 0-5).
+## Returns true if this prop has a natural origin.
+## Replaces the old category-range check (task-051 migration).
 func is_natural_category() -> bool:
-	return category >= Category.PLANT and category <= Category.OOZE
+	return origin == Origin.NATURAL
 
 
 static func create_prop(type: StringName, remaining: int, max_amount: int,

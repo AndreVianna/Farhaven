@@ -36,15 +36,23 @@ func test_all_canonical_recipes_load() -> void:
 		&"meat_rots",
 		&"burn_log_in_fireplace",
 		&"eat_toxic_berry",
+		&"gather_tree",
+		&"gather_loose_rocks",
+		&"gather_tall_grass",
+		&"gather_berry_bush",
+		&"gather_boulder",
+		&"gather_iron_deposit",
+		&"gather_crystal_cluster",
+		&"gather_toxic_bush",
 	]
 	for id in expected_ids:
 		var recipe = _registry.get_recipe(id)
 		assert_that(recipe).is_not_null()
 
 
-func test_get_all_recipes_returns_eight() -> void:
+func test_get_all_recipes_returns_sixteen() -> void:
 	var all: Array = _registry.get_all_recipes()
-	assert_int(all.size()).is_equal(8)
+	assert_int(all.size()).is_equal(16)
 
 
 # --- get_recipe returns correct fields ---
@@ -159,8 +167,12 @@ func test_find_recipes_for_input_toxic_berry() -> void:
 
 func test_find_recipes_for_input_small_tree() -> void:
 	var results: Array = _registry.find_recipes_for_input(&"00001")
-	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("chop_small_tree")
+	assert_int(results.size()).is_equal(2)
+	var ids: Array[String] = []
+	for r in results:
+		ids.append(String(r.id))
+	assert_bool(ids.has("chop_small_tree")).is_true()
+	assert_bool(ids.has("gather_tree")).is_true()
 
 
 func test_find_recipes_for_input_raw_meat() -> void:
@@ -207,6 +219,17 @@ func test_find_recipes_for_station_fire() -> void:
 	var results: Array = _registry.find_recipes_for_station(&"fire")
 	assert_int(results.size()).is_equal(1)
 	assert_str(String(results[0].id)).is_equal("burn_log_in_fireplace")
+
+
+func test_find_recipes_for_action_gather() -> void:
+	var results: Array = _registry.find_recipes_for_action(&"gather")
+	assert_int(results.size()).is_equal(8)
+	var ids: Array[String] = []
+	for r in results:
+		ids.append(String(r.id))
+	assert_bool(ids.has("gather_tree")).is_true()
+	assert_bool(ids.has("gather_berry_bush")).is_true()
+	assert_bool(ids.has("gather_boulder")).is_true()
 
 
 func test_find_recipes_for_nonexistent_input_returns_empty() -> void:

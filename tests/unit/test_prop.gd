@@ -123,21 +123,21 @@ func test_is_anomaly_true_for_native_alien() -> void:
 	prop.origin = Prop.Origin.NATIVE_ALIEN
 	assert_bool(prop.is_anomaly()).is_true()
 
-# --- is_natural_category helper ---
+# --- is_natural_category helper (now uses origin, not category) ---
 
-func test_is_natural_category_true_for_plant() -> void:
+func test_is_natural_category_true_for_natural_origin() -> void:
 	var prop: Prop = PropClass.new()
-	prop.category = Prop.Category.PLANT
+	prop.origin = Prop.Origin.NATURAL
 	assert_bool(prop.is_natural_category()).is_true()
 
-func test_is_natural_category_true_for_ooze() -> void:
+func test_is_natural_category_false_for_crafted_origin() -> void:
 	var prop: Prop = PropClass.new()
-	prop.category = Prop.Category.OOZE
-	assert_bool(prop.is_natural_category()).is_true()
+	prop.origin = Prop.Origin.CRAFTED
+	assert_bool(prop.is_natural_category()).is_false()
 
-func test_is_natural_category_false_for_structure() -> void:
+func test_is_natural_category_false_for_unknown_origin() -> void:
 	var prop: Prop = PropClass.new()
-	prop.category = Prop.Category.STRUCTURE
+	prop.origin = Prop.Origin.UNKNOWN
 	assert_bool(prop.is_natural_category()).is_false()
 
 # --- Sub-hex assignment ---

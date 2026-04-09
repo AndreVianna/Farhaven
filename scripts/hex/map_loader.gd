@@ -105,7 +105,6 @@ func load_map(path: String) -> bool:
 			for pd in td["props"]:
 				var prop: Resource = _Prop.new()
 				prop.type = StringName(pd.get("type", ""))
-				prop.category = int(pd.get("category", _Prop.Category.PLANT))  # REMOVE in task-051: not in new load format
 				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
 				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
 				if pd.has("tool_required") and pd["tool_required"] != "":
@@ -119,7 +118,7 @@ func load_map(path: String) -> bool:
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
-				if prop.is_natural_category():
+				if prop.origin == _Prop.Origin.NATURAL:
 					var defaults: Array = _get_prop_defaults(prop.type, biome_int)
 					prop.remaining = int(pd.get("remaining", defaults[0]))
 					prop.max_amount = int(pd.get("max_amount", defaults[1]))
