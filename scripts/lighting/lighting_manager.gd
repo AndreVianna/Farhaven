@@ -145,39 +145,45 @@ func clear_player_light() -> void:
 		light_source_unregistered.emit(pos)
 
 
+## Initialize player torch on game load. Called from main.gd with direct player ref
+## because _find_player() uses groups which may not be populated during deferred startup.
+func initialize_player_torch(player: Node) -> void:
+	if player == null:
+		return
+	if "current_tile" in player:
+		_player_world_pos = HexMath.axial_to_world(player.current_tile)
+	_update_torch_from_player(player)
+
+
 ## Update player torch state from current inventory.
-## Called when tool equipment changes, on tile enter, or after load.
+## Called when tool equipment changes or on tile enter.
 func update_player_torch() -> void:
 	var player: Node = _find_player()
 	if player == null:
-		print("[LightingManager] update_player_torch: player NOT FOUND")
 		_clear_player_light_internal()
 		return
-	# Sync player world position (needed on load when no tile_entered has fired yet)
 	if "current_tile" in player:
 		_player_world_pos = HexMath.axial_to_world(player.current_tile)
-		print("[LightingManager] update_player_torch: player at tile %s → world %s" % [player.current_tile, _player_world_pos])
-	else:
-		print("[LightingManager] update_player_torch: player has no current_tile")
+	_update_torch_from_player(player)
+
+
+func _update_torch_from_player(player: Node) -> void:
 	var inv: RefCounted = player.get_inventory() if player.has_method("get_inventory") else null
 	if inv == null:
-		print("[LightingManager] update_player_torch: inventory is NULL")
 		_clear_player_light_internal()
 		return
 	# Check all tool slots for an item with emits_light
 	var found_light: bool = false
 	var light_radius: float = 3.0 * RING_TO_WORLD
-	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner"]:
+	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner", &"firestarter"]:
 		var tool_id: StringName = inv.get_tool(slot)
 		if tool_id == &"":
 			continue
 		var def: _PropDef = _registry.get_def(tool_id) if _registry else null
-		print("[LightingManager] update_player_torch: slot=%s tool=%s def=%s emits_light=%s" % [slot, tool_id, def != null, def.emits_light if def else "null"])
 		if def != null and def.emits_light:
 			found_light = true
 			light_radius = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
 			break
-	print("[LightingManager] update_player_torch: found_light=%s radius=%s is_night=%s" % [found_light, light_radius, not _is_day_phase()])
 	if found_light:
 		_player_light = {
 			"position": _player_world_pos,

@@ -26,8 +26,10 @@ func _ready() -> void:
 	_bootstrap_visible_tiles.call_deferred()
 	# Scan existing light-emitting props after load (structure_placed doesn't fire on load).
 	# Also re-check player torch (scanner has emits_light — doesn't activate until tile_entered).
+	# Pass player directly because _find_player() uses groups which may not be ready yet.
 	LightingManager.scan_existing_lights.call_deferred()
-	LightingManager.update_player_torch.call_deferred()
+	var _player_ref: Node = $World/Player
+	LightingManager.initialize_player_torch.call_deferred(_player_ref)
 
 
 func _wire_systems() -> void:
