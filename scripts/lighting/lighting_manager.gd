@@ -27,7 +27,7 @@ var _registry: Node = null  # PropRegistry autoload or mock
 
 # --- State ---
 
-## Active structure lights: key = "coords:prop_type" string, value = light dict.
+## Active structure lights: key = "coords:prop_type:sub_hex" string, value = light dict.
 ## Light dict: {position: Vector2, radius: float, color: Color}
 var _structure_lights: Dictionary = {}
 
@@ -210,7 +210,16 @@ func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	var world_pos: Vector2 = HexMath.axial_to_world(coords)
 	var radius: float = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
 	var color: Color = def.light.color if def.light.color != Color() else DEFAULT_LIGHT_COLOR
-	var key: String = "%s:%s" % [str(coords), str(structure_type)]
+	# Find the prop on the tile to get its sub_hex for a consistent 3-part key.
+	var sub_hex: Vector2i = Vector2i.ZERO
+	if _grid != null and _grid.has_method("get_tile"):
+		var tile: Resource = _grid.get_tile(coords)
+		if tile != null:
+			for prop in tile.props:
+				if prop.type == structure_type:
+					sub_hex = prop.sub_hex if "sub_hex" in prop else Vector2i.ZERO
+					break
+	var key: String = "%s:%s:%s" % [str(coords), str(structure_type), str(sub_hex)]
 	_structure_lights[key] = {
 		"position": world_pos,
 		"radius": radius,
@@ -220,8 +229,13 @@ func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	var key: String = "%s:%s" % [str(coords), str(structure_type)]
-	if _structure_lights.has(key):
+	# Match by prefix "coords:type:" since we don't have sub_hex from the signal.
+	var prefix: String = "%s:%s:" % [str(coords), str(structure_type)]
+	var keys_to_remove: Array[String] = []
+	for key: String in _structure_lights:
+		if key.begins_with(prefix):
+			keys_to_remove.append(key)
+	for key: String in keys_to_remove:
 		var pos: Vector2 = _structure_lights[key]["position"]
 		_structure_lights.erase(key)
 		light_source_unregistered.emit(pos)

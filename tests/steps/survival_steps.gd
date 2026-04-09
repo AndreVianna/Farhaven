@@ -40,10 +40,6 @@ func register_steps(registry) -> void:
 		ctx.set_value("thirst", thirst)
 	)
 
-	registry.given("the player has hunger {float}", func(ctx, val: float):
-		ctx.set_value("hunger", val)
-	)
-
 	registry.given("it is daytime", func(ctx):
 		ctx.set_value("is_daytime", true)
 	)

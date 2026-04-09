@@ -13,6 +13,7 @@ const _Predicate = preload("res://scripts/recipes/predicate.gd")
 const _PredicateEvaluator = preload("res://scripts/recipes/predicate_evaluator.gd")
 const _WorldContext = preload("res://scripts/recipes/world_context.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 signal recipe_started(recipe_id: StringName)
 signal recipe_resolved(recipe_id: StringName, outputs: Array, effects: Array)
@@ -177,7 +178,6 @@ func _deliver_output(output: _RecipeOutput, pending: PendingRecipe) -> void:
 			var remaining: int = output.count - added
 			# 2. Try world_tile: spawn remaining on tile.
 			if ctx.tile != null:
-				var _Prop = preload("res://scripts/hex/prop.gd")
 				for _j in remaining:
 					ctx.tile.props.append(_Prop.create_prop(output.prop_ref, 1, 1))
 				return
@@ -186,7 +186,6 @@ func _deliver_output(output: _RecipeOutput, pending: PendingRecipe) -> void:
 			return
 	# No player — try world tile directly.
 	if ctx.tile != null:
-		var _Prop = preload("res://scripts/hex/prop.gd")
 		for _j in output.count:
 			ctx.tile.props.append(_Prop.create_prop(output.prop_ref, 1, 1))
 		return
@@ -250,8 +249,9 @@ func _consume_inputs(recipe: _Recipe, ctx: _WorldContext, out_bound: Array) -> b
 
 
 func _consume_single_input(input: _RecipeInput, ctx: _WorldContext) -> bool:
-	assert(input.source in [&"player_inventory", &"world_tile", &"container", &"world_anywhere"],
-		"RecipeRuntime: unknown input source '%s' — must be one of: player_inventory, world_tile, container, world_anywhere" % input.source)
+	if input.source not in [&"player_inventory", &"world_tile", &"container", &"world_anywhere"]:
+		push_error("RecipeRuntime: unknown input source '%s' — must be one of: player_inventory, world_tile, container, world_anywhere" % input.source)
+		return false
 	match input.source:
 		&"player_inventory":
 			return _consume_from_inventory(input, ctx)
@@ -394,7 +394,6 @@ func _return_inputs(bound_inputs: Array, ctx: _WorldContext) -> void:
 			&"world_tile":
 				if ctx.tile != null:
 					# Re-add props to tile.
-					var _Prop = preload("res://scripts/hex/prop.gd")
 					for _j in count:
 						ctx.tile.props.append(_Prop.create_prop(item_type, 1, 1))
 			&"container":

@@ -148,17 +148,14 @@ func _wire_fauna(player: Node, scanner: Node, auto_interaction: Node) -> void:
 	# fauna_moved → AutoInteractionSystem auto-defend adjacency check
 	# AutoInteractionSystem._on_fauna_moved expects (fauna_id, new_coords) but
 	# FaunaManager.fauna_moved emits (id, old_coords, new_coords, species_type).
-	# Wire with a lambda adapter.
-	if auto_interaction != null and auto_interaction.has_method("on_fauna_moved_for_defend"):
-		fauna_mgr.fauna_moved.connect(auto_interaction.on_fauna_moved_for_defend)
-	elif auto_interaction != null:
+	# Wire with a lambda adapter to extract the needed args.
+	if auto_interaction != null and auto_interaction.has_method("_on_fauna_moved"):
 		# Wire FaunaManager reference so auto-defend can query fauna data
 		if "_fauna_manager" in auto_interaction:
 			auto_interaction._fauna_manager = fauna_mgr
 		fauna_mgr.fauna_moved.connect(
 			func(id: int, _old: Vector2i, new_c: Vector2i, _sp: StringName) -> void:
-				if auto_interaction.has_method("_on_fauna_moved"):
-					auto_interaction._on_fauna_moved(id, new_c)
+				auto_interaction._on_fauna_moved(id, new_c)
 		)
 
 	# fauna_spawned → PropLabelRenderer for knowledge state markers

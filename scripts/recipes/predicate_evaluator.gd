@@ -7,6 +7,7 @@ extends RefCounted
 ## and DiscoveryWatcher (unlock evaluation).
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 
 ## Evaluate a single predicate against a world context. Returns true if satisfied.
@@ -113,7 +114,7 @@ static func _eval_at_tile_type(params: Dictionary, ctx: WorldContext) -> bool:
 		return false
 	# Special "buildable" check: tile is not water (building-eligible).
 	if String(tag).to_lower() == "buildable":
-		return ctx.tile.biome != 4  # HexTile.Biome.WATER
+		return ctx.tile.biome != _HexTile.Biome.WATER
 	# Match against biome enum name (case-insensitive comparison).
 	var biome_name: String = _biome_to_string(ctx.tile.biome).to_lower()
 	if String(tag).to_lower() == biome_name:

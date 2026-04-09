@@ -43,7 +43,7 @@ func set_inventory(inv) -> void:
 		if _inventory.inventory_changed.is_connected(_on_inventory_changed):
 			_inventory.inventory_changed.disconnect(_on_inventory_changed)
 	_inventory = inv
-	if _inventory != null:
+	if _inventory != null and _inventory.has_signal("inventory_changed"):
 		_inventory.inventory_changed.connect(_on_inventory_changed)
 
 
