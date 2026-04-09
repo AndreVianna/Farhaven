@@ -727,6 +727,7 @@ Remaining open questions:
 | 2026-04-08 | `Catalog.CatalogCategory` enum stays untouched in delivery-005a | It's a separate enum in the catalog domain (4 values, only used by ScannerSystem/PropLabelRenderer). Migrating it is out of scope. |
 | 2026-04-08 | `Prop.is_natural_category()` replaced by `Origin == NATURAL` | Origin enum already exists and is sufficient. The behavioral category check is redundant. |
 | 2026-04-08 | Crafting vs Building: same Recipe engine, different output destination | **Crafting** = output goes to player inventory (tools, items, consumables). **Building** = output requires world placement (structures with PLACEABLE capability). The UI panel is determined by whether the output PropDef has PLACEABLE: yes → Build panel (with tile highlight + sub-hex selection); no → Crafting panel. Same Recipe shape, same RecipeRuntime, different UX flow. Andre's call. |
+| 2026-04-09 | Output delivery is 3-way: inventory → world placement → overflow to ground | RecipeRuntime._resolve() decides: (1) if output has STATION/structure tags → world placement UI; (2) else try inventory.add_item(); (3) if inventory rejects (weight exceeded or full) → spawn remainder as world prop near player tile. Covers: Wood Trunk always overflows (weight > capacity), Stone conditionally overflows (fits if space, ground if not). Future polish: falling direction for trunks, auto-pile for stacking ground items. Andre's call. |
 
 ---
 
