@@ -144,22 +144,70 @@ When this lands:
 
 **AC coverage:** AC6 (building), AC9 (night threats)
 
-### delivery-006: The Story — Journal + Narrative
+### delivery-006a: Engine Refactors — Gear, Events, IDs, SSH
 
-**Features:** 011 (Journal)
-**Depends on:** delivery-002 (entry_cataloged signal) + delivery-004 (day_started signal)
-**Cumulative state:** Chapter 1 narrative arc complete
+**Features:** Engine-level, no direct gameplay features
+**Depends on:** delivery-005b
+**Cumulative state:** Unified entity model (Gear hierarchy), Event system for milestones/flags/chapters, universal ID namespace, SSH spatial grid with mesh collision.
 
 Build order:
-1. feature-011 (Journal) — trigger system, cutscene viewer, journal panel
+1. Gear hierarchy (gear.gd → script_base.gd → recipe.gd + event.gd; element base → prop, biome)
+2. Event system (Script kind=EVENT, count/max_count, world flags as event counts)
+3. ID namespace (P/R/E/CS/J prefixes — universal unique Gear IDs)
+4. Remove unlock_when from Recipe → migrate to Event .tres files with grant_script effect
+5. SSH grid + mesh collision (3-level hex grid, abandon footprint arrays, 3D mesh collision)
+6. Doc cascade
+
+Pure engine refactor. No new gameplay. Schema changes propagate to delivery-006b (editor).
+
+**AC coverage:** none directly (infrastructure for 006b + 006c)
+
+> **Design specs:** `.aid/knowledge/data-model.md` (Gear Hierarchy + SSH Grid sections), `.aid/work-001-core/delivery-005a/DESIGN.md` (Recipe/Event decisions in decision log)
+
+### delivery-006b: Editor Sync — All Pages for New Schema
+
+**Features:** Level editor fully synchronized with Gear + SSH engine
+**Depends on:** delivery-006a
+**Cumulative state:** Editor supports creating/editing all Gear types (Props, Recipes, Events, Fauna), SSH-precision placement, and the new ID namespace.
+
+Build order:
+1. Editor: Prop page updated (PlaceableCap without footprint, SSH snap, new Gear base fields)
+2. Editor: Recipe page updated (sync with Event system, no unlock_when)
+3. Editor: Event page (NEW — create/edit milestones, chapter gates, world flags)
+4. Editor: Fauna page (NEW — Fauna as special Prop with movement config)
+5. Editor: Blueprint/Build recipe filtering (or integrated in Recipe page)
+6. Editor: SSH grid support (2D top-down placement at 32cm resolution)
+7. Editor: Biome page review (ensure sync with current schema)
+8. Editor: ID namespace enforcement (prefix validation, auto-increment per type)
+
+Editor-only delivery. No engine changes. All pages write valid .tres for the 006a schema.
+
+**AC coverage:** none directly (tooling for content creation)
+
+### delivery-006c: The Story — Journal, Cutscenes, Events
+
+**Features:** 011 (Journal), Cutscene system, Chapter 1 narrative content
+**Depends on:** delivery-006a (Event system) + delivery-006b (editor for content creation)
+**Cumulative state:** Chapter 1 narrative arc complete. Milestones trigger cutscenes and journal entries. The game has a purpose.
+
+Build order:
+1. CutsceneManager autoload (Level A — play MP4 on EVENT trigger)
+2. Journal system (JournalEntry as Gear, journal panel UI)
+3. Editor: Journal Entry page (NEW)
+4. Editor: Cutscene page (NEW — metadata, video path, trigger link)
+5. Chapter 1 milestone events (.tres) — first shelter, first night, anomaly discovered, etc.
+6. Chapter 1 cutscene content — AI-generated videos for milestone moments
+7. Chapter 1 journal entries content
+8. BDD scenarios for narrative flows
 
 The game has a purpose. The Journal tells the player WHY they're exploring:
 crash → Day 3 strange signal → find anomaly → scan → cutscene → cliffhanger.
-
-This is the emotional hook for Chapter 2. Without it, the game is a loop without
-meaning. With it, the player wants to know what happens next.
+Milestones fire EVENTs → EVENTs trigger cutscenes + journal entries.
+This is the emotional hook for Chapter 2.
 
 **AC coverage:** AC12 (journal)
+
+> **Design specs:** `.aid/knowledge/game-lore.md` (4-act narrative, civilization), `.aid/knowledge/game-mechanics.md` (cutscene system, progression map)
 
 ## Delivery Progression — The Story of a Session
 
