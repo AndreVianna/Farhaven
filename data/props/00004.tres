@@ -13,6 +13,10 @@ blocks_movement = false
 script = ExtResource("3_catalogable")
 scan_time = 1.0
 display_tag = &"flora"
+category = 0
+display_name = "Berry Bush"
+description = "Small purple berries with a tart flavour. Edible and safe."
+properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
 
 [resource]
 script = ExtResource("1_script")
@@ -22,8 +26,6 @@ tags = [&"SOURCE", &"PLANT"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 max_stack = 20
-catalog_entry = &"berry_bush"
-catalog_category = &"flora"
 origin = 0
 gather_time = 0.5
 gather_amount = 2

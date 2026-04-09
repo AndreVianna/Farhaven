@@ -1,3 +1,5 @@
+## DEPRECATED: Kept only for fauna fallback (fauna.tres).
+## TODO: Remove when fauna PropDefs exist. Use CatalogableCap instead.
 class_name CatalogEntry
 extends Resource
 

@@ -246,8 +246,8 @@ func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
 
 
 func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, dimmed: bool) -> void:
-	# Find the anomaly pool — use anomaly_fragment type if it exists, otherwise skip
-	var anomaly_pool_id: StringName = &"anomaly_fragment"
+	# Find the anomaly pool by prop type (each PropDef has its own pool)
+	var anomaly_pool_id: StringName = anomaly.type
 	if not _pools.has(anomaly_pool_id):
 		return
 	var mmi: MultiMeshInstance3D = _pools[anomaly_pool_id]

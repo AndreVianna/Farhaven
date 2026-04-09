@@ -82,16 +82,17 @@ func _refresh() -> void:
 func _populate_list(list: VBoxContainer, category: int) -> void:
 	for child in list.get_children():
 		child.queue_free()
-	var entries: Array = _catalog.get_discovered_by_category(category)
-	for entry in entries:
+	var discovered: Array = _catalog.get_discovered_by_category(category)
+	for item in discovered:
 		var row := CatalogEntryUI.new()
 		list.add_child(row)
-		var state: int = _catalog.get_knowledge_state(entry.entry_id)
+		var eid: StringName = item.entry_id
+		var state: int = _catalog.get_knowledge_state(eid)
 		if state == Catalog.KnowledgeState.ENCOUNTERED:
-			var label: String = _catalog.get_encounter_label(entry.entry_id)
+			var label: String = _catalog.get_encounter_label(eid)
 			row.setup_encountered(label)
 		else:
-			row.setup(entry)
+			row.setup(item.entry)
 
 
 func _on_entry_cataloged(_entry_id: StringName, _category: int) -> void:

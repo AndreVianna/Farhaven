@@ -13,6 +13,10 @@ blocks_movement = false
 script = ExtResource("3_catalogable")
 scan_time = 3.0
 display_tag = &"anomalies"
+category = 3
+display_name = "Alien Beacon"
+description = "A pulsing monolith of unknown origin. Your scanner goes wild near it."
+properties = {"journal_entry_id": &"anomaly_ch1_001", "cutscene_id": &"cs_first_anomaly"}
 
 [resource]
 script = ExtResource("1_script")
@@ -22,8 +26,6 @@ tags = [&"SOURCE", &"ANOMALY", &"NATIVE_ALIEN"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 max_stack = 99
-catalog_entry = &""
-catalog_category = &"anomalies"
 origin = 3
 gather_time = 3.0
 gather_amount = 1

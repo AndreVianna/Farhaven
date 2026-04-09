@@ -20,7 +20,6 @@ class_name TestDelivery003
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
-const _CatalogEntry = preload("res://scripts/scanner/catalog_entry.gd")
 const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _AutoInteractionSystem = preload("res://scripts/auto_interaction/auto_interaction_system.gd")
 const _CraftingSystem = preload("res://scripts/crafting/crafting_system.gd")
@@ -287,7 +286,7 @@ func test_scan_catalog_then_auto_gather() -> void:
 	assert_bool(_scanner.is_scanning()).is_true()
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)  # complete scan
-	assert_bool(_catalog.is_cataloged(&"berry_bush")).is_true()
+	assert_bool(_catalog.is_cataloged(&"00004")).is_true()
 
 	# Step 2: Position player near the berries prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -326,7 +325,7 @@ func test_tool_gated_prop_emits_tool_required_failure() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog ore so it passes the catalog gate
-	_catalog.catalog_entry(&"iron_deposit")
+	_catalog.catalog_entry(&"00006")
 
 	var failed: Array = []
 	_auto_interaction.auto_gather_failed.connect(func(c: Vector2i, r: StringName) -> void:
@@ -369,7 +368,7 @@ func test_prop_depletion_signal_and_visual_change() -> void:
 	assert_bool(entries[Vector2i(1, 0)][0]["depleted"]).is_false()
 
 	# Catalog wood_tree so auto-gather works
-	_catalog.catalog_entry(&"wood_tree")
+	_catalog.catalog_entry(&"00001")
 
 	# Track prop_depleted
 	var depleted_signals: Array = []
@@ -412,7 +411,7 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 	# Position player at the wood prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"wood_tree")
+	_catalog.catalog_entry(&"00001")
 
 	# Show prop
 	_grid.map_generated.emit()
@@ -465,8 +464,8 @@ func test_chain_gathering_multiple_props() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog both
-	_catalog.catalog_entry(&"wood_tree")
-	_catalog.catalog_entry(&"stone_deposit")
+	_catalog.catalog_entry(&"00001")
+	_catalog.catalog_entry(&"00005")
 
 	var completed: Array = []
 	_auto_interaction.auto_gather_completed.connect(func(c: Vector2i, t: StringName, a: int) -> void:
@@ -523,7 +522,7 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog ore
-	_catalog.catalog_entry(&"iron_deposit")
+	_catalog.catalog_entry(&"00006")
 
 	# Step 1: ore is gated, can't gather (silently skipped)
 	_auto_interaction._check_gather_proximity()
@@ -955,7 +954,7 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 1, &"", 1.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"stone_deposit")
+	_catalog.catalog_entry(&"00005")
 
 	# Deplete
 	_auto_interaction._check_gather_proximity()
@@ -983,7 +982,7 @@ func test_zero_respawn_time_never_enters_queue() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", 0.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"wood_tree")
+	_catalog.catalog_entry(&"00001")
 
 	_auto_interaction._check_gather_proximity()
 	_auto_interaction._on_gather_tween_complete()
@@ -1087,19 +1086,19 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"stone_deposit")).is_true()
+	assert_bool(_catalog.is_cataloged(&"00005")).is_true()
 
 	# Step 2: Scan wood (move scanner to pick next)
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"wood_tree")).is_true()
+	assert_bool(_catalog.is_cataloged(&"00001")).is_true()
 
 	# Step 3: Scan ore
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"iron_deposit")).is_true()
+	assert_bool(_catalog.is_cataloged(&"00006")).is_true()
 
 	# Step 4: Move player to stone prop and auto-gather
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -1184,7 +1183,7 @@ func test_inventory_full_blocks_auto_gather() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 3)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"wood_tree")
+	_catalog.catalog_entry(&"00001")
 
 	# Fill inventory completely
 	for i in range(12):

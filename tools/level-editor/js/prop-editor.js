@@ -37,18 +37,12 @@ export class PropDefModel {
     this.movable = null;
     /** @type {{ station_tags: string[] }|null} */
     this.station = null;
-    /** @type {{ scan_time: number, display_tag: string }|null} */
+    /** @type {{ scan_time: number, display_tag: string, category: number, display_name: string, description: string, properties: Object }|null} */
     this.catalogable = null;
 
     // --- Inventory ---
     /** @type {number} */
     this.max_stack = 99;
-
-    // --- Catalog ---
-    /** @type {string} */
-    this.catalog_entry = '';
-    /** @type {string} */
-    this.catalog_category = '';
 
     // --- Placement ---
     /** @type {string} Default origin for placement */
@@ -131,8 +125,6 @@ export class PropDefModel {
 
     // Simple string fields
     model.display_name = _str(d.display_name);
-    model.catalog_entry = _str(d.catalog_entry);
-    model.catalog_category = _str(d.catalog_category);
     model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
     model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
     model.tool_slot = _str(d.tool_slot);
@@ -204,6 +196,10 @@ export class PropDefModel {
       model.catalogable = {
         scan_time: _num(d.catalogable.scan_time != null ? d.catalogable.scan_time : 1.0),
         display_tag: _str(d.catalogable.display_tag),
+        category: _num(d.catalogable.category),
+        display_name: _str(d.catalogable.display_name),
+        description: _str(d.catalogable.description),
+        properties: _dictToObj(d.catalogable.properties),
       };
     }
 
@@ -1258,11 +1254,6 @@ export function renderPropEditor(container, options) {
     _addSeparator(grid, 'Inventory');
     _addField(grid, 'Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' });
 
-    // -- Catalog --
-    _addSeparator(grid, 'Catalog');
-    _addField(grid, 'Catalog Entry', 'catalog_entry', 'text', model.catalog_entry);
-    _addField(grid, 'Catalog Cat', 'catalog_category', 'text', model.catalog_category);
-
     // -- Capabilities --
     _addSeparator(grid, 'Capabilities');
 
@@ -1305,6 +1296,9 @@ export function renderPropEditor(container, options) {
     grid.appendChild(_createCapabilityPanel('catalogable', 'Catalogable', model.catalogable, (panel) => {
       _addField(panel, 'Scan Time', 'cap_catalogable_scan_time', 'number', model.catalogable ? model.catalogable.scan_time : 1.0, { step: 'any', min: '0' });
       _addField(panel, 'Display Tag', 'cap_catalogable_display_tag', 'text', model.catalogable ? model.catalogable.display_tag : '');
+      _addField(panel, 'Category', 'cap_catalogable_category', 'number', model.catalogable ? model.catalogable.category : 0, { step: '1', min: '0', max: '3' });
+      _addField(panel, 'Display Name', 'cap_catalogable_display_name', 'text', model.catalogable ? model.catalogable.display_name : '');
+      _addField(panel, 'Description', 'cap_catalogable_description', 'text', model.catalogable ? model.catalogable.description : '');
     }));
 
     body.appendChild(grid);
@@ -1580,10 +1574,6 @@ export function collectPropFormData(formElement) {
   // Inventory
   model.max_stack = intVal('max_stack') || 99;
 
-  // Catalog
-  model.catalog_entry = val('catalog_entry').trim();
-  model.catalog_category = val('catalog_category').trim();
-
   // --- Capabilities ---
   if (isChecked('cap_portable_enabled')) {
     model.portable = { weight: floatVal('cap_portable_weight') };
@@ -1626,6 +1616,10 @@ export function collectPropFormData(formElement) {
     model.catalogable = {
       scan_time: floatVal('cap_catalogable_scan_time'),
       display_tag: val('cap_catalogable_display_tag').trim(),
+      category: intVal('cap_catalogable_category'),
+      display_name: val('cap_catalogable_display_name').trim(),
+      description: val('cap_catalogable_description').trim(),
+      properties: {},  // Properties editing not yet supported in UI
     };
   }
 
@@ -1829,8 +1823,6 @@ function _modelToPlain(model) {
     station: model.station,
     catalogable: model.catalogable,
     max_stack: model.max_stack,
-    catalog_entry: model.catalog_entry,
-    catalog_category: model.catalog_category,
     placeholder_mesh_type: model.placeholder_mesh_type,
     placeholder_params: model.placeholder_params,
     placeholder_color: model.placeholder_color,
@@ -1966,6 +1958,18 @@ export function propModelToRaw(model) {
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
     if (model.catalogable.scan_time !== 1.0) subFields.set('scan_time', { type: 'float', value: model.catalogable.scan_time });
     if (model.catalogable.display_tag) subFields.set('display_tag', { type: 'stringname', value: model.catalogable.display_tag });
+    if (model.catalogable.category !== 0) subFields.set('category', { type: 'int', value: model.catalogable.category });
+    if (model.catalogable.display_name) subFields.set('display_name', { type: 'string', value: model.catalogable.display_name });
+    if (model.catalogable.description) subFields.set('description', { type: 'string', value: model.catalogable.description });
+    if (model.catalogable.properties && Object.keys(model.catalogable.properties).length > 0) {
+      const propEntries = Object.entries(model.catalogable.properties).map(([k, v]) => {
+        if (typeof v === 'string') return [k, { type: 'stringname', value: v }];
+        if (typeof v === 'boolean') return [k, { type: 'bool', value: v }];
+        if (typeof v === 'number') return [k, { type: Number.isInteger(v) ? 'int' : 'float', value: v }];
+        return [k, { type: 'string', value: String(v) }];
+      });
+      subFields.set('properties', { type: 'dict', value: new Map(propEntries) });
+    }
     capEntries.push({ capName: 'catalogable', subId: 'catalogable_1', subFields });
     extId++;
   }
@@ -2005,10 +2009,6 @@ export function propModelToRaw(model) {
 
   // Int field
   fields.set('max_stack', { type: 'int', value: model.max_stack });
-
-  // StringName fields
-  fields.set('catalog_entry', { type: 'stringname', value: model.catalog_entry });
-  fields.set('catalog_category', { type: 'stringname', value: model.catalog_category });
 
   // Prop placement defaults (int in .tres)
   fields.set('origin', { type: 'int', value: ORIGIN_TO_INT[model.prop_origin] ?? 0 });

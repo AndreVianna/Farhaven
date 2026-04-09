@@ -211,6 +211,14 @@ prop rename cascade, or dirty-state window-close warning
 - **Impact:** Style inconsistencies possible, though current codebase is consistent.
 - **Effort:** 1-2 hours to set up gdtoolkit if desired.
 
+### [Low] Editor: placeholder_mesh_type should be a dropdown with dynamic params
+
+- **Evidence:** `prop-editor.js` renders `placeholder_mesh_type` and `placeholder_depleted_type` as text inputs. Different mesh types have different parameter schemas (cube→half_size, cylinder→radius+height, sphere→radius, box→size_x+size_y+size_z, prism→radius+height, octahedron→radius). The user must know the valid types and their params by heart.
+- **Impact:** UX friction — easy to mistype a mesh type or set wrong params. No validation.
+- **Fix:** Change to a combo/dropdown listing valid mesh types. On selection change, dynamically show/hide the parameter fields appropriate for that type. Same for depleted mesh type.
+- **Effort:** ~2-3 hours. Pure editor JS work.
+- **Reported:** 2026-04-08 by Andre during testing.
+
 ## Metrics
 
 - **TODO/FIXME count:** 0 in project source files (scripts/, ui/, scenes/). All TODO/FIXME hits are inside the vendored addons/gdUnit4/ directory.

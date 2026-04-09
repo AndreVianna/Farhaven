@@ -304,9 +304,12 @@ func _try_legacy_catalog_gate(prop: Resource, candidates: Array, tool_gated: Arr
 		tile_coords: Vector2i, prop_index: int, world_dist: float) -> bool:
 	if _catalog == null:
 		return false
-	var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
-	if entry_id == &"":
+	if not PropRegistry.has_def(prop.type):
 		return false
+	var def = PropRegistry.get_def(prop.type)
+	if def.catalogable == null or String(def.catalogable.display_name) == "":
+		return false
+	var entry_id: StringName = def.id
 	if not _catalog.is_cataloged(entry_id):
 		return false
 	# Tool gate

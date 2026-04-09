@@ -188,9 +188,12 @@ func _check_passive_identification(coords: Vector2i) -> void:
 		return
 
 	for prop in tile.get_props():
-		var entry_id: StringName = PropRegistry.get_def(prop.type).catalog_entry if PropRegistry.has_def(prop.type) else &""
-		if entry_id == &"":
+		if not PropRegistry.has_def(prop.type):
 			continue
+		var def = PropRegistry.get_def(prop.type)
+		if def.catalogable == null or String(def.catalogable.display_name) == "":
+			continue
+		var entry_id: StringName = def.id
 		var state: int = _catalog.get_knowledge_state(entry_id)
 		match state:
 			_Catalog.KnowledgeState.CATALOGED:
