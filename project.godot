@@ -27,6 +27,8 @@ HexGrid="*res://scripts/hex/hex_grid.gd"
 DayNightCycle="*res://scripts/day_night/day_night_cycle.gd"
 LightingManager="*res://scripts/lighting/lighting_manager.gd"
 RecipeRegistry="*res://scripts/recipes/recipe_registry.gd"
+DiscoveryWatcher="*res://scripts/recipes/discovery_watcher.gd"
+RecipeRuntime="*res://scripts/recipes/recipe_runtime.gd"
 SaveManager="*res://scripts/save/save_manager.gd"
 
 [debug]
