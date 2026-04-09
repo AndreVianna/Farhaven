@@ -8,7 +8,6 @@ extends PanelContainer
 signal build_requested(recipe: Resource)
 
 const _Recipe = preload("res://scripts/recipes/recipe.gd")
-const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 const COLOR_GREEN := Color(0.494, 0.784, 0.525)  # #7EC886 accent_green
