@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This document is historical. The authoritative version is `.aid/knowledge/game-lore.md` (Chapter 1 section).
+
 # Crash Landing Design — Lore, Mechanics & Biome
 
 *Defined 2026-04-02/03. Source: Andre + Lola design session.*
