@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
@@ -10,16 +10,16 @@
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
 ref_or_tag = &"00010"
-count = 3
+count = 8
 
 [sub_resource type="Resource" id="input_2"]
 script = ExtResource("2_input")
-ref_or_tag = &"00012"
-count = 2
+ref_or_tag = &"00011"
+count = 4
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
-prop_ref = &"00101"
+prop_ref = &"00104"
 count = 1
 
 [sub_resource type="Resource" id="effect_1"]
@@ -39,12 +39,12 @@ must_sustain = false
 
 [resource]
 script = ExtResource("1_recipe")
-id = &"00019"
-display_name = "Build Campfire"
+id = &"00022"
+display_name = "Build Storage Chest"
 kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
 conditions = [SubResource("cond_buildable")]
 actions = [&"build"]
-time = 2.0
+time = 3.0

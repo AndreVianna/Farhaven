@@ -10,7 +10,7 @@
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("2_placeable")
 footprint = [Vector2i(0, 0)]
-blocks_movement = true
+blocks_movement = false
 
 [sub_resource type="Resource" id="container_1"]
 script = ExtResource("3_container")

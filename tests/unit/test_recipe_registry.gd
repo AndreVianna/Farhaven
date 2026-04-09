@@ -52,9 +52,9 @@ func test_all_canonical_recipes_load() -> void:
 		assert_that(recipe).is_not_null()
 
 
-func test_get_all_recipes_returns_twenty() -> void:
+func test_get_all_recipes_returns_twenty_six() -> void:
 	var all: Array = _registry.get_all_recipes()
-	assert_int(all.size()).is_equal(20)
+	assert_int(all.size()).is_equal(26)
 
 
 # --- get_recipe returns correct fields ---
@@ -298,13 +298,26 @@ func test_craft_stone_pickaxe_fields() -> void:
 
 func test_find_recipes_for_action_craft() -> void:
 	var results: Array = _registry.find_recipes_for_action(&"craft")
-	assert_int(results.size()).is_equal(3)
+	assert_int(results.size()).is_equal(2)
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
 	assert_bool(ids.has("00016")).is_true()  # craft_stone_axe
 	assert_bool(ids.has("00017")).is_true()  # craft_stone_pickaxe
+
+
+func test_find_recipes_for_action_build() -> void:
+	var results: Array = _registry.find_recipes_for_action(&"build")
+	assert_int(results.size()).is_equal(6)
+	var ids: Array[String] = []
+	for r in results:
+		ids.append(String(r.id))
 	assert_bool(ids.has("00019")).is_true()  # build_campfire
+	assert_bool(ids.has("00021")).is_true()  # build_workbench
+	assert_bool(ids.has("00022")).is_true()  # build_storage_chest
+	assert_bool(ids.has("00023")).is_true()  # build_shelter
+	assert_bool(ids.has("00024")).is_true()  # build_wall
+	assert_bool(ids.has("00025")).is_true()  # build_torch
 
 
 func test_display_name_populated_for_all_recipes() -> void:

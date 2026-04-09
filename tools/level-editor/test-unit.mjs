@@ -13,6 +13,7 @@ import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
+import { RecipeModel, recipeModelToRaw, validateRecipeForm, RECIPE_KINDS, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -1860,6 +1861,554 @@ function _makeModel(overrides) {
   }
   return model;
 }
+
+// ============================================================
+// RecipeModel — parsing (task-039b)
+// ============================================================
+
+function _makeRecipeEntry(resourceOverrides, subResources) {
+  const raw = new TresFile();
+  raw.scriptClass = 'Recipe';
+  raw.headerLine = '[gd_resource type="Resource" script_class="Recipe" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]'];
+  raw.subResources = subResources || [];
+  const data = { script: 'ExtResource("1_recipe")', id: 'test', display_name: 'Test Recipe', kind: 0, ...resourceOverrides };
+  raw.resourceFields = new Map();
+  raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_recipe")' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'test' });
+  raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Recipe' });
+  raw.resourceFields.set('kind', { type: 'int', value: data.kind || 0 });
+  if (data.inputs) raw.resourceFields.set('inputs', { type: 'array', elementType: null, value: data.inputs });
+  if (data.outputs) raw.resourceFields.set('outputs', { type: 'array', elementType: null, value: data.outputs });
+  if (data.effects) raw.resourceFields.set('effects', { type: 'array', elementType: null, value: data.effects });
+  if (data.conditions) raw.resourceFields.set('conditions', { type: 'array', elementType: null, value: data.conditions });
+  if (data.actions) raw.resourceFields.set('actions', { type: 'array', elementType: null, value: data.actions });
+  if (data.time != null && data.time !== 0) raw.resourceFields.set('time', { type: 'float', value: data.time });
+  if (data.unlock_when) raw.resourceFields.set('unlock_when', { type: 'array', elementType: null, value: data.unlock_when });
+  return { data, raw };
+}
+
+function _makeRecipeModel(overrides) {
+  const model = new RecipeModel();
+  model.id = 'test';
+  model.display_name = 'Test Recipe';
+  model.kind = 0;
+  model.time = 0;
+  for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
+  return model;
+}
+
+test('RecipeModel — fromEntry reads basic fields', () => {
+  const entry = _makeRecipeEntry({ kind: 2, time: 4.0 }, []);
+  const model = RecipeModel.fromEntry('00001.tres', entry);
+  assert(model.id === '00001', 'id should be 00001');
+  assert(model.display_name === 'Test Recipe', 'display_name');
+  assert(model.kind === 2, 'kind should be 2');
+  assert(model._filename === '00001.tres', '_filename');
+});
+
+test('RecipeModel — fromEntry reads inputs via sub_resource resolution', () => {
+  const inputFields = new Map();
+  inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
+  inputFields.set('ref_or_tag', { type: 'stringname', value: '00020' });
+  inputFields.set('count', { type: 'int', value: 3 });
+  inputFields.set('source', { type: 'stringname', value: 'world_tile' });
+  const entry = _makeRecipeEntry(
+    { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
+    [{ type: 'Resource', id: 'input_1', fields: inputFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.inputs.length === 1, 'should have 1 input');
+  assert(model.inputs[0].ref_or_tag === '00020', 'input ref_or_tag');
+  assert(model.inputs[0].count === 3, 'input count');
+  assert(model.inputs[0].source === 'world_tile', 'input source');
+  assert(model.inputs[0].is_tag === false, 'input is_tag');
+});
+
+test('RecipeModel — fromEntry reads input with is_tag', () => {
+  const inputFields = new Map();
+  inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
+  inputFields.set('ref_or_tag', { type: 'stringname', value: 'BURNABLE.log' });
+  inputFields.set('count', { type: 'int', value: 1 });
+  inputFields.set('is_tag', { type: 'bool', value: true });
+  const entry = _makeRecipeEntry(
+    { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
+    [{ type: 'Resource', id: 'input_1', fields: inputFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.inputs[0].is_tag === true, 'is_tag should be true');
+  assert(model.inputs[0].ref_or_tag === 'BURNABLE.log', 'ref_or_tag');
+});
+
+test('RecipeModel — fromEntry reads outputs with prob', () => {
+  const outputFields = new Map();
+  outputFields.set('script', { type: 'ext_resource', value: 'ExtResource("3_output")' });
+  outputFields.set('prop_ref', { type: 'stringname', value: 'branch' });
+  outputFields.set('count', { type: 'int', value: 2 });
+  outputFields.set('prob', { type: 'float', value: 0.8 });
+  const entry = _makeRecipeEntry(
+    { outputs: [{ type: 'sub_resource', value: 'output_1' }] },
+    [{ type: 'Resource', id: 'output_1', fields: outputFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.outputs.length === 1, 'should have 1 output');
+  assert(model.outputs[0].prop_ref === 'branch', 'prop_ref');
+  assert(model.outputs[0].count === 2, 'count');
+  assert(model.outputs[0].prob === 0.8, 'prob');
+});
+
+test('RecipeModel — fromEntry reads effects with params', () => {
+  const effectFields = new Map();
+  effectFields.set('script', { type: 'ext_resource', value: 'ExtResource("4_effect")' });
+  effectFields.set('kind', { type: 'stringname', value: 'stat_delta' });
+  effectFields.set('params', { type: 'dict', value: new Map([['stat', { type: 'string', value: 'hunger' }], ['value', { type: 'int', value: 5 }]]), braceSpaces: true });
+  const entry = _makeRecipeEntry(
+    { effects: [{ type: 'sub_resource', value: 'effect_1' }] },
+    [{ type: 'Resource', id: 'effect_1', fields: effectFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.effects.length === 1, 'should have 1 effect');
+  assert(model.effects[0].kind === 'stat_delta', 'effect kind');
+  assert(model.effects[0].params.stat === 'hunger', 'params.stat');
+  assert(model.effects[0].params.value === 5, 'params.value');
+});
+
+test('RecipeModel — fromEntry reads conditions with nested predicate', () => {
+  const predFields = new Map();
+  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("6_predicate")' });
+  predFields.set('kind', { type: 'stringname', value: 'at_station' });
+  predFields.set('params', { type: 'dict', value: new Map([['tag', { type: 'string', value: 'fire' }]]), braceSpaces: true });
+  const condFields = new Map();
+  condFields.set('script', { type: 'ext_resource', value: 'ExtResource("5_condition")' });
+  condFields.set('predicate', { type: 'sub_resource', value: 'cond_pred_1' });
+  condFields.set('must_sustain', { type: 'bool', value: true });
+  const entry = _makeRecipeEntry(
+    { conditions: [{ type: 'sub_resource', value: 'condition_1' }] },
+    [
+      { type: 'Resource', id: 'cond_pred_1', fields: predFields },
+      { type: 'Resource', id: 'condition_1', fields: condFields },
+    ],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.conditions.length === 1, 'should have 1 condition');
+  assert(model.conditions[0].predicate_kind === 'at_station', 'predicate_kind');
+  assert(model.conditions[0].predicate_params.tag === 'fire', 'predicate_params.tag');
+  assert(model.conditions[0].must_sustain === true, 'must_sustain');
+});
+
+test('RecipeModel — fromEntry reads unlock_when predicates', () => {
+  const predFields = new Map();
+  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("6_predicate")' });
+  predFields.set('kind', { type: 'stringname', value: 'cataloged' });
+  predFields.set('params', { type: 'dict', value: new Map([['prop', { type: 'string', value: '00020' }]]), braceSpaces: true });
+  const entry = _makeRecipeEntry(
+    { unlock_when: [{ type: 'sub_resource', value: 'unlock_pred_1' }] },
+    [{ type: 'Resource', id: 'unlock_pred_1', fields: predFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.unlock_when.length === 1, 'should have 1 unlock predicate');
+  assert(model.unlock_when[0].kind === 'cataloged', 'unlock kind');
+  assert(model.unlock_when[0].params.prop === '00020', 'unlock params.prop');
+});
+
+test('RecipeModel — fromEntry reads actions', () => {
+  const entry = _makeRecipeEntry(
+    { actions: [{ type: 'stringname', value: 'eat' }, { type: 'stringname', value: 'chop' }] }, [],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.actions.length === 2, 'should have 2 actions');
+  assert(model.actions[0] === 'eat', 'first action');
+  assert(model.actions[1] === 'chop', 'second action');
+});
+
+test('RecipeModel — fromEntry handles empty arrays', () => {
+  const entry = _makeRecipeEntry({}, []);
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.inputs.length === 0, 'no inputs');
+  assert(model.outputs.length === 0, 'no outputs');
+  assert(model.effects.length === 0, 'no effects');
+  assert(model.conditions.length === 0, 'no conditions');
+  assert(model.actions.length === 0, 'no actions');
+  assert(model.unlock_when.length === 0, 'no unlock_when');
+});
+
+// ============================================================
+// validateRecipeForm (task-039b)
+// ============================================================
+
+test('validateRecipeForm — valid minimal recipe', () => {
+  const result = validateRecipeForm(_makeRecipeModel({}), true);
+  assert(result.valid === true, 'should be valid');
+  assert(result.errors.length === 0, 'no errors');
+});
+
+test('validateRecipeForm — missing ID', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ id: '' }), true);
+  assert(result.valid === false, 'should be invalid');
+  assert(result.errors.some(e => e.includes('ID')), 'mention ID');
+});
+
+test('validateRecipeForm — invalid ID chars', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ id: 'bad recipe!' }), true);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — duplicate ID on create', () => {
+  ProjectContext.files.recipes.set('test.tres', { data: {}, raw: new TresFile() });
+  const result = validateRecipeForm(_makeRecipeModel({}), true);
+  assert(result.valid === false, 'should be invalid');
+  assert(result.errors.some(e => e.includes('already exists')), 'mention duplicate');
+  ProjectContext.files.recipes.delete('test.tres');
+});
+
+test('validateRecipeForm — missing display_name', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ display_name: '' }), true);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — negative time', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ time: -1 }), true);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — invalid kind', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ kind: 5 }), true);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — input missing ref_or_tag', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — input invalid source', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 1, source: 'invalid', is_tag: false }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — input count < 1', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 0, source: 'player_inventory', is_tag: false }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — output missing prop_ref', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ outputs: [{ prop_ref: '', count: 1, prob: 1.0 }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — output prob > 1', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ outputs: [{ prop_ref: '00010', count: 1, prob: 1.5 }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — output prob < 0', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ outputs: [{ prop_ref: '00010', count: 1, prob: -0.1 }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — output prob = 0 is valid', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ outputs: [{ prop_ref: '00010', count: 1, prob: 0 }] }), false);
+  assert(result.valid === true, 'prob=0 should be valid');
+});
+
+test('validateRecipeForm — effect missing kind', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ effects: [{ kind: '', params: {} }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — condition missing predicate kind', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ conditions: [{ predicate_kind: '', predicate_params: {}, must_sustain: false }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — unlock_when missing kind', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ unlock_when: [{ kind: '', params: {} }] }), false);
+  assert(result.valid === false, 'should be invalid');
+});
+
+test('validateRecipeForm — valid full recipe', () => {
+  const result = validateRecipeForm(_makeRecipeModel({
+    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+    outputs: [{ prop_ref: '00010', count: 2, prob: 0.8 }],
+    effects: [{ kind: 'stat_delta', params: { stat: 'hunger', value: 5 } }],
+    conditions: [{ predicate_kind: 'at_station', predicate_params: { tag: 'fire' }, must_sustain: true }],
+    actions: ['eat'], time: 3.0,
+    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
+  }), true);
+  assert(result.valid === true, 'should be valid');
+  assert(result.errors.length === 0, 'no errors');
+});
+
+// ============================================================
+// recipeModelToRaw — serialization (task-039b)
+// ============================================================
+
+test('recipeModelToRaw — serializes basic recipe', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({ kind: 1, display_name: 'Eat Berry' }));
+  assert(raw.scriptClass === 'Recipe', 'scriptClass');
+  assert(raw.resourceFields.has('id'), 'should have id');
+  assert(raw.resourceFields.get('kind').value === 1, 'kind value');
+});
+
+test('recipeModelToRaw — serializes inputs as sub_resources', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+  }));
+  assert(raw.subResources.length >= 1, 'should have sub_resources');
+  const inputSub = raw.subResources.find(s => s.id === 'input_1');
+  assert(inputSub != null, 'should have input_1');
+  assert(inputSub.fields.get('ref_or_tag').value === '00020', 'ref_or_tag');
+});
+
+test('recipeModelToRaw — serializes outputs with prob', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    outputs: [{ prop_ref: 'branch', count: 2, prob: 0.8 }],
+  }));
+  const outputSub = raw.subResources.find(s => s.id === 'output_1');
+  assert(outputSub != null, 'should have output_1');
+  assert(outputSub.fields.get('prop_ref').value === 'branch', 'prop_ref');
+  assert(outputSub.fields.get('prob').value === 0.8, 'prob');
+});
+
+test('recipeModelToRaw — omits prob when 1.0', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    outputs: [{ prop_ref: '00010', count: 1, prob: 1.0 }],
+  }));
+  const outputSub = raw.subResources.find(s => s.id === 'output_1');
+  assert(outputSub != null, 'should have output_1');
+  assert(!outputSub.fields.has('prob'), 'prob omitted when 1.0');
+});
+
+test('recipeModelToRaw — serializes conditions with nested predicate', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    conditions: [{ predicate_kind: 'has_tool', predicate_params: { tool: 'axe' }, must_sustain: true }],
+  }));
+  const predSub = raw.subResources.find(s => s.id === 'cond_pred_1');
+  assert(predSub != null, 'should have cond_pred_1');
+  assert(predSub.fields.get('kind').value === 'has_tool', 'predicate kind');
+  const condSub = raw.subResources.find(s => s.id === 'condition_1');
+  assert(condSub != null, 'should have condition_1');
+  assert(condSub.fields.get('must_sustain').value === true, 'must_sustain');
+  assert(condSub.fields.get('predicate').type === 'sub_resource', 'predicate is sub_resource ref');
+});
+
+test('recipeModelToRaw — serializes actions', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({ actions: ['eat', 'chop'] }));
+  const actionsField = raw.resourceFields.get('actions');
+  assert(actionsField != null, 'should have actions');
+  assert(actionsField.value.length === 2, '2 actions');
+  assert(actionsField.value[0].value === 'eat', 'action value');
+});
+
+test('recipeModelToRaw — serializes unlock_when', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
+  }));
+  const unlockSub = raw.subResources.find(s => s.id === 'unlock_pred_1');
+  assert(unlockSub != null, 'should have unlock_pred_1');
+  assert(unlockSub.fields.get('kind').value === 'cataloged', 'unlock kind');
+});
+
+test('recipeModelToRaw — no sub_resources when empty', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({}));
+  assert(raw.subResources.length === 0, 'no sub_resources');
+});
+
+test('recipeModelToRaw — serialized output is valid .tres', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    kind: 2,
+    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
+    effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
+    actions: ['chop'], time: 4.0,
+  }));
+  const text = TresParser.serialize(raw);
+  assert(text.includes('[gd_resource'), 'should have header');
+  assert(text.includes('script_class="Recipe"'), 'Recipe class');
+  const reparsed = TresParser.parse(text);
+  assert(reparsed.scriptClass === 'Recipe', 'should reparse as Recipe');
+});
+
+// ============================================================
+// RecipeModel round-trip: fromEntry -> recipeModelToRaw -> parse -> fromEntry (task-039b)
+// ============================================================
+
+test('RecipeModel — full round-trip with all fields', () => {
+  const original = _makeRecipeModel({
+    kind: 2, display_name: 'Chop Small Tree',
+    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
+    effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
+    conditions: [{ predicate_kind: 'has_tool', predicate_params: { tool: 'axe' }, must_sustain: true }],
+    actions: ['chop'], time: 4.0,
+    unlock_when: [{ kind: 'has_tool', params: { tool: 'axe' } }, { kind: 'cataloged', params: { prop: '00001' } }],
+  });
+  const raw = recipeModelToRaw(original);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+  const subMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) { subData[k] = v.value; }
+    subMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id round-trip');
+  assert(restored.display_name === original.display_name, 'display_name round-trip');
+  assert(restored.kind === original.kind, 'kind round-trip');
+  assert(restored.time === original.time, 'time round-trip');
+  assert(restored.actions.length === 1, 'actions count');
+  assert(restored.actions[0] === 'chop', 'actions[0]');
+  assert(restored.inputs.length === 1, 'inputs count');
+  assert(restored.inputs[0].ref_or_tag === '00001', 'input ref_or_tag');
+  assert(restored.inputs[0].source === 'world_tile', 'input source');
+  assert(restored.outputs.length === 2, 'outputs count');
+  assert(restored.outputs[0].prop_ref === '00010', 'output[0] prop_ref');
+  assert(restored.outputs[1].prob === 0.8, 'output[1] prob');
+  assert(restored.effects.length === 1, 'effects count');
+  assert(restored.effects[0].kind === 'sound', 'effect kind');
+  assert(restored.conditions.length === 1, 'conditions count');
+  assert(restored.conditions[0].predicate_kind === 'has_tool', 'condition predicate_kind');
+  assert(restored.conditions[0].must_sustain === true, 'condition must_sustain');
+  assert(restored.unlock_when.length === 2, 'unlock_when count');
+  assert(restored.unlock_when[0].kind === 'has_tool', 'unlock[0] kind');
+  assert(restored.unlock_when[1].kind === 'cataloged', 'unlock[1] kind');
+});
+
+test('RecipeModel — round-trip with no optional fields', () => {
+  const original = _makeRecipeModel({});
+  const raw = recipeModelToRaw(original);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+  const subMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) { subData[k] = v.value; }
+    subMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
+  assert(restored.id === 'test', 'id');
+  assert(restored.display_name === 'Test Recipe', 'display_name');
+  assert(restored.inputs.length === 0, 'no inputs');
+  assert(restored.outputs.length === 0, 'no outputs');
+  assert(restored.conditions.length === 0, 'no conditions');
+  assert(restored.actions.length === 0, 'no actions');
+});
+
+// ============================================================
+// RecipeModel round-trip from actual .tres files (task-039b)
+// ============================================================
+
+const __recipesDir = join(__projectRoot, 'data', 'recipes');
+let __recipeFiles = [];
+try { __recipeFiles = readdirSync(__recipesDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/recipes/:', e.message); }
+
+for (const recipeFile of __recipeFiles) {
+  test(`RecipeModel round-trip — ${recipeFile}`, () => {
+    const filePath = join(__recipesDir, recipeFile);
+    const text = readFileSync(filePath, 'utf-8');
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'Recipe', `${recipeFile}: scriptClass`);
+
+    // Verify TresParser round-trip
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${recipeFile}: TresParser round-trip`);
+
+    // Build resolved data
+    const subMap = new Map();
+    for (const sub of parsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subMap.set(sub.id, subData);
+    }
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
+      else { data[key] = tv.value; }
+    }
+
+    const model = RecipeModel.fromEntry(recipeFile, { data, raw: parsed });
+    assert(model.id === recipeFile.replace('.tres', ''), `${recipeFile}: id`);
+    assert(typeof model.display_name === 'string', `${recipeFile}: display_name is string`);
+    assert(model.kind >= 0 && model.kind <= 3, `${recipeFile}: kind in range`);
+    assert(model.time >= 0, `${recipeFile}: time >= 0`);
+    assert(Array.isArray(model.inputs), `${recipeFile}: inputs is array`);
+    assert(Array.isArray(model.outputs), `${recipeFile}: outputs is array`);
+
+    // Verify inputs have valid fields
+    for (const inp of model.inputs) {
+      assert(typeof inp.ref_or_tag === 'string' && inp.ref_or_tag.length > 0, `${recipeFile}: input ref_or_tag`);
+      assert(inp.count >= 1, `${recipeFile}: input count >= 1`);
+    }
+    // Verify outputs have valid fields
+    for (const out of model.outputs) {
+      assert(typeof out.prop_ref === 'string' && out.prop_ref.length > 0, `${recipeFile}: output prop_ref`);
+      assert(out.prob >= 0 && out.prob <= 1, `${recipeFile}: output prob in [0,1]`);
+    }
+
+    // Serialize back and verify round-trip
+    const raw2 = recipeModelToRaw(model);
+    const text2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(text2);
+    assert(reparsed.scriptClass === 'Recipe', `${recipeFile}: re-serialized scriptClass`);
+
+    const subMap2 = new Map();
+    for (const sub of reparsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subMap2.set(sub.id, subData);
+    }
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data2[key] = subMap2.get(tv.value) || null; }
+      else { data2[key] = tv.value; }
+    }
+
+    const model2 = RecipeModel.fromEntry(recipeFile, { data: data2, raw: reparsed });
+    assert(model2.id === model.id, `${recipeFile}: id survives round-trip`);
+    assert(model2.display_name === model.display_name, `${recipeFile}: display_name survives`);
+    assert(model2.kind === model.kind, `${recipeFile}: kind survives`);
+    assert(model2.inputs.length === model.inputs.length, `${recipeFile}: inputs count survives`);
+    assert(model2.outputs.length === model.outputs.length, `${recipeFile}: outputs count survives`);
+    assert(model2.effects.length === model.effects.length, `${recipeFile}: effects count survives`);
+    assert(model2.conditions.length === model.conditions.length, `${recipeFile}: conditions count survives`);
+    assert(model2.actions.length === model.actions.length, `${recipeFile}: actions count survives`);
+    assert(model2.unlock_when.length === model.unlock_when.length, `${recipeFile}: unlock_when count survives`);
+  });
+}
+
+// ============================================================
+// Constants exports (task-039b)
+// ============================================================
+
+test('Recipe constants — RECIPE_KINDS has 4 entries', () => {
+  assert(RECIPE_KINDS.length === 4, 'should have 4 kinds');
+  assert(RECIPE_KINDS[0] === 'Assemble', 'first is Assemble');
+  assert(RECIPE_KINDS[3] === 'Combine', 'last is Combine');
+});
+
+test('Recipe constants — INPUT_SOURCES has 4 entries', () => {
+  assert(INPUT_SOURCES.length === 4, 'should have 4 sources');
+  assert(INPUT_SOURCES.includes('player_inventory'), 'includes player_inventory');
+  assert(INPUT_SOURCES.includes('world_tile'), 'includes world_tile');
+});
+
+test('Recipe constants — PREDICATE_KINDS has expected entries', () => {
+  assert(PREDICATE_KINDS.includes('has_tool'), 'includes has_tool');
+  assert(PREDICATE_KINDS.includes('cataloged'), 'includes cataloged');
+  assert(PREDICATE_KINDS.includes('at_station'), 'includes at_station');
+});
 
 // ============================================================
 // Summary

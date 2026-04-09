@@ -16,6 +16,7 @@ import { ToolManager } from './tools.js';
 import { validateMap } from './validator.js';
 import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
+import { renderRecipeEditor } from './recipe-editor.js';
 
 // ============================================================
 // Module-level state
@@ -66,6 +67,7 @@ const TAB_LABELS = {
   map: 'Map Editor',
   props: 'Props',
   biomes: 'Biomes',
+  recipes: 'Recipes',
 };
 
 /**
@@ -513,6 +515,17 @@ function initializeAfterLoad() {
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('biomes'); },
     });
     console.log('Biome editor rendered.');
+  }
+
+  // Render recipe editor in the Recipes tab (task-039b)
+  const recipeTabEl = document.getElementById('tab-recipes');
+  if (recipeTabEl) {
+    renderRecipeEditor(recipeTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('recipes'); },
+    });
+    console.log('Recipe editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)

@@ -104,12 +104,16 @@ static func _eval_at_station(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## at_tile_type — params: {tag: StringName}
 ## Check ctx.tile.biome matches or has a matching tag.
+## Special case: "buildable" means tile is not water (passable for building).
 static func _eval_at_tile_type(params: Dictionary, ctx: WorldContext) -> bool:
 	if ctx.tile == null:
 		return false
 	var tag: StringName = StringName(params.get("tag", &""))
 	if tag == &"":
 		return false
+	# Special "buildable" check: tile is not water (building-eligible).
+	if String(tag).to_lower() == "buildable":
+		return ctx.tile.biome != 4  # HexTile.Biome.WATER
 	# Match against biome enum name (case-insensitive comparison).
 	var biome_name: String = _biome_to_string(ctx.tile.biome).to_lower()
 	if String(tag).to_lower() == biome_name:
