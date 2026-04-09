@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bvtx5r2ck1y38"]
+
+[ext_resource type="Script" path="res://addons/godot_gherkin/runner/scene_runner.gd" id="1_scene_runner"]
+
+[node name="GherkinSceneRunner" type="Node"]
+script = ExtResource("1_scene_runner")

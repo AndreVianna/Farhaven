@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 
 const _LightingManager = preload("res://scripts/lighting/lighting_manager.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _LightCap = preload("res://scripts/data/capabilities/light_cap.gd")
 
 var _lm: Node
 var _grid: MockHexGrid
@@ -58,8 +59,10 @@ func _make_light_prop(id: StringName, radius: int) -> Resource:
 	var def := _PropDef.new()
 	def.id = id
 	def.display_name = "Light_%s" % str(id)
-	def.emits_light = true
-	def.light_radius = radius
+	var cap := _LightCap.new()
+	cap.radius = float(radius)
+	cap.color = _LightingManager.DEFAULT_LIGHT_COLOR
+	def.light = cap
 	return def
 
 
@@ -67,8 +70,6 @@ func _make_normal_prop(id: StringName) -> Resource:
 	var def := _PropDef.new()
 	def.id = id
 	def.display_name = "Normal_%s" % str(id)
-	def.emits_light = false
-	def.light_radius = 0
 	return def
 
 

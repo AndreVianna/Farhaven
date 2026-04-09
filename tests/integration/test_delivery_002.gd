@@ -57,6 +57,15 @@ class FakeGrid extends Node:
 	func get_tile(coords: Vector2i):
 		return _tiles.get(coords, null)
 
+	func get_all_tiles() -> Dictionary:
+		return _tiles
+
+	func has_tile(coords: Vector2i) -> bool:
+		return _tiles.has(coords)
+
+	func get_tile_count() -> int:
+		return _tiles.size()
+
 	func distance(a: Vector2i, b: Vector2i) -> int:
 		var cube_a: Vector3i = Vector3i(a.x, -a.x - a.y, a.y)
 		var cube_b: Vector3i = Vector3i(b.x, -b.x - b.y, b.y)

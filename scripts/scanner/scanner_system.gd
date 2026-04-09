@@ -158,7 +158,7 @@ func _complete_scan() -> void:
 func on_fauna_attacked_player(_fauna_id, _damage, species_type: StringName) -> void:
 	if _catalog.is_known(species_type):
 		return
-	if not _catalog._all_entries.has(species_type):
+	if not _catalog.has_entry(species_type):
 		return
 	_catalog.encounter_entry(species_type, "Hostile")
 	entry_encountered.emit(species_type, "Hostile")
@@ -171,7 +171,7 @@ func on_fauna_attacked_player(_fauna_id, _damage, species_type: StringName) -> v
 func on_fauna_fled(_fauna_id, species_type: StringName) -> void:
 	if _catalog.is_known(species_type):
 		return
-	if not _catalog._all_entries.has(species_type):
+	if not _catalog.has_entry(species_type):
 		return
 	_catalog.encounter_entry(species_type, "Shy")
 	entry_encountered.emit(species_type, "Shy")
@@ -247,8 +247,9 @@ func get_scan_progress() -> float:
 func bootstrap_visible() -> void:
 	if _grid == null:
 		return
-	for coords in _grid._tiles:
-		var tile = _grid._tiles[coords]
+	var all_tiles: Dictionary = _grid.get_all_tiles() if _grid.has_method("get_all_tiles") else {}
+	for coords in all_tiles:
+		var tile = all_tiles[coords]
 		if tile != null:
 			_check_passive_identification(coords)
 

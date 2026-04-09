@@ -322,7 +322,7 @@ html, body {
   font-size: 12px;
 }
 
-#tab-props, #tab-biomes {
+#tab-props, #tab-biomes, #tab-recipes {
   flex-direction: column;
   gap: 0;
 }
@@ -799,6 +799,7 @@ html, body {
       <button class="tab-btn active" data-tab="map">Map Editor</button>
       <button class="tab-btn" data-tab="props">Props</button>
       <button class="tab-btn" data-tab="biomes">Biomes</button>
+      <button class="tab-btn" data-tab="recipes">Recipes</button>
     </nav>
     <main id="tab-content">
       <div id="tab-map" class="tab-panel active">
@@ -882,6 +883,9 @@ html, body {
       </div>
       <div id="tab-biomes" class="tab-panel">
         <p style="color: var(--text-secondary);">Biome Editor</p>
+      </div>
+      <div id="tab-recipes" class="tab-panel">
+        <p style="color: var(--text-secondary);">Recipe Editor</p>
       </div>
     </main>
     <footer id="status-bar">

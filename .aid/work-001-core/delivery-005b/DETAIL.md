@@ -72,6 +72,7 @@ not on each other.
 | 037 | FaunaManager — spawn, AI, contact, despawn | IMPLEMENT | delivery-005a | 032, 033, 034, 039b |
 | 038 | Fauna renderer + signal wiring | IMPLEMENT | 037 | 035, 036, 039b |
 | 039b | Recipe editor page (level editor) | IMPLEMENT | delivery-005a | All other 005b tasks |
+| 039c | BDD scenario tests (GodotGherkin) | TEST | 032, 035, 037, 038 | 039b |
 
 ## Task Details
 
@@ -406,6 +407,88 @@ PropRenderer uses MultiMesh pools (one pool per PropDef, up to 128 instances). S
 - [ ] Build passes with zero warnings
 
 **Parallel with:** all other 005b tasks (independent JS work, doesn't touch game code)
+
+---
+
+### task-039c: BDD Scenario Tests (GodotGherkin) [TEST]
+
+**Source:** delivery-005a + delivery-005b smoke tests, DESIGN.md worked examples
+**Framework:** GodotGherkin (addons/godot_gherkin/, Gherkin syntax with GDScript steps)
+
+**Scope:**
+Write BDD scenario tests using Gherkin feature files that validate end-to-end gameplay flows. These replace manual smoke testing with automated, human-readable scenarios.
+
+**Scenario categories to cover:**
+
+1. **Gathering & Discovery:**
+   - Player scans source → recipe unlocks → gather yields items → items in inventory
+   - Tool-gated gathering (need pickaxe for boulders)
+   - Gathering depletes source → respawn
+
+2. **Crafting & Building:**
+   - Gather materials → craft stone axe → axe in tool slot
+   - Gather materials → build campfire → structure appears on tile
+   - Insufficient materials → craft fails with reason
+
+3. **Lighting:**
+   - Place campfire → night arrives → terrain brightens near campfire
+   - Save with campfire → load → light persists
+   - Player torch (scanner) lights on game start at night
+
+4. **Inventory Weight:**
+   - Pick up items → weight increases → weight display updates
+   - Inventory full → item rejected → feedback to player
+   - Heavy item (log) → always rejected from inventory
+
+5. **Recipe Lifecycle:**
+   - Passive recipe (meat_rots) fires after time
+   - Sustain condition failure cancels recipe (cook_meat + fire goes out)
+   - Recipe with probability outputs (chop tree → wood always, branches 80%)
+
+6. **Fauna (when task-037/038 land):**
+   - Night arrives → fauna spawns outside light radius
+   - Fauna contacts player → damage applied
+   - Shelter → 0 damage
+   - Fauna killed → drops via breakdown recipe
+
+**File structure:**
+```
+features/
+  gathering.feature
+  crafting.feature
+  building.feature
+  lighting.feature
+  inventory.feature
+  recipes.feature
+  fauna.feature          # after task-037/038
+steps/
+  gathering_steps.gd
+  crafting_steps.gd
+  building_steps.gd
+  lighting_steps.gd
+  inventory_steps.gd
+  recipe_steps.gd
+  fauna_steps.gd
+  common_steps.gd        # shared Given/When/Then (player setup, world setup)
+```
+
+**Quality rules:**
+- Each scenario tests ONE user-visible behavior
+- Steps are reusable across scenarios (common_steps.gd)
+- Scenarios must be readable by Andre without reading GDScript
+- No testing of internals — only observable behavior (inventory contents, prop states, signals emitted)
+
+**Criteria:**
+- [ ] GodotGherkin installed and running (verify with a hello-world feature)
+- [ ] At least 15 scenarios across 5+ feature files
+- [ ] All scenarios pass
+- [ ] Scenarios cover every item in delivery-005a + 005b visual smoke tests
+- [ ] common_steps.gd provides reusable world/player setup
+- [ ] GdUnit4 tests (1355) still pass alongside GodotGherkin
+- [ ] Feature files readable by non-developer (Andre can understand them)
+
+**Depends on:** tasks 032, 035, 037, 038 (needs gameplay systems to test against)
+**Parallel with:** task-039b (independent — GDScript vs JS)
 
 ---
 

@@ -66,7 +66,7 @@ func save_game() -> bool:
 	var json_text: String = JSON.stringify(data, "\t")
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
-		push_warning("SaveManager: could not open save file for writing.")
+		push_error("SaveManager: could not open save file for writing.")
 		return false
 	file.store_string(json_text)
 	file.close()
@@ -84,7 +84,7 @@ func load_game() -> bool:
 	file.close()
 	var parsed: Variant = JSON.parse_string(text)
 	if parsed == null or not (parsed is Dictionary):
-		push_warning("SaveManager: corrupt save file detected — deleting.")
+		push_error("SaveManager: corrupt save file detected — deleting.")
 		_delete_save()
 		return false
 	_distribute_save_data(parsed as Dictionary)

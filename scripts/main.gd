@@ -39,55 +39,62 @@ func _wire_systems() -> void:
 	var crafting: Node = player.get_node_or_null("CraftingSystem")
 	var hud: Node = $HUD/HUD
 
-	# Connect inventory to HUD
+	_wire_hud(player, scanner, auto_interaction, crafting, hud)
+	_wire_gather_feedback(player, auto_interaction)
+	_wire_survival(player, hud)
+	_wire_day_night(hud)
+	_wire_save_triggers(player, crafting)
+	_wire_fauna(player, scanner, auto_interaction)
+
+
+func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
+		crafting: Node, hud: Node) -> void:
 	if player.has_method("get_inventory"):
 		var inv = player.get_inventory()
 		if inv != null and hud.has_method("connect_inventory"):
 			hud.connect_inventory(inv)
-
-	# Connect catalog to HUD
 	if scanner != null and hud.has_method("connect_catalog"):
 		var cat = scanner.get_catalog()
 		if cat != null:
 			hud.connect_catalog(cat)
-
-	# Connect crafting to HUD
 	if crafting != null and hud.has_method("connect_crafting"):
 		var inv = player.get_inventory() if player.has_method("get_inventory") else null
 		if inv != null:
 			hud.connect_crafting(crafting, inv)
-
-	# Connect auto-interaction to HUD (floating text feedback)
 	if auto_interaction != null and hud.has_method("connect_auto_interaction"):
 		hud.connect_auto_interaction(auto_interaction)
+	# Wire BuildingSystem → HUD for Build panel
+	var building: Node = player.get_node_or_null("BuildingSystem")
+	if building != null and hud.has_method("connect_building"):
+		hud.connect_building(building)
 
-	# Setup fly-to-player visual effect
+
+func _wire_gather_feedback(player: Node, auto_interaction: Node) -> void:
 	if auto_interaction != null:
 		_fly_to_player = _FlyToPlayer.new()
 		_fly_to_player.setup(player)
 		$World.add_child(_fly_to_player)
 		auto_interaction.auto_gather_completed.connect(_on_gather_fly.bind(player))
-
-	# Setup sound hooks (gather ding + craft success)
 	_gather_sound = _GatherSound.new()
 	add_child(_gather_sound)
+	var hud: Node = $HUD/HUD
 	if hud.has_method("connect_sound"):
 		hud.connect_sound(_gather_sound)
 
-	# Wire SurvivalSystem signals
-	var survival: Node = player.get_node_or_null("SurvivalSystem")
-	if survival != null:
-		# Stat bars wiring: SurvivalSystem.stat_changed → HUD.update_stat
-		survival.stat_changed.connect(hud.update_stat)
-		# GroundItemRenderer wiring
-		var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
-		if ground_renderer != null and ground_renderer.has_method("connect_survival"):
-			ground_renderer.connect_survival(survival)
-		# SaveManager: immediate save on critical events
-		survival.player_died.connect(SaveManager.save_now)
-		survival.player_respawned.connect(SaveManager.save_now)
 
-	# Wire DayNightCycle signals to HUD day counter
+func _wire_survival(player: Node, hud: Node) -> void:
+	var survival: Node = player.get_node_or_null("SurvivalSystem")
+	if survival == null:
+		return
+	survival.stat_changed.connect(hud.update_stat)
+	var ground_renderer: Node = $World.get_node_or_null("GroundItemRenderer")
+	if ground_renderer != null and ground_renderer.has_method("connect_survival"):
+		ground_renderer.connect_survival(survival)
+	survival.player_died.connect(SaveManager.save_now)
+	survival.player_respawned.connect(SaveManager.save_now)
+
+
+func _wire_day_night(hud: Node) -> void:
 	DayNightCycle.day_started.connect(func() -> void:
 		if is_instance_valid(hud):
 			hud.update_day(DayNightCycle.day_count)
@@ -98,13 +105,66 @@ func _wire_systems() -> void:
 		SaveManager.mark_dirty()
 	)
 
-	# Wire remaining state-change signals to SaveManager dirty flag
+
+func _wire_save_triggers(player: Node, crafting: Node) -> void:
 	if player.has_method("get_inventory"):
 		var save_inv = player.get_inventory()
 		if save_inv != null and save_inv.has_signal("inventory_changed"):
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
+
+
+func _wire_fauna(player: Node, scanner: Node, auto_interaction: Node) -> void:
+	var fauna_mgr: Node = player.get_node_or_null("FaunaManager")
+	if fauna_mgr == null:
+		return
+
+	# fauna_attacked_player → SurvivalSystem.take_damage(damage)
+	var survival: Node = player.get_node_or_null("SurvivalSystem")
+	if survival != null and survival.has_method("take_damage"):
+		fauna_mgr.fauna_attacked_player.connect(
+			func(_id: int, damage: int, _species: StringName) -> void:
+				survival.take_damage(damage)
+		)
+
+	# fauna_attacked_player → ScannerSystem surprise encounter (UNKNOWN → ENCOUNTERED)
+	if scanner != null and scanner.has_method("on_fauna_attacked_player"):
+		fauna_mgr.fauna_attacked_player.connect(scanner.on_fauna_attacked_player)
+
+	# fauna_attacked_player → ScreenFade.flash(red)
+	var screen_fade: Node = get_node_or_null("ScreenFade")
+	if screen_fade != null and screen_fade.has_method("flash"):
+		fauna_mgr.fauna_attacked_player.connect(
+			func(_id: int, damage: int, _species: StringName) -> void:
+				if damage > 0:
+					screen_fade.flash(Color.RED)
+		)
+
+	# fauna_killed → breakdown recipe flow handled by FaunaManager itself
+	# (FaunaManager._on_fauna_death places corpse prop → RecipeRuntime auto-fires)
+	# No additional wiring needed here.
+
+	# fauna_moved → AutoInteractionSystem auto-defend adjacency check
+	# AutoInteractionSystem._on_fauna_moved expects (fauna_id, new_coords) but
+	# FaunaManager.fauna_moved emits (id, old_coords, new_coords, species_type).
+	# Wire with a lambda adapter to extract the needed args.
+	if auto_interaction != null and auto_interaction.has_method("_on_fauna_moved"):
+		# Wire FaunaManager reference so auto-defend can query fauna data
+		if "_fauna_manager" in auto_interaction:
+			auto_interaction._fauna_manager = fauna_mgr
+		fauna_mgr.fauna_moved.connect(
+			func(id: int, _old: Vector2i, new_c: Vector2i, _sp: StringName) -> void:
+				auto_interaction._on_fauna_moved(id, new_c)
+		)
+
+	# fauna_spawned → PropLabelRenderer for knowledge state markers
+	# Deferred: PropLabelRenderer needs a label update API for fauna.
+	# When available, wire fauna_mgr.fauna_spawned → label_renderer.on_fauna_spawned
+
+	# auto_defend_triggered → FaunaManager.apply_damage
+	if auto_interaction != null and fauna_mgr.has_method("apply_damage"):
+		auto_interaction.auto_defend_triggered.connect(fauna_mgr.apply_damage)
 
 
 func _apply_starting_loadout() -> void:

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_output.gd" id="3_output"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="4_effect"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_condition.gd" id="5_cond"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="6_pred"]
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
@@ -25,6 +27,16 @@ script = ExtResource("4_effect")
 kind = &"sound"
 params = { "sound_id": "craft_success" }
 
+[sub_resource type="Resource" id="pred_buildable"]
+script = ExtResource("6_pred")
+kind = &"at_tile_type"
+params = { "tag": "buildable" }
+
+[sub_resource type="Resource" id="cond_buildable"]
+script = ExtResource("5_cond")
+predicate = SubResource("pred_buildable")
+must_sustain = false
+
 [resource]
 script = ExtResource("1_recipe")
 id = &"00019"
@@ -33,5 +45,6 @@ kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
-actions = [&"craft"]
-time = 3.0
+conditions = [SubResource("cond_buildable")]
+actions = [&"build"]
+time = 2.0

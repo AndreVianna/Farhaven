@@ -64,6 +64,11 @@ func get_entry(entry_id: StringName):
 	return _all_entries.get(entry_id, null)
 
 
+## Returns true if an entry with the given id exists in the catalog data.
+func has_entry(entry_id: StringName) -> bool:
+	return _all_entries.has(entry_id)
+
+
 func get_discovered_entries() -> Array:
 	var result: Array = []
 	for id in _knowledge:

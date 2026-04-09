@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://structure_renderer_001"]
+
+[ext_resource type="Script" path="res://scripts/building/structure_renderer.gd" id="1_script"]
+
+[node name="StructureRenderer" type="Node3D"]
+script = ExtResource("1_script")

@@ -33,6 +33,15 @@ class MockHexGrid extends Node:
 	func get_tile(coords: Vector2i) -> Resource:
 		return _tiles.get(coords, null)
 
+	func get_all_tiles() -> Dictionary:
+		return _tiles
+
+	func has_tile(coords: Vector2i) -> bool:
+		return _tiles.has(coords)
+
+	func get_tile_count() -> int:
+		return _tiles.size()
+
 	func has_structure(coords: Vector2i, type: StringName) -> bool:
 		var tile: Resource = _tiles.get(coords, null)
 		if tile == null:

@@ -7,6 +7,7 @@ extends RefCounted
 ## and DiscoveryWatcher (unlock evaluation).
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 
 ## Evaluate a single predicate against a world context. Returns true if satisfied.
@@ -104,12 +105,16 @@ static func _eval_at_station(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## at_tile_type — params: {tag: StringName}
 ## Check ctx.tile.biome matches or has a matching tag.
+## Special case: "buildable" means tile is not water (passable for building).
 static func _eval_at_tile_type(params: Dictionary, ctx: WorldContext) -> bool:
 	if ctx.tile == null:
 		return false
 	var tag: StringName = StringName(params.get("tag", &""))
 	if tag == &"":
 		return false
+	# Special "buildable" check: tile is not water (building-eligible).
+	if String(tag).to_lower() == "buildable":
+		return ctx.tile.biome != _HexTile.Biome.WATER
 	# Match against biome enum name (case-insensitive comparison).
 	var biome_name: String = _biome_to_string(ctx.tile.biome).to_lower()
 	if String(tag).to_lower() == biome_name:
@@ -146,7 +151,7 @@ static func _eval_player_stat(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## player_skill — STUB (skill system doesn't exist yet).
 static func _eval_player_skill(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'player_skill' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'player_skill' predicate not yet implemented — should not be called in current data")
 	return false
 
 
@@ -184,7 +189,7 @@ static func _eval_time_of_day(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## weather — STUB (weather system doesn't exist yet).
 static func _eval_weather(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'weather' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'weather' predicate not yet implemented — should not be called in current data")
 	return false
 
 
@@ -281,7 +286,7 @@ static func _eval_world_flag(params: Dictionary, ctx: WorldContext) -> bool:
 
 ## animal_nearby — STUB (FaunaManager doesn't exist yet).
 static func _eval_animal_nearby(params: Dictionary, _ctx: WorldContext) -> bool:
-	push_warning("PredicateEvaluator: 'animal_nearby' predicate not yet implemented — returning false")
+	push_error("PredicateEvaluator: 'animal_nearby' predicate not yet implemented — should not be called in current data")
 	return false
 
 

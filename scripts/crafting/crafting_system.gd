@@ -66,6 +66,21 @@ func _ready() -> void:
 	_load_pre_discovered()
 
 
+func _exit_tree() -> void:
+	if _inventory and _inventory.has_signal("item_added"):
+		if _inventory.item_added.is_connected(_on_item_added):
+			_inventory.item_added.disconnect(_on_item_added)
+	if _grid:
+		if _grid.has_signal("tile_entered") and _grid.tile_entered.is_connected(_on_tile_entered):
+			_grid.tile_entered.disconnect(_on_tile_entered)
+		if _grid.has_signal("tile_exited") and _grid.tile_exited.is_connected(_on_tile_exited):
+			_grid.tile_exited.disconnect(_on_tile_exited)
+		if _grid.has_signal("structure_placed") and _grid.structure_placed.is_connected(_on_structure_placed):
+			_grid.structure_placed.disconnect(_on_structure_placed)
+		if _grid.has_signal("structure_destroyed") and _grid.structure_destroyed.is_connected(_on_structure_destroyed):
+			_grid.structure_destroyed.disconnect(_on_structure_destroyed)
+
+
 func _connect_signals() -> void:
 	if _inventory:
 		_inventory.item_added.connect(_on_item_added)
@@ -163,6 +178,11 @@ func _place_structure_at_player(structure_type: StringName) -> void:
 	var tile: Resource = _grid.get_tile(coords)
 	if tile == null:
 		return
+	# Footprint overlap check: reject if tile already has a structure with blocks_movement
+	for existing_prop in tile.props:
+		if existing_prop.blocks_movement:
+			craft_failed.emit(structure_type, &"tile_blocked")
+			return
 	var prop := _Prop.create_structure(structure_type)
 	tile.props.append(prop)
 	_grid.structure_placed.emit(coords, structure_type)
@@ -222,7 +242,7 @@ func _is_near_crafting_station(station_type: StringName) -> bool:
 
 ## Check if any prop on this tile has is_crafting_station in its PropDef.
 func _tile_has_crafting_station(coords: Vector2i) -> bool:
-	var tile: Resource = _grid._tiles.get(coords, null)
+	var tile: Resource = _grid.get_tile(coords)
 	if tile == null:
 		return false
 	for prop in tile.props:

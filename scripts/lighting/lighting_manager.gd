@@ -27,7 +27,7 @@ var _registry: Node = null  # PropRegistry autoload or mock
 
 # --- State ---
 
-## Active structure lights: key = "coords:prop_type" string, value = light dict.
+## Active structure lights: key = "coords:prop_type:sub_hex" string, value = light dict.
 ## Light dict: {position: Vector2, radius: float, color: Color}
 var _structure_lights: Dictionary = {}
 
@@ -91,22 +91,29 @@ func scan_existing_lights() -> void:
 	_structure_lights.clear()
 	if _grid == null or _registry == null:
 		return
-	var tiles: Dictionary = _grid._tiles if "_tiles" in _grid else {}
+	var tiles: Dictionary = _grid.get_all_tiles() if _grid.has_method("get_all_tiles") else {}
+	if tiles.is_empty():
+		return
 	for coords: Vector2i in tiles:
 		var tile: Resource = tiles[coords]
 		if tile == null:
 			continue
 		for prop in tile.props:
 			var def = _registry.get_def(prop.type) if _registry.has_method("get_def") else null
-			if def != null and def.emits_light:
-				var world_pos: Vector2 = HexMath.axial_to_world(coords)
-				var radius: float = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
-				var key: String = "%s:%s" % [str(coords), str(prop.type)]
-				_structure_lights[key] = {
-					"position": world_pos,
-					"radius": radius,
-					"color": DEFAULT_LIGHT_COLOR,
-				}
+			if def == null:
+				continue
+			if def.light == null:
+				continue
+			var world_pos: Vector2 = HexMath.axial_to_world(coords)
+			var radius: float = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
+			var sub_hex: Vector2i = prop.sub_hex if "sub_hex" in prop else Vector2i.ZERO
+			var key: String = "%s:%s:%s" % [str(coords), str(prop.type), str(sub_hex)]
+			var color: Color = def.light.color if def.light.color != Color() else DEFAULT_LIGHT_COLOR
+			_structure_lights[key] = {
+				"position": world_pos,
+				"radius": radius,
+				"color": color,
+			}
 
 
 ## Manually register a light source (for testing or dynamic lights).
@@ -172,7 +179,7 @@ func _update_torch_from_player(player: Node) -> void:
 	if inv == null:
 		_clear_player_light_internal()
 		return
-	# Check all tool slots for an item with emits_light
+	# Check all tool slots for an item with light capability
 	var found_light: bool = false
 	var light_radius: float = 3.0 * RING_TO_WORLD
 	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner", &"firestarter"]:
@@ -180,9 +187,9 @@ func _update_torch_from_player(player: Node) -> void:
 		if tool_id == &"":
 			continue
 		var def: _PropDef = _registry.get_def(tool_id) if _registry else null
-		if def != null and def.emits_light:
+		if def != null and def.light != null:
 			found_light = true
-			light_radius = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
+			light_radius = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
 			break
 	if found_light:
 		_player_light = {
@@ -198,22 +205,37 @@ func _update_torch_from_player(player: Node) -> void:
 
 func _on_structure_placed(coords: Vector2i, structure_type: StringName) -> void:
 	var def: _PropDef = _registry.get_def(structure_type) if _registry else null
-	if def == null or not def.emits_light:
+	if def == null or def.light == null:
 		return
 	var world_pos: Vector2 = HexMath.axial_to_world(coords)
-	var radius: float = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
-	var key: String = "%s:%s" % [str(coords), str(structure_type)]
+	var radius: float = def.light.radius * RING_TO_WORLD if def.light.radius > 0.0 else 3.0 * RING_TO_WORLD
+	var color: Color = def.light.color if def.light.color != Color() else DEFAULT_LIGHT_COLOR
+	# Find the prop on the tile to get its sub_hex for a consistent 3-part key.
+	var sub_hex: Vector2i = Vector2i.ZERO
+	if _grid != null and _grid.has_method("get_tile"):
+		var tile: Resource = _grid.get_tile(coords)
+		if tile != null:
+			for prop in tile.props:
+				if prop.type == structure_type:
+					sub_hex = prop.sub_hex if "sub_hex" in prop else Vector2i.ZERO
+					break
+	var key: String = "%s:%s:%s" % [str(coords), str(structure_type), str(sub_hex)]
 	_structure_lights[key] = {
 		"position": world_pos,
 		"radius": radius,
-		"color": DEFAULT_LIGHT_COLOR,
+		"color": color,
 	}
 	light_source_registered.emit(world_pos, radius)
 
 
 func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> void:
-	var key: String = "%s:%s" % [str(coords), str(structure_type)]
-	if _structure_lights.has(key):
+	# Match by prefix "coords:type:" since we don't have sub_hex from the signal.
+	var prefix: String = "%s:%s:" % [str(coords), str(structure_type)]
+	var keys_to_remove: Array[String] = []
+	for key: String in _structure_lights:
+		if key.begins_with(prefix):
+			keys_to_remove.append(key)
+	for key: String in keys_to_remove:
 		var pos: Vector2 = _structure_lights[key]["position"]
 		_structure_lights.erase(key)
 		light_source_unregistered.emit(pos)
