@@ -2,7 +2,7 @@
 
 > **Source:** discovery-analyst
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
 
 > All conventions below are inferred from code analysis unless marked CONFIRMED.
 
@@ -12,11 +12,15 @@
 - **snake_case** for all GDScript files: `hex_grid.gd`, `player_input.gd`, `auto_interaction_system.gd`
 - **snake_case** for scene files: `hex_grid_renderer.tscn`, `catalog_panel.tscn`
 - **snake_case** for data files: `crash_site.tres`, `anomaly_fragment.tres`
+- **Recipe .tres files:** `verb_noun.tres` pattern, e.g. `eat_berry.tres`, `gather_tree.tres`, `cook_meat.tres`, `craft_trap.tres`, `burn_log_in_fireplace.tres` (added delivery-005a)
+- **Capability class files:** `snake_case_cap.gd`, e.g. `portable_cap.gd`, `placeable_cap.gd` (added delivery-005a)
 - Test files prefixed with `test_`: `test_hex_math.gd`, `test_delivery_001.gd`
 - Source: all files in `scripts/`, `ui/`, `tests/`, `data/`
 
 ### Classes
 - **PascalCase** for class_name declarations: `HexMath`, `HexTile`, `BiomeData`, `PropNode`, `PlayerInput`, `AutoInteractionSystem`, `CatalogEntry`, `InventorySlotUI`, `RecipeEntryUI`
+- **Capability classes** use PascalCase + `Cap` suffix: `PortableCap`, `PlaceableCap`, `ContainerCap`, `LightCap`, `MovableCap`, `StationCap`, `CatalogableCap` (added delivery-005a)
+- **Recipe system classes:** `Recipe`, `RecipeInput`, `RecipeOutput`, `RecipeEffect`, `RecipeCondition`, `Predicate`, `WorldContext`, `PredicateEvaluator` (added delivery-005a)
 - **Most scripts register class_name.** 30 of 41 source files use `class_name` (22 in scripts/, 8 in ui/). The 11 exceptions are: autoloads (`hex_grid.gd`, `prop_registry.gd`) which cannot use class_name due to initialization ordering, the bootstrap (`main.gd`), player core (`player.gd`, `player_camera.gd`), map loader (`map_loader.gd`), renderers (`prop_renderer.gd`, `prop_label_renderer.gd`, `scan_progress_renderer.gd`, `hex_grid_renderer.gd`), and crafting (`crafting_system.gd`).
 - Source: anchored grep `^class_name` across `scripts/`, `ui/`, `scenes/world/`
 
@@ -45,7 +49,11 @@
 ### StringName Identifiers
 - Resource types, tool names, structure names, and slot names use StringName literals: `&"wood"`, `&"stone_axe"`, `&"workbench"`, `&"axe"`
 - Display names derived at runtime via `type.replace("_", " ").capitalize()`
-- Source: `inventory.gd` ITEM_CONFIG, `crafting_system.gd` RECIPE_CONFIG, `hex_grid.gd` WALKABLE_STRUCTURES
+- **Predicate kind names** (added delivery-005a): snake_case StringNames: `&"has_tool"`, `&"at_station"`, `&"player_stat"`, `&"cataloged"`, etc.
+- **Tags** (added delivery-005a): `UPPER_CASE.sub_name` convention: `&"BURNABLE.log"`, `&"CONSUMABLE.edible"`, `&"METAL.iron"`. Tags are just StringNames at runtime — the dot notation is a readability convention, not a real hierarchy.
+- **Recipe ids:** snake_case StringNames: `&"eat_berry"`, `&"chop_small_tree"`, `&"burn_log_in_fireplace"`.
+- **Effect kinds:** snake_case StringNames: `&"stat_delta"`, `&"sound"`, `&"emit_light"`, `&"grant_recipe"`.
+- Source: `recipe.gd`, `predicate.gd`, `recipe_effect.gd`, `prop_def.gd`
 
 ## Error Handling
 
@@ -93,10 +101,16 @@
 ## Configuration
 
 ### Autoloads (project.godot)
-- Two autoloads, loaded in order:
+- Eight autoloads, loaded in order (updated delivery-005a):
   1. `PropRegistry` -- `scripts/data/prop_registry.gd` (scans data/props/ at startup)
   2. `HexGrid` -- `scripts/hex/hex_grid.gd` (map container singleton)
-- Source: `project.godot` lines 24-26
+  3. `DayNightCycle` -- `scripts/day_night/day_night_cycle.gd` (time phase management)
+  4. `LightingManager` -- `scripts/lighting/lighting_manager.gd` (local light tracking)
+  5. `RecipeRegistry` -- `scripts/recipes/recipe_registry.gd` (scans data/recipes/ at startup)
+  6. `DiscoveryWatcher` -- `scripts/recipes/discovery_watcher.gd` (known-recipes list)
+  7. `RecipeRuntime` -- `scripts/recipes/recipe_runtime.gd` (recipe execution engine)
+  8. `SaveManager` -- `scripts/save/save_manager.gd` (persistence, depends on all others)
+- Source: `project.godot`
 
 ### Game Constants
 - Hardcoded as `const` in the relevant script, not in external config files
@@ -110,12 +124,13 @@
 
 ### Data-Driven Configuration
 - Resource definitions in `data/props/*.tres` files (scanned by PropRegistry)
+- Recipe definitions in `data/recipes/*.tres` files (scanned by RecipeRegistry) — added delivery-005a
 - Biome definitions in `data/biomes/*.tres` files
 - Catalog entries in `data/catalog/*.tres` files
 - Map layout in `data/maps/ch1.json`
-- Recipe configuration hardcoded in `crafting_system.gd` RECIPE_CONFIG (not data-driven)
-- Inventory item configuration hardcoded in `inventory.gd` ITEM_CONFIG (not data-driven)
-- Source: `data/` directory, `crafting_system.gd`, `inventory.gd`
+- ~~Recipe configuration hardcoded in `crafting_system.gd` RECIPE_CONFIG~~ — replaced by data-driven recipes in delivery-005a
+- ~~Inventory item configuration hardcoded in `inventory.gd` ITEM_CONFIG~~ — removed in delivery-005a; all items are PropDefs
+- Source: `data/` directory
 
 ### Secrets and Environment Variables
 - None. Game is 100% offline, no network calls, no API keys, no environment variables.

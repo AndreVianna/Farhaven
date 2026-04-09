@@ -2,7 +2,9 @@
 
 > **Source:** discovery-analyst
 > **Status:** Active
-> **Last Updated:** 2026-04-06
+> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
+
+> **Authoritative design spec for Props & Recipes:** `.aid/work-001-core/delivery-005a/DESIGN.md`
 
 ## Entities / Schemas
 
@@ -20,6 +22,14 @@ Godot Resource representing a single hex tile in the game world.
 - ~~`structure`~~ — now a prop with `category=STRUCTURE` (6) in `props[]`
 - ~~`prop_nodes`~~ — now props with natural categories (PLANT=0..OOZE=5) in `props[]`
 - ~~`anomaly`~~ — now a derived state via `prop.is_anomaly()` (origin is not NATURAL or CRAFTED)
+
+**Helper methods (updated 2026-04-08):**
+- `get_props()` — all props
+- `get_structures()` — props with category == STRUCTURE
+- `get_anomalies()` — props where `is_anomaly()` is true
+- `get_props_with_tag(tag: StringName) -> Array` — props whose PropDef has the given tag (added delivery-005a)
+- `get_props_with_capability(cap_name: StringName) -> Array` — props whose PropDef has the given capability (added delivery-005a)
+- `get_props_by_category(category: int) -> Array` — DEPRECATED: use get_props_with_tag/get_props_with_capability instead
 
 Source: `scripts/hex/hex_tile.gd`
 
@@ -50,33 +60,145 @@ Source: `scripts/hex/prop.gd`
 Replaced by Prop with `category=RESOURCE`. File may still exist as orphan.
 
 ### PropDef (scripts/data/prop_def.gd)
-Godot Resource defining a resource type's static properties. Loaded from `data/props/*.tres`.
+Godot Resource defining a prop type's static properties. Loaded from `data/props/*.tres`.
 
-| Field | Type | Default | Constraints | Notes |
-|-------|------|---------|-------------|-------|
-| id | StringName | - | Unique, matches map data | Primary key in PropRegistry |
-| display_name | String | - | Human-readable | Shown in UI |
-| gather_time | float | 1.0 | Seconds | Base time before tool multiplier |
-| gather_amount | int | 1 | Per gather action | Added to inventory per harvest |
-| tool_required | StringName | &"" | Empty = bare hands | Tool needed to gather |
-| respawn_time | float | 30.0 | Seconds; 0 = no respawn | Copied to PropNode on map load |
-| yield_type | StringName | &"" | Empty = yields self | e.g. loose_rock yields &"stone" |
-| tool_speed | Dictionary | {} | StringName -> float | Multiplier; e.g. {&"stone_axe": 0.5} = 2x speed |
-| max_stack | int | 99 | Inventory stack limit | 20 for berries/toxic_berries, 50 for crystal |
-| category | StringName | &"resource" | &"resource" or &"consumable" | Determines inventory behavior |
-| catalog_entry | StringName | - | Matches CatalogEntry.entry_id | Links resource to catalog |
-| catalog_category | StringName | - | "flora", "minerals", etc. | For catalog grouping |
-| mesh | Mesh | null | Optional real 3D model | Overrides placeholder when set |
-| depleted_mesh | Mesh | null | Optional depleted variant | Shown when remaining=0 |
-| material | Material | null | Optional material | Not yet used |
-| placeholder_mesh_type | StringName | &"cube" | cube/cylinder/sphere/octahedron/prism/box | Procedural mesh type |
-| placeholder_params | Dictionary | {} | Type-specific params | e.g. {radius: 0.2, height: 0.8} |
-| placeholder_color | Color | WHITE | RGB color | Used for unshaded material |
-| placeholder_depleted_type | StringName | &"cube" | Same as mesh_type | Depleted variant shape |
-| placeholder_depleted_params | Dictionary | {} | Same as params | Depleted variant params |
-| placeholder_depleted_color | Color | GRAY | RGB color | Depleted variant color |
+> **Updated 2026-04-08 (delivery-005a).** PropDef now uses composable capabilities + tags instead of the old `Category` enum. The authoritative design spec is `.aid/work-001-core/delivery-005a/DESIGN.md`.
 
-Source: `scripts/data/prop_def.gd`, `data/props/*.tres`
+**Core fields:**
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| id | StringName | - | Primary key in PropRegistry (numeric, e.g. &"00010") |
+| display_name | String | - | Human-readable name for UI |
+| tags | Array[StringName] | [] | Free-form labels (e.g. &"BURNABLE.log", &"CONSUMABLE.edible", &"WOOD") |
+| catalog_entry | StringName | - | Links to CatalogEntry.entry_id |
+| catalog_category | StringName | - | UI-only grouping label ("flora", "minerals", etc.). This is what DESIGN.md calls "category_tag". Never controls behavior. |
+| origin | int | 0 | Prop.Origin index (0=Natural..4=Unknown) |
+| tool_slot | StringName | &"" | Tool slot this item occupies (e.g. "axe", "pickaxe"). Empty = not a tool. |
+| max_stack | int | 99 | Inventory stack limit (kept during transition) |
+| footprint | Array[Vector2i] | [] | DEPRECATED: use PlaceableCap.footprint instead. Kept for backward compat. |
+
+**Capability fields (each is a small inner Resource, null when not present):**
+
+| Field | Type (class) | Inner Fields | Notes |
+|-------|-------------|-------------|-------|
+| portable | PortableCap | `weight: float = 1.0` | Prop can be carried. Weight determines inventory capacity consumed. |
+| placeable | PlaceableCap | `footprint: Array[Vector2i] = []`, `blocks_movement: bool = false`, `rotation_snap: int = 0` | Prop can be placed in world at sub-hex position. |
+| container | ContainerCap | `capacity_weight: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
+| light | LightCap | `radius: float = 0.0`, `color: Color = warm_orange`, `flicker: bool = false` | Prop emits light while active (used by LightingManager). |
+| movable | MovableCap | `push_cost: float = 1.0` | Prop can be pushed across tiles. |
+| station | StationCap | `station_tags: Array[StringName] = []` | Prop is a crafting/cooking station. Tags list roles (e.g. ["cook", "fire"]). |
+| catalogable | CatalogableCap | `scan_time: float = 1.0`, `display_tag: StringName = &""` | Prop can be cataloged by ScannerSystem. |
+
+**Helper methods:**
+- `has_capability(cap_name: StringName) -> bool` — checks if a capability is non-null
+- `has_tag(tag: StringName) -> bool` — checks if tags array contains the given tag
+
+**Deprecated fields (kept for backward compat, replaced by capabilities/recipes):**
+
+| Field | Replaced By |
+|-------|------------|
+| gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed | Recipe system (gather_*.tres, regrow_*.tres) |
+| is_consumable, hunger_restore, thirst_restore, health_restore | Recipe system (eat_*.tres with stat_delta effects) |
+| category (StringName) | Capabilities + tags |
+| prop_category (int) | Capabilities |
+| emits_light, light_radius | LightCap capability |
+| is_respawn_point, is_crafting_station | StationCap capability with appropriate tags |
+
+**Visual fields (unchanged):** mesh, depleted_mesh, material, placeholder_mesh_type, placeholder_params, placeholder_color, placeholder_depleted_type, placeholder_depleted_params, placeholder_depleted_color.
+
+**Capability Resource classes** live in `scripts/data/capabilities/`: `portable_cap.gd`, `placeable_cap.gd`, `container_cap.gd`, `light_cap.gd`, `movable_cap.gd`, `station_cap.gd`, `catalogable_cap.gd`.
+
+Source: `scripts/data/prop_def.gd`, `scripts/data/capabilities/*.gd`, `data/props/*.tres`
+
+### Recipe (scripts/recipes/recipe.gd)
+Godot Resource defining a transformation — any gameplay action that converts props, produces effects, or both. Loaded from `data/recipes/*.tres`. Added in delivery-005a.
+
+> **Authoritative spec:** `.aid/work-001-core/delivery-005a/DESIGN.md` §4.
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| id | StringName | - | Unique, e.g. &"eat_berry", &"chop_small_tree" |
+| kind | Recipe.Kind enum | - | ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE |
+| inputs | Array[RecipeInput] | [] | Props consumed on resolve |
+| outputs | Array[RecipeOutput] | [] | Props produced on resolve (each rolls independently) |
+| effects | Array[RecipeEffect] | [] | Non-prop consequences (stat_delta, sound, etc.) |
+| conditions | Array[RecipeCondition] | [] | Gate + sustain predicates |
+| actions | Array[StringName] | [] | Player verbs that trigger. Empty = passive recipe. |
+| time | float | 0.0 | Seconds between trigger and resolution. 0 = instant. |
+| unlock_when | Array[Predicate] | [] | Discovery predicates. Empty = known from start. |
+
+Source: `scripts/recipes/recipe.gd`, `data/recipes/*.tres`
+
+### RecipeInput (scripts/recipes/recipe_input.gd)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| ref_or_tag | StringName | - | Prop ref or tag. Tag inputs are fungible. |
+| count | int | 1 | How many consumed |
+| source | StringName | &"player_inventory" | Where drawn from: player_inventory, container, world_tile, world_anywhere |
+| is_tag | bool | false | True if ref_or_tag is a tag |
+
+### RecipeOutput (scripts/recipes/recipe_output.gd)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| prop_ref | StringName | - | PropDef id of produced prop |
+| count | int | 1 | How many produced |
+| prob | float | 1.0 | Independent probability (0.0-1.0) |
+
+### RecipeEffect (scripts/recipes/recipe_effect.gd)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| kind | StringName | - | stat_delta, sound, fx, emit_light, spawn_heat, world_change, grant_recipe |
+| params | Dictionary | {} | Kind-specific parameters |
+
+### RecipeCondition (scripts/recipes/recipe_condition.gd)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| predicate | Predicate | - | The predicate to evaluate |
+| must_sustain | bool | false | If true, re-checked every tick; recipe cancels on failure |
+
+### Predicate (scripts/recipes/predicate.gd)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| kind | StringName | - | One of 15 predicate kinds (see Predicate Vocabulary below) |
+| params | Dictionary | {} | Kind-specific parameters |
+
+**Predicate Vocabulary (15 kinds):**
+`has_tool`, `at_station`, `at_tile_type`, `player_stat`, `player_skill` (stub), `player_knows_recipe`, `time_of_day`, `weather` (stub), `biome`, `adjacent_to`, `prop_state`, `world_flag`, `animal_nearby` (stub), `container_has`, `cataloged`.
+
+### WorldContext (scripts/recipes/world_context.gd)
+Lightweight data bag passed to PredicateEvaluator. Callers fill whatever fields they have.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| player | Node | For inventory, tool, stats |
+| tile | Resource (HexTile) | Current tile |
+| station | Resource (Prop) | Station prop in scope |
+| container | Resource (Prop) | Container prop in scope |
+| grid | Node (HexGrid) | For neighbor queries |
+| day_night | Node (DayNightCycle) | For time_of_day predicates |
+| catalog | RefCounted (Catalog) | For cataloged predicates |
+| world_flags | Dictionary | Named world flags |
+
+**Factory:** `WorldContext.create(player, tile, station)` auto-fills grid/day_night from autoloads.
+
+### PendingRecipe (inner class in scripts/recipes/recipe_runtime.gd)
+Tracks an in-progress recipe. Not a Resource file — defined as an inner RefCounted class.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| recipe | Recipe | The recipe being executed |
+| start_time | float | When the recipe started (msec/1000) |
+| elapsed | float | Time accumulated so far |
+| bound_inputs | Array[Dictionary] | Consumed inputs ({type, count, source, is_tag}) for return on cancel |
+| context | WorldContext | World state snapshot at start |
+
+Source: `scripts/recipes/recipe_runtime.gd`
 
 ### BiomeData (scripts/hex/biome_data.gd)
 Godot Resource defining per-biome configuration.
@@ -129,42 +251,64 @@ Container resource wrapping an array of CatalogEntry resources.
 
 Source: `scripts/scanner/catalog_data.gd`
 
-### Inventory Slot (scripts/inventory/inventory.gd -- in-memory)
-Not a Godot Resource; stored as Dictionary in an Array within the Inventory class.
+### Inventory (scripts/inventory/inventory.gd -- in-memory)
+
+> **Updated 2026-04-08 (delivery-005a).** Inventory is now weight-based. The primary constraint is weight capacity, not slot count. Items are still stored in slots with max_stack limits, but total weight is the binding limit.
+
+**Weight model:**
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| capacity_weight | float | 50.0 | Maximum total weight. Expandable. |
+| _current_weight | float | 0.0 | Cached, updated incrementally on add/remove. Recomputed on load. |
+
+**Slot structure (unchanged):**
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
 | type | StringName | &"" | Empty = unused slot |
 | quantity | int | 0 | Current stack count |
 
-Tool slots stored separately as Dictionary: `{&"axe": &"", &"pickaxe": &"", &"weapon": &"survival_knife", &"scanner": &"scanner"}`
+Tool slots stored separately: `{&"axe": &"", &"pickaxe": &"", &"weapon": &"00204", &"scanner": &"00205"}`
 
-Source: `scripts/inventory/inventory.gd` lines 24-33
+**Item weight:** Derived from `PropDef.portable.weight`. Items without PORTABLE capability default to 1.0 for backward compat. Items with weight > capacity_weight are rejected entirely (must be transported via MOVABLE + CONTAINER props).
 
-### Item Config (scripts/inventory/inventory.gd -- const)
-Hardcoded configuration for non-resource items.
+**No hardcoded ITEM_CONFIG.** All items (resources, consumables, tools) are PropDefs loaded from `data/props/*.tres` by PropRegistry. The old hardcoded ITEM_CONFIG is removed.
 
-| Item | max_stack | category | tool_slot | Notes |
-|------|-----------|----------|-----------|-------|
-| meat | 20 | consumable | - | Fauna drop (future) |
-| stone_axe | - | tool | axe | Crafted tool |
-| stone_pickaxe | - | tool | pickaxe | Crafted tool |
-| survival_knife | - | tool | weapon | Starting tool |
-| scanner | - | tool | scanner | Starting tool |
+Source: `scripts/inventory/inventory.gd`
 
-Resource items look up max_stack from PropRegistry instead of ITEM_CONFIG.
+### Player Known Recipes (DiscoveryWatcher state)
+Not a Godot Resource; stored as a Dictionary in DiscoveryWatcher autoload.
 
-Source: `scripts/inventory/inventory.gd` ITEM_CONFIG
+- Recipes with `unlock_when: []` are known from start (populated at `_ready()`)
+- Recipes are granted permanently via `grant_recipe()` or when all `unlock_when` predicates become true
+- Persisted via `get_save_data() / load_save_data()` as `Array[StringName]`
 
-### Recipe Config (scripts/crafting/crafting_system.gd -- const)
-Hardcoded recipe definitions.
+Source: `scripts/recipes/discovery_watcher.gd`
 
-| Recipe | Ingredients | Output Type | Tool Slot | Discovery Material | Requires Workbench | Pre-discovered |
-|--------|-------------|-------------|-----------|--------------------|--------------------|----------------|
-| stone_axe | 2 wood + 1 stone | tool | axe | stone | no | yes |
-| stone_pickaxe | 3 wood + 2 stone | tool | pickaxe | stone | no | yes |
+### Recipe Data Files (data/recipes/*.tres)
+16 recipe .tres files, loaded by RecipeRegistry at startup. Replaces the old hardcoded RECIPE_CONFIG.
 
-Source: `scripts/crafting/crafting_system.gd` RECIPE_CONFIG
+| File | Kind | Description |
+|------|------|-------------|
+| eat_berry.tres | Transform | Consume berry, +hunger |
+| eat_toxic_berry.tres | Transform | Consume toxic berry, -health |
+| chop_small_tree.tres | Breakdown | Axe + tree -> wood + branches |
+| cook_meat.tres | Transform | Raw meat at fire station -> cooked meat |
+| craft_trap.tres | Assemble | Branch + fiber -> trap |
+| trap_fires.tres | Breakdown | Passive: trap + animal -> trapped_animal + materials |
+| meat_rots.tres | Transform | Passive: cooked meat -> rotten meat (24h) |
+| burn_log_in_fireplace.tres | Breakdown | Passive: fuel in fireplace -> ash + light/heat |
+| gather_tree.tres | Breakdown | Gather from tree -> wood |
+| gather_berry_bush.tres | Breakdown | Gather berries |
+| gather_toxic_bush.tres | Breakdown | Gather toxic berries |
+| gather_tall_grass.tres | Breakdown | Gather fiber |
+| gather_loose_rocks.tres | Breakdown | Gather stone from rocks |
+| gather_boulder.tres | Breakdown | Gather stone from boulder |
+| gather_iron_deposit.tres | Breakdown | Gather ore |
+| gather_crystal_cluster.tres | Breakdown | Gather crystal |
+
+Source: `data/recipes/*.tres`
 
 ### Map JSON Schema (data/maps/ch1.json)
 Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy formats.
@@ -312,13 +456,25 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 | PropRenderer._tile_entries | Dictionary | Vector2i (coords) | Array of instance info | `prop_renderer.gd` line 43 |
 | PropLabelRenderer._tile_labels | Dictionary | Vector2i (coords) | Array of label info | `prop_label_renderer.gd` line 44 |
 
+### Recipe Indexes (Runtime, added delivery-005a)
+
+| Index | Structure | Key | Value | Source |
+|-------|-----------|-----|-------|--------|
+| RecipeRegistry._by_id | Dictionary | StringName (recipe id) | Recipe Resource | `recipe_registry.gd` |
+| RecipeRegistry._by_input_ref | Dictionary | StringName (prop ref) | Array[Recipe] | `recipe_registry.gd` |
+| RecipeRegistry._by_input_tag | Dictionary | StringName (tag) | Array[Recipe] | `recipe_registry.gd` |
+| RecipeRegistry._by_action | Dictionary | StringName (action) | Array[Recipe] | `recipe_registry.gd` |
+| RecipeRegistry._by_station_tag | Dictionary | StringName (station tag) | Array[Recipe] | `recipe_registry.gd` |
+| DiscoveryWatcher._known_recipes | Dictionary | StringName (recipe id) | bool (always true) | `discovery_watcher.gd` |
+
 ### File-Based Indexes
 
 | Index | Mechanism | Source |
 |-------|-----------|--------|
-| PropDef lookup | PropRegistry scans data/props/ directory at startup | `prop_registry.gd` lines 10-21 |
+| PropDef lookup | PropRegistry scans data/props/ directory at startup | `prop_registry.gd` |
+| Recipe lookup | RecipeRegistry scans data/recipes/ directory at startup | `recipe_registry.gd` |
 | CatalogEntry lookup | Catalog loads 4 hardcoded .tres file paths | `catalog.gd` lines 28-40 |
-| BiomeData lookup | MapLoader and HexGridRenderer use hardcoded path arrays | `map_loader.gd` lines 17-23, `hex_grid_renderer.gd` lines 24-30 |
+| BiomeData lookup | MapLoader and HexGridRenderer use hardcoded path arrays | `map_loader.gd`, `hex_grid_renderer.gd` |
 
 ## Validation
 
@@ -336,16 +492,24 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 | Elevation in [-32000, 32000] for all tiles | `map_loader.gd` lines 158-159 |
 | All non-water tiles reachable from spawn via BFS | `map_loader.gd` lines 172-192 |
 
-### Inventory Validation
-- add_item() validates item type exists in ITEM_CONFIG or PropRegistry before adding (`inventory.gd` lines 47-53)
-- Tools rejected from resource slots (must use set_tool) (`inventory.gd` lines 53-54)
-- Stack overflow tracked; excess returned as int, inventory_full signal emitted (`inventory.gd` lines 82-83)
+### Inventory Validation (updated delivery-005a)
+- add_item() validates item type exists in PropRegistry before adding. Items without a PropDef are rejected (returns 0).
+- Tools (PropDef.tool_slot != "") rejected from resource slots (must use set_tool).
+- Weight check: `current_weight + (unit_weight * count) <= capacity_weight`. Items exceeding total capacity rejected entirely.
+- Stack overflow tracked; excess returned as int, inventory_full signal emitted.
 
-### Craft Validation (CraftingSystem.craft())
-- Recipe must exist in RECIPE_CONFIG (`crafting_system.gd` line 93)
-- Workbench proximity required for workbench recipes (`crafting_system.gd` lines 99-101)
-- Tool not already owned check (`crafting_system.gd` lines 105-109)
-- All ingredients present in inventory (`crafting_system.gd` lines 112-115)
+### Recipe Validation (RecipeRuntime.try_start_recipe())
+- Recipe must be known (DiscoveryWatcher.is_known())
+- All conditions must pass (PredicateEvaluator.evaluate() for each RecipeCondition)
+- All inputs must be available from their specified source (player_inventory, world_tile, container)
+- If any check fails: returns null, inputs are rolled back
+- On success: instant resolve (time==0) or enqueued as PendingRecipe
+
+### Legacy Craft Validation (CraftingSystem.craft() — still present)
+- Recipe must exist in RECIPE_CONFIG
+- Workbench proximity required for workbench recipes
+- Tool not already owned check
+- All ingredients present in inventory
 - Emits craft_failed with reason StringName on any validation failure
 
 ### Catalog Validation
@@ -353,13 +517,16 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 - Knowledge state progression: UNKNOWN -> ENCOUNTERED -> CATALOGED (no downgrades) (`catalog.gd` lines 113, 133)
 - Duplicate cataloging silently ignored (`catalog.gd` lines 111-112)
 
-### Auto-Gather Gating
-- Resource must not be depleted (remaining > 0) (`auto_interaction_system.gd` line 195)
-- Resource must have a catalog_entry that is CATALOGED (`auto_interaction_system.gd` lines 199-203)
-- Player must have correct tool equipped (`auto_interaction_system.gd` lines 206-207)
-- Resource must be within GATHER_RADIUS (0.75 world units) of player position (`auto_interaction_system.gd` lines 218-219)
+### Auto-Gather Gating (updated delivery-005a)
+- Prop must be within GATHER_RADIUS (0.75 world units) of player position
+- RecipeRegistry.find_recipes_for_input(prop.type) must return at least one recipe
+- Recipe must be known (DiscoveryWatcher.is_known())
+- All recipe conditions must pass (PredicateEvaluator: has_tool, at_station, etc.)
+- Legacy fallback (for props without recipe coverage): resource must not be depleted, must be CATALOGED, correct tool equipped
 
 ## Current Resource Definitions
+
+> **Note (2026-04-08):** The "Gather Time", "Tool Required", "Respawn", and "Yield" columns below reference deprecated PropDef fields. In the new model, these behaviors are controlled by Recipe .tres files (e.g. `gather_tree.tres`, `gather_berry_bush.tres`). The deprecated fields remain on PropDef for backward compat but are no longer authoritative.
 
 | ID | Display | Gather Time | Amount | Tool Required | Respawn | Yield | Max Stack | Catalog Entry |
 |----|---------|-------------|--------|---------------|---------|-------|-----------|---------------|

@@ -2,7 +2,7 @@
 
 > **Source:** discovery-integrator
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
 
 This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no external services. "APIs" here means the signal and method interfaces between game systems. Communication between systems uses Godot signals (observer pattern) and direct method calls.
 
@@ -18,6 +18,97 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
   - `get_yield_type(type: StringName) -> StringName` -- resolves yield mapping (e.g., loose_rock -> stone)
   - `get_tool_speed(type: StringName, tool_name: StringName) -> float` -- tool speed multiplier
 - **Source:** `scripts/data/prop_registry.gd`
+
+### RecipeRegistry (added delivery-005a)
+- **Type:** Autoload singleton (initialized after PropRegistry + HexGrid)
+- **Purpose:** Indexes all Recipe .tres files from `data/recipes/` and provides query API by input, tag, action, or station
+- **Public Methods:**
+  - `get_recipe(id: StringName) -> Recipe` -- returns recipe by id or null
+  - `get_all_recipes() -> Array` -- returns all loaded recipes
+  - `find_recipes_for_input(prop_ref: StringName) -> Array` -- recipes consuming the given prop ref
+  - `find_recipes_for_tag(tag: StringName) -> Array` -- recipes consuming any prop with the given tag
+  - `find_recipes_for_action(action: StringName) -> Array` -- recipes triggered by the given player action
+  - `find_recipes_for_station(station_tag: StringName) -> Array` -- recipes requiring a station with the given tag
+- **Source:** `scripts/recipes/recipe_registry.gd`
+
+### RecipeRuntime (added delivery-005a)
+- **Type:** Autoload singleton (initialized after DiscoveryWatcher)
+- **Purpose:** Executes recipes — matches them against the world, manages pending recipes (in-progress cooking/growing/rotting), and resolves them
+- **Signals:**
+  - `recipe_started(recipe_id: StringName)` -- recipe entered pending queue
+  - `recipe_resolved(recipe_id: StringName, outputs: Array, effects: Array)` -- recipe completed
+  - `recipe_cancelled(recipe_id: StringName, reason: StringName)` -- recipe cancelled (sustain_failed, cancelled)
+  - `effect_requested(effect: Resource)` -- effect delegated to external systems (sound, fx, light, etc.)
+- **Public Methods:**
+  - `try_start_recipe(recipe: Recipe, ctx: WorldContext) -> PendingRecipe | null` -- validates conditions, consumes inputs, enqueues or instant-resolves
+  - `cancel_recipe(pending: PendingRecipe, reason: StringName)` -- returns inputs, removes from queue
+  - `get_pending() -> Array` -- snapshot of pending recipe queue
+- **PendingRecipe inner class:** `recipe`, `start_time`, `elapsed`, `bound_inputs`, `context`
+- **Tick behavior (_process):** Iterates pending recipes each frame; re-checks sustain conditions; resolves when elapsed >= time
+- **Injectable:** `_registry` (RecipeRegistry), `_discovery` (DiscoveryWatcher), `_rng` (Callable for deterministic testing)
+- **Source:** `scripts/recipes/recipe_runtime.gd`
+
+### DiscoveryWatcher (added delivery-005a)
+- **Type:** Autoload singleton (initialized after RecipeRegistry)
+- **Purpose:** Owns the player's known-recipes list. Watches global signals for unlock_when predicate transitions.
+- **Signals:**
+  - `recipe_unlocked(recipe_id: StringName)` -- recipe newly granted
+- **Public Methods:**
+  - `is_known(recipe_id: StringName) -> bool` -- recipe is in known list
+  - `grant_recipe(recipe_id: StringName) -> void` -- directly add to known list (from grant_recipe effect, events)
+  - `get_known_recipes() -> Array[StringName]` -- all known recipe ids
+  - `check_unlocks(ctx: WorldContext) -> void` -- re-evaluate unlock_when for all unknown recipes
+  - `get_save_data() / load_save_data(data: Dictionary)` -- persistence
+- **Listens to:** Catalog.entry_cataloged (catalog-driven unlocks)
+- **Injectable:** `_registry` (RecipeRegistry), `_catalog` (Catalog)
+- **Source:** `scripts/recipes/discovery_watcher.gd`
+
+### PredicateEvaluator (added delivery-005a)
+- **Type:** RefCounted with static methods (not autoload)
+- **Purpose:** Single source of truth for evaluating condition predicates. Dispatches on `pred.kind` to handler functions.
+- **Public Method:**
+  - `evaluate(pred: Predicate, ctx: WorldContext) -> bool` -- evaluates a single predicate against world state
+- **Predicate Vocabulary (15 kinds):**
+
+| Kind | Params | Notes |
+|------|--------|-------|
+| `has_tool` | `{tool: StringName}` | Player has tool equipped (by id, slot name, or PropDef.tool_slot) |
+| `at_station` | `{tag: StringName}` | Station prop in context has StationCap with the given tag |
+| `at_tile_type` | `{tag: StringName}` | Current tile biome matches the tag |
+| `player_stat` | `{stat, op, value}` | Player stat (hp/hunger/thirst) satisfies comparison |
+| `player_skill` | `{skill, op, value}` | STUB — returns false with warning |
+| `player_knows_recipe` | `{recipe_id}` | STUB — returns true (DiscoveryWatcher handles this externally) |
+| `time_of_day` | `{phase}` | DayNightCycle.current_phase matches (DAY/DUSK/NIGHT/DAWN) |
+| `weather` | `{type}` | STUB — returns false with warning |
+| `biome` | `{tag}` | Tile biome enum name matches tag |
+| `adjacent_to` | `{tag, count_ge}` | N+ adjacent tiles/props match tag |
+| `prop_state` | `{prop, field, op, value}` | Prop instance field comparison (e.g. fireplace.is_lit) |
+| `world_flag` | `{name, value}` | Named world flag in ctx.world_flags |
+| `animal_nearby` | `{radius, filter}` | STUB — returns false with warning |
+| `container_has` | `{ref_or_tag, count_ge}` | Container has N+ matching items |
+| `cataloged` | `{prop}` | Player has cataloged the prop via ctx.catalog |
+
+- **Source:** `scripts/recipes/predicate_evaluator.gd`
+
+### LightingManager (added delivery-005a)
+- **Type:** Autoload singleton (initialized after DayNightCycle)
+- **Purpose:** Tracks active light sources (placed structures + player torch). Provides light data to terrain shader.
+- **Signals:**
+  - `light_source_registered(position: Vector2, radius: float)` -- light added
+  - `light_source_unregistered(position: Vector2)` -- light removed
+  - `light_source_moved(position: Vector2)` -- player torch position updated
+- **Public Methods:**
+  - `get_active_lights() -> Array[Dictionary]` -- active lights for shader ({position, radius, color}). Empty during day.
+  - `get_structure_light_count() -> int` -- number of registered structure lights
+  - `is_night_active() -> bool` -- whether lighting should be visually active
+  - `register_light(key, position, radius, color)` -- manual registration
+  - `unregister_light(key)` -- manual removal
+  - `set_player_light(position, radius, color)` -- set player torch
+  - `clear_player_light()` -- remove player torch
+  - `update_player_torch()` -- re-check equipped tools for EMITS_LIGHT
+- **Constants:** MAX_LIGHTS = 8, DEFAULT_LIGHT_COLOR = warm orange
+- **Listens to:** HexGrid.structure_placed, HexGrid.structure_destroyed, HexGrid.tile_entered
+- **Source:** `scripts/lighting/lighting_manager.gd`
 
 ### HexGrid
 - **Type:** Autoload singleton
@@ -106,24 +197,31 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Inventory System API
 
 ### Inventory (RefCounted)
-- **Purpose:** Resource/consumable slots (12 base, expandable) plus 4 fixed tool slots
+- **Purpose:** Weight-based resource/consumable storage (12 base slots, expandable) plus 4 fixed tool slots
+- **Updated 2026-04-08:** Refactored from slot-count to weight-based capacity. Primary constraint is `capacity_weight` (default 50.0). Item weight from `PropDef.portable.weight` (default 1.0 if no PORTABLE cap).
 - **Signals:**
   - `inventory_changed()` -- any slot mutation
   - `item_added(type: StringName, amount: int)`
   - `item_removed(type: StringName, amount: int)`
-  - `inventory_full(type: StringName, rejected: int)` -- overflow
+  - `inventory_full(type: StringName, rejected: int)` -- overflow (weight or slot)
   - `item_used(type: StringName)` -- consumable consumed
   - `tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)`
 - **Public Methods (Resource/Consumable):**
-  - `add_item(type: StringName, amount: int = 1) -> int` -- returns amount actually added
+  - `add_item(type: StringName, amount: int = 1) -> int` -- returns amount actually added. Checks weight + slot capacity.
   - `remove_item(type: StringName, amount: int = 1) -> int` -- returns amount removed
   - `has_item(type: StringName, amount: int = 1) -> bool`
   - `get_count(type: StringName) -> int`
   - `get_slots() -> Array[Dictionary]` -- snapshot of all slots
-  - `is_full() -> bool`
+  - `is_full() -> bool` -- true if remaining weight < smallest item or all slots at max
   - `get_max_slots() -> int` / `get_used_slot_count() -> int`
   - `use_item(type: StringName) -> bool` -- consume one unit
   - `expand(additional_slots: int) -> void`
+- **Public Methods (Weight — added delivery-005a):**
+  - `get_current_weight() -> float` -- total weight of all items
+  - `get_capacity_weight() -> float` -- maximum weight capacity
+  - `get_remaining_capacity() -> float` -- capacity_weight - current_weight
+  - `get_weight_display() -> String` -- formatted string like "32.5 / 50.0"
+  - `get_stacks() -> Array[Dictionary]` -- items grouped by type with count, weight_per_unit, total_weight
 - **Public Methods (Tools):**
   - `get_tool(slot: StringName) -> StringName` -- what is equipped in axe/pickaxe/weapon/scanner
   - `set_tool(slot: StringName, tool: StringName) -> StringName` -- returns previous tool
@@ -204,24 +302,22 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Auto-Interaction System API
 
 ### AutoInteractionSystem (Node)
-- **Purpose:** Proximity-based auto-gather, auto-defend stub, auto-pickup stub, respawn queue
+- **Purpose:** Proximity-based auto-gather (delegates to RecipeRuntime), auto-defend stub, auto-pickup stub, respawn queue
+- **Updated 2026-04-08:** Now queries RecipeRegistry for matching gather recipes, filters by DiscoveryWatcher (known recipes) and PredicateEvaluator (conditions). Old direct gather logic replaced. Legacy gather fallback kept for props without recipes.
 - **Signals:**
   - `auto_gather_started(coords: Vector2i, prop_type: StringName)`
   - `auto_gather_completed(coords: Vector2i, prop_type: StringName, amount: int)`
-  - `auto_gather_failed(coords: Vector2i, reason: StringName)` -- reason variants:
-    - `&"tool_required"` -- player is within range of a cataloged prop but lacks the required tool slot
-    - `&"inventory_full"` -- gather completed but the yield couldn't be added
+  - `auto_gather_failed(coords: Vector2i, reason: StringName)` -- reason variants: `&"tool_required"`, `&"inventory_full"`
   - `auto_defend_triggered(fauna_id: int, damage: int)`
-  - `ground_item_picked_up(item_name: StringName, amount: int)` -- NOTE: distinct from `SurvivalSystem.ground_item_picked_up(tile, item_type, count, sub_hex)`; they fire in different layers
-- **Public Methods:**
-  - `can_gather(node: Resource, inventory: RefCounted) -> bool` -- tool gate check
+  - `ground_item_picked_up(item_name: StringName, amount: int)`
 - **Constants:**
   - `GATHER_RADIUS: float = 0.75` -- world-space proximity in Godot units
   - `PROXIMITY_CHECK_INTERVAL: float = 0.1` -- throttle in seconds
-  - `TOOL_PRIORITY: Dictionary` -- determines gather order
+  - `TOOL_SLOT_PRIORITY: Dictionary` -- DEPRECATED: kept for test compat only
   - `WEAPON_DAMAGE: Dictionary` -- damage values per equipped weapon
+- **Dependencies:** HexGrid (autoload), PropRegistry (autoload), RecipeRegistry (autoload), DiscoveryWatcher (autoload), PredicateEvaluator (preload), WorldContext (preload), Inventory (from parent Player), Catalog (from sibling ScannerSystem)
 - **Listens to:** HexGrid.tile_entered
-- **Depends on (stubbed):** FaunaManager (via /root/FaunaManager), SurvivalSystem (via /root/SurvivalSystem) -- neither exists yet
+- **Depends on (stubbed):** FaunaManager, SurvivalSystem -- neither exists yet
 - **Source:** `scripts/auto_interaction/auto_interaction_system.gd`
 
 ---
@@ -297,6 +393,10 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ### HexTile (Resource)
 - **Properties:** coords, biome (Biome enum), elevation, props (Array[Prop])
 - **Enums:** Biome (CRASH_SITE, GRASSLAND, FOREST, ROCKY, WATER)
+- **Methods (updated delivery-005a):**
+  - `get_props_with_tag(tag: StringName) -> Array` -- props whose PropDef has the given tag
+  - `get_props_with_capability(cap_name: StringName) -> Array` -- props whose PropDef has the given capability
+  - `get_props_by_category(category: int) -> Array` -- DEPRECATED: use tag/capability queries instead
 - **Source:** `scripts/hex/hex_tile.gd`
 
 ### Prop (Resource)
@@ -305,7 +405,11 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Source:** `scripts/hex/prop.gd`
 
 ### PropDef (Resource)
-- **Properties:** id, display_name, gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed, max_stack, category, catalog_entry, visual properties (mesh, material, placeholder config)
+- **Properties:** id, display_name, tags (Array[StringName]), catalog_entry, catalog_category, origin, tool_slot, max_stack, footprint (deprecated)
+- **Capabilities:** portable (PortableCap), placeable (PlaceableCap), container (ContainerCap), light (LightCap), movable (MovableCap), station (StationCap), catalogable (CatalogableCap) -- each null when not present
+- **Deprecated fields (kept for backward compat):** gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed, is_consumable, hunger_restore, thirst_restore, health_restore, category, prop_category, emits_light, light_radius, is_respawn_point, is_crafting_station
+- **Helper methods:** `has_capability(cap_name) -> bool`, `has_tag(tag) -> bool`
+- **Visual properties:** mesh, depleted_mesh, material, placeholder_* config (unchanged)
 - **Source:** `scripts/data/prop_def.gd`
 
 ### BiomeData (Resource)

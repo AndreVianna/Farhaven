@@ -2,7 +2,7 @@
 
 > **Source:** discovery-scout
 > **Status:** Active
-> **Last Updated:** 2026-04-03
+> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
 
 ## Repository Overview
 
@@ -30,10 +30,12 @@ Farhaven/
 |   +-- templates/                 # Document templates
 +-- addons/                        # Godot addons
 |   +-- gdUnit4/                   # Unit testing framework (934 files)
-+-- data/                          # Game data resources (19 files)
-|   +-- biomes/                    # Biome definitions (.tres)
-|   +-- catalog/                   # Catalog entries (.tres)
++-- data/                          # Game data resources (53 .tres + 1 .json)
+|   +-- biomes/                    # BiomeData .tres (5 biomes)
+|   +-- catalog/                   # CatalogEntry .tres (4 files: anomalies, fauna, flora, minerals)
 |   +-- maps/                      # Map definitions (.json)
+|   +-- props/                     # PropDef .tres (37 files)
+|   +-- recipes/                   # Recipe .tres (16 files) — added delivery-005a
 +-- docs/                          # Design documentation (17 files)
 |   +-- design/                    # Design system, mockups, redesigns
 |   +-- references/                # Competitor analysis
@@ -41,20 +43,24 @@ Farhaven/
 |   +-- player/                    # Player scene
 |   +-- ui/                        # UI panel scenes
 |   +-- world/                     # World renderer scenes + scripts
-+-- scripts/                       # GDScript source (38 .gd files)
-|   +-- auto_interaction/          # Proximity-based auto-gather/scan
-|   +-- crafting/                  # Crafting system
++-- scripts/                       # GDScript source (57 .gd files)
+|   +-- auto_interaction/          # Proximity-based auto-gather (delegates to RecipeRuntime)
+|   +-- crafting/                  # Legacy crafting system
+|   +-- data/                      # PropDef + PropRegistry
+|   |   +-- capabilities/          # Capability Resources (7 files) — added delivery-005a
 |   +-- hex/                       # Hex grid core (math, tiles, biomes, map loader)
 |   +-- hud/                       # HUD elements (stat bars, notifications, floating text)
-|   +-- inventory/                 # Inventory management
+|   +-- inventory/                 # Weight-based inventory management
+|   +-- lighting/                  # LightingManager autoload — added delivery-005a
 |   +-- player/                    # Player controller, camera, input, pathfinding
+|   +-- recipes/                   # Recipe system (11 files) — added delivery-005a
 |   +-- rendering/                 # Visual renderers (resources, labels, scan progress)
 |   +-- scanner/                   # Scanner/catalog system
 +-- shaders/                       # GLSL shaders (3 files)
-+-- tests/                         # Test suites (23 .gd files)
-|   +-- integration/               # 3 delivery-level integration tests
-|   +-- unit/                      # 20 unit test files
-+-- ui/                            # UI scripts (8 .gd files)
++-- tests/                         # Test suites (41 .gd files)
+|   +-- integration/               # Delivery-level integration tests
+|   +-- unit/                      # Unit test files
++-- ui/                            # UI scripts (13 .gd files)
 +-- project.godot                  # Godot project configuration
 +-- CLAUDE.md                      # Project instructions for Claude agents
 +-- README.md                      # Project readme
@@ -66,14 +72,16 @@ Farhaven/
 
 | Directory | .gd files | .tscn files | .tres files | Other | Total |
 |-----------|-----------|-------------|-------------|-------|-------|
-| scripts/ | 32 | -- | -- | 32 .uid | 64 |
+| scripts/ | 57 | -- | -- | ~57 .uid | ~114 |
 | scenes/ | 1 | 8 | -- | 1 .uid | 10 (+3 in world/) |
-| ui/ | 8 | 1 | -- | 8 .uid | 17 |
-| tests/ | 23 | -- | -- | 23 .uid | 46 |
-| data/ | -- | -- | 18 | 1 .json | 19 |
+| ui/ | 13 | 1 | -- | ~13 .uid | ~27 |
+| tests/ | 41 | -- | -- | ~41 .uid | ~82 |
+| data/ | -- | -- | 53 | 1 .json | 54 |
 | shaders/ | -- | -- | -- | 3 .gdshader + 3 .uid | 6 |
 | docs/ | -- | -- | -- | 13 .md + 3 .png + 1 .import | 17 |
 | addons/ | 900+ | -- | -- | misc | 934 |
+
+> File counts updated 2026-04-08 after delivery-005a. scripts/ grew from 32 to 57 (recipes/11, lighting/1, capabilities/7, other additions). data/ grew from 18 to 53 .tres (props expanded to 37, recipes added 16).
 
 ## Key Files and Entry Points
 
@@ -88,8 +96,10 @@ Farhaven/
 |------|------|----------|
 | `scenes/main.tscn` | Main scene (game start) | `project.godot` line 19: `run/main_scene` |
 | `scripts/main.gd` | Bootstrap script -- wires all systems, loads map | Attached to main.tscn root node |
-| `scripts/data/prop_registry.gd` | Autoload singleton (`PropRegistry`) -- indexes all PropDef files | `project.godot` line 25: autoload declaration |
-| `scripts/hex/hex_grid.gd` | Autoload singleton (`HexGrid`) -- map container, fog of war, resource state | `project.godot` line 26: autoload declaration |
+| `scripts/data/prop_registry.gd` | Autoload singleton (`PropRegistry`) -- indexes all PropDef files | `project.godot`: autoload declaration |
+| `scripts/hex/hex_grid.gd` | Autoload singleton (`HexGrid`) -- map container, signal bus, resource state | `project.godot`: autoload declaration |
+| `scripts/recipes/recipe_registry.gd` | Autoload singleton (`RecipeRegistry`) -- indexes all Recipe files | `project.godot`: autoload (added 005a) |
+| `scripts/recipes/recipe_runtime.gd` | Autoload singleton (`RecipeRuntime`) -- executes pending recipes | `project.godot`: autoload (added 005a) |
 
 ### Scene Structure (from main.tscn)
 - `Main` (Node) -- root, runs `main.gd`
@@ -108,11 +118,13 @@ Farhaven/
 | `data/maps/ch1.json` | JSON | Chapter 1 map definition (tile positions, biomes, resources, structures) |
 | `data/biomes/*.tres` | Godot Resource | Biome definitions (crash_site, forest, grassland, rocky, water) |
 | `data/catalog/*.tres` | Godot Resource | Catalog entries (anomalies, fauna, flora, minerals) |
+| `data/props/*.tres` | Godot Resource | PropDef definitions (37 files: source props, items, structures, tools) |
+| `data/recipes/*.tres` | Godot Resource | Recipe definitions (16 files: gather, craft, cook, consume, passive) — added delivery-005a |
 
 ### Shader Files
 | File | Purpose |
 |------|---------|
-| `shaders/hex_tile.gdshader` | Hex tile terrain rendering with fog of war |
+| `shaders/hex_tile.gdshader` | Hex tile terrain rendering with per-vertex color (fog of war removed; local lighting support added in delivery-005a) |
 | `shaders/icon_billboard.gdshader` | Billboard icons for props |
 | `shaders/scan_progress.gdshader` | Scan progress bar overlay |
 
@@ -144,9 +156,15 @@ Farhaven/
 - Renderer: `mobile` (Godot Mobile renderer)
 - Texture compression: ETC2/ASTC enabled (for Android/iOS)
 
-### Autoloads
-- `PropRegistry` -- singleton, loaded from `scripts/data/prop_registry.gd` (project.godot line 25). Scans data/props/ at startup and indexes all PropDef files.
-- `HexGrid` -- singleton, loaded from `scripts/hex/hex_grid.gd` (project.godot line 26). Map container, stores tiles, manages fog of war and resource state.
+### Autoloads (8 singletons, loaded in order)
+1. `PropRegistry` -- `scripts/data/prop_registry.gd` — indexes all PropDef files
+2. `HexGrid` -- `scripts/hex/hex_grid.gd` — map container, tile queries, signal bus
+3. `DayNightCycle` -- `scripts/day_night/day_night_cycle.gd` — time phase management
+4. `LightingManager` -- `scripts/lighting/lighting_manager.gd` — local light tracking (added delivery-005a)
+5. `RecipeRegistry` -- `scripts/recipes/recipe_registry.gd` — indexes all Recipe files (added delivery-005a)
+6. `DiscoveryWatcher` -- `scripts/recipes/discovery_watcher.gd` — known-recipes list (added delivery-005a)
+7. `RecipeRuntime` -- `scripts/recipes/recipe_runtime.gd` — recipe execution engine (added delivery-005a)
+8. `SaveManager` -- `scripts/save/save_manager.gd` — game persistence
 
 ### Editor Plugins
 - gdUnit4 -- unit testing framework
