@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="Recipe" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="3_effect"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_condition.gd" id="4_cond"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="5_pred"]
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2_input")
+ref_or_tag = &"00101"
+count = 1
+source = &"world_tile"
+
+[sub_resource type="Resource" id="pred_tool"]
+script = ExtResource("5_pred")
+kind = &"has_tool"
+params = { "tool": &"firestarter" }
+
+[sub_resource type="Resource" id="cond_1"]
+script = ExtResource("4_cond")
+predicate = SubResource("pred_tool")
+must_sustain = false
+
+[sub_resource type="Resource" id="effect_1"]
+script = ExtResource("3_effect")
+kind = &"sound"
+params = { "sound_id": "fire_light" }
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"00020"
+display_name = "Light Campfire"
+kind = 1
+inputs = [SubResource("input_1")]
+outputs = []
+effects = [SubResource("effect_1")]
+conditions = [SubResource("cond_1")]
+actions = [&"use"]
+time = 2.0

@@ -195,13 +195,13 @@ func test_close_does_not_emit_panel_opened() -> void:
 
 func test_pre_discovered_recipes_shown_on_open() -> void:
 	_panel.open()
-	assert_int(_panel._recipe_list.get_child_count()).is_equal(2)
+	assert_int(_panel._recipe_list.get_child_count()).is_equal(3)
 
 
 func test_discovered_recipes_appear_on_open() -> void:
 	_discover_recipes()
 	_panel.open()
-	assert_int(_panel._recipe_list.get_child_count()).is_equal(2)
+	assert_int(_panel._recipe_list.get_child_count()).is_equal(3)
 
 
 func test_recipe_entries_are_recipe_entry_ui() -> void:
@@ -372,7 +372,7 @@ func test_refresh_on_craft_completed() -> void:
 
 func test_pre_discovered_recipes_visible_on_open() -> void:
 	_panel.open()
-	assert_int(_panel._recipe_list.get_child_count()).is_equal(2)
+	assert_int(_panel._recipe_list.get_child_count()).is_equal(3)
 
 
 # === RECIPE ENTRY UI STANDALONE ===

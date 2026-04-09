@@ -11,7 +11,8 @@
 	"starting_loadout": {
 		"tools": {
 			"weapon": "00204",
-			"scanner": "00205"
+			"scanner": "00205",
+			"firestarter": "00206"
 		},
 		"inventory": []
 	},

@@ -178,28 +178,29 @@ func test_both_recipes_discovery_material_stone() -> void:
 # === DISCOVERY ===
 
 func test_recipes_pre_discovered_initially() -> void:
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(3)
 	assert_bool(&"stone_axe" in _sys.get_discovered_recipes()).is_true()
 	assert_bool(&"stone_pickaxe" in _sys.get_discovered_recipes()).is_true()
 
 
-func test_adding_stone_discovers_both_recipes() -> void:
+func test_adding_rock_does_not_change_pre_discovered() -> void:
 	_inv.add_item(ID_ROCK, 1)
 	var discovered: Array[StringName] = _sys.get_discovered_recipes()
-	assert_int(discovered.size()).is_equal(2)
+	assert_int(discovered.size()).is_equal(3)
 	assert_bool(&"stone_axe" in discovered).is_true()
 	assert_bool(&"stone_pickaxe" in discovered).is_true()
+	assert_bool(&"campfire" in discovered).is_true()
 
 
 func test_adding_wood_does_not_change_discovery() -> void:
 	_inv.add_item(ID_WOOD, 5)
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(3)
 
 
 func test_adding_stone_twice_does_not_duplicate() -> void:
 	_inv.add_item(ID_ROCK, 1)
 	_inv.add_item(ID_ROCK, 1)
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(3)
 
 
 func test_discovery_does_not_emit_for_pre_discovered() -> void:
@@ -491,7 +492,7 @@ func test_structure_destroyed_triggers_proximity_check() -> void:
 
 func test_save_pre_discovered() -> void:
 	var data: Dictionary = _sys.get_save_data()
-	assert_int(data["discovered_recipes"].size()).is_equal(2)
+	assert_int(data["discovered_recipes"].size()).is_equal(3)
 	assert_bool("stone_axe" in data["discovered_recipes"]).is_true()
 	assert_bool("stone_pickaxe" in data["discovered_recipes"]).is_true()
 
@@ -499,7 +500,7 @@ func test_save_pre_discovered() -> void:
 func test_save_after_discovery() -> void:
 	_inv.add_item(ID_ROCK, 1)
 	var data: Dictionary = _sys.get_save_data()
-	assert_int(data["discovered_recipes"].size()).is_equal(2)
+	assert_int(data["discovered_recipes"].size()).is_equal(3)
 	assert_bool("stone_axe" in data["discovered_recipes"]).is_true()
 	assert_bool("stone_pickaxe" in data["discovered_recipes"]).is_true()
 
@@ -515,7 +516,7 @@ func test_load_restores_discovered() -> void:
 
 func test_load_clears_previous() -> void:
 	_inv.add_item(ID_ROCK, 1)  # discover both
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(3)
 	_sys.load_save_data({"discovered_recipes": ["stone_axe"]})
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(1)
 
@@ -526,4 +527,4 @@ func test_save_load_roundtrip() -> void:
 	_sys.load_save_data({"discovered_recipes": []})
 	assert_int(_sys.get_discovered_recipes().size()).is_equal(0)
 	_sys.load_save_data(saved)
-	assert_int(_sys.get_discovered_recipes().size()).is_equal(2)
+	assert_int(_sys.get_discovered_recipes().size()).is_equal(3)

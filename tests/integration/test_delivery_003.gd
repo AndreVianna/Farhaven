@@ -577,10 +577,11 @@ func test_recipes_pre_discovered_from_start() -> void:
 
 	# Recipes are pre-discovered (pre_discovered: true in RECIPE_CONFIG)
 	assert_int(_crafting.get_discovered_recipes().size()).override_failure_message(
-		"Both recipes must be pre-discovered from the start"
-	).is_equal(2)
+		"All three recipes must be pre-discovered from the start"
+	).is_equal(3)
 	assert_bool(_crafting.is_recipe_discovered(&"stone_axe")).is_true()
 	assert_bool(_crafting.is_recipe_discovered(&"stone_pickaxe")).is_true()
+	assert_bool(_crafting.is_recipe_discovered(&"campfire")).is_true()
 
 	# Adding rock should NOT emit discovery signal (already known)
 	var discovered: Array = []

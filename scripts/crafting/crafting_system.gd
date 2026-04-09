@@ -37,6 +37,15 @@ const RECIPE_CONFIG: Dictionary = {
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
+	&"campfire": {
+		"ingredients": { &"00010": 3, &"00012": 2 },  # 3 wood + 2 fiber
+		"output_type": &"structure",
+		"output_id": &"00101",  # campfire prop
+		"tool_slot": &"",
+		"discovery_material": &"00012",  # fiber
+		"requires_station": &"",
+		"pre_discovered": true,
+	},
 }
 
 var _discovered_recipes: Array[StringName] = []
@@ -132,6 +141,9 @@ func craft(recipe_name: StringName) -> bool:
 	# 5. Produce
 	if recipe["output_type"] == &"tool":
 		_inventory.set_tool(recipe["tool_slot"], recipe["output_id"])
+	elif recipe["output_type"] == &"structure":
+		# TEMPORARY: place structure at player's current tile (delivery-005b will add proper placement UI)
+		_place_structure_at_player(recipe["output_id"])
 
 	craft_completed.emit(recipe_name)
 	# Apply crafting survival cost
@@ -139,6 +151,21 @@ func craft(recipe_name: StringName) -> bool:
 	if survival and survival.has_method("apply_activity_cost"):
 		survival.apply_activity_cost(&"crafting")
 	return true
+
+
+# --- Structure Placement (TEMPORARY — delivery-005b adds proper placement UI) ---
+
+
+func _place_structure_at_player(structure_type: StringName) -> void:
+	if _player == null or _grid == null:
+		return
+	var coords: Vector2i = _player.current_tile
+	var tile: Resource = _grid.get_tile(coords)
+	if tile == null:
+		return
+	var prop := _Prop.create_structure(structure_type)
+	tile.props.append(prop)
+	_grid.structure_placed.emit(coords, structure_type)
 
 
 # --- Survival System Helper ---
