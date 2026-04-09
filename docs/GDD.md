@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This document is historical. The authoritative version is `.aid/knowledge/game-mechanics.md`.
+
 # FARHAVEN — Game Design Document
 
 **Working Title:** Farhaven

@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This document is historical. The authoritative version is `.aid/knowledge/game-lore.md`.
+
 # Farhaven — Story Bible
 
 *Living document. Updated as the narrative evolves.*

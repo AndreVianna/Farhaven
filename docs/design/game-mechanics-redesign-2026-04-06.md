@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This document is historical. The authoritative versions are `.aid/knowledge/game-mechanics.md` and `.aid/work-001-core/delivery-005a/DESIGN.md`.
+
 # Game Mechanics Redesign — 2026-04-06
 
 Decisions from design session with Andre. These supersede conflicting info in

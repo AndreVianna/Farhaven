@@ -570,3 +570,216 @@ Source: `data/catalog/*.tres`
 | Water | (no resources) |
 
 Source: `data/biomes/*.tres`
+
+---
+
+## Gear Hierarchy (delivery-006 target)
+
+> **Status:** Approved design, implementation deferred to delivery-006
+> **Created:** 2026-04-09
+> **Authors:** Andre Vianna (architecture) + Lola (documentation)
+
+### The Hierarchy
+
+```
+Gear (engine root entity)
+  id: StringName
+  display_name: String
+  short_description: String
+  long_description: String
+
+  ├── Script (executable game logic)
+  │   conditions: [Predicate]
+  │   effects: [Effect]
+  │   actions: [StringName]     # player trigger (empty = passive)
+  │   duration: float           # seconds (was "time")
+  │   │
+  │   ├── Recipe
+  │   │   inputs: [Input]
+  │   │   outputs: [Output]
+  │   │   # NO unlock_when — discovery handled by Event with grant_script effect
+  │   │   # NO kind enum — was purely cosmetic, no runtime behavior
+  │   │
+  │   └── Event
+  │       count: int            # runtime state (persisted in save)
+  │       max_count: int        # 0=unlimited, 1=one-shot, N=limited
+  │
+  ├── Element (world data)
+  │   ├── Biome
+  │   └── Prop (+ capabilities + tags)
+  │
+  ├── Cutscene
+  │   # display_name = title
+  │   # short_description = summary
+  │   # long_description = transcript
+  │
+  └── Journal Entry
+      # display_name = title
+      # short_description = summary
+      # long_description = full entry
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Script (not GameAction) | "Script" = screenplay/instruction. Clear, evocative, not overloaded. |
+| duration (not time) | "time" is vague. "duration" says what it is. |
+| unlock_when removed from Script | Discovery = Event with max_count=1 and effect grant_script(). Recipe doesn't need to know HOW it's discovered. |
+| Recipe.kind removed | No runtime behavior. Purely cosmetic classification. Can be optional editor metadata. |
+| max_count (not count_max) | Adjective+noun reads better. |
+| World flags = Event counts | A "flag" is an Event that has fired (count >= 1). No separate WorldFlags dict. |
+| Milestones = Event (max_count=1) | One-shot events that trigger cutscenes, journal entries, recipe unlocks. |
+| Cycles = Event (max_count=0) | Unlimited events (campfire burn cycle, decay, growth). |
+| Cutscene + JournalEntry = Gear | First-class entities, not properties buried in dictionaries. |
+
+### What Changes in Existing Code
+
+| Change | Effort | Risk |
+|--------|--------|------|
+| Create gear.gd + script_base.gd | ~1h | Low (additive) |
+| recipe.gd extends script_base | ~1h | Medium (26 .tres + tests) |
+| Create event.gd | ~30min | Low (new) |
+| Move unlock_when → Event .tres files | ~2h | Medium (10 events + DiscoveryWatcher) |
+| Rename time → duration in 26 .tres + code | ~1h | Low (find/replace) |
+| PropDef extends gear | ~1h | Medium (28 .tres) |
+| Kind → optional/cosmetic | ~30min | Low |
+| **Total** | **~7h** | **Medium** |
+
+### Implementation Plan
+
+**When:** First task of delivery-006 (after delivery-005b closes)
+**Why not now:** delivery-005b is mid-flight with elfos running. Refactoring the base class mid-delivery risks merge conflicts and regressions.
+**Dependencies:** None — purely structural refactor, all behavior preserved.
+
+### Examples After Refactor
+
+#### Recipe (no unlock_when)
+```yaml
+eat_berry:
+  # Gear fields
+  id: "00001"
+  display_name: "Eat Berry"
+  short_description: "Consume a berry for nourishment"
+  # Script fields
+  conditions: []
+  effects: [{ stat_delta: { hunger: 5 } }, { sound: crunch }]
+  actions: [eat]
+  duration: 0
+  # Recipe fields
+  inputs: [{ berry, 1 }]
+  outputs: []
+```
+
+#### Event (discovery)
+```yaml
+discover_eat_berry:
+  # Gear fields
+  id: "E0001"
+  display_name: "Discover Eat Berry"
+  short_description: "Learn that berries are edible"
+  # Script fields
+  conditions: [{ cataloged: berry }]
+  effects: [{ grant_script: "00001" }]
+  actions: []
+  duration: 0
+  # Event fields
+  count: 0
+  max_count: 1
+```
+
+#### Event (milestone)
+```yaml
+milestone_first_shelter:
+  id: "E0100"
+  display_name: "First Shelter Built"
+  short_description: "The crash survivor builds their first shelter"
+  conditions: [{ event_count: { event: "shelter_placed", min: 1 } }]
+  effects: [{ play_cutscene: "cs_first_shelter" }, { journal_entry: "J0001" }]
+  actions: []
+  duration: 0
+  count: 0
+  max_count: 1
+```
+
+#### Cutscene
+```yaml
+cs_first_shelter:
+  id: "CS001"
+  display_name: "A Roof Over Your Head"
+  short_description: "The survivor reflects on building their first shelter"
+  long_description: "Camera pans from the hex grid to a cinematic view..."
+  # + video_path, duration, skip_allowed, etc. (delivery-006 details)
+```
+
+#### Journal Entry
+```yaml
+journal_first_shelter:
+  id: "J0001"
+  display_name: "Day 4 — Shelter"
+  short_description: "I built something today."
+  long_description: "The walls aren't much. Branches and fiber, mostly..."
+```
+
+---
+
+## Spatial System — SSH Grid (delivery-006 target)
+
+> **Status:** Approved design, implementation deferred to delivery-006
+> **Created:** 2026-04-09
+> **Authors:** Andre Vianna (concept) + Lola (math validation + documentation)
+
+### The Change
+
+Replace abstract footprint arrays with mesh-based collision and a 3-level hex grid.
+
+### Three-level grid
+
+```
+Hex (H):          diameter = 6.000m    — world tile, biome unit
+Sub-hex (SH):     diameter = 1.386m    — prop anchor, current placement unit
+Sub-sub-hex (SSH): diameter = 0.320m   — fine placement snap (32cm resolution)
+
+Formula: child_diameter = (parent_diameter / 5) / (√3/2)
+```
+
+### What changes
+
+| Before | After |
+|---|---|
+| `footprint: [Vector2i]` manual cell list | **DELETE** — mesh is the truth |
+| `PlaceableCap.footprint` | **DELETE** |
+| `blocks_movement: bool` flag | **DELETE** — CollisionShape3D on mesh handles blocking |
+| Collision = "cell occupied?" | **Collision = 3D mesh overlap** (Godot physics) |
+| Placement snap = sub-hex center | **Placement snap = SSH center** (32cm grid) |
+| 2D footprint in editor | **2D top-down silhouette** derived from mesh |
+
+### Decisions (Andre, 2026-04-09)
+
+1. **No footprint field.** Collision is 3D mesh-to-mesh. Godot native (CollisionShape3D, Area3D).
+2. **Two representations per prop:** 3D mesh (game world) + 2D top-down (web editor).
+3. **SSH is placement snap only.** "Where to position the prop center." Collision is mesh physics.
+4. **Prop center of rotation = center of nearest SSH.**
+5. **Prop base = ground plane.** Mesh bottom aligns with terrain Y.
+6. **No pathfinder yet.** Movement blocking comes from mesh colliders, not grid data.
+7. **Performance deferred.** Evaluate when implemented (~18,000 SSHs per 50-hex map is manageable).
+8. **Detailed building (shelves, wall mounts) = future.** Current props sit on the ground.
+
+### What this enables
+
+- Props with any shape (box, cylinder, irregular) placed at 32cm precision
+- Natural coexistence: torch + chest in same sub-hex if meshes don't overlap
+- No manual footprint maintenance — add a mesh, it just works
+- Editor shows real prop shapes (2D projected) on the SSH grid
+- Level design in both web editor and Godot editor with same snapping
+
+### Implementation scope (delivery-006)
+
+- Add SSH coordinate math to HexMath (trivial — same axial math, smaller scale)
+- Remove `footprint` from PlaceableCap and all .tres files
+- Remove `blocks_movement` from PlaceableCap
+- Add CollisionShape3D to prop meshes (or generate from placeholder mesh params)
+- Update BuildingSystem placement to snap to SSH + physics overlap check
+- Update web editor to show SSH grid + 2D prop silhouettes
+- Update StructureRenderer to position at SSH precision
+- ~Estimated 3-4 tasks, ~20h total

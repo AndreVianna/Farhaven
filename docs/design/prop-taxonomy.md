@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This document is historical. The capability system in `.aid/work-001-core/delivery-005a/DESIGN.md` (Section 3) replaces the category taxonomy.
+
 # Prop Taxonomy
 
 All world objects fall into 4 categories. This is the authoritative reference.
