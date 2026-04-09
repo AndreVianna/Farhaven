@@ -24,6 +24,8 @@ func _ready() -> void:
 	# Deferred so child renderers connect their signals first (their _ready()
 	# fires before ours, and they use call_deferred for signal wiring).
 	_bootstrap_visible_tiles.call_deferred()
+	# Scan existing light-emitting props after load (structure_placed doesn't fire on load).
+	LightingManager.scan_existing_lights.call_deferred()
 
 
 func _wire_systems() -> void:

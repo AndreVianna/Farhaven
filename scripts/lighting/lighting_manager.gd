@@ -84,6 +84,31 @@ func is_night_active() -> bool:
 	return not _is_day_phase()
 
 
+## Scan all tiles for existing light-emitting props and register them.
+## Called after map load or save load to restore lights that were placed
+## before the current session (structure_placed signal doesn't fire on load).
+func scan_existing_lights() -> void:
+	_structure_lights.clear()
+	if _grid == null or _registry == null:
+		return
+	var tiles: Dictionary = _grid._tiles if "_tiles" in _grid else {}
+	for coords: Vector2i in tiles:
+		var tile: Resource = tiles[coords]
+		if tile == null:
+			continue
+		for prop in tile.props:
+			var def = _registry.get_def(prop.type) if _registry.has_method("get_def") else null
+			if def != null and def.emits_light:
+				var world_pos: Vector2 = HexMath.axial_to_world(coords)
+				var radius: float = float(def.light_radius) * RING_TO_WORLD if def.light_radius > 0 else 3.0 * RING_TO_WORLD
+				var key: String = "%s:%s" % [str(coords), str(prop.type)]
+				_structure_lights[key] = {
+					"position": world_pos,
+					"radius": radius,
+					"color": DEFAULT_LIGHT_COLOR,
+				}
+
+
 ## Manually register a light source (for testing or dynamic lights).
 func register_light(key: String, position: Vector2, radius: float, color: Color = DEFAULT_LIGHT_COLOR) -> void:
 	_structure_lights[key] = {
