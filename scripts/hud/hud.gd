@@ -122,6 +122,12 @@ func connect_crafting(crafting_system: Node, inv) -> void:
 	crafting_system.craft_completed.connect(_on_craft_completed)
 
 
+# --- Building integration ---
+
+func connect_building(building_system: Node) -> void:
+	_gear_panel.set_building_system(building_system)
+
+
 func _on_station_proximity_changed(_near: bool) -> void:
 	# Craft button visible whenever recipes are discovered (not just near station)
 	pass

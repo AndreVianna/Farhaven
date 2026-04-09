@@ -63,6 +63,10 @@ func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
 			hud.connect_crafting(crafting, inv)
 	if auto_interaction != null and hud.has_method("connect_auto_interaction"):
 		hud.connect_auto_interaction(auto_interaction)
+	# Wire BuildingSystem → HUD for Build panel
+	var building: Node = player.get_node_or_null("BuildingSystem")
+	if building != null and hud.has_method("connect_building"):
+		hud.connect_building(building)
 
 
 func _wire_gather_feedback(player: Node, auto_interaction: Node) -> void:
