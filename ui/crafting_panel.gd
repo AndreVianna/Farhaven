@@ -61,7 +61,7 @@ func toggle() -> void:
 
 
 func open() -> void:
-	if visible:
+	if visible and _recipe_entries.size() > 0:
 		return
 	visible = true
 	_rebuild_recipes()
