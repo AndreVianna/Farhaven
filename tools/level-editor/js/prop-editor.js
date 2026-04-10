@@ -159,7 +159,6 @@ export class PropDefModel {
 
     if (d.placeable && typeof d.placeable === 'object') {
       model.placeable = {
-        rotation_snap: _num(d.placeable.rotation_snap),
       };
     }
 
@@ -1262,7 +1261,6 @@ export function renderPropEditor(container, options) {
 
     // PLACEABLE
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
-      _addField(panel, 'Rotation Snap', 'cap_placeable_rotation_snap', 'number', model.placeable ? model.placeable.rotation_snap : 0, { step: '1', min: '0' });
     }));
 
     // CONTAINER
@@ -1576,9 +1574,7 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
-    model.placeable = {
-      rotation_snap: intVal('cap_placeable_rotation_snap'),
-    };
+    model.placeable = {};
   }
 
   if (isChecked('cap_container_enabled')) {
@@ -1774,11 +1770,7 @@ export function validatePropForm(model, isNew) {
     }
   }
 
-  if (model.placeable) {
-    if (model.placeable.rotation_snap < 0) {
-      errors.push('PLACEABLE rotation_snap must be >= 0');
-    }
-  }
+  // PlaceableCap is a marker — no fields to validate.
 
   if (model.light) {
     if (model.light.radius < 1) {
@@ -1880,7 +1872,6 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.placeable.rotation_snap) subFields.set('rotation_snap', { type: 'int', value: model.placeable.rotation_snap });
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
     extId++;
   }

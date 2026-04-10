@@ -59,13 +59,11 @@ func test_portable_weight() -> void:
 	cap.weight = 2.5
 	assert_float(cap.weight).is_equal_approx(2.5, 0.0001)
 
-func test_placeable_fields() -> void:
+func test_placeable_is_marker() -> void:
+	# PlaceableCap is a pure marker — no fields.
 	var cap := _PlaceableCap.new()
-	cap.rotation_snap = 60
-	assert_int(cap.rotation_snap).is_equal(60)
-	# footprint and blocks_movement removed in task-062
-	assert_bool("footprint" in cap).is_false()
-	assert_bool("blocks_movement" in cap).is_false()
+	assert_bool(cap is Resource).is_true()
+	assert_bool("rotation_snap" in cap).is_false()
 
 func test_station_tags() -> void:
 	var cap := _StationCap.new()
