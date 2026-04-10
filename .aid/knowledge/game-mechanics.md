@@ -62,22 +62,23 @@ The unified Recipe system is the engine for all gameplay transformations: gather
 **Authoritative spec:** `.aid/work-001-core/delivery-005a/DESIGN.md`
 
 **Key concepts:**
-- **Recipe:** A transformation with inputs, outputs, effects, conditions, actions, and timing
+- **Recipe:** A transformation with inputs, outputs, effects, conditions, actions, and duration. Extends ScriptBase → Gear hierarchy (delivery-006a).
+- **GameEvent:** Milestones, world flags, discovery triggers. Extends ScriptBase → Gear hierarchy. Discovery events fire `grant_recipe` effects to unlock recipes.
 - **Capabilities:** Composable behavior on PropDefs (Portable, Placeable, Container, Light, Movable, Station, Catalogable) — replaces the old category-based system
 - **Tags:** Free-form labels on PropDefs for flexible recipe matching (e.g. `BURNABLE.log`, `CONSUMABLE.edible`)
-- **Predicates:** 15 condition kinds that gate recipe execution (has_tool, at_station, cataloged, etc.)
-- **Discovery:** Recipes unlock via DiscoveryWatcher when catalog/tool/event predicates become true
+- **Predicates:** 15 condition kinds that gate recipe/event execution (has_tool, at_station, cataloged, etc.)
+- **Discovery:** Recipes unlock when their corresponding GameEvent fires (event has `grant_recipe` effect). DiscoveryWatcher watches EventRegistry.
 
-**Recipe kinds:** ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE
-**Current count:** 16 recipe .tres files (gather, eat, craft, cook, passive)
+**Recipe kinds:** ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE (cosmetic classification)
+**Current counts:** 26 recipe .tres files (R-prefixed), 12 event .tres files (discovery events)
 
 ---
 
 ## Building System
 
-**Status:** Stubbed (delivery-005b target)
+**Status:** Implemented (delivery-005b + delivery-006a)
 
-Structure placement on hex tiles via the recipe system. Player crafts structures that are placed in the world at sub-hex positions.
+Structure placement on hex tiles via the recipe system. Player crafts structures that are placed in the world at SSH-precision positions with mesh-based collision.
 
 **Core structures:**
 
@@ -87,17 +88,19 @@ Structure placement on hex tiles via the recipe system. Player crafts structures
 | Shelter | Safe at night, save point |
 | Storage Chest | Expanded inventory |
 | Furnace | Smelting, advanced crafting |
-| Wall | Block fauna movement |
+| Wall | Block fauna movement (via mesh collision) |
 | Torch | Extends night visibility |
 | Campfire | Cooking station, warmth, light |
 
-**Placement model:**
-- Structures occupy sub-hex positions within a hex tile
-- Multiple structures per hex allowed if footprints don't overlap
-- Movement blocking via `blocks_movement` flag on placeable props
+**Placement model (updated delivery-006a):**
+- Structures snap to SSH (sub-sub-hex) centers at 32cm resolution
+- 3-level grid: Hex (6m) → Sub-hex (1.39m) → SSH (0.32m)
+- Collision is mesh-based (CollisionHelper generates CollisionShape3D, StructureRenderer adds StaticBody3D)
+- No footprint arrays or blocks_movement flags — collision detection uses Godot physics (3D mesh overlap)
+- Multiple structures per hex allowed if meshes don't overlap
 - Build panel UI shows available recipes filtered by known recipes + available materials
 
-**Future (delivery-006):** SSH grid placement at 32cm resolution with mesh-based collision. See [data-model.md](data-model.md) §Spatial System.
+See [data-model.md](data-model.md) §Spatial System for SSH grid math details.
 
 ---
 
@@ -340,7 +343,7 @@ See [data-model.md](data-model.md) §Inventory for the full schema.
 
 **Anomaly (derived state):** A prop is anomalous when scanned but not identified and origin is non-Natural/non-Crafted. Once identified, true origin is revealed.
 
-**Recipe unlocking chain:** Catalog a prop → DiscoveryWatcher evaluates predicates → recipes granted → new gathering/crafting options appear. The scanner drives the entire progression.
+**Recipe unlocking chain:** Catalog a prop → DiscoveryWatcher re-evaluates pending discovery Events → EventRegistry.try_fire() → grant_recipe effect → recipes granted → new gathering/crafting options appear. The scanner drives the entire progression.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Source:** discovery-integrator
 > **Status:** Active
-> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
+> **Last Updated:** 2026-04-09 (updated for delivery-006a: Gear hierarchy, Events, IDs, SSH, mesh collision)
 
 This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no external services. "APIs" here means the signal and method interfaces between game systems. Communication between systems uses Godot signals (observer pattern) and direct method calls.
 
@@ -31,6 +31,39 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
   - `find_recipes_for_station(station_tag: StringName) -> Array` -- recipes requiring a station with the given tag
 - **Source:** `scripts/recipes/recipe_registry.gd`
 
+### EventRegistry (added delivery-006a)
+- **Type:** Autoload singleton (initialized after RecipeRegistry, before DiscoveryWatcher)
+- **Purpose:** Indexes all GameEvent .tres files from `data/events/` and provides query/fire API. Validates E-prefix on event IDs.
+- **Signals:**
+  - `event_fired(event_id: StringName, event: Resource)` -- event successfully fired (count incremented)
+- **Public Methods:**
+  - `get_event(id: StringName) -> GameEvent` -- returns event by id or null
+  - `is_active(id: StringName) -> bool` -- event exists and has fired at least once (count >= 1)
+  - `try_fire(event: GameEvent) -> bool` -- increments count if can_fire, emits event_fired on success
+  - `get_all_events() -> Array` -- returns all loaded GameEvent instances
+  - `get_save_data() -> Dictionary` -- returns events with count > 0 as {id_string: count}
+  - `load_save_data(data: Dictionary) -> void` -- restores event counts from save
+- **Source:** `scripts/core/event_registry.gd`
+
+### GameEvent (added delivery-006a)
+- **Type:** Resource (extends ScriptBase → Gear)
+- **Purpose:** Tracks event occurrences — milestones (max_count=1), world flags (count >= 1), discovery triggers (grant_recipe effect), cycles (max_count=0).
+- **Public Methods:**
+  - `is_active() -> bool` -- returns `count >= 1`
+  - `can_fire() -> bool` -- returns `max_count == 0 or count < max_count`
+  - `fire() -> bool` -- increments count if can_fire, returns success
+  - `reset() -> void` -- resets count to 0
+- **Key Fields:** `count: int` (runtime state), `max_count: int` (0=unlimited, 1=one-shot, N=limited)
+- **Source:** `scripts/core/event.gd`
+
+### CollisionHelper (added delivery-006a)
+- **Type:** RefCounted with static methods (not autoload)
+- **Purpose:** Generates CollisionShape3D from PropDef placeholder_mesh_type and placeholder_params. Used by BuildingSystem and StructureRenderer.
+- **Public Method:**
+  - `create_collision_shape(prop_def: Resource) -> CollisionShape3D` -- creates shape matching the prop's placeholder mesh (box, cylinder, sphere, cube, or fallback)
+- **Supported shapes:** cube (BoxShape3D), box (BoxShape3D), cylinder (CylinderShape3D), sphere (SphereShape3D), octahedron/prism (approximated as CylinderShape3D), fallback (small BoxShape3D)
+- **Source:** `scripts/core/collision_helper.gd`
+
 ### RecipeRuntime (added delivery-005a)
 - **Type:** Autoload singleton (initialized after DiscoveryWatcher)
 - **Purpose:** Executes recipes — matches them against the world, manages pending recipes (in-progress cooking/growing/rotting), and resolves them
@@ -40,27 +73,28 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
   - `recipe_cancelled(recipe_id: StringName, reason: StringName)` -- recipe cancelled (sustain_failed, cancelled)
   - `effect_requested(effect: Resource)` -- effect delegated to external systems (sound, fx, light, etc.)
 - **Public Methods:**
-  - `try_start_recipe(recipe: Recipe, ctx: WorldContext) -> PendingRecipe | null` -- validates conditions, consumes inputs, enqueues or instant-resolves
+  - `try_start_recipe(recipe: Recipe, ctx: WorldContext) -> PendingRecipe | null` -- validates conditions, consumes inputs, enqueues (duration > 0) or instant-resolves (duration == 0)
   - `cancel_recipe(pending: PendingRecipe, reason: StringName)` -- returns inputs, removes from queue
   - `get_pending() -> Array` -- snapshot of pending recipe queue
 - **PendingRecipe inner class:** `recipe`, `start_time`, `elapsed`, `bound_inputs`, `context`
-- **Tick behavior (_process):** Iterates pending recipes each frame; re-checks sustain conditions; resolves when elapsed >= time
+- **Tick behavior (_process):** Iterates pending recipes each frame; re-checks sustain conditions; resolves when elapsed >= duration
 - **Injectable:** `_registry` (RecipeRegistry), `_discovery` (DiscoveryWatcher), `_rng` (Callable for deterministic testing)
 - **Source:** `scripts/recipes/recipe_runtime.gd`
 
-### DiscoveryWatcher (added delivery-005a)
-- **Type:** Autoload singleton (initialized after RecipeRegistry)
-- **Purpose:** Owns the player's known-recipes list. Watches global signals for unlock_when predicate transitions.
+### DiscoveryWatcher (added delivery-005a, rewritten delivery-006a)
+- **Type:** Autoload singleton (initialized after RecipeRegistry + EventRegistry)
+- **Purpose:** Owns the player's known-recipes list. Watches EventRegistry.event_fired for `grant_recipe` effects. Re-evaluates pending discovery events on Catalog.entry_cataloged.
 - **Signals:**
   - `recipe_unlocked(recipe_id: StringName)` -- recipe newly granted
 - **Public Methods:**
   - `is_known(recipe_id: StringName) -> bool` -- recipe is in known list
-  - `grant_recipe(recipe_id: StringName) -> void` -- directly add to known list (from grant_recipe effect, events)
+  - `grant_recipe(recipe_id: StringName) -> void` -- directly add to known list
   - `get_known_recipes() -> Array[StringName]` -- all known recipe ids
-  - `check_unlocks(ctx: WorldContext) -> void` -- re-evaluate unlock_when for all unknown recipes
+  - `check_unlocks(ctx: WorldContext) -> void` -- re-evaluate unfired discovery events against context
   - `get_save_data() / load_save_data(data: Dictionary)` -- persistence
-- **Listens to:** Catalog.entry_cataloged (catalog-driven unlocks)
-- **Injectable:** `_registry` (RecipeRegistry), `_catalog` (Catalog)
+- **Listens to:** EventRegistry.event_fired (processes grant_recipe effects), Catalog.entry_cataloged (re-evaluates pending discovery events)
+- **Injectable:** `_registry` (RecipeRegistry), `_event_registry` (EventRegistry), `_catalog` (Catalog)
+- **Discovery flow:** On `_ready()`, indexes all events with `grant_recipe` effects. Recipes with NO discovery event are known from start. When events fire, grant_recipe effects add to known list.
 - **Source:** `scripts/recipes/discovery_watcher.gd`
 
 ### PredicateEvaluator (added delivery-005a)
@@ -400,13 +434,15 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Source:** `scripts/hex/hex_tile.gd`
 
 ### Prop (Resource)
-- **Properties:** type, sub_hex, category (Category enum), origin (Origin enum), remaining, max_amount, tool_required, respawn_time, rotation_deg, footprint, blocks_movement
+- **Properties:** type, sub_hex, category (Category enum), origin (Origin enum), remaining, max_amount, tool_required, respawn_time, rotation_deg
+- **Removed in delivery-006a:** ~~footprint~~, ~~blocks_movement~~ (collision is mesh-based via CollisionHelper + StaticBody3D)
 - **Enums:** Category (PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE, STRUCTURE, VEHICLE, EQUIPMENT, STORAGE), Origin (NATURAL, CRAFTED, HUMAN, NATIVE_ALIEN, UNKNOWN)
 - **Source:** `scripts/hex/prop.gd`
 
-### PropDef (Resource)
-- **Properties:** id, display_name, tags (Array[StringName]), catalog_entry, catalog_category, origin, tool_slot, max_stack, footprint (deprecated)
-- **Capabilities:** portable (PortableCap), placeable (PlaceableCap), container (ContainerCap), light (LightCap), movable (MovableCap), station (StationCap), catalogable (CatalogableCap) -- each null when not present
+### PropDef (Resource, extends Gear)
+- **Properties (from Gear):** id (P-prefix), display_name, short_description, long_description
+- **Properties (own):** tags (Array[StringName]), catalog_entry, catalog_category, origin, tool_slot, max_stack, footprint (deprecated)
+- **Capabilities:** portable (PortableCap), placeable (PlaceableCap: rotation_snap only — footprint/blocks_movement removed in 006a), container (ContainerCap), light (LightCap), movable (MovableCap), station (StationCap), catalogable (CatalogableCap) -- each null when not present
 - **Deprecated fields (kept for backward compat):** gather_time, gather_amount, tool_required, respawn_time, yield_type, tool_speed, is_consumable, hunger_restore, thirst_restore, health_restore, category, prop_category, emits_light, light_radius, is_respawn_point, is_crafting_station
 - **Helper methods:** `has_capability(cap_name) -> bool`, `has_tag(tag) -> bool`
 - **Visual properties:** mesh, depleted_mesh, material, placeholder_* config (unchanged)
@@ -424,6 +460,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Purpose:** Pure static hex math -- no state, no dependencies
 - **Constants:** HEX_SIZE = 3.0, DIRECTIONS (6 axial direction vectors)
 - **Static Methods:** axial_to_cube, axial_to_world, world_to_axial, distance, get_neighbors, get_tiles_in_range, get_ring
+- **SSH Methods (added delivery-006a):** snap_to_ssh(world_pos, tile) -> {sub_hex, ssh, snapped_world}, is_valid_ssh(ssh_coords) -> bool, get_all_sshs() -> Array[Vector2i], ssh_axial_to_world(q, r) -> Vector2, world_to_ssh_axial(offset) -> Vector2i
 - **Source:** `scripts/hex/hex_math.gd`
 
 ### MapLoader (RefCounted)

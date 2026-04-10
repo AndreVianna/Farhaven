@@ -2,7 +2,7 @@
 
 > **Source:** discovery-analyst
 > **Status:** Active
-> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
+> **Last Updated:** 2026-04-09 (updated for delivery-006a: Gear hierarchy, Events, IDs, SSH, mesh collision)
 
 > **Authoritative design spec for Props & Recipes:** `.aid/work-001-core/delivery-005a/DESIGN.md`
 
@@ -47,10 +47,12 @@ Godot Resource representing any game object placed in a hex tile. Replaces the f
 | tool_required | StringName | &"" | Empty = bare hands | Resource only: e.g. &"stone_pickaxe" |
 | respawn_time | float | 0.0 | Seconds; 0 = no respawn | Resource only: 30.0 common, 60.0 rare |
 | rotation_deg | float | 0.0 | Degrees | Visual rotation of prop mesh |
-| footprint | Array[Vector2i] | [] | Sub-hex coords | Structure only: multi-sub-hex occupancy (future, F-009) |
-| blocks_movement | bool | false | | Structure only: true for walls |
 
-**Factory methods:** `Prop.create_resource()`, `Prop.create_structure()`, `Prop.create_anomaly()`
+**Removed in delivery-006a:**
+- ~~`footprint`~~ — replaced by mesh-based collision (CollisionShape3D via CollisionHelper)
+- ~~`blocks_movement`~~ — replaced by mesh-based collision (StaticBody3D on StructureRenderer)
+
+**Factory methods:** `Prop.create_prop()`, `Prop.create_structure()`, `Prop.create_anomaly()`
 **Helper methods:** `prop.is_anomaly()` (derived state: origin is not NATURAL or CRAFTED), `prop.is_natural_category()` (category in PLANT..OOZE range)
 **Note:** ANOMALY is now a derived state (via `is_anomaly()`), not a category. SPAWN was removed (level metadata).
 
@@ -62,28 +64,35 @@ Replaced by Prop with `category=RESOURCE`. File may still exist as orphan.
 ### PropDef (scripts/data/prop_def.gd)
 Godot Resource defining a prop type's static properties. Loaded from `data/props/*.tres`.
 
-> **Updated 2026-04-08 (delivery-005a).** PropDef now uses composable capabilities + tags instead of the old `Category` enum. The authoritative design spec is `.aid/work-001-core/delivery-005a/DESIGN.md`.
+> **Updated 2026-04-09 (delivery-006a).** PropDef now extends Gear (inherits id, display_name, short_description, long_description). Uses composable capabilities + tags. IDs use P prefix (e.g. &"P00010"). The authoritative design spec is `.aid/work-001-core/delivery-005a/DESIGN.md`.
 
-**Core fields:**
+**Core fields (inherited from Gear):**
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| id | StringName | - | Primary key in PropRegistry (numeric, e.g. &"00010") |
+| id | StringName | - | Primary key in PropRegistry. P prefix (e.g. &"P00010") |
 | display_name | String | - | Human-readable name for UI |
+| short_description | String | "" | One-line summary for tooltips |
+| long_description | String | "" | Full description for detail panels |
+
+**PropDef-specific fields:**
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
 | tags | Array[StringName] | [] | Free-form labels (e.g. &"BURNABLE.log", &"CONSUMABLE.edible", &"WOOD") |
 | catalog_entry | StringName | - | Links to CatalogEntry.entry_id |
 | catalog_category | StringName | - | UI-only grouping label ("flora", "minerals", etc.). This is what DESIGN.md calls "category_tag". Never controls behavior. |
 | origin | int | 0 | Prop.Origin index (0=Natural..4=Unknown) |
 | tool_slot | StringName | &"" | Tool slot this item occupies (e.g. "axe", "pickaxe"). Empty = not a tool. |
 | max_stack | int | 99 | Inventory stack limit (kept during transition) |
-| footprint | Array[Vector2i] | [] | DEPRECATED: use PlaceableCap.footprint instead. Kept for backward compat. |
+| footprint | Array[Vector2i] | [] | DEPRECATED: kept for backward compat. Not used by PlaceableCap (which no longer has footprint). |
 
 **Capability fields (each is a small inner Resource, null when not present):**
 
 | Field | Type (class) | Inner Fields | Notes |
 |-------|-------------|-------------|-------|
 | portable | PortableCap | `weight: float = 1.0` | Prop can be carried. Weight determines inventory capacity consumed. |
-| placeable | PlaceableCap | `footprint: Array[Vector2i] = []`, `blocks_movement: bool = false`, `rotation_snap: int = 0` | Prop can be placed in world at sub-hex position. |
+| placeable | PlaceableCap | `rotation_snap: int = 0` | Prop can be placed in world. Collision is mesh-based (CollisionHelper + StaticBody3D), not footprint-based. |
 | container | ContainerCap | `capacity_weight: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
 | light | LightCap | `radius: float = 0.0`, `color: Color = warm_orange`, `flicker: bool = false` | Prop emits light while active (used by LightingManager). |
 | movable | MovableCap | `push_cost: float = 1.0` | Prop can be pushed across tiles. |
@@ -112,23 +121,65 @@ Godot Resource defining a prop type's static properties. Loaded from `data/props
 Source: `scripts/data/prop_def.gd`, `scripts/data/capabilities/*.gd`, `data/props/*.tres`
 
 ### Recipe (scripts/recipes/recipe.gd)
-Godot Resource defining a transformation — any gameplay action that converts props, produces effects, or both. Loaded from `data/recipes/*.tres`. Added in delivery-005a.
+Godot Resource defining a transformation — any gameplay action that converts props, produces effects, or both. Loaded from `data/recipes/*.tres`. Added in delivery-005a, refactored in delivery-006a.
 
 > **Authoritative spec:** `.aid/work-001-core/delivery-005a/DESIGN.md` §4.
 
+> **Updated 2026-04-09 (delivery-006a).** Recipe now extends ScriptBase (which extends Gear). Inherited fields: id, display_name, short_description, long_description (from Gear); conditions, effects, actions, duration (from ScriptBase). IDs use R prefix (e.g. &"R00001"). `unlock_when` removed — discovery handled by GameEvent .tres files with `grant_recipe` effect. `time` renamed to `duration` (on ScriptBase). `kind` kept as optional cosmetic classification.
+
+**Inherited fields (from Gear):** id, display_name, short_description, long_description
+**Inherited fields (from ScriptBase):** conditions, effects, actions, duration
+
+**Recipe-specific fields:**
+
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| id | StringName | - | Unique, e.g. &"eat_berry", &"chop_small_tree" |
-| kind | Recipe.Kind enum | - | ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE |
+| kind | Recipe.Kind enum | ASSEMBLE | ASSEMBLE, TRANSFORM, BREAKDOWN, COMBINE — cosmetic classification for UI grouping, no runtime behavior |
 | inputs | Array[RecipeInput] | [] | Props consumed on resolve |
 | outputs | Array[RecipeOutput] | [] | Props produced on resolve (each rolls independently) |
-| effects | Array[RecipeEffect] | [] | Non-prop consequences (stat_delta, sound, etc.) |
-| conditions | Array[RecipeCondition] | [] | Gate + sustain predicates |
-| actions | Array[StringName] | [] | Player verbs that trigger. Empty = passive recipe. |
-| time | float | 0.0 | Seconds between trigger and resolution. 0 = instant. |
-| unlock_when | Array[Predicate] | [] | Discovery predicates. Empty = known from start. |
+
+**Removed in delivery-006a:**
+- ~~`unlock_when`~~ — discovery is now handled by GameEvent .tres files in `data/events/` with `grant_recipe` effects. See GameEvent schema below.
+- ~~`time`~~ — renamed to `duration` and moved to ScriptBase.
 
 Source: `scripts/recipes/recipe.gd`, `data/recipes/*.tres`
+
+### GameEvent (scripts/core/event.gd)
+Godot Resource representing a game event — milestones, world flags, chapter gates, discovery triggers, tutorials. Added in delivery-006a.
+
+> GameEvent extends ScriptBase (which extends Gear). Uses conditions/effects/actions/duration from ScriptBase to define when and how the event fires. The `count` field tracks runtime state (how many times fired); `max_count` limits occurrences.
+
+**Inherited fields (from Gear):** id, display_name, short_description, long_description
+**Inherited fields (from ScriptBase):** conditions, effects, actions, duration
+
+**GameEvent-specific fields:**
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| count | int | 0 | Runtime state: how many times this event has fired. Persisted in save data. |
+| max_count | int | 1 | Schema: 0=unlimited (cycles), 1=one-shot (milestones/flags), N=limited (tutorials) |
+
+**Methods:**
+- `is_active() -> bool` — returns `count >= 1` (event has fired at least once)
+- `can_fire() -> bool` — returns `max_count == 0 or count < max_count`
+- `fire() -> bool` — increments count if can_fire, returns success
+- `reset() -> void` — resets count to 0
+
+**Key design patterns:**
+- **World flags = events where count >= 1.** No separate WorldFlags dictionary needed.
+- **Milestones = GameEvent with max_count=1.** One-shot events that trigger cutscenes, journal entries, recipe unlocks.
+- **Cycles = GameEvent with max_count=0.** Unlimited events (campfire burn, decay, growth).
+- **Discovery = GameEvent with `grant_recipe` effect.** Replaces the old `unlock_when` on Recipe.
+
+**ID namespace:** E prefix (e.g. &"E0001"). Event .tres files live in `data/events/`.
+
+**Current events (12 discovery events):**
+- discover_chop_small_tree, discover_cook_meat, discover_eat_berry, discover_eat_toxic_berry
+- discover_gather_berry_bush, discover_gather_loose_rocks, discover_gather_tall_grass
+- discover_gather_toxic_berry_bush, discover_gather_tree
+- discover_mine_crystal_cluster, discover_mine_iron_deposit, discover_mine_stone_boulder
+
+Source: `scripts/core/event.gd`, `data/events/*.tres`
 
 ### RecipeInput (scripts/recipes/recipe_input.gd)
 
@@ -280,35 +331,27 @@ Source: `scripts/inventory/inventory.gd`
 ### Player Known Recipes (DiscoveryWatcher state)
 Not a Godot Resource; stored as a Dictionary in DiscoveryWatcher autoload.
 
-- Recipes with `unlock_when: []` are known from start (populated at `_ready()`)
-- Recipes are granted permanently via `grant_recipe()` or when all `unlock_when` predicates become true
+- Recipes with NO corresponding discovery GameEvent are known from start (populated at `_ready()`)
+- Recipes are granted permanently via `grant_recipe()` when their discovery GameEvent fires (event has `grant_recipe` effect)
+- DiscoveryWatcher listens to EventRegistry.event_fired and processes `grant_recipe` effects
+- DiscoveryWatcher listens to Catalog.entry_cataloged and re-evaluates pending discovery events
 - Persisted via `get_save_data() / load_save_data()` as `Array[StringName]`
 
 Source: `scripts/recipes/discovery_watcher.gd`
 
 ### Recipe Data Files (data/recipes/*.tres)
-16 recipe .tres files, loaded by RecipeRegistry at startup. Replaces the old hardcoded RECIPE_CONFIG.
+26 recipe .tres files (R-prefixed IDs), loaded by RecipeRegistry at startup. Replaces the old hardcoded RECIPE_CONFIG.
 
-| File | Kind | Description |
-|------|------|-------------|
-| eat_berry.tres | Transform | Consume berry, +hunger |
-| eat_toxic_berry.tres | Transform | Consume toxic berry, -health |
-| chop_small_tree.tres | Breakdown | Axe + tree -> wood + branches |
-| cook_meat.tres | Transform | Raw meat at fire station -> cooked meat |
-| craft_trap.tres | Assemble | Branch + fiber -> trap |
-| trap_fires.tres | Breakdown | Passive: trap + animal -> trapped_animal + materials |
-| meat_rots.tres | Transform | Passive: cooked meat -> rotten meat (24h) |
-| burn_log_in_fireplace.tres | Breakdown | Passive: fuel in fireplace -> ash + light/heat |
-| gather_tree.tres | Breakdown | Gather from tree -> wood |
-| gather_berry_bush.tres | Breakdown | Gather berries |
-| gather_toxic_bush.tres | Breakdown | Gather toxic berries |
-| gather_tall_grass.tres | Breakdown | Gather fiber |
-| gather_loose_rocks.tres | Breakdown | Gather stone from rocks |
-| gather_boulder.tres | Breakdown | Gather stone from boulder |
-| gather_iron_deposit.tres | Breakdown | Gather ore |
-| gather_crystal_cluster.tres | Breakdown | Gather crystal |
+> **Updated 2026-04-09 (delivery-006a).** All .tres files renamed from `verb_noun.tres` to `R00NNN.tres` (ID namespace). Recipe IDs use R prefix. Count grew from 16 to 26.
 
 Source: `data/recipes/*.tres`
+
+### Event Data Files (data/events/*.tres)
+12 discovery event .tres files (E-prefixed IDs), loaded by EventRegistry at startup. Added in delivery-006a.
+
+Each discovery event has conditions (typically `cataloged` predicate) and a `grant_recipe` effect that unlocks the corresponding recipe when the event fires.
+
+Source: `data/events/*.tres`
 
 ### Map JSON Schema (data/maps/ch1.json)
 Hand-designed map file loaded by MapLoader. Supports both new (props) and legacy formats.
@@ -337,7 +380,7 @@ Fields after the first two are optional; missing fields default to 0. `HexGrid` 
   "elevation": 0,
   "props": [
     {"type": "wood", "category": 0, "sub_hex_q": 1, "sub_hex_r": 0, "rotation": 45},
-    {"type": "workbench", "category": 6, "sub_hex_q": 0, "sub_hex_r": 0, "blocks_movement": false},
+    {"type": "workbench", "category": 6, "sub_hex_q": 0, "sub_hex_r": 0},
     {"type": "anomaly_ch1_001", "category": 1, "origin": 4, "sub_hex_q": 0, "sub_hex_r": -1}
   ]
 }
@@ -357,7 +400,9 @@ Fields after the first two are optional; missing fields default to 0. `HexGrid` 
 | max_amount | int | no | biome default | Resource only: maximum amount. Defaults from BiomeData |
 | tool_required | string | no | "" | Resource only: tool StringName |
 | respawn_time | float | no | 0.0 | Resource only: seconds |
-| blocks_movement | bool | no | false | Structure only: true for walls |
+
+**Removed in delivery-006a:**
+- ~~`blocks_movement`~~ — movement blocking is now mesh-based (CollisionShape3D + StaticBody3D), not a flag.
 
 **Biome values:** `"crash_site"`, `"grassland"`, `"forest"`, `"rocky"`, `"water"`
 **Elevation:** integer -32000..32000
@@ -456,6 +501,12 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 | PropRenderer._tile_entries | Dictionary | Vector2i (coords) | Array of instance info | `prop_renderer.gd` line 43 |
 | PropLabelRenderer._tile_labels | Dictionary | Vector2i (coords) | Array of label info | `prop_label_renderer.gd` line 44 |
 
+### Event Indexes (Runtime, added delivery-006a)
+
+| Index | Structure | Key | Value | Source |
+|-------|-----------|-----|-------|--------|
+| EventRegistry._events | Dictionary | StringName (event id) | GameEvent Resource | `event_registry.gd` |
+
 ### Recipe Indexes (Runtime, added delivery-005a)
 
 | Index | Structure | Key | Value | Source |
@@ -473,6 +524,7 @@ Source: `scripts/scanner/catalog.gd` (backward compatibility code), `scripts/dat
 |-------|-----------|--------|
 | PropDef lookup | PropRegistry scans data/props/ directory at startup | `prop_registry.gd` |
 | Recipe lookup | RecipeRegistry scans data/recipes/ directory at startup | `recipe_registry.gd` |
+| Event lookup | EventRegistry scans data/events/ directory at startup | `event_registry.gd` |
 | CatalogEntry lookup | Catalog loads 4 hardcoded .tres file paths | `catalog.gd` lines 28-40 |
 | BiomeData lookup | MapLoader and HexGridRenderer use hardcoded path arrays | `map_loader.gd`, `hex_grid_renderer.gd` |
 
@@ -573,47 +625,46 @@ Source: `data/biomes/*.tres`
 
 ---
 
-## Gear Hierarchy (delivery-006 target)
+## Gear Hierarchy (implemented delivery-006a)
 
-> **Status:** Approved design, implementation deferred to delivery-006
+> **Status:** Implemented
 > **Created:** 2026-04-09
 > **Authors:** Andre Vianna (architecture) + Lola (documentation)
 
 ### The Hierarchy
 
 ```
-Gear (engine root entity)
+Gear (scripts/core/gear.gd — engine root entity)
   id: StringName
   display_name: String
   short_description: String
   long_description: String
 
-  ├── Script (executable game logic)
-  │   conditions: [Predicate]
-  │   effects: [Effect]
+  ├── ScriptBase (scripts/core/script_base.gd — executable game logic)
+  │   conditions: [RecipeCondition]
+  │   effects: [RecipeEffect]
   │   actions: [StringName]     # player trigger (empty = passive)
   │   duration: float           # seconds (was "time")
   │   │
-  │   ├── Recipe
-  │   │   inputs: [Input]
-  │   │   outputs: [Output]
-  │   │   # NO unlock_when — discovery handled by Event with grant_script effect
-  │   │   # NO kind enum — was purely cosmetic, no runtime behavior
+  │   ├── Recipe (scripts/recipes/recipe.gd)
+  │   │   kind: Kind            # cosmetic classification (ASSEMBLE/TRANSFORM/BREAKDOWN/COMBINE)
+  │   │   inputs: [RecipeInput]
+  │   │   outputs: [RecipeOutput]
+  │   │   # NO unlock_when — discovery handled by GameEvent with grant_recipe effect
   │   │
-  │   └── Event
+  │   └── GameEvent (scripts/core/event.gd)
   │       count: int            # runtime state (persisted in save)
   │       max_count: int        # 0=unlimited, 1=one-shot, N=limited
   │
-  ├── Element (world data)
-  │   ├── Biome
-  │   └── Prop (+ capabilities + tags)
+  ├── PropDef (scripts/data/prop_def.gd — extends Gear directly)
+  │   tags, capabilities, visual fields, deprecated fields
   │
-  ├── Cutscene
+  ├── Cutscene (future — delivery-006c)
   │   # display_name = title
   │   # short_description = summary
   │   # long_description = transcript
   │
-  └── Journal Entry
+  └── Journal Entry (future — delivery-006c)
       # display_name = title
       # short_description = summary
       # long_description = full entry
@@ -626,31 +677,30 @@ Gear (engine root entity)
 | Script (not GameAction) | "Script" = screenplay/instruction. Clear, evocative, not overloaded. |
 | duration (not time) | "time" is vague. "duration" says what it is. |
 | unlock_when removed from Script | Discovery = Event with max_count=1 and effect grant_script(). Recipe doesn't need to know HOW it's discovered. |
-| Recipe.kind removed | No runtime behavior. Purely cosmetic classification. Can be optional editor metadata. |
+| Recipe.kind kept as cosmetic | Declarative classification for UI grouping. No runtime behavior. |
 | max_count (not count_max) | Adjective+noun reads better. |
 | World flags = Event counts | A "flag" is an Event that has fired (count >= 1). No separate WorldFlags dict. |
 | Milestones = Event (max_count=1) | One-shot events that trigger cutscenes, journal entries, recipe unlocks. |
 | Cycles = Event (max_count=0) | Unlimited events (campfire burn cycle, decay, growth). |
 | Cutscene + JournalEntry = Gear | First-class entities, not properties buried in dictionaries. |
 
-### What Changes in Existing Code
+### What Changed in Existing Code (delivery-006a)
 
-| Change | Effort | Risk |
-|--------|--------|------|
-| Create gear.gd + script_base.gd | ~1h | Low (additive) |
-| recipe.gd extends script_base | ~1h | Medium (26 .tres + tests) |
-| Create event.gd | ~30min | Low (new) |
-| Move unlock_when → Event .tres files | ~2h | Medium (10 events + DiscoveryWatcher) |
-| Rename time → duration in 26 .tres + code | ~1h | Low (find/replace) |
-| PropDef extends gear | ~1h | Medium (28 .tres) |
-| Kind → optional/cosmetic | ~30min | Low |
-| **Total** | **~7h** | **Medium** |
+| Change | Files Affected |
+|--------|---------------|
+| Created gear.gd + script_base.gd | `scripts/core/gear.gd`, `scripts/core/script_base.gd` |
+| recipe.gd extends ScriptBase | `scripts/recipes/recipe.gd`, 26 .tres files renamed to R-prefix |
+| Created event.gd + event_registry.gd | `scripts/core/event.gd`, `scripts/core/event_registry.gd` |
+| Moved unlock_when → Event .tres files | 12 event .tres in `data/events/`, DiscoveryWatcher rewritten |
+| Renamed time → duration | ScriptBase.duration, all .tres files |
+| PropDef extends Gear | `scripts/data/prop_def.gd`, 32 .tres files renamed to P-prefix |
+| Created collision_helper.gd | `scripts/core/collision_helper.gd` |
+| PlaceableCap cleanup | Removed footprint + blocks_movement from PlaceableCap |
+| StructureRenderer mesh collision | Added StaticBody3D + CollisionShape3D |
 
-### Implementation Plan
+### Implementation Status
 
-**When:** First task of delivery-006 (after delivery-005b closes)
-**Why not now:** delivery-005b is mid-flight with elfos running. Refactoring the base class mid-delivery risks merge conflicts and regressions.
-**Dependencies:** None — purely structural refactor, all behavior preserved.
+**Implemented:** delivery-006a (2026-04-09). All code and data files updated.
 
 ### Examples After Refactor
 
@@ -723,9 +773,9 @@ journal_first_shelter:
 
 ---
 
-## Spatial System — SSH Grid (delivery-006 target)
+## Spatial System — SSH Grid (implemented delivery-006a)
 
-> **Status:** Approved design, implementation deferred to delivery-006
+> **Status:** Implemented
 > **Created:** 2026-04-09
 > **Authors:** Andre Vianna (concept) + Lola (math validation + documentation)
 
@@ -773,13 +823,11 @@ Formula: child_diameter = (parent_diameter / 5) / (√3/2)
 - Editor shows real prop shapes (2D projected) on the SSH grid
 - Level design in both web editor and Godot editor with same snapping
 
-### Implementation scope (delivery-006)
+### Implementation (delivery-006a — completed)
 
-- Add SSH coordinate math to HexMath (trivial — same axial math, smaller scale)
-- Remove `footprint` from PlaceableCap and all .tres files
-- Remove `blocks_movement` from PlaceableCap
-- Add CollisionShape3D to prop meshes (or generate from placeholder mesh params)
-- Update BuildingSystem placement to snap to SSH + physics overlap check
-- Update web editor to show SSH grid + 2D prop silhouettes
-- Update StructureRenderer to position at SSH precision
-- ~Estimated 3-4 tasks, ~20h total
+- SSH coordinate math added to HexMath: `snap_to_ssh()`, `is_valid_ssh()`, `get_all_sshs()`, `ssh_axial_to_world()`, `world_to_ssh_axial()`
+- `footprint` removed from PlaceableCap (field remains on PropDef as deprecated backward compat)
+- `blocks_movement` removed from PlaceableCap and Prop
+- CollisionHelper generates CollisionShape3D from PropDef placeholder_mesh_type/params
+- StructureRenderer adds StaticBody3D + CollisionShape3D per placed structure
+- BuildingSystem uses SSH snap + physics overlap check for placement
