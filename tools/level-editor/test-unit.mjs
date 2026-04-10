@@ -1860,10 +1860,10 @@ function _makeRecipeEntry(resourceOverrides, subResources) {
   raw.headerLine = '[gd_resource type="Resource" script_class="Recipe" load_steps=2 format=3]';
   raw.extResources = ['[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]'];
   raw.subResources = subResources || [];
-  const data = { script: 'ExtResource("1_recipe")', id: 'test', display_name: 'Test Recipe', kind: 0, ...resourceOverrides };
+  const data = { script: 'ExtResource("1_recipe")', id: 'Rtest', display_name: 'Test Recipe', kind: 0, ...resourceOverrides };
   raw.resourceFields = new Map();
   raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_recipe")' });
-  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'test' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'Rtest' });
   raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Recipe' });
   raw.resourceFields.set('kind', { type: 'int', value: data.kind || 0 });
   if (data.inputs) raw.resourceFields.set('inputs', { type: 'array', elementType: null, value: data.inputs });
@@ -1871,28 +1871,30 @@ function _makeRecipeEntry(resourceOverrides, subResources) {
   if (data.effects) raw.resourceFields.set('effects', { type: 'array', elementType: null, value: data.effects });
   if (data.conditions) raw.resourceFields.set('conditions', { type: 'array', elementType: null, value: data.conditions });
   if (data.actions) raw.resourceFields.set('actions', { type: 'array', elementType: null, value: data.actions });
-  if (data.time != null && data.time !== 0) raw.resourceFields.set('time', { type: 'float', value: data.time });
-  if (data.unlock_when) raw.resourceFields.set('unlock_when', { type: 'array', elementType: null, value: data.unlock_when });
+  if (data.duration != null && data.duration !== 0) raw.resourceFields.set('duration', { type: 'float', value: data.duration });
+  if (data.short_description) raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  if (data.long_description) raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
   return { data, raw };
 }
 
 function _makeRecipeModel(overrides) {
   const model = new RecipeModel();
-  model.id = 'test';
+  model.id = 'Rtest';
   model.display_name = 'Test Recipe';
   model.kind = 0;
-  model.time = 0;
+  model.duration = 0;
   for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
   return model;
 }
 
 test('RecipeModel — fromEntry reads basic fields', () => {
-  const entry = _makeRecipeEntry({ kind: 2, time: 4.0 }, []);
-  const model = RecipeModel.fromEntry('00001.tres', entry);
-  assert(model.id === '00001', 'id should be 00001');
+  const entry = _makeRecipeEntry({ kind: 2, duration: 4.0 }, []);
+  const model = RecipeModel.fromEntry('R00001.tres', entry);
+  assert(model.id === 'R00001', 'id should be R00001');
   assert(model.display_name === 'Test Recipe', 'display_name');
   assert(model.kind === 2, 'kind should be 2');
-  assert(model._filename === '00001.tres', '_filename');
+  assert(model.duration === 4.0, 'duration should be 4.0');
+  assert(model._filename === 'R00001.tres', '_filename');
 });
 
 test('RecipeModel — fromEntry reads inputs via sub_resource resolution', () => {
@@ -1984,21 +1986,6 @@ test('RecipeModel — fromEntry reads conditions with nested predicate', () => {
   assert(model.conditions[0].must_sustain === true, 'must_sustain');
 });
 
-test('RecipeModel — fromEntry reads unlock_when predicates', () => {
-  const predFields = new Map();
-  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("6_predicate")' });
-  predFields.set('kind', { type: 'stringname', value: 'cataloged' });
-  predFields.set('params', { type: 'dict', value: new Map([['prop', { type: 'string', value: '00020' }]]), braceSpaces: true });
-  const entry = _makeRecipeEntry(
-    { unlock_when: [{ type: 'sub_resource', value: 'unlock_pred_1' }] },
-    [{ type: 'Resource', id: 'unlock_pred_1', fields: predFields }],
-  );
-  const model = RecipeModel.fromEntry('test.tres', entry);
-  assert(model.unlock_when.length === 1, 'should have 1 unlock predicate');
-  assert(model.unlock_when[0].kind === 'cataloged', 'unlock kind');
-  assert(model.unlock_when[0].params.prop === '00020', 'unlock params.prop');
-});
-
 test('RecipeModel — fromEntry reads actions', () => {
   const entry = _makeRecipeEntry(
     { actions: [{ type: 'stringname', value: 'eat' }, { type: 'stringname', value: 'chop' }] }, [],
@@ -2017,7 +2004,6 @@ test('RecipeModel — fromEntry handles empty arrays', () => {
   assert(model.effects.length === 0, 'no effects');
   assert(model.conditions.length === 0, 'no conditions');
   assert(model.actions.length === 0, 'no actions');
-  assert(model.unlock_when.length === 0, 'no unlock_when');
 });
 
 // ============================================================
@@ -2042,11 +2028,11 @@ test('validateRecipeForm — invalid ID chars', () => {
 });
 
 test('validateRecipeForm — duplicate ID on create', () => {
-  ProjectContext.files.recipes.set('test.tres', { data: {}, raw: new TresFile() });
+  ProjectContext.files.recipes.set('Rtest.tres', { data: {}, raw: new TresFile() });
   const result = validateRecipeForm(_makeRecipeModel({}), true);
   assert(result.valid === false, 'should be invalid');
   assert(result.errors.some(e => e.includes('already exists')), 'mention duplicate');
-  ProjectContext.files.recipes.delete('test.tres');
+  ProjectContext.files.recipes.delete('Rtest.tres');
 });
 
 test('validateRecipeForm — missing display_name', () => {
@@ -2054,8 +2040,8 @@ test('validateRecipeForm — missing display_name', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — negative time', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ time: -1 }), true);
+test('validateRecipeForm — negative duration', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ duration: -1 }), true);
   assert(result.valid === false, 'should be invalid');
 });
 
@@ -2109,9 +2095,10 @@ test('validateRecipeForm — condition missing predicate kind', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — unlock_when missing kind', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ unlock_when: [{ kind: '', params: {} }] }), false);
+test('validateRecipeForm — ID missing R prefix', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ id: '00001' }), true);
   assert(result.valid === false, 'should be invalid');
+  assert(result.errors.some(e => e.includes('R')), 'mention R prefix');
 });
 
 test('validateRecipeForm — valid full recipe', () => {
@@ -2120,8 +2107,7 @@ test('validateRecipeForm — valid full recipe', () => {
     outputs: [{ prop_ref: '00010', count: 2, prob: 0.8 }],
     effects: [{ kind: 'stat_delta', params: { stat: 'hunger', value: 5 } }],
     conditions: [{ predicate_kind: 'at_station', predicate_params: { tag: 'fire' }, must_sustain: true }],
-    actions: ['eat'], time: 3.0,
-    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
+    actions: ['eat'], duration: 3.0,
   }), true);
   assert(result.valid === true, 'should be valid');
   assert(result.errors.length === 0, 'no errors');
@@ -2188,15 +2174,6 @@ test('recipeModelToRaw — serializes actions', () => {
   assert(actionsField.value[0].value === 'eat', 'action value');
 });
 
-test('recipeModelToRaw — serializes unlock_when', () => {
-  const raw = recipeModelToRaw(_makeRecipeModel({
-    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
-  }));
-  const unlockSub = raw.subResources.find(s => s.id === 'unlock_pred_1');
-  assert(unlockSub != null, 'should have unlock_pred_1');
-  assert(unlockSub.fields.get('kind').value === 'cataloged', 'unlock kind');
-});
-
 test('recipeModelToRaw — no sub_resources when empty', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({}));
   assert(raw.subResources.length === 0, 'no sub_resources');
@@ -2208,7 +2185,7 @@ test('recipeModelToRaw — serialized output is valid .tres', () => {
     inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
-    actions: ['chop'], time: 4.0,
+    actions: ['chop'], duration: 4.0,
   }));
   const text = TresParser.serialize(raw);
   assert(text.includes('[gd_resource'), 'should have header');
@@ -2228,8 +2205,7 @@ test('RecipeModel — full round-trip with all fields', () => {
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
     conditions: [{ predicate_kind: 'has_tool', predicate_params: { tool: 'axe' }, must_sustain: true }],
-    actions: ['chop'], time: 4.0,
-    unlock_when: [{ kind: 'has_tool', params: { tool: 'axe' } }, { kind: 'cataloged', params: { prop: '00001' } }],
+    actions: ['chop'], duration: 4.0,
   });
   const raw = recipeModelToRaw(original);
   const text = TresParser.serialize(raw);
@@ -2245,11 +2221,11 @@ test('RecipeModel — full round-trip with all fields', () => {
     if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
     else { data[key] = tv.value; }
   }
-  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
+  const restored = RecipeModel.fromEntry('Rtest.tres', { data, raw: reparsed });
   assert(restored.id === original.id, 'id round-trip');
   assert(restored.display_name === original.display_name, 'display_name round-trip');
   assert(restored.kind === original.kind, 'kind round-trip');
-  assert(restored.time === original.time, 'time round-trip');
+  assert(restored.duration === original.duration, 'duration round-trip');
   assert(restored.actions.length === 1, 'actions count');
   assert(restored.actions[0] === 'chop', 'actions[0]');
   assert(restored.inputs.length === 1, 'inputs count');
@@ -2263,9 +2239,6 @@ test('RecipeModel — full round-trip with all fields', () => {
   assert(restored.conditions.length === 1, 'conditions count');
   assert(restored.conditions[0].predicate_kind === 'has_tool', 'condition predicate_kind');
   assert(restored.conditions[0].must_sustain === true, 'condition must_sustain');
-  assert(restored.unlock_when.length === 2, 'unlock_when count');
-  assert(restored.unlock_when[0].kind === 'has_tool', 'unlock[0] kind');
-  assert(restored.unlock_when[1].kind === 'cataloged', 'unlock[1] kind');
 });
 
 test('RecipeModel — round-trip with no optional fields', () => {
@@ -2284,8 +2257,8 @@ test('RecipeModel — round-trip with no optional fields', () => {
     if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
     else { data[key] = tv.value; }
   }
-  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
-  assert(restored.id === 'test', 'id');
+  const restored = RecipeModel.fromEntry('Rtest.tres', { data, raw: reparsed });
+  assert(restored.id === 'Rtest', 'id');
   assert(restored.display_name === 'Test Recipe', 'display_name');
   assert(restored.inputs.length === 0, 'no inputs');
   assert(restored.outputs.length === 0, 'no outputs');
@@ -2330,7 +2303,7 @@ for (const recipeFile of __recipeFiles) {
     assert(model.id === recipeFile.replace('.tres', ''), `${recipeFile}: id`);
     assert(typeof model.display_name === 'string', `${recipeFile}: display_name is string`);
     assert(model.kind >= 0 && model.kind <= 3, `${recipeFile}: kind in range`);
-    assert(model.time >= 0, `${recipeFile}: time >= 0`);
+    assert(model.duration >= 0, `${recipeFile}: duration >= 0`);
     assert(Array.isArray(model.inputs), `${recipeFile}: inputs is array`);
     assert(Array.isArray(model.outputs), `${recipeFile}: outputs is array`);
 
@@ -2372,7 +2345,7 @@ for (const recipeFile of __recipeFiles) {
     assert(model2.effects.length === model.effects.length, `${recipeFile}: effects count survives`);
     assert(model2.conditions.length === model.conditions.length, `${recipeFile}: conditions count survives`);
     assert(model2.actions.length === model.actions.length, `${recipeFile}: actions count survives`);
-    assert(model2.unlock_when.length === model.unlock_when.length, `${recipeFile}: unlock_when count survives`);
+    assert(model2.duration === model.duration, `${recipeFile}: duration survives`);
   });
 }
 

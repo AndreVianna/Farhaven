@@ -53,9 +53,11 @@ export class RecipeModel {
     /** @type {string[]} */
     this.actions = [];
     /** @type {number} */
-    this.time = 0;
-    /** @type {Array<{kind: string, params: Object<string, *>}>} */
-    this.unlock_when = [];
+    this.duration = 0;
+    /** @type {string} */
+    this.short_description = '';
+    /** @type {string} */
+    this.long_description = '';
 
     // Round-trip metadata
     /** @type {string} */
@@ -111,8 +113,10 @@ export class RecipeModel {
     const d = entry.data;
 
     model.display_name = _str(d.display_name);
+    model.short_description = _str(d.short_description);
+    model.long_description = _str(d.long_description);
     model.kind = _num(d.kind);
-    model.time = _numFloat(d.time);
+    model.duration = _numFloat(d.duration);
 
     // Actions (array of stringname values -> string[])
     model.actions = _strArray(d.actions);
@@ -174,18 +178,6 @@ export class RecipeModel {
         };
       }
       return { predicate_kind: '', predicate_params: {}, must_sustain: false };
-    });
-
-    // unlock_when — resolve sub_resource refs (array of predicates)
-    const unlockPreds = resolveArray(d.unlock_when);
-    model.unlock_when = unlockPreds.map(pred => {
-      if (pred && typeof pred === 'object') {
-        return {
-          kind: _str(pred.kind),
-          params: _dictToObj(pred.params),
-        };
-      }
-      return { kind: '', params: {} };
     });
 
     return model;
@@ -270,8 +262,10 @@ export function collectRecipeFormData(formElement) {
 
   model.id = val('id').trim();
   model.display_name = val('display_name').trim();
+  model.short_description = val('short_description').trim();
+  model.long_description = val('long_description').trim();
   model.kind = intVal('kind');
-  model.time = floatVal('time');
+  model.duration = floatVal('duration');
 
   // Actions
   model.actions = _collectTagChips(formElement, 'actions');
@@ -309,14 +303,6 @@ export function collectRecipeFormData(formElement) {
       predicate_kind: _rowVal(row, 'predicate_kind'),
       predicate_params: _collectRowKv(row),
       must_sustain: _rowChecked(row, 'must_sustain'),
-    };
-  });
-
-  // unlock_when
-  model.unlock_when = _collectListSection(formElement, 'unlock_when', (row) => {
-    return {
-      kind: _rowVal(row, 'kind'),
-      params: _collectRowKv(row),
     };
   });
 
@@ -408,6 +394,8 @@ export function validateRecipeForm(model, isNew) {
     errors.push('ID is required');
   } else if (!/^[a-zA-Z0-9_]+$/.test(model.id)) {
     errors.push('ID must contain only alphanumeric characters and underscores');
+  } else if (!model.id.startsWith('R')) {
+    errors.push('Recipe ID must start with "R" (e.g. R00001)');
   } else if (isNew && ProjectContext.files.recipes.has(model.id + '.tres')) {
     errors.push(`Recipe "${model.id}" already exists`);
   }
@@ -420,8 +408,8 @@ export function validateRecipeForm(model, isNew) {
     errors.push('Kind must be 0-3 (Assemble, Transform, Breakdown, Combine)');
   }
 
-  if (model.time < 0) {
-    errors.push('Time must be >= 0');
+  if (model.duration < 0) {
+    errors.push('Duration must be >= 0');
   }
 
   // Validate inputs
@@ -468,14 +456,6 @@ export function validateRecipeForm(model, isNew) {
     }
   }
 
-  // Validate unlock_when
-  for (let i = 0; i < model.unlock_when.length; i++) {
-    const pred = model.unlock_when[i];
-    if (!pred.kind) {
-      errors.push(`Unlock predicate #${i + 1}: kind is required`);
-    }
-  }
-
   return { valid: errors.length === 0, errors };
 }
 
@@ -492,14 +472,15 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
+    short_description: model.short_description,
+    long_description: model.long_description,
     kind: model.kind,
     inputs: model.inputs,
     outputs: model.outputs,
     effects: model.effects,
     conditions: model.conditions,
     actions: model.actions,
-    time: model.time,
-    unlock_when: model.unlock_when,
+    duration: model.duration,
   };
 }
 
@@ -557,7 +538,7 @@ export function recipeModelToRaw(model) {
   const needOutput = model.outputs.length > 0;
   const needEffect = model.effects.length > 0;
   const needCondition = model.conditions.length > 0;
-  const needPredicate = model.conditions.length > 0 || model.unlock_when.length > 0;
+  const needPredicate = model.conditions.length > 0;
 
   let inputExtId = '';
   let outputExtId = '';
@@ -665,21 +646,6 @@ export function recipeModelToRaw(model) {
     conditionSubIds.push(condSubId);
   }
 
-  // Build sub_resources for unlock_when (array of predicates)
-  const unlockSubIds = [];
-  for (let i = 0; i < model.unlock_when.length; i++) {
-    const pred = model.unlock_when[i];
-    const subId = `unlock_pred_${i + 1}`;
-    const subFields = new Map();
-    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${predicateExtId}")` });
-    subFields.set('kind', { type: 'stringname', value: pred.kind });
-    if (Object.keys(pred.params).length > 0) {
-      subFields.set('params', _paramsDictToTres(pred.params));
-    }
-    subResources.push({ type: 'Resource', id: subId, fields: subFields });
-    unlockSubIds.push(subId);
-  }
-
   // Update header
   const loadSteps = extResources.length + subResources.length;
   raw.headerLine = `[gd_resource type="Resource" script_class="Recipe" load_steps=${loadSteps} format=3]`;
@@ -733,21 +699,24 @@ export function recipeModelToRaw(model) {
     });
   }
 
-  if (model.time !== 0) {
-    fields.set('time', { type: 'float', value: model.time });
+  if (model.duration !== 0) {
+    fields.set('duration', { type: 'float', value: model.duration });
   }
 
-  if (unlockSubIds.length > 0) {
-    fields.set('unlock_when', {
-      type: 'array', elementType: null,
-      value: unlockSubIds.map(id => ({ type: 'sub_resource', value: id })),
-    });
+  if (model.short_description) {
+    fields.set('short_description', { type: 'string', value: model.short_description });
+  }
+
+  if (model.long_description) {
+    fields.set('long_description', { type: 'string', value: model.long_description });
   }
 
   // Preserve any unknown fields from the original .tres
+  // Skip fields that were removed in delivery-006a
+  const _removedFields = new Set(['time', 'unlock_when']);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
-      if (!fields.has(key)) {
+      if (!fields.has(key) && !_removedFields.has(key)) {
         fields.set(key, value);
       }
     }
@@ -1085,10 +1054,14 @@ export function renderRecipeEditor(container, options) {
     _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
     // Display Name
     _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
+    // Short Description
+    _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
+    // Long Description
+    _addTextareaField(grid, 'Long Description', 'long_description', model.long_description);
     // Kind
     _addSelectField(grid, 'Kind', 'kind', model.kind, RECIPE_KINDS.map((k, i) => ({ value: String(i), label: k })));
-    // Time
-    _addField(grid, 'Time (seconds)', 'time', 'number', model.time, { step: 'any', min: '0' });
+    // Duration
+    _addField(grid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
 
     // --- Actions ---
     _addSeparator(grid, 'Actions');
@@ -1109,10 +1082,6 @@ export function renderRecipeEditor(container, options) {
     // --- Conditions ---
     _addSeparator(grid, 'Conditions');
     grid.appendChild(_createConditionListEditor(model.conditions));
-
-    // --- Unlock When ---
-    _addSeparator(grid, 'Unlock When');
-    grid.appendChild(_createPredicateListEditor('unlock_when', model.unlock_when));
 
     body.appendChild(grid);
     form.appendChild(body);
@@ -1182,13 +1151,14 @@ export function renderRecipeEditor(container, options) {
     selectedId = null;
     editingModel = new RecipeModel();
 
-    // Auto-increment ID
+    // Auto-increment ID with R prefix
     let maxId = 0;
     for (const [filename] of ProjectContext.files.recipes) {
-      const numId = parseInt(filename.replace('.tres', ''), 10);
+      const numPart = filename.replace('.tres', '').replace(/^R/, '');
+      const numId = parseInt(numPart, 10);
       if (!isNaN(numId) && numId > maxId) maxId = numId;
     }
-    editingModel.id = String(maxId + 1).padStart(5, '0');
+    editingModel.id = 'R' + String(maxId + 1).padStart(5, '0');
 
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();
@@ -1222,6 +1192,20 @@ function _addField(grid, labelText, name, type, value, attrs) {
     }
   }
   grid.appendChild(input);
+}
+
+function _addTextareaField(grid, labelText, name, value) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  grid.appendChild(label);
+
+  const textarea = document.createElement('textarea');
+  textarea.name = name;
+  textarea.value = value || '';
+  textarea.classList.add('prop-input');
+  textarea.rows = 3;
+  grid.appendChild(textarea);
 }
 
 function _addSelectField(grid, labelText, name, value, options) {
@@ -1460,44 +1444,6 @@ function _createConditionListEditor(conditions) {
   addBtn.type = 'button';
   addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
   addBtn.addEventListener('click', () => addRow({ predicate_kind: PREDICATE_KINDS[0], predicate_params: {}, must_sustain: false }));
-  wrapper.appendChild(addBtn);
-
-  return wrapper;
-}
-
-// ============================================================
-// Predicate List Editor (for unlock_when)
-// ============================================================
-
-function _createPredicateListEditor(name, predicates) {
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('prop-full');
-
-  const rowsContainer = document.createElement('div');
-  rowsContainer.dataset.listRows = name;
-  wrapper.appendChild(rowsContainer);
-
-  function addRow(pred) {
-    const row = document.createElement('div');
-    row.style.cssText = 'margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:4px;';
-
-    const topRow = document.createElement('div');
-    topRow.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
-    _appendSelect(topRow, 'kind', pred.kind, PREDICATE_KINDS.map(k => ({ value: k, label: k })));
-    _appendRemoveBtn(topRow);
-    row.appendChild(topRow);
-
-    row.appendChild(_createInlineKvEditor(pred.params));
-    rowsContainer.appendChild(row);
-  }
-
-  for (const pred of predicates) { addRow(pred); }
-
-  const addBtn = document.createElement('button');
-  addBtn.textContent = '+ Add Predicate';
-  addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-  addBtn.addEventListener('click', () => addRow({ kind: PREDICATE_KINDS[0], params: {} }));
   wrapper.appendChild(addBtn);
 
   return wrapper;
