@@ -7,9 +7,11 @@ const _PropDef = preload("res://scripts/data/prop_def.gd")
 const _Recipe = preload("res://scripts/recipes/recipe.gd")
 const _RecipeInput = preload("res://scripts/recipes/recipe_input.gd")
 const _RecipeOutput = preload("res://scripts/recipes/recipe_output.gd")
+const _GameEvent = preload("res://scripts/core/event.gd")
 
 const PROPS_PATH := "res://data/props/"
 const RECIPES_PATH := "res://data/recipes/"
+const EVENTS_PATH := "res://data/events/"
 
 
 static func _load_all_propdefs() -> Array:
@@ -42,6 +44,22 @@ static func _load_all_recipes() -> Array:
 				recipes.append(res)
 		fname = dir.get_next()
 	return recipes
+
+
+static func _load_all_events() -> Array:
+	var events: Array = []
+	var dir := DirAccess.open(EVENTS_PATH)
+	if dir == null:
+		return events
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if fname.ends_with(".tres"):
+			var res := load(EVENTS_PATH + fname)
+			if res is _GameEvent:
+				events.append(res)
+		fname = dir.get_next()
+	return events
 
 
 func register_steps(registry) -> void:
@@ -189,4 +207,75 @@ func register_steps(registry) -> void:
 			var id_str := String(recipe.id)
 			ctx.assert_true(id_str.begins_with("R"),
 				"Recipe id '%s' must start with 'R' prefix" % id_str)
+	)
+
+	registry.then("no Recipe has an unlock_when property", func(ctx):
+		var recipes: Array = ctx.get_value("recipes", [])
+		for recipe in recipes:
+			var props := recipe.get_property_list()
+			for p in props:
+				ctx.assert_true(p["name"] != "unlock_when",
+					"Recipe '%s' still has unlock_when property" % recipe.id)
+	)
+
+	registry.then("every Recipe has duration via ScriptBase and no legacy time field", func(ctx):
+		var recipes: Array = ctx.get_value("recipes", [])
+		for recipe in recipes:
+			# duration is inherited from ScriptBase — must exist
+			ctx.assert_true("duration" in recipe,
+				"Recipe '%s' missing duration field" % recipe.id)
+			# legacy "time" field should not exist
+			var has_time := false
+			for p in recipe.get_property_list():
+				if p["name"] == "time":
+					has_time = true
+					break
+			ctx.assert_false(has_time,
+				"Recipe '%s' still has legacy 'time' property" % recipe.id)
+	)
+
+	registry.then("every PlaceableCap is a pure marker with no extra fields", func(ctx):
+		var defs: Array = ctx.get_value("propdefs", [])
+		# Properties inherited from Resource/RefCounted are expected; any @export
+		# beyond those means PlaceableCap is no longer a pure marker.
+		var baseline_props: Array[String] = [
+			"resource_local_to_scene", "resource_path", "resource_name",
+			"script", "RefCounted", "resource_scene_unique_id",
+		]
+		for def in defs:
+			if def.placeable == null:
+				continue
+			var cap = def.placeable
+			for p in cap.get_property_list():
+				var name: String = p["name"]
+				# Skip built-in Resource/meta properties
+				if name in baseline_props or name.begins_with("_") or name == "":
+					continue
+				# USAGE_DEFAULT (bit 1) marks @export properties in Godot 4
+				if p["usage"] & PROPERTY_USAGE_STORAGE:
+					ctx.assert_true(false,
+						"PlaceableCap on '%s' has unexpected field '%s' — should be a pure marker" % [def.id, name])
+	)
+
+	# --- Given: Events ---
+	registry.given("all Events are loaded", func(ctx):
+		var events := _load_all_events()
+		ctx.assert_greater(events.size(), 0, "Expected at least one Event")
+		ctx.set_value("events", events)
+	)
+
+	# --- Then: Event validations ---
+	registry.then("every Event id starts with E prefix", func(ctx):
+		var events: Array = ctx.get_value("events", [])
+		for event in events:
+			var id_str := String(event.id)
+			ctx.assert_true(id_str.begins_with("E"),
+				"Event id '%s' must start with 'E' prefix" % id_str)
+	)
+
+	registry.then("every Event has max_count greater than or equal to {int}", func(ctx, threshold: int):
+		var events: Array = ctx.get_value("events", [])
+		for event in events:
+			ctx.assert_greater_or_equal(event.max_count, threshold,
+				"Event '%s' has max_count %d which is < %d" % [event.id, event.max_count, threshold])
 	)

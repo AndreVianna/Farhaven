@@ -59,3 +59,25 @@ Feature: Data Integrity
   Scenario: Recipe ids start with R prefix
     Given all Recipes are loaded
     Then every Recipe id starts with R prefix
+
+  Scenario: No recipe has unlock_when field
+    Given all Recipes are loaded
+    Then no Recipe has an unlock_when property
+
+  Scenario: Every recipe uses duration not time
+    Given all Recipes are loaded
+    Then every Recipe has duration via ScriptBase and no legacy time field
+
+  Scenario: PlaceableCap has no fields
+    Given all PropDefs are loaded
+    Then every PlaceableCap is a pure marker with no extra fields
+
+  # --- Event Validation ---
+
+  Scenario: Every event has E-prefixed ID
+    Given all Events are loaded
+    Then every Event id starts with E prefix
+
+  Scenario: Every event has max_count >= 0
+    Given all Events are loaded
+    Then every Event has max_count greater than or equal to 0

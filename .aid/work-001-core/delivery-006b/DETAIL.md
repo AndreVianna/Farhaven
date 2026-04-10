@@ -10,14 +10,14 @@
 
 | # | Name | Type | Est. hours | Status |
 |---|------|------|-----------|--------|
-| 066 | Prop page: Gear fields + slot-unit inventory + cleanup | UPDATE | 6 | |
-| 067 | Recipe page: time→duration, remove unlock_when, Gear fields | UPDATE | 4 | |
-| 068 | Event page (NEW): create/edit GameEvent .tres files | IMPLEMENT | 8 | |
+| 066 | Prop page: Gear fields + slot-unit inventory + cleanup | UPDATE | 6 | DONE |
+| 067 | Recipe page: time→duration, remove unlock_when, Gear fields | UPDATE | 4 | DONE |
+| 068 | Event page (NEW): create/edit GameEvent .tres files | IMPLEMENT | 8 | DONE |
 | 069 | Prop page: map tool filter by placeable (already done in PR fix) | DONE | 0 | DONE |
-| 070 | ID namespace enforcement: prefix validation + auto-increment | UPDATE | 3 | |
-| 071 | Biome page review: ensure sync with current schema | REVIEW | 2 | |
-| 072 | Round-trip tests for all pages with new schema | TEST | 4 | |
-| 073 | BDD scenarios covering delivery-006b changes | TEST | 4 | |
+| 070 | ID namespace enforcement: prefix validation + auto-increment | UPDATE | 3 | DONE |
+| 071 | Biome page review: ensure sync with current schema | REVIEW | 2 | DONE (no issues) |
+| 072 | Round-trip tests for all pages with new schema | TEST | 4 | DONE (87 round-trips) |
+| 073 | BDD scenarios covering delivery-006b changes | TEST | 4 | IN PROGRESS |
 
 **Estimated total: ~31h**
 
