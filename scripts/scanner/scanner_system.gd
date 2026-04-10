@@ -37,13 +37,17 @@ signal scan_progress_updated(progress: float)
 signal scan_completed(entry_id: StringName)
 signal scan_interrupted()
 
-signal entry_cataloged(entry_id: StringName, prop_category: int)
+## bucket: int — display bucket for catalog UI. Either a Prop.Category enum
+## value (PLANT, ANIMAL, MINERAL) OR Catalog.ANOMALY_BUCKET (-1) when the
+## entry has catalogable.show_as_anomaly = true.
+signal entry_cataloged(entry_id: StringName, bucket: int)
 signal entry_encountered(entry_id: StringName, label: String)
 signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: int)
 signal surprise_cataloged(entry_id: StringName)
 
 signal element_identified(coords: Vector2i, entry_id: StringName)
-signal element_unknown(coords: Vector2i, entry_id: StringName, prop_category: int)
+## bucket: see entry_cataloged signal documentation above.
+signal element_unknown(coords: Vector2i, entry_id: StringName, bucket: int)
 signal element_encountered(coords: Vector2i, entry_id: StringName, label: String)
 
 # --- Properties ---

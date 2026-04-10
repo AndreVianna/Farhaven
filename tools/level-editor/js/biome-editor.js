@@ -6,6 +6,9 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 
+// Counter for generating unique biome header input IDs (for label htmlFor).
+let _biomeHeaderCounter = 0;
+
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
 /**
@@ -691,21 +694,30 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.classList.add('editor-gear-header');
 
+    // Generate unique IDs for label htmlFor association.
+    const headerId = `biome-header-${++_biomeHeaderCounter}`;
+    const idInputId = `${headerId}-id`;
+    const nameInputId = `${headerId}-name`;
+    const minInputId = `${headerId}-min`;
+    const maxInputId = `${headerId}-max`;
+
     // Row 1: ID + Display Name
     const row1 = document.createElement('div');
     row1.classList.add('editor-header-grid');
 
-    const idWrap = _makeBiomeFieldWrap('ID');
+    const idWrap = _makeBiomeFieldWrap('ID', idInputId);
     const idInput = document.createElement('input');
     idInput.type = 'text';
+    idInput.id = idInputId;
     idInput.value = model.id;
     idInput.classList.add('prop-input');
     idInput.disabled = true;
     idWrap.appendChild(idInput);
 
-    const nameWrap = _makeBiomeFieldWrap('Display Name');
+    const nameWrap = _makeBiomeFieldWrap('Display Name', nameInputId);
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
+    nameInput.id = nameInputId;
     nameInput.name = 'biome_name';
     nameInput.value = model.biome_name;
     nameInput.classList.add('prop-input');
@@ -721,9 +733,10 @@ export function renderBiomeEditor(container, options) {
     row2.classList.add('editor-header-grid');
     row2.style.gridTemplateColumns = '1fr 1fr';
 
-    const minWrap = _makeBiomeFieldWrap('Min Elevation');
+    const minWrap = _makeBiomeFieldWrap('Min Elevation', minInputId);
     const minInput = document.createElement('input');
     minInput.type = 'number';
+    minInput.id = minInputId;
     minInput.name = 'elevation_min';
     minInput.value = String(model.elevation_range.min);
     minInput.min = '0';
@@ -732,9 +745,10 @@ export function renderBiomeEditor(container, options) {
     minInput.classList.add('prop-input');
     minWrap.appendChild(minInput);
 
-    const maxWrap = _makeBiomeFieldWrap('Max Elevation');
+    const maxWrap = _makeBiomeFieldWrap('Max Elevation', maxInputId);
     const maxInput = document.createElement('input');
     maxInput.type = 'number';
+    maxInput.id = maxInputId;
     maxInput.name = 'elevation_max';
     maxInput.value = String(model.elevation_range.max);
     maxInput.min = '0';
@@ -751,16 +765,21 @@ export function renderBiomeEditor(container, options) {
   }
 
   /**
-   * Build a label-above-input wrapper for the biome header.
+   * Build a label-above-input wrapper for the biome header. Associates the
+   * label with the input via htmlFor when an inputId is provided.
    * @param {string} labelText
+   * @param {string} [inputId]
    * @returns {HTMLElement}
    */
-  function _makeBiomeFieldWrap(labelText) {
+  function _makeBiomeFieldWrap(labelText, inputId) {
     const wrap = document.createElement('div');
     wrap.classList.add('editor-field-wrap');
     const label = document.createElement('label');
     label.textContent = labelText;
     label.classList.add('prop-label');
+    if (inputId) {
+      label.htmlFor = inputId;
+    }
     wrap.appendChild(label);
     return wrap;
   }
