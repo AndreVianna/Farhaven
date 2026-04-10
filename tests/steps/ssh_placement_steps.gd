@@ -48,7 +48,7 @@ func register_steps(registry) -> void:
 		var ssh_coords := Vector2i(sq, sr)
 		var world_pos: Vector2 = _HexMath.full_position_to_world(tile_coords, Vector2i.ZERO, ssh_coords)
 		structures.append({
-			"type": "P00102",
+			"type": "P00103",
 			"name": "torch",
 			"ssh": ssh_coords,
 			"world_pos": world_pos,

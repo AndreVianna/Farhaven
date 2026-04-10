@@ -184,6 +184,17 @@ static func snap_to_ssh(world_pos: Vector2, tile: Vector2i) -> Dictionary:
 	var offset_from_sub: Vector2 = offset_from_tile - sub_world
 	# Find nearest SSH within that sub-hex
 	var ssh: Vector2i = world_to_ssh_axial(offset_from_sub)
+	# Clamp to valid radius-2 SSH if rounding put us outside the grid
+	if not is_valid_ssh(ssh):
+		var best: Vector2i = Vector2i.ZERO
+		var best_dist: float = INF
+		for candidate in get_all_sshs():
+			var cw: Vector2 = ssh_axial_to_world(candidate.x, candidate.y)
+			var d: float = offset_from_sub.distance_squared_to(cw)
+			if d < best_dist:
+				best_dist = d
+				best = candidate
+		ssh = best
 	# Compute final snapped world position
 	var snapped_world: Vector2 = tile_world + sub_world + ssh_axial_to_world(ssh.x, ssh.y)
 	return {

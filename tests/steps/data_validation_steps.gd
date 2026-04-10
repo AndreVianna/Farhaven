@@ -103,8 +103,8 @@ func register_steps(registry) -> void:
 		for def in defs:
 			if def.has_tag(StringName(tag)) and def.placeable != null:
 				# PlaceableCap only has rotation_snap now (footprint/blocks_movement removed in task-062).
-				ctx.assert_true(true,
-					"PropDef '%s' (%s) has STRUCTURE + placeable cap" % [def.id, def.display_name])
+				ctx.assert_true(def.placeable.rotation_snap >= 0.0,
+					"PropDef '%s' (%s) rotation_snap must be non-negative, got %s" % [def.id, def.display_name, def.placeable.rotation_snap])
 	)
 
 	registry.then("PropDef {string} has a catalogable capability", func(ctx, prop_id: String):

@@ -62,8 +62,8 @@ func register_steps(registry) -> void:
 		var defs: Array = ctx.get_value("propdefs", [])
 		for def in defs:
 			# Gear base fields — all must exist (even if empty string for descriptions)
-			ctx.assert_true(def.has_method("get") or true,
-				"PropDef is a valid Resource")
+			ctx.assert_true(def is Resource,
+				"PropDef must be a Resource")
 			# id must be non-empty
 			ctx.assert_true(String(def.id).length() > 0,
 				"PropDef '%s' has empty id" % def.display_name)

@@ -82,7 +82,7 @@ class MockHexGrid extends Node:
 		for prop in tile_to.props:
 			if PropRegistry.has_def(prop.type):
 				var def = PropRegistry.get_def(prop.type)
-				if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+				if def.has_tag(&"BLOCKS_MOVEMENT"):
 					return 3  # BLOCKED
 		return 0  # WALK
 

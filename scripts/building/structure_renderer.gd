@@ -11,7 +11,8 @@ const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
 
-## Child nodes keyed by "coords_x,coords_y:type" for fast lookup.
+## Child nodes keyed by "coords_x,coords_y:sub_x,sub_y:type" for fast lookup.
+## Includes sub-hex position so multiple structures of the same type on one tile are preserved.
 var _instances: Dictionary = {}
 
 ## Reference to HexGrid (allows override in tests).
@@ -52,16 +53,11 @@ func _on_structure_destroyed(coords: Vector2i, structure_type: StringName) -> vo
 # --- Structure management ---
 
 
-func _make_key(coords: Vector2i, structure_type: StringName) -> String:
-	return "%d,%d:%s" % [coords.x, coords.y, String(structure_type)]
+func _make_key(coords: Vector2i, structure_type: StringName, sub_hex: Vector2i = Vector2i.ZERO) -> String:
+	return "%d,%d:%d,%d:%s" % [coords.x, coords.y, sub_hex.x, sub_hex.y, String(structure_type)]
 
 
 func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
-	var key: String = _make_key(coords, structure_type)
-	# Remove existing if already present (idempotent).
-	if _instances.has(key):
-		_remove_child_node(key)
-
 	# Look up the prop on the tile to get its sub_hex position.
 	var sub_hex: Vector2i = Vector2i.ZERO
 	if _grid != null and _grid.has_method("get_tile"):
@@ -71,6 +67,11 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 				if prop.type == structure_type and prop.origin == 1:  # Origin.CRAFTED == 1
 					sub_hex = prop.sub_hex
 					break
+
+	var key: String = _make_key(coords, structure_type, sub_hex)
+	# Remove existing if already present (idempotent).
+	if _instances.has(key):
+		_remove_child_node(key)
 
 	# Build placeholder mesh from PropDef config.
 	var def = PropRegistry.get_def(structure_type)
@@ -125,8 +126,13 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _remove_structure(coords: Vector2i, structure_type: StringName) -> void:
-	var key: String = _make_key(coords, structure_type)
-	_remove_child_node(key)
+	# Find matching key by prefix since we need sub_hex to build exact key.
+	var prefix: String = "%d,%d:" % [coords.x, coords.y]
+	var suffix: String = ":%s" % String(structure_type)
+	for key in _instances.keys():
+		if key.begins_with(prefix) and key.ends_with(suffix):
+			_remove_child_node(key)
+			return
 
 
 func _remove_child_node(key: String) -> void:
@@ -237,13 +243,16 @@ func get_instance_count() -> int:
 
 
 func get_instance(coords: Vector2i, structure_type: StringName) -> Node3D:
-	var key: String = _make_key(coords, structure_type)
-	return _instances.get(key, null)
+	var prefix: String = "%d,%d:" % [coords.x, coords.y]
+	var suffix: String = ":%s" % String(structure_type)
+	for key in _instances.keys():
+		if key.begins_with(prefix) and key.ends_with(suffix):
+			return _instances[key]
+	return null
 
 
 func has_instance(coords: Vector2i, structure_type: StringName) -> bool:
-	var key: String = _make_key(coords, structure_type)
-	return _instances.has(key)
+	return get_instance(coords, structure_type) != null
 
 
 func get_all_keys() -> Array:

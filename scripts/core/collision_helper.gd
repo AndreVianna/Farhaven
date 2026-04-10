@@ -6,7 +6,7 @@ class_name CollisionHelper extends RefCounted
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 
-static func create_collision_shape(prop_def: Resource) -> CollisionShape3D:
+static func create_collision_shape(prop_def: _PropDef) -> CollisionShape3D:
 	var shape := CollisionShape3D.new()
 	var mesh_type: String = String(prop_def.placeholder_mesh_type)
 	var params: Dictionary = prop_def.placeholder_params

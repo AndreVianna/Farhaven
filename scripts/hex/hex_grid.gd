@@ -119,11 +119,11 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 		return TraversalType.BLOCKED
 	if tile_to.biome == _HexTile.Biome.WATER:
 		return TraversalType.BLOCKED
-	# Check if any structure has collision blocking (Wall type).
+	# Check if any structure blocks movement (data-driven via BLOCKS_MOVEMENT tag).
 	for prop in tile_to.props:
 		if PropRegistry.has_def(prop.type):
 			var def = PropRegistry.get_def(prop.type)
-			if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+			if def.has_tag(&"BLOCKS_MOVEMENT"):
 				return TraversalType.BLOCKED
 	var diff: int = get_elevation_diff(from, to)
 	if diff <= WALK_MAX_DIFF:

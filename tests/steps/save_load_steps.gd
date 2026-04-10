@@ -64,7 +64,7 @@ func register_steps(registry) -> void:
 		var knowledge: Dictionary = {}
 		knowledge[&"P00001"] = CATALOGED
 		ctx.set_value("knowledge", knowledge)
-		var known: Array[StringName] = [&"P00016"]
+		var known: Array[StringName] = [&"R00016"]
 		ctx.set_value("known_recipes", known)
 	)
 

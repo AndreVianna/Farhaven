@@ -133,7 +133,7 @@ class FakeGrid extends Node:
 		for prop in tile_to.props:
 			if PropRegistry.has_def(prop.type):
 				var def = PropRegistry.get_def(prop.type)
-				if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+				if def.has_tag(&"BLOCKS_MOVEMENT"):
 					return 3  # BLOCKED
 		var tile_from = _tiles.get(from, null)
 		if tile_from == null:
