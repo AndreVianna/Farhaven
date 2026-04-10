@@ -296,18 +296,23 @@ Adding new weapons, armor, special attacks, boss mechanics = adding Event .tres 
 
 ## Inventory
 
-**Status:** Implemented (refactored delivery-005a)
+**Status:** Implemented (refactored delivery-005a). Slot-unit redesign pending (delivery-006b).
 
-**Weight-based system:**
-- Primary constraint: total weight capacity (default 50.0)
-- Items stored in 12 base slots + 4 tool slots
-- Item weight from PropDef.portable.weight
-- Items exceeding capacity rejected entirely (transport via MOVABLE + CONTAINER props)
+**Slot-unit system (redesign — approved 2026-04-06):**
+- **Single universal unit: Slot** (float). All items measured in slots.
+- `PortableCap.size` (float) — item size in slot units
+- Examples: berry = 0.00001, rock = 0.2, wood = 2.0, stone = 4.0, log = 100.0
+- Container capacity measured in slots (backpack = 12.0 slots, chest = 12.0 slots)
+- Items exceeding container capacity stay on the ground (log = 100 slots → never fits in backpack or chest)
+- Player chooses what to carry — economy of space, not arbitrary stacking rules
+- **Replaces:** max_stack (removed), weight (removed). Pure slot math.
 
 **Storage tiers:**
 - Backpack: 12 slots (diegetic — the backpack IS the inventory)
 - Chest: 12 slots (static, craftable)
 - Cart: mobile storage, movement speed penalty (future)
+
+**Tool slots:** 4 dedicated slots (weapon, scanner, firestarter, +1). Tool slot mechanic under review.
 
 **Authoritative spec:** `.aid/work-001-core/delivery-005a/DESIGN.md`
 
