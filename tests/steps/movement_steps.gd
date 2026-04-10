@@ -21,7 +21,8 @@ static func _compute_traversal(tiles: Dictionary, from: Vector2i, to: Vector2i) 
 		return 3
 	var props: Array = tile_to.get("props", [])
 	for prop in props:
-		if prop.get("blocks_movement", false):
+		# Wall (P00106) blocks movement via collision shape.
+		if prop.get("type", "") == "P00106":
 			return 3
 	var tile_from: Dictionary = tiles.get(from, {})
 	if tile_from.is_empty():
@@ -64,7 +65,7 @@ func register_steps(registry) -> void:
 		ctx.assert_false(tile.is_empty(), "Tile (%d,%d) must exist to place wall" % [col, row])
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
-			props.append({"type": "P00106", "blocks_movement": true})
+			props.append({"type": "P00106"})
 			tile["props"] = props
 	)
 
@@ -74,7 +75,7 @@ func register_steps(registry) -> void:
 		ctx.assert_false(tile.is_empty(), "Tile (%d,%d) must exist to place campfire" % [col, row])
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
-			props.append({"type": "P00101", "blocks_movement": false})
+			props.append({"type": "P00101"})
 			tile["props"] = props
 	)
 

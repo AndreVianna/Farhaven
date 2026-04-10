@@ -88,11 +88,14 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 		mesh = _make_cube_mesh(0.3)
 		y_offset = 0.3
 
-	# Calculate world position: tile center + sub-hex offset + elevation.
+	# Calculate world position: snap to nearest SSH center for 32cm precision.
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(sub_hex)
-	var wx: float = world_2d.x + sub_hex_offset.x
-	var wz: float = world_2d.y + sub_hex_offset.y
+	var raw_pos: Vector2 = world_2d + sub_hex_offset
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(raw_pos, coords)
+	var snapped: Vector2 = ssh_result["snapped_world"]
+	var wx: float = snapped.x
+	var wz: float = snapped.y
 	var elevation_y: float = _get_elevation_y(coords, wx, wz)
 
 	# Create Node3D with MeshInstance3D child.

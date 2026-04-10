@@ -133,11 +133,8 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	_registered_defs.append(id)
 
 
-func _ensure_structure_def(id: StringName, blocks_movement: bool = false,
-		footprint: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
+func _ensure_structure_def(id: StringName) -> void:
 	var pcap := _PlaceableCap.new()
-	pcap.footprint = footprint
-	pcap.blocks_movement = blocks_movement
 	var tags: Array[StringName] = [&"STRUCTURE"]
 	_ensure_prop_def(id, tags, pcap, 1.0)
 
@@ -201,12 +198,12 @@ func before_test() -> void:
 	_ensure_prop_def(ID_FIBER)
 
 	# Ensure structure defs exist.
-	_ensure_structure_def(ID_CAMPFIRE, false)
-	_ensure_structure_def(ID_SHELTER, false, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
-	_ensure_structure_def(ID_TORCH, false)
-	_ensure_structure_def(ID_STORAGE_CHEST, false)
-	_ensure_structure_def(ID_WORKBENCH, false, [Vector2i(0, 0), Vector2i(1, 0)])
-	_ensure_structure_def(ID_WALL, true)
+	_ensure_structure_def(ID_CAMPFIRE)
+	_ensure_structure_def(ID_SHELTER)
+	_ensure_structure_def(ID_TORCH)
+	_ensure_structure_def(ID_STORAGE_CHEST)
+	_ensure_structure_def(ID_WORKBENCH)
+	_ensure_structure_def(ID_WALL)
 
 	# Create grid.
 	_grid = MockHexGrid.new()
@@ -355,14 +352,14 @@ func test_try_place_on_water_fails() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Validation — footprint overlap
+# Tests: Validation — sub-hex overlap
 # ---------------------------------------------------------------------------
 
 
-func test_try_place_with_footprint_overlap_fails() -> void:
+func test_try_place_with_sub_hex_overlap_fails() -> void:
 	var tile := _make_grassland_tile()
 	# Add an existing prop at sub-hex (0, 0).
-	var existing := _Prop.create_structure(ID_CAMPFIRE, false, Vector2i.ZERO, [Vector2i.ZERO])
+	var existing := _Prop.create_structure(ID_CAMPFIRE, Vector2i.ZERO)
 	tile.props.append(existing)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -373,13 +370,13 @@ func test_try_place_with_footprint_overlap_fails() -> void:
 	var monitor := monitor_signals(_building)
 	var result: bool = _building.try_place_at(Vector2i.ZERO, Vector2i.ZERO)
 	assert_bool(result).is_false()
-	verify(monitor, 1).emit_signal("structure_build_failed", &"footprint_overlap")
+	verify(monitor, 1).emit_signal("structure_build_failed", &"sub_hex_occupied")
 
 
 func test_try_place_non_overlapping_sub_hex_succeeds() -> void:
 	var tile := _make_grassland_tile()
 	# Existing prop at sub-hex (0, 0).
-	var existing := _Prop.create_structure(ID_CAMPFIRE, false, Vector2i.ZERO, [Vector2i.ZERO])
+	var existing := _Prop.create_structure(ID_CAMPFIRE, Vector2i.ZERO)
 	tile.props.append(existing)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -445,7 +442,7 @@ func test_successful_wall_build_places_structure_on_tile() -> void:
 		if prop.type == ID_WALL:
 			structures.append(prop)
 	assert_int(structures.size()).is_equal(1)
-	assert_bool(structures[0].blocks_movement).is_true()
+	assert_int(structures[0].category).is_equal(_Prop.Category.STRUCTURE)
 
 
 func test_successful_build_emits_structure_placed() -> void:
@@ -463,7 +460,7 @@ func test_successful_build_emits_structure_placed() -> void:
 	verify(monitor, 1).emit_signal("structure_placed", Vector2i.ZERO, ID_WALL)
 
 
-func test_wall_has_blocks_movement_true() -> void:
+func test_wall_placed_as_structure_category() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -474,12 +471,12 @@ func test_wall_has_blocks_movement_true() -> void:
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
-	# Wall should block movement.
+	# Wall should be placed as STRUCTURE category.
 	var wall_prop = tile.props[0]
-	assert_bool(wall_prop.blocks_movement).is_true()
+	assert_int(wall_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
-func test_campfire_does_not_block_movement() -> void:
+func test_campfire_placed_as_structure_category() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -494,7 +491,7 @@ func test_campfire_does_not_block_movement() -> void:
 	_building.try_place_at(Vector2i.ZERO)
 
 	var campfire_prop = tile.props[0]
-	assert_bool(campfire_prop.blocks_movement).is_false()
+	assert_int(campfire_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------
@@ -634,11 +631,11 @@ func test_timed_build_places_structure_after_time() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Multi-hex footprint
+# Tests: Structure placed with correct category
 # ---------------------------------------------------------------------------
 
 
-func test_workbench_footprint_placed_correctly() -> void:
+func test_workbench_placed_correctly() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -652,13 +649,13 @@ func test_workbench_footprint_placed_correctly() -> void:
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
-	# Workbench placed with correct 2-cell footprint.
+	# Workbench placed as structure.
 	var wb_props: Array = []
 	for prop in tile.props:
 		if prop.type == ID_WORKBENCH:
 			wb_props.append(prop)
 	assert_int(wb_props.size()).is_equal(1)
-	assert_int(wb_props[0].footprint.size()).is_equal(2)
+	assert_int(wb_props[0].category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------
@@ -682,11 +679,11 @@ func test_structure_placed_at_specified_sub_hex() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Only wall blocks movement
+# Tests: Structures placed as STRUCTURE category
 # ---------------------------------------------------------------------------
 
 
-func test_shelter_does_not_block_movement() -> void:
+func test_shelter_placed_as_structure() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -702,10 +699,10 @@ func test_shelter_does_not_block_movement() -> void:
 	_building.try_place_at(Vector2i.ZERO)
 
 	var shelter_prop = tile.props[0]
-	assert_bool(shelter_prop.blocks_movement).is_false()
+	assert_int(shelter_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
-func test_torch_does_not_block_movement() -> void:
+func test_torch_placed_as_structure() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -720,7 +717,7 @@ func test_torch_does_not_block_movement() -> void:
 	_building.try_place_at(Vector2i.ZERO)
 
 	var torch_prop = tile.props[0]
-	assert_bool(torch_prop.blocks_movement).is_false()
+	assert_int(torch_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------

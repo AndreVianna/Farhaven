@@ -51,9 +51,12 @@ class MockHexGrid extends Node:
 			return 3  # BLOCKED
 		if tile_to.biome == _HexTile.Biome.WATER:
 			return 3  # BLOCKED
+		# Collision shapes handle blocking; check Wall type via PropDef tag.
 		for prop in tile_to.props:
-			if prop.blocks_movement:
-				return 3  # BLOCKED
+			if PropRegistry.has_def(prop.type):
+				var def = PropRegistry.get_def(prop.type)
+				if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+					return 3  # BLOCKED
 		return 0  # WALK
 
 	func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
@@ -254,7 +257,7 @@ func test_spawn_not_on_tile_with_structure() -> void:
 	for coords: Vector2i in _grid._tiles:
 		if HexMath.distance(Vector2i.ZERO, coords) >= 3:
 			var tile: Resource = _grid._tiles[coords]
-			var structure := _Prop.create_structure(&"wall", true)
+			var structure := _Prop.create_structure(&"P00106")
 			tile.props.append(structure)
 	_dnc.day_count = 4
 	_dnc.set_night()
@@ -363,7 +366,7 @@ func test_movement_toward_player() -> void:
 func test_movement_blocked_by_wall() -> void:
 	_add_tile(Vector2i(0, 0))
 	var wall_tile := _add_tile(Vector2i(1, 0))
-	var wall := _Prop.create_structure(&"wall", true)
+	var wall := _Prop.create_structure(&"P00106")
 	wall_tile.props.append(wall)
 	_add_tile(Vector2i(2, 0))
 	# Add alternative path tiles
@@ -578,7 +581,7 @@ func test_shelter_immunity() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	# Place shelter prop on player tile
-	var shelter := _Prop.create_structure(&"P00102", false)
+	var shelter := _Prop.create_structure(&"P00102")
 	player_tile.props.append(shelter)
 
 	_fm._fauna.append({

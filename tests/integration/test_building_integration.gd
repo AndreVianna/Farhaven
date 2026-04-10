@@ -129,9 +129,12 @@ class FakeGrid extends Node:
 			return 3  # BLOCKED
 		if tile_to.biome == _HexTile.Biome.WATER:
 			return 3  # BLOCKED
+		# Collision shapes handle blocking; check Wall type via PropDef tag.
 		for prop in tile_to.props:
-			if prop.blocks_movement:
-				return 3  # BLOCKED
+			if PropRegistry.has_def(prop.type):
+				var def = PropRegistry.get_def(prop.type)
+				if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+					return 3  # BLOCKED
 		var tile_from = _tiles.get(from, null)
 		if tile_from == null:
 			return 3
@@ -664,15 +667,15 @@ func test_workbench_has_craft_station_tag() -> void:
 # 5. Wall blocks movement — only blocking structure
 # ===========================================================================
 
-func test_wall_blocks_movement() -> void:
+func test_wall_placed_on_tile() -> void:
 	_add_materials(3, 0, 0)
 	_do_build(RID_WALL)
 
 	var wall_prop = _get_prop_on_tile(ADJACENT_TILE, ID_WALL)
 	assert_bool(wall_prop != null).override_failure_message("Wall prop must exist on tile").is_true()
-	assert_bool(wall_prop.blocks_movement).override_failure_message(
-		"Wall prop must have blocks_movement = true"
-	).is_true()
+	assert_int(wall_prop.category).override_failure_message(
+		"Wall prop must have STRUCTURE category"
+	).is_equal(_Prop.Category.STRUCTURE)
 
 
 func test_wall_blocks_traversal() -> void:
@@ -686,28 +689,25 @@ func test_wall_blocks_traversal() -> void:
 	).is_equal(3)
 
 
-func test_wall_propdef_has_blocks_movement() -> void:
+func test_wall_propdef_has_structure_tag() -> void:
 	var def = PropRegistry.get_def(ID_WALL)
 	assert_bool(def != null).is_true()
 	assert_bool(def.placeable != null).is_true()
-	assert_bool(def.placeable.blocks_movement).override_failure_message(
-		"Wall PlaceableCap.blocks_movement must be true"
+	assert_bool(def.has_tag(&"STRUCTURE")).override_failure_message(
+		"Wall PropDef must have STRUCTURE tag"
 	).is_true()
 
 
-func test_walkable_structures_do_not_block() -> void:
-	# Verify all non-wall structures have blocks_movement = false.
-	var walkable_ids: Array[StringName] = [ID_CAMPFIRE, ID_SHELTER, ID_TORCH, ID_STORAGE_CHEST, ID_WORKBENCH]
-	for prop_id: StringName in walkable_ids:
+func test_all_structures_have_placeable_cap() -> void:
+	# Verify all structures have a placeable capability.
+	var structure_ids: Array[StringName] = [ID_CAMPFIRE, ID_SHELTER, ID_TORCH, ID_STORAGE_CHEST, ID_WORKBENCH, ID_WALL]
+	for prop_id: StringName in structure_ids:
 		var def = PropRegistry.get_def(prop_id)
 		assert_bool(def != null).override_failure_message(
 			"PropDef for %s must exist" % prop_id
 		).is_true()
 		assert_bool(def.placeable != null).override_failure_message(
 			"PropDef %s must have placeable cap" % prop_id
-		).is_true()
-		assert_bool(def.placeable.blocks_movement == false).override_failure_message(
-			"PropDef %s.placeable.blocks_movement must be false (walkable)" % prop_id
 		).is_true()
 
 
@@ -722,10 +722,10 @@ func test_campfire_does_not_block_traversal() -> void:
 
 
 # ===========================================================================
-# 6. Footprint overlap rejection
+# 6. Sub-hex overlap rejection
 # ===========================================================================
 
-func test_footprint_overlap_rejected() -> void:
+func test_sub_hex_overlap_rejected() -> void:
 	_add_materials(6, 0, 4)
 
 	# Place first campfire at (1,0) sub-hex (0,0)
@@ -737,8 +737,8 @@ func test_footprint_overlap_rejected() -> void:
 	assert_bool(ok2).override_failure_message(
 		"Second build at same sub-hex should be rejected"
 	).is_false()
-	assert_bool(_build_failed_events.has(&"footprint_overlap")).override_failure_message(
-		"Failure reason must be footprint_overlap"
+	assert_bool(_build_failed_events.has(&"sub_hex_occupied")).override_failure_message(
+		"Failure reason must be sub_hex_occupied"
 	).is_true()
 
 

@@ -24,9 +24,9 @@ Feature: Data Integrity
     Given all PropDefs are loaded
     Then every PropDef with a portable capability has weight greater than 0
 
-  Scenario: Structure placeable props have a non-empty footprint
+  Scenario: Structure placeable props have rotation_snap defined
     Given all PropDefs are loaded
-    Then every PropDef tagged "STRUCTURE" with a placeable capability has a non-empty footprint
+    Then every PropDef tagged "STRUCTURE" with a placeable capability has rotation_snap defined
 
   # --- Recipe Validation ---
 

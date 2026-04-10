@@ -10,7 +10,6 @@ weight = 0.2
 
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("3_placeable")
-blocks_movement = false
 
 [resource]
 script = ExtResource("1_script")

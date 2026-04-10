@@ -59,7 +59,7 @@ func register_steps(registry) -> void:
 		var tiles: Dictionary = ctx.get_value("tiles", {})
 		tiles[Vector2i(col, row)] = {
 			"coords": Vector2i(col, row), "biome": 1, "elevation": 0,
-			"props": [{"type": "P00101", "blocks_movement": false, "sub_hex": Vector2i(sq, sr), "footprint": [Vector2i(sq, sr)]}],
+			"props": [{"type": "P00101", "sub_hex": Vector2i(sq, sr)}],
 		}
 		ctx.set_value("tiles", tiles)
 	)
@@ -115,7 +115,7 @@ func register_steps(registry) -> void:
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
 			for output_res in recipe.outputs:
-				props.append({"type": String(output_res.prop_ref), "blocks_movement": false, "category": 6})
+				props.append({"type": String(output_res.prop_ref), "category": 6})
 			tile["props"] = props
 	)
 
@@ -137,8 +137,7 @@ func register_steps(registry) -> void:
 		var target_sub := Vector2i(sq, sr)
 		var props: Array = tile.get("props", [])
 		for prop in props:
-			var footprint: Array = prop.get("footprint", [])
-			if footprint.has(target_sub) or prop.get("sub_hex", Vector2i(-1, -1)) == target_sub:
+			if prop.get("sub_hex", Vector2i(-1, -1)) == target_sub:
 				ctx.set_value("placement_rejected", true)
 				return
 		ctx.set_value("placement_rejected", false)

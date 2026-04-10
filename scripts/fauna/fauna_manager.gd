@@ -245,10 +245,12 @@ func _is_fauna_passable(from: Vector2i, to: Vector2i, max_jump: int) -> bool:
 	# Water blocked
 	if "biome" in tile_to and tile_to.biome == 4:
 		return false
-	# Check blocking props
+	# Check blocking props (Wall blocks via collision shape).
 	for prop in tile_to.props:
-		if prop.blocks_movement:
-			return false
+		if PropRegistry.has_def(prop.type):
+			var def = PropRegistry.get_def(prop.type)
+			if def.has_tag(&"STRUCTURE") and prop.type == &"P00106":  # Wall
+				return false
 	# Check elevation difference (max_jump for thornback = 1)
 	if _grid.has_method("get_elevation_diff"):
 		var elev_diff: int = _grid.get_elevation_diff(from, to)

@@ -11,6 +11,7 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
+const _HexMath = preload("res://scripts/hex/hex_math.gd")
 
 ## Emitted when a build attempt fails validation before reaching RecipeRuntime.
 signal structure_build_failed(reason: StringName)
@@ -111,20 +112,25 @@ func try_place_at(coords: Vector2i, sub_hex: Vector2i = Vector2i.ZERO) -> bool:
 		exit_placement_mode()
 		return false
 
-	# Validate sub-hex footprint availability (no overlapping props).
-	var output_type: StringName = _get_output_prop_type()
-	var footprint: Array[Vector2i] = _get_footprint(output_type, sub_hex)
-	if _has_footprint_overlap(tile, footprint):
-		structure_build_failed.emit(&"footprint_overlap")
+	# Validate sub-hex occupancy (no overlapping props at same sub-hex).
+	if _has_sub_hex_overlap(tile, sub_hex):
+		structure_build_failed.emit(&"sub_hex_occupied")
 		exit_placement_mode()
 		return false
+
+	# Snap placement to nearest SSH center for 32cm precision.
+	var world_pos: Vector2 = _HexMath.prop_world_position(coords, sub_hex)
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(world_pos, coords)
+	var snapped_sub_hex: Vector2i = ssh_result["sub_hex"]
+	var snapped_ssh: Vector2i = ssh_result["ssh"]
 
 	# Store build info BEFORE calling try_start_recipe so the resolve
 	# callback can find it even for instant (time=0) recipes.
 	var recipe_id: StringName = _selected_recipe.id
 	_pending_builds[recipe_id] = {
 		"coords": coords,
-		"sub_hex": sub_hex,
+		"sub_hex": snapped_sub_hex,
+		"ssh": snapped_ssh,
 	}
 
 	# Build WorldContext with the target tile.
@@ -164,6 +170,7 @@ func _on_recipe_resolved(recipe_id: StringName, outputs: Array, _effects: Array)
 
 	var coords: Vector2i = build_info["coords"]
 	var sub_hex: Vector2i = build_info["sub_hex"]
+	var ssh: Vector2i = build_info.get("ssh", Vector2i.ZERO)
 
 	if _grid == null:
 		return
@@ -190,19 +197,10 @@ func _on_recipe_resolved(recipe_id: StringName, outputs: Array, _effects: Array)
 			if inv != null and inv.has_item(prop_ref, 1):
 				inv.remove_item(prop_ref, 1)
 
-		# Compute footprint at the target sub-hex position.
-		var fp: Array[Vector2i] = []
-		if def.placeable != null and not def.placeable.footprint.is_empty():
-			for offset: Vector2i in def.placeable.footprint:
-				fp.append(sub_hex + offset)
-		else:
-			fp.append(sub_hex)
-
-		# Place structure prop on tile.
+		# Place structure prop on tile at SSH-snapped position.
 		var tile: Resource = _grid.get_tile(coords)
 		if tile != null:
-			var blocks: bool = def.placeable.blocks_movement if def.placeable != null else false
-			var structure: _Prop = _Prop.create_structure(prop_ref, blocks, sub_hex, fp)
+			var structure: _Prop = _Prop.create_structure(prop_ref, sub_hex)
 			structure.origin = _Prop.Origin.CRAFTED
 			tile.props.append(structure)
 			_grid.structure_placed.emit(coords, prop_ref)
@@ -291,7 +289,7 @@ func _on_tile_entered(_coords: Vector2i) -> void:
 
 
 ## Returns the list of valid tiles for placement (adjacent to player, passable,
-## not water, not blocked by existing props in footprint).
+## not water).
 func get_valid_placement_tiles() -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	if _grid == null:
@@ -372,27 +370,10 @@ func _get_output_prop_type() -> StringName:
 	return &""
 
 
-func _get_footprint(prop_type: StringName, anchor: Vector2i) -> Array[Vector2i]:
-	var def = PropRegistry.get_def(prop_type)
-	if def != null and def.placeable != null and not def.placeable.footprint.is_empty():
-		var result: Array[Vector2i] = []
-		for offset: Vector2i in def.placeable.footprint:
-			result.append(anchor + offset)
-		return result
-	return [anchor]
-
-
-func _has_footprint_overlap(tile: Resource, footprint: Array[Vector2i]) -> bool:
+func _has_sub_hex_overlap(tile: Resource, sub_hex: Vector2i) -> bool:
 	for prop in tile.props:
-		# Check if any existing prop's sub-hex overlaps with our footprint.
-		var existing_fp: Array[Vector2i] = []
-		if prop.footprint.size() > 0:
-			existing_fp = prop.footprint
-		else:
-			existing_fp = [prop.sub_hex]
-		for existing_pos: Vector2i in existing_fp:
-			if footprint.has(existing_pos):
-				return true
+		if prop.sub_hex == sub_hex:
+			return true
 	return false
 
 

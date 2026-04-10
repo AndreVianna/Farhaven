@@ -116,7 +116,6 @@ func load_map(path: String) -> bool:
 				elif PropRegistry.has_def(prop.type):
 					prop.respawn_time = PropRegistry.get_def(prop.type).respawn_time
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
-				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				# Resource props: default remaining/max_amount independently from biome data
 				if prop.origin == _Prop.Origin.NATURAL:
 					var defaults: Array = _get_prop_defaults(prop.type, biome_int)
@@ -142,7 +141,6 @@ func load_map(path: String) -> bool:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					false,  # Legacy structures default to walkable; blocks_movement from .tres
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")

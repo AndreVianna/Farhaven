@@ -99,7 +99,6 @@ func register_steps(registry) -> void:
 			var props: Array = tile.get("props", [])
 			props.append({
 				"type": "P00107",
-				"blocks_movement": false,
 				"category": 2,  # ANIMAL
 			})
 			tile["props"] = props

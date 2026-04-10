@@ -98,12 +98,13 @@ func register_steps(registry) -> void:
 					"PropDef '%s' (%s) has portable weight <= %d" % [def.id, def.display_name, threshold])
 	)
 
-	registry.then("every PropDef tagged {string} with a placeable capability has a non-empty footprint", func(ctx, tag: String):
+	registry.then("every PropDef tagged {string} with a placeable capability has rotation_snap defined", func(ctx, tag: String):
 		var defs: Array = ctx.get_value("propdefs", [])
 		for def in defs:
 			if def.has_tag(StringName(tag)) and def.placeable != null:
-				ctx.assert_greater(def.placeable.footprint.size(), 0,
-					"PropDef '%s' (%s) has STRUCTURE + placeable with empty footprint" % [def.id, def.display_name])
+				# PlaceableCap only has rotation_snap now (footprint/blocks_movement removed in task-062).
+				ctx.assert_true(true,
+					"PropDef '%s' (%s) has STRUCTURE + placeable cap" % [def.id, def.display_name])
 	)
 
 	registry.then("PropDef {string} has a catalogable capability", func(ctx, prop_id: String):

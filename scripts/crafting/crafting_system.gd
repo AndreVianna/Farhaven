@@ -178,9 +178,9 @@ func _place_structure_at_player(structure_type: StringName) -> void:
 	var tile: Resource = _grid.get_tile(coords)
 	if tile == null:
 		return
-	# Footprint overlap check: reject if tile already has a structure with blocks_movement
+	# Overlap check: reject if tile already has a structure at the same sub-hex.
 	for existing_prop in tile.props:
-		if existing_prop.blocks_movement:
+		if existing_prop.sub_hex == Vector2i.ZERO and existing_prop.category == _Prop.Category.STRUCTURE:
 			craft_failed.emit(structure_type, &"tile_blocked")
 			return
 	var prop := _Prop.create_structure(structure_type)

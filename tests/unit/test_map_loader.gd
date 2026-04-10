@@ -220,7 +220,7 @@ func test_get_traversal_blocked_structure() -> void:
 	_grid._tiles[Vector2i(0, 0)] = a
 	var b: Resource = _HexTile.new()
 	b.coords = Vector2i(1, 0); b.biome = _HexTile.Biome.GRASSLAND; b.elevation = 0
-	b.props = [_Prop.create_structure(&"wall", true)]
+	b.props = [_Prop.create_structure(&"P00106")]
 	_grid._tiles[Vector2i(1, 0)] = b
 	assert_int(_grid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(_grid.TraversalType.BLOCKED)
 

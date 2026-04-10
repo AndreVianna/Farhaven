@@ -61,12 +61,11 @@ func test_portable_weight() -> void:
 
 func test_placeable_fields() -> void:
 	var cap := _PlaceableCap.new()
-	cap.footprint = [Vector2i(0, 0), Vector2i(1, 0)]
-	cap.blocks_movement = true
 	cap.rotation_snap = 60
-	assert_int(cap.footprint.size()).is_equal(2)
-	assert_bool(cap.blocks_movement).is_true()
 	assert_int(cap.rotation_snap).is_equal(60)
+	# footprint and blocks_movement removed in task-062
+	assert_bool("footprint" in cap).is_false()
+	assert_bool("blocks_movement" in cap).is_false()
 
 func test_station_tags() -> void:
 	var cap := _StationCap.new()

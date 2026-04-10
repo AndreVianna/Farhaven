@@ -21,13 +21,13 @@ func test_prop_default_remaining_is_zero() -> void:
 	var prop: Prop = PropClass.new()
 	assert_int(prop.remaining).is_equal(0)
 
-func test_prop_default_blocks_movement_is_false() -> void:
+func test_prop_blocks_movement_field_removed() -> void:
 	var prop: Prop = PropClass.new()
-	assert_bool(prop.blocks_movement).is_false()
+	assert_bool("blocks_movement" in prop).is_false()
 
-func test_prop_default_footprint_is_empty() -> void:
+func test_prop_footprint_field_removed() -> void:
 	var prop: Prop = PropClass.new()
-	assert_int(prop.footprint.size()).is_equal(0)
+	assert_bool("footprint" in prop).is_false()
 
 # --- Resource-specific fields ---
 
@@ -47,15 +47,10 @@ func test_prop_fields() -> void:
 
 # --- Structure-specific fields ---
 
-func test_prop_structure_with_footprint() -> void:
-	var prop: Prop = PropClass.new()
-	prop.type = &"P00102"
-	prop.category = Prop.Category.STRUCTURE
-	prop.footprint = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
-	prop.blocks_movement = true
+func test_prop_structure_creation() -> void:
+	var prop: Prop = PropClass.create_structure(&"P00102", Vector2i(1, 0))
 	assert_int(prop.category).is_equal(Prop.Category.STRUCTURE)
-	assert_int(prop.footprint.size()).is_equal(3)
-	assert_bool(prop.blocks_movement).is_true()
+	assert_bool(prop.sub_hex == Vector2i(1, 0)).is_true()
 
 # --- Category enum values ---
 

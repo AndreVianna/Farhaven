@@ -28,15 +28,15 @@ func get_props() -> Array:
 
 
 ## Returns all structure props on this tile.
-## A prop is a structure if its PropDef has a PLACEABLE capability with blocks_movement,
+## A prop is a structure if its PropDef has the STRUCTURE tag,
 ## or if its category is STRUCTURE (legacy compat).
 func get_structures() -> Array:
 	var result: Array = []
 	for prop in props:
-		# Check via PropDef placeable capability with blocks_movement
+		# Check via PropDef STRUCTURE tag
 		if PropRegistry.has_def(prop.type):
 			var def = PropRegistry.get_def(prop.type)
-			if def.placeable != null and def.placeable.blocks_movement:
+			if def.has_tag(&"STRUCTURE"):
 				result.append(prop)
 				continue
 			# Also check STATION capability

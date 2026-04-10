@@ -12,8 +12,6 @@ weight = 0.5
 
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("3_placeable")
-footprint = [Vector2i(0, 0)]
-blocks_movement = false
 
 [sub_resource type="Resource" id="light_1"]
 script = ExtResource("4_light")
