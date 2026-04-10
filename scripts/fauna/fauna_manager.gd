@@ -439,16 +439,26 @@ func _get_detection_range(species_id: StringName) -> int:
 
 
 ## Derives move cooldown from a species def's movement cap.
-## Uses the first available mode's normal speed: cooldown = 1.0 / normal_speed.
+## Picks WALK if present, otherwise the lowest Mode key for deterministic
+## ordering (Dictionary.values() iteration order is not guaranteed).
 ## Returns 1.0 if the def or movement cap is missing or modes is empty.
 func _get_move_cooldown(def: Resource) -> float:
 	if def.movement == null or def.movement.modes.is_empty():
 		return 1.0  # Default
-	# Use the first available mode's normal speed
-	var first_mode_speeds: Array = def.movement.modes.values()[0]
-	if first_mode_speeds.size() < 1 or first_mode_speeds[0] <= 0.0:
+	var modes: Dictionary = def.movement.modes
+	# Prefer WALK (mode 0); otherwise the lowest mode key (deterministic).
+	var walk_key: int = 0  # Mode.WALK int value
+	var chosen_key: int
+	if modes.has(walk_key):
+		chosen_key = walk_key
+	else:
+		var keys: Array = modes.keys()
+		keys.sort()
+		chosen_key = keys[0]
+	var speeds: Array = modes[chosen_key]
+	if speeds.size() < 1 or speeds[0] <= 0.0:
 		return 1.0
-	return 1.0 / float(first_mode_speeds[0])
+	return 1.0 / float(speeds[0])
 
 
 ## Derives max elevation jump from a species def's movement cap.

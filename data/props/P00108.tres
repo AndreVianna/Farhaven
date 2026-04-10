@@ -11,7 +11,7 @@
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("2_catalogable")
 scan_time = 3.0
-properties = {"hostile": true, "damage": 10, "hp": 30}
+properties = {"hostile": true}
 
 [sub_resource type="Resource" id="endurance_1"]
 script = ExtResource("3_endurance")

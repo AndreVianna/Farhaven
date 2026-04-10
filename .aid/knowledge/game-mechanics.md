@@ -296,7 +296,7 @@ Adding new weapons, armor, special attacks, boss mechanics = adding Event .tres 
 
 ## Inventory
 
-**Status:** Implemented (refactored delivery-005a). Slot-unit redesign pending (delivery-006b).
+**Status:** Implemented (delivery-005a refactor; delivery-006b slot-unit redesign).
 
 **Slot-unit system (redesign — approved 2026-04-06):**
 - **Single universal unit: Slot** (float). All items measured in slots.
