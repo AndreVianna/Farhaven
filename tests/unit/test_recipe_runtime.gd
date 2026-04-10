@@ -87,12 +87,19 @@ func _make_recipe(id: StringName, time: float = 0.0) -> _Recipe:
 	return r
 
 
-func _make_input(ref: StringName, count: int = 1, source: StringName = &"player_inventory", is_tag: bool = false) -> _RecipeInput:
+func _make_input(ref: StringName, count: int = 1, must_hold: bool = true) -> _RecipeInput:
 	var inp := _RecipeInput.new()
-	inp.ref_or_tag = ref
+	inp.ref = String(ref)
 	inp.count = count
-	inp.source = source
-	inp.is_tag = is_tag
+	inp.must_hold = must_hold
+	return inp
+
+
+func _make_tag_input(tag: StringName, count: int = 1, must_hold: bool = true) -> _RecipeInput:
+	var inp := _RecipeInput.new()
+	inp.ref = "&" + String(tag)
+	inp.count = count
+	inp.must_hold = must_hold
 	return inp
 
 
@@ -555,7 +562,7 @@ func test_insufficient_inputs_rejected() -> void:
 func test_world_tile_input_consumed() -> void:
 	_mock_random_value = 0.0
 	var recipe := _make_recipe(&"chop_tree")
-	recipe.inputs.append(_make_input(&"small_tree", 1, &"world_tile"))
+	recipe.inputs.append(_make_input(&"small_tree", 1, false))
 	recipe.outputs.append(_make_output(&"wood", 3, 1.0))
 	_discovery.set_known(&"chop_tree")
 
@@ -582,32 +589,38 @@ func test_world_tile_input_consumed() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: container input source
+# Tests: vicinity input (must_hold = false) with tag ref
 # ---------------------------------------------------------------------------
 
 
-func test_container_input_consumed() -> void:
+func test_tag_input_consumed_from_tile() -> void:
 	_mock_random_value = 0.0
 	var recipe := _make_recipe(&"burn_log", 60.0)
-	recipe.inputs.append(_make_input(&"log", 1, &"container"))
+	recipe.inputs.append(_make_tag_input(&"BURNABLE", 1, false))
 	recipe.outputs.append(_make_output(&"ash", 1, 1.0))
 	_discovery.set_known(&"burn_log")
 
-	_ensure_prop_def(&"log")
+	# Register a log prop def with the BURNABLE tag.
+	var log_def := _PropDef.new()
+	log_def.id = &"log"
+	log_def.max_stack = 99
+	log_def.tags = [&"BURNABLE"]
+	PropRegistry._defs[&"log"] = log_def
 	_ensure_prop_def(&"ash")
-	var station := StatefulProp.new()
-	station.type = &"fireplace"
-	station.container_items = [{"type": &"log", "quantity": 3}]
+
+	var tile := _HexTile.new()
+	tile.biome = 1
+	tile.props = [_Prop.create_prop(&"log", 1, 1), _Prop.create_prop(&"log", 1, 1)]
 
 	var pair := _make_ctx_with_inventory()
 	var ctx: _WorldContext = pair[0]
 	var player: Node = pair[1]
-	ctx.station = station
+	ctx.tile = tile
 
 	var pending = _runtime.try_start_recipe(recipe, ctx)
 	assert_that(pending).is_not_null()
-	# Log consumed from container.
-	assert_int(station.container_items[0]["quantity"]).is_equal(2)
+	# One log consumed from the tile.
+	assert_int(tile.props.size()).is_equal(1)
 
 	_cleanup_prop_defs([&"log"])
 	player.queue_free()

@@ -106,9 +106,12 @@ func _can_afford(inventory) -> bool:
 	if _recipe == null:
 		return false
 	for input in _recipe.inputs:
-		if input.source != &"player_inventory" and input.source != &"":
+		if not input.must_hold:
 			continue
-		if not inventory.has_item(input.ref_or_tag, input.count):
+		if input.is_tag():
+			continue
+		var ref_sn := StringName(input.ref)
+		if not inventory.has_item(ref_sn, input.count):
 			return false
 	return true
 
@@ -121,15 +124,18 @@ func _update_ingredients(inventory) -> void:
 		return
 
 	for input in _recipe.inputs:
-		if input.source != &"player_inventory" and input.source != &"":
+		if not input.must_hold:
 			continue
+		if input.is_tag():
+			continue
+		var ref_sn := StringName(input.ref)
 		var needed: int = input.count
-		var owned: int = inventory.get_count(input.ref_or_tag)
+		var owned: int = inventory.get_count(ref_sn)
 		var lbl := Label.new()
 		lbl.add_theme_font_size_override("font_size", 18)
 
-		var def: _PropDef = PropRegistry.get_def(input.ref_or_tag)
-		var display_name: String = def.display_name if def != null and def.display_name != "" else String(input.ref_or_tag)
+		var def: _PropDef = PropRegistry.get_def(ref_sn)
+		var display_name: String = def.display_name if def != null and def.display_name != "" else input.ref
 		lbl.text = "%s: %d/%d" % [display_name, owned, needed]
 
 		if owned >= needed:

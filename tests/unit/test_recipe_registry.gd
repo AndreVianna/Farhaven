@@ -64,9 +64,10 @@ func test_eat_berry_fields() -> void:
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Eat Berry")
 	assert_int(r.inputs.size()).is_equal(1)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00020")
+	assert_str(r.inputs[0].ref).is_equal("P00020")
 	assert_int(r.inputs[0].count).is_equal(1)
-	assert_bool(r.inputs[0].is_tag).is_false()
+	assert_bool(r.inputs[0].is_tag()).is_false()
+	assert_bool(r.inputs[0].must_hold).is_true()
 	assert_int(r.outputs.size()).is_equal(0)
 	assert_int(r.effects.size()).is_equal(2)
 	assert_str(String(r.effects[0].kind)).is_equal("stat_delta")
@@ -80,8 +81,8 @@ func test_chop_small_tree_fields() -> void:
 	var r = _registry.get_recipe(&"R00003")
 	assert_that(r).is_not_null()
 	assert_int(r.inputs.size()).is_equal(1)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00001")
-	assert_str(String(r.inputs[0].source)).is_equal("world_tile")
+	assert_str(r.inputs[0].ref).is_equal("P00001")
+	assert_bool(r.inputs[0].must_hold).is_false()
 	assert_int(r.outputs.size()).is_equal(2)
 	assert_float(r.outputs[0].prob).is_equal(1.0)
 	assert_float(r.outputs[1].prob).is_equal_approx(0.8, 0.0001)
@@ -129,9 +130,10 @@ func test_burn_log_uses_tag_input() -> void:
 	var r = _registry.get_recipe(&"R00015")
 	assert_that(r).is_not_null()
 	assert_int(r.inputs.size()).is_equal(1)
-	assert_bool(r.inputs[0].is_tag).is_true()
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("BURNABLE.log")
-	assert_str(String(r.inputs[0].source)).is_equal("container")
+	assert_bool(r.inputs[0].is_tag()).is_true()
+	assert_str(r.inputs[0].ref).is_equal("&BURNABLE.log")
+	assert_str(String(r.inputs[0].get_tag())).is_equal("BURNABLE.log")
+	assert_bool(r.inputs[0].must_hold).is_false()
 
 
 func test_eat_toxic_berry_negative_health() -> void:
@@ -255,10 +257,12 @@ func test_craft_stone_axe_fields() -> void:
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Axe")
 	assert_int(r.inputs.size()).is_equal(2)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
+	assert_str(r.inputs[0].ref).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(2)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("P00011")  # rock
+	assert_bool(r.inputs[0].must_hold).is_true()
+	assert_str(r.inputs[1].ref).is_equal("P00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(1)
+	assert_bool(r.inputs[1].must_hold).is_true()
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_str(String(r.outputs[0].prop_ref)).is_equal("P00201")  # axe
 	assert_int(r.effects.size()).is_equal(1)
@@ -273,10 +277,12 @@ func test_craft_stone_pickaxe_fields() -> void:
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Pickaxe")
 	assert_int(r.inputs.size()).is_equal(2)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
+	assert_str(r.inputs[0].ref).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(3)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("P00011")  # rock
+	assert_bool(r.inputs[0].must_hold).is_true()
+	assert_str(r.inputs[1].ref).is_equal("P00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(2)
+	assert_bool(r.inputs[1].must_hold).is_true()
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_str(String(r.outputs[0].prop_ref)).is_equal("P00202")  # pickaxe
 	assert_int(r.effects.size()).is_equal(1)

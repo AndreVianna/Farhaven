@@ -10,9 +10,6 @@ import { showInlineModal } from './panels.js';
 // Constants
 // ============================================================
 
-/** Input source options (mirrors RecipeInput.source). */
-export const INPUT_SOURCES = ['player_inventory', 'container', 'world_tile', 'world_anywhere'];
-
 /** Known effect kinds (from DESIGN.md). */
 export const EFFECT_KINDS = ['stat_delta', 'sound', 'fx', 'emit_light', 'spawn_heat', 'world_change', 'grant_recipe'];
 
@@ -38,7 +35,7 @@ export class RecipeModel {
     /** @type {string} */
     this.display_name = '';
     /** @type {number} 0=Assemble, 1=Transform, 2=Breakdown, 3=Combine */
-    /** @type {Array<{ref_or_tag: string, count: number, source: string, is_tag: boolean}>} */
+    /** @type {Array<{ref: string, count: number, must_hold: boolean}>} */
     this.inputs = [];
     /** @type {Array<{prop_ref: string, count: number, prob: number}>} */
     this.outputs = [];
@@ -121,13 +118,12 @@ export class RecipeModel {
     model.inputs = inputs.map(inp => {
       if (inp && typeof inp === 'object') {
         return {
-          ref_or_tag: _str(inp.ref_or_tag),
+          ref: _str(inp.ref),
           count: _num(inp.count) || 1,
-          source: _str(inp.source) || 'player_inventory',
-          is_tag: !!inp.is_tag,
+          must_hold: !!inp.must_hold,
         };
       }
-      return { ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false };
+      return { ref: '', count: 1, must_hold: false };
     });
 
     // Outputs — resolve sub_resource refs within the array
@@ -267,10 +263,9 @@ export function collectRecipeFormData(formElement) {
   // Inputs
   model.inputs = _collectListSection(formElement, 'inputs', (row) => {
     return {
-      ref_or_tag: _rowVal(row, 'ref_or_tag'),
+      ref: _rowVal(row, 'ref'),
       count: _rowInt(row, 'count') || 1,
-      source: _rowVal(row, 'source') || 'player_inventory',
-      is_tag: _rowChecked(row, 'is_tag'),
+      must_hold: _rowChecked(row, 'must_hold'),
     };
   });
 
@@ -405,14 +400,11 @@ export function validateRecipeForm(model, isNew) {
   // Validate inputs
   for (let i = 0; i < model.inputs.length; i++) {
     const inp = model.inputs[i];
-    if (!inp.ref_or_tag) {
-      errors.push(`Input #${i + 1}: ref_or_tag is required`);
+    if (!inp.ref) {
+      errors.push(`Input #${i + 1}: ref is required`);
     }
     if (inp.count < 1) {
       errors.push(`Input #${i + 1}: count must be >= 1`);
-    }
-    if (!INPUT_SOURCES.includes(inp.source)) {
-      errors.push(`Input #${i + 1}: invalid source "${inp.source}"`);
     }
   }
 
@@ -568,13 +560,11 @@ export function recipeModelToRaw(model) {
     const subId = `input_${i + 1}`;
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${inputExtId}")` });
-    subFields.set('ref_or_tag', { type: 'stringname', value: inp.ref_or_tag });
+    subFields.set('ref', { type: 'string', value: inp.ref });
     subFields.set('count', { type: 'int', value: inp.count });
-    if (inp.source && inp.source !== 'player_inventory') {
-      subFields.set('source', { type: 'stringname', value: inp.source });
-    }
-    if (inp.is_tag) {
-      subFields.set('is_tag', { type: 'bool', value: true });
+    // Only emit must_hold when true, to match the Godot default (false).
+    if (inp.must_hold) {
+      subFields.set('must_hold', { type: 'bool', value: true });
     }
     subResources.push({ type: 'Resource', id: subId, fields: subFields });
     inputSubIds.push(subId);
@@ -700,8 +690,8 @@ export function recipeModelToRaw(model) {
   }
 
   // Preserve any unknown fields from the original .tres
-  // Skip fields that were removed in delivery-006a
-  const _removedFields = new Set(['time', 'unlock_when', 'kind']);
+  // Skip fields that were removed in delivery-006a/006b
+  const _removedFields = new Set(['time', 'unlock_when', 'kind', 'ref_or_tag', 'is_tag', 'source']);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
       if (!fields.has(key) && !_removedFields.has(key)) {
@@ -1269,10 +1259,9 @@ function _createInputListEditor(inputs) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:4px;align-items:center;';
 
-    _appendInput(row, 'ref_or_tag', 'text', inp.ref_or_tag, 'Prop ID or Tag', { flex: '2' });
+    _appendInput(row, 'ref', 'text', inp.ref, 'P00010 or &TAG', { flex: '2' });
     _appendInput(row, 'count', 'number', inp.count, 'Count', { width: '60px', min: '1', step: '1' });
-    _appendSelect(row, 'source', inp.source, INPUT_SOURCES.map(s => ({ value: s, label: s })));
-    _appendCheckbox(row, 'is_tag', inp.is_tag, 'Tag?');
+    _appendCheckbox(row, 'must_hold', inp.must_hold, 'Must hold?');
     _appendRemoveBtn(row);
 
     rowsContainer.appendChild(row);
@@ -1284,7 +1273,7 @@ function _createInputListEditor(inputs) {
   addBtn.textContent = '+ Add Input';
   addBtn.type = 'button';
   addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-  addBtn.addEventListener('click', () => addRow({ ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false }));
+  addBtn.addEventListener('click', () => addRow({ ref: '', count: 1, must_hold: false }));
   wrapper.appendChild(addBtn);
 
   return wrapper;

@@ -8,9 +8,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00101"
+ref = "P00101"
 count = 1
-source = &"world_tile"
 
 [sub_resource type="Resource" id="pred_tool"]
 script = ExtResource("5_pred")

@@ -13,7 +13,7 @@ import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext, nextId } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
-import { RecipeModel, recipeModelToRaw, validateRecipeForm, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
+import { RecipeModel, recipeModelToRaw, validateRecipeForm, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
@@ -1953,34 +1953,45 @@ test('RecipeModel — fromEntry reads basic fields', () => {
 test('RecipeModel — fromEntry reads inputs via sub_resource resolution', () => {
   const inputFields = new Map();
   inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
-  inputFields.set('ref_or_tag', { type: 'stringname', value: '00020' });
+  inputFields.set('ref', { type: 'string', value: 'P00020' });
   inputFields.set('count', { type: 'int', value: 3 });
-  inputFields.set('source', { type: 'stringname', value: 'world_tile' });
   const entry = _makeRecipeEntry(
     { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
     [{ type: 'Resource', id: 'input_1', fields: inputFields }],
   );
   const model = RecipeModel.fromEntry('test.tres', entry);
   assert(model.inputs.length === 1, 'should have 1 input');
-  assert(model.inputs[0].ref_or_tag === '00020', 'input ref_or_tag');
+  assert(model.inputs[0].ref === 'P00020', 'input ref');
   assert(model.inputs[0].count === 3, 'input count');
-  assert(model.inputs[0].source === 'world_tile', 'input source');
-  assert(model.inputs[0].is_tag === false, 'input is_tag');
+  assert(model.inputs[0].must_hold === false, 'input must_hold default false');
 });
 
-test('RecipeModel — fromEntry reads input with is_tag', () => {
+test('RecipeModel — fromEntry reads input with tag ref', () => {
   const inputFields = new Map();
   inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
-  inputFields.set('ref_or_tag', { type: 'stringname', value: 'BURNABLE.log' });
+  inputFields.set('ref', { type: 'string', value: '&BURNABLE.log' });
   inputFields.set('count', { type: 'int', value: 1 });
-  inputFields.set('is_tag', { type: 'bool', value: true });
   const entry = _makeRecipeEntry(
     { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
     [{ type: 'Resource', id: 'input_1', fields: inputFields }],
   );
   const model = RecipeModel.fromEntry('test.tres', entry);
-  assert(model.inputs[0].is_tag === true, 'is_tag should be true');
-  assert(model.inputs[0].ref_or_tag === 'BURNABLE.log', 'ref_or_tag');
+  assert(model.inputs[0].ref === '&BURNABLE.log', 'ref preserves & prefix');
+  assert(model.inputs[0].ref.startsWith('&'), 'tag refs start with &');
+});
+
+test('RecipeModel — fromEntry reads input with must_hold true', () => {
+  const inputFields = new Map();
+  inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
+  inputFields.set('ref', { type: 'string', value: 'P00010' });
+  inputFields.set('count', { type: 'int', value: 2 });
+  inputFields.set('must_hold', { type: 'bool', value: true });
+  const entry = _makeRecipeEntry(
+    { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
+    [{ type: 'Resource', id: 'input_1', fields: inputFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.inputs[0].must_hold === true, 'must_hold true');
 });
 
 test('RecipeModel — fromEntry reads outputs with prob', () => {
@@ -2098,18 +2109,13 @@ test('validateRecipeForm — negative duration', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — input missing ref_or_tag', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false }] }), false);
-  assert(result.valid === false, 'should be invalid');
-});
-
-test('validateRecipeForm — input invalid source', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 1, source: 'invalid', is_tag: false }] }), false);
+test('validateRecipeForm — input missing ref', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref: '', count: 1, must_hold: true }] }), false);
   assert(result.valid === false, 'should be invalid');
 });
 
 test('validateRecipeForm — input count < 1', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 0, source: 'player_inventory', is_tag: false }] }), false);
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref: 'P00001', count: 0, must_hold: true }] }), false);
   assert(result.valid === false, 'should be invalid');
 });
 
@@ -2151,7 +2157,7 @@ test('validateRecipeForm — ID missing R prefix', () => {
 
 test('validateRecipeForm — valid full recipe', () => {
   const result = validateRecipeForm(_makeRecipeModel({
-    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+    inputs: [{ ref: 'P00020', count: 1, must_hold: true }],
     outputs: [{ prop_ref: '00010', count: 2, prob: 0.8 }],
     effects: [{ kind: 'stat_delta', params: { stat: 'hunger', value: 5 } }],
     conditions: [{ predicate_kind: 'at_station', predicate_params: { tag: 'fire' }, must_sustain: true }],
@@ -2174,12 +2180,31 @@ test('recipeModelToRaw — serializes basic recipe', () => {
 
 test('recipeModelToRaw — serializes inputs as sub_resources', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({
-    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+    inputs: [{ ref: 'P00020', count: 1, must_hold: true }],
   }));
   assert(raw.subResources.length >= 1, 'should have sub_resources');
   const inputSub = raw.subResources.find(s => s.id === 'input_1');
   assert(inputSub != null, 'should have input_1');
-  assert(inputSub.fields.get('ref_or_tag').value === '00020', 'ref_or_tag');
+  assert(inputSub.fields.get('ref').value === 'P00020', 'ref');
+  assert(inputSub.fields.get('must_hold').value === true, 'must_hold written when true');
+});
+
+test('recipeModelToRaw — omits must_hold when false', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
+  }));
+  const inputSub = raw.subResources.find(s => s.id === 'input_1');
+  assert(inputSub != null, 'should have input_1');
+  assert(!inputSub.fields.has('must_hold'), 'must_hold omitted when false');
+});
+
+test('recipeModelToRaw — serializes tag input with & prefix', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    inputs: [{ ref: '&BURNABLE.log', count: 1, must_hold: false }],
+  }));
+  const inputSub = raw.subResources.find(s => s.id === 'input_1');
+  assert(inputSub != null, 'should have input_1');
+  assert(inputSub.fields.get('ref').value === '&BURNABLE.log', 'tag ref keeps & prefix');
 });
 
 test('recipeModelToRaw — serializes outputs with prob', () => {
@@ -2229,7 +2254,7 @@ test('recipeModelToRaw — no sub_resources when empty', () => {
 
 test('recipeModelToRaw — serialized output is valid .tres', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({
-    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
     actions: ['chop'], duration: 4.0,
@@ -2248,7 +2273,7 @@ test('recipeModelToRaw — serialized output is valid .tres', () => {
 test('RecipeModel — full round-trip with all fields', () => {
   const original = _makeRecipeModel({
     display_name: 'Chop Small Tree',
-    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
     conditions: [{ predicate_kind: 'has_tool', predicate_params: { tool: 'axe' }, must_sustain: true }],
@@ -2275,8 +2300,8 @@ test('RecipeModel — full round-trip with all fields', () => {
   assert(restored.actions.length === 1, 'actions count');
   assert(restored.actions[0] === 'chop', 'actions[0]');
   assert(restored.inputs.length === 1, 'inputs count');
-  assert(restored.inputs[0].ref_or_tag === '00001', 'input ref_or_tag');
-  assert(restored.inputs[0].source === 'world_tile', 'input source');
+  assert(restored.inputs[0].ref === 'P00001', 'input ref');
+  assert(restored.inputs[0].must_hold === false, 'input must_hold');
   assert(restored.outputs.length === 2, 'outputs count');
   assert(restored.outputs[0].prop_ref === '00010', 'output[0] prop_ref');
   assert(restored.outputs[1].prob === 0.8, 'output[1] prob');
@@ -2354,8 +2379,9 @@ for (const recipeFile of __recipeFiles) {
 
     // Verify inputs have valid fields
     for (const inp of model.inputs) {
-      assert(typeof inp.ref_or_tag === 'string' && inp.ref_or_tag.length > 0, `${recipeFile}: input ref_or_tag`);
+      assert(typeof inp.ref === 'string' && inp.ref.length > 0, `${recipeFile}: input ref`);
       assert(inp.count >= 1, `${recipeFile}: input count >= 1`);
+      assert(typeof inp.must_hold === 'boolean', `${recipeFile}: input must_hold boolean`);
     }
     // Verify outputs have valid fields
     for (const out of model.outputs) {
@@ -2396,12 +2422,6 @@ for (const recipeFile of __recipeFiles) {
 // ============================================================
 // Constants exports (task-039b)
 // ============================================================
-
-test('Recipe constants — INPUT_SOURCES has 4 entries', () => {
-  assert(INPUT_SOURCES.length === 4, 'should have 4 sources');
-  assert(INPUT_SOURCES.includes('player_inventory'), 'includes player_inventory');
-  assert(INPUT_SOURCES.includes('world_tile'), 'includes world_tile');
-});
 
 test('Recipe constants — PREDICATE_KINDS has expected entries', () => {
   assert(PREDICATE_KINDS.includes('has_tool'), 'includes has_tool');

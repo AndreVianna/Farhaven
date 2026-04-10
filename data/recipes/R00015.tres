@@ -9,10 +9,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"BURNABLE.log"
+ref = "&BURNABLE.log"
 count = 1
-source = &"container"
-is_tag = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")

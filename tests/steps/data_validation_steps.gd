@@ -168,12 +168,13 @@ func register_steps(registry) -> void:
 			def_ids[def.id] = true
 		for recipe in recipes:
 			for input_res in recipe.inputs:
-				if not input_res.is_tag:
+				if not input_res.is_tag():
 					# Only validate prefixed prop refs (P-prefixed IDs), skip placeholder names
-					var ref_str := String(input_res.ref_or_tag)
+					var ref_str := String(input_res.ref)
 					if ref_str.begins_with("P"):
-						ctx.assert_true(def_ids.has(input_res.ref_or_tag),
-							"Recipe '%s' input references unknown PropDef '%s'" % [recipe.id, input_res.ref_or_tag])
+						var ref_sn := StringName(ref_str)
+						ctx.assert_true(def_ids.has(ref_sn),
+							"Recipe '%s' input references unknown PropDef '%s'" % [recipe.id, ref_str])
 	)
 
 	registry.then("every Recipe output with numeric ref references a valid PropDef id", func(ctx):

@@ -6,8 +6,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00021"
+ref = "P00021"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("3_effect")

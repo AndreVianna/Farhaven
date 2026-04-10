@@ -9,8 +9,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00022"
+ref = "P00022"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")

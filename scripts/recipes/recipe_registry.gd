@@ -54,14 +54,16 @@ func _register(recipe: _Recipe) -> void:
 
 func _index_inputs(recipe: _Recipe) -> void:
 	for input in recipe.inputs:
-		if input.is_tag:
-			if not _by_input_tag.has(input.ref_or_tag):
-				_by_input_tag[input.ref_or_tag] = []
-			_by_input_tag[input.ref_or_tag].append(recipe)
+		if input.is_tag():
+			var tag_key: StringName = input.get_tag()
+			if not _by_input_tag.has(tag_key):
+				_by_input_tag[tag_key] = []
+			_by_input_tag[tag_key].append(recipe)
 		else:
-			if not _by_input_ref.has(input.ref_or_tag):
-				_by_input_ref[input.ref_or_tag] = []
-			_by_input_ref[input.ref_or_tag].append(recipe)
+			var ref_key: StringName = StringName(input.ref)
+			if not _by_input_ref.has(ref_key):
+				_by_input_ref[ref_key] = []
+			_by_input_ref[ref_key].append(recipe)
 
 
 func _index_actions(recipe: _Recipe) -> void:

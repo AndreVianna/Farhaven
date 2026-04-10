@@ -257,9 +257,9 @@ func _make_build_recipe(recipe_id: StringName, display_name: String,
 	var recipe_inputs: Array[Resource] = []
 	for input_def: Dictionary in inputs:
 		var ri := _RecipeInput.new()
-		ri.ref_or_tag = input_def["type"]
+		ri.ref = String(input_def["type"])
 		ri.count = input_def["count"]
-		ri.source = &"player_inventory"
+		ri.must_hold = true
 		recipe_inputs.append(ri)
 	recipe.inputs = recipe_inputs
 

@@ -60,9 +60,9 @@ func _make_recipe(id: StringName, display_name: String, inputs_data: Array, outp
 	var inputs: Array[Resource] = []
 	for data in inputs_data:
 		var input := _RecipeInput.new()
-		input.ref_or_tag = data["ref"]
+		input.ref = String(data["ref"])
 		input.count = data["count"]
-		input.source = &"player_inventory"
+		input.must_hold = true
 		inputs.append(input)
 	recipe.inputs = inputs
 	var output := _RecipeOutput.new()

@@ -72,10 +72,10 @@ func register_steps(registry) -> void:
 			return
 		var inv := _CommonSteps.get_or_create_inventory(ctx)
 		for input_res in recipe.inputs:
-			if not input_res.is_tag:
-				var removed: int = inv.remove_item(input_res.ref_or_tag, input_res.count)
+			if not input_res.is_tag():
+				var removed: int = inv.remove_item(StringName(input_res.ref), input_res.count)
 				ctx.assert_equal(removed, input_res.count,
-					"Failed to consume %d of %s" % [input_res.count, input_res.ref_or_tag])
+					"Failed to consume %d of %s" % [input_res.count, input_res.ref])
 		for output_res in recipe.outputs:
 			var tool_slot: StringName = TOOL_SLOTS.get(output_res.prop_ref, &"")
 			if tool_slot != &"":
@@ -93,8 +93,8 @@ func register_steps(registry) -> void:
 		var inv := _CommonSteps.get_or_create_inventory(ctx)
 		var can_craft := true
 		for input_res in recipe.inputs:
-			if not input_res.is_tag:
-				if not inv.has_item(input_res.ref_or_tag, input_res.count):
+			if not input_res.is_tag():
+				if not inv.has_item(StringName(input_res.ref), input_res.count):
 					can_craft = false
 					break
 		ctx.set_value("recipe_attempt_result", recipe if can_craft else null)
@@ -110,8 +110,8 @@ func register_steps(registry) -> void:
 		var tile: Dictionary = tiles.get(Vector2i(col, row), {})
 		ctx.assert_false(tile.is_empty(), "Tile (%d,%d) must exist" % [col, row])
 		for input_res in recipe.inputs:
-			if not input_res.is_tag:
-				inv.remove_item(input_res.ref_or_tag, input_res.count)
+			if not input_res.is_tag():
+				inv.remove_item(StringName(input_res.ref), input_res.count)
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
 			for output_res in recipe.outputs:
@@ -159,8 +159,8 @@ func register_steps(registry) -> void:
 		var inv := _CommonSteps.get_or_create_inventory(ctx)
 		var affordable := true
 		for input_res in recipe.inputs:
-			if not input_res.is_tag:
-				if not inv.has_item(input_res.ref_or_tag, input_res.count):
+			if not input_res.is_tag():
+				if not inv.has_item(StringName(input_res.ref), input_res.count):
 					affordable = false
 		ctx.assert_true(affordable, "Recipe '%s' should be affordable" % recipe_id)
 	)

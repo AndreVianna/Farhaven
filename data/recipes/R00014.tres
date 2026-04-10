@@ -6,9 +6,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"cooked_meat"
+ref = "cooked_meat"
 count = 1
-source = &"world_anywhere"
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")

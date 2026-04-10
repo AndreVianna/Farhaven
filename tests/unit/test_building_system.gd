@@ -147,9 +147,9 @@ func _make_build_recipe(id: StringName, inputs_spec: Array,
 	r.actions = [&"build"]
 	for spec: Dictionary in inputs_spec:
 		var inp := _RecipeInput.new()
-		inp.ref_or_tag = spec["ref"]
+		inp.ref = String(spec["ref"])
 		inp.count = spec["count"]
-		inp.source = &"player_inventory"
+		inp.must_hold = true
 		r.inputs.append(inp)
 	var out := _RecipeOutput.new()
 	out.prop_ref = output_ref
