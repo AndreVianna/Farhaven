@@ -27,7 +27,10 @@ class PendingRecipe extends RefCounted:
 	var recipe: _Recipe = null
 	var start_time: float = 0.0
 	var elapsed: float = 0.0
-	## Array of Dictionaries: {type: StringName, count: int, must_hold: bool}
+	## Array of Dictionaries: {type: String, count: int, must_hold: bool}
+	## type holds the input.ref value as-is, which may be a prop ID ("P00010")
+	## or a tag with "&" prefix ("&BURNABLE"). Tag refs are skipped on return
+	## since the recipe stored the tag, not the actual concrete prop type.
 	var bound_inputs: Array = []
 	var context: _WorldContext = null
 

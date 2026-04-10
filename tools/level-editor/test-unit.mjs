@@ -271,6 +271,60 @@ test('TresParser — parseValue string-keyed dict', () => {
   assert(v.value.get('radius').value === 0.3, 'should have radius = 0.3');
 });
 
+test('TresParser — parseValue int-keyed dict (single mode)', () => {
+  // MovementCap.modes uses int Mode enum keys
+  const v = TresParser.parseValue('{ 0: [1.0, 1.5] }');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 1, 'should have 1 entry');
+  const entry = v.value.get(0);
+  assert(entry !== undefined, 'should have key 0');
+  assert(entry.type === 'array', 'value should be an array');
+  assert(entry.value.length === 2, 'array should have 2 elements');
+  assert(entry.value[0].value === 1.0, 'normal speed should be 1.0');
+  assert(entry.value[1].value === 1.5, 'max speed should be 1.5');
+});
+
+test('TresParser — parseValue int-keyed dict (multiple modes, multiline)', () => {
+  // Frog: walks + jumps
+  const v = TresParser.parseValue('{\n  0: [1.0, 1.5],\n  5: [2.0, 3.0]\n}');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 2, 'should have 2 entries');
+  assert(v.value.get(0).value[0].value === 1.0, 'WALK normal = 1.0');
+  assert(v.value.get(5).value[1].value === 3.0, 'JUMP max = 3.0');
+});
+
+test('TresParser — parseValue int-keyed dict supports negative keys', () => {
+  // Catalog.ANOMALY_BUCKET uses -1 as a sentinel
+  const v = TresParser.parseValue('{ -1: 42 }');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 1, 'should have 1 entry');
+  assert(v.value.get(-1).value === 42, 'should have -1 = 42');
+});
+
+test('TresParser — serializeValue int-keyed dict round-trips', () => {
+  const original = '{ 0: [1.0, 1.5], 5: [2.0, 3.0] }';
+  const parsed = TresParser.parseValue(original);
+  const serialized = TresParser.serializeValue(parsed);
+  // Parse the serialized form again to verify equivalence
+  const reparsed = TresParser.parseValue(serialized);
+  assert(reparsed.type === 'dict', 'should reparse as dict');
+  assert(reparsed.keyStyle === 'int', 'should preserve int keyStyle');
+  assert(reparsed.value.size === 2, 'should still have 2 entries');
+  assert(reparsed.value.get(0).value[0].value === 1.0, 'WALK normal preserved');
+  assert(reparsed.value.get(5).value[1].value === 3.0, 'JUMP max preserved');
+});
+
+test('TresParser — serializeValue int-keyed dict with negative key round-trips', () => {
+  const original = '{ -1: 42 }';
+  const parsed = TresParser.parseValue(original);
+  const serialized = TresParser.serializeValue(parsed);
+  const reparsed = TresParser.parseValue(serialized);
+  assert(reparsed.value.get(-1).value === 42, 'should preserve -1 key');
+});
+
 test('TresParser — parseValue empty array', () => {
   const v = TresParser.parseValue('[]');
   assert(v.type === 'array', 'type should be array');

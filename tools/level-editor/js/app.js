@@ -348,7 +348,7 @@ async function saveAll() {
     return;
   }
 
-  const tabs = ['map', 'props', 'biomes'];
+  const tabs = ['map', 'props', 'biomes', 'recipes', 'events'];
   let hadError = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
@@ -368,7 +368,7 @@ async function saveAll() {
 
 /**
  * Save files for a specific tab.
- * @param {string} tab - 'map' | 'props' | 'biomes'
+ * @param {string} tab - 'map' | 'props' | 'biomes' | 'recipes' | 'events'
  * @returns {Promise<void>}
  */
 async function saveTab(tab) {
@@ -390,6 +390,16 @@ async function saveTab(tab) {
     for (const [filename, entry] of ProjectContext.files.biomes) {
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/biomes', text, filename);
+    }
+  } else if (tab === 'recipes') {
+    for (const [filename, entry] of ProjectContext.files.recipes) {
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/recipes', text, filename);
+    }
+  } else if (tab === 'events') {
+    for (const [filename, entry] of ProjectContext.files.events) {
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/events', text, filename);
     }
   }
 }
