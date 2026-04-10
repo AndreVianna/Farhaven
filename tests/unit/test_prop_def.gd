@@ -9,6 +9,11 @@ const _LightCap = preload("res://scripts/data/capabilities/light_cap.gd")
 const _MovableCap = preload("res://scripts/data/capabilities/movable_cap.gd")
 const _StationCap = preload("res://scripts/data/capabilities/station_cap.gd")
 const _CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
+const _EnduranceCap = preload("res://scripts/data/capabilities/endurance_cap.gd")
+const _MovementCap = preload("res://scripts/data/capabilities/movement_cap.gd")
+const _CombatCap = preload("res://scripts/data/capabilities/combat_cap.gd")
+const _BehaviorCap = preload("res://scripts/data/capabilities/behavior_cap.gd")
+const _SpawnableCap = preload("res://scripts/data/capabilities/spawnable_cap.gd")
 
 
 func test_has_capability_portable_true_when_set() -> void:
@@ -38,6 +43,92 @@ func test_has_capability_all_types() -> void:
 func test_has_capability_unknown_returns_false() -> void:
 	var def := _PropDef.new()
 	assert_bool(def.has_capability(&"nonexistent")).is_false()
+
+# --- Wave 1 fauna-refactor caps: endurance, movement, combat, behavior, spawnable ---
+
+func test_has_capability_fauna_caps_false_when_null() -> void:
+	var def := _PropDef.new()
+	assert_bool(def.has_capability(&"endurance")).is_false()
+	assert_bool(def.has_capability(&"movement")).is_false()
+	assert_bool(def.has_capability(&"combat")).is_false()
+	assert_bool(def.has_capability(&"behavior")).is_false()
+	assert_bool(def.has_capability(&"spawnable")).is_false()
+
+func test_has_capability_all_fauna_caps_true_when_set() -> void:
+	var def := _PropDef.new()
+	def.endurance = _EnduranceCap.new()
+	def.movement = _MovementCap.new()
+	def.combat = _CombatCap.new()
+	def.behavior = _BehaviorCap.new()
+	def.spawnable = _SpawnableCap.new()
+	assert_bool(def.has_capability(&"endurance")).is_true()
+	assert_bool(def.has_capability(&"movement")).is_true()
+	assert_bool(def.has_capability(&"combat")).is_true()
+	assert_bool(def.has_capability(&"behavior")).is_true()
+	assert_bool(def.has_capability(&"spawnable")).is_true()
+
+func test_prop_def_round_trips_fauna_caps() -> void:
+	var def := _PropDef.new()
+
+	var endurance := _EnduranceCap.new()
+	endurance.hp = 12
+	endurance.vulnerabilities = [&"FIRE"]
+	endurance.resistances = [&"BLUNT"]
+	endurance.immunities = [&"POISON"]
+	def.endurance = endurance
+
+	var movement := _MovementCap.new()
+	movement.mode = _MovementCap.Mode.FLY
+	movement.move_cooldown = 0.5
+	movement.max_jump = 3
+	def.movement = movement
+
+	var combat := _CombatCap.new()
+	combat.attacks = [Resource.new()]
+	combat.defenses = [Resource.new(), Resource.new()]
+	def.combat = combat
+
+	var behavior := _BehaviorCap.new()
+	behavior.detection_range = 4
+	behavior.activity_cycle = _BehaviorCap.ActivityCycle.NOCTURNAL
+	behavior.group_behavior = _BehaviorCap.GroupBehavior.PACK
+	behavior.diet = [&"FAUNA"]
+	behavior.reactions = [Resource.new()]
+	def.behavior = behavior
+
+	var spawnable := _SpawnableCap.new()
+	spawnable.spawn_min = 2
+	spawnable.spawn_max = 4
+	spawnable.first_spawn_day = 5
+	spawnable.spawn_min_distance = 6
+	spawnable.allowed_biomes = [&"FOREST", &"GRASSLAND"]
+	def.spawnable = spawnable
+
+	# Read back and verify
+	assert_int(def.endurance.hp).is_equal(12)
+	assert_bool(def.endurance.vulnerabilities.has(&"FIRE")).is_true()
+	assert_bool(def.endurance.resistances.has(&"BLUNT")).is_true()
+	assert_bool(def.endurance.immunities.has(&"POISON")).is_true()
+
+	assert_int(def.movement.mode).is_equal(_MovementCap.Mode.FLY)
+	assert_float(def.movement.move_cooldown).is_equal_approx(0.5, 0.001)
+	assert_int(def.movement.max_jump).is_equal(3)
+
+	assert_int(def.combat.attacks.size()).is_equal(1)
+	assert_int(def.combat.defenses.size()).is_equal(2)
+
+	assert_int(def.behavior.detection_range).is_equal(4)
+	assert_int(def.behavior.activity_cycle).is_equal(_BehaviorCap.ActivityCycle.NOCTURNAL)
+	assert_int(def.behavior.group_behavior).is_equal(_BehaviorCap.GroupBehavior.PACK)
+	assert_bool(def.behavior.diet.has(&"FAUNA")).is_true()
+	assert_int(def.behavior.reactions.size()).is_equal(1)
+
+	assert_int(def.spawnable.spawn_min).is_equal(2)
+	assert_int(def.spawnable.spawn_max).is_equal(4)
+	assert_int(def.spawnable.first_spawn_day).is_equal(5)
+	assert_int(def.spawnable.spawn_min_distance).is_equal(6)
+	assert_bool(def.spawnable.allowed_biomes.has(&"FOREST")).is_true()
+	assert_bool(def.spawnable.allowed_biomes.has(&"GRASSLAND")).is_true()
 
 func test_has_tag_true_when_present() -> void:
 	var def := _PropDef.new()
