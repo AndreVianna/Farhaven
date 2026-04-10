@@ -40,6 +40,16 @@ export class PropDefModel {
     this.station = null;
     /** @type {{ scan_time: number, display_tag: string, category: number, properties: Object }|null} */
     this.catalogable = null;
+    /** @type {{ hp: number, vulnerabilities: string[], resistances: string[], immunities: string[] }|null} */
+    this.endurance = null;
+    /** @type {{ mode: number, move_cooldown: number, max_jump: number }|null} */
+    this.movement = null;
+    /** @type {{ attacks: Array, defenses: Array }|null} */
+    this.combat = null;
+    /** @type {{ detection_range: number, activity_cycle: number, group_behavior: number, diet: string[], reactions: Array }|null} */
+    this.behavior = null;
+    /** @type {{ spawn_min: number, spawn_max: number, first_spawn_day: number, spawn_min_distance: number, allowed_biomes: string[] }|null} */
+    this.spawnable = null;
 
     // --- Gear base fields ---
     /** @type {string} One-line summary for tooltips */
@@ -204,6 +214,50 @@ export class PropDefModel {
         display_tag: _str(d.catalogable.display_tag),
         category: _num(d.catalogable.category),
         properties: _dictToObj(d.catalogable.properties),
+      };
+    }
+
+    if (d.endurance && typeof d.endurance === 'object') {
+      model.endurance = {
+        hp: _num(d.endurance.hp != null ? d.endurance.hp : 1),
+        vulnerabilities: _strArray(d.endurance.vulnerabilities),
+        resistances: _strArray(d.endurance.resistances),
+        immunities: _strArray(d.endurance.immunities),
+      };
+    }
+
+    if (d.movement && typeof d.movement === 'object') {
+      model.movement = {
+        mode: _num(d.movement.mode),
+        move_cooldown: _num(d.movement.move_cooldown != null ? d.movement.move_cooldown : 1.0),
+        max_jump: _num(d.movement.max_jump != null ? d.movement.max_jump : 1),
+      };
+    }
+
+    if (d.combat && typeof d.combat === 'object') {
+      model.combat = {
+        attacks: [],   // TODO: wire GameEvent refs when editor supports them
+        defenses: [],
+      };
+    }
+
+    if (d.behavior && typeof d.behavior === 'object') {
+      model.behavior = {
+        detection_range: _num(d.behavior.detection_range != null ? d.behavior.detection_range : 2),
+        activity_cycle: _num(d.behavior.activity_cycle),
+        group_behavior: _num(d.behavior.group_behavior),
+        diet: _strArray(d.behavior.diet),
+        reactions: [],  // TODO: wire GameEvent refs
+      };
+    }
+
+    if (d.spawnable && typeof d.spawnable === 'object') {
+      model.spawnable = {
+        spawn_min: _num(d.spawnable.spawn_min != null ? d.spawnable.spawn_min : 1),
+        spawn_max: _num(d.spawnable.spawn_max != null ? d.spawnable.spawn_max : 1),
+        first_spawn_day: _num(d.spawnable.first_spawn_day != null ? d.spawnable.first_spawn_day : 1),
+        spawn_min_distance: _num(d.spawnable.spawn_min_distance != null ? d.spawnable.spawn_min_distance : 3),
+        allowed_biomes: _strArray(d.spawnable.allowed_biomes),
       };
     }
 
@@ -1301,6 +1355,59 @@ export function renderPropEditor(container, options) {
       _addField(panel, 'Category', 'cap_catalogable_category', 'number', model.catalogable ? model.catalogable.category : 0, { step: '1', min: '0', max: '3' });
     }));
 
+    // ENDURANCE
+    grid.appendChild(_createCapabilityPanel('endurance', 'Endurance', model.endurance, (panel) => {
+      _addField(panel, 'HP', 'cap_endurance_hp', 'number', model.endurance ? model.endurance.hp : 1, { step: '1', min: '1' });
+      _addCsvField(panel, 'Vulnerabilities (comma-separated)', 'cap_endurance_vulnerabilities', model.endurance ? model.endurance.vulnerabilities : []);
+      _addCsvField(panel, 'Resistances (comma-separated)', 'cap_endurance_resistances', model.endurance ? model.endurance.resistances : []);
+      _addCsvField(panel, 'Immunities (comma-separated)', 'cap_endurance_immunities', model.endurance ? model.endurance.immunities : []);
+    }));
+
+    // MOVEMENT
+    grid.appendChild(_createCapabilityPanel('movement', 'Movement', model.movement, (panel) => {
+      _addIntSelectField(panel, 'Mode', 'cap_movement_mode', model.movement ? model.movement.mode : 0, [
+        { value: 0, label: 'WALK' },
+        { value: 1, label: 'SWIM' },
+        { value: 2, label: 'FLY' },
+        { value: 3, label: 'BURROW' },
+        { value: 4, label: 'CLIMB' },
+      ]);
+      _addField(panel, 'Move Cooldown', 'cap_movement_move_cooldown', 'number', model.movement ? model.movement.move_cooldown : 1.0, { step: '0.1', min: '0' });
+      _addField(panel, 'Max Jump', 'cap_movement_max_jump', 'number', model.movement ? model.movement.max_jump : 1, { step: '1', min: '0' });
+    }));
+
+    // COMBAT
+    grid.appendChild(_createCapabilityPanel('combat', 'Combat', model.combat, (panel) => {
+      _addPlaceholderNote(panel, 'Attacks/defenses will be wired when GameEvent picker is implemented');
+    }));
+
+    // BEHAVIOR
+    grid.appendChild(_createCapabilityPanel('behavior', 'Behavior', model.behavior, (panel) => {
+      _addField(panel, 'Detection Range', 'cap_behavior_detection_range', 'number', model.behavior ? model.behavior.detection_range : 2, { step: '1', min: '0' });
+      _addIntSelectField(panel, 'Activity Cycle', 'cap_behavior_activity_cycle', model.behavior ? model.behavior.activity_cycle : 0, [
+        { value: 0, label: 'ALWAYS' },
+        { value: 1, label: 'DIURNAL' },
+        { value: 2, label: 'NOCTURNAL' },
+        { value: 3, label: 'CREPUSCULAR' },
+      ]);
+      _addIntSelectField(panel, 'Group Behavior', 'cap_behavior_group_behavior', model.behavior ? model.behavior.group_behavior : 0, [
+        { value: 0, label: 'SOLO' },
+        { value: 1, label: 'PAIR' },
+        { value: 2, label: 'PACK' },
+      ]);
+      _addCsvField(panel, 'Diet (comma-separated)', 'cap_behavior_diet', model.behavior ? model.behavior.diet : []);
+      _addPlaceholderNote(panel, 'Reactions will be wired when GameEvent picker is implemented');
+    }));
+
+    // SPAWNABLE
+    grid.appendChild(_createCapabilityPanel('spawnable', 'Spawnable', model.spawnable, (panel) => {
+      _addField(panel, 'Spawn Min', 'cap_spawnable_spawn_min', 'number', model.spawnable ? model.spawnable.spawn_min : 1, { step: '1', min: '1' });
+      _addField(panel, 'Spawn Max', 'cap_spawnable_spawn_max', 'number', model.spawnable ? model.spawnable.spawn_max : 1, { step: '1', min: '1' });
+      _addField(panel, 'First Spawn Day', 'cap_spawnable_first_spawn_day', 'number', model.spawnable ? model.spawnable.first_spawn_day : 1, { step: '1', min: '1' });
+      _addField(panel, 'Spawn Min Distance', 'cap_spawnable_spawn_min_distance', 'number', model.spawnable ? model.spawnable.spawn_min_distance : 3, { step: '1', min: '0' });
+      _addCsvField(panel, 'Allowed Biomes (comma-separated, empty = any)', 'cap_spawnable_allowed_biomes', model.spawnable ? model.spawnable.allowed_biomes : []);
+    }));
+
     body.appendChild(grid);
   }
 
@@ -1452,6 +1559,75 @@ function _addSeparator(grid, text) {
     sep.textContent = text;
   }
   grid.appendChild(sep);
+}
+
+/**
+ * Add a label + comma-separated-value text input row to a prop-grid.
+ * The value is joined with ", " for display and split back on collect.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string[]} values - Current values
+ * @returns {void}
+ */
+function _addCsvField(grid, labelText, name, values) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = name;
+  input.value = Array.isArray(values) ? values.join(', ') : '';
+  input.classList.add('prop-input');
+  input.dataset.csvField = '';
+
+  grid.appendChild(label);
+  grid.appendChild(input);
+}
+
+/**
+ * Add a label + select dropdown row with integer values to a prop-grid.
+ * Used for GDScript enum fields that serialize as ints.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {number} value - Currently selected integer value
+ * @param {Array<{value: number, label: string}>} options - Available options
+ * @returns {void}
+ */
+function _addIntSelectField(grid, labelText, name, value, options) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  const select = document.createElement('select');
+  select.name = name;
+  select.classList.add('prop-input');
+  select.dataset.intSelect = '';
+  for (const opt of options) {
+    const option = document.createElement('option');
+    option.value = String(opt.value);
+    option.textContent = `${opt.value} — ${opt.label}`;
+    if (opt.value === value) option.selected = true;
+    select.appendChild(option);
+  }
+  grid.appendChild(label);
+  grid.appendChild(select);
+}
+
+/**
+ * Add a placeholder note row spanning the full prop-grid width.
+ * Used for capabilities whose fields aren't yet editable (e.g. GameEvent refs).
+ * @param {HTMLElement} grid
+ * @param {string} text
+ * @returns {void}
+ */
+function _addPlaceholderNote(grid, text) {
+  const note = document.createElement('div');
+  note.classList.add('prop-full');
+  note.style.cssText = 'font-size:11px;color:var(--text-secondary);font-style:italic;padding:4px 0;';
+  note.textContent = text;
+  grid.appendChild(note);
 }
 
 /**
@@ -1655,6 +1831,50 @@ export function collectPropFormData(formElement) {
     };
   }
 
+  if (isChecked('cap_endurance_enabled')) {
+    model.endurance = {
+      hp: intVal('cap_endurance_hp') || 1,
+      vulnerabilities: _csvToArray(val('cap_endurance_vulnerabilities')),
+      resistances: _csvToArray(val('cap_endurance_resistances')),
+      immunities: _csvToArray(val('cap_endurance_immunities')),
+    };
+  }
+
+  if (isChecked('cap_movement_enabled')) {
+    model.movement = {
+      mode: intVal('cap_movement_mode'),
+      move_cooldown: floatVal('cap_movement_move_cooldown') || 1.0,
+      max_jump: intVal('cap_movement_max_jump'),
+    };
+  }
+
+  if (isChecked('cap_combat_enabled')) {
+    model.combat = {
+      attacks: [],   // TODO: wire GameEvent refs
+      defenses: [],
+    };
+  }
+
+  if (isChecked('cap_behavior_enabled')) {
+    model.behavior = {
+      detection_range: intVal('cap_behavior_detection_range'),
+      activity_cycle: intVal('cap_behavior_activity_cycle'),
+      group_behavior: intVal('cap_behavior_group_behavior'),
+      diet: _csvToArray(val('cap_behavior_diet')),
+      reactions: [],  // TODO: wire GameEvent refs
+    };
+  }
+
+  if (isChecked('cap_spawnable_enabled')) {
+    model.spawnable = {
+      spawn_min: intVal('cap_spawnable_spawn_min') || 1,
+      spawn_max: intVal('cap_spawnable_spawn_max') || 1,
+      first_spawn_day: intVal('cap_spawnable_first_spawn_day') || 1,
+      spawn_min_distance: intVal('cap_spawnable_spawn_min_distance'),
+      allowed_biomes: _csvToArray(val('cap_spawnable_allowed_biomes')),
+    };
+  }
+
   // Visuals
   model.placeholder_mesh_type = val('placeholder_mesh_type').trim();
   model.placeholder_params = _collectKvData(formElement, 'placeholder_params');
@@ -1750,6 +1970,16 @@ function _collectCapFootprintData(formElement) {
     }
   }
   return result;
+}
+
+/**
+ * Split a comma-separated string into a trimmed, non-empty array.
+ * @param {string} str
+ * @returns {string[]}
+ */
+function _csvToArray(str) {
+  if (!str || typeof str !== 'string') return [];
+  return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
 }
 
 /**
@@ -1849,6 +2079,11 @@ function _modelToPlain(model) {
     movable: model.movable,
     station: model.station,
     catalogable: model.catalogable,
+    endurance: model.endurance,
+    movement: model.movement,
+    combat: model.combat,
+    behavior: model.behavior,
+    spawnable: model.spawnable,
     max_stack: model.max_stack,
     placeholder_mesh_type: model.placeholder_mesh_type,
     placeholder_params: model.placeholder_params,
@@ -1991,6 +2226,94 @@ export function propModelToRaw(model) {
     extId++;
   }
 
+  if (model.endurance) {
+    const eid = `${extId}_endurance`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/endurance_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.endurance.hp !== 1) subFields.set('hp', { type: 'int', value: model.endurance.hp });
+    if (model.endurance.vulnerabilities && model.endurance.vulnerabilities.length > 0) {
+      subFields.set('vulnerabilities', {
+        type: 'array', elementType: null,
+        value: model.endurance.vulnerabilities.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    if (model.endurance.resistances && model.endurance.resistances.length > 0) {
+      subFields.set('resistances', {
+        type: 'array', elementType: null,
+        value: model.endurance.resistances.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    if (model.endurance.immunities && model.endurance.immunities.length > 0) {
+      subFields.set('immunities', {
+        type: 'array', elementType: null,
+        value: model.endurance.immunities.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    capEntries.push({ capName: 'endurance', subId: 'endurance_1', subFields });
+    extId++;
+  }
+
+  if (model.movement) {
+    const eid = `${extId}_movement`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/movement_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.movement.mode !== 0) subFields.set('mode', { type: 'int', value: model.movement.mode });
+    if (model.movement.move_cooldown !== 1.0) subFields.set('move_cooldown', { type: 'float', value: model.movement.move_cooldown });
+    if (model.movement.max_jump !== 1) subFields.set('max_jump', { type: 'int', value: model.movement.max_jump });
+    capEntries.push({ capName: 'movement', subId: 'movement_1', subFields });
+    extId++;
+  }
+
+  if (model.combat) {
+    const eid = `${extId}_combat`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/combat_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    // attacks/defenses are arrays of GameEvent refs — leave empty until editor supports them.
+    capEntries.push({ capName: 'combat', subId: 'combat_1', subFields });
+    extId++;
+  }
+
+  if (model.behavior) {
+    const eid = `${extId}_behavior`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/behavior_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.behavior.detection_range !== 2) subFields.set('detection_range', { type: 'int', value: model.behavior.detection_range });
+    if (model.behavior.activity_cycle !== 0) subFields.set('activity_cycle', { type: 'int', value: model.behavior.activity_cycle });
+    if (model.behavior.group_behavior !== 0) subFields.set('group_behavior', { type: 'int', value: model.behavior.group_behavior });
+    if (model.behavior.diet && model.behavior.diet.length > 0) {
+      subFields.set('diet', {
+        type: 'array', elementType: null,
+        value: model.behavior.diet.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    // reactions are GameEvent refs — leave empty until editor supports them.
+    capEntries.push({ capName: 'behavior', subId: 'behavior_1', subFields });
+    extId++;
+  }
+
+  if (model.spawnable) {
+    const eid = `${extId}_spawnable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/spawnable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.spawnable.spawn_min !== 1) subFields.set('spawn_min', { type: 'int', value: model.spawnable.spawn_min });
+    if (model.spawnable.spawn_max !== 1) subFields.set('spawn_max', { type: 'int', value: model.spawnable.spawn_max });
+    if (model.spawnable.first_spawn_day !== 1) subFields.set('first_spawn_day', { type: 'int', value: model.spawnable.first_spawn_day });
+    if (model.spawnable.spawn_min_distance !== 3) subFields.set('spawn_min_distance', { type: 'int', value: model.spawnable.spawn_min_distance });
+    if (model.spawnable.allowed_biomes && model.spawnable.allowed_biomes.length > 0) {
+      subFields.set('allowed_biomes', {
+        type: 'array', elementType: null,
+        value: model.spawnable.allowed_biomes.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    capEntries.push({ capName: 'spawnable', subId: 'spawnable_1', subFields });
+    extId++;
+  }
+
   // Build sub_resources
   for (const cap of capEntries) {
     subResources.push({ type: 'Resource', id: cap.subId, fields: cap.subFields });
@@ -2084,6 +2407,7 @@ export function propModelToRaw(model) {
   // survive from the old raw.
   const MANAGED_FIELDS = new Set([
     'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
+    'endurance', 'movement', 'combat', 'behavior', 'spawnable',
     'category', 'footprint',
   ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {

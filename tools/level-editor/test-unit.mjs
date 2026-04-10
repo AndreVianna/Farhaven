@@ -1513,6 +1513,112 @@ test('PropDefModel — fromEntry reads catalogable capability', () => {
   assert(model.catalogable.category === 0, 'category should be 0');
 });
 
+test('PropDefModel — fromEntry reads endurance capability', () => {
+  const entry = _makePropEntry({
+    endurance: { hp: 20, vulnerabilities: ['FIRE'], resistances: [], immunities: ['POISON'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.endurance !== null, 'endurance should not be null');
+  assert(model.endurance.hp === 20, 'hp should be 20');
+  assert(model.endurance.vulnerabilities.length === 1, 'vulnerabilities should have 1 item');
+  assert(model.endurance.vulnerabilities[0] === 'FIRE', 'vulnerability should be FIRE');
+  assert(model.endurance.resistances.length === 0, 'resistances should be empty');
+  assert(model.endurance.immunities[0] === 'POISON', 'immunity should be POISON');
+});
+
+test('PropDefModel — fromEntry reads endurance with default hp', () => {
+  const entry = _makePropEntry({
+    endurance: { vulnerabilities: [], resistances: [], immunities: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.endurance !== null, 'endurance should not be null');
+  assert(model.endurance.hp === 1, 'hp should default to 1 when missing');
+});
+
+test('PropDefModel — fromEntry reads movement capability', () => {
+  const entry = _makePropEntry({
+    movement: { mode: 2, move_cooldown: 0.5, max_jump: 3 },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movement !== null, 'movement should not be null');
+  assert(model.movement.mode === 2, 'mode should be 2 (FLY)');
+  assert(model.movement.move_cooldown === 0.5, 'move_cooldown should be 0.5');
+  assert(model.movement.max_jump === 3, 'max_jump should be 3');
+});
+
+test('PropDefModel — fromEntry reads movement with defaults', () => {
+  const entry = _makePropEntry({
+    movement: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movement !== null, 'movement should not be null');
+  assert(model.movement.mode === 0, 'mode should default to 0 (WALK)');
+  assert(model.movement.move_cooldown === 1.0, 'move_cooldown should default to 1.0');
+  assert(model.movement.max_jump === 1, 'max_jump should default to 1');
+});
+
+test('PropDefModel — fromEntry reads combat capability', () => {
+  const entry = _makePropEntry({
+    combat: { attacks: [], defenses: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.combat !== null, 'combat should not be null');
+  assert(Array.isArray(model.combat.attacks), 'attacks should be an array');
+  assert(Array.isArray(model.combat.defenses), 'defenses should be an array');
+});
+
+test('PropDefModel — fromEntry reads behavior capability', () => {
+  const entry = _makePropEntry({
+    behavior: { detection_range: 5, activity_cycle: 2, group_behavior: 1, diet: ['FAUNA'], reactions: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior !== null, 'behavior should not be null');
+  assert(model.behavior.detection_range === 5, 'detection_range should be 5');
+  assert(model.behavior.activity_cycle === 2, 'activity_cycle should be 2 (NOCTURNAL)');
+  assert(model.behavior.group_behavior === 1, 'group_behavior should be 1 (PAIR)');
+  assert(model.behavior.diet.length === 1, 'diet should have 1 item');
+  assert(model.behavior.diet[0] === 'FAUNA', 'diet should be FAUNA');
+  assert(Array.isArray(model.behavior.reactions), 'reactions should be an array');
+});
+
+test('PropDefModel — fromEntry reads behavior with defaults', () => {
+  const entry = _makePropEntry({
+    behavior: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior !== null, 'behavior should not be null');
+  assert(model.behavior.detection_range === 2, 'detection_range should default to 2');
+  assert(model.behavior.activity_cycle === 0, 'activity_cycle should default to 0 (ALWAYS)');
+  assert(model.behavior.group_behavior === 0, 'group_behavior should default to 0 (SOLO)');
+});
+
+test('PropDefModel — fromEntry reads spawnable capability', () => {
+  const entry = _makePropEntry({
+    spawnable: { spawn_min: 2, spawn_max: 5, first_spawn_day: 4, spawn_min_distance: 6, allowed_biomes: ['FOREST', 'GRASSLAND'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.spawnable !== null, 'spawnable should not be null');
+  assert(model.spawnable.spawn_min === 2, 'spawn_min should be 2');
+  assert(model.spawnable.spawn_max === 5, 'spawn_max should be 5');
+  assert(model.spawnable.first_spawn_day === 4, 'first_spawn_day should be 4');
+  assert(model.spawnable.spawn_min_distance === 6, 'spawn_min_distance should be 6');
+  assert(model.spawnable.allowed_biomes.length === 2, 'allowed_biomes should have 2 items');
+  assert(model.spawnable.allowed_biomes[0] === 'FOREST', 'first biome should be FOREST');
+});
+
+test('PropDefModel — fromEntry reads spawnable with defaults', () => {
+  const entry = _makePropEntry({
+    spawnable: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.spawnable !== null, 'spawnable should not be null');
+  assert(model.spawnable.spawn_min === 1, 'spawn_min should default to 1');
+  assert(model.spawnable.spawn_max === 1, 'spawn_max should default to 1');
+  assert(model.spawnable.first_spawn_day === 1, 'first_spawn_day should default to 1');
+  assert(model.spawnable.spawn_min_distance === 3, 'spawn_min_distance should default to 3');
+  assert(model.spawnable.allowed_biomes.length === 0, 'allowed_biomes should be empty');
+});
+
 test('PropDefModel — fromEntry null capabilities when not present', () => {
   const entry = _makePropEntry({});
   const model = PropDefModel.fromEntry('test.tres', entry);
@@ -1523,6 +1629,11 @@ test('PropDefModel — fromEntry null capabilities when not present', () => {
   assert(model.movable === null, 'movable should be null');
   assert(model.station === null, 'station should be null');
   assert(model.catalogable === null, 'catalogable should be null');
+  assert(model.endurance === null, 'endurance should be null');
+  assert(model.movement === null, 'movement should be null');
+  assert(model.combat === null, 'combat should be null');
+  assert(model.behavior === null, 'behavior should be null');
+  assert(model.spawnable === null, 'spawnable should be null');
 });
 
 // ============================================================
@@ -1755,6 +1866,132 @@ test('PropDefModel — full round-trip with capabilities', () => {
   assert(restored.catalogable.category === 2, 'category should be 2');
 });
 
+test('PropDefModel — full round-trip with fauna capabilities', () => {
+  const original = _makeModel({
+    tags: ['FAUNA', 'HOSTILE'],
+    catalogable: { scan_time: 3.0, display_tag: 'fauna', category: 1, properties: {} },
+    endurance: { hp: 20, vulnerabilities: ['FIRE'], resistances: [], immunities: [] },
+    movement: { mode: 0, move_cooldown: 1.0, max_jump: 1 },
+    combat: { attacks: [], defenses: [] },
+    behavior: { detection_range: 2, activity_cycle: 2, group_behavior: 0, diet: ['FAUNA'], reactions: [] },
+    spawnable: { spawn_min: 1, spawn_max: 3, first_spawn_day: 4, spawn_min_distance: 3, allowed_biomes: [] },
+  });
+
+  // Serialize
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(text);
+
+  // Build data object (simulates what file-discovery does)
+  const subResourceMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) {
+      subData[k] = v.value;
+    }
+    subResourceMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') {
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
+  }
+
+  // Reconstruct model
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+
+  // Verify all fauna caps survived
+  assert(restored.catalogable !== null, 'catalogable should survive');
+  assert(restored.catalogable.category === 1, 'catalogable.category should be 1');
+
+  assert(restored.endurance !== null, 'endurance should survive');
+  assert(restored.endurance.hp === 20, 'endurance.hp should be 20');
+  assert(restored.endurance.vulnerabilities.length === 1, 'vulnerabilities should have 1 item');
+  assert(restored.endurance.vulnerabilities[0] === 'FIRE', 'vulnerability should be FIRE');
+  assert(restored.endurance.resistances.length === 0, 'resistances should be empty');
+  assert(restored.endurance.immunities.length === 0, 'immunities should be empty');
+
+  assert(restored.movement !== null, 'movement should survive');
+  assert(restored.movement.mode === 0, 'movement.mode should be 0 (WALK)');
+  assert(restored.movement.move_cooldown === 1.0, 'move_cooldown should be 1.0');
+  assert(restored.movement.max_jump === 1, 'max_jump should be 1');
+
+  assert(restored.combat !== null, 'combat should survive');
+  assert(Array.isArray(restored.combat.attacks), 'combat.attacks should be an array');
+  assert(Array.isArray(restored.combat.defenses), 'combat.defenses should be an array');
+
+  assert(restored.behavior !== null, 'behavior should survive');
+  assert(restored.behavior.detection_range === 2, 'detection_range should be 2');
+  assert(restored.behavior.activity_cycle === 2, 'activity_cycle should be 2 (NOCTURNAL)');
+  assert(restored.behavior.group_behavior === 0, 'group_behavior should be 0 (SOLO)');
+  assert(restored.behavior.diet.length === 1, 'diet should have 1 item');
+  assert(restored.behavior.diet[0] === 'FAUNA', 'diet should be FAUNA');
+
+  assert(restored.spawnable !== null, 'spawnable should survive');
+  assert(restored.spawnable.spawn_min === 1, 'spawn_min should be 1');
+  assert(restored.spawnable.spawn_max === 3, 'spawn_max should be 3');
+  assert(restored.spawnable.first_spawn_day === 4, 'first_spawn_day should be 4');
+  assert(restored.spawnable.spawn_min_distance === 3, 'spawn_min_distance should be 3');
+  assert(restored.spawnable.allowed_biomes.length === 0, 'allowed_biomes should be empty');
+});
+
+test('PropDefModel — round-trip fauna caps with non-default values', () => {
+  const original = _makeModel({
+    endurance: { hp: 50, vulnerabilities: ['FIRE', 'BLUNT'], resistances: ['PIERCING'], immunities: ['POISON'] },
+    movement: { mode: 2, move_cooldown: 0.5, max_jump: 4 },
+    behavior: { detection_range: 8, activity_cycle: 1, group_behavior: 2, diet: ['FLORA', 'FAUNA'], reactions: [] },
+    spawnable: { spawn_min: 3, spawn_max: 7, first_spawn_day: 10, spawn_min_distance: 5, allowed_biomes: ['FOREST', 'MOUNTAIN'] },
+  });
+
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+
+  const subResourceMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) {
+      subData[k] = v.value;
+    }
+    subResourceMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') {
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
+  }
+
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+
+  assert(restored.endurance.hp === 50, 'hp should be 50');
+  assert(restored.endurance.vulnerabilities.length === 2, 'vulnerabilities should have 2 items');
+  assert(restored.endurance.resistances[0] === 'PIERCING', 'resistance should be PIERCING');
+  assert(restored.endurance.immunities[0] === 'POISON', 'immunity should be POISON');
+
+  assert(restored.movement.mode === 2, 'mode should be 2 (FLY)');
+  assert(restored.movement.move_cooldown === 0.5, 'move_cooldown should be 0.5');
+  assert(restored.movement.max_jump === 4, 'max_jump should be 4');
+
+  assert(restored.behavior.detection_range === 8, 'detection_range should be 8');
+  assert(restored.behavior.activity_cycle === 1, 'activity_cycle should be 1 (DIURNAL)');
+  assert(restored.behavior.group_behavior === 2, 'group_behavior should be 2 (PACK)');
+  assert(restored.behavior.diet.length === 2, 'diet should have 2 items');
+
+  assert(restored.spawnable.spawn_min === 3, 'spawn_min should be 3');
+  assert(restored.spawnable.spawn_max === 7, 'spawn_max should be 7');
+  assert(restored.spawnable.first_spawn_day === 10, 'first_spawn_day should be 10');
+  assert(restored.spawnable.spawn_min_distance === 5, 'spawn_min_distance should be 5');
+  assert(restored.spawnable.allowed_biomes.length === 2, 'allowed_biomes should have 2 items');
+});
+
 test('PropDefModel — round-trip with no capabilities', () => {
   const original = _makeModel({});
   const raw = propModelToRaw(original);
@@ -1774,6 +2011,11 @@ test('PropDefModel — round-trip with no capabilities', () => {
   assert(restored.movable === null, 'movable should be null');
   assert(restored.station === null, 'station should be null');
   assert(restored.catalogable === null, 'catalogable should be null');
+  assert(restored.endurance === null, 'endurance should be null');
+  assert(restored.movement === null, 'movement should be null');
+  assert(restored.combat === null, 'combat should be null');
+  assert(restored.behavior === null, 'behavior should be null');
+  assert(restored.spawnable === null, 'spawnable should be null');
   assert(restored.id === 'test', 'id should survive');
   assert(restored.display_name === 'Test Prop', 'display_name should survive');
 });
@@ -1846,8 +2088,116 @@ for (const propFile of __propFiles) {
     if (parsed.resourceFields.has('catalogable')) {
       assert(model.catalogable !== null, `${propFile}: catalogable should be parsed`);
     }
+    if (parsed.resourceFields.has('endurance')) {
+      assert(model.endurance !== null, `${propFile}: endurance should be parsed`);
+    }
+    if (parsed.resourceFields.has('movement')) {
+      assert(model.movement !== null, `${propFile}: movement should be parsed`);
+    }
+    if (parsed.resourceFields.has('combat')) {
+      assert(model.combat !== null, `${propFile}: combat should be parsed`);
+    }
+    if (parsed.resourceFields.has('behavior')) {
+      assert(model.behavior !== null, `${propFile}: behavior should be parsed`);
+    }
+    if (parsed.resourceFields.has('spawnable')) {
+      assert(model.spawnable !== null, `${propFile}: spawnable should be parsed`);
+    }
   });
 }
+
+// ============================================================
+// P00108.tres model round-trip: load → serialize → load again → identical model
+// ============================================================
+
+test('PropDefModel — P00108.tres fauna model round-trips through editor', () => {
+  const filePath = join(__propsDir, 'P00108.tres');
+  const text = readFileSync(filePath, 'utf-8');
+
+  // First load
+  const parsed1 = TresParser.parse(text);
+  const subMap1 = new Map();
+  for (const sub of parsed1.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) subData[k] = v.value;
+    subMap1.set(sub.id, subData);
+  }
+  const data1 = {};
+  for (const [key, tv] of parsed1.resourceFields) {
+    data1[key] = tv.type === 'sub_resource' ? (subMap1.get(tv.value) || null) : tv.value;
+  }
+  const model1 = PropDefModel.fromEntry('P00108.tres', { data: data1, raw: parsed1 });
+
+  // Verify we actually loaded the expected fauna data
+  assert(model1.endurance !== null, 'P00108 should have endurance');
+  assert(model1.endurance.hp === 20, 'P00108 hp should be 20');
+  assert(model1.endurance.vulnerabilities[0] === 'FIRE', 'P00108 vulnerability should be FIRE');
+  assert(model1.movement !== null, 'P00108 should have movement');
+  assert(model1.movement.mode === 0, 'P00108 movement mode should be 0 (WALK)');
+  assert(model1.combat !== null, 'P00108 should have combat');
+  assert(model1.behavior !== null, 'P00108 should have behavior');
+  assert(model1.behavior.activity_cycle === 2, 'P00108 activity_cycle should be 2 (NOCTURNAL)');
+  assert(model1.behavior.diet[0] === 'FAUNA', 'P00108 diet should be FAUNA');
+  assert(model1.spawnable !== null, 'P00108 should have spawnable');
+  assert(model1.spawnable.spawn_max === 3, 'P00108 spawn_max should be 3');
+  assert(model1.spawnable.first_spawn_day === 4, 'P00108 first_spawn_day should be 4');
+  assert(model1.catalogable !== null, 'P00108 should have catalogable');
+  assert(model1.tags.length === 2, 'P00108 should have 2 tags');
+
+  // Serialize back to text through the editor model
+  const raw2 = propModelToRaw(model1);
+  const text2 = TresParser.serialize(raw2);
+
+  // Second load
+  const parsed2 = TresParser.parse(text2);
+  const subMap2 = new Map();
+  for (const sub of parsed2.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) subData[k] = v.value;
+    subMap2.set(sub.id, subData);
+  }
+  const data2 = {};
+  for (const [key, tv] of parsed2.resourceFields) {
+    data2[key] = tv.type === 'sub_resource' ? (subMap2.get(tv.value) || null) : tv.value;
+  }
+  const model2 = PropDefModel.fromEntry('P00108.tres', { data: data2, raw: parsed2 });
+
+  // Verify the two models are structurally identical for all fauna caps
+  assert(model2.id === model1.id, 'id should match');
+  assert(model2.display_name === model1.display_name, 'display_name should match');
+  assert(JSON.stringify(model2.tags) === JSON.stringify(model1.tags), 'tags should match');
+
+  assert(model2.catalogable !== null, 'catalogable should survive round-trip');
+  assert(model2.catalogable.scan_time === model1.catalogable.scan_time, 'scan_time should match');
+  assert(model2.catalogable.display_tag === model1.catalogable.display_tag, 'display_tag should match');
+  assert(model2.catalogable.category === model1.catalogable.category, 'category should match');
+
+  assert(model2.endurance !== null, 'endurance should survive round-trip');
+  assert(model2.endurance.hp === model1.endurance.hp, 'endurance.hp should match');
+  assert(JSON.stringify(model2.endurance.vulnerabilities) === JSON.stringify(model1.endurance.vulnerabilities), 'vulnerabilities should match');
+  assert(JSON.stringify(model2.endurance.resistances) === JSON.stringify(model1.endurance.resistances), 'resistances should match');
+  assert(JSON.stringify(model2.endurance.immunities) === JSON.stringify(model1.endurance.immunities), 'immunities should match');
+
+  assert(model2.movement !== null, 'movement should survive round-trip');
+  assert(model2.movement.mode === model1.movement.mode, 'movement.mode should match');
+  assert(model2.movement.move_cooldown === model1.movement.move_cooldown, 'move_cooldown should match');
+  assert(model2.movement.max_jump === model1.movement.max_jump, 'max_jump should match');
+
+  assert(model2.combat !== null, 'combat should survive round-trip');
+
+  assert(model2.behavior !== null, 'behavior should survive round-trip');
+  assert(model2.behavior.detection_range === model1.behavior.detection_range, 'detection_range should match');
+  assert(model2.behavior.activity_cycle === model1.behavior.activity_cycle, 'activity_cycle should match');
+  assert(model2.behavior.group_behavior === model1.behavior.group_behavior, 'group_behavior should match');
+  assert(JSON.stringify(model2.behavior.diet) === JSON.stringify(model1.behavior.diet), 'diet should match');
+
+  assert(model2.spawnable !== null, 'spawnable should survive round-trip');
+  assert(model2.spawnable.spawn_min === model1.spawnable.spawn_min, 'spawn_min should match');
+  assert(model2.spawnable.spawn_max === model1.spawnable.spawn_max, 'spawn_max should match');
+  assert(model2.spawnable.first_spawn_day === model1.spawnable.first_spawn_day, 'first_spawn_day should match');
+  assert(model2.spawnable.spawn_min_distance === model1.spawnable.spawn_min_distance, 'spawn_min_distance should match');
+  assert(JSON.stringify(model2.spawnable.allowed_biomes) === JSON.stringify(model1.spawnable.allowed_biomes), 'allowed_biomes should match');
+});
 
 // ============================================================
 // Test Helpers (task-046b)
