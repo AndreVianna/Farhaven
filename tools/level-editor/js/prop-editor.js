@@ -25,7 +25,7 @@ export class PropDefModel {
     this.tags = [];
 
     // --- Capabilities (null = not enabled) ---
-    /** @type {{ weight: number }|null} */
+    /** @type {{ size: number }|null} */
     this.portable = null;
     /** @type {{ footprint: Array<{x:number,y:number}>, blocks_movement: boolean, rotation_snap: number }|null} */
     this.placeable = null;
@@ -39,6 +39,12 @@ export class PropDefModel {
     this.station = null;
     /** @type {{ scan_time: number, display_tag: string, category: number, display_name: string, description: string, properties: Object }|null} */
     this.catalogable = null;
+
+    // --- Gear base fields ---
+    /** @type {string} One-line summary for tooltips */
+    this.short_description = '';
+    /** @type {string} Full description for detail panels */
+    this.long_description = '';
 
     // --- Inventory ---
     /** @type {number} */
@@ -125,6 +131,8 @@ export class PropDefModel {
 
     // Simple string fields
     model.display_name = _str(d.display_name);
+    model.short_description = _str(d.short_description);
+    model.long_description = _str(d.long_description);
     model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
     model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
     model.tool_slot = _str(d.tool_slot);
@@ -132,7 +140,7 @@ export class PropDefModel {
     // Tags (array of stringname values -> string[])
     model.tags = _strArray(d.tags);
 
-    // Numeric fields
+    // Numeric fields (max_stack still read for round-trip but no longer shown in UI)
     model.max_stack = _num(d.max_stack) || 99;
 
     // Dict fields (TresParser stores as Map<string, TresValue>)
@@ -153,7 +161,7 @@ export class PropDefModel {
     // --- Capabilities (resolved sub_resource data from file-discovery) ---
     if (d.portable && typeof d.portable === 'object') {
       model.portable = {
-        weight: _num(d.portable.weight != null ? d.portable.weight : 1.0),
+        size: _num(d.portable.size != null ? d.portable.size : 1.0),
       };
     }
 
@@ -1231,6 +1239,10 @@ export function renderPropEditor(container, options) {
     // Display Name
     _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
 
+    // -- Descriptions (Gear base fields) --
+    _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
+    _addTextArea(grid, 'Long Description', 'long_description', model.long_description);
+
     // -- Tags --
     _addSeparator(grid, 'Tags');
     grid.appendChild(_createTagEditor(model.tags));
@@ -1239,24 +1251,12 @@ export function renderPropEditor(container, options) {
     _addSeparator(grid, 'Placement Defaults');
     _addOriginCategoryFields(grid, model);
 
-    // -- Footprint (legacy top-level) --
-    _addSeparator(grid, 'Footprint (legacy)');
-    grid.appendChild(_createFootprintEditor(model.footprint));
-
-    // -- Gameplay --
-    _addSeparator(grid, 'Gameplay');
-    _addField(grid, 'Tool Slot', 'tool_slot', 'text', model.tool_slot);
-
-    // -- Inventory --
-    _addSeparator(grid, 'Inventory');
-    _addField(grid, 'Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' });
-
     // -- Capabilities --
     _addSeparator(grid, 'Capabilities');
 
     // PORTABLE
     grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
-      _addField(panel, 'Weight', 'cap_portable_weight', 'number', model.portable ? model.portable.weight : 1.0, { step: 'any', min: '0' });
+      _addField(panel, 'Size (slots)', 'cap_portable_size', 'number', model.portable ? model.portable.size : 1.0, { step: 'any', min: '0' });
     }));
 
     // PLACEABLE
@@ -1373,6 +1373,29 @@ function _addField(grid, labelText, name, type, value, attrs) {
 
   grid.appendChild(label);
   grid.appendChild(input);
+}
+
+/**
+ * Add a labeled textarea to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string} value
+ * @returns {void}
+ */
+function _addTextArea(grid, labelText, name, value) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+
+  const textarea = document.createElement('textarea');
+  textarea.name = name;
+  textarea.value = value || '';
+  textarea.classList.add('prop-input');
+  textarea.rows = 3;
+
+  grid.appendChild(label);
+  grid.appendChild(textarea);
 }
 
 /**
@@ -1557,20 +1580,21 @@ export function collectPropFormData(formElement) {
   model.id = val('id').trim();
   model.display_name = val('display_name').trim();
 
+  // Gear base fields
+  model.short_description = val('short_description').trim();
+  model.long_description = val('long_description').trim();
+
   // Tags
   model.tags = _collectTagData(formElement);
 
   // Placement defaults (editor-only)
   model.prop_category = val('prop_category') || 'plant';
   model.prop_origin = val('prop_origin') || 'natural';
-  model.tool_slot = val('tool_slot').trim();
-
-  // Inventory
-  model.max_stack = intVal('max_stack') || 99;
+  // tool_slot and max_stack preserved from model (not in form)
 
   // --- Capabilities ---
   if (isChecked('cap_portable_enabled')) {
-    model.portable = { weight: floatVal('cap_portable_weight') };
+    model.portable = { size: floatVal('cap_portable_size') };
   }
 
   if (isChecked('cap_placeable_enabled')) {
@@ -1621,8 +1645,7 @@ export function collectPropFormData(formElement) {
   model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
   model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
 
-  // Legacy footprint (top-level)
-  model.footprint = _collectFootprintData(formElement);
+  // Legacy footprint preserved from model (no longer in form UI)
 
   return model;
 }
@@ -1759,14 +1782,10 @@ export function validatePropForm(model, isNew) {
     errors.push('Display Name is required');
   }
 
-  if (model.max_stack < 1) {
-    errors.push('Max Stack must be >= 1');
-  }
-
   // --- Capability validations ---
   if (model.portable) {
-    if (model.portable.weight < 0) {
-      errors.push('PORTABLE weight must be >= 0');
+    if (model.portable.size < 0) {
+      errors.push('PORTABLE size must be >= 0');
     }
   }
 
@@ -1800,6 +1819,8 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
+    short_description: model.short_description,
+    long_description: model.long_description,
     tags: model.tags,
     portable: model.portable,
     placeable: model.placeable,
@@ -1862,7 +1883,7 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.portable.weight !== 1.0) subFields.set('weight', { type: 'float', value: model.portable.weight });
+    if (model.portable.size !== 1.0) subFields.set('size', { type: 'float', value: model.portable.size });
     capEntries.push({ capName: 'portable', subId: 'portable_1', subFields });
     extId++;
   }
@@ -1971,6 +1992,10 @@ export function propModelToRaw(model) {
   // StringName fields
   fields.set('id', { type: 'stringname', value: model.id });
   fields.set('display_name', { type: 'string', value: model.display_name });
+
+  // Gear base fields (only when non-empty)
+  if (model.short_description) fields.set('short_description', { type: 'string', value: model.short_description });
+  if (model.long_description) fields.set('long_description', { type: 'string', value: model.long_description });
 
   // Tags
   if (model.tags && model.tags.length > 0) {

@@ -142,7 +142,7 @@ func _ensure_prop_def(id: StringName) -> void:
 	def.id = id
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.weight = 0.1
+	cap.size = 0.1
 	def.portable = cap
 	PropRegistry._defs[id] = def
 

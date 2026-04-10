@@ -54,10 +54,10 @@ func test_has_tag_false_when_empty() -> void:
 	var def := _PropDef.new()
 	assert_bool(def.has_tag(&"SOURCE")).is_false()
 
-func test_portable_weight() -> void:
+func test_portable_size() -> void:
 	var cap := _PortableCap.new()
-	cap.weight = 2.5
-	assert_float(cap.weight).is_equal_approx(2.5, 0.0001)
+	cap.size = 2.5
+	assert_float(cap.size).is_equal_approx(2.5, 0.0001)
 
 func test_placeable_is_marker() -> void:
 	# PlaceableCap is a pure marker — no fields.
@@ -84,10 +84,10 @@ func test_load_campfire_tags() -> void:
 	assert_bool(def.has_tag(&"STRUCTURE")).is_true()
 	assert_bool(def.has_tag(&"STATION.fire")).is_true()
 
-func test_load_axe_portable_weight() -> void:
+func test_load_axe_portable_size() -> void:
 	var def: Resource = load("res://data/props/P00201.tres")
 	assert_bool(def.has_capability(&"portable")).is_true()
-	assert_float(def.portable.weight).is_equal_approx(2.0, 0.0001)
+	assert_float(def.portable.size).is_equal_approx(2.0, 0.0001)
 
 func test_load_berry_tags() -> void:
 	var def: Resource = load("res://data/props/P00020.tres")

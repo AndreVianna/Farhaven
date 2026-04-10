@@ -51,7 +51,7 @@ func _init() -> void:
 func _get_item_weight(type: StringName) -> float:
 	var def: _PropDef = PropRegistry.get_def(type)
 	if def != null and def.portable != null:
-		return def.portable.weight
+		return def.portable.size
 	return 1.0
 
 

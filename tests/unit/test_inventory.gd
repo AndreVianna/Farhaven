@@ -111,8 +111,8 @@ func test_prop_defs_have_portable_capability() -> void:
 		assert_bool(def.portable != null).override_failure_message(
 			"%s must have PORTABLE capability" % id
 		).is_true()
-		assert_bool(def.portable.weight > 0.0).override_failure_message(
-			"%s PORTABLE.weight must be > 0" % id
+		assert_bool(def.portable.size > 0.0).override_failure_message(
+			"%s PORTABLE.size must be > 0" % id
 		).is_true()
 
 
@@ -723,5 +723,5 @@ func test_item_without_portable_defaults_to_weight_1() -> void:
 	# default weight of 1.0 would apply. We verify _get_item_weight
 	# by checking the public weight_display after adding a known-weight item.
 	# The internal _get_item_weight is tested through add_item behavior.
-	_inv.add_item(ID_WOOD, 1)  # wood has portable.weight = 1.0
+	_inv.add_item(ID_WOOD, 1)  # wood has portable.size = 1.0
 	assert_float(_inv.get_current_weight()).is_equal_approx(1.0, 0.001)

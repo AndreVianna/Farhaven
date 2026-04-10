@@ -90,12 +90,12 @@ func register_steps(registry) -> void:
 					"PropDef '%s' (%s) has tag '%s' but no catalogable cap" % [def.id, def.display_name, tag])
 	)
 
-	registry.then("every PropDef with a portable capability has weight greater than {int}", func(ctx, threshold: int):
+	registry.then("every PropDef with a portable capability has size greater than {int}", func(ctx, threshold: int):
 		var defs: Array = ctx.get_value("propdefs", [])
 		for def in defs:
 			if def.portable != null:
-				ctx.assert_greater(def.portable.weight, float(threshold),
-					"PropDef '%s' (%s) has portable weight <= %d" % [def.id, def.display_name, threshold])
+				ctx.assert_greater(def.portable.size, float(threshold),
+					"PropDef '%s' (%s) has portable size <= %d" % [def.id, def.display_name, threshold])
 	)
 
 	registry.then("every PropDef tagged {string} has a placeable capability", func(ctx, tag: String):

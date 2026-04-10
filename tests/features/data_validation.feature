@@ -20,9 +20,9 @@ Feature: Data Integrity
     Given all PropDefs are loaded
     Then every PropDef tagged "SOURCE" has a catalogable capability
 
-  Scenario: Portable props have a positive weight
+  Scenario: Portable props have a positive size
     Given all PropDefs are loaded
-    Then every PropDef with a portable capability has weight greater than 0
+    Then every PropDef with a portable capability has size greater than 0
 
   Scenario: Structure props have placeable capability
     Given all PropDefs are loaded

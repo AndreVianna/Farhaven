@@ -1303,7 +1303,7 @@ test('TresParser — parse file with sub_resource blocks', () => {
     '',
     '[sub_resource type="Resource" id="portable_1"]',
     'script = ExtResource("2_portable")',
-    'weight = 2.5',
+    'size = 2.5',
     '',
     '[resource]',
     'script = ExtResource("1_script")',
@@ -1316,8 +1316,8 @@ test('TresParser — parse file with sub_resource blocks', () => {
   assert(file.subResources.length === 1, 'should have 1 sub_resource');
   assert(file.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
   assert(file.subResources[0].type === 'Resource', 'sub_resource type should be Resource');
-  assert(file.subResources[0].fields.get('weight').type === 'float', 'weight should be float');
-  assert(file.subResources[0].fields.get('weight').value === 2.5, 'weight value should be 2.5');
+  assert(file.subResources[0].fields.get('size').type === 'float', 'size should be float');
+  assert(file.subResources[0].fields.get('size').value === 2.5, 'size value should be 2.5');
 
   const portableRef = file.resourceFields.get('portable');
   assert(portableRef.type === 'sub_resource', 'portable field should be sub_resource reference');
@@ -1444,11 +1444,11 @@ test('PropDefModel — fromEntry reads tags', () => {
 
 test('PropDefModel — fromEntry reads portable capability', () => {
   const entry = _makePropEntry({
-    portable: { weight: 2.5 },
+    portable: { size: 2.5 },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.portable !== null, 'portable should not be null');
-  assert(model.portable.weight === 2.5, 'weight should be 2.5');
+  assert(model.portable.size === 2.5, 'size should be 2.5');
 });
 
 test('PropDefModel — fromEntry reads placeable capability', () => {
@@ -1529,17 +1529,17 @@ test('PropDefModel — fromEntry null capabilities when not present', () => {
 // validatePropForm — capability validation (task-046b)
 // ============================================================
 
-test('validatePropForm — PORTABLE.weight >= 0', () => {
-  const model = _makeModel({ portable: { weight: -1 } });
+test('validatePropForm — PORTABLE.size >= 0', () => {
+  const model = _makeModel({ portable: { size: -1 } });
   const result = validatePropForm(model, false);
   assert(!result.valid, 'should be invalid');
-  assert(result.errors.some(e => e.includes('PORTABLE weight')), 'should mention PORTABLE weight');
+  assert(result.errors.some(e => e.includes('PORTABLE size')), 'should mention PORTABLE size');
 });
 
-test('validatePropForm — PORTABLE.weight = 0 is valid', () => {
-  const model = _makeModel({ portable: { weight: 0 } });
+test('validatePropForm — PORTABLE.size = 0 is valid', () => {
+  const model = _makeModel({ portable: { size: 0 } });
   const result = validatePropForm(model, false);
-  assert(result.valid, 'weight 0 should be valid');
+  assert(result.valid, 'size 0 should be valid');
 });
 
 test('validatePropForm — PLACEABLE marker is always valid', () => {
@@ -1595,7 +1595,7 @@ test('propModelToRaw — serializes tags', () => {
 });
 
 test('propModelToRaw — serializes portable as sub_resource', () => {
-  const model = _makeModel({ portable: { weight: 2.0 } });
+  const model = _makeModel({ portable: { size: 2.0 } });
   const raw = propModelToRaw(model);
   assert(raw.subResources.length === 1, 'should have 1 sub_resource');
   assert(raw.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
@@ -1606,7 +1606,7 @@ test('propModelToRaw — serializes portable as sub_resource', () => {
 
 test('propModelToRaw — serializes multiple capabilities', () => {
   const model = _makeModel({
-    portable: { weight: 1.0 },
+    portable: { size: 1.0 },
     placeable: {},
     catalogable: { scan_time: 1.0, display_tag: 'flora', category: 0, display_name: '', description: '', properties: {} },
   });
@@ -1647,7 +1647,7 @@ test('propModelToRaw — serialized output is valid .tres', () => {
 test('PropDefModel — full round-trip with capabilities', () => {
   const original = _makeModel({
     tags: ['SOURCE', 'WOOD', 'BURNABLE.log'],
-    portable: { weight: 1.5 },
+    portable: { size: 1.5 },
     placeable: {},
     container: { capacity_weight: 20, accepts_filter: ['BURNABLE'] },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
@@ -1686,7 +1686,7 @@ test('PropDefModel — full round-trip with capabilities', () => {
   // Verify capabilities survived
   assert(restored.tags.length === 3, `tags should have 3 items, got ${restored.tags.length}`);
   assert(restored.portable !== null, 'portable should survive');
-  assert(restored.portable.weight === 1.5, 'portable weight should be 1.5');
+  assert(restored.portable.size === 1.5, 'portable size should be 1.5');
   assert(restored.placeable !== null, 'placeable should survive');
   assert(restored.container !== null, 'container should survive');
   assert(restored.container.capacity_weight === 20, 'capacity_weight should be 20');
