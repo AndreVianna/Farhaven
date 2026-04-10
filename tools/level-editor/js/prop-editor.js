@@ -2162,9 +2162,24 @@ export class EditPropDefCommand {
     const raw = propModelToRaw(this._newModel);
     const content = TresParser.serialize(raw);
 
+    // Resolve sub_resource references (same logic as _parseTresFile in file-discovery)
+    const subResourceMap = new Map();
+    if (raw.subResources) {
+      for (const sub of raw.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) {
+          subData[k] = v.value;
+        }
+        subResourceMap.set(sub.id, subData);
+      }
+    }
     const data = {};
     for (const [key, tv] of raw.resourceFields) {
-      data[key] = tv.value;
+      if (tv.type === 'sub_resource') {
+        data[key] = subResourceMap.get(tv.value) || null;
+      } else {
+        data[key] = tv.value;
+      }
     }
 
     const entry = ProjectContext.files.props.get(this._filename);
