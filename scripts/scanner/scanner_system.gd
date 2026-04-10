@@ -118,7 +118,9 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		_scan_target_entry_id = best_entry_id
 		_scan_progress = 0.0
 		var entry = _catalog.get_entry(best_entry_id)
-		var category: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+		var category: int = _Catalog.CatalogCategory.FLORA
+		if entry != null and entry.catalogable != null:
+			category = entry.catalogable.category
 		_scan_duration = SCAN_DURATIONS.get(category, 2.0)
 		# Apply scanning survival cost + start drain
 		var survival: Node = _get_survival_system()
@@ -146,7 +148,9 @@ func _complete_scan() -> void:
 	_catalog.catalog_entry(entry_id)
 
 	var entry = _catalog.get_entry(entry_id)
-	var category: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+	var category: int = _Catalog.CatalogCategory.FLORA
+	if entry != null and entry.catalogable != null:
+		category = entry.catalogable.category
 
 	scan_completed.emit(entry_id)
 	entry_cataloged.emit(entry_id, category)
@@ -191,7 +195,7 @@ func _check_passive_identification(coords: Vector2i) -> void:
 		if not PropRegistry.has_def(prop.type):
 			continue
 		var def = PropRegistry.get_def(prop.type)
-		if def.catalogable == null or String(def.catalogable.display_name) == "":
+		if def.catalogable == null or String(def.display_name) == "":
 			continue
 		var entry_id: StringName = def.id
 		var state: int = _catalog.get_knowledge_state(entry_id)
@@ -203,7 +207,9 @@ func _check_passive_identification(coords: Vector2i) -> void:
 				element_encountered.emit(coords, entry_id, label)
 			_Catalog.KnowledgeState.UNKNOWN:
 				var entry = _catalog.get_entry(entry_id)
-				var cat: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+				var cat: int = _Catalog.CatalogCategory.FLORA
+				if entry != null and entry.catalogable != null:
+					cat = entry.catalogable.category
 				element_unknown.emit(coords, entry_id, cat)
 	for prop in tile.get_anomalies():
 		var anomaly_id: StringName = prop.type

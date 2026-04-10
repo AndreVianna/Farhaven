@@ -12,14 +12,13 @@ script = ExtResource("3_catalogable")
 scan_time = 2.5
 display_tag = &"minerals"
 category = 2
-display_name = "Crystal Cluster"
-description = "Prismatic crystals that hum faintly. Their purpose is unknown."
 properties = {"resource_type": &"crystal", "tool_required": &"stone_pickaxe"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00007"
 display_name = "Crystal Cluster"
+short_description = "Prismatic crystals that hum faintly. Their purpose is unknown."
 tags = [&"SOURCE", &"CRYSTAL"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

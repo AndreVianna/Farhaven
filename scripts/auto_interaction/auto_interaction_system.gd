@@ -325,7 +325,7 @@ func _try_legacy_catalog_gate(prop: Resource, candidates: Array, tool_gated: Arr
 	if not PropRegistry.has_def(prop.type):
 		return false
 	var def = PropRegistry.get_def(prop.type)
-	if def.catalogable == null or String(def.catalogable.display_name) == "":
+	if def.catalogable == null or String(def.display_name) == "":
 		return false
 	var entry_id: StringName = def.id
 	if not _catalog.is_cataloged(entry_id):

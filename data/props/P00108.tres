@@ -1,0 +1,73 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="2_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/endurance_cap.gd" id="3_endurance"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/movement_cap.gd" id="4_movement"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/combat_cap.gd" id="5_combat"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/behavior_cap.gd" id="6_behavior"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/spawnable_cap.gd" id="7_spawnable"]
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("2_catalogable")
+scan_time = 3.0
+display_tag = &"fauna"
+category = 1
+properties = {"hostile": true, "damage": 10, "hp": 30}
+
+[sub_resource type="Resource" id="endurance_1"]
+script = ExtResource("3_endurance")
+hp = 30
+vulnerabilities = [&"FIRE"]
+resistances = []
+immunities = []
+
+[sub_resource type="Resource" id="movement_1"]
+script = ExtResource("4_movement")
+mode = 0
+move_cooldown = 1.0
+max_jump = 1
+
+[sub_resource type="Resource" id="combat_1"]
+script = ExtResource("5_combat")
+attacks = []
+defenses = []
+
+[sub_resource type="Resource" id="behavior_1"]
+script = ExtResource("6_behavior")
+detection_range = 2
+activity_cycle = 2
+group_behavior = 0
+diet = [&"FAUNA"]
+reactions = []
+
+[sub_resource type="Resource" id="spawnable_1"]
+script = ExtResource("7_spawnable")
+spawn_min = 1
+spawn_max = 3
+first_spawn_day = 4
+spawn_min_distance = 3
+allowed_biomes = []
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00108"
+display_name = "Thornback"
+short_description = "A heavily armoured quadruped with spiked carapace."
+long_description = "Highly aggressive when approached. Active at night, hunts in solo. Vulnerable to fire."
+tags = [&"FAUNA", &"HOSTILE"]
+catalogable = SubResource("catalogable_1")
+endurance = SubResource("endurance_1")
+movement = SubResource("movement_1")
+combat = SubResource("combat_1")
+behavior = SubResource("behavior_1")
+spawnable = SubResource("spawnable_1")
+max_stack = 1
+origin = 0
+prop_category = 2
+placeholder_mesh_type = &"sphere"
+placeholder_params = { "radius": 0.3 }
+placeholder_color = Color(0.5, 0.2, 0.15, 1.0)
+placeholder_depleted_type = &"sphere"
+placeholder_depleted_params = { "radius": 0.3 }
+placeholder_depleted_color = Color(0.4, 0.2, 0.15, 1.0)

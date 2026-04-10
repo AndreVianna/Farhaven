@@ -65,13 +65,22 @@ func _ready() -> void:
 
 
 ## Setup for CATALOGED entries — full info display.
-## Accepts CatalogableCap or CatalogEntry (fauna fallback).
+## Accepts a PropDef whose `catalogable` capability provides the catalog data.
 func setup(entry: Resource) -> void:
 	_is_encountered = false
 	_name_label.text = entry.display_name
-	_desc_label.text = entry.description
+	# Prefer long description; fall back to short description.
+	var desc: String = ""
+	if entry.long_description != "":
+		desc = entry.long_description
+	elif entry.short_description != "":
+		desc = entry.short_description
+	_desc_label.text = desc
 	_props_label.text = _format_properties(entry)
-	_icon_rect.color = CATEGORY_COLORS.get(entry.category, Color(0.5, 0.5, 0.5))
+	var cat: int = 0
+	if entry.catalogable != null:
+		cat = entry.catalogable.category
+	_icon_rect.color = CATEGORY_COLORS.get(cat, Color(0.5, 0.5, 0.5))
 
 
 ## Setup for ENCOUNTERED entries — minimal display, no details.
@@ -89,28 +98,31 @@ func is_encountered() -> bool:
 
 func _format_properties(entry: Resource) -> String:
 	var parts: Array[String] = []
-	match entry.category:
+	if entry.catalogable == null:
+		return ""
+	var props: Dictionary = entry.catalogable.properties
+	match entry.catalogable.category:
 		0:  # FLORA
-			if entry.properties.get("edible", false):
+			if props.get("edible", false):
 				parts.append("Edible")
-			if entry.properties.get("toxic", false):
+			if props.get("toxic", false):
 				parts.append("Toxic")
-			var res: StringName = entry.properties.get("prop_type", &"")
+			var res: StringName = props.get("prop_type", &"")
 			if res != &"":
 				parts.append("Prop: %s" % String(res).replace("_", " "))
 		1:  # FAUNA
-			if entry.properties.get("hostile", false):
+			if props.get("hostile", false):
 				parts.append("Hostile")
 			else:
 				parts.append("Passive")
-			var dmg: int = entry.properties.get("damage", 0)
+			var dmg: int = props.get("damage", 0)
 			if dmg > 0:
 				parts.append("DMG %d" % dmg)
 		2:  # MINERAL
-			var res: StringName = entry.properties.get("prop_type", &"")
+			var res: StringName = props.get("prop_type", &"")
 			if res != &"":
 				parts.append(String(res).capitalize())
-			var tool: StringName = entry.properties.get("tool_required", &"")
+			var tool: StringName = props.get("tool_required", &"")
 			if tool != &"":
 				parts.append("Needs: %s" % String(tool).replace("_", " "))
 		3:  # ANOMALY

@@ -189,13 +189,14 @@ func test_load_small_tree_catalog_data() -> void:
 	var def: Resource = load("res://data/props/P00001.tres")
 	assert_bool(def.catalogable != null).is_true()
 	assert_str(String(def.catalogable.display_tag)).is_equal("flora")
-	assert_str(def.catalogable.display_name).is_equal("Thornwood Tree")
+	# display_name now lives on the PropDef (Gear base), not the catalogable cap.
+	assert_str(def.display_name).is_equal("Thornwood Tree")
 	assert_int(def.catalogable.category).is_equal(0)
 
 
 # --- Validation: catalogable consistency ---
 
-## Every PropDef with CATALOGABLE capability and non-empty display_name should be
+## Every PropDef with CATALOGABLE capability and non-empty Gear display_name should be
 ## registered in the catalog. This catches the bug where 10001 (Anomaly Fragment)
 ## had no catalog data and was invisible to the scanner.
 func test_all_catalogable_props_have_display_name() -> void:
@@ -210,7 +211,7 @@ func test_all_catalogable_props_have_display_name() -> void:
 			var def: Resource = load("res://data/props/" + fname)
 			var is_source: bool = def.has_tag(&"SOURCE") or def.has_tag(&"ANOMALY")
 			if is_source and def.catalogable != null:
-				assert_bool(String(def.catalogable.display_name) != "").is_true() \
+				assert_bool(String(def.display_name) != "").is_true() \
 					.override_failure_message(
 						"PropDef '%s' (%s) has CATALOGABLE but empty display_name — will be invisible to scanner"
 						% [def.id, fname])
@@ -218,7 +219,7 @@ func test_all_catalogable_props_have_display_name() -> void:
 
 
 ## Every source/anomaly prop (tagged SOURCE or ANOMALY) should have a CATALOGABLE
-## capability with a non-empty display_name.
+## capability and a non-empty Gear display_name.
 ## This ensures no world-placed scannable prop is invisible to the scanner.
 ## Structures (tagged STRUCTURE, origin=CRAFTED) don't need catalog entries.
 func test_all_source_props_have_catalogable() -> void:
@@ -233,7 +234,7 @@ func test_all_source_props_have_catalogable() -> void:
 			var def: Resource = load("res://data/props/" + fname)
 			var is_source: bool = def.has_tag(&"SOURCE") or def.has_tag(&"ANOMALY")
 			if is_source:
-				assert_bool(def.catalogable != null and String(def.catalogable.display_name) != "").is_true() \
+				assert_bool(def.catalogable != null and String(def.display_name) != "").is_true() \
 					.override_failure_message(
 						"PropDef '%s' (%s) is tagged SOURCE/ANOMALY but has no CATALOGABLE with display_name — will be invisible to scanner"
 						% [def.id, fname])

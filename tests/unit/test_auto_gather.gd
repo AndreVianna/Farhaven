@@ -195,7 +195,7 @@ func _catalog_prop(type: StringName) -> void:
 	if not PropRegistry.has_def(type):
 		return
 	var def = PropRegistry.get_def(type)
-	if def.catalogable != null and String(def.catalogable.display_name) != "":
+	if def.catalogable != null and String(def.display_name) != "":
 		_catalog._knowledge[def.id] = _Catalog.KnowledgeState.CATALOGED
 
 

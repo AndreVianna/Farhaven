@@ -12,14 +12,13 @@ script = ExtResource("3_catalogable")
 scan_time = 1.5
 display_tag = &"minerals"
 category = 2
-display_name = "Stone Deposit"
-description = "Common grey rock. Good for basic tools and construction."
 properties = {"resource_type": &"stone", "tool_required": &""}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00005"
-display_name = "Stone Boulder"
+display_name = "Stone Deposit"
+short_description = "Common grey rock. Good for basic tools and construction."
 tags = [&"SOURCE", &"STONE"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

@@ -9,18 +9,23 @@ const _CatalogEntryUIPkg = preload("res://ui/catalog_entry_ui.gd")
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
+const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 var _panel: PanelContainer = null
 var _panel_opened_count: int = 0
 
 
-func _make_entry(id: StringName, name: String, category: int) -> CatalogableCap:
-	var e := _CatalogableCap.new()
-	e.display_name = name
-	e.description = "Test description."
-	e.category = category
-	e.properties = {}
-	return e
+## Build a minimal PropDef test double carrying a CatalogableCap so the
+## CatalogEntryUI can render it. Mirrors what the catalog would hand over.
+func _make_entry(id: StringName, name: String, category: int) -> PropDef:
+	var def := _PropDef.new()
+	def.id = id
+	def.display_name = name
+	def.short_description = "Test description."
+	def.catalogable = _CatalogableCap.new()
+	def.catalogable.category = category
+	def.catalogable.properties = {}
+	return def
 
 
 func before_test() -> void:
@@ -48,7 +53,7 @@ func test_catalog_entry_ui_setup_name() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00004", "Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
+	e.catalogable.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_str(entry_ui._name_label.text).is_equal("Berry Bush")
 	entry_ui.queue_free()
@@ -58,8 +63,8 @@ func test_catalog_entry_ui_setup_description() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00004", "Berry Bush", 0)
-	e.description = "A tasty red berry."
-	e.properties = {}
+	e.short_description = "A tasty red berry."
+	e.catalogable.properties = {}
 	entry_ui.setup(e)
 	assert_str(entry_ui._desc_label.text).is_equal("A tasty red berry.")
 	entry_ui.queue_free()
@@ -69,7 +74,7 @@ func test_catalog_entry_ui_flora_properties_edible() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00004", "Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
+	e.catalogable.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Edible")).is_true()
 	entry_ui.queue_free()
@@ -79,7 +84,7 @@ func test_catalog_entry_ui_flora_properties_toxic() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00008", "Toxic Berry Bush", 0)
-	e.properties = {"edible": true, "toxic": true, "prop_type": &"toxic_berries"}
+	e.catalogable.properties = {"edible": true, "toxic": true, "prop_type": &"toxic_berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Toxic")).is_true()
 	entry_ui.queue_free()
@@ -88,8 +93,8 @@ func test_catalog_entry_ui_flora_properties_toxic() -> void:
 func test_catalog_entry_ui_fauna_hostile_shows_hostile() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"thornback", "Thornback", 1)
-	e.properties = {"hostile": true, "damage": 10, "hp": 20}
+	var e := _make_entry(&"P00108", "Thornback", 1)
+	e.catalogable.properties = {"hostile": true, "damage": 10, "hp": 20}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Hostile")).is_true()
 	entry_ui.queue_free()
@@ -99,7 +104,7 @@ func test_catalog_entry_ui_mineral_shows_tool() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00006", "Iron Deposit", 2)
-	e.properties = {"prop_type": &"ore", "tool_required": &"stone_pickaxe"}
+	e.catalogable.properties = {"prop_type": &"ore", "tool_required": &"stone_pickaxe"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.to_lower().contains("pickaxe")).is_true()
 	entry_ui.queue_free()
@@ -146,7 +151,7 @@ func test_catalog_entry_ui_cataloged_not_encountered() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
 	var e := _make_entry(&"P00004", "Berry Bush", 0)
-	e.properties = {}
+	e.catalogable.properties = {}
 	entry_ui.setup(e)
 	assert_bool(entry_ui.is_encountered()).is_false()
 	entry_ui.queue_free()
@@ -238,7 +243,7 @@ func test_catalog_panel_counter_counts_encountered_plus_cataloged() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
 	cat.catalog_entry(&"P00004")
-	cat.encounter_entry(&"thornback", "Hostile")
+	cat.encounter_entry(&"P00108", "Hostile")
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_str(_panel._counter_label.text).is_equal("2 entries")
@@ -258,7 +263,7 @@ func test_catalog_panel_flora_tab_shows_flora_entries() -> void:
 func test_catalog_panel_wrong_category_not_in_flora() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"thornback")  # FAUNA — should NOT appear in flora tab
+	cat.catalog_entry(&"P00108")  # FAUNA — should NOT appear in flora tab
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_int(_panel._flora_list.get_child_count()).is_equal(0)
@@ -267,7 +272,7 @@ func test_catalog_panel_wrong_category_not_in_flora() -> void:
 func test_catalog_panel_encountered_fauna_shows_in_fauna_tab() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.encounter_entry(&"thornback", "Hostile")
+	cat.encounter_entry(&"P00108", "Hostile")
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_int(_panel._fauna_list.get_child_count()).is_equal(1)
@@ -276,7 +281,7 @@ func test_catalog_panel_encountered_fauna_shows_in_fauna_tab() -> void:
 func test_catalog_panel_encountered_entry_uses_encountered_display() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.encounter_entry(&"thornback", "Hostile")
+	cat.encounter_entry(&"P00108", "Hostile")
 	_panel.set_catalog(cat)
 	_panel.open()
 	# The entry in the fauna list should be an encountered entry
@@ -293,7 +298,7 @@ func test_catalog_panel_updates_on_entry_encountered() -> void:
 	_panel.open()
 	assert_int(_panel._fauna_list.get_child_count()).is_equal(0)
 
-	cat.encounter_entry(&"thornback", "Hostile")
+	cat.encounter_entry(&"P00108", "Hostile")
 
 	assert_int(_panel._fauna_list.get_child_count()).is_equal(1)
 	assert_str(_panel._counter_label.text).is_equal("1 entry")

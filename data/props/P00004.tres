@@ -12,14 +12,13 @@ script = ExtResource("3_catalogable")
 scan_time = 1.0
 display_tag = &"flora"
 category = 0
-display_name = "Berry Bush"
-description = "Small purple berries with a tart flavour. Edible and safe."
 properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00004"
 display_name = "Berry Bush"
+short_description = "Small purple berries with a tart flavour. Edible and safe."
 tags = [&"SOURCE", &"PLANT"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

@@ -12,14 +12,13 @@ script = ExtResource("3_catalogable")
 scan_time = 1.0
 display_tag = &"flora"
 category = 0
-display_name = "Toxic Berry Bush"
-description = "Red-streaked berries that smell wrong. Consuming them will hurt you."
 properties = {"edible": false, "toxic": true, "resource_type": &"toxic_berries"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00008"
-display_name = "Toxic Berries Bush"
+display_name = "Toxic Berry Bush"
+short_description = "Red-streaked berries that smell wrong. Consuming them will hurt you."
 tags = [&"SOURCE", &"PLANT"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

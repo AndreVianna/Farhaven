@@ -387,22 +387,22 @@ func test_scan_duration_anomaly_is_3s() -> void:
 # --- Surprise encounter: UNKNOWN hostile → instant ENCOUNTERED ---
 
 func test_surprise_encounter_uncataloged_hostile() -> void:
-	_system.on_fauna_attacked_player(1, 10, &"thornback")
+	_system.on_fauna_attacked_player(1, 10, &"P00108")
 
-	assert_str(String(_surprise_entry_id)).is_equal("thornback")
-	assert_str(String(_encountered_entry_id)).is_equal("thornback")
+	assert_str(String(_surprise_entry_id)).is_equal("P00108")
+	assert_str(String(_encountered_entry_id)).is_equal("P00108")
 	assert_str(_encountered_label).is_equal("Hostile")
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
-	assert_bool(_system._catalog.is_encountered(&"thornback")).is_true()
+	assert_bool(_system._catalog.is_encountered(&"P00108")).is_true()
 
 
 func test_surprise_encounter_already_known_is_noop() -> void:
-	_system._catalog.encounter_entry(&"thornback", "Hostile")
+	_system._catalog.encounter_entry(&"P00108", "Hostile")
 	_encountered_entry_id = &""
 	_surprise_entry_id = &""
 
-	_system.on_fauna_attacked_player(1, 10, &"thornback")
+	_system.on_fauna_attacked_player(1, 10, &"P00108")
 	assert_str(String(_surprise_entry_id)).is_equal("")
 
 
@@ -507,9 +507,9 @@ func test_knowledge_state_changed_on_scan_complete() -> void:
 
 
 func test_knowledge_state_changed_on_surprise_encounter() -> void:
-	_system.on_fauna_attacked_player(1, 10, &"thornback")
+	_system.on_fauna_attacked_player(1, 10, &"P00108")
 
-	assert_str(String(_ksc_entry_id)).is_equal("thornback")
+	assert_str(String(_ksc_entry_id)).is_equal("P00108")
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
 

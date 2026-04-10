@@ -38,7 +38,7 @@ export class PropDefModel {
     this.movable = null;
     /** @type {{ station_tags: string[] }|null} */
     this.station = null;
-    /** @type {{ scan_time: number, display_tag: string, category: number, display_name: string, description: string, properties: Object }|null} */
+    /** @type {{ scan_time: number, display_tag: string, category: number, properties: Object }|null} */
     this.catalogable = null;
 
     // --- Gear base fields ---
@@ -203,8 +203,6 @@ export class PropDefModel {
         scan_time: _num(d.catalogable.scan_time != null ? d.catalogable.scan_time : 1.0),
         display_tag: _str(d.catalogable.display_tag),
         category: _num(d.catalogable.category),
-        display_name: _str(d.catalogable.display_name),
-        description: _str(d.catalogable.description),
         properties: _dictToObj(d.catalogable.properties),
       };
     }
@@ -1301,8 +1299,6 @@ export function renderPropEditor(container, options) {
       _addField(panel, 'Scan Time', 'cap_catalogable_scan_time', 'number', model.catalogable ? model.catalogable.scan_time : 1.0, { step: 'any', min: '0' });
       _addField(panel, 'Display Tag', 'cap_catalogable_display_tag', 'text', model.catalogable ? model.catalogable.display_tag : '');
       _addField(panel, 'Category', 'cap_catalogable_category', 'number', model.catalogable ? model.catalogable.category : 0, { step: '1', min: '0', max: '3' });
-      _addField(panel, 'Display Name', 'cap_catalogable_display_name', 'text', model.catalogable ? model.catalogable.display_name : '');
-      _addField(panel, 'Description', 'cap_catalogable_description', 'text', model.catalogable ? model.catalogable.description : '');
     }));
 
     body.appendChild(grid);
@@ -1655,8 +1651,6 @@ export function collectPropFormData(formElement) {
       scan_time: floatVal('cap_catalogable_scan_time'),
       display_tag: val('cap_catalogable_display_tag').trim(),
       category: intVal('cap_catalogable_category'),
-      display_name: val('cap_catalogable_display_name').trim(),
-      description: val('cap_catalogable_description').trim(),
       properties: {},  // Properties editing not yet supported in UI
     };
   }
@@ -1984,8 +1978,6 @@ export function propModelToRaw(model) {
     if (model.catalogable.scan_time !== 1.0) subFields.set('scan_time', { type: 'float', value: model.catalogable.scan_time });
     if (model.catalogable.display_tag) subFields.set('display_tag', { type: 'stringname', value: model.catalogable.display_tag });
     if (model.catalogable.category !== 0) subFields.set('category', { type: 'int', value: model.catalogable.category });
-    if (model.catalogable.display_name) subFields.set('display_name', { type: 'string', value: model.catalogable.display_name });
-    if (model.catalogable.description) subFields.set('description', { type: 'string', value: model.catalogable.description });
     if (model.catalogable.properties && Object.keys(model.catalogable.properties).length > 0) {
       const propEntries = Object.entries(model.catalogable.properties).map(([k, v]) => {
         if (typeof v === 'string') return [k, { type: 'stringname', value: v }];
