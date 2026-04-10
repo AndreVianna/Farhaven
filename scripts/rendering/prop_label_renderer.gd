@@ -8,6 +8,7 @@ extends Node3D
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # --- Constants ---
@@ -156,7 +157,7 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 	if _grid != null and _grid.has_method("get_terrain_y"):
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
-		elevation_y = float(tile.elevation) * 0.5
+		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET, wz)
 
 	var label_3d := Label3D.new()

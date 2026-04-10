@@ -7,6 +7,8 @@ extends Node3D
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
@@ -64,7 +66,7 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 		var tile: Resource = _grid.get_tile(coords)
 		if tile != null:
 			for prop in tile.props:
-				if prop.type == structure_type and prop.origin == 1:  # Origin.CRAFTED == 1
+				if prop.type == structure_type and prop.origin == _Prop.Origin.CRAFTED:
 					sub_hex = prop.sub_hex
 					break
 
@@ -151,7 +153,7 @@ func _get_elevation_y(coords: Vector2i, wx: float, wz: float) -> float:
 	if _grid != null and _grid.has_method("get_tile"):
 		var tile: Resource = _grid.get_tile(coords)
 		if tile != null:
-			return float(tile.elevation) * 0.5
+			return float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	return 0.0
 
 

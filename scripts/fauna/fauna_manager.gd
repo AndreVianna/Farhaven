@@ -7,6 +7,8 @@ extends Node
 
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexTile = preload("res://scripts/hex/hex_tile.gd")
+const _DayNightCycle = preload("res://scripts/day_night/day_night_cycle.gd")
 
 # --- Config ---
 const FAUNA_CONFIG: Dictionary = {
@@ -67,8 +69,8 @@ func _connect_signals() -> void:
 func _process(delta: float) -> void:
 	if _dnc == null:
 		return
-	# Only process during NIGHT phase (phase == 2)
-	if _dnc.current_phase != 2:
+	# Only process during NIGHT phase.
+	if _dnc.current_phase != _DayNightCycle.TimePhase.NIGHT:
 		return
 	if _fauna.is_empty():
 		return
@@ -138,7 +140,7 @@ func _is_valid_spawn_tile(coords: Vector2i, player_coords: Vector2i,
 		if traversal == 3:  # BLOCKED
 			return false
 	# Check biome (no water)
-	if "biome" in tile and tile.biome == 4:  # WATER
+	if "biome" in tile and tile.biome == _HexTile.Biome.WATER:
 		return false
 
 	# No structure props on tile
@@ -243,7 +245,7 @@ func _is_fauna_passable(from: Vector2i, to: Vector2i, max_jump: int) -> bool:
 	if tile_to == null:
 		return false
 	# Water blocked
-	if "biome" in tile_to and tile_to.biome == 4:
+	if "biome" in tile_to and tile_to.biome == _HexTile.Biome.WATER:
 		return false
 	# Check blocking props (data-driven via BLOCKS_MOVEMENT tag).
 	for prop in tile_to.props:

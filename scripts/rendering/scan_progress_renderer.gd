@@ -6,6 +6,7 @@ extends Node3D
 ## Only one scan at a time, so a single progress bar instance suffices.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 
 # --- Constants ---
 
@@ -122,7 +123,7 @@ func _position_at(coords: Vector2i) -> void:
 	if _grid != null and _grid.has_method("get_terrain_y"):
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
-		elevation_y = float(tile.elevation) * 0.5
+		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET, world_2d.y)
 
 

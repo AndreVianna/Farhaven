@@ -5,6 +5,7 @@ extends Node
 ## task-039: Local Lighting System
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _DayNightCycle = preload("res://scripts/day_night/day_night_cycle.gd")
 
 ## Maximum simultaneous lights the shader supports.
 const MAX_LIGHTS: int = 8
@@ -255,7 +256,7 @@ func _is_day_phase() -> bool:
 		return true
 	var phase: int = _dnc.current_phase
 	# DAY and DAWN are "day" phases — no local lighting effect
-	return phase == 0 or phase == 3  # TimePhase.DAY == 0, TimePhase.DAWN == 3
+	return phase == _DayNightCycle.TimePhase.DAY or phase == _DayNightCycle.TimePhase.DAWN
 
 
 func _clear_player_light_internal() -> void:
