@@ -159,28 +159,135 @@ One full cycle = ~5 minutes real time.
 
 ## Fauna
 
-**Status:** Stubbed (delivery-005b target)
+**Status:** Implemented (delivery-005b) + design expanded (2026-04-10)
 
-**Spawn rules:**
-- Night fauna spawn at dusk outside lit/walled areas
-- Spawn density increases with day count (difficulty curve)
+### FaunaCap (on PropDef — defines WHAT the species IS)
+
+```yaml
+FaunaCap:
+  # Movement capabilities (speed range per mode, [0,0] = can't)
+  movement:
+    walk: [min, max]
+    swim: [min, max]
+    fly: [min, max]
+    burrow: [min, max]
+    can_climb: bool
+
+  # Activity cycle
+  activity: Nocturnal | Diurnal | Crepuscular | Always
+
+  # Stats (rolled on spawn between min/max)
+  hp: [min, max]
+
+  # World interaction
+  diet: Herbivore | Carnivore | Scavenger | Omnivore
+
+  # Group behavior
+  group: Lonely | Herd | Swarm | Following
+
+  # ALL behavior = event lists (no hardcoded enums)
+  reactions: [Event refs]   # evaluated every game loop
+  attacks: [Event refs]     # evaluated when attacking
+  defenses: [Event refs]    # evaluated when defending
+```
+
+### Behavior is 100% event-driven
+
+Instead of enums like `reaction: Aggressive | Timid`, behavior is defined as Event references:
+
+**Reactions (every loop):**
+- `condition(player_distance <= 5) → effect(flee)` — timid
+- `condition(player_distance <= 3) → effect(attack)` — aggressive
+- `condition(player_in_territory) → effect(hunt)` — predatorial
+- `condition(player_distance <= 10) → effect(ignore)` — indifferent
+- `condition(near_structure + structure_has: EMITS_LIGHT) → effect(move_away)` — avoids light
+- `condition(near_structure) → effect(attack_structure)` — siege behavior
+- `condition(hp_percent < 0.2) → effect(flee)` — flee when hurt
+- `condition(hp_percent < 0.5) → effect(call_nearby_fauna)` — call for help
+
+**Attacks (during combat, attacker's turn):**
+- `condition(is_fighting + hit_success) → effect(do_damage: base_damage)`
+- `condition(is_fighting + special_ready) → effect(do_damage: special_damage)`
+
+**Defenses (during combat, defender's turn):**
+- `condition(is_fighting + defense_fails) → effect(take_damage)`
+- `condition(is_fighting + on_shelter) → effect(block_all)`
+
+Adding a new species with unique behavior = adding Event .tres files. Zero code changes.
+
+### Territory (lives on the MAP, not on PropDef)
+
+Fauna zones are defined in the map data (ch1.json or editor), not on the species:
+
+```yaml
+fauna_zones:
+  - species: thornback
+    density: [1, 3]           # min/max simultaneous individuals
+    movement_type: random     # random | path | static
+    area: [hex coords]        # spawn + wander zone
+
+  - species: cave_lurker
+    density: [1, 1]
+    movement_type: static     # stays at point
+    point: [hex coord]
+
+  - species: grazer
+    density: [3, 6]
+    movement_type: path       # follows trajectory
+    path: [hex coord sequence]
+```
+
+Movement types:
+- **Random** — wander randomly within area
+- **Path** — follow predefined trajectory (loop or ping-pong)
+- **Static** — stay at a fixed point (ambush, nesting, hiding)
+
+### Spawn rules
+- Spawn governed by zone density + species activity cycle
 - Days 1-3: No night fauna (learning period)
-- Days 4-7: Mild fauna, build walls/shelter
-- Days 8+: Stronger fauna, new biomes needed
+- Days 4+: Fauna spawns per zone density and activity
+- Spawn tiles: within zone area, passable, no structures, outside active light radius
 
-**AI:**
-- Simple behavior: move toward player if within 2 hexes
-- Pathfinding via A* with per-species `max_jump` attribute
-- Despawn at dawn
+**Death drops:** Breakdown recipe (fauna_death_* .tres) — corpse prop → items. No hardcoded drops.
 
-**Combat:**
-- Fauna deal damage on contact
-- Player can fight back with tools (slow, costly) or hide in shelter (smart)
-- NOT the focus — night is pressure, not a combat game
+**Catalog integration:** Fauna has ENCOUNTERED state (first contact from darkness) before CATALOGED (full scan).
 
-**Death drops:** Handled via recipe system (kill recipe → meat, hide, bone outputs)
+## Combat System — Universal Event-Driven
 
-**Catalog integration:** Fauna has ENCOUNTERED state (first combat) before CATALOGED (full scan). Properties include hostile flag, damage, HP.
+**Status:** Design (2026-04-10) — Andre's design
+
+**One combat engine for fauna AND player.** Both use the same 3 event lists:
+
+```yaml
+# Player combat config (same structure as FaunaCap)
+player_combat:
+  hp: [100, 100]
+
+  reactions: [
+    # condition(fauna_adjacent + fauna_aggressive) → effect(enter_combat)
+    # condition(hp < 20%) → effect(screen_flash_red)
+  ]
+
+  attacks: [
+    # condition(has_tool: weapon) → effect(do_damage: weapon.damage)
+    # condition(has_tool: axe) → effect(do_damage: axe.damage * 0.7)
+    # condition(no_tool) → effect(do_damage: 1)  # fist
+  ]
+
+  defenses: [
+    # condition(on_shelter) → effect(block_all)
+    # condition(has_armor) → effect(reduce_damage: armor.value)
+    # condition(default) → effect(take_damage: full)
+  ]
+```
+
+The combat loop:
+1. Reactions evaluated every game tick (proximity triggers, flee thresholds, call for help)
+2. When in combat: attacker evaluates `attacks` list → resolver picks matching event
+3. Defender evaluates `defenses` list → resolver picks matching event
+4. Effects applied (damage, flee, block, special)
+
+Adding new weapons, armor, special attacks, boss mechanics = adding Event .tres files. The combat engine evaluates events — it doesn't know what "sword" or "armor" means.
 
 ---
 
