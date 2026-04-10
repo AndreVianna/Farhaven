@@ -17,7 +17,7 @@ properties = {"hostile": true, "damage": 10, "hp": 30}
 
 [sub_resource type="Resource" id="endurance_1"]
 script = ExtResource("3_endurance")
-hp = 30
+hp = 20
 vulnerabilities = [&"FIRE"]
 resistances = []
 immunities = []

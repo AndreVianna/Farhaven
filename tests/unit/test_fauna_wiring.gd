@@ -126,37 +126,37 @@ func after_test() -> void:
 # =========================================================================
 
 func test_attack_wires_to_survival_take_damage() -> void:
-	_fm.fauna_attacked_player.emit(0, 10, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 10, &"P00108")
 	assert_float(_survival.damage_taken).is_equal(10.0)
 	assert_int(_survival.take_damage_calls).is_equal(1)
 
 
 func test_attack_zero_damage_still_calls_take_damage() -> void:
-	_fm.fauna_attacked_player.emit(0, 0, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 0, &"P00108")
 	assert_float(_survival.damage_taken).is_equal(0.0)
 	assert_int(_survival.take_damage_calls).is_equal(1)
 
 
 func test_attack_wires_to_scanner_encounter() -> void:
-	_fm.fauna_attacked_player.emit(0, 10, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 10, &"P00108")
 	assert_int(_scanner.attacked_calls.size()).is_equal(1)
-	assert_str(_scanner.attacked_calls[0]["species_type"]).is_equal("thornback")
+	assert_str(_scanner.attacked_calls[0]["species_type"]).is_equal("P00108")
 
 
 func test_attack_wires_to_screen_flash_on_damage() -> void:
-	_fm.fauna_attacked_player.emit(0, 10, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 10, &"P00108")
 	assert_int(_screen_fade.flash_calls.size()).is_equal(1)
 	assert_object(_screen_fade.flash_calls[0]["color"]).is_equal(Color.RED)
 
 
 func test_attack_no_flash_on_zero_damage() -> void:
-	_fm.fauna_attacked_player.emit(0, 0, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 0, &"P00108")
 	assert_int(_screen_fade.flash_calls.size()).is_equal(0)
 
 
 func test_multiple_attacks_accumulate_damage() -> void:
-	_fm.fauna_attacked_player.emit(0, 10, &"thornback")
-	_fm.fauna_attacked_player.emit(1, 10, &"thornback")
+	_fm.fauna_attacked_player.emit(0, 10, &"P00108")
+	_fm.fauna_attacked_player.emit(1, 10, &"P00108")
 	assert_float(_survival.damage_taken).is_equal(20.0)
 	assert_int(_survival.take_damage_calls).is_equal(2)
 
@@ -166,7 +166,7 @@ func test_multiple_attacks_accumulate_damage() -> void:
 # =========================================================================
 
 func test_fauna_moved_wires_to_auto_interaction() -> void:
-	_fm.fauna_moved.emit(0, Vector2i(3, 0), Vector2i(2, 0), &"thornback")
+	_fm.fauna_moved.emit(0, Vector2i(3, 0), Vector2i(2, 0), &"P00108")
 	assert_int(_auto_interaction.fauna_moved_calls.size()).is_equal(1)
 	var call: Dictionary = _auto_interaction.fauna_moved_calls[0]
 	assert_int(call["fauna_id"]).is_equal(0)
@@ -175,7 +175,7 @@ func test_fauna_moved_wires_to_auto_interaction() -> void:
 
 
 func test_fauna_moved_passes_new_coords_not_old() -> void:
-	_fm.fauna_moved.emit(5, Vector2i(0, 0), Vector2i(1, 1), &"thornback")
+	_fm.fauna_moved.emit(5, Vector2i(0, 0), Vector2i(1, 1), &"P00108")
 	var call: Dictionary = _auto_interaction.fauna_moved_calls[0]
 	assert_object(call["coords"]).is_equal(Vector2i(1, 1))
 

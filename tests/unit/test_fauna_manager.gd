@@ -1,6 +1,9 @@
 extends GdUnitTestSuite
 
 ## Unit tests for FaunaManager (task-037: spawn, AI, contact, despawn).
+## Wave 3 (delivery-006b): species config now lives on PropDef caps and is
+## read through the injected PropRegistry — every test wires a P00108 def
+## with the same numbers the legacy hardcoded FAUNA_CONFIG used.
 
 const _FaunaManager = preload("res://scripts/fauna/fauna_manager.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
@@ -8,6 +11,13 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 const _StationCap = preload("res://scripts/data/capabilities/station_cap.gd")
+const _EnduranceCap = preload("res://scripts/data/capabilities/endurance_cap.gd")
+const _MovementCap = preload("res://scripts/data/capabilities/movement_cap.gd")
+const _BehaviorCap = preload("res://scripts/data/capabilities/behavior_cap.gd")
+const _SpawnableCap = preload("res://scripts/data/capabilities/spawnable_cap.gd")
+
+## PropDef id of the live Chapter-1 fauna species under test.
+const _THORNBACK_ID: StringName = &"P00108"
 
 var _fm: Node
 var _grid: MockHexGrid
@@ -143,6 +153,33 @@ func _make_shelter_def() -> Resource:
 	return def
 
 
+## Live Chapter-1 fauna PropDef used by FaunaManager tests.
+## Mirrors data/props/P00108.tres so tests assert against the same numbers
+## that the real game ships with — but is rebuilt in code so tests stay
+## isolated from the .tres file.
+func _make_thornback_def() -> Resource:
+	var def := _PropDef.new()
+	def.id = _THORNBACK_ID
+	def.display_name = "Thornback"
+	var endurance := _EnduranceCap.new()
+	endurance.hp = 20
+	def.endurance = endurance
+	var movement := _MovementCap.new()
+	movement.move_cooldown = 1.0
+	movement.max_jump = 1
+	def.movement = movement
+	var behavior := _BehaviorCap.new()
+	behavior.detection_range = 2
+	def.behavior = behavior
+	var spawnable := _SpawnableCap.new()
+	spawnable.spawn_min = 1
+	spawnable.spawn_max = 3
+	spawnable.first_spawn_day = 4
+	spawnable.spawn_min_distance = 3
+	def.spawnable = spawnable
+	return def
+
+
 ## Builds a grid around the origin with far tiles for spawn candidates.
 ## Player at (0,0), spawn-eligible tiles at distance >= 3.
 func _setup_spawn_grid() -> void:
@@ -175,8 +212,10 @@ func before_test() -> void:
 	_registry = MockPropRegistry.new()
 	add_child(_registry)
 
-	# Register shelter def for shelter tests
+	# Register shelter + thornback defs so FaunaManager can read shelter
+	# tags and per-species spawn/movement/behavior config from PropRegistry.
 	_registry.add_def(_make_shelter_def())
+	_registry.add_def(_make_thornback_def())
 
 	_fm = _FaunaManager.new()
 	_fm._grid = _grid
@@ -311,7 +350,7 @@ func test_spawn_emits_signal() -> void:
 	_dnc.set_night()
 	_dnc.night.emit()
 	assert_bool(spawned.size() >= 1).is_true()
-	assert_str(str(spawned[0]["species"])).is_equal("thornback")
+	assert_str(str(spawned[0]["species"])).is_equal("P00108")
 
 
 func test_spawn_fauna_have_correct_hp() -> void:
@@ -324,14 +363,14 @@ func test_spawn_fauna_have_correct_hp() -> void:
 		assert_int(f["hp"]).is_equal(20)
 
 
-func test_spawn_fauna_species_is_thornback() -> void:
+func test_spawn_fauna_species_is_p00108() -> void:
 	_setup_spawn_grid()
 	_dnc.day_count = 4
 	_dnc.set_night()
 	_dnc.night.emit()
 	var fauna: Array[Dictionary] = _fm.get_all_fauna()
 	for f: Dictionary in fauna:
-		assert_str(str(f["species_type"])).is_equal("thornback")
+		assert_str(str(f["species_type"])).is_equal("P00108")
 
 
 # =========================================================================
@@ -347,7 +386,7 @@ func test_movement_toward_player() -> void:
 
 	# Manually inject fauna at (2,0) — within detection range 2
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -374,7 +413,7 @@ func test_movement_blocked_by_wall() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -400,7 +439,7 @@ func test_movement_avoids_lit_tiles() -> void:
 	_lighting.add_light(world_pos, 1.0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -422,12 +461,12 @@ func test_no_stacking_on_same_tile() -> void:
 
 	# Two fauna at distance 2
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(1, -1),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(1, -1),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -450,7 +489,7 @@ func test_movement_only_during_night() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -470,7 +509,7 @@ func test_movement_respects_cooldown() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.5,
 		"was_in_light": false,
 	})
@@ -492,7 +531,7 @@ func test_movement_outside_detection_range_no_move() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -511,7 +550,7 @@ func test_movement_emits_signal() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -535,7 +574,7 @@ func test_elevation_diff_blocks_fauna() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -558,7 +597,7 @@ func test_contact_damage_when_adjacent() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(1, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(1, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -585,7 +624,7 @@ func test_shelter_immunity() -> void:
 	player_tile.props.append(shelter)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(1, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(1, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -610,7 +649,7 @@ func test_contact_damage_is_move_only() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(1, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(1, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.5,
 		"was_in_light": false,
 	})
@@ -632,7 +671,7 @@ func test_contact_damage_signal_includes_species() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(1, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(1, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -646,7 +685,7 @@ func test_contact_damage_signal_includes_species() -> void:
 	_fm._process(1.0)
 
 	assert_bool(attacks.size() >= 1).is_true()
-	assert_str(str(attacks[0]["species"])).is_equal("thornback")
+	assert_str(str(attacks[0]["species"])).is_equal("P00108")
 
 
 # =========================================================================
@@ -657,7 +696,7 @@ func test_apply_damage_reduces_hp() -> void:
 	_add_tile(Vector2i(3, 3))
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -671,7 +710,7 @@ func test_apply_damage_death_at_zero() -> void:
 	_add_tile(Vector2i(3, 3))
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -684,7 +723,7 @@ func test_apply_damage_death_below_zero() -> void:
 	_add_tile(Vector2i(3, 3))
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -697,7 +736,7 @@ func test_death_emits_fauna_killed() -> void:
 	_add_tile(Vector2i(3, 3))
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -711,14 +750,14 @@ func test_death_emits_fauna_killed() -> void:
 	assert_int(killed.size()).is_equal(1)
 	assert_int(killed[0]["id"]).is_equal(0)
 	assert_bool(killed[0]["coords"] == Vector2i(3, 3)).is_true()
-	assert_str(str(killed[0]["species"])).is_equal("thornback")
+	assert_str(str(killed[0]["species"])).is_equal("P00108")
 
 
 func test_death_places_corpse_prop() -> void:
 	var tile := _add_tile(Vector2i(3, 3))
 
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -753,12 +792,12 @@ func test_despawn_on_dawn() -> void:
 
 func test_despawn_emits_signal_per_fauna() -> void:
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(4, 3),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(4, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -774,12 +813,12 @@ func test_despawn_emits_signal_per_fauna() -> void:
 
 func test_despawn_clears_all_fauna() -> void:
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(4, 3),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(4, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -794,12 +833,12 @@ func test_despawn_clears_all_fauna() -> void:
 
 func test_get_fauna_at_returns_correct() -> void:
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(4, 3),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(4, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -817,13 +856,13 @@ func test_get_fauna_at_empty() -> void:
 func test_get_fauna_adjacent_to() -> void:
 	# Fauna at (1,0) is adjacent to (0,0)
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(1, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(1, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	# Fauna at (3,0) is NOT adjacent to (0,0)
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(3, 0),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -835,7 +874,7 @@ func test_get_fauna_adjacent_to() -> void:
 
 func test_get_all_fauna_returns_copies() -> void:
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -848,12 +887,12 @@ func test_get_all_fauna_returns_copies() -> void:
 
 func test_get_all_fauna_size() -> void:
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(3, 3),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(3, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
 	_fm._fauna.append({
-		"id": 1, "species_type": &"thornback", "coords": Vector2i(4, 3),
+		"id": 1, "species_type": _THORNBACK_ID, "coords": Vector2i(4, 3),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -873,7 +912,7 @@ func test_surprise_encounter_from_darkness() -> void:
 
 	# No lights — fauna approaches from total darkness
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": false,
 	})
@@ -887,7 +926,7 @@ func test_surprise_encounter_from_darkness() -> void:
 	_fm._process(1.0)
 
 	assert_int(surprises.size()).is_equal(1)
-	assert_str(str(surprises[0]["species"])).is_equal("thornback")
+	assert_str(str(surprises[0]["species"])).is_equal("P00108")
 
 
 func test_no_surprise_when_was_in_light() -> void:
@@ -898,7 +937,7 @@ func test_no_surprise_when_was_in_light() -> void:
 
 	# Fauna was already in light (visible to player)
 	_fm._fauna.append({
-		"id": 0, "species_type": &"thornback", "coords": Vector2i(2, 0),
+		"id": 0, "species_type": _THORNBACK_ID, "coords": Vector2i(2, 0),
 		"hp": 20, "move_cooldown": 1.0, "cooldown_remaining": 0.0,
 		"was_in_light": true,
 	})
