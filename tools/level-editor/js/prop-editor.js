@@ -159,8 +159,6 @@ export class PropDefModel {
 
     if (d.placeable && typeof d.placeable === 'object') {
       model.placeable = {
-        footprint: _footprintArray(d.placeable.footprint),
-        blocks_movement: !!d.placeable.blocks_movement,
         rotation_snap: _num(d.placeable.rotation_snap),
       };
     }
@@ -1264,8 +1262,6 @@ export function renderPropEditor(container, options) {
 
     // PLACEABLE
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
-      panel.appendChild(_createCapFootprintEditor(model.placeable ? model.placeable.footprint : []));
-      _addCheckbox(panel, 'Blocks Movement', 'cap_placeable_blocks_movement', model.placeable ? model.placeable.blocks_movement : false);
       _addField(panel, 'Rotation Snap', 'cap_placeable_rotation_snap', 'number', model.placeable ? model.placeable.rotation_snap : 0, { step: '1', min: '0' });
     }));
 
@@ -1581,8 +1577,6 @@ export function collectPropFormData(formElement) {
 
   if (isChecked('cap_placeable_enabled')) {
     model.placeable = {
-      footprint: _collectCapFootprintData(formElement),
-      blocks_movement: isChecked('cap_placeable_blocks_movement'),
       rotation_snap: intVal('cap_placeable_rotation_snap'),
     };
   }
@@ -1781,8 +1775,8 @@ export function validatePropForm(model, isNew) {
   }
 
   if (model.placeable) {
-    if (!model.placeable.footprint || model.placeable.footprint.length === 0) {
-      errors.push('PLACEABLE footprint must be non-empty');
+    if (model.placeable.rotation_snap < 0) {
+      errors.push('PLACEABLE rotation_snap must be >= 0');
     }
   }
 
@@ -1886,13 +1880,6 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.placeable.footprint && model.placeable.footprint.length > 0) {
-      subFields.set('footprint', {
-        type: 'array', elementType: null,
-        value: model.placeable.footprint.map(p => ({ type: 'vector2i', value: { x: p.x, y: p.y } })),
-      });
-    }
-    if (model.placeable.blocks_movement) subFields.set('blocks_movement', { type: 'bool', value: true });
     if (model.placeable.rotation_snap) subFields.set('rotation_snap', { type: 'int', value: model.placeable.rotation_snap });
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
     extId++;

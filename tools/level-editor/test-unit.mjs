@@ -1453,12 +1453,10 @@ test('PropDefModel — fromEntry reads portable capability', () => {
 
 test('PropDefModel — fromEntry reads placeable capability', () => {
   const entry = _makePropEntry({
-    placeable: { footprint: [{ x: 0, y: 0 }, { x: 1, y: 0 }], blocks_movement: true, rotation_snap: 60 },
+    placeable: { rotation_snap: 60 },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.placeable !== null, 'placeable should not be null');
-  assert(model.placeable.footprint.length === 2, 'footprint should have 2 cells');
-  assert(model.placeable.blocks_movement === true, 'blocks_movement should be true');
   assert(model.placeable.rotation_snap === 60, 'rotation_snap should be 60');
 });
 
@@ -1545,15 +1543,15 @@ test('validatePropForm — PORTABLE.weight = 0 is valid', () => {
   assert(result.valid, 'weight 0 should be valid');
 });
 
-test('validatePropForm — PLACEABLE.footprint must be non-empty', () => {
-  const model = _makeModel({ placeable: { footprint: [], blocks_movement: false, rotation_snap: 0 } });
+test('validatePropForm — PLACEABLE.rotation_snap must be >= 0', () => {
+  const model = _makeModel({ placeable: { rotation_snap: -1 } });
   const result = validatePropForm(model, false);
   assert(!result.valid, 'should be invalid');
-  assert(result.errors.some(e => e.includes('PLACEABLE footprint')), 'should mention PLACEABLE footprint');
+  assert(result.errors.some(e => e.includes('PLACEABLE rotation_snap')), 'should mention PLACEABLE rotation_snap');
 });
 
-test('validatePropForm — PLACEABLE with footprint is valid', () => {
-  const model = _makeModel({ placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: false, rotation_snap: 0 } });
+test('validatePropForm — PLACEABLE with rotation_snap 0 is valid', () => {
+  const model = _makeModel({ placeable: { rotation_snap: 0 } });
   const result = validatePropForm(model, false);
   assert(result.valid, 'should be valid');
 });
@@ -1617,7 +1615,7 @@ test('propModelToRaw — serializes portable as sub_resource', () => {
 test('propModelToRaw — serializes multiple capabilities', () => {
   const model = _makeModel({
     portable: { weight: 1.0 },
-    placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
+    placeable: { rotation_snap: 0 },
     catalogable: { scan_time: 1.0, display_tag: 'flora', category: 0, display_name: '', description: '', properties: {} },
   });
   const raw = propModelToRaw(model);
@@ -1635,7 +1633,7 @@ test('propModelToRaw — no capabilities = no sub_resources', () => {
 test('propModelToRaw — serialized output is valid .tres', () => {
   const model = _makeModel({
     tags: ['STRUCTURE', 'STATION.fire'],
-    placeable: { footprint: [{ x: 0, y: 0 }], blocks_movement: true, rotation_snap: 0 },
+    placeable: { rotation_snap: 0 },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
     catalogable: { scan_time: 1.0, display_tag: 'survival', category: 0, display_name: '', description: '', properties: {} },
@@ -1658,7 +1656,7 @@ test('PropDefModel — full round-trip with capabilities', () => {
   const original = _makeModel({
     tags: ['SOURCE', 'WOOD', 'BURNABLE.log'],
     portable: { weight: 1.5 },
-    placeable: { footprint: [{ x: 0, y: 0 }, { x: 1, y: 0 }], blocks_movement: true, rotation_snap: 60 },
+    placeable: { rotation_snap: 60 },
     container: { capacity_weight: 20, accepts_filter: ['BURNABLE'] },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
@@ -1698,8 +1696,7 @@ test('PropDefModel — full round-trip with capabilities', () => {
   assert(restored.portable !== null, 'portable should survive');
   assert(restored.portable.weight === 1.5, 'portable weight should be 1.5');
   assert(restored.placeable !== null, 'placeable should survive');
-  assert(restored.placeable.footprint.length === 2, 'footprint should have 2 cells');
-  assert(restored.placeable.blocks_movement === true, 'blocks_movement should survive');
+  assert(restored.placeable.rotation_snap === 60, 'rotation_snap should survive');
   assert(restored.container !== null, 'container should survive');
   assert(restored.container.capacity_weight === 20, 'capacity_weight should be 20');
   assert(restored.container.accepts_filter.length === 1, 'accepts_filter should have 1 item');
