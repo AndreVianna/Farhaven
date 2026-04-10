@@ -7,7 +7,7 @@ class_name TestBuildingIntegration
 ## and the StructureRenderer.
 ##
 ## Covers all task-036 criteria:
-##   - Storage Chest → inventory capacity_weight +50.0
+##   - Storage Chest → inventory capacity_size +50.0
 ##   - Shelter → STATION(respawn) prop query
 ##   - Torch → LightingManager registers light at night
 ##   - Workbench → CraftingSystem station proximity
@@ -523,28 +523,28 @@ func _on_placement_exited() -> void:
 
 
 # ===========================================================================
-# 1. Storage Chest → Inventory.capacity_weight increases by 50.0
+# 1. Storage Chest → Inventory.capacity_size increases by 50.0
 # ===========================================================================
 
-func test_storage_chest_increases_capacity_weight() -> void:
+func test_storage_chest_increases_capacity_size() -> void:
 	_add_materials(8, 4, 0)
-	var initial_capacity: float = _inventory.capacity_weight
+	var initial_capacity: float = _inventory.capacity_size
 	assert_float(initial_capacity).is_equal(50.0)
 
 	var ok: bool = _do_build(RID_STORAGE_CHEST)
 	assert_bool(ok).override_failure_message("Storage chest build should succeed").is_true()
 
-	assert_float(_inventory.capacity_weight).is_equal(100.0)
+	assert_float(_inventory.capacity_size).is_equal(100.0)
 
 
 func test_storage_chest_capacity_is_additive() -> void:
 	_add_materials(16, 8, 0)
 
 	_do_build(RID_STORAGE_CHEST, ADJACENT_TILE)
-	assert_float(_inventory.capacity_weight).is_equal(100.0)
+	assert_float(_inventory.capacity_size).is_equal(100.0)
 
 	_do_build(RID_STORAGE_CHEST, ADJACENT_TILE_2)
-	assert_float(_inventory.capacity_weight).is_equal(150.0)
+	assert_float(_inventory.capacity_size).is_equal(150.0)
 
 
 # ===========================================================================
@@ -917,7 +917,7 @@ func test_end_to_end_storage_chest_build() -> void:
 	assert_bool(_tile_has_prop_type(ADJACENT_TILE, ID_STORAGE_CHEST)).is_true()
 
 	# Capacity increased.
-	assert_float(_inventory.capacity_weight).is_equal(100.0)
+	assert_float(_inventory.capacity_size).is_equal(100.0)
 
 	# Materials consumed.
 	assert_int(_get_wood_count()).is_equal(0)

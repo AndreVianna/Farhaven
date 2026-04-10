@@ -173,7 +173,7 @@ var _registered_defs: Array[StringName] = []
 
 
 func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
-		placeable: _PlaceableCap = null, weight: float = 0.1) -> void:
+		placeable: _PlaceableCap = null, size: float = 0.1) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
@@ -183,7 +183,7 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	def.placeable = placeable
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.size = weight
+	cap.size = size
 	def.portable = cap
 	PropRegistry._defs[id] = def
 	_registered_defs.append(id)

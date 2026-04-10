@@ -30,7 +30,7 @@ export class PropDefModel {
     this.portable = null;
     /** @type {{ footprint: Array<{x:number,y:number}>, blocks_movement: boolean, rotation_snap: number }|null} */
     this.placeable = null;
-    /** @type {{ capacity_weight: number, accepts_filter: string[] }|null} */
+    /** @type {{ capacity_size: number, accepts_filter: string[] }|null} */
     this.container = null;
     /** @type {{ radius: number, color: {r:number,g:number,b:number,a:number}, flicker: boolean }|null} */
     this.light = null;
@@ -187,7 +187,7 @@ export class PropDefModel {
 
     if (d.container && typeof d.container === 'object') {
       model.container = {
-        capacity_weight: _num(d.container.capacity_weight),
+        capacity_size: _num(d.container.capacity_size),
         accepts_filter: _strArray(d.container.accepts_filter),
       };
     }
@@ -1478,7 +1478,7 @@ export function renderPropEditor(container, options) {
 
     // CONTAINER
     grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
-      _addField(panel, 'Capacity Weight', 'cap_container_capacity_weight', 'number', model.container ? model.container.capacity_weight : 0, { step: 'any', min: '0' });
+      _addField(panel, 'Capacity Size (slots)', 'cap_container_capacity_size', 'number', model.container ? model.container.capacity_size : 0, { step: 'any', min: '0' });
       panel.appendChild(_createStringArrayEditor('cap_container_accepts_filter', 'Accepts Filter', model.container ? model.container.accepts_filter : []));
     }));
 
@@ -1943,7 +1943,7 @@ export function collectPropFormData(formElement) {
 
   if (isChecked('cap_container_enabled')) {
     model.container = {
-      capacity_weight: floatVal('cap_container_capacity_weight'),
+      capacity_size: floatVal('cap_container_capacity_size'),
       accepts_filter: _collectStringArrayData(formElement, 'cap_container_accepts_filter'),
     };
   }
@@ -2326,7 +2326,7 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.container.capacity_weight) subFields.set('capacity_weight', { type: 'float', value: model.container.capacity_weight });
+    if (model.container.capacity_size) subFields.set('capacity_size', { type: 'float', value: model.container.capacity_size });
     if (model.container.accepts_filter && model.container.accepts_filter.length > 0) {
       subFields.set('accepts_filter', {
         type: 'array', elementType: null,

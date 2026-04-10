@@ -3,9 +3,9 @@ extends RefCounted
 
 ## Inventory data layer — owned by Player, not in scene tree.
 ## Manages prop/consumable slots and 4 fixed tool slots.
-## Weight-based capacity: each item has a weight from its PORTABLE capability.
+## Slot-size based capacity: each item has a size from its PORTABLE capability.
 ## Items are still stored in slots with max_stack limits, but the primary
-## constraint for add/remove is weight, not slot count.
+## constraint for add/remove is size, not slot count.
 ## Uses preload because tests can be parsed before class_name registration completes.
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
@@ -24,9 +24,9 @@ var _slots: Array[Dictionary]
 var _base_slots: int = 12
 var _bonus_slots: int = 0
 
-## Weight-based capacity (primary constraint).
-var capacity_weight: float = 50.0
-var _current_weight: float = 0.0
+## Slot-size based capacity (primary constraint).
+var capacity_size: float = 50.0
+var _current_size: float = 0.0
 
 ## Tool slots store PropDef ids (prefixed, e.g. &"P00204" for survival_knife).
 ## Defaults are empty — starting tools are applied from map's starting_loadout.
@@ -44,38 +44,38 @@ func _init() -> void:
 		_slots[i] = { "type": &"", "quantity": 0 }
 
 
-# --- Weight helpers ---
+# --- Size helpers ---
 
-## Get the weight of one unit of a prop type.
+## Get the size of one unit of a prop type.
 ## Items without PORTABLE capability default to 1.0 for backward compat.
-func _get_item_weight(type: StringName) -> float:
+func _get_item_size(type: StringName) -> float:
 	var def: _PropDef = PropRegistry.get_def(type)
 	if def != null and def.portable != null:
 		return def.portable.size
 	return 1.0
 
 
-## Returns the current total weight of all items in the inventory.
-func get_current_weight() -> float:
-	return _current_weight
+## Returns the current total size of all items in the inventory.
+func get_current_size() -> float:
+	return _current_size
 
 
-## Returns the maximum weight capacity.
-func get_capacity_weight() -> float:
-	return capacity_weight
+## Returns the maximum size capacity.
+func get_capacity_size() -> float:
+	return capacity_size
 
 
-## Returns remaining weight capacity.
+## Returns remaining size capacity.
 func get_remaining_capacity() -> float:
-	return capacity_weight - _current_weight
+	return capacity_size - _current_size
 
 
 ## Returns a display string like "32.5 / 50.0".
-func get_weight_display() -> String:
-	return "%.1f / %.1f" % [_current_weight, capacity_weight]
+func get_size_display() -> String:
+	return "%.1f / %.1f" % [_current_size, capacity_size]
 
 
-## Returns items grouped by type with count and total weight per stack.
+## Returns items grouped by type with count and total size per stack.
 func get_stacks() -> Array[Dictionary]:
 	var stacks: Dictionary = {}
 	for slot in _slots:
@@ -89,19 +89,19 @@ func get_stacks() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for key in stacks:
 		var entry: Dictionary = stacks[key]
-		var w: float = _get_item_weight(entry["type"])
-		entry["weight_per_unit"] = w
-		entry["total_weight"] = w * entry["count"]
+		var s: float = _get_item_size(entry["type"])
+		entry["size_per_unit"] = s
+		entry["total_size"] = s * entry["count"]
 		result.append(entry)
 	return result
 
 
-## Recompute _current_weight from slot contents. Used after load.
-func _recompute_weight() -> void:
-	_current_weight = 0.0
+## Recompute _current_size from slot contents. Used after load.
+func _recompute_size() -> void:
+	_current_size = 0.0
 	for slot in _slots:
 		if slot["type"] != &"":
-			_current_weight += _get_item_weight(slot["type"]) * slot["quantity"]
+			_current_size += _get_item_size(slot["type"]) * slot["quantity"]
 
 
 # --- Resource/Consumable API ---
@@ -114,26 +114,26 @@ func add_item(type: StringName, amount: int = 1) -> int:
 		# Tools must use set_tool — reject from prop slots
 		return 0
 
-	var unit_weight: float = _get_item_weight(type)
+	var unit_size: float = _get_item_size(type)
 
 	# Reject entirely if a single unit exceeds total capacity
-	if unit_weight > capacity_weight:
+	if unit_size > capacity_size:
 		inventory_full.emit(type, amount)
 		return 0
 
-	# Determine how many we can fit by weight
-	var max_by_weight: int
-	if unit_weight <= 0.0:
-		max_by_weight = amount
+	# Determine how many we can fit by size
+	var max_by_size: int
+	if unit_size <= 0.0:
+		max_by_size = amount
 	else:
-		max_by_weight = int(floor((capacity_weight - _current_weight) / unit_weight))
+		max_by_size = int(floor((capacity_size - _current_size) / unit_size))
 
-	if max_by_weight <= 0:
+	if max_by_size <= 0:
 		inventory_full.emit(type, amount)
 		return 0
 
-	# Respect both weight limit and slot availability
-	var to_add: int = mini(amount, max_by_weight)
+	# Respect both size limit and slot availability
+	var to_add: int = mini(amount, max_by_size)
 	var max_stack: int = def.max_stack
 	var remaining: int = to_add
 
@@ -159,7 +159,7 @@ func add_item(type: StringName, amount: int = 1) -> int:
 
 	var added: int = to_add - remaining
 	if added > 0:
-		_current_weight += unit_weight * added
+		_current_size += unit_size * added
 		item_added.emit(type, added)
 		inventory_changed.emit()
 	var rejected: int = amount - added
@@ -184,10 +184,10 @@ func remove_item(type: StringName, amount: int = 1) -> int:
 
 	var removed: int = amount - remaining
 	if removed > 0:
-		_current_weight -= _get_item_weight(type) * removed
+		_current_size -= _get_item_size(type) * removed
 		# Guard against floating-point drift below zero
-		if _current_weight < 0.0:
-			_current_weight = 0.0
+		if _current_size < 0.0:
+			_current_size = 0.0
 		item_removed.emit(type, removed)
 		inventory_changed.emit()
 	return removed
@@ -213,9 +213,9 @@ func get_slots() -> Array[Dictionary]:
 
 
 func is_full() -> bool:
-	# Weight-based: full if remaining capacity is less than the smallest
-	# possible item weight. Use a small epsilon to account for float drift.
-	if _current_weight >= capacity_weight:
+	# Size-based: full if remaining capacity is less than the smallest
+	# possible item size. Use a small epsilon to account for float drift.
+	if _current_size >= capacity_size:
 		return true
 	# Also full if no slot space remains (all occupied and at max_stack)
 	for slot in _slots:
@@ -283,7 +283,7 @@ func get_save_data() -> Dictionary:
 		tools_data[str(key)] = str(_tool_slots[key])
 	return {
 		"bonus_slots": _bonus_slots,
-		"capacity_weight": capacity_weight,
+		"capacity_size": capacity_size,
 		"tools": tools_data,
 		"slots": slots_data,
 	}
@@ -291,7 +291,7 @@ func get_save_data() -> Dictionary:
 
 func load_save_data(data: Dictionary) -> void:
 	_bonus_slots = int(data.get("bonus_slots", 0))
-	capacity_weight = float(data.get("capacity_weight", 50.0))
+	capacity_size = float(data.get("capacity_size", 50.0))
 	var slots_data: Array = data.get("slots", [])
 	var total: int = _base_slots + _bonus_slots
 
@@ -319,5 +319,5 @@ func load_save_data(data: Dictionary) -> void:
 	for key in tools_data:
 		_tool_slots[StringName(key)] = StringName(tools_data[key])
 
-	# Recompute weight from loaded inventory contents
-	_recompute_weight()
+	# Recompute size from loaded inventory contents
+	_recompute_size()

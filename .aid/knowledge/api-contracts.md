@@ -231,31 +231,31 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 ## Inventory System API
 
 ### Inventory (RefCounted)
-- **Purpose:** Weight-based resource/consumable storage (12 base slots, expandable) plus 4 fixed tool slots
-- **Updated 2026-04-08:** Refactored from slot-count to weight-based capacity. Primary constraint is `capacity_weight` (default 50.0). Item weight from `PropDef.portable.weight` (default 1.0 if no PORTABLE cap).
+- **Purpose:** Slot-size based resource/consumable storage (12 base slots, expandable) plus 4 fixed tool slots
+- **Updated 2026-04-08:** Refactored from slot-count to slot-size based capacity. Primary constraint is `capacity_size` (default 50.0). Item size from `PropDef.portable.size` (default 1.0 if no PORTABLE cap).
 - **Signals:**
   - `inventory_changed()` -- any slot mutation
   - `item_added(type: StringName, amount: int)`
   - `item_removed(type: StringName, amount: int)`
-  - `inventory_full(type: StringName, rejected: int)` -- overflow (weight or slot)
+  - `inventory_full(type: StringName, rejected: int)` -- overflow (size or slot)
   - `item_used(type: StringName)` -- consumable consumed
   - `tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)`
 - **Public Methods (Resource/Consumable):**
-  - `add_item(type: StringName, amount: int = 1) -> int` -- returns amount actually added. Checks weight + slot capacity.
+  - `add_item(type: StringName, amount: int = 1) -> int` -- returns amount actually added. Checks size + slot capacity.
   - `remove_item(type: StringName, amount: int = 1) -> int` -- returns amount removed
   - `has_item(type: StringName, amount: int = 1) -> bool`
   - `get_count(type: StringName) -> int`
   - `get_slots() -> Array[Dictionary]` -- snapshot of all slots
-  - `is_full() -> bool` -- true if remaining weight < smallest item or all slots at max
+  - `is_full() -> bool` -- true if remaining size < smallest item or all slots at max
   - `get_max_slots() -> int` / `get_used_slot_count() -> int`
   - `use_item(type: StringName) -> bool` -- consume one unit
   - `expand(additional_slots: int) -> void`
-- **Public Methods (Weight — added delivery-005a):**
-  - `get_current_weight() -> float` -- total weight of all items
-  - `get_capacity_weight() -> float` -- maximum weight capacity
-  - `get_remaining_capacity() -> float` -- capacity_weight - current_weight
-  - `get_weight_display() -> String` -- formatted string like "32.5 / 50.0"
-  - `get_stacks() -> Array[Dictionary]` -- items grouped by type with count, weight_per_unit, total_weight
+- **Public Methods (Size — added delivery-005a):**
+  - `get_current_size() -> float` -- total size of all items
+  - `get_capacity_size() -> float` -- maximum size capacity
+  - `get_remaining_capacity() -> float` -- capacity_size - current_size
+  - `get_size_display() -> String` -- formatted string like "32.5 / 50.0"
+  - `get_stacks() -> Array[Dictionary]` -- items grouped by type with count, size_per_unit, total_size
 - **Public Methods (Tools):**
   - `get_tool(slot: StringName) -> StringName` -- what is equipped in axe/pickaxe/weapon/scanner
   - `set_tool(slot: StringName, tool: StringName) -> StringName` -- returns previous tool

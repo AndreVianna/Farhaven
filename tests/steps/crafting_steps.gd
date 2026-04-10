@@ -121,7 +121,7 @@ func register_steps(registry) -> void:
 
 	registry.when("a storage chest is placed", func(ctx):
 		var inv := _CommonSteps.get_or_create_inventory(ctx)
-		inv.capacity_weight += 50.0
+		inv.capacity_size += 50.0
 	)
 
 	registry.when("the player cancels placement before confirming", func(ctx):

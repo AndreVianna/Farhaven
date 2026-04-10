@@ -93,7 +93,7 @@ Godot Resource defining a prop type's static properties. Loaded from `data/props
 |-------|-------------|-------------|-------|
 | portable | PortableCap | `weight: float = 1.0` | Prop can be carried. Weight determines inventory capacity consumed. |
 | placeable | PlaceableCap | `rotation_snap: int = 0` | Prop can be placed in world. Collision is mesh-based (CollisionHelper + StaticBody3D), not footprint-based. |
-| container | ContainerCap | `capacity_weight: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
+| container | ContainerCap | `capacity_size: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
 | light | LightCap | `radius: float = 0.0`, `color: Color = warm_orange`, `flicker: bool = false` | Prop emits light while active (used by LightingManager). |
 | movable | MovableCap | `push_cost: float = 1.0` | Prop can be pushed across tiles. |
 | station | StationCap | `station_tags: Array[StringName] = []` | Prop is a crafting/cooking station. Tags list roles (e.g. ["cook", "fire"]). |
@@ -304,14 +304,14 @@ Source: `scripts/scanner/catalog_data.gd`
 
 ### Inventory (scripts/inventory/inventory.gd -- in-memory)
 
-> **Updated 2026-04-08 (delivery-005a).** Inventory is now weight-based. The primary constraint is weight capacity, not slot count. Items are still stored in slots with max_stack limits, but total weight is the binding limit.
+> **Updated 2026-04-08 (delivery-005a).** Inventory is now slot-size based. The primary constraint is size capacity, not slot count. Items are still stored in slots with max_stack limits, but total size is the binding limit.
 
-**Weight model:**
+**Size model:**
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| capacity_weight | float | 50.0 | Maximum total weight. Expandable. |
-| _current_weight | float | 0.0 | Cached, updated incrementally on add/remove. Recomputed on load. |
+| capacity_size | float | 50.0 | Maximum total size. Expandable. |
+| _current_size | float | 0.0 | Cached, updated incrementally on add/remove. Recomputed on load. |
 
 **Slot structure (unchanged):**
 
@@ -322,7 +322,7 @@ Source: `scripts/scanner/catalog_data.gd`
 
 Tool slots stored separately: `{&"axe": &"", &"pickaxe": &"", &"weapon": &"00204", &"scanner": &"00205"}`
 
-**Item weight:** Derived from `PropDef.portable.weight`. Items without PORTABLE capability default to 1.0 for backward compat. Items with weight > capacity_weight are rejected entirely (must be transported via MOVABLE + CONTAINER props).
+**Item size:** Derived from `PropDef.portable.size`. Items without PORTABLE capability default to 1.0 for backward compat. Items with size > capacity_size are rejected entirely (must be transported via MOVABLE + CONTAINER props).
 
 **No hardcoded ITEM_CONFIG.** All items (resources, consumables, tools) are PropDefs loaded from `data/props/*.tres` by PropRegistry. The old hardcoded ITEM_CONFIG is removed.
 
@@ -547,7 +547,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 ### Inventory Validation (updated delivery-005a)
 - add_item() validates item type exists in PropRegistry before adding. Items without a PropDef are rejected (returns 0).
 - Tools (PropDef.tool_slot != "") rejected from resource slots (must use set_tool).
-- Weight check: `current_weight + (unit_weight * count) <= capacity_weight`. Items exceeding total capacity rejected entirely.
+- Size check: `current_size + (unit_size * count) <= capacity_size`. Items exceeding total capacity rejected entirely.
 - Stack overflow tracked; excess returned as int, inventory_full signal emitted.
 
 ### Recipe Validation (RecipeRuntime.try_start_recipe())

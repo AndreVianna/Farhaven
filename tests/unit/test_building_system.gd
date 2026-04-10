@@ -117,7 +117,7 @@ var _registered_defs: Array[StringName] = []
 
 
 func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
-		placeable: _PlaceableCap = null, weight: float = 0.1) -> void:
+		placeable: _PlaceableCap = null, size: float = 0.1) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
@@ -127,7 +127,7 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	def.placeable = placeable
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.size = weight
+	cap.size = size
 	def.portable = cap
 	PropRegistry._defs[id] = def
 	_registered_defs.append(id)
@@ -505,7 +505,7 @@ func test_storage_chest_increases_inventory_capacity() -> void:
 	_player.inventory.add_item(ID_WOOD, 8)
 	_player.inventory.add_item(ID_ROCK, 4)
 
-	var initial_capacity: float = _player.inventory.capacity_weight
+	var initial_capacity: float = _player.inventory.capacity_size
 
 	var recipe := _make_build_recipe(&"P00022",
 		[{"ref": ID_WOOD, "count": 8}, {"ref": ID_ROCK, "count": 4}],
@@ -515,7 +515,7 @@ func test_storage_chest_increases_inventory_capacity() -> void:
 	_building.try_place_at(Vector2i.ZERO)
 
 	# Capacity should increase by 50.
-	assert_float(_player.inventory.capacity_weight).is_equal(initial_capacity + 50.0)
+	assert_float(_player.inventory.capacity_size).is_equal(initial_capacity + 50.0)
 
 
 func test_non_storage_chest_does_not_change_capacity() -> void:
@@ -524,7 +524,7 @@ func test_non_storage_chest_does_not_change_capacity() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var initial_capacity: float = _player.inventory.capacity_weight
+	var initial_capacity: float = _player.inventory.capacity_size
 
 	var recipe := _make_build_recipe(&"P00024",
 		[{"ref": ID_WOOD, "count": 3}],
@@ -534,7 +534,7 @@ func test_non_storage_chest_does_not_change_capacity() -> void:
 	_building.try_place_at(Vector2i.ZERO)
 
 	# Capacity should remain unchanged.
-	assert_float(_player.inventory.capacity_weight).is_equal(initial_capacity)
+	assert_float(_player.inventory.capacity_size).is_equal(initial_capacity)
 
 
 # ---------------------------------------------------------------------------

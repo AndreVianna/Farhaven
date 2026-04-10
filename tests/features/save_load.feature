@@ -6,11 +6,11 @@ Feature: Save and Load
     When the game is saved and loaded
     Then the player is at tile 2, 1
 
-  Scenario: Save preserves inventory contents and weight
+  Scenario: Save preserves inventory contents and size
     Given the inventory has 5 "P00010"
     When the game is saved and loaded
     Then the inventory has 5 "P00010"
-    And the inventory weight is greater than 0
+    And the inventory size is greater than 0
 
   Scenario: Save preserves equipped tools
     Given tool "weapon" is set to "P00204"
