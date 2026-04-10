@@ -6,6 +6,7 @@ import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
+import { renderGearHeader } from './editor-common.js';
 
 /**
  * Maps a parsed .tres PropDef to an editable JS prop model.
@@ -1121,7 +1122,13 @@ export function renderPropEditor(container, options) {
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
     form.appendChild(errorArea);
 
-    // --- Two-column body ---
+    // --- Gear base-fields header (2-col: id/name/short | long) ---
+    const gearHeaderWrap = document.createElement('div');
+    gearHeaderWrap.style.cssText = 'padding:10px 14px 0;';
+    renderGearHeader(gearHeaderWrap, model, { idReadonly: !isNew });
+    form.appendChild(gearHeaderWrap);
+
+    // --- Two-column body (left: General/Capabilities, right: Visuals) ---
     const columnsWrapper = document.createElement('div');
     columnsWrapper.style.cssText = 'display:flex;flex:1;overflow:hidden;';
 
@@ -1243,14 +1250,8 @@ export function renderPropEditor(container, options) {
     const grid = document.createElement('div');
     grid.classList.add('prop-grid');
 
-    // ID
-    _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
-    // Display Name
-    _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
-
-    // -- Descriptions (Gear base fields) --
-    _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
-    _addTextArea(grid, 'Long Description', 'long_description', model.long_description);
+    // Note: id/display_name/short_description/long_description are rendered
+    // above this tab via renderGearHeader() in _renderDetail.
 
     // -- Tags --
     _addSeparator(grid, 'Tags');
