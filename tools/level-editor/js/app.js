@@ -17,6 +17,7 @@ import { validateMap } from './validator.js';
 import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
 import { renderRecipeEditor } from './recipe-editor.js';
+import { renderEventEditor } from './event-editor.js';
 
 // ============================================================
 // Module-level state
@@ -68,6 +69,7 @@ const TAB_LABELS = {
   props: 'Props',
   biomes: 'Biomes',
   recipes: 'Recipes',
+  events: 'Events',
 };
 
 /**
@@ -526,6 +528,17 @@ function initializeAfterLoad() {
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('recipes'); },
     });
     console.log('Recipe editor rendered.');
+  }
+
+  // Render event editor in the Events tab
+  const eventTabEl = document.getElementById('tab-events');
+  if (eventTabEl) {
+    renderEventEditor(eventTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('events'); },
+    });
+    console.log('Event editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)

@@ -14,6 +14,7 @@ import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
 import { RecipeModel, recipeModelToRaw, validateRecipeForm, RECIPE_KINDS, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
+import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -2370,6 +2371,403 @@ test('Recipe constants — PREDICATE_KINDS has expected entries', () => {
   assert(PREDICATE_KINDS.includes('cataloged'), 'includes cataloged');
   assert(PREDICATE_KINDS.includes('at_station'), 'includes at_station');
 });
+
+// ============================================================
+// EventModel — parsing
+// ============================================================
+
+function _makeEventEntry(resourceOverrides, subResources) {
+  const raw = new TresFile();
+  raw.scriptClass = 'GameEvent';
+  raw.headerLine = '[gd_resource type="Resource" script_class="GameEvent" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/core/event.gd" id="1_event"]'];
+  raw.subResources = subResources || [];
+  const data = { script: 'ExtResource("1_event")', id: 'E00001', display_name: 'Test Event', max_count: 1, ...resourceOverrides };
+  raw.resourceFields = new Map();
+  raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_event")' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'E00001' });
+  raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Event' });
+  if (data.max_count != null) raw.resourceFields.set('max_count', { type: 'int', value: data.max_count });
+  if (data.count != null && data.count !== 0) raw.resourceFields.set('count', { type: 'int', value: data.count });
+  if (data.conditions) raw.resourceFields.set('conditions', { type: 'array', elementType: null, value: data.conditions });
+  if (data.effects) raw.resourceFields.set('effects', { type: 'array', elementType: null, value: data.effects });
+  if (data.actions) raw.resourceFields.set('actions', { type: 'array', elementType: null, value: data.actions });
+  if (data.duration != null && data.duration !== 0) raw.resourceFields.set('duration', { type: 'float', value: data.duration });
+  if (data.short_description) raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  if (data.long_description) raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
+  return { data, raw };
+}
+
+function _makeEventModel(overrides) {
+  const model = new EventModel();
+  model.id = 'Etest';
+  model.display_name = 'Test Event';
+  model.max_count = 1;
+  model.count = 0;
+  model.duration = 0;
+  for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
+  return model;
+}
+
+test('EventModel — fromEntry reads basic fields', () => {
+  const entry = _makeEventEntry({ max_count: 3, id: 'E00005', display_name: 'Discover Something' }, []);
+  const model = EventModel.fromEntry('E00005.tres', entry);
+  assert(model.id === 'E00005', 'id should be E00005');
+  assert(model.display_name === 'Discover Something', 'display_name');
+  assert(model.max_count === 3, 'max_count should be 3');
+  assert(model.count === 0, 'count should default to 0');
+  assert(model._filename === 'E00005.tres', '_filename');
+});
+
+test('EventModel — fromEntry reads effects via sub_resource resolution', () => {
+  const effectFields = new Map();
+  effectFields.set('script', { type: 'ext_resource', value: 'ExtResource("4_effect")' });
+  effectFields.set('kind', { type: 'stringname', value: 'grant_recipe' });
+  effectFields.set('params', { type: 'dict', value: new Map([['recipe_id', { type: 'string', value: 'R00001' }]]) });
+  const entry = _makeEventEntry(
+    { effects: [{ type: 'sub_resource', value: 'effect_1' }] },
+    [{ type: 'Resource', id: 'effect_1', fields: effectFields }],
+  );
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.effects.length === 1, 'should have 1 effect');
+  assert(model.effects[0].kind === 'grant_recipe', 'effect kind');
+  assert(model.effects[0].params.recipe_id === 'R00001', 'effect param');
+});
+
+test('EventModel — fromEntry reads conditions with nested predicate', () => {
+  const predFields = new Map();
+  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("3_predicate")' });
+  predFields.set('kind', { type: 'stringname', value: 'cataloged' });
+  predFields.set('params', { type: 'dict', value: new Map([['prop', { type: 'string', value: 'P00001' }]]) });
+  const condFields = new Map();
+  condFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_condition")' });
+  condFields.set('predicate', { type: 'sub_resource', value: 'cond_pred_1' });
+  condFields.set('must_sustain', { type: 'bool', value: false });
+  const entry = _makeEventEntry(
+    { conditions: [{ type: 'sub_resource', value: 'condition_1' }] },
+    [
+      { type: 'Resource', id: 'cond_pred_1', fields: predFields },
+      { type: 'Resource', id: 'condition_1', fields: condFields },
+    ],
+  );
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.conditions.length === 1, 'should have 1 condition');
+  assert(model.conditions[0].predicate_kind === 'cataloged', 'predicate kind');
+  assert(model.conditions[0].predicate_params.prop === 'P00001', 'predicate param');
+});
+
+test('EventModel — fromEntry reads actions', () => {
+  const entry = _makeEventEntry({
+    actions: [{ type: 'stringname', value: 'discover' }, { type: 'stringname', value: 'trigger' }],
+  }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.actions.length === 2, 'should have 2 actions');
+  assert(model.actions[0] === 'discover', 'first action');
+  assert(model.actions[1] === 'trigger', 'second action');
+});
+
+test('EventModel — fromEntry handles empty arrays', () => {
+  const entry = _makeEventEntry({}, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.conditions.length === 0, 'conditions empty');
+  assert(model.effects.length === 0, 'effects empty');
+  assert(model.actions.length === 0, 'actions empty');
+});
+
+test('EventModel — fromEntry reads duration', () => {
+  const entry = _makeEventEntry({ duration: 5.0 }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.duration === 5.0, 'duration should be 5.0');
+});
+
+test('EventModel — fromEntry reads short/long description', () => {
+  const entry = _makeEventEntry({ short_description: 'short', long_description: 'long' }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.short_description === 'short', 'short_description');
+  assert(model.long_description === 'long', 'long_description');
+});
+
+// ============================================================
+// validateEventForm
+// ============================================================
+
+test('validateEventForm — valid minimal event', () => {
+  const result = validateEventForm(_makeEventModel({}), true);
+  assert(result.valid, 'should be valid');
+  assert(result.errors.length === 0, 'no errors');
+});
+
+test('validateEventForm — missing ID', () => {
+  const result = validateEventForm(_makeEventModel({ id: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('ID is required')), 'ID required error');
+});
+
+test('validateEventForm — invalid ID chars', () => {
+  const result = validateEventForm(_makeEventModel({ id: 'bad event!' }), true);
+  assert(!result.valid, 'should be invalid');
+});
+
+test('validateEventForm — ID missing E prefix', () => {
+  const result = validateEventForm(_makeEventModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('start with "E"')), 'E prefix error');
+});
+
+test('validateEventForm — duplicate ID on create', () => {
+  ProjectContext.files.events.set('Etest.tres', { data: {}, raw: new TresFile() });
+  const result = validateEventForm(_makeEventModel({}), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('already exists')), 'duplicate error');
+  ProjectContext.files.events.delete('Etest.tres');
+});
+
+test('validateEventForm — missing display_name', () => {
+  const result = validateEventForm(_makeEventModel({ display_name: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Display Name')), 'display_name error');
+});
+
+test('validateEventForm — negative max_count', () => {
+  const result = validateEventForm(_makeEventModel({ max_count: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Max Count')), 'max_count error');
+});
+
+test('validateEventForm — max_count 0 is valid (unlimited)', () => {
+  const result = validateEventForm(_makeEventModel({ max_count: 0 }), true);
+  assert(result.valid, 'should be valid');
+});
+
+test('validateEventForm — negative duration', () => {
+  const result = validateEventForm(_makeEventModel({ duration: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Duration')), 'duration error');
+});
+
+test('validateEventForm — effect missing kind', () => {
+  const result = validateEventForm(_makeEventModel({ effects: [{ kind: '', params: {} }] }), false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Effect #1')), 'effect error');
+});
+
+test('validateEventForm — condition missing predicate kind', () => {
+  const result = validateEventForm(_makeEventModel({ conditions: [{ predicate_kind: '', predicate_params: {}, must_sustain: false }] }), false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Condition #1')), 'condition error');
+});
+
+// ============================================================
+// eventModelToRaw — serialization
+// ============================================================
+
+test('eventModelToRaw — serializes basic event', () => {
+  const raw = eventModelToRaw(_makeEventModel({ display_name: 'Discover Berry' }));
+  assert(raw.scriptClass === 'GameEvent', 'scriptClass');
+  assert(raw.headerLine.includes('GameEvent'), 'header');
+  assert(raw.resourceFields.get('display_name').value === 'Discover Berry', 'display_name');
+  assert(raw.resourceFields.get('id').value === 'Etest', 'id');
+});
+
+test('eventModelToRaw — serializes conditions with nested predicate', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+  }));
+  assert(raw.subResources.length === 2, 'should have 2 sub_resources (predicate + condition)');
+  assert(raw.resourceFields.get('conditions').value.length === 1, '1 condition ref');
+});
+
+test('eventModelToRaw — serializes effects', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00001' } }],
+  }));
+  assert(raw.subResources.length === 1, 'should have 1 sub_resource (effect)');
+  assert(raw.resourceFields.get('effects').value.length === 1, '1 effect ref');
+});
+
+test('eventModelToRaw — serializes actions', () => {
+  const raw = eventModelToRaw(_makeEventModel({ actions: ['discover', 'trigger'] }));
+  const actions = raw.resourceFields.get('actions');
+  assert(actions, 'should have actions field');
+  assert(actions.value.length === 2, '2 actions');
+  assert(actions.value[0].value === 'discover', 'first action');
+});
+
+test('eventModelToRaw — no sub_resources when empty', () => {
+  const raw = eventModelToRaw(_makeEventModel({}));
+  assert(raw.subResources.length === 0, 'no sub_resources');
+});
+
+test('eventModelToRaw — serializes max_count', () => {
+  const raw = eventModelToRaw(_makeEventModel({ max_count: 5 }));
+  assert(raw.resourceFields.get('max_count').value === 5, 'max_count should be 5');
+});
+
+test('eventModelToRaw — serialized output is valid .tres', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00018' } }],
+    max_count: 1,
+  }));
+  const text = TresParser.serialize(raw);
+  assert(text.includes('[gd_resource type="Resource" script_class="GameEvent"'), 'header');
+  assert(text.includes('res://scripts/core/event.gd'), 'event script');
+  assert(text.includes('res://scripts/recipes/recipe_condition.gd'), 'condition script');
+  assert(text.includes('res://scripts/recipes/predicate.gd'), 'predicate script');
+  assert(text.includes('res://scripts/recipes/recipe_effect.gd'), 'effect script');
+});
+
+// ============================================================
+// EventModel round-trip: fromEntry -> eventModelToRaw -> parse -> fromEntry
+// ============================================================
+
+test('EventModel — full round-trip with all fields', () => {
+  const original = _makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00018' } }],
+    actions: ['discover'],
+    duration: 2.5,
+    max_count: 1,
+  });
+  const raw = eventModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'GameEvent', 'reparsed scriptClass');
+
+  const subResourceMap = new Map();
+  if (reparsed.subResources) {
+    for (const sub of reparsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subResourceMap.set(sub.id, subData);
+    }
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+
+  const restored = EventModel.fromEntry('Etest.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id survives round-trip');
+  assert(restored.display_name === original.display_name, 'display_name survives');
+  assert(restored.conditions.length === original.conditions.length, 'conditions count survives');
+  assert(restored.effects.length === original.effects.length, 'effects count survives');
+  assert(restored.actions.length === original.actions.length, 'actions count survives');
+  assert(restored.duration === original.duration, 'duration survives');
+  assert(restored.max_count === original.max_count, 'max_count survives');
+  assert(restored.conditions[0].predicate_kind === 'cataloged', 'condition predicate survives');
+  assert(restored.effects[0].kind === 'grant_recipe', 'effect kind survives');
+});
+
+test('EventModel — round-trip with no optional fields', () => {
+  const original = _makeEventModel({});
+  const raw = eventModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'GameEvent', 'reparsed scriptClass');
+
+  const subResourceMap = new Map();
+  if (reparsed.subResources) {
+    for (const sub of reparsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subResourceMap.set(sub.id, subData);
+    }
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+
+  const restored = EventModel.fromEntry('Etest.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id');
+  assert(restored.display_name === original.display_name, 'display_name');
+  assert(restored.conditions.length === 0, 'conditions empty');
+  assert(restored.effects.length === 0, 'effects empty');
+  assert(restored.actions.length === 0, 'actions empty');
+});
+
+// ============================================================
+// EventModel round-trip from actual .tres files
+// ============================================================
+
+const __eventsDir = join(__projectRoot, 'data', 'events');
+let __eventFiles = [];
+try { __eventFiles = readdirSync(__eventsDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/events/:', e.message); }
+
+for (const eventFile of __eventFiles) {
+  test(`EventModel round-trip — ${eventFile}`, () => {
+    const filePath = join(__eventsDir, eventFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'GameEvent', `${eventFile}: scriptClass`);
+
+    // TresParser round-trip
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${eventFile}: TresParser round-trip`);
+
+    // Build data for fromEntry
+    const subResourceMap = new Map();
+    if (parsed.subResources) {
+      for (const sub of parsed.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) { subData[k] = v.value; }
+        subResourceMap.set(sub.id, subData);
+      }
+    }
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+      else { data[key] = tv.value; }
+    }
+
+    // Parse into model
+    const model = EventModel.fromEntry(eventFile, { data, raw: parsed });
+    assert(typeof model.id === 'string' && model.id.length > 0, `${eventFile}: id`);
+    assert(typeof model.display_name === 'string', `${eventFile}: display_name is string`);
+    assert(model.max_count >= 0, `${eventFile}: max_count >= 0`);
+    assert(model.duration >= 0, `${eventFile}: duration >= 0`);
+    assert(Array.isArray(model.conditions), `${eventFile}: conditions is array`);
+    assert(Array.isArray(model.effects), `${eventFile}: effects is array`);
+
+    // Re-serialize and compare
+    const raw2 = eventModelToRaw(model);
+    const serialized2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(serialized2);
+    assert(reparsed.scriptClass === 'GameEvent', `${eventFile}: re-serialized scriptClass`);
+
+    // Build data2 for fromEntry
+    const subResourceMap2 = new Map();
+    if (reparsed.subResources) {
+      for (const sub of reparsed.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) { subData[k] = v.value; }
+        subResourceMap2.set(sub.id, subData);
+      }
+    }
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data2[key] = subResourceMap2.get(tv.value) || null; }
+      else { data2[key] = tv.value; }
+    }
+
+    const model2 = EventModel.fromEntry(eventFile, { data: data2, raw: reparsed });
+    assert(model2.id === model.id, `${eventFile}: id survives round-trip`);
+    assert(model2.display_name === model.display_name, `${eventFile}: display_name survives`);
+    assert(model2.conditions.length === model.conditions.length, `${eventFile}: conditions count survives`);
+    assert(model2.effects.length === model.effects.length, `${eventFile}: effects count survives`);
+    assert(model2.actions.length === model.actions.length, `${eventFile}: actions count survives`);
+    assert(model2.duration === model.duration, `${eventFile}: duration survives`);
+    assert(model2.max_count === model.max_count, `${eventFile}: max_count survives`);
+  });
+}
 
 // ============================================================
 // Summary
