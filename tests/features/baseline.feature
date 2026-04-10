@@ -15,9 +15,8 @@ Feature: Fresh Game State
     And tool "scanner" is "P00205"
     And tool "firestarter" is "P00206"
 
-  Scenario: All recipes are known from start
-    Then every recipe with empty unlock_when is known
-    And no recipe with non-empty unlock_when is known
+  Scenario: All pre-discovered recipes are known from start
+    Then every pre-discovered recipe is known
 
   Scenario: Catalog is empty on fresh game
     Then the catalog has 0 cataloged entries

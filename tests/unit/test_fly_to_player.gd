@@ -21,7 +21,7 @@ func test_default_color_is_white() -> void:
 # --- Setup ---
 
 func test_setup_stores_player_reference() -> void:
-	var fly: Node = auto_free(_FlyToPlayer.new())
+	var fly: FlyToPlayer = auto_free(_FlyToPlayer.new())
 	var player: Node3D = Node3D.new()
 	fly.setup(player)
 	assert_object(fly._player).is_same(player)
@@ -29,7 +29,7 @@ func test_setup_stores_player_reference() -> void:
 
 
 func test_spawn_fly_does_nothing_without_player() -> void:
-	var fly: Node = auto_free(_FlyToPlayer.new())
+	var fly: FlyToPlayer = auto_free(_FlyToPlayer.new())
 	add_child(fly)
 	# No player set, should not crash
 	var mock_grid: Node = Node.new()

@@ -884,15 +884,19 @@ function _initPropPalette() {
     // All props come from ProjectContext.files.props
     for (const [filename, entry] of ProjectContext.files.props) {
       const propName = filename.replace('.tres', '');
-      const resCat = _str(entry.data.category) || 'plant';
+      const d = entry.data;
+
+      // Read prop_category (int) and convert to category name
+      const catInt = d.prop_category != null ? Number(d.prop_category) : 0;
+      const resCat = CATEGORIES[catInt] || 'plant';
       if (!showCats.includes(resCat)) continue;
 
-      // Determine origin: natural categories default to 'natural', others to 'crafted'
-      const catInt = CATEGORY_TO_INT[resCat];
-      const defaultOrig = NATURAL_CATEGORIES.has(catInt) ? 'natural' : 'crafted';
-      const resOrigin = origin !== 'all' ? origin : defaultOrig;
+      // Read origin (int) and convert to origin name
+      const originInt = d.origin != null ? Number(d.origin) : 0;
+      const resOrigin = ORIGINS[originInt] || 'natural';
+      if (origin !== 'all' && resOrigin !== origin) continue;
 
-      const displayName = _str(entry.data.display_name) || propName;
+      const displayName = _str(d.display_name) || propName;
       _addTypeItem(propName, displayName, resCat, resOrigin);
     }
 
