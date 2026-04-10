@@ -2045,9 +2045,16 @@ export function propModelToRaw(model) {
   // Without this pass, @export PropDef properties the editor has no UI for
   // would be silently dropped on save, causing permanent data loss when
   // real meshes/materials are added via the Godot editor.
+  // Capability fields are excluded — their presence is fully controlled by
+  // the capability checkboxes above. If unchecked, the reference must NOT
+  // survive from the old raw.
+  const MANAGED_FIELDS = new Set([
+    'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
+    'category', 'footprint',
+  ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
-      if (!fields.has(key)) {
+      if (!fields.has(key) && !MANAGED_FIELDS.has(key)) {
         fields.set(key, value);
       }
     }
