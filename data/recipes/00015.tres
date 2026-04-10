@@ -58,4 +58,4 @@ inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]
 conditions = [SubResource("condition_1"), SubResource("condition_2")]
-time = 60.0
+duration = 60.0

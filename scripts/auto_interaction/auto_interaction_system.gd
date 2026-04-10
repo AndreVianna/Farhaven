@@ -380,7 +380,7 @@ func _begin_gather(coords: Vector2i, prop_index: int, node: Resource, recipe: Re
 	# Compute effective gather time
 	var effective_time: float = 1.0
 	if recipe != null:
-		effective_time = recipe.time
+		effective_time = recipe.duration
 	else:
 		# Legacy fallback: use PropDef gather_time + tool speed
 		if PropRegistry.has_def(node.type):

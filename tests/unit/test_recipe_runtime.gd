@@ -84,7 +84,7 @@ func _make_recipe(id: StringName, time: float = 0.0) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
 	r.kind = _Recipe.Kind.TRANSFORM
-	r.time = time
+	r.duration = time
 	return r
 
 

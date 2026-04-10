@@ -34,4 +34,4 @@ inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
 actions = [&"craft"]
-time = 3.0
+duration = 3.0

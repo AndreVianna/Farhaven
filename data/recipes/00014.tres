@@ -22,4 +22,4 @@ display_name = "Meat Rots"
 kind = 1
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
-time = 86400.0
+duration = 86400.0

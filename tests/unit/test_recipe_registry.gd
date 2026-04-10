@@ -74,8 +74,7 @@ func test_eat_berry_fields() -> void:
 	assert_str(String(r.effects[1].kind)).is_equal("sound")
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("eat")
-	assert_float(r.time).is_equal(0.0)
-	assert_int(r.unlock_when.size()).is_equal(1)
+	assert_float(r.duration).is_equal(0.0)
 
 
 func test_chop_small_tree_fields() -> void:
@@ -90,8 +89,7 @@ func test_chop_small_tree_fields() -> void:
 	assert_float(r.outputs[1].prob).is_equal_approx(0.8, 0.0001)
 	assert_int(r.conditions.size()).is_equal(1)
 	assert_bool(r.conditions[0].must_sustain).is_true()
-	assert_float(r.time).is_equal(4.0)
-	assert_int(r.unlock_when.size()).is_equal(2)
+	assert_float(r.duration).is_equal(4.0)
 
 
 func test_cook_meat_fields() -> void:
@@ -101,7 +99,7 @@ func test_cook_meat_fields() -> void:
 	assert_int(r.conditions.size()).is_equal(2)
 	assert_bool(r.conditions[0].must_sustain).is_true()
 	assert_bool(r.conditions[1].must_sustain).is_true()
-	assert_float(r.time).is_equal(15.0)
+	assert_float(r.duration).is_equal(15.0)
 
 
 func test_craft_trap_fields() -> void:
@@ -111,8 +109,7 @@ func test_craft_trap_fields() -> void:
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_int(r.conditions.size()).is_equal(0)
-	assert_int(r.unlock_when.size()).is_equal(0)
-	assert_float(r.time).is_equal(3.0)
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_trap_fires_is_passive() -> void:
@@ -121,7 +118,7 @@ func test_trap_fires_is_passive() -> void:
 	assert_int(r.actions.size()).is_equal(0)
 	assert_int(r.conditions.size()).is_equal(1)
 	assert_bool(r.conditions[0].must_sustain).is_false()
-	assert_float(r.time).is_equal(0.0)
+	assert_float(r.duration).is_equal(0.0)
 
 
 func test_meat_rots_is_passive_time_only() -> void:
@@ -129,7 +126,7 @@ func test_meat_rots_is_passive_time_only() -> void:
 	assert_that(r).is_not_null()
 	assert_int(r.actions.size()).is_equal(0)
 	assert_int(r.conditions.size()).is_equal(0)
-	assert_float(r.time).is_equal(86400.0)
+	assert_float(r.duration).is_equal(86400.0)
 
 
 func test_burn_log_uses_tag_input() -> void:
@@ -273,8 +270,7 @@ func test_craft_stone_axe_fields() -> void:
 	assert_str(String(r.effects[0].kind)).is_equal("sound")
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("craft")
-	assert_float(r.time).is_equal(3.0)
-	assert_int(r.unlock_when.size()).is_equal(0)  # known from start
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_craft_stone_pickaxe_fields() -> void:
@@ -292,8 +288,7 @@ func test_craft_stone_pickaxe_fields() -> void:
 	assert_int(r.effects.size()).is_equal(1)
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("craft")
-	assert_float(r.time).is_equal(3.0)
-	assert_int(r.unlock_when.size()).is_equal(0)  # known from start
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_find_recipes_for_action_craft() -> void:

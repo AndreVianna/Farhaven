@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=12 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
@@ -47,4 +47,4 @@ outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
 conditions = [SubResource("cond_buildable")]
 actions = [&"build"]
-time = 3.0
+duration = 3.0

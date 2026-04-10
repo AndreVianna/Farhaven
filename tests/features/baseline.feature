@@ -15,7 +15,7 @@ Feature: Fresh Game State
     And tool "scanner" is "00205"
     And tool "firestarter" is "00206"
 
-  Scenario: Known recipes are those with empty unlock_when
+  Scenario: All recipes are known from start
     Then every recipe with empty unlock_when is known
     And no recipe with non-empty unlock_when is known
 

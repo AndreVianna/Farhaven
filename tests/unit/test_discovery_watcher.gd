@@ -50,13 +50,10 @@ var _registry: FakeRegistry
 var _catalog: FakeCatalog
 
 
-func _make_recipe(id: StringName, unlock_preds: Array = []) -> _Recipe:
+func _make_recipe(id: StringName, _unlock_preds: Array = []) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
 	r.kind = _Recipe.Kind.TRANSFORM
-	r.unlock_when = []
-	for pred in unlock_preds:
-		r.unlock_when.append(pred)
 	return r
 
 
@@ -90,32 +87,18 @@ func after_test() -> void:
 # ---------------------------------------------------------------------------
 
 
-func test_recipes_with_empty_unlock_when_are_known_from_start() -> void:
+func test_all_recipes_are_known_from_start() -> void:
+	# With unlock_when removed (task-056), all recipes are known from start.
+	# Event-based discovery (task-058) will replace this behavior.
 	_registry._recipes.append(_make_recipe(&"basic_craft"))
 	_registry._recipes.append(_make_recipe(&"basic_eat"))
+	_registry._recipes.append(_make_recipe(&"eat_berry"))
 	# Manually call _ready-like logic.
 	_watcher._populate_initial_known()
 
 	assert_bool(_watcher.is_known(&"basic_craft")).is_true()
 	assert_bool(_watcher.is_known(&"basic_eat")).is_true()
-
-
-func test_recipes_with_unlock_when_are_not_known_from_start() -> void:
-	var pred := _make_predicate(&"cataloged", {"prop": &"berry"})
-	_registry._recipes.append(_make_recipe(&"eat_berry", [pred]))
-	_watcher._populate_initial_known()
-
-	assert_bool(_watcher.is_known(&"eat_berry")).is_false()
-
-
-func test_mixed_recipes_initial_state() -> void:
-	_registry._recipes.append(_make_recipe(&"basic_craft"))
-	var pred := _make_predicate(&"cataloged", {"prop": &"berry"})
-	_registry._recipes.append(_make_recipe(&"eat_berry", [pred]))
-	_watcher._populate_initial_known()
-
-	assert_bool(_watcher.is_known(&"basic_craft")).is_true()
-	assert_bool(_watcher.is_known(&"eat_berry")).is_false()
+	assert_bool(_watcher.is_known(&"eat_berry")).is_true()
 
 
 # ---------------------------------------------------------------------------
@@ -172,59 +155,15 @@ func test_get_known_recipes_returns_all() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: entry_cataloged triggers unlock check
+# Tests: check_unlocks is now a stub (task-056)
+# unlock_when removed from Recipe. Event-based discovery in task-058.
 # ---------------------------------------------------------------------------
 
 
-func test_entry_cataloged_triggers_unlock() -> void:
-	var pred := _make_predicate(&"cataloged", {"prop": &"berry"})
-	_registry._recipes.append(_make_recipe(&"eat_berry", [pred]))
-	# Wire catalog signal.
-	_watcher._connect_catalog_signal()
-	_watcher._populate_initial_known()
-
-	assert_bool(_watcher.is_known(&"eat_berry")).is_false()
-
-	# Catalog the berry. The _on_entry_cataloged should evaluate and unlock.
-	_catalog.catalog_entry(&"berry")
-
-	assert_bool(_watcher.is_known(&"eat_berry")).is_true()
-
-
-func test_entry_cataloged_does_not_unlock_if_other_pred_fails() -> void:
-	var pred1 := _make_predicate(&"cataloged", {"prop": &"berry"})
-	var pred2 := _make_predicate(&"has_tool", {"tool": &"knife"})
-	_registry._recipes.append(_make_recipe(&"eat_berry_with_knife", [pred1, pred2]))
-	_watcher._connect_catalog_signal()
-	_watcher._populate_initial_known()
-
-	assert_bool(_watcher.is_known(&"eat_berry_with_knife")).is_false()
-
-	# Catalog the berry — but has_tool will fail (no player context).
-	_catalog.catalog_entry(&"berry")
-
-	assert_bool(_watcher.is_known(&"eat_berry_with_knife")).is_false()
-
-
-# ---------------------------------------------------------------------------
-# Tests: check_unlocks with context
-# ---------------------------------------------------------------------------
-
-
-func test_check_unlocks_with_catalog_context() -> void:
-	var pred := _make_predicate(&"cataloged", {"prop": &"berry"})
-	_registry._recipes.append(_make_recipe(&"eat_berry", [pred]))
-	_watcher._populate_initial_known()
-
-	assert_bool(_watcher.is_known(&"eat_berry")).is_false()
-
-	# Pre-catalog berry in catalog and pass context with catalog.
-	_catalog._cataloged[&"berry"] = true
+func test_check_unlocks_does_not_crash() -> void:
 	var ctx := _WorldContext.new()
-	ctx.catalog = _catalog
 	_watcher.check_unlocks(ctx)
-
-	assert_bool(_watcher.is_known(&"eat_berry")).is_true()
+	# No assertions needed — just verifying it doesn't error.
 
 
 # ---------------------------------------------------------------------------

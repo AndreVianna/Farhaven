@@ -63,8 +63,8 @@ func register_steps(registry) -> void:
 		var recipe := _load_recipe(recipe_id)
 		ctx.assert_not_null(recipe, "Recipe '%s' must exist" % recipe_id)
 		if recipe:
-			ctx.assert_greater(recipe.time, float(threshold),
-				"Recipe '%s' should have time > %d, got %.1f" % [recipe_id, threshold, recipe.time])
+			ctx.assert_greater(recipe.duration, float(threshold),
+				"Recipe '%s' should have duration > %d, got %.1f" % [recipe_id, threshold, recipe.duration])
 	)
 
 	registry.then("the sustain condition on recipe {string} is for predicate {string}", func(ctx, recipe_id: String, pred_kind: String):

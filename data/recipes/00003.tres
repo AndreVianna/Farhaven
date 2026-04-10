@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Recipe" load_steps=15 format=3]
+[gd_resource type="Resource" script_class="Recipe" load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
 [ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
@@ -39,16 +39,6 @@ script = ExtResource("5_condition")
 predicate = SubResource("cond_pred_1")
 must_sustain = true
 
-[sub_resource type="Resource" id="unlock_pred_1"]
-script = ExtResource("6_predicate")
-kind = &"has_tool"
-params = { "tool": "axe" }
-
-[sub_resource type="Resource" id="unlock_pred_2"]
-script = ExtResource("6_predicate")
-kind = &"cataloged"
-params = { "prop": "00001" }
-
 [resource]
 script = ExtResource("1_recipe")
 id = &"00003"
@@ -59,5 +49,4 @@ outputs = [SubResource("output_1"), SubResource("output_2")]
 effects = [SubResource("effect_1")]
 conditions = [SubResource("condition_1")]
 actions = [&"chop"]
-time = 4.0
-unlock_when = [SubResource("unlock_pred_1"), SubResource("unlock_pred_2")]
+duration = 4.0

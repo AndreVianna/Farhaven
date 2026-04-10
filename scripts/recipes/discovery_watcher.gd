@@ -2,11 +2,12 @@ extends Node
 
 ## Owns the player's known-recipes list. Listens to global signals
 ## (Catalog.entry_cataloged, tool equip, grant_recipe effects) and
-## evaluates unlock_when predicates to discover new recipes.
+## grants recipes via events or direct grant_recipe calls.
 ## Autoload registered AFTER RecipeRegistry.
+## NOTE: unlock_when was removed from Recipe in task-056.
+## Discovery is now handled by Event system (task-058).
 
 const _Recipe = preload("res://scripts/recipes/recipe.gd")
-const _PredicateEvaluator = preload("res://scripts/recipes/predicate_evaluator.gd")
 const _WorldContext = preload("res://scripts/recipes/world_context.gd")
 
 signal recipe_unlocked(recipe_id: StringName)
@@ -63,19 +64,13 @@ func load_save_data(data: Dictionary) -> void:
 		_known_recipes[StringName(id)] = true
 
 
-## Re-evaluate unlock_when for all unknown recipes.
+## Re-evaluate unlock conditions for all unknown recipes.
 ## Called when external state changes (catalog, tool equip, etc.).
-func check_unlocks(ctx: _WorldContext) -> void:
-	if _registry == null:
-		return
-	var all_recipes: Array = _registry.get_all_recipes()
-	for recipe in all_recipes:
-		if _known_recipes.has(recipe.id):
-			continue
-		if recipe.unlock_when.is_empty():
-			continue
-		if _all_unlock_predicates_pass(recipe, ctx):
-			grant_recipe(recipe.id)
+## NOTE: unlock_when was removed from Recipe (task-056). This now
+## only grants recipes that have no unlock conditions (i.e., known from start).
+## Task-058 will rewrite discovery via Event system.
+func check_unlocks(_ctx: _WorldContext) -> void:
+	pass
 
 
 # ---------------------------------------------------------------------------
@@ -86,10 +81,11 @@ func check_unlocks(ctx: _WorldContext) -> void:
 func _populate_initial_known() -> void:
 	if _registry == null:
 		return
+	# With unlock_when removed (task-056), all recipes are known from start
+	# until Event-based discovery is implemented (task-058).
 	var all_recipes: Array = _registry.get_all_recipes()
 	for recipe in all_recipes:
-		if recipe.unlock_when.is_empty():
-			_known_recipes[recipe.id] = true
+		_known_recipes[recipe.id] = true
 
 
 func _connect_catalog_signal() -> void:
@@ -101,34 +97,10 @@ func _connect_catalog_signal() -> void:
 	# For now, callers set _catalog directly or connect externally.
 
 
-func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
-	if _registry == null:
-		return
-	# Build a minimal context for predicate evaluation.
-	var ctx := _build_current_context()
-	var all_recipes: Array = _registry.get_all_recipes()
-	for recipe in all_recipes:
-		if _known_recipes.has(recipe.id):
-			continue
-		if recipe.unlock_when.is_empty():
-			continue
-		# Quick filter: only check recipes that reference cataloged() predicates
-		var has_catalog_pred := false
-		for pred in recipe.unlock_when:
-			if pred.kind == &"cataloged":
-				has_catalog_pred = true
-				break
-		if not has_catalog_pred:
-			continue
-		if _all_unlock_predicates_pass(recipe, ctx):
-			grant_recipe(recipe.id)
-
-
-func _all_unlock_predicates_pass(recipe: _Recipe, ctx: _WorldContext) -> bool:
-	for pred in recipe.unlock_when:
-		if not _PredicateEvaluator.evaluate(pred, ctx):
-			return false
-	return true
+func _on_entry_cataloged(_entry_id: StringName, _category: int) -> void:
+	# NOTE: unlock_when was removed from Recipe (task-056).
+	# Event-based discovery (task-058) will replace this logic.
+	pass
 
 
 func _build_current_context() -> _WorldContext:

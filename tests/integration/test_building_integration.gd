@@ -249,7 +249,7 @@ func _make_build_recipe(recipe_id: StringName, display_name: String,
 	recipe.display_name = display_name
 	recipe.kind = _Recipe.Kind.ASSEMBLE
 	recipe.actions = [&"build"]
-	recipe.time = time
+	recipe.duration = time
 
 	# Inputs
 	var recipe_inputs: Array[Resource] = []
@@ -276,9 +276,6 @@ func _make_build_recipe(recipe_id: StringName, display_name: String,
 	cond.predicate = pred
 	cond.must_sustain = false
 	recipe.conditions = [cond]
-
-	# No unlock_when (known from start)
-	recipe.unlock_when = []
 
 	return recipe
 
