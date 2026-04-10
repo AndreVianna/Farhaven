@@ -886,6 +886,9 @@ function _initPropPalette() {
       const propName = filename.replace('.tres', '');
       const d = entry.data;
 
+      // Only show placeable props on the map
+      if (!d.placeable) continue;
+
       // Read prop_category (int) and convert to category name
       const catInt = d.prop_category != null ? Number(d.prop_category) : 0;
       const resCat = CATEGORIES[catInt] || 'plant';
