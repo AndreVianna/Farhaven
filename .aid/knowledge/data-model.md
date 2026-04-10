@@ -91,13 +91,18 @@ Godot Resource defining a prop type's static properties. Loaded from `data/props
 
 | Field | Type (class) | Inner Fields | Notes |
 |-------|-------------|-------------|-------|
-| portable | PortableCap | `weight: float = 1.0` | Prop can be carried. Weight determines inventory capacity consumed. |
-| placeable | PlaceableCap | `rotation_snap: int = 0` | Prop can be placed in world. Collision is mesh-based (CollisionHelper + StaticBody3D), not footprint-based. |
+| portable | PortableCap | `size: float = 1.0` | Prop can be carried. Size in slot units (berry=0.00001, rock=0.2, wood=2, stone=4, log=100). |
+| placeable | PlaceableCap | _(marker — no fields)_ | Prop can be placed in world. Rotation is per-placement. Collision is mesh-based (CollisionHelper + StaticBody3D). |
 | container | ContainerCap | `capacity_size: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
 | light | LightCap | `radius: float = 0.0`, `color: Color = warm_orange`, `flicker: bool = false` | Prop emits light while active (used by LightingManager). |
 | movable | MovableCap | `push_cost: float = 1.0` | Prop can be pushed across tiles. |
 | station | StationCap | `station_tags: Array[StringName] = []` | Prop is a crafting/cooking station. Tags list roles (e.g. ["cook", "fire"]). |
-| catalogable | CatalogableCap | `scan_time: float = 1.0`, `display_tag: StringName = &""` | Prop can be cataloged by ScannerSystem. |
+| catalogable | CatalogableCap | `scan_time: float = 1.0`, `show_as_anomaly: bool = false`, `icon: Texture2D = null`, `properties: Dictionary = {}` | Prop can be cataloged by ScannerSystem. `show_as_anomaly=true` overrides catalog UI grouping into the Anomalies bucket regardless of prop_category. |
+| endurance | EnduranceCap | `hp: int = 1`, `vulnerabilities: Array[StringName] = []`, `resistances: Array[StringName] = []`, `immunities: Array[StringName] = []` | HP / durability + damage-tag modifiers (vulnerable=2x, resistant=0.5x, immune=0x). |
+| movement | MovementCap | `modes: Dictionary = {}` (Mode int → `[normal_speed, max_speed]` in sub-hex/sec) | Movement modes (WALK, SWIM, FLY, BURROW, CLIMB, JUMP). cooldown derived = 1/normal_speed; max_jump derived from JUMP mode or default 1. |
+| combat | CombatCap | `attacks: Array[Resource] = []`, `defenses: Array[Resource] = []` | Combat behavior as event references (attacks/defenses are GameEvents). Empty until event-driven combat runtime lands. |
+| behavior | BehaviorCap | `detection_range: int = 2`, `activity_cycle: int (enum)`, `group_behavior: int (enum)`, `diet: Array[StringName] = []`, `reactions: Array[Resource] = []` | AI behavior. activity_cycle = ALWAYS/DIURNAL/NOCTURNAL/CREPUSCULAR. group_behavior = SOLO/PAIR/PACK/HERD/SWARM. reactions are GameEvents fired by stimuli. |
+| spawnable | SpawnableCap | `spawn_min: int = 1`, `spawn_max: int = 1`, `first_spawn_day: int = 1`, `spawn_min_distance: int = 3`, `allowed_biomes: Array[StringName] = []` | Spawn rules for transient entities (fauna). Empty allowed_biomes = any biome. |
 
 **Helper methods:**
 - `has_capability(cap_name: StringName) -> bool` — checks if a capability is non-null
