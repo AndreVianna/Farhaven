@@ -271,8 +271,10 @@ func test_get_discovery_count_both_states() -> void:
 
 func test_get_total_count_matches_all_entries() -> void:
 	# 4 flora (P00001/P00003/P00004/P00008) + 4 minerals (P00002/P00005/P00006/P00007)
-	# + 1 fauna (P00108) + 1 anomaly (P10001) + 6 structures (P00101..P00106) = 16
-	assert_int(_catalog.get_total_count()).is_equal(16)
+	# + 1 fauna (P00108) + 1 anomaly (P10001) = 10
+	# Structures (P00101..P00106) are excluded — they have catalogable cap but
+	# prop_category=STRUCTURE which isn't a displayed category in the catalog UI.
+	assert_int(_catalog.get_total_count()).is_equal(10)
 
 
 # --- get_discovery_text returns "X entries" format ---

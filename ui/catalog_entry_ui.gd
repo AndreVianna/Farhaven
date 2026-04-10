@@ -124,7 +124,7 @@ func _format_properties(entry: Resource) -> String:
 					parts.append("Edible")
 				if props.get("toxic", false):
 					parts.append("Toxic")
-				var res: StringName = props.get("prop_type", &"")
+				var res: StringName = props.get("resource_type", props.get("prop_type", &""))
 				if res != &"":
 					parts.append("Prop: %s" % String(res).replace("_", " "))
 			_Prop.Category.ANIMAL:
@@ -136,7 +136,7 @@ func _format_properties(entry: Resource) -> String:
 				if dmg > 0:
 					parts.append("DMG %d" % dmg)
 			_Prop.Category.MINERAL:
-				var res: StringName = props.get("prop_type", &"")
+				var res: StringName = props.get("resource_type", props.get("prop_type", &""))
 				if res != &"":
 					parts.append(String(res).capitalize())
 				var tool: StringName = props.get("tool_required", &"")

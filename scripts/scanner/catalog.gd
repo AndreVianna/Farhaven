@@ -32,13 +32,39 @@ func initialize(hex_grid = null, fauna_manager = null) -> void:
 	_load_all_entries()
 
 
+## Categories that have a dedicated tab in the catalog UI.
+## Props with prop_category outside this set are excluded from catalog
+## tracking unless they have catalogable.show_as_anomaly = true.
+const DISPLAYED_CATEGORIES: Array = [
+	_Prop.Category.PLANT,
+	_Prop.Category.ANIMAL,
+	_Prop.Category.MINERAL,
+]
+
+
 func _load_all_entries() -> void:
-	# Load from PropRegistry — all PropDefs with CATALOGABLE capability.
+	# Load from PropRegistry — all PropDefs with CATALOGABLE capability that
+	# fit one of the catalog UI buckets (PLANT, ANIMAL, MINERAL, or anomaly).
+	# Structures, equipment, etc. with catalogable cap are excluded so the
+	# discovery count stays in sync with what the UI can actually display.
 	for def in PropRegistry.get_all():
-		if def.catalogable != null:
-			_all_entries[def.id] = def
+		if def.catalogable == null:
+			continue
+		if not _is_displayable(def):
+			continue
+		_all_entries[def.id] = def
 
 	_total_count = _all_entries.size()
+
+
+## Returns true if a PropDef belongs in the catalog UI (one of the
+## displayed buckets, or flagged as anomaly via show_as_anomaly).
+func _is_displayable(def) -> bool:
+	if def.catalogable == null:
+		return false
+	if def.catalogable.show_as_anomaly:
+		return true
+	return DISPLAYED_CATEGORIES.has(def.prop_category)
 
 
 # --- Query API ---
@@ -135,6 +161,10 @@ func get_encounter_label(entry_id: StringName) -> String:
 # --- Mutation ---
 
 func catalog_entry(entry_id: StringName) -> void:
+	# Skip props that aren't tracked in the catalog (e.g. structures with
+	# catalogable cap but prop_category outside DISPLAYED_CATEGORIES).
+	if not _all_entries.has(entry_id):
+		return
 	var old_state: int = get_knowledge_state(entry_id)
 	if old_state == KnowledgeState.CATALOGED:
 		return

@@ -304,8 +304,9 @@ Adding new weapons, armor, special attacks, boss mechanics = adding Event .tres 
 - Examples: berry = 0.00001, rock = 0.2, wood = 2.0, stone = 4.0, log = 100.0
 - Container capacity measured in slots (backpack = 12.0 slots, chest = 12.0 slots)
 - Items exceeding container capacity stay on the ground (log = 100 slots → never fits in backpack or chest)
-- Player chooses what to carry — economy of space, not arbitrary stacking rules
-- **Replaces:** max_stack (removed), weight (removed). Pure slot math.
+- Player chooses what to carry — economy of space centered on slot capacity
+- **Current transitional state:** weight is removed and slot-units are the primary size/capacity model, but `max_stack` is still exported on PropDef and enforced by Inventory. The editor no longer surfaces it.
+- **Planned end state:** remove `max_stack` entirely so inventory is governed by slot math alone.
 
 **Storage tiers:**
 - Backpack: 12 slots (diegetic — the backpack IS the inventory)
