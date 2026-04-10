@@ -6,6 +6,7 @@ import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { EFFECT_KINDS, PREDICATE_KINDS } from './recipe-editor.js';
+import { renderGearHeader } from './editor-common.js';
 
 // ============================================================
 // EventModel
@@ -850,37 +851,45 @@ export function renderEventEditor(container, options) {
     body.classList.add('editor-detail-body');
     body.style.cssText = 'flex:1;overflow-y:auto;';
 
-    const grid = document.createElement('div');
-    grid.classList.add('prop-grid');
+    // --- Gear base-fields header (2-col: id/name/short | long) ---
+    renderGearHeader(body, model, { idReadonly: !isNew });
 
-    // ID
-    _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
-    // Display Name
-    _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
-    // Short Description
-    _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
-    // Long Description
-    _addTextareaField(grid, 'Long Description', 'long_description', model.long_description);
-    // Max Count
-    _addField(grid, 'Max Count', 'max_count', 'number', model.max_count, { min: '0', step: '1' });
-    // Count (read-only)
-    _addField(grid, 'Count (runtime)', 'count', 'number', model.count, { disabled: '' });
-    // Duration
-    _addField(grid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
+    // --- Body split: 2 columns ---
+    //   Left:  Actions, Conditions
+    //   Right: Duration, Max Count, Count (read-only), Effects
+    const bodySplit = document.createElement('div');
+    bodySplit.classList.add('editor-2col', 'editor-body-grid');
 
-    // --- Actions ---
-    _addSeparator(grid, 'Actions');
-    grid.appendChild(_createActionsEditor(model.actions));
+    const leftCol = document.createElement('div');
+    leftCol.classList.add('col-left');
+    const leftGrid = document.createElement('div');
+    leftGrid.classList.add('prop-grid');
+    leftCol.appendChild(leftGrid);
 
-    // --- Conditions ---
-    _addSeparator(grid, 'Conditions');
-    grid.appendChild(_createConditionListEditor(model.conditions));
+    const rightCol = document.createElement('div');
+    rightCol.classList.add('col-right');
+    const rightGrid = document.createElement('div');
+    rightGrid.classList.add('prop-grid');
+    rightCol.appendChild(rightGrid);
 
-    // --- Effects ---
-    _addSeparator(grid, 'Effects');
-    grid.appendChild(_createEffectListEditor(model.effects));
+    // --- Left column ---
+    _addSeparator(leftGrid, 'Actions');
+    leftGrid.appendChild(_createActionsEditor(model.actions));
 
-    body.appendChild(grid);
+    _addSeparator(leftGrid, 'Conditions');
+    leftGrid.appendChild(_createConditionListEditor(model.conditions));
+
+    // --- Right column ---
+    _addField(rightGrid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
+    _addField(rightGrid, 'Max Count', 'max_count', 'number', model.max_count, { min: '0', step: '1' });
+    _addField(rightGrid, 'Count (runtime)', 'count', 'number', model.count, { disabled: '' });
+
+    _addSeparator(rightGrid, 'Effects');
+    rightGrid.appendChild(_createEffectListEditor(model.effects));
+
+    bodySplit.appendChild(leftCol);
+    bodySplit.appendChild(rightCol);
+    body.appendChild(bodySplit);
     form.appendChild(body);
     detailPanel.appendChild(form);
 
