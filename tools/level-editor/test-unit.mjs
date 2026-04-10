@@ -11,10 +11,11 @@ import { HEX_SIZE, HexMath } from './js/hex-math.js';
 import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, CATEGORY_COLORS, CATEGORY_TO_INT, INT_TO_CATEGORY } from './js/hex-grid.js';
 import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
-import { ProjectContext } from './js/file-discovery.js';
+import { ProjectContext, nextId } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
 import { RecipeModel, recipeModelToRaw, validateRecipeForm, RECIPE_KINDS, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
+import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -1581,6 +1582,59 @@ test('validatePropForm — no capabilities = valid', () => {
   assert(result.valid, 'should be valid with no capabilities');
 });
 
+test('validatePropForm — ID missing P prefix', () => {
+  const result = validatePropForm(_makeModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid without P prefix');
+  assert(result.errors.some(e => e.includes('start with "P"')), 'should mention P prefix');
+});
+
+test('validatePropForm — ID with P prefix is valid', () => {
+  const result = validatePropForm(_makeModel({ id: 'P00001' }), false);
+  assert(result.valid, 'should be valid with P prefix');
+});
+
+// ============================================================
+// nextId — shared auto-increment helper
+// ============================================================
+
+test('nextId — returns prefix + 00001 for empty map', () => {
+  const empty = new Map();
+  assert(nextId('P', empty) === 'P00001', 'should be P00001');
+  assert(nextId('R', empty) === 'R00001', 'should be R00001');
+  assert(nextId('E', empty) === 'E00001', 'should be E00001');
+});
+
+test('nextId — increments past highest existing ID', () => {
+  const map = new Map();
+  map.set('P00003.tres', {});
+  map.set('P00010.tres', {});
+  map.set('P00005.tres', {});
+  assert(nextId('P', map) === 'P00011', 'should be P00011 (max was 10)');
+});
+
+test('nextId — ignores entries with wrong prefix', () => {
+  const map = new Map();
+  map.set('R00050.tres', {});
+  map.set('P00002.tres', {});
+  assert(nextId('P', map) === 'P00003', 'should be P00003, ignoring R entry');
+  assert(nextId('R', map) === 'R00051', 'should be R00051, ignoring P entry');
+});
+
+test('nextId — ignores non-numeric suffixes', () => {
+  const map = new Map();
+  map.set('Pabc.tres', {});
+  map.set('P00007.tres', {});
+  assert(nextId('P', map) === 'P00008', 'should be P00008, ignoring Pabc');
+});
+
+test('nextId — pads to 5 digits', () => {
+  const map = new Map();
+  map.set('E00001.tres', {});
+  const result = nextId('E', map);
+  assert(result === 'E00002', 'should be E00002');
+  assert(result.length === 6, 'prefix + 5 digits = 6 chars');
+});
+
 // ============================================================
 // propModelToRaw — capability serialization (task-046b)
 // ============================================================
@@ -1638,7 +1692,7 @@ test('propModelToRaw — serialized output is valid .tres', () => {
   const reparsed = TresParser.parse(text);
   assert(reparsed.scriptClass === 'PropDef', 'should parse as PropDef');
   assert(reparsed.subResources.length === 4, 'should have 4 sub_resources');
-  assert(reparsed.resourceFields.get('id').value === 'test', 'id should round-trip');
+  assert(reparsed.resourceFields.get('id').value === 'Ptest', 'id should round-trip');
 });
 
 // ============================================================
@@ -1838,7 +1892,7 @@ function _makePropEntry(overrides) {
  */
 function _makeModel(overrides) {
   const model = new PropDefModel();
-  model.id = 'test';
+  model.id = 'Ptest';
   model.display_name = 'Test Prop';
   model.max_stack = 99;
   model.placeholder_mesh_type = 'cube';
@@ -2766,6 +2820,83 @@ for (const eventFile of __eventFiles) {
     assert(model2.actions.length === model.actions.length, `${eventFile}: actions count survives`);
     assert(model2.duration === model.duration, `${eventFile}: duration survives`);
     assert(model2.max_count === model.max_count, `${eventFile}: max_count survives`);
+  });
+}
+
+// ============================================================
+// BiomeDataModel round-trip from actual .tres files
+// ============================================================
+
+const __biomesDir = join(__projectRoot, 'data', 'biomes');
+let __biomeFiles = [];
+try { __biomeFiles = readdirSync(__biomesDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/biomes:', e.message); }
+
+for (const biomeFile of __biomeFiles) {
+  test(`BiomeDataModel round-trip — ${biomeFile}`, () => {
+    const filePath = join(__biomesDir, biomeFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    // Parse
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'BiomeData', `${biomeFile}: scriptClass should be BiomeData`);
+
+    // Verify TresParser round-trip
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${biomeFile}: TresParser round-trip`);
+
+    // Build data object (same as file-discovery _parseTresFile)
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      data[key] = tv.value;
+    }
+
+    // Parse into model
+    const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
+    assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
+    assert(typeof model.biome_name === 'string' && model.biome_name.length > 0, `${biomeFile}: biome_name`);
+    assert(typeof model.elevation_range.min === 'number', `${biomeFile}: elevation_range.min is number`);
+    assert(typeof model.elevation_range.max === 'number', `${biomeFile}: elevation_range.max is number`);
+    assert(model.elevation_range.min <= model.elevation_range.max, `${biomeFile}: elevation min <= max`);
+    assert(Array.isArray(model.prop_table), `${biomeFile}: prop_table is array`);
+    assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
+    assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
+
+    // Verify prop_table entries have P-prefixed types (if non-empty)
+    for (let i = 0; i < model.prop_table.length; i++) {
+      const entry = model.prop_table[i];
+      assert(typeof entry.type === 'string', `${biomeFile}: prop_table[${i}].type is string`);
+      assert(entry.type.startsWith('P'), `${biomeFile}: prop_table[${i}].type "${entry.type}" has P prefix`);
+      assert(typeof entry.chance === 'number', `${biomeFile}: prop_table[${i}].chance is number`);
+      assert(typeof entry.min_amount === 'number', `${biomeFile}: prop_table[${i}].min_amount is number`);
+      assert(typeof entry.max_amount === 'number', `${biomeFile}: prop_table[${i}].max_amount is number`);
+    }
+
+    // Re-serialize through model and compare
+    const raw2 = biomeModelToRaw(model);
+    const text2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(text2);
+    assert(reparsed.scriptClass === 'BiomeData', `${biomeFile}: re-serialized scriptClass`);
+
+    // Build data2 for fromEntry
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      data2[key] = tv.value;
+    }
+
+    const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
+    assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
+    assert(model2.biome_name === model.biome_name, `${biomeFile}: biome_name survives`);
+    assert(model2.elevation_range.min === model.elevation_range.min, `${biomeFile}: elevation min survives`);
+    assert(model2.elevation_range.max === model.elevation_range.max, `${biomeFile}: elevation max survives`);
+    assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
+    for (let i = 0; i < model.prop_table.length; i++) {
+      assert(model2.prop_table[i].type === model.prop_table[i].type, `${biomeFile}: prop_table[${i}].type survives`);
+      assert(model2.prop_table[i].chance === model.prop_table[i].chance, `${biomeFile}: prop_table[${i}].chance survives`);
+      assert(model2.prop_table[i].min_amount === model.prop_table[i].min_amount, `${biomeFile}: prop_table[${i}].min_amount survives`);
+      assert(model2.prop_table[i].max_amount === model.prop_table[i].max_amount, `${biomeFile}: prop_table[${i}].max_amount survives`);
+    }
+    assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
   });
 }
 

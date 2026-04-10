@@ -2,7 +2,7 @@
 // EventEditor — Master-Detail Split Layout
 // ============================================================
 
-import { ProjectContext, FileDiscovery } from './file-discovery.js';
+import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { EFFECT_KINDS, PREDICATE_KINDS } from './recipe-editor.js';
@@ -948,13 +948,7 @@ export function renderEventEditor(container, options) {
     editingModel = new EventModel();
 
     // Auto-increment ID with E prefix
-    let maxId = 0;
-    for (const [filename] of ProjectContext.files.events) {
-      const numPart = filename.replace('.tres', '').replace(/^E/, '');
-      const numId = parseInt(numPart, 10);
-      if (!isNaN(numId) && numId > maxId) maxId = numId;
-    }
-    editingModel.id = 'E' + String(maxId + 1).padStart(5, '0');
+    editingModel.id = nextId('E', ProjectContext.files.events);
 
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();

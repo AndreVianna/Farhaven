@@ -2,7 +2,7 @@
 // PropEditor — Master-Detail Split Layout (Side-by-Side Detail)
 // ============================================================
 
-import { ProjectContext, FileDiscovery } from './file-discovery.js';
+import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
@@ -1331,6 +1331,10 @@ export function renderPropEditor(container, options) {
     isNewMode = true;
     selectedId = null;
     editingModel = new PropDefModel();
+
+    // Auto-increment ID with P prefix
+    editingModel.id = nextId('P', ProjectContext.files.props);
+
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();
     _renderDetail();
@@ -1773,6 +1777,8 @@ export function validatePropForm(model, isNew) {
     errors.push('ID is required');
   } else if (!/^[a-zA-Z0-9_]+$/.test(model.id)) {
     errors.push('ID must contain only alphanumeric characters and underscores');
+  } else if (!model.id.startsWith('P')) {
+    errors.push('Prop ID must start with "P" (e.g. P00001)');
   } else if (isNew && ProjectContext.files.props.has(model.id + '.tres')) {
     errors.push(`Prop "${model.id}" already exists`);
   }

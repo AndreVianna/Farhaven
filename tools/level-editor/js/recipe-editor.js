@@ -2,7 +2,7 @@
 // RecipeEditor — Master-Detail Split Layout (task-039b)
 // ============================================================
 
-import { ProjectContext, FileDiscovery } from './file-discovery.js';
+import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 
@@ -1152,13 +1152,7 @@ export function renderRecipeEditor(container, options) {
     editingModel = new RecipeModel();
 
     // Auto-increment ID with R prefix
-    let maxId = 0;
-    for (const [filename] of ProjectContext.files.recipes) {
-      const numPart = filename.replace('.tres', '').replace(/^R/, '');
-      const numId = parseInt(numPart, 10);
-      if (!isNaN(numId) && numId > maxId) maxId = numId;
-    }
-    editingModel.id = 'R' + String(maxId + 1).padStart(5, '0');
+    editingModel.id = nextId('R', ProjectContext.files.recipes);
 
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();

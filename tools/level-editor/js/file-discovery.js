@@ -28,6 +28,29 @@ export const ProjectContext = {
 };
 
 // ============================================================
+// Shared ID helpers
+// ============================================================
+
+/**
+ * Compute the next available prefixed ID by scanning an existing file map.
+ * E.g. nextId('P', ProjectContext.files.props) → 'P00042'
+ * @param {string} prefix - Single-letter prefix ('P', 'R', 'E')
+ * @param {Map<string, *>} existingMap - Map whose keys are filenames like 'P00041.tres'
+ * @returns {string} Next ID e.g. 'P00042'
+ */
+export function nextId(prefix, existingMap) {
+  let max = 0;
+  for (const [filename] of existingMap) {
+    const id = filename.replace('.tres', '');
+    if (id.startsWith(prefix)) {
+      const num = parseInt(id.slice(prefix.length), 10);
+      if (!isNaN(num) && num > max) max = num;
+    }
+  }
+  return prefix + String(max + 1).padStart(5, '0');
+}
+
+// ============================================================
 // FileDiscovery (task-002)
 // ============================================================
 
