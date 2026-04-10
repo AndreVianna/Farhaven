@@ -10,8 +10,7 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 3.0
-display_tag = &"anomalies"
-category = 3
+show_as_anomaly = true
 properties = {"journal_entry_id": &"anomaly_ch1_001", "cutscene_id": &"cs_first_anomaly"}
 
 [resource]

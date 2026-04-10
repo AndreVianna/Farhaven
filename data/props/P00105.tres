@@ -15,7 +15,6 @@ station_tags = [&"craft"]
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("4_catalogable")
 scan_time = 2.0
-display_tag = &"crafting"
 
 [resource]
 script = ExtResource("1_script")

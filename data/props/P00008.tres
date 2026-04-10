@@ -10,8 +10,6 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 1.0
-display_tag = &"flora"
-category = 0
 properties = {"edible": false, "toxic": true, "resource_type": &"toxic_berries"}
 
 [resource]

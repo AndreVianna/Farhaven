@@ -2,11 +2,19 @@ class_name Catalog
 extends RefCounted
 
 const CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
-enum CatalogCategory { FLORA, FAUNA, MINERAL, ANOMALY }
 enum KnowledgeState { UNKNOWN, ENCOUNTERED, CATALOGED }
 
-signal entry_cataloged(entry_id: StringName, category: int)
+## Sentinel value used by catalog/scanner signals to indicate the entry
+## should render under the "Anomalies" bucket (override flag on CatalogableCap).
+## Distinct from any Prop.Category enum value.
+const ANOMALY_BUCKET: int = -1
+
+## entry_cataloged carries a "display bucket" int — either a Prop.Category
+## enum value (PLANT, MINERAL, ANIMAL, ...) or Catalog.ANOMALY_BUCKET (-1)
+## when the entry's catalogable cap has show_as_anomaly=true.
+signal entry_cataloged(entry_id: StringName, bucket: int)
 signal entry_encountered(entry_id: StringName, label: String)
 signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: int)
 
@@ -68,13 +76,35 @@ func get_discovered_entries() -> Array:
 	return result
 
 
-func get_discovered_by_category(category: int) -> Array:
+## Returns discovered entries matching a Prop.Category enum value.
+## Entries flagged with catalogable.show_as_anomaly are excluded — they live
+## in the anomaly bucket regardless of their underlying prop_category.
+func get_discovered_by_category(prop_category: int) -> Array:
 	var result: Array = []
 	for id in _knowledge:
 		if _knowledge[id] < KnowledgeState.ENCOUNTERED:
 			continue
 		var entry = _all_entries.get(id, null)
-		if entry != null and entry.catalogable != null and entry.catalogable.category == category:
+		if entry == null:
+			continue
+		if entry.catalogable != null and entry.catalogable.show_as_anomaly:
+			continue
+		if entry.prop_category == prop_category:
+			result.append({entry_id = id, entry = entry})
+	return result
+
+
+## Returns discovered entries whose catalogable cap has show_as_anomaly=true.
+## This is the anomaly bucket — overrides the normal prop_category grouping.
+func get_discovered_anomalies() -> Array:
+	var result: Array = []
+	for id in _knowledge:
+		if _knowledge[id] < KnowledgeState.ENCOUNTERED:
+			continue
+		var entry = _all_entries.get(id, null)
+		if entry == null:
+			continue
+		if entry.catalogable != null and entry.catalogable.show_as_anomaly:
 			result.append({entry_id = id, entry = entry})
 	return result
 
@@ -112,11 +142,18 @@ func catalog_entry(entry_id: StringName) -> void:
 	# Remove encounter label if upgrading from ENCOUNTERED
 	_encounter_labels.erase(entry_id)
 	var entry = _all_entries.get(entry_id, null)
-	var category: int = CatalogCategory.FLORA
-	if entry != null and entry.catalogable != null:
-		category = entry.catalogable.category
-	entry_cataloged.emit(entry_id, category)
+	entry_cataloged.emit(entry_id, _resolve_display_bucket(entry))
 	knowledge_state_changed.emit(entry_id, old_state, KnowledgeState.CATALOGED)
+
+
+## Resolve the display bucket for an entry — returns Prop.Category int value,
+## or Catalog.ANOMALY_BUCKET if the entry's catalogable cap has show_as_anomaly=true.
+func _resolve_display_bucket(entry) -> int:
+	if entry == null:
+		return _Prop.Category.PLANT
+	if entry.catalogable != null and entry.catalogable.show_as_anomaly:
+		return ANOMALY_BUCKET
+	return entry.prop_category
 
 
 func encounter_entry(entry_id: StringName, label: String) -> void:
@@ -124,9 +161,9 @@ func encounter_entry(entry_id: StringName, label: String) -> void:
 	if entry == null:
 		push_warning("encounter_entry called for unknown entry: %s" % entry_id)
 		return
-	# Guard: only fauna can enter ENCOUNTERED state (flora/mineral are static)
-	if entry.catalogable == null or entry.catalogable.category != CatalogCategory.FAUNA:
-		push_warning("encounter_entry called for non-fauna entry: %s" % entry_id)
+	# Guard: only animals can enter ENCOUNTERED state (plants/minerals are static)
+	if entry.prop_category != _Prop.Category.ANIMAL:
+		push_warning("encounter_entry called for non-animal entry: %s" % entry_id)
 		return
 	var old_state: int = get_knowledge_state(entry_id)
 	if old_state >= KnowledgeState.ENCOUNTERED:
@@ -156,9 +193,9 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 		if entry_id == &"":
 			continue
 		if not is_cataloged(entry_id) and _all_entries.has(entry_id):
-			# Skip ENCOUNTERED fauna (needs Trap/Sneak, not proximity scan)
+			# Skip ENCOUNTERED animals (needs Trap/Sneak, not proximity scan)
 			var entry = _all_entries[entry_id]
-			if entry.catalogable != null and entry.catalogable.category == CatalogCategory.FAUNA and is_encountered(entry_id):
+			if entry.prop_category == _Prop.Category.ANIMAL and is_encountered(entry_id):
 				continue
 			return entry_id
 	for prop in tile.get_anomalies():

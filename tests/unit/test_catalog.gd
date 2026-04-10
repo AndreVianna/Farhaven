@@ -10,6 +10,7 @@ class_name TestCatalog
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+const _PropCategory = _Prop.Category
 
 
 # Minimal fake HexGrid for get_scannable_at tests
@@ -209,23 +210,39 @@ func test_get_discovered_entries_contains_correct_entry() -> void:
 # --- get_discovered_by_category filtering ---
 
 func test_get_discovered_by_category_filters_correctly() -> void:
-	_catalog.catalog_entry(&"P00004")       # FLORA = 0
-	_catalog.catalog_entry(&"P00005")       # MINERAL = 2
-	_catalog.encounter_entry(&"P00108", "Hostile")  # FAUNA = 1
+	_catalog.catalog_entry(&"P00004")       # PLANT
+	_catalog.catalog_entry(&"P00005")       # MINERAL
+	_catalog.encounter_entry(&"P00108", "Hostile")  # ANIMAL
 
-	var flora: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FLORA)
-	var fauna: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FAUNA)
-	var minerals: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.MINERAL)
+	var plants: Array = _catalog.get_discovered_by_category(_PropCategory.PLANT)
+	var animals: Array = _catalog.get_discovered_by_category(_PropCategory.ANIMAL)
+	var minerals: Array = _catalog.get_discovered_by_category(_PropCategory.MINERAL)
 
-	assert_int(flora.size()).is_equal(1)
-	assert_int(fauna.size()).is_equal(1)
+	assert_int(plants.size()).is_equal(1)
+	assert_int(animals.size()).is_equal(1)
 	assert_int(minerals.size()).is_equal(1)
 
 
 func test_get_discovered_by_category_empty_when_none() -> void:
 	_catalog.catalog_entry(&"P00004")
-	var fauna: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FAUNA)
-	assert_int(fauna.size()).is_equal(0)
+	var animals: Array = _catalog.get_discovered_by_category(_PropCategory.ANIMAL)
+	assert_int(animals.size()).is_equal(0)
+
+
+func test_get_discovered_anomalies_returns_show_as_anomaly_entries() -> void:
+	# P10001 (Alien Beacon) has show_as_anomaly=true
+	_catalog.catalog_entry(&"P10001")
+	var anomalies: Array = _catalog.get_discovered_anomalies()
+	assert_int(anomalies.size()).is_equal(1)
+	assert_str(String(anomalies[0].entry_id)).is_equal("P10001")
+
+
+func test_get_discovered_by_category_excludes_anomalies() -> void:
+	# P10001 has prop_category=STRUCTURE(6) + show_as_anomaly=true.
+	# It should NOT appear in the structure bucket.
+	_catalog.catalog_entry(&"P10001")
+	var structures: Array = _catalog.get_discovered_by_category(_PropCategory.STRUCTURE)
+	assert_int(structures.size()).is_equal(0)
 
 
 # --- get_discovery_count counts ENCOUNTERED + CATALOGED ---
@@ -282,7 +299,14 @@ func test_catalog_entry_emits_entry_cataloged_signal() -> void:
 	_catalog.entry_cataloged.connect(_on_entry_cataloged)
 	_catalog.catalog_entry(&"P00004")
 	assert_str(String(_signal_id)).is_equal("P00004")
-	assert_int(_signal_cat).is_equal(_Catalog.CatalogCategory.FLORA)
+	assert_int(_signal_cat).is_equal(_PropCategory.PLANT)
+
+
+func test_catalog_entry_emits_anomaly_bucket_for_show_as_anomaly() -> void:
+	_catalog.entry_cataloged.connect(_on_entry_cataloged)
+	_catalog.catalog_entry(&"P10001")  # show_as_anomaly=true
+	assert_str(String(_signal_id)).is_equal("P10001")
+	assert_int(_signal_cat).is_equal(_Catalog.ANOMALY_BUCKET)
 
 
 func test_catalog_entry_emits_knowledge_state_changed() -> void:

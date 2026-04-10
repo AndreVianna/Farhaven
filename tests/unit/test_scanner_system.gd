@@ -9,6 +9,7 @@ const _ScannerSystem = preload("res://scripts/scanner/scanner_system.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+const _PropCategory = _Prop.Category
 
 # Numeric world prop ids used by scanner tests.
 const ID_TREE: StringName = &"P00001"
@@ -298,7 +299,7 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	assert_bool(_system.is_scanning()).is_false()
 	assert_str(String(_completed_entry_id)).is_equal("P00004")
 	assert_str(String(_cataloged_entry_id)).is_equal("P00004")
-	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.FLORA)
+	assert_int(_cataloged_category).is_equal(_PropCategory.PLANT)
 
 
 # --- Scan interruption: player leaves range → progress resets immediately ---
@@ -446,7 +447,7 @@ func test_passive_id_unknown_emits_element_unknown_with_category() -> void:
 	_system._check_passive_identification(Vector2i(2, 0))
 	assert_int(_unknown_count).is_equal(1)
 	assert_str(String(_unknown_entry_id)).is_equal("P00004")
-	assert_int(_unknown_category).is_equal(_Catalog.CatalogCategory.FLORA)
+	assert_int(_unknown_category).is_equal(_PropCategory.PLANT)
 
 
 func test_passive_id_encountered_emits_element_encountered() -> void:
@@ -462,7 +463,7 @@ func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 
 	_system._check_passive_identification(Vector2i(3, 0))
 	assert_int(_unknown_count).is_equal(1)
-	assert_int(_unknown_category).is_equal(_Catalog.CatalogCategory.ANOMALY)
+	assert_int(_unknown_category).is_equal(_Catalog.ANOMALY_BUCKET)
 
 
 func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
@@ -487,7 +488,7 @@ func test_entry_cataloged_emitted_with_correct_data() -> void:
 	_system._process(0.05)  # complete
 
 	assert_str(String(_cataloged_entry_id)).is_equal("P00005")
-	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.MINERAL)
+	assert_int(_cataloged_category).is_equal(_PropCategory.MINERAL)
 
 
 # --- knowledge_state_changed emitted on all transitions ---

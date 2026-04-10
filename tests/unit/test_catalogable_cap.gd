@@ -9,14 +9,9 @@ func test_default_scan_time_is_one() -> void:
 	assert_float(cap.scan_time).is_equal_approx(1.0, 0.001)
 
 
-func test_default_display_tag_is_empty() -> void:
+func test_default_show_as_anomaly_is_false() -> void:
 	var cap := _CatalogableCap.new()
-	assert_str(String(cap.display_tag)).is_empty()
-
-
-func test_default_category_is_zero() -> void:
-	var cap := _CatalogableCap.new()
-	assert_int(cap.category).is_equal(0)
+	assert_bool(cap.show_as_anomaly).is_false()
 
 
 func test_default_icon_is_null() -> void:
@@ -29,22 +24,19 @@ func test_default_properties_is_empty() -> void:
 	assert_int(cap.properties.size()).is_equal(0)
 
 
-func test_configured_flora_entry() -> void:
+func test_configured_plant_entry() -> void:
 	var cap := _CatalogableCap.new()
 	cap.scan_time = 2.0
-	cap.display_tag = &"flora"
-	cap.category = 0
 	cap.properties = {"resource_type": "wood"}
 	assert_float(cap.scan_time).is_equal_approx(2.0, 0.001)
-	assert_str(String(cap.display_tag)).is_equal("flora")
-	assert_int(cap.category).is_equal(0)
+	assert_bool(cap.show_as_anomaly).is_false()
 	assert_str(cap.properties["resource_type"]).is_equal("wood")
 
 
-func test_anomaly_category_value() -> void:
+func test_show_as_anomaly_override() -> void:
 	var cap := _CatalogableCap.new()
-	cap.category = 3  # ANOMALY
-	assert_int(cap.category).is_equal(3)
+	cap.show_as_anomaly = true
+	assert_bool(cap.show_as_anomaly).is_true()
 
 
 func test_properties_can_hold_booleans() -> void:

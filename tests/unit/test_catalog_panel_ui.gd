@@ -10,6 +10,7 @@ const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 var _panel: PanelContainer = null
 var _panel_opened_count: int = 0
@@ -17,13 +18,14 @@ var _panel_opened_count: int = 0
 
 ## Build a minimal PropDef test double carrying a CatalogableCap so the
 ## CatalogEntryUI can render it. Mirrors what the catalog would hand over.
-func _make_entry(id: StringName, name: String, category: int) -> PropDef:
+## `prop_category` takes a Prop.Category enum value.
+func _make_entry(id: StringName, name: String, prop_category: int) -> PropDef:
 	var def := _PropDef.new()
 	def.id = id
 	def.display_name = name
 	def.short_description = "Test description."
+	def.prop_category = prop_category
 	def.catalogable = _CatalogableCap.new()
-	def.catalogable.category = category
 	def.catalogable.properties = {}
 	return def
 
@@ -52,7 +54,7 @@ func test_catalog_entry_ui_minimum_height() -> void:
 func test_catalog_entry_ui_setup_name() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", _Prop.Category.PLANT)
 	e.catalogable.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_str(entry_ui._name_label.text).is_equal("Berry Bush")
@@ -62,7 +64,7 @@ func test_catalog_entry_ui_setup_name() -> void:
 func test_catalog_entry_ui_setup_description() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", _Prop.Category.PLANT)
 	e.short_description = "A tasty red berry."
 	e.catalogable.properties = {}
 	entry_ui.setup(e)
@@ -73,7 +75,7 @@ func test_catalog_entry_ui_setup_description() -> void:
 func test_catalog_entry_ui_flora_properties_edible() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", _Prop.Category.PLANT)
 	e.catalogable.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Edible")).is_true()
@@ -83,7 +85,7 @@ func test_catalog_entry_ui_flora_properties_edible() -> void:
 func test_catalog_entry_ui_flora_properties_toxic() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00008", "Toxic Berry Bush", 0)
+	var e := _make_entry(&"P00008", "Toxic Berry Bush", _Prop.Category.PLANT)
 	e.catalogable.properties = {"edible": true, "toxic": true, "prop_type": &"toxic_berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Toxic")).is_true()
@@ -93,7 +95,7 @@ func test_catalog_entry_ui_flora_properties_toxic() -> void:
 func test_catalog_entry_ui_fauna_hostile_shows_hostile() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00108", "Thornback", 1)
+	var e := _make_entry(&"P00108", "Thornback", _Prop.Category.ANIMAL)
 	e.catalogable.properties = {"hostile": true, "damage": 10, "hp": 20}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Hostile")).is_true()
@@ -103,7 +105,7 @@ func test_catalog_entry_ui_fauna_hostile_shows_hostile() -> void:
 func test_catalog_entry_ui_mineral_shows_tool() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00006", "Iron Deposit", 2)
+	var e := _make_entry(&"P00006", "Iron Deposit", _Prop.Category.MINERAL)
 	e.catalogable.properties = {"prop_type": &"ore", "tool_required": &"stone_pickaxe"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.to_lower().contains("pickaxe")).is_true()
@@ -150,7 +152,7 @@ func test_catalog_entry_ui_encountered_flag() -> void:
 func test_catalog_entry_ui_cataloged_not_encountered() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"P00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", _Prop.Category.PLANT)
 	e.catalogable.properties = {}
 	entry_ui.setup(e)
 	assert_bool(entry_ui.is_encountered()).is_false()
