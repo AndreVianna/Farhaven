@@ -7,6 +7,9 @@ extends Node
 const _GameEvent = preload("res://scripts/core/event.gd")
 const EVENTS_PATH := "res://data/events/"
 
+## Emitted after an event fires successfully.
+signal event_fired(event_id: StringName, event: Resource)
+
 ## Event id → GameEvent resource
 var _events: Dictionary = {}
 
@@ -25,6 +28,8 @@ func _scan_events() -> void:
 		if fname.ends_with(".tres"):
 			var res := load(EVENTS_PATH + fname)
 			if res is _GameEvent:
+				assert(String(res.id).begins_with("E"),
+					"EventRegistry: event id '%s' must start with 'E' prefix" % res.id)
 				_events[res.id] = res
 		fname = dir.get_next()
 
@@ -38,6 +43,15 @@ func get_event(id: StringName) -> _GameEvent:
 func is_active(id: StringName) -> bool:
 	var event := get_event(id)
 	return event != null and event.is_active()
+
+
+## Try to fire the given event. Returns true if fired (can_fire + incremented).
+## Emits event_fired on success.
+func try_fire(event: _GameEvent) -> bool:
+	if not event.fire():
+		return false
+	event_fired.emit(event.id, event)
+	return true
 
 
 ## Returns all loaded events.

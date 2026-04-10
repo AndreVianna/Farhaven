@@ -74,7 +74,7 @@ func test_station_tags() -> void:
 	assert_int(cap.station_tags.size()).is_equal(2)
 
 func test_load_campfire_has_all_capabilities() -> void:
-	var def: Resource = load("res://data/props/00101.tres")
+	var def: Resource = load("res://data/props/P00101.tres")
 	assert_bool(def.has_capability(&"placeable")).is_true()
 	assert_bool(def.has_capability(&"container")).is_true()
 	assert_bool(def.has_capability(&"light")).is_true()
@@ -83,22 +83,22 @@ func test_load_campfire_has_all_capabilities() -> void:
 	assert_bool(def.has_capability(&"portable")).is_false()
 
 func test_load_campfire_tags() -> void:
-	var def: Resource = load("res://data/props/00101.tres")
+	var def: Resource = load("res://data/props/P00101.tres")
 	assert_bool(def.has_tag(&"STRUCTURE")).is_true()
 	assert_bool(def.has_tag(&"STATION.fire")).is_true()
 
 func test_load_axe_portable_weight() -> void:
-	var def: Resource = load("res://data/props/00201.tres")
+	var def: Resource = load("res://data/props/P00201.tres")
 	assert_bool(def.has_capability(&"portable")).is_true()
 	assert_float(def.portable.weight).is_equal_approx(2.0, 0.0001)
 
 func test_load_berry_tags() -> void:
-	var def: Resource = load("res://data/props/00020.tres")
+	var def: Resource = load("res://data/props/P00020.tres")
 	assert_bool(def.has_tag(&"RESOURCE")).is_true()
 	assert_bool(def.has_tag(&"CONSUMABLE.edible")).is_true()
 
 func test_load_small_tree_catalog_data() -> void:
-	var def: Resource = load("res://data/props/00001.tres")
+	var def: Resource = load("res://data/props/P00001.tres")
 	assert_bool(def.catalogable != null).is_true()
 	assert_str(String(def.catalogable.display_tag)).is_equal("flora")
 	assert_str(def.catalogable.display_name).is_equal("Thornwood Tree")

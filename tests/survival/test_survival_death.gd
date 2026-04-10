@@ -7,10 +7,10 @@ const _SurvivalSystem = preload("res://scripts/survival/survival_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
 # Numeric PropDef ids
-const ID_BERRIES: StringName = &"00020"
-const ID_MEAT: StringName = &"00022"
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
+const ID_BERRIES: StringName = &"P00020"
+const ID_MEAT: StringName = &"P00022"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
 
 var _sys: _SurvivalSystem
 var _inv: _Inventory
@@ -263,24 +263,24 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 
 func test_shelter_placed_updates_respawn_tile() -> void:
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
-	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"P00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 
 
 func test_shelter_destroyed_resets_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
-	_grid.structure_destroyed.emit(Vector2i(2, 3), &"00102")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"P00102")
+	_grid.structure_destroyed.emit(Vector2i(2, 3), &"P00102")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_non_shelter_structure_does_not_update_respawn() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"00103")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"P00103")
 	assert_object(_sys._respawn_tile).is_equal(Vector2i.ZERO)
 
 
 func test_destroy_different_shelter_does_not_reset() -> void:
-	_grid.structure_placed.emit(Vector2i(2, 3), &"00102")
-	_grid.structure_destroyed.emit(Vector2i(5, 5), &"00102")
+	_grid.structure_placed.emit(Vector2i(2, 3), &"P00102")
+	_grid.structure_destroyed.emit(Vector2i(5, 5), &"P00102")
 	# Different coords — should keep the original
 	assert_object(_sys._respawn_tile).is_equal(Vector2i(2, 3))
 

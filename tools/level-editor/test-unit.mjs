@@ -1344,7 +1344,7 @@ test('TresParser — serialize file with sub_resource blocks round-trips', () =>
     '',
     '[resource]',
     'script = ExtResource("1_script")',
-    'id = &"00001"',
+    'id = &"P00001"',
     'placeable = SubResource("placeable_1")',
     'catalogable = SubResource("catalogable_1")',
     '',
@@ -1393,7 +1393,7 @@ test('TresParser — parse multiple sub_resources', () => {
     '',
     '[resource]',
     'script = ExtResource("1_script")',
-    'id = &"00101"',
+    'id = &"P00101"',
     '',
   ].join('\n');
 

@@ -132,7 +132,7 @@ func _add_tile(coords: Vector2i, biome: int = 1, elevation: int = 0) -> Resource
 
 func _make_shelter_def() -> Resource:
 	var def := _PropDef.new()
-	def.id = &"00102"
+	def.id = &"P00102"
 	def.display_name = "Shelter"
 	var station := _StationCap.new()
 	station.station_tags = [&"respawn"]
@@ -578,7 +578,7 @@ func test_shelter_immunity() -> void:
 	_player.current_tile = Vector2i(0, 0)
 
 	# Place shelter prop on player tile
-	var shelter := _Prop.create_structure(&"00102", false)
+	var shelter := _Prop.create_structure(&"P00102", false)
 	player_tile.props.append(shelter)
 
 	_fm._fauna.append({
@@ -723,7 +723,7 @@ func test_death_places_corpse_prop() -> void:
 	var props_before: int = tile.props.size()
 	_fm.apply_damage(0, 20)
 	assert_int(tile.props.size()).is_equal(props_before + 1)
-	assert_str(str(tile.props[tile.props.size() - 1].type)).is_equal("00107")
+	assert_str(str(tile.props[tile.props.size() - 1].type)).is_equal("P00107")
 
 
 func test_apply_damage_invalid_id() -> void:

@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="Recipe" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_output.gd" id="3_output"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="4_effect"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_condition.gd" id="5_condition"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="6_predicate"]
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2_input")
+ref_or_tag = &"P00005"
+count = 1
+source = &"world_tile"
+
+[sub_resource type="Resource" id="output_1"]
+script = ExtResource("3_output")
+prop_ref = &"P00013"
+count = 1
+
+[sub_resource type="Resource" id="effect_1"]
+script = ExtResource("4_effect")
+kind = &"sound"
+params = { "sound_id": "gather" }
+
+[sub_resource type="Resource" id="cond_pred_1"]
+script = ExtResource("6_predicate")
+kind = &"has_tool"
+params = { "tool": "pickaxe" }
+
+[sub_resource type="Resource" id="condition_1"]
+script = ExtResource("5_condition")
+predicate = SubResource("cond_pred_1")
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"R00007"
+display_name = "Mine Stone Boulder"
+kind = 2
+inputs = [SubResource("input_1")]
+outputs = [SubResource("output_1")]
+effects = [SubResource("effect_1")]
+conditions = [SubResource("condition_1")]
+actions = [&"gather"]
+duration = 1.5

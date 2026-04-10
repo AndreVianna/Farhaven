@@ -64,7 +64,7 @@ func register_steps(registry) -> void:
 		ctx.assert_false(tile.is_empty(), "Tile (%d,%d) must exist to place wall" % [col, row])
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
-			props.append({"type": "00106", "blocks_movement": true})
+			props.append({"type": "P00106", "blocks_movement": true})
 			tile["props"] = props
 	)
 
@@ -74,7 +74,7 @@ func register_steps(registry) -> void:
 		ctx.assert_false(tile.is_empty(), "Tile (%d,%d) must exist to place campfire" % [col, row])
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
-			props.append({"type": "00101", "blocks_movement": false})
+			props.append({"type": "P00101", "blocks_movement": false})
 			tile["props"] = props
 	)
 

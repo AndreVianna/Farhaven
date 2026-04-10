@@ -6,6 +6,7 @@ extends Node3D
 ## Each child is keyed by "coords:type" for O(1) lookup.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
 
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
@@ -106,6 +107,15 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_instance.material_override = mat
 	node.add_child(mesh_instance)
+
+	# Add StaticBody3D with CollisionShape3D for physics detection.
+	if def != null:
+		var static_body := StaticBody3D.new()
+		static_body.name = "StaticBody"
+		var collision_shape: CollisionShape3D = _CollisionHelper.create_collision_shape(def)
+		collision_shape.name = "CollisionShape"
+		static_body.add_child(collision_shape)
+		node.add_child(static_body)
 
 	add_child(node)
 	_instances[key] = node

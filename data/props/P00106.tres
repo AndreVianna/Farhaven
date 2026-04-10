@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = true
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 1.0
+display_tag = &"survival"
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00106"
+display_name = "Wall"
+tags = [&"STRUCTURE"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 1
+origin = 1
+footprint = [Vector2i(0, 0)]
+category = &"structure"
+prop_category = 6
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.8, "size_y": 0.6, "size_z": 0.2 }
+placeholder_color = Color(0.5, 0.4, 0.3, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.8, "size_y": 0.6, "size_z": 0.2 }
+placeholder_depleted_color = Color(0.35, 0.28, 0.2, 1.0)

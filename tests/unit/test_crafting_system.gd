@@ -7,10 +7,10 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # Numeric PropDef ids
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
 
 var _sys: Node
 var _inv: RefCounted
@@ -109,7 +109,7 @@ func after_test() -> void:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.props = [_Prop.create_structure(&"00105")]
+	tile.props = [_Prop.create_structure(&"P00105")]
 	_grid.set_tile(coords, tile)
 
 
@@ -480,7 +480,7 @@ func test_structure_placed_triggers_proximity_check() -> void:
 	_sys._check_station_proximity()
 	assert_bool(_sys.is_near_station()).is_false()
 	_place_workbench(Vector2i(1, 0))
-	_grid.structure_placed.emit(Vector2i(1, 0), &"00105")
+	_grid.structure_placed.emit(Vector2i(1, 0), &"P00105")
 	assert_bool(_sys.is_near_station()).is_true()
 
 
@@ -493,7 +493,7 @@ func test_structure_destroyed_triggers_proximity_check() -> void:
 	# Remove the workbench
 	var tile: Resource = _grid.get_tile(Vector2i(1, 0))
 	tile.props = []
-	_grid.structure_destroyed.emit(Vector2i(1, 0), &"00105")
+	_grid.structure_destroyed.emit(Vector2i(1, 0), &"P00105")
 	assert_bool(_sys.is_near_station()).is_false()
 
 

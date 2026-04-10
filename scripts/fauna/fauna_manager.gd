@@ -343,8 +343,8 @@ func _place_corpse(coords: Vector2i, species_type: StringName) -> void:
 func _get_corpse_type(species_type: StringName) -> StringName:
 	match species_type:
 		&"thornback":
-			return &"00107"
-	return &"00107"  # Default fallback
+			return &"P00107"
+	return &"P00107"  # Default fallback
 
 
 # --- Despawn ---

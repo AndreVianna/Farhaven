@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="2_portable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="3_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/light_cap.gd" id="4_light"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="5_catalogable"]
+
+[sub_resource type="Resource" id="portable_1"]
+script = ExtResource("2_portable")
+weight = 0.5
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("3_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = false
+
+[sub_resource type="Resource" id="light_1"]
+script = ExtResource("4_light")
+radius = 3.0
+color = Color(1.0, 0.7, 0.3, 1.0)
+flicker = true
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("5_catalogable")
+scan_time = 1.0
+display_tag = &"survival"
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00103"
+display_name = "Torch"
+tags = [&"STRUCTURE", &"CRAFTED", &"BURNABLE.fuel"]
+portable = SubResource("portable_1")
+placeable = SubResource("placeable_1")
+light = SubResource("light_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 1
+origin = 1
+footprint = [Vector2i(0, 0)]
+category = &"structure"
+prop_category = 8
+placeholder_mesh_type = &"cylinder"
+placeholder_params = { "radius": 0.05, "height": 0.5 }
+placeholder_color = Color(0.8, 0.6, 0.10196078431372549, 1.0)
+placeholder_depleted_type = &"cylinder"
+placeholder_depleted_params = { "radius": 0.05, "height": 0.5 }
+placeholder_depleted_color = Color(0.30196078431372547, 0.30196078431372547, 0.30196078431372547, 1.0)

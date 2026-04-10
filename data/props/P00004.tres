@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = [Vector2i(0, 0)]
+blocks_movement = false
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 1.0
+display_tag = &"flora"
+category = 0
+display_name = "Berry Bush"
+description = "Small purple berries with a tart flavour. Edible and safe."
+properties = {"edible": true, "toxic": false, "resource_type": &"berries"}
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00004"
+display_name = "Berry Bush"
+tags = [&"SOURCE", &"PLANT"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 20
+origin = 0
+gather_time = 0.5
+gather_amount = 2
+yield_type = &"P00020"
+category = &"consumable"
+prop_category = 0
+placeholder_mesh_type = &"sphere"
+placeholder_params = { "radius": 0.3 }
+placeholder_color = Color(0.8, 0.14901960784313725, 0.14901960784313725, 1.0)
+placeholder_depleted_type = &"sphere"
+placeholder_depleted_params = { "radius": 0.15 }
+placeholder_depleted_color = Color(0.8, 0.14901960784313725, 0.14901960784313725, 1.0)

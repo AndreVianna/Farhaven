@@ -32,7 +32,7 @@ func register_steps(registry) -> void:
 			ctx.set_value("tiles", tiles)
 		var tile: Dictionary = tiles[Vector2i(col, row)]
 		var props: Array = tile.get("props", [])
-		props.append({"type": "00102", "blocks_movement": false})
+		props.append({"type": "P00102", "blocks_movement": false})
 		tile["props"] = props
 	)
 

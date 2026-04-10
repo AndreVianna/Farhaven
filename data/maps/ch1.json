@@ -10,9 +10,9 @@
 	],
 	"starting_loadout": {
 		"tools": {
-			"weapon": "00204",
-			"scanner": "00205",
-			"firestarter": "00206"
+			"weapon": "P00204",
+			"scanner": "P00205",
+			"firestarter": "P00206"
 		},
 		"inventory": []
 	},
@@ -22,7 +22,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00001",
+					"type": "P00001",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -36,7 +36,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00002",
+					"type": "P00002",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
@@ -44,7 +44,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00101",
+					"type": "P00101",
 					"category": 6,
 					"origin": 1
 				}
@@ -55,7 +55,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00003",
+					"type": "P00003",
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": -1,
@@ -81,7 +81,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
@@ -89,7 +89,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
@@ -97,7 +97,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
@@ -111,7 +111,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00004",
+					"type": "P00004",
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 0,
@@ -133,7 +133,7 @@
 			"elevation": 1,
 			"props": [
 				{
-					"type": "00003",
+					"type": "P00003",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -155,7 +155,7 @@
 			"elevation": 0,
 			"props": [
 				{
-					"type": "00004",
+					"type": "P00004",
 					"category": 0,
 					"sub_hex_q": 2,
 					"sub_hex_r": 0,
@@ -173,7 +173,7 @@
 			"elevation": 1,
 			"props": [
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
@@ -181,7 +181,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
@@ -189,7 +189,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
@@ -197,7 +197,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -205,7 +205,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00007",
+					"type": "P00007",
 					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
@@ -219,7 +219,7 @@
 			"elevation": 1,
 			"props": [
 				{
-					"type": "00003",
+					"type": "P00003",
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 2,
@@ -265,7 +265,7 @@
 			"elevation": 1,
 			"props": [
 				{
-					"type": "00008",
+					"type": "P00008",
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": -2,
@@ -273,7 +273,7 @@
 					"origin": 0
 				},
 				{
-					"type": "00008",
+					"type": "P00008",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -303,7 +303,7 @@
 			"elevation": 2,
 			"props": [
 				{
-					"type": "00001",
+					"type": "P00001",
 					"category": 0,
 					"sub_hex_q": -2,
 					"sub_hex_r": 0,
@@ -321,7 +321,7 @@
 			"elevation": 3,
 			"props": [
 				{
-					"type": "00001",
+					"type": "P00001",
 					"category": 0,
 					"sub_hex_q": 0,
 					"sub_hex_r": 2,
@@ -347,7 +347,7 @@
 			"elevation": 2,
 			"props": [
 				{
-					"type": "00001",
+					"type": "P00001",
 					"category": 0,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
@@ -373,7 +373,7 @@
 			"elevation": 3,
 			"props": [
 				{
-					"type": "00001",
+					"type": "P00001",
 					"category": 0,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -399,7 +399,7 @@
 			"elevation": 4,
 			"props": [
 				{
-					"type": "00005",
+					"type": "P00005",
 					"category": 1,
 					"sub_hex_q": 2,
 					"sub_hex_r": -2,
@@ -413,7 +413,7 @@
 			"elevation": 5,
 			"props": [
 				{
-					"type": "00006",
+					"type": "P00006",
 					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": -2,
@@ -427,7 +427,7 @@
 			"elevation": 4,
 			"props": [
 				{
-					"type": "00005",
+					"type": "P00005",
 					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": 1,
@@ -441,7 +441,7 @@
 			"elevation": 6,
 			"props": [
 				{
-					"type": "00006",
+					"type": "P00006",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": -1,
@@ -455,7 +455,7 @@
 			"elevation": 4,
 			"props": [
 				{
-					"type": "00005",
+					"type": "P00005",
 					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
@@ -469,7 +469,7 @@
 			"elevation": 4,
 			"props": [
 				{
-					"type": "00006",
+					"type": "P00006",
 					"category": 1,
 					"sub_hex_q": 1,
 					"sub_hex_r": 1,
@@ -491,7 +491,7 @@
 			"elevation": 6,
 			"props": [
 				{
-					"type": "00005",
+					"type": "P00005",
 					"category": 1,
 					"sub_hex_q": 0,
 					"sub_hex_r": -1,
@@ -505,7 +505,7 @@
 			"elevation": 6,
 			"props": [
 				{
-					"type": "00006",
+					"type": "P00006",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 2,
@@ -513,7 +513,7 @@
 					"origin": 0
 				},
 				{
-					"type": "10001",
+					"type": "P10001",
 					"category": 8,
 					"origin": 4
 				}
@@ -524,7 +524,7 @@
 			"elevation": 5,
 			"props": [
 				{
-					"type": "00006",
+					"type": "P00006",
 					"category": 1,
 					"sub_hex_q": -1,
 					"sub_hex_r": 1,

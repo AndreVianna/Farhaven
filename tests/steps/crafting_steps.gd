@@ -10,11 +10,11 @@ const RECIPES_PATH := "res://data/recipes/"
 
 ## Tool slot lookup for known tool PropDefs.
 const TOOL_SLOTS := {
-	&"00201": &"axe",
-	&"00202": &"pickaxe",
-	&"00204": &"weapon",
-	&"00205": &"scanner",
-	&"00206": &"firestarter",
+	&"P00201": &"axe",
+	&"P00202": &"pickaxe",
+	&"P00204": &"weapon",
+	&"P00205": &"scanner",
+	&"P00206": &"firestarter",
 }
 
 
@@ -59,7 +59,7 @@ func register_steps(registry) -> void:
 		var tiles: Dictionary = ctx.get_value("tiles", {})
 		tiles[Vector2i(col, row)] = {
 			"coords": Vector2i(col, row), "biome": 1, "elevation": 0,
-			"props": [{"type": "00101", "blocks_movement": false, "sub_hex": Vector2i(sq, sr), "footprint": [Vector2i(sq, sr)]}],
+			"props": [{"type": "P00101", "blocks_movement": false, "sub_hex": Vector2i(sq, sr), "footprint": [Vector2i(sq, sr)]}],
 		}
 		ctx.set_value("tiles", tiles)
 	)

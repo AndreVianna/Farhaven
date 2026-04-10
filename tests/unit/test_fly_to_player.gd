@@ -21,18 +21,18 @@ func test_default_color_is_white() -> void:
 # --- Setup ---
 
 func test_setup_stores_player_reference() -> void:
-	var fly := auto_free(_FlyToPlayer.new())
-	var player := Node3D.new()
+	var fly: Node = auto_free(_FlyToPlayer.new())
+	var player: Node3D = Node3D.new()
 	fly.setup(player)
 	assert_object(fly._player).is_same(player)
 	player.free()
 
 
 func test_spawn_fly_does_nothing_without_player() -> void:
-	var fly := auto_free(_FlyToPlayer.new())
+	var fly: Node = auto_free(_FlyToPlayer.new())
 	add_child(fly)
 	# No player set, should not crash
-	var mock_grid := Node.new()
+	var mock_grid: Node = Node.new()
 	# spawn_fly needs grid.axial_to_world — no player means early return
 	# Just verify it doesn't crash (implicit: no error, no child added)
 	assert_int(fly.get_child_count()).is_equal(0)

@@ -13,9 +13,9 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # Numeric PropDef ids
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_AXE: StringName = &"00201"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_AXE: StringName = &"P00201"
 
 var _panel: PanelContainer = null
 var _inv: RefCounted = null
@@ -80,7 +80,7 @@ class MockPlayer extends Node:
 func _place_workbench(coords: Vector2i) -> void:
 	var tile: Resource = _HexTile.new()
 	tile.coords = coords
-	tile.props = [_Prop.create_structure(&"00105")]
+	tile.props = [_Prop.create_structure(&"P00105")]
 	_grid.set_tile(coords, tile)
 
 

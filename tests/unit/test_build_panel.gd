@@ -13,9 +13,9 @@ const _RecipeInput = preload("res://scripts/recipes/recipe_input.gd")
 const _RecipeOutput = preload("res://scripts/recipes/recipe_output.gd")
 
 # Numeric PropDef ids used in build recipes
-const ID_WOOD: StringName = &"00010"
-const ID_STONE: StringName = &"00011"
-const ID_FIBER: StringName = &"00012"
+const ID_WOOD: StringName = &"P00010"
+const ID_STONE: StringName = &"P00011"
+const ID_FIBER: StringName = &"P00012"
 
 var _panel: PanelContainer = null
 var _inv: RefCounted = null
@@ -76,39 +76,39 @@ func _make_recipe(id: StringName, display_name: String, inputs_data: Array, outp
 func _make_standard_recipes() -> void:
 	# Campfire: wood 3, fiber 2
 	_registry.add_build_recipe(_make_recipe(
-		&"00019", "Build Campfire",
+		&"P00019", "Build Campfire",
 		[{"ref": ID_WOOD, "count": 3}, {"ref": ID_FIBER, "count": 2}],
-		&"00101"
+		&"P00101"
 	))
 	# Workbench: wood 5, stone 3
 	_registry.add_build_recipe(_make_recipe(
-		&"00021", "Build Workbench",
+		&"P00021", "Build Workbench",
 		[{"ref": ID_WOOD, "count": 5}, {"ref": ID_STONE, "count": 3}],
-		&"00105"
+		&"P00105"
 	))
 	# Storage Chest: wood 8, stone 4
 	_registry.add_build_recipe(_make_recipe(
-		&"00022", "Build Storage Chest",
+		&"P00022", "Build Storage Chest",
 		[{"ref": ID_WOOD, "count": 8}, {"ref": ID_STONE, "count": 4}],
-		&"00104"
+		&"P00104"
 	))
 	# Shelter: wood 10, stone 5, fiber 3
 	_registry.add_build_recipe(_make_recipe(
-		&"00023", "Build Shelter",
+		&"P00023", "Build Shelter",
 		[{"ref": ID_WOOD, "count": 10}, {"ref": ID_STONE, "count": 5}, {"ref": ID_FIBER, "count": 3}],
-		&"00102"
+		&"P00102"
 	))
 	# Wall: wood 3
 	_registry.add_build_recipe(_make_recipe(
-		&"00024", "Build Wall",
+		&"P00024", "Build Wall",
 		[{"ref": ID_WOOD, "count": 3}],
-		&"00106"
+		&"P00106"
 	))
 	# Torch: wood 2, fiber 1
 	_registry.add_build_recipe(_make_recipe(
-		&"00025", "Build Torch",
+		&"P00025", "Build Torch",
 		[{"ref": ID_WOOD, "count": 2}, {"ref": ID_FIBER, "count": 1}],
-		&"00103"
+		&"P00103"
 	))
 
 
@@ -451,7 +451,7 @@ func test_build_entry_minimum_height() -> void:
 
 
 func test_build_entry_setup_sets_name() -> void:
-	var recipe := _make_recipe(&"00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"00106")
+	var recipe := _make_recipe(&"P00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"P00106")
 	var entry := _BuildEntryUI.new()
 	add_child(entry)
 	entry.setup(recipe)
@@ -460,7 +460,7 @@ func test_build_entry_setup_sets_name() -> void:
 
 
 func test_build_entry_get_recipe() -> void:
-	var recipe := _make_recipe(&"00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"00106")
+	var recipe := _make_recipe(&"P00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"P00106")
 	var entry := _BuildEntryUI.new()
 	add_child(entry)
 	entry.setup(recipe)
@@ -477,7 +477,7 @@ func test_build_entry_button_size() -> void:
 
 
 func test_build_entry_emits_build_requested() -> void:
-	var recipe := _make_recipe(&"00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"00106")
+	var recipe := _make_recipe(&"P00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"P00106")
 	var entry := _BuildEntryUI.new()
 	add_child(entry)
 	entry.setup(recipe)
@@ -492,7 +492,7 @@ func test_build_entry_emits_build_requested() -> void:
 
 
 func test_build_entry_no_emit_when_unaffordable() -> void:
-	var recipe := _make_recipe(&"00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"00106")
+	var recipe := _make_recipe(&"P00024", "Build Wall", [{"ref": ID_WOOD, "count": 3}], &"P00106")
 	var entry := _BuildEntryUI.new()
 	add_child(entry)
 	entry.setup(recipe)

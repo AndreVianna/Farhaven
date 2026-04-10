@@ -25,11 +25,11 @@ func test_fade_time_is_positive() -> void:
 # --- Queue behavior ---
 
 func test_show_notification_adds_to_queue() -> void:
-	var mgr := _NotificationManager.new()
+	var mgr: Node = _NotificationManager.new()
 	# Before showing, the internal queue is empty.
 	# After show, _queue might be empty (popped) or have items depending on state.
 	# We test the child count to verify a panel was actually created.
-	var scene_root := auto_free(mgr)
+	var scene_root: Node = auto_free(mgr)
 	# Need to add to scene tree for create_tween to work.
 	# GdUnit auto_free handles cleanup.
 	add_child(mgr)
@@ -39,7 +39,7 @@ func test_show_notification_adds_to_queue() -> void:
 
 
 func test_queue_drops_oldest_when_full() -> void:
-	var mgr := auto_free(_NotificationManager.new())
+	var mgr: Node = auto_free(_NotificationManager.new())
 	add_child(mgr)
 	# Show first notification (starts displaying)
 	mgr.show_notification("First")

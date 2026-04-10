@@ -84,9 +84,9 @@ func before_test() -> void:
 	add_child(_registry)
 
 	# Register test props
-	_registry.add_def(_make_light_prop(&"00101", 4))   # Campfire
-	_registry.add_def(_make_light_prop(&"00103", 3))   # Torch
-	_registry.add_def(_make_normal_prop(&"00010"))      # Wood (no light)
+	_registry.add_def(_make_light_prop(&"P00101", 4))   # Campfire
+	_registry.add_def(_make_light_prop(&"P00103", 3))   # Torch
+	_registry.add_def(_make_normal_prop(&"P00010"))      # Wood (no light)
 
 	_lm = _LightingManager.new()
 	_lm._grid = _grid
@@ -110,43 +110,43 @@ func after_test() -> void:
 
 func test_register_light_on_structure_placed() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(1)
 
 
 func test_no_register_for_non_light_prop() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00010")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00010")
 	assert_int(_lm.get_structure_light_count()).is_equal(0)
 
 
 func test_unregister_light_on_structure_destroyed() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(1)
-	_grid.structure_destroyed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_destroyed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(0)
 
 
 func test_destroy_unknown_structure_is_no_op() -> void:
 	_dnc.set_night()
-	_grid.structure_destroyed.emit(Vector2i(5, 5), &"00101")
+	_grid.structure_destroyed.emit(Vector2i(5, 5), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(0)
 
 
 func test_multiple_lights_register() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
-	_grid.structure_placed.emit(Vector2i(1, 0), &"00103")
-	_grid.structure_placed.emit(Vector2i(2, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
+	_grid.structure_placed.emit(Vector2i(1, 0), &"P00103")
+	_grid.structure_placed.emit(Vector2i(2, 0), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(3)
 
 
 func test_destroy_one_leaves_others() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
-	_grid.structure_placed.emit(Vector2i(1, 0), &"00103")
-	_grid.structure_destroyed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
+	_grid.structure_placed.emit(Vector2i(1, 0), &"P00103")
+	_grid.structure_destroyed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(_lm.get_structure_light_count()).is_equal(1)
 
 
@@ -157,18 +157,18 @@ func test_register_emits_signal() -> void:
 	_lm.light_source_registered.connect(func(pos: Vector2, radius: float) -> void:
 		fired.append({"pos": pos, "radius": radius})
 	)
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(fired.size()).is_equal(1)
 	assert_float(fired[0]["radius"]).is_equal(4.0 * _LightingManager.RING_TO_WORLD)
 
 
 func test_unregister_emits_signal() -> void:
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var fired: Array = []
 	_lm.light_source_unregistered.connect(func(pos: Vector2) -> void:
 		fired.append(pos)
 	)
-	_grid.structure_destroyed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_destroyed.emit(Vector2i(0, 0), &"P00101")
 	assert_int(fired.size()).is_equal(1)
 
 
@@ -176,7 +176,7 @@ func test_unregister_emits_signal() -> void:
 
 func test_campfire_radius_is_4_rings() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(1)
 	assert_float(lights[0]["radius"]).is_equal(4.0 * _LightingManager.RING_TO_WORLD)
@@ -184,7 +184,7 @@ func test_campfire_radius_is_4_rings() -> void:
 
 func test_torch_radius_is_3_rings() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00103")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00103")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(1)
 	assert_float(lights[0]["radius"]).is_equal(3.0 * _LightingManager.RING_TO_WORLD)
@@ -194,28 +194,28 @@ func test_torch_radius_is_3_rings() -> void:
 
 func test_day_phase_returns_no_lights() -> void:
 	_dnc.set_day()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(0)
 
 
 func test_dawn_phase_returns_no_lights() -> void:
 	_dnc.set_dawn()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(0)
 
 
 func test_night_phase_returns_active_lights() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(1)
 
 
 func test_dusk_phase_returns_active_lights() -> void:
 	_dnc.set_dusk()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(1)
 
@@ -245,7 +245,7 @@ func test_is_night_not_active_during_dawn() -> void:
 func test_light_position_matches_world_coords() -> void:
 	_dnc.set_night()
 	var coords := Vector2i(3, -2)
-	_grid.structure_placed.emit(coords, &"00101")
+	_grid.structure_placed.emit(coords, &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	var expected_pos: Vector2 = HexMath.axial_to_world(coords)
 	assert_float(lights[0]["position"].x).is_equal_approx(expected_pos.x, 0.01)
@@ -273,7 +273,7 @@ func test_clear_player_light() -> void:
 
 func test_player_light_plus_structure_lights() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	_lm.set_player_light(Vector2(10.0, 10.0), 6.0)
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	assert_int(lights.size()).is_equal(2)
@@ -341,7 +341,7 @@ func test_get_active_lights_respects_max() -> void:
 
 func test_default_light_color() -> void:
 	_dnc.set_night()
-	_grid.structure_placed.emit(Vector2i(0, 0), &"00101")
+	_grid.structure_placed.emit(Vector2i(0, 0), &"P00101")
 	var lights: Array[Dictionary] = _lm.get_active_lights()
 	var color: Color = lights[0]["color"]
 	assert_float(color.r).is_equal_approx(_LightingManager.DEFAULT_LIGHT_COLOR.r, 0.01)

@@ -56,6 +56,6 @@ Feature: Data Integrity
     Given all Recipes are loaded
     Then every Recipe output has prob between 0 and 1
 
-  Scenario: Recipe ids are 5-digit numeric strings
+  Scenario: Recipe ids start with R prefix
     Given all Recipes are loaded
-    Then every Recipe id is a 5-digit numeric string
+    Then every Recipe id starts with R prefix

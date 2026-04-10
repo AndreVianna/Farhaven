@@ -21,21 +21,21 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # Numeric prop ids on the world map: trees/boulders/etc.
-const ID_TREE: StringName = &"00001"
-const ID_BERRY_BUSH: StringName = &"00004"
-const ID_BOULDER: StringName = &"00005"
-const ID_TOXIC_BUSH: StringName = &"00008"
+const ID_TREE: StringName = &"P00001"
+const ID_BERRY_BUSH: StringName = &"P00004"
+const ID_BOULDER: StringName = &"P00005"
+const ID_TOXIC_BUSH: StringName = &"P00008"
 # Numeric inventory item ids.
-const ID_WOOD: StringName = &"00010"
-const ID_STONE: StringName = &"00013"
-const ID_FIBER: StringName = &"00012"
-const ID_ORE: StringName = &"00014"
-const ID_CRYSTAL: StringName = &"00015"
-const ID_BERRIES: StringName = &"00020"
-const ID_TOXIC_BERRIES: StringName = &"00021"
-const ID_MEAT: StringName = &"00022"
+const ID_WOOD: StringName = &"P00010"
+const ID_STONE: StringName = &"P00013"
+const ID_FIBER: StringName = &"P00012"
+const ID_ORE: StringName = &"P00014"
+const ID_CRYSTAL: StringName = &"P00015"
+const ID_BERRIES: StringName = &"P00020"
+const ID_TOXIC_BERRIES: StringName = &"P00021"
+const ID_MEAT: StringName = &"P00022"
 # Numeric tool ids.
-const ID_AXE: StringName = &"00201"
+const ID_AXE: StringName = &"P00201"
 
 const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _CatalogPanelScene = preload("res://scenes/ui/catalog_panel.tscn")
@@ -385,7 +385,7 @@ func test_three_state_labels() -> void:
 
 	# CATALOGED via scan (catalog berry_bush directly for testing marker)
 	# Label nodes are freed and removed from tracking on catalog — no label exists anymore.
-	_scanner.entry_cataloged.emit(&"00004", _Catalog.CatalogCategory.FLORA)
+	_scanner.entry_cataloged.emit(&"P00004", _Catalog.CatalogCategory.FLORA)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
 	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(-1)
 
@@ -399,7 +399,7 @@ func test_three_state_labels() -> void:
 func test_catalog_counter_counts_encountered_and_cataloged() -> void:
 	_setup_scanner_tree()
 
-	_scanner._catalog.catalog_entry(&"00004")
+	_scanner._catalog.catalog_entry(&"P00004")
 	_scanner._catalog.encounter_entry(&"thornback", "Hostile")
 
 	assert_int(_scanner._catalog.get_discovery_count()).is_equal(2)
@@ -576,7 +576,7 @@ func test_ac11_proximity_scan_flow() -> void:
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
 	assert_bool(_scanner.is_scanning()).is_false()
-	assert_bool(_scanner._catalog.is_cataloged(&"00004")).is_true()
+	assert_bool(_scanner._catalog.is_cataloged(&"P00004")).is_true()
 
 	_teardown_scanner_tree()
 
@@ -584,7 +584,7 @@ func test_ac11_proximity_scan_flow() -> void:
 func test_ac11_auto_identify_after_catalog() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
-	_scanner._catalog.catalog_entry(&"00004")
+	_scanner._catalog.catalog_entry(&"P00004")
 
 	_grid._tiles[Vector2i(3, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
@@ -613,7 +613,7 @@ func test_ac11_mineral_scan_complete() -> void:
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
 
-	assert_str(String(_sig_entry_id)).is_equal("00005")
+	assert_str(String(_sig_entry_id)).is_equal("P00005")
 	assert_int(_sig_category).is_equal(_Catalog.CatalogCategory.MINERAL)
 
 	_teardown_scanner_tree()
@@ -623,7 +623,7 @@ func test_ac11_anomaly_scan_complete_and_signal() -> void:
 	_setup_scanner_tree()
 	_reset_sig_captures()
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
-	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_anomaly(&"10001")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_anomaly(&"P10001")
 	_player.current_tile = Vector2i.ZERO
 
 	_scanner.entry_cataloged.connect(_on_sig_entry_cataloged)
@@ -634,7 +634,7 @@ func test_ac11_anomaly_scan_complete_and_signal() -> void:
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
 
-	assert_str(String(_sig_entry_id)).is_equal("10001")
+	assert_str(String(_sig_entry_id)).is_equal("P10001")
 	assert_int(_sig_category).is_equal(_Catalog.CatalogCategory.ANOMALY)
 
 	_teardown_scanner_tree()
@@ -662,7 +662,7 @@ func test_toxic_berries_tap_shows_warning_dialog() -> void:
 
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00008")
+	cat.catalog_entry(&"P00008")
 
 	var panel: PanelContainer = _InventoryPanelScene.instantiate()
 	add_child(panel)
@@ -688,7 +688,7 @@ func test_non_toxic_berries_tap_uses_directly() -> void:
 
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 
 	var panel: PanelContainer = _InventoryPanelScene.instantiate()
 	add_child(panel)
@@ -760,7 +760,7 @@ func test_catalog_panel_refreshes_on_entry_cataloged() -> void:
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(0)
 
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 
 	assert_int(panel._flora_list.get_child_count()).is_equal(1)
 	assert_str(panel._counter_label.text).is_equal("1 entry")
@@ -843,7 +843,7 @@ func test_inventory_save_load_round_trip() -> void:
 func test_catalog_save_load_round_trip() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 	cat.encounter_entry(&"thornback", "Hostile")
 
 	var save_data: Dictionary = cat.get_save_data()
@@ -852,7 +852,7 @@ func test_catalog_save_load_round_trip() -> void:
 	cat2.initialize()
 	cat2.load_save_data(save_data)
 
-	assert_bool(cat2.is_cataloged(&"00004")).is_true()
+	assert_bool(cat2.is_cataloged(&"P00004")).is_true()
 	assert_bool(cat2.is_encountered(&"thornback")).is_true()
 	assert_str(cat2.get_encounter_label(&"thornback")).is_equal("Hostile")
 	assert_int(cat2.get_discovery_count()).is_equal(2)

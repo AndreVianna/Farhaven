@@ -9,7 +9,7 @@ extends Node
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 const PROPS_PATH := "res://data/props/"
 
-## PropDef id (numeric, e.g. &"00001") → PropDef resource
+## PropDef id (prefixed, e.g. &"P00001") → PropDef resource
 var _defs: Dictionary = {}
 
 func _ready() -> void:
@@ -26,6 +26,8 @@ func _scan_props() -> void:
 		if file_name.ends_with(".tres"):
 			var res := load(PROPS_PATH + file_name)
 			if res is _PropDef:
+				assert(String(res.id).begins_with("P"),
+					"PropRegistry: prop id '%s' must start with 'P' prefix" % res.id)
 				_defs[res.id] = res
 		file_name = dir.get_next()
 

@@ -10,6 +10,7 @@ const _WorldContext = preload("res://scripts/recipes/world_context.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
+const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
 
 ## Emitted when a build attempt fails validation before reaching RecipeRuntime.
 signal structure_build_failed(reason: StringName)
@@ -207,7 +208,7 @@ func _on_recipe_resolved(recipe_id: StringName, outputs: Array, _effects: Array)
 			_grid.structure_placed.emit(coords, prop_ref)
 
 			# Storage Chest effect: increase inventory capacity_weight.
-			if prop_ref == &"00104" and player != null:
+			if prop_ref == &"P00104" and player != null:
 				var inv = _get_player_inventory(player)
 				if inv != null:
 					inv.capacity_weight += 50.0
@@ -393,6 +394,40 @@ func _has_footprint_overlap(tile: Resource, footprint: Array[Vector2i]) -> bool:
 			if footprint.has(existing_pos):
 				return true
 	return false
+
+
+## Physics-based overlap check using an Area3D query.
+## Returns true if placing the prop at world_pos would overlap existing structures.
+## TODO: Full implementation when visual testing is possible. Currently falls back
+## to footprint check if physics world is unavailable (headless/test mode).
+func _has_collision_overlap(prop_def: Resource, world_pos: Vector3) -> bool:
+	# Attempt physics overlap query via direct space state.
+	var space_state: PhysicsDirectSpaceState3D = _get_space_state()
+	if space_state == null:
+		return false  # Fallback: footprint check handles this case
+
+	var collision_shape: CollisionShape3D = _CollisionHelper.create_collision_shape(prop_def)
+	if collision_shape.shape == null:
+		return false
+
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = collision_shape.shape
+	query.transform = Transform3D(Basis.IDENTITY, world_pos)
+	query.collision_mask = 1  # Default layer
+
+	var results: Array[Dictionary] = space_state.intersect_shape(query, 1)
+	return results.size() > 0
+
+
+func _get_space_state() -> PhysicsDirectSpaceState3D:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	var viewport: Viewport = tree.root
+	var world_3d: World3D = viewport.find_world_3d()
+	if world_3d == null:
+		return null
+	return world_3d.direct_space_state
 
 
 func _get_player_inventory(player: Node):

@@ -30,10 +30,10 @@ func test_default_is_tag_is_false() -> void:
 
 func test_exact_ref_input() -> void:
 	var inp := _RecipeInput.new()
-	inp.ref_or_tag = &"00010"
+	inp.ref_or_tag = &"P00010"
 	inp.count = 5
 	inp.is_tag = false
-	assert_str(String(inp.ref_or_tag)).is_equal("00010")
+	assert_str(String(inp.ref_or_tag)).is_equal("P00010")
 	assert_int(inp.count).is_equal(5)
 	assert_bool(inp.is_tag).is_false()
 

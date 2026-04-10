@@ -47,7 +47,7 @@ func test_catalog_entry_ui_minimum_height() -> void:
 func test_catalog_entry_ui_setup_name() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", 0)
 	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_str(entry_ui._name_label.text).is_equal("Berry Bush")
@@ -57,7 +57,7 @@ func test_catalog_entry_ui_setup_name() -> void:
 func test_catalog_entry_ui_setup_description() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", 0)
 	e.description = "A tasty red berry."
 	e.properties = {}
 	entry_ui.setup(e)
@@ -68,7 +68,7 @@ func test_catalog_entry_ui_setup_description() -> void:
 func test_catalog_entry_ui_flora_properties_edible() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", 0)
 	e.properties = {"edible": true, "toxic": false, "prop_type": &"berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Edible")).is_true()
@@ -78,7 +78,7 @@ func test_catalog_entry_ui_flora_properties_edible() -> void:
 func test_catalog_entry_ui_flora_properties_toxic() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00008", "Toxic Berry Bush", 0)
+	var e := _make_entry(&"P00008", "Toxic Berry Bush", 0)
 	e.properties = {"edible": true, "toxic": true, "prop_type": &"toxic_berries"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.contains("Toxic")).is_true()
@@ -98,7 +98,7 @@ func test_catalog_entry_ui_fauna_hostile_shows_hostile() -> void:
 func test_catalog_entry_ui_mineral_shows_tool() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00006", "Iron Deposit", 2)
+	var e := _make_entry(&"P00006", "Iron Deposit", 2)
 	e.properties = {"prop_type": &"ore", "tool_required": &"stone_pickaxe"}
 	entry_ui.setup(e)
 	assert_bool(entry_ui._props_label.text.to_lower().contains("pickaxe")).is_true()
@@ -145,7 +145,7 @@ func test_catalog_entry_ui_encountered_flag() -> void:
 func test_catalog_entry_ui_cataloged_not_encountered() -> void:
 	var entry_ui = _CatalogEntryUIPkg.new()
 	add_child(entry_ui)
-	var e := _make_entry(&"00004", "Berry Bush", 0)
+	var e := _make_entry(&"P00004", "Berry Bush", 0)
 	e.properties = {}
 	entry_ui.setup(e)
 	assert_bool(entry_ui.is_encountered()).is_false()
@@ -219,7 +219,7 @@ func test_catalog_panel_tab_titles() -> void:
 func test_catalog_panel_counter_updates_on_open() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_str(_panel._counter_label.text).is_equal("1 entry")
@@ -230,14 +230,14 @@ func test_catalog_panel_counter_updates_on_entry_cataloged() -> void:
 	cat.initialize()
 	_panel.set_catalog(cat)
 	_panel.open()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 	assert_str(_panel._counter_label.text).is_equal("1 entry")
 
 
 func test_catalog_panel_counter_counts_encountered_plus_cataloged() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 	cat.encounter_entry(&"thornback", "Hostile")
 	_panel.set_catalog(cat)
 	_panel.open()
@@ -249,7 +249,7 @@ func test_catalog_panel_counter_counts_encountered_plus_cataloged() -> void:
 func test_catalog_panel_flora_tab_shows_flora_entries() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
-	cat.catalog_entry(&"00004")
+	cat.catalog_entry(&"P00004")
 	_panel.set_catalog(cat)
 	_panel.open()
 	assert_int(_panel._flora_list.get_child_count()).is_equal(1)

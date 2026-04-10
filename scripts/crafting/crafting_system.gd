@@ -14,35 +14,35 @@ signal craft_completed(recipe_name: StringName)
 signal craft_failed(recipe_name: StringName, reason: StringName)
 signal station_proximity_changed(near: bool)
 
-## Recipes use numeric PropDef IDs for ingredients, discovery, and output.
+## Recipes use prefixed PropDef IDs for ingredients, discovery, and output.
 ## Recipe keys remain semantic for discoverability (e.g. "stone_axe").
-## Ingredients reference resource PropDefs (00010 wood, 00013 stone, etc.),
-## output_id references the produced tool's PropDef id (00201 axe, 00202 pickaxe).
+## Ingredients reference resource PropDefs (P00010 wood, P00013 stone, etc.),
+## output_id references the produced tool's PropDef id (P00201 axe, P00202 pickaxe).
 const RECIPE_CONFIG: Dictionary = {
 	&"stone_axe": {
-		"ingredients": { &"00010": 2, &"00011": 1 },  # 2 wood + 1 rock
+		"ingredients": { &"P00010": 2, &"P00011": 1 },  # 2 wood + 1 rock
 		"output_type": &"tool",
-		"output_id": &"00201",  # axe prop
+		"output_id": &"P00201",  # axe prop
 		"tool_slot": &"axe",
-		"discovery_material": &"00011",  # rock
+		"discovery_material": &"P00011",  # rock
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"stone_pickaxe": {
-		"ingredients": { &"00010": 3, &"00011": 2 },  # 3 wood + 2 rock
+		"ingredients": { &"P00010": 3, &"P00011": 2 },  # 3 wood + 2 rock
 		"output_type": &"tool",
-		"output_id": &"00202",  # pickaxe prop
+		"output_id": &"P00202",  # pickaxe prop
 		"tool_slot": &"pickaxe",
-		"discovery_material": &"00011",  # rock
+		"discovery_material": &"P00011",  # rock
 		"requires_station": &"",
 		"pre_discovered": true,
 	},
 	&"campfire": {
-		"ingredients": { &"00010": 3, &"00012": 2 },  # 3 wood + 2 fiber
+		"ingredients": { &"P00010": 3, &"P00012": 2 },  # 3 wood + 2 fiber
 		"output_type": &"structure",
-		"output_id": &"00101",  # campfire prop
+		"output_id": &"P00101",  # campfire prop
 		"tool_slot": &"",
-		"discovery_material": &"00012",  # fiber
+		"discovery_material": &"P00012",  # fiber
 		"requires_station": &"",
 		"pre_discovered": true,
 	},

@@ -4,16 +4,16 @@ class_name TestInventory
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
 # Numeric PropDef ids used throughout this suite.
-const ID_WOOD: StringName = &"00010"
-const ID_STONE: StringName = &"00013"
-const ID_BERRIES: StringName = &"00020"
-const ID_CRYSTAL: StringName = &"00015"
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
-const ID_KNIFE: StringName = &"00204"
-const ID_SCANNER: StringName = &"00205"
-const ID_FIBER: StringName = &"00012"
-const ID_ROCK: StringName = &"00011"
+const ID_WOOD: StringName = &"P00010"
+const ID_STONE: StringName = &"P00013"
+const ID_BERRIES: StringName = &"P00020"
+const ID_CRYSTAL: StringName = &"P00015"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
+const ID_KNIFE: StringName = &"P00204"
+const ID_SCANNER: StringName = &"P00205"
+const ID_FIBER: StringName = &"P00012"
+const ID_ROCK: StringName = &"P00011"
 
 # Weights from DESIGN.md §14:
 # Wood=1.0, Rock=0.2, Fiber=0.05, Stone=0.5, Iron Ore=0.4, Crystal=0.15
@@ -79,7 +79,7 @@ func test_starting_tool_pickaxe_empty() -> void:
 # --- PropRegistry-driven item config coverage ---
 
 func test_prop_registry_has_meat() -> void:
-	assert_object(PropRegistry.get_def(&"00022")).is_not_null()
+	assert_object(PropRegistry.get_def(&"P00022")).is_not_null()
 
 
 func test_prop_registry_has_all_tools() -> void:
@@ -94,7 +94,7 @@ func test_prop_registry_has_all_tools() -> void:
 
 
 func test_prop_defs_have_max_stack() -> void:
-	for id: StringName in [ID_WOOD, ID_STONE, ID_BERRIES, &"00021", &"00012", &"00014", ID_CRYSTAL]:
+	for id: StringName in [ID_WOOD, ID_STONE, ID_BERRIES, &"P00021", &"P00012", &"P00014", ID_CRYSTAL]:
 		var def = PropRegistry.get_def(id)
 		assert_bool(def != null).override_failure_message(
 			"PropRegistry must have def for %s" % id

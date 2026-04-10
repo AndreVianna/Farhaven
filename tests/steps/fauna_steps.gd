@@ -98,7 +98,7 @@ func register_steps(registry) -> void:
 		if not tile.is_empty():
 			var props: Array = tile.get("props", [])
 			props.append({
-				"type": "00107",
+				"type": "P00107",
 				"blocks_movement": false,
 				"category": 2,  # ANIMAL
 			})
@@ -136,7 +136,7 @@ func register_steps(registry) -> void:
 		var props: Array = tile.get("props", [])
 		var found := false
 		for prop in props:
-			if prop.get("type", "") == "00107":
+			if prop.get("type", "") == "P00107":
 				found = true
 				break
 		ctx.assert_true(found,

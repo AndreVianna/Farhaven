@@ -43,25 +43,25 @@ const _Prop = preload("res://scripts/hex/prop.gd")
 const _DayNightCycle = preload("res://scripts/day_night/day_night_cycle.gd")
 
 # Prop IDs (structures)
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_SHELTER: StringName = &"00102"
-const ID_TORCH: StringName = &"00103"
-const ID_STORAGE_CHEST: StringName = &"00104"
-const ID_WORKBENCH: StringName = &"00105"
-const ID_WALL: StringName = &"00106"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_SHELTER: StringName = &"P00102"
+const ID_TORCH: StringName = &"P00103"
+const ID_STORAGE_CHEST: StringName = &"P00104"
+const ID_WORKBENCH: StringName = &"P00105"
+const ID_WALL: StringName = &"P00106"
 
 # Item IDs (materials)
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_FIBER: StringName = &"00012"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_FIBER: StringName = &"P00012"
 
 # Recipe IDs (build recipes)
-const RID_CAMPFIRE: StringName = &"00019"
-const RID_WORKBENCH: StringName = &"00021"
-const RID_STORAGE_CHEST: StringName = &"00022"
-const RID_SHELTER: StringName = &"00023"
-const RID_WALL: StringName = &"00024"
-const RID_TORCH: StringName = &"00025"
+const RID_CAMPFIRE: StringName = &"P00019"
+const RID_WORKBENCH: StringName = &"P00021"
+const RID_STORAGE_CHEST: StringName = &"P00022"
+const RID_SHELTER: StringName = &"P00023"
+const RID_WALL: StringName = &"P00024"
+const RID_TORCH: StringName = &"P00025"
 
 # Tile coordinates
 const PLAYER_TILE: Vector2i = Vector2i(0, 0)

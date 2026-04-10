@@ -55,16 +55,16 @@ func register_steps(registry) -> void:
 
 	registry.given("a full game state with inventory tools catalog and day {int}", func(ctx, day: int):
 		var inv := _CommonSteps.SimpleInventory.new()
-		inv.add_item(&"00010", 5)
-		inv.set_tool(&"weapon", &"00204")
-		inv.set_tool(&"scanner", &"00205")
+		inv.add_item(&"P00010", 5)
+		inv.set_tool(&"weapon", &"P00204")
+		inv.set_tool(&"scanner", &"P00205")
 		ctx.set_value("inventory", inv)
 		ctx.set_value("day_count", day)
 		ctx.set_value("phase", "DAY")
 		var knowledge: Dictionary = {}
-		knowledge[&"00001"] = CATALOGED
+		knowledge[&"P00001"] = CATALOGED
 		ctx.set_value("knowledge", knowledge)
-		var known: Array[StringName] = [&"00016"]
+		var known: Array[StringName] = [&"P00016"]
 		ctx.set_value("known_recipes", known)
 	)
 

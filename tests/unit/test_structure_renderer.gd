@@ -44,12 +44,12 @@ class MockGrid extends Node:
 # Prop IDs (matching data/props/*.tres)
 # ---------------------------------------------------------------------------
 
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_SHELTER: StringName = &"00102"
-const ID_TORCH: StringName = &"00103"
-const ID_STORAGE_CHEST: StringName = &"00104"
-const ID_WORKBENCH: StringName = &"00105"
-const ID_WALL: StringName = &"00106"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_SHELTER: StringName = &"P00102"
+const ID_TORCH: StringName = &"P00103"
+const ID_STORAGE_CHEST: StringName = &"P00104"
+const ID_WORKBENCH: StringName = &"P00105"
+const ID_WALL: StringName = &"P00106"
 
 
 # ---------------------------------------------------------------------------
@@ -205,8 +205,10 @@ func test_structure_placed_node_has_mesh_child() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	assert_int(node.get_child_count()).is_equal(1)
+	# Node has MeshInstance3D + StaticBody3D (with CollisionShape3D) children.
+	assert_int(node.get_child_count()).is_equal(2)
 	assert_bool(node.get_child(0) is MeshInstance3D).is_true()
+	assert_bool(node.get_child(1) is StaticBody3D).is_true()
 
 
 # ===========================================================================
@@ -531,7 +533,7 @@ func test_key_format_includes_coords_and_type() -> void:
 
 	var keys: Array = _renderer.get_all_keys()
 	assert_int(keys.size()).is_equal(1)
-	assert_str(keys[0]).is_equal("3,-2:00103")
+	assert_str(keys[0]).is_equal("3,-2:P00103")
 
 
 # ===========================================================================

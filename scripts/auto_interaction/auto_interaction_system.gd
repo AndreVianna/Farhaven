@@ -24,7 +24,7 @@ signal ground_item_picked_up(item_name: StringName, amount: int)
 # Keyed by the equipped weapon's PropDef id.
 
 const WEAPON_DAMAGE: Dictionary = {
-	&"00204": 10,  # survival_knife
+	&"P00204": 10,  # survival_knife
 	&"": 5,
 }
 

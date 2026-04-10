@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="GameEvent" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/event.gd" id="1_event"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_condition.gd" id="2_condition"]
+[ext_resource type="Script" path="res://scripts/recipes/predicate.gd" id="3_predicate"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_effect.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="cond_pred_1"]
+script = ExtResource("3_predicate")
+kind = &"cataloged"
+params = { "prop": "P00008" }
+
+[sub_resource type="Resource" id="condition_1"]
+script = ExtResource("2_condition")
+predicate = SubResource("cond_pred_1")
+
+[sub_resource type="Resource" id="effect_1"]
+script = ExtResource("4_effect")
+kind = &"grant_recipe"
+params = { "recipe_id": "R00002" }
+
+[resource]
+script = ExtResource("1_event")
+id = &"E00002"
+display_name = "Discover Eat Toxic Berry"
+conditions = [SubResource("condition_1")]
+effects = [SubResource("effect_1")]
+max_count = 1

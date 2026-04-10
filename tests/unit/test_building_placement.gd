@@ -142,12 +142,12 @@ class FakeRegistry extends Node:
 # Prop IDs (matching data/props/*.tres)
 # ---------------------------------------------------------------------------
 
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_FIBER: StringName = &"00012"
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_WALL: StringName = &"00106"
-const ID_WORKBENCH: StringName = &"00105"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_FIBER: StringName = &"P00012"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_WALL: StringName = &"P00106"
+const ID_WORKBENCH: StringName = &"P00105"
 
 
 # ---------------------------------------------------------------------------

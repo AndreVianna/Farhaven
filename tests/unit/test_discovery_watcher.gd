@@ -1,11 +1,14 @@
 class_name TestDiscoveryWatcher
 extends GdUnitTestSuite
 
-## Unit tests for DiscoveryWatcher (task-050).
+## Unit tests for DiscoveryWatcher — Event-based recipe discovery (task-058).
 
 const _DiscoveryWatcher = preload("res://scripts/recipes/discovery_watcher.gd")
 const _Recipe = preload("res://scripts/recipes/recipe.gd")
-const _RecipeInput = preload("res://scripts/recipes/recipe_input.gd")
+const _GameEvent = preload("res://scripts/core/event.gd")
+const _EventRegistry = preload("res://scripts/core/event_registry.gd")
+const _RecipeEffect = preload("res://scripts/recipes/recipe_effect.gd")
+const _RecipeCondition = preload("res://scripts/recipes/recipe_condition.gd")
 const _Predicate = preload("res://scripts/recipes/predicate.gd")
 const _WorldContext = preload("res://scripts/recipes/world_context.gd")
 
@@ -47,29 +50,54 @@ class FakeCatalog extends RefCounted:
 
 var _watcher: Node
 var _registry: FakeRegistry
+var _event_registry: Node
 var _catalog: FakeCatalog
 
 
-func _make_recipe(id: StringName, _unlock_preds: Array = []) -> _Recipe:
+func _make_recipe(id: StringName) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
 	r.kind = _Recipe.Kind.TRANSFORM
 	return r
 
 
-func _make_predicate(p_kind: StringName, p_params: Dictionary = {}) -> _Predicate:
-	var pred := _Predicate.new()
-	pred.kind = p_kind
-	pred.params = p_params
-	return pred
+func _make_discovery_event(event_id: StringName, recipe_id: StringName, cataloged_props: Array[StringName] = [], has_tools: Array[StringName] = []) -> _GameEvent:
+	var event := _GameEvent.new()
+	event.id = event_id
+	event.max_count = 1
+	# Build conditions.
+	for prop_id in cataloged_props:
+		var pred := _Predicate.new()
+		pred.kind = &"cataloged"
+		pred.params = {"prop": String(prop_id)}
+		var cond := _RecipeCondition.new()
+		cond.predicate = pred
+		event.conditions.append(cond)
+	for tool_id in has_tools:
+		var pred := _Predicate.new()
+		pred.kind = &"has_tool"
+		pred.params = {"tool": String(tool_id)}
+		var cond := _RecipeCondition.new()
+		cond.predicate = pred
+		event.conditions.append(cond)
+	# Build grant_recipe effect.
+	var eff := _RecipeEffect.new()
+	eff.kind = &"grant_recipe"
+	eff.params = {"recipe_id": String(recipe_id)}
+	event.effects.append(eff)
+	return event
 
 
 func before_test() -> void:
 	_registry = FakeRegistry.new()
 	add_child(_registry)
+	_event_registry = _EventRegistry.new()
+	# Prevent EventRegistry from scanning disk — we inject events manually.
+	add_child(_event_registry)
 	_catalog = FakeCatalog.new()
 	_watcher = _DiscoveryWatcher.new()
 	_watcher._registry = _registry
+	_watcher._event_registry = _event_registry
 	_watcher._catalog = _catalog
 
 
@@ -78,31 +106,46 @@ func after_test() -> void:
 		if _watcher.get_parent() != null:
 			_watcher.get_parent().remove_child(_watcher)
 		_watcher.free()
+	if is_instance_valid(_event_registry):
+		if _event_registry.get_parent() != null:
+			_event_registry.get_parent().remove_child(_event_registry)
+		_event_registry.free()
 	if is_instance_valid(_registry):
 		_registry.queue_free()
 
 
 # ---------------------------------------------------------------------------
-# Tests: initial known recipes
+# Tests: initial known recipes (recipes WITHOUT discovery events)
 # ---------------------------------------------------------------------------
 
 
-func test_all_recipes_are_known_from_start() -> void:
-	# With unlock_when removed (task-056), all recipes are known from start.
-	# Event-based discovery (task-058) will replace this behavior.
-	_registry._recipes.append(_make_recipe(&"basic_craft"))
-	_registry._recipes.append(_make_recipe(&"basic_eat"))
-	_registry._recipes.append(_make_recipe(&"eat_berry"))
-	# Manually call _ready-like logic.
+func test_recipes_without_discovery_event_are_known_from_start() -> void:
+	# Recipes with no corresponding discovery event should be known immediately.
+	_registry._recipes.append(_make_recipe(&"R00012"))  # craft_trap — no unlock_when
+	_registry._recipes.append(_make_recipe(&"R00016"))  # craft_stone_axe — no unlock_when
+	# Manually trigger _ready-like logic.
+	_watcher._index_discovery_events()
 	_watcher._populate_initial_known()
 
-	assert_bool(_watcher.is_known(&"basic_craft")).is_true()
-	assert_bool(_watcher.is_known(&"basic_eat")).is_true()
-	assert_bool(_watcher.is_known(&"eat_berry")).is_true()
+	assert_bool(_watcher.is_known(&"R00012")).is_true()
+	assert_bool(_watcher.is_known(&"R00016")).is_true()
+
+
+func test_recipes_with_discovery_event_are_not_known_from_start() -> void:
+	# Recipe 00001 (eat_berry) has a discovery event — should NOT be known.
+	_registry._recipes.append(_make_recipe(&"R00001"))
+	_registry._recipes.append(_make_recipe(&"R00012"))  # no event
+	var event := _make_discovery_event(&"E00001", &"R00001", [&"P00004"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+
+	assert_bool(_watcher.is_known(&"R00001")).is_false()
+	assert_bool(_watcher.is_known(&"R00012")).is_true()
 
 
 # ---------------------------------------------------------------------------
-# Tests: grant_recipe
+# Tests: grant_recipe (direct)
 # ---------------------------------------------------------------------------
 
 
@@ -123,6 +166,135 @@ func test_grant_recipe_duplicate_does_not_emit_twice() -> void:
 	var monitor := monitor_signals(_watcher)
 	_watcher.grant_recipe(&"dup_recipe")
 	await assert_signal(monitor).is_not_emitted("recipe_unlocked")
+
+
+# ---------------------------------------------------------------------------
+# Tests: event_fired → grant_recipe
+# ---------------------------------------------------------------------------
+
+
+func test_event_fired_grants_recipe() -> void:
+	_registry._recipes.append(_make_recipe(&"R00001"))
+	var event := _make_discovery_event(&"E00001", &"R00001", [&"P00004"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+
+	assert_bool(_watcher.is_known(&"R00001")).is_false()
+	# Simulate the event firing.
+	_event_registry.try_fire(event)
+	assert_bool(_watcher.is_known(&"R00001")).is_true()
+
+
+func test_event_fired_emits_recipe_unlocked_signal() -> void:
+	_registry._recipes.append(_make_recipe(&"R00001"))
+	var event := _make_discovery_event(&"E00001", &"R00001", [&"P00004"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+
+	var monitor := monitor_signals(_watcher)
+	_event_registry.try_fire(event)
+	await assert_signal(monitor).is_emitted("recipe_unlocked", [&"R00001"])
+
+
+# ---------------------------------------------------------------------------
+# Tests: catalog entry → check_unlocks → event fires → recipe granted
+# ---------------------------------------------------------------------------
+
+
+func test_catalog_entry_triggers_discovery() -> void:
+	_registry._recipes.append(_make_recipe(&"R00001"))
+	var event := _make_discovery_event(&"E00001", &"R00001", [&"P00004"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+	_watcher._connect_catalog_signal()
+
+	assert_bool(_watcher.is_known(&"R00001")).is_false()
+	# Catalog the berry bush (00004) — should trigger discovery.
+	_catalog.catalog_entry(&"P00004")
+	assert_bool(_watcher.is_known(&"R00001")).is_true()
+
+
+func test_catalog_entry_does_not_trigger_when_conditions_not_met() -> void:
+	_registry._recipes.append(_make_recipe(&"R00011"))  # cook_meat
+	# cook_meat needs both cataloged(00022) AND cataloged(00101)
+	var event := _make_discovery_event(&"E00011", &"R00011", [&"P00022", &"P00101"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+	_watcher._connect_catalog_signal()
+
+	assert_bool(_watcher.is_known(&"R00011")).is_false()
+	# Catalog only meat (00022) — one condition met, but not both.
+	_catalog.catalog_entry(&"P00022")
+	assert_bool(_watcher.is_known(&"R00011")).is_false()
+	# Now catalog campfire (00101) — both conditions met.
+	_catalog.catalog_entry(&"P00101")
+	assert_bool(_watcher.is_known(&"R00011")).is_true()
+
+
+func test_one_shot_event_does_not_fire_twice() -> void:
+	_registry._recipes.append(_make_recipe(&"R00001"))
+	var event := _make_discovery_event(&"E00001", &"R00001", [&"P00004"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+
+	# Fire it once.
+	_event_registry.try_fire(event)
+	assert_bool(_watcher.is_known(&"R00001")).is_true()
+	assert_int(event.count).is_equal(1)
+
+	# Try firing again — should be rejected (max_count=1).
+	var result: bool = _event_registry.try_fire(event)
+	assert_bool(result).is_false()
+	assert_int(event.count).is_equal(1)
+
+
+# ---------------------------------------------------------------------------
+# Tests: check_unlocks (manual re-evaluation)
+# ---------------------------------------------------------------------------
+
+
+func test_check_unlocks_fires_events_with_met_conditions() -> void:
+	_registry._recipes.append(_make_recipe(&"R00004"))
+	var event := _make_discovery_event(&"E00004", &"R00004", [&"P00002"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+
+	# Build a context with catalog that has 00002 cataloged.
+	var ctx := _WorldContext.new()
+	ctx.catalog = _catalog
+	_catalog._cataloged[&"P00002"] = true
+
+	assert_bool(_watcher.is_known(&"R00004")).is_false()
+	_watcher.check_unlocks(ctx)
+	assert_bool(_watcher.is_known(&"R00004")).is_true()
+
+
+func test_check_unlocks_does_not_fire_when_conditions_unmet() -> void:
+	_registry._recipes.append(_make_recipe(&"R00004"))
+	var event := _make_discovery_event(&"E00004", &"R00004", [&"P00002"])
+	_event_registry._events[event.id] = event
+	_watcher._index_discovery_events()
+	_watcher._populate_initial_known()
+	_watcher._connect_event_registry_signal()
+
+	var ctx := _WorldContext.new()
+	ctx.catalog = _catalog
+	# Catalog is empty — condition not met.
+
+	_watcher.check_unlocks(ctx)
+	assert_bool(_watcher.is_known(&"R00004")).is_false()
 
 
 # ---------------------------------------------------------------------------
@@ -147,23 +319,13 @@ func test_is_known_returns_true_after_grant() -> void:
 func test_get_known_recipes_returns_all() -> void:
 	_registry._recipes.append(_make_recipe(&"a"))
 	_registry._recipes.append(_make_recipe(&"b"))
+	# No discovery events → both known from start.
+	_watcher._index_discovery_events()
 	_watcher._populate_initial_known()
 	var known: Array = _watcher.get_known_recipes()
 	assert_int(known.size()).is_equal(2)
 	assert_bool(known.has(&"a")).is_true()
 	assert_bool(known.has(&"b")).is_true()
-
-
-# ---------------------------------------------------------------------------
-# Tests: check_unlocks is now a stub (task-056)
-# unlock_when removed from Recipe. Event-based discovery in task-058.
-# ---------------------------------------------------------------------------
-
-
-func test_check_unlocks_does_not_crash() -> void:
-	var ctx := _WorldContext.new()
-	_watcher.check_unlocks(ctx)
-	# No assertions needed — just verifying it doesn't error.
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +343,7 @@ func test_save_load_preserves_known_recipes() -> void:
 	# Create a fresh watcher and load.
 	var watcher2 := _DiscoveryWatcher.new()
 	watcher2._registry = _registry
+	watcher2._event_registry = _event_registry
 	watcher2.load_save_data(save_data)
 
 	assert_bool(watcher2.is_known(&"recipe_a")).is_true()
