@@ -199,7 +199,6 @@ func _make_build_recipe(id: StringName, inputs_spec: Array,
 		output_ref: StringName, time: float = 0.0) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
-	r.kind = _Recipe.Kind.ASSEMBLE
 	r.duration = time
 	r.actions = [&"build"]
 	for spec: Dictionary in inputs_spec:

@@ -36,7 +36,6 @@ must_sustain = false
 script = ExtResource("1_recipe")
 id = &"R00024"
 display_name = "Build Wall"
-kind = 0
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

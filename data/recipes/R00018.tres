@@ -25,7 +25,6 @@ params = { "sound_id": "gather" }
 script = ExtResource("1_recipe")
 id = &"R00018"
 display_name = "Gather Tree"
-kind = 2
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

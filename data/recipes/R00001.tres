@@ -23,7 +23,6 @@ params = { "sound_id": "crunch" }
 script = ExtResource("1_recipe")
 id = &"R00001"
 display_name = "Eat Berry"
-kind = 1
 inputs = [SubResource("input_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]
 actions = [&"eat"]

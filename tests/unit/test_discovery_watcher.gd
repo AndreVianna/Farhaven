@@ -57,7 +57,6 @@ var _catalog: FakeCatalog
 func _make_recipe(id: StringName) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
-	r.kind = _Recipe.Kind.TRANSFORM
 	return r
 
 

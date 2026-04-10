@@ -23,7 +23,6 @@ count = 1
 script = ExtResource("1_recipe")
 id = &"R00012"
 display_name = "Craft Trap"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 actions = [&"assemble"]

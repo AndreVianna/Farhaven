@@ -55,7 +55,6 @@ func _make_recipe(id: StringName, display_name: String, inputs_data: Array, outp
 	var recipe := _Recipe.new()
 	recipe.id = id
 	recipe.display_name = display_name
-	recipe.kind = _Recipe.Kind.ASSEMBLE
 	recipe.actions = [&"build"]
 	recipe.duration = 2.0
 	var inputs: Array[Resource] = []

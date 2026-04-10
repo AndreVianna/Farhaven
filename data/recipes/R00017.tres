@@ -29,7 +29,6 @@ params = { "sound_id": "craft_success" }
 script = ExtResource("1_recipe")
 id = &"R00017"
 display_name = "Craft Stone Pickaxe"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

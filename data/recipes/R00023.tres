@@ -46,7 +46,6 @@ must_sustain = false
 script = ExtResource("1_recipe")
 id = &"R00023"
 display_name = "Build Shelter"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2"), SubResource("input_3")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

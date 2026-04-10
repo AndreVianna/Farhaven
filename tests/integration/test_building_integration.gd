@@ -250,7 +250,6 @@ func _make_build_recipe(recipe_id: StringName, display_name: String,
 	var recipe := _Recipe.new()
 	recipe.id = recipe_id
 	recipe.display_name = display_name
-	recipe.kind = _Recipe.Kind.ASSEMBLE
 	recipe.actions = [&"build"]
 	recipe.duration = time
 

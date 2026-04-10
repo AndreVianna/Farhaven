@@ -13,7 +13,7 @@ import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
 import { ProjectContext, nextId } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
-import { RecipeModel, recipeModelToRaw, validateRecipeForm, RECIPE_KINDS, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
+import { RecipeModel, recipeModelToRaw, validateRecipeForm, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
@@ -1915,7 +1915,7 @@ function _makeRecipeEntry(resourceOverrides, subResources) {
   raw.headerLine = '[gd_resource type="Resource" script_class="Recipe" load_steps=2 format=3]';
   raw.extResources = ['[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]'];
   raw.subResources = subResources || [];
-  const data = { script: 'ExtResource("1_recipe")', id: 'Rtest', display_name: 'Test Recipe', kind: 0, ...resourceOverrides };
+  const data = { script: 'ExtResource("1_recipe")', id: 'Rtest', display_name: 'Test Recipe', ...resourceOverrides };
   raw.resourceFields = new Map();
   raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_recipe")' });
   raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'Rtest' });
@@ -1936,18 +1936,16 @@ function _makeRecipeModel(overrides) {
   const model = new RecipeModel();
   model.id = 'Rtest';
   model.display_name = 'Test Recipe';
-  model.kind = 0;
   model.duration = 0;
   for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
   return model;
 }
 
 test('RecipeModel — fromEntry reads basic fields', () => {
-  const entry = _makeRecipeEntry({ kind: 2, duration: 4.0 }, []);
+  const entry = _makeRecipeEntry({ duration: 4.0 }, []);
   const model = RecipeModel.fromEntry('R00001.tres', entry);
   assert(model.id === 'R00001', 'id should be R00001');
   assert(model.display_name === 'Test Recipe', 'display_name');
-  assert(model.kind === 2, 'kind should be 2');
   assert(model.duration === 4.0, 'duration should be 4.0');
   assert(model._filename === 'R00001.tres', '_filename');
 });
@@ -2100,11 +2098,6 @@ test('validateRecipeForm — negative duration', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — invalid kind', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ kind: 5 }), true);
-  assert(result.valid === false, 'should be invalid');
-});
-
 test('validateRecipeForm — input missing ref_or_tag', () => {
   const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false }] }), false);
   assert(result.valid === false, 'should be invalid');
@@ -2173,10 +2166,10 @@ test('validateRecipeForm — valid full recipe', () => {
 // ============================================================
 
 test('recipeModelToRaw — serializes basic recipe', () => {
-  const raw = recipeModelToRaw(_makeRecipeModel({ kind: 1, display_name: 'Eat Berry' }));
+  const raw = recipeModelToRaw(_makeRecipeModel({ display_name: 'Eat Berry' }));
   assert(raw.scriptClass === 'Recipe', 'scriptClass');
   assert(raw.resourceFields.has('id'), 'should have id');
-  assert(raw.resourceFields.get('kind').value === 1, 'kind value');
+  assert(raw.resourceFields.get('display_name').value === 'Eat Berry', 'display_name value');
 });
 
 test('recipeModelToRaw — serializes inputs as sub_resources', () => {
@@ -2236,7 +2229,6 @@ test('recipeModelToRaw — no sub_resources when empty', () => {
 
 test('recipeModelToRaw — serialized output is valid .tres', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({
-    kind: 2,
     inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
@@ -2255,7 +2247,7 @@ test('recipeModelToRaw — serialized output is valid .tres', () => {
 
 test('RecipeModel — full round-trip with all fields', () => {
   const original = _makeRecipeModel({
-    kind: 2, display_name: 'Chop Small Tree',
+    display_name: 'Chop Small Tree',
     inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
@@ -2279,7 +2271,6 @@ test('RecipeModel — full round-trip with all fields', () => {
   const restored = RecipeModel.fromEntry('Rtest.tres', { data, raw: reparsed });
   assert(restored.id === original.id, 'id round-trip');
   assert(restored.display_name === original.display_name, 'display_name round-trip');
-  assert(restored.kind === original.kind, 'kind round-trip');
   assert(restored.duration === original.duration, 'duration round-trip');
   assert(restored.actions.length === 1, 'actions count');
   assert(restored.actions[0] === 'chop', 'actions[0]');
@@ -2357,7 +2348,6 @@ for (const recipeFile of __recipeFiles) {
     const model = RecipeModel.fromEntry(recipeFile, { data, raw: parsed });
     assert(model.id === recipeFile.replace('.tres', ''), `${recipeFile}: id`);
     assert(typeof model.display_name === 'string', `${recipeFile}: display_name is string`);
-    assert(model.kind >= 0 && model.kind <= 3, `${recipeFile}: kind in range`);
     assert(model.duration >= 0, `${recipeFile}: duration >= 0`);
     assert(Array.isArray(model.inputs), `${recipeFile}: inputs is array`);
     assert(Array.isArray(model.outputs), `${recipeFile}: outputs is array`);
@@ -2394,7 +2384,6 @@ for (const recipeFile of __recipeFiles) {
     const model2 = RecipeModel.fromEntry(recipeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${recipeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${recipeFile}: display_name survives`);
-    assert(model2.kind === model.kind, `${recipeFile}: kind survives`);
     assert(model2.inputs.length === model.inputs.length, `${recipeFile}: inputs count survives`);
     assert(model2.outputs.length === model.outputs.length, `${recipeFile}: outputs count survives`);
     assert(model2.effects.length === model.effects.length, `${recipeFile}: effects count survives`);
@@ -2407,12 +2396,6 @@ for (const recipeFile of __recipeFiles) {
 // ============================================================
 // Constants exports (task-039b)
 // ============================================================
-
-test('Recipe constants — RECIPE_KINDS has 4 entries', () => {
-  assert(RECIPE_KINDS.length === 4, 'should have 4 kinds');
-  assert(RECIPE_KINDS[0] === 'Assemble', 'first is Assemble');
-  assert(RECIPE_KINDS[3] === 'Combine', 'last is Combine');
-});
 
 test('Recipe constants — INPUT_SOURCES has 4 entries', () => {
   assert(INPUT_SOURCES.length === 4, 'should have 4 sources');

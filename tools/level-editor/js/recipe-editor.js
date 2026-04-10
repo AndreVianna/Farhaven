@@ -10,9 +10,6 @@ import { showInlineModal } from './panels.js';
 // Constants
 // ============================================================
 
-/** Recipe kind enum values (mirrors Recipe.Kind in GDScript). */
-export const RECIPE_KINDS = ['Assemble', 'Transform', 'Breakdown', 'Combine'];
-
 /** Input source options (mirrors RecipeInput.source). */
 export const INPUT_SOURCES = ['player_inventory', 'container', 'world_tile', 'world_anywhere'];
 
@@ -41,7 +38,6 @@ export class RecipeModel {
     /** @type {string} */
     this.display_name = '';
     /** @type {number} 0=Assemble, 1=Transform, 2=Breakdown, 3=Combine */
-    this.kind = 0;
     /** @type {Array<{ref_or_tag: string, count: number, source: string, is_tag: boolean}>} */
     this.inputs = [];
     /** @type {Array<{prop_ref: string, count: number, prob: number}>} */
@@ -115,7 +111,6 @@ export class RecipeModel {
     model.display_name = _str(d.display_name);
     model.short_description = _str(d.short_description);
     model.long_description = _str(d.long_description);
-    model.kind = _num(d.kind);
     model.duration = _numFloat(d.duration);
 
     // Actions (array of stringname values -> string[])
@@ -264,7 +259,6 @@ export function collectRecipeFormData(formElement) {
   model.display_name = val('display_name').trim();
   model.short_description = val('short_description').trim();
   model.long_description = val('long_description').trim();
-  model.kind = intVal('kind');
   model.duration = floatVal('duration');
 
   // Actions
@@ -404,10 +398,6 @@ export function validateRecipeForm(model, isNew) {
     errors.push('Display Name is required');
   }
 
-  if (model.kind < 0 || model.kind > 3) {
-    errors.push('Kind must be 0-3 (Assemble, Transform, Breakdown, Combine)');
-  }
-
   if (model.duration < 0) {
     errors.push('Duration must be >= 0');
   }
@@ -474,7 +464,6 @@ function _modelToPlain(model) {
     display_name: model.display_name,
     short_description: model.short_description,
     long_description: model.long_description,
-    kind: model.kind,
     inputs: model.inputs,
     outputs: model.outputs,
     effects: model.effects,
@@ -656,7 +645,6 @@ export function recipeModelToRaw(model) {
   fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
   fields.set('id', { type: 'stringname', value: model.id });
   fields.set('display_name', { type: 'string', value: model.display_name });
-  fields.set('kind', { type: 'int', value: model.kind });
 
   if (inputSubIds.length > 0) {
     fields.set('inputs', {
@@ -713,7 +701,7 @@ export function recipeModelToRaw(model) {
 
   // Preserve any unknown fields from the original .tres
   // Skip fields that were removed in delivery-006a
-  const _removedFields = new Set(['time', 'unlock_when']);
+  const _removedFields = new Set(['time', 'unlock_when', 'kind']);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
       if (!fields.has(key) && !_removedFields.has(key)) {
@@ -865,22 +853,6 @@ export function renderRecipeEditor(container, options) {
   const listHeader = document.createElement('div');
   listHeader.classList.add('editor-list-header');
 
-  // Kind filter
-  const kindLabel = document.createElement('label');
-  kindLabel.textContent = 'Kind:';
-  kindLabel.style.cssText = 'font-size:10px;color:var(--text-secondary);';
-  const kindFilter = document.createElement('select');
-  kindFilter.classList.add('editor-filter');
-  kindFilter.style.marginBottom = '4px';
-  const kindAll = document.createElement('option');
-  kindAll.value = 'all'; kindAll.textContent = 'All'; kindAll.selected = true;
-  kindFilter.appendChild(kindAll);
-  for (let i = 0; i < RECIPE_KINDS.length; i++) {
-    const opt = document.createElement('option');
-    opt.value = String(i); opt.textContent = RECIPE_KINDS[i];
-    kindFilter.appendChild(opt);
-  }
-
   // Text filter
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
@@ -891,8 +863,6 @@ export function renderRecipeEditor(container, options) {
   newBtn.textContent = '+ New';
   newBtn.classList.add('editor-new-btn');
 
-  listHeader.appendChild(kindLabel);
-  listHeader.appendChild(kindFilter);
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
   listPanel.appendChild(listHeader);
@@ -931,17 +901,15 @@ export function renderRecipeEditor(container, options) {
   function refreshList() {
     listItems.innerHTML = '';
     const textFilter = filterInput.value.toLowerCase().trim();
-    const kindVal = kindFilter.value;
 
     const allRecipes = [];
     for (const [filename, entry] of ProjectContext.files.recipes) {
       const model = RecipeModel.fromEntry(filename, entry);
-      allRecipes.push({ id: model.id, displayName: model.display_name || model.id, kind: model.kind });
+      allRecipes.push({ id: model.id, displayName: model.display_name || model.id });
     }
     allRecipes.sort((a, b) => a.id.localeCompare(b.id));
 
     for (const recipe of allRecipes) {
-      if (kindVal !== 'all' && String(recipe.kind) !== kindVal) continue;
       if (textFilter && !recipe.displayName.toLowerCase().includes(textFilter) && !recipe.id.toLowerCase().includes(textFilter)) continue;
 
       const item = document.createElement('div');
@@ -954,11 +922,6 @@ export function renderRecipeEditor(container, options) {
       const span = document.createElement('span');
       span.textContent = `${recipe.id} — ${recipe.displayName}`;
       item.appendChild(span);
-
-      const kindBadge = document.createElement('small');
-      kindBadge.textContent = RECIPE_KINDS[recipe.kind] || '?';
-      kindBadge.style.cssText = 'margin-left:auto;font-size:10px;color:var(--text-secondary);';
-      item.appendChild(kindBadge);
 
       item.addEventListener('click', () => {
         if (!_guardDirty()) return;
@@ -1058,8 +1021,6 @@ export function renderRecipeEditor(container, options) {
     _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
     // Long Description
     _addTextareaField(grid, 'Long Description', 'long_description', model.long_description);
-    // Kind
-    _addSelectField(grid, 'Kind', 'kind', model.kind, RECIPE_KINDS.map((k, i) => ({ value: String(i), label: k })));
     // Duration
     _addField(grid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
 
@@ -1143,7 +1104,6 @@ export function renderRecipeEditor(container, options) {
 
   // --- Wire up events ---
   filterInput.addEventListener('input', () => refreshList());
-  kindFilter.addEventListener('change', () => refreshList());
 
   newBtn.addEventListener('click', () => {
     if (!_guardDirty()) return;

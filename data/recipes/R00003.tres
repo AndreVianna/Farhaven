@@ -43,7 +43,6 @@ must_sustain = true
 script = ExtResource("1_recipe")
 id = &"R00003"
 display_name = "Chop Small Tree"
-kind = 2
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1"), SubResource("output_2")]
 effects = [SubResource("effect_1")]

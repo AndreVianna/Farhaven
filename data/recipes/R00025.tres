@@ -41,7 +41,6 @@ must_sustain = false
 script = ExtResource("1_recipe")
 id = &"R00025"
 display_name = "Build Torch"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

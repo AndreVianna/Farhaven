@@ -36,7 +36,6 @@ predicate = SubResource("cond_pred_1")
 script = ExtResource("1_recipe")
 id = &"R00009"
 display_name = "Mine Crystal Cluster"
-kind = 2
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

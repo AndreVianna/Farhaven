@@ -31,7 +31,6 @@ params = { "sound_id": "fire_light" }
 script = ExtResource("1_recipe")
 id = &"R00020"
 display_name = "Light Campfire"
-kind = 1
 inputs = [SubResource("input_1")]
 outputs = []
 effects = [SubResource("effect_1")]

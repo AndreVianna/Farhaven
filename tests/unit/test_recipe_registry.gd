@@ -63,7 +63,6 @@ func test_eat_berry_fields() -> void:
 	var r = _registry.get_recipe(&"R00001")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Eat Berry")
-	assert_int(r.kind).is_equal(_Recipe.Kind.TRANSFORM)
 	assert_int(r.inputs.size()).is_equal(1)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00020")
 	assert_int(r.inputs[0].count).is_equal(1)
@@ -80,7 +79,6 @@ func test_eat_berry_fields() -> void:
 func test_chop_small_tree_fields() -> void:
 	var r = _registry.get_recipe(&"R00003")
 	assert_that(r).is_not_null()
-	assert_int(r.kind).is_equal(_Recipe.Kind.BREAKDOWN)
 	assert_int(r.inputs.size()).is_equal(1)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00001")
 	assert_str(String(r.inputs[0].source)).is_equal("world_tile")
@@ -95,7 +93,6 @@ func test_chop_small_tree_fields() -> void:
 func test_cook_meat_fields() -> void:
 	var r = _registry.get_recipe(&"R00011")
 	assert_that(r).is_not_null()
-	assert_int(r.kind).is_equal(_Recipe.Kind.TRANSFORM)
 	assert_int(r.conditions.size()).is_equal(2)
 	assert_bool(r.conditions[0].must_sustain).is_true()
 	assert_bool(r.conditions[1].must_sustain).is_true()
@@ -105,7 +102,6 @@ func test_cook_meat_fields() -> void:
 func test_craft_trap_fields() -> void:
 	var r = _registry.get_recipe(&"R00012")
 	assert_that(r).is_not_null()
-	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_int(r.conditions.size()).is_equal(0)
@@ -258,7 +254,6 @@ func test_craft_stone_axe_fields() -> void:
 	var r = _registry.get_recipe(&"R00016")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Axe")
-	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(2)
@@ -277,7 +272,6 @@ func test_craft_stone_pickaxe_fields() -> void:
 	var r = _registry.get_recipe(&"R00017")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Pickaxe")
-	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(3)

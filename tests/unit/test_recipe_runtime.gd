@@ -83,7 +83,6 @@ func _mock_randf() -> float:
 func _make_recipe(id: StringName, time: float = 0.0) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
-	r.kind = _Recipe.Kind.TRANSFORM
 	r.duration = time
 	return r
 
