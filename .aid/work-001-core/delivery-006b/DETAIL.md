@@ -1,6 +1,6 @@
 # delivery-006b: Editor Sync — All Pages for New Schema
 
-**Status:** In Progress
+**Status:** Complete (pending Andre review)
 **Created:** 2026-04-09
 **Started:** 2026-04-10
 **Depends on:** delivery-006a (merged to main)
@@ -17,7 +17,7 @@
 | 070 | ID namespace enforcement: prefix validation + auto-increment | UPDATE | 3 | DONE |
 | 071 | Biome page review: ensure sync with current schema | REVIEW | 2 | DONE (no issues) |
 | 072 | Round-trip tests for all pages with new schema | TEST | 4 | DONE (87 round-trips) |
-| 073 | BDD scenarios covering delivery-006b changes | TEST | 4 | IN PROGRESS |
+| 073 | BDD scenarios covering delivery-006b changes | TEST | 4 | DONE |
 
 **Estimated total: ~31h**
 
