@@ -5,6 +5,7 @@
 import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
+import { renderGearHeader } from './editor-common.js';
 
 // ============================================================
 // Constants
@@ -1000,41 +1001,49 @@ export function renderRecipeEditor(container, options) {
     body.classList.add('editor-detail-body');
     body.style.cssText = 'flex:1;overflow-y:auto;';
 
-    const grid = document.createElement('div');
-    grid.classList.add('prop-grid');
+    // --- Gear base-fields header (2-col: id/name/short | long) ---
+    renderGearHeader(body, model, { idReadonly: !isNew });
 
-    // ID
-    _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
-    // Display Name
-    _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
-    // Short Description
-    _addField(grid, 'Short Description', 'short_description', 'text', model.short_description);
-    // Long Description
-    _addTextareaField(grid, 'Long Description', 'long_description', model.long_description);
-    // Duration
-    _addField(grid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
+    // --- Body split: 2 columns ---
+    //   Left:  Actions, Inputs, Conditions
+    //   Right: Duration, Outputs, Effects
+    const bodySplit = document.createElement('div');
+    bodySplit.classList.add('editor-2col', 'editor-body-grid');
 
-    // --- Actions ---
-    _addSeparator(grid, 'Actions');
-    grid.appendChild(_createActionsEditor(model.actions));
+    const leftCol = document.createElement('div');
+    leftCol.classList.add('col-left');
+    const leftGrid = document.createElement('div');
+    leftGrid.classList.add('prop-grid');
+    leftCol.appendChild(leftGrid);
 
-    // --- Inputs ---
-    _addSeparator(grid, 'Inputs');
-    grid.appendChild(_createInputListEditor(model.inputs));
+    const rightCol = document.createElement('div');
+    rightCol.classList.add('col-right');
+    const rightGrid = document.createElement('div');
+    rightGrid.classList.add('prop-grid');
+    rightCol.appendChild(rightGrid);
 
-    // --- Outputs ---
-    _addSeparator(grid, 'Outputs');
-    grid.appendChild(_createOutputListEditor(model.outputs));
+    // --- Left column ---
+    _addSeparator(leftGrid, 'Actions');
+    leftGrid.appendChild(_createActionsEditor(model.actions));
 
-    // --- Effects ---
-    _addSeparator(grid, 'Effects');
-    grid.appendChild(_createEffectListEditor(model.effects));
+    _addSeparator(leftGrid, 'Inputs');
+    leftGrid.appendChild(_createInputListEditor(model.inputs));
 
-    // --- Conditions ---
-    _addSeparator(grid, 'Conditions');
-    grid.appendChild(_createConditionListEditor(model.conditions));
+    _addSeparator(leftGrid, 'Conditions');
+    leftGrid.appendChild(_createConditionListEditor(model.conditions));
 
-    body.appendChild(grid);
+    // --- Right column ---
+    _addField(rightGrid, 'Duration (seconds)', 'duration', 'number', model.duration, { step: 'any', min: '0' });
+
+    _addSeparator(rightGrid, 'Outputs');
+    rightGrid.appendChild(_createOutputListEditor(model.outputs));
+
+    _addSeparator(rightGrid, 'Effects');
+    rightGrid.appendChild(_createEffectListEditor(model.effects));
+
+    bodySplit.appendChild(leftCol);
+    bodySplit.appendChild(rightCol);
+    body.appendChild(bodySplit);
     form.appendChild(body);
     detailPanel.appendChild(form);
 
@@ -1260,6 +1269,7 @@ function _createInputListEditor(inputs) {
     row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:4px;align-items:center;';
 
     _appendInput(row, 'ref', 'text', inp.ref, 'P00010 or &TAG', { flex: '2' });
+    _appendInlineLabel(row, 'Count:');
     _appendInput(row, 'count', 'number', inp.count, 'Count', { width: '60px', min: '1', step: '1' });
     _appendCheckbox(row, 'must_hold', inp.must_hold, 'Must hold?');
     _appendRemoveBtn(row);
@@ -1296,7 +1306,9 @@ function _createOutputListEditor(outputs) {
     row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:4px;align-items:center;';
 
     _appendInput(row, 'prop_ref', 'text', out.prop_ref, 'Prop ID', { flex: '2' });
+    _appendInlineLabel(row, 'Count:');
     _appendInput(row, 'count', 'number', out.count, 'Count', { width: '60px', min: '1', step: '1' });
+    _appendInlineLabel(row, 'Prob:');
     _appendInput(row, 'prob', 'number', out.prob, 'Prob', { width: '70px', min: '0', max: '1', step: '0.01' });
     _appendRemoveBtn(row);
 
@@ -1480,6 +1492,14 @@ function _appendSelect(parent, fieldName, value, options) {
     select.appendChild(option);
   }
   parent.appendChild(select);
+}
+
+function _appendInlineLabel(parent, text) {
+  const label = document.createElement('span');
+  label.textContent = text;
+  label.classList.add('row-inline-label');
+  label.style.cssText = 'font-size:11px;color:var(--text-secondary);white-space:nowrap;';
+  parent.appendChild(label);
 }
 
 function _appendCheckbox(parent, fieldName, checked, label) {
