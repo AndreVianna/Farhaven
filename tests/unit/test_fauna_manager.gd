@@ -165,8 +165,9 @@ func _make_thornback_def() -> Resource:
 	endurance.hp = 20
 	def.endurance = endurance
 	var movement := _MovementCap.new()
-	movement.move_cooldown = 1.0
-	movement.max_jump = 1
+	# WALK mode with normal speed 1.0 (cooldown = 1/1.0 = 1.0s) and max speed 1.5.
+	# Max jump stays implicit 1 (no JUMP mode present).
+	movement.modes = {int(_MovementCap.Mode.WALK): [1.0, 1.5]}
 	def.movement = movement
 	var behavior := _BehaviorCap.new()
 	behavior.detection_range = 2

@@ -111,7 +111,7 @@ func _spawn_species(species_id: StringName, def: Resource) -> void:
 			"species_type": species_id,
 			"coords": coords,
 			"hp": def.endurance.hp,
-			"move_cooldown": def.movement.move_cooldown,
+			"move_cooldown": _get_move_cooldown(def),
 			"cooldown_remaining": 0.0,
 			"was_in_light": false,
 		}
@@ -199,7 +199,7 @@ func _update_cooldowns_and_move(delta: float) -> void:
 		if dist_to_player > detection_range:
 			continue
 
-		var best_neighbor := _find_best_move(fauna, player_coords, active_lights)
+		var best_neighbor := _find_best_move(fauna, player_coords, active_lights, _get_max_jump_for_species(fauna["species_type"]))
 		if best_neighbor != Vector2i(-99999, -99999):
 			var old_coords: Vector2i = fauna["coords"]
 			# Check surprise encounter: fauna was outside light, now entering player adjacency
@@ -217,7 +217,7 @@ func _update_cooldowns_and_move(delta: float) -> void:
 
 
 func _find_best_move(fauna: Dictionary, player_coords: Vector2i,
-		active_lights: Array[Dictionary]) -> Vector2i:
+		active_lights: Array[Dictionary], max_jump: int = 1) -> Vector2i:
 	var fauna_coords: Vector2i = fauna["coords"]
 	var neighbors: Array[Vector2i] = _HexMath.get_neighbors(fauna_coords)
 	var best_coords := Vector2i(-99999, -99999)
@@ -228,7 +228,7 @@ func _find_best_move(fauna: Dictionary, player_coords: Vector2i,
 		if _grid == null or not _grid.has_tile(neighbor):
 			continue
 		# Check passability with fauna-specific rules
-		if not _is_fauna_passable(fauna_coords, neighbor, 1):
+		if not _is_fauna_passable(fauna_coords, neighbor, max_jump):
 			continue
 		# Avoid lit tiles
 		if _is_tile_lit(neighbor, active_lights):
@@ -436,6 +436,43 @@ func _get_detection_range(species_id: StringName) -> int:
 	if def == null or def.behavior == null:
 		return 0
 	return def.behavior.detection_range
+
+
+## Derives move cooldown from a species def's movement cap.
+## Uses the first available mode's normal speed: cooldown = 1.0 / normal_speed.
+## Returns 1.0 if the def or movement cap is missing or modes is empty.
+func _get_move_cooldown(def: Resource) -> float:
+	if def.movement == null or def.movement.modes.is_empty():
+		return 1.0  # Default
+	# Use the first available mode's normal speed
+	var first_mode_speeds: Array = def.movement.modes.values()[0]
+	if first_mode_speeds.size() < 1 or first_mode_speeds[0] <= 0.0:
+		return 1.0
+	return 1.0 / float(first_mode_speeds[0])
+
+
+## Derives max elevation jump from a species def's movement cap.
+## If JUMP mode (int 5) is present, uses its normal speed value as the
+## max traversable elevation difference. Otherwise defaults to 1.
+func _get_max_jump(def: Resource) -> int:
+	if def.movement == null or def.movement.modes.is_empty():
+		return 1  # Default
+	# If JUMP mode is present, use its normal value
+	var jump_mode_key: int = 5  # Mode.JUMP int value
+	if def.movement.modes.has(jump_mode_key):
+		var jump_speeds: Array = def.movement.modes[jump_mode_key]
+		if jump_speeds.size() >= 1:
+			return int(jump_speeds[0])
+	return 1
+
+
+## Resolves the max elevation jump for a species id, falling back to 1 if
+## the def or movement cap is unavailable.
+func _get_max_jump_for_species(species_id: StringName) -> int:
+	var def := _get_species_def(species_id)
+	if def == null:
+		return 1
+	return _get_max_jump(def)
 
 
 # --- Helpers ---

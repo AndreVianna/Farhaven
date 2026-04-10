@@ -341,15 +341,24 @@ export class TresParser {
    * @returns {TresValue}
    */
   static _parseDict(s) {
-    const inner = s.slice(1, -1).trim();
+    // Normalize whitespace inside braces: multi-line dicts may contain newlines/tabs.
+    const inner = s.slice(1, -1).replace(/[\r\n\t]+/g, ' ').trim();
     if (inner === '') {
       // Detect brace style: '{}' vs '{ }' — check for space after opening brace
       const hasSpaces = s.length > 2 && s[1] === ' ';
       return { type: 'dict', value: new Map(), keyStyle: 'stringname', braceSpaces: hasSpaces };
     }
 
-    // Detect key style from the first key
-    const keyStyle = inner.startsWith('&"') ? 'stringname' : 'string';
+    // Detect key style from the first key:
+    //   &"..." = stringname, "..." = string, digit/- = int
+    let keyStyle = 'stringname';
+    if (inner.startsWith('&"')) {
+      keyStyle = 'stringname';
+    } else if (inner.startsWith('"')) {
+      keyStyle = 'string';
+    } else if (/^-?\d/.test(inner)) {
+      keyStyle = 'int';
+    }
 
     // Detect brace spacing from original string
     // "{ &..." or "{ \"..." = spaces; "{&..." or "{\"..." = no spaces
@@ -377,6 +386,13 @@ export class TresParser {
         const endQuote = inner.indexOf('"', pos);
         key = inner.substring(pos, endQuote);
         pos = endQuote + 1;
+      } else if (inner[pos] === '-' || (inner[pos] >= '0' && inner[pos] <= '9')) {
+        // Int key: 0, 5, -1, etc.
+        let keyEnd = pos;
+        if (inner[keyEnd] === '-') keyEnd++;
+        while (keyEnd < inner.length && inner[keyEnd] >= '0' && inner[keyEnd] <= '9') keyEnd++;
+        key = parseInt(inner.substring(pos, keyEnd), 10);
+        pos = keyEnd;
       } else {
         break;
       }
@@ -607,9 +623,14 @@ export class TresParser {
     const keyStyle = tv.keyStyle || 'stringname';
     const pairs = [];
     for (const [key, val] of map) {
-      const serializedKey = keyStyle === 'stringname'
-        ? '&"' + key + '"'
-        : '"' + key + '"';
+      let serializedKey;
+      if (keyStyle === 'int') {
+        serializedKey = String(key);
+      } else if (keyStyle === 'stringname') {
+        serializedKey = '&"' + key + '"';
+      } else {
+        serializedKey = '"' + key + '"';
+      }
       pairs.push(serializedKey + ': ' + TresParser.serializeValue(val));
     }
 

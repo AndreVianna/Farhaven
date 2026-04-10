@@ -38,11 +38,15 @@ export class PropDefModel {
     this.movable = null;
     /** @type {{ station_tags: string[] }|null} */
     this.station = null;
-    /** @type {{ scan_time: number, display_tag: string, category: number, properties: Object }|null} */
+    /** @type {{ scan_time: number, show_as_anomaly: boolean, properties: Object }|null} */
     this.catalogable = null;
     /** @type {{ hp: number, vulnerabilities: string[], resistances: string[], immunities: string[] }|null} */
     this.endurance = null;
-    /** @type {{ mode: number, move_cooldown: number, max_jump: number }|null} */
+    /**
+     * Movement cap: array of {mode, normal, max} rows.
+     * null = capability disabled; [] = enabled but no modes yet.
+     * @type {{ modes: Array<{mode: number, normal: number, max: number}> }|null}
+     */
     this.movement = null;
     /** @type {{ attacks: Array, defenses: Array }|null} */
     this.combat = null;
@@ -211,8 +215,7 @@ export class PropDefModel {
     if (d.catalogable && typeof d.catalogable === 'object') {
       model.catalogable = {
         scan_time: _num(d.catalogable.scan_time != null ? d.catalogable.scan_time : 1.0),
-        display_tag: _str(d.catalogable.display_tag),
-        category: _num(d.catalogable.category),
+        show_as_anomaly: !!d.catalogable.show_as_anomaly,
         properties: _dictToObj(d.catalogable.properties),
       };
     }
@@ -228,9 +231,7 @@ export class PropDefModel {
 
     if (d.movement && typeof d.movement === 'object') {
       model.movement = {
-        mode: _num(d.movement.mode),
-        move_cooldown: _num(d.movement.move_cooldown != null ? d.movement.move_cooldown : 1.0),
-        max_jump: _num(d.movement.max_jump != null ? d.movement.max_jump : 1),
+        modes: _movementModes(d.movement.modes),
       };
     }
 
@@ -345,6 +346,56 @@ function _dictToObj(val) {
     obj[key] = tv && typeof tv === 'object' && 'value' in tv ? tv.value : tv;
   }
   return obj;
+}
+
+/**
+ * Convert a parsed movement `modes` dict into the editor model's array form.
+ * Input is a Map<int, TresValue> where each value is an array TresValue of
+ * two float TresValues: [normal_speed, max_speed].
+ * Also tolerates plain objects/arrays for robustness in tests.
+ * @param {*} val
+ * @returns {Array<{mode: number, normal: number, max: number}>}
+ */
+function _movementModes(val) {
+  const result = [];
+  if (val == null) return result;
+
+  /**
+   * Normalize a "speeds" entry to [normal, max] numbers.
+   * @param {*} speeds
+   * @returns {[number, number]}
+   */
+  function _speedPair(speeds) {
+    // TresValue array: { type: 'array', value: [ {type:'float',value:n}, ... ] }
+    if (speeds && typeof speeds === 'object' && 'type' in speeds && speeds.type === 'array') {
+      const elems = Array.isArray(speeds.value) ? speeds.value : [];
+      const n = elems[0] && typeof elems[0] === 'object' && 'value' in elems[0] ? elems[0].value : 0;
+      const m = elems[1] && typeof elems[1] === 'object' && 'value' in elems[1] ? elems[1].value : 0;
+      return [Number(n) || 0, Number(m) || 0];
+    }
+    // Plain array with TresValue or primitive numbers
+    if (Array.isArray(speeds)) {
+      const n = speeds[0] && typeof speeds[0] === 'object' && 'value' in speeds[0] ? speeds[0].value : speeds[0];
+      const m = speeds[1] && typeof speeds[1] === 'object' && 'value' in speeds[1] ? speeds[1].value : speeds[1];
+      return [Number(n) || 0, Number(m) || 0];
+    }
+    return [0, 0];
+  }
+
+  if (val instanceof Map) {
+    for (const [k, speeds] of val) {
+      const [n, m] = _speedPair(speeds);
+      result.push({ mode: Number(k) || 0, normal: n, max: m });
+    }
+    return result;
+  }
+  if (typeof val === 'object') {
+    for (const [k, speeds] of Object.entries(val)) {
+      const [n, m] = _speedPair(speeds);
+      result.push({ mode: parseInt(k, 10) || 0, normal: n, max: m });
+    }
+  }
+  return result;
 }
 
 /**
@@ -871,6 +922,106 @@ function _createStringArrayEditor(name, labelText, values) {
   return wrapper;
 }
 
+/** Mode int value -> label used by the movement editor dropdown. */
+const _MOVEMENT_MODE_OPTIONS = [
+  { value: 0, label: 'WALK' },
+  { value: 1, label: 'SWIM' },
+  { value: 2, label: 'FLY' },
+  { value: 3, label: 'BURROW' },
+  { value: 4, label: 'CLIMB' },
+  { value: 5, label: 'JUMP' },
+];
+
+/**
+ * Create an editor for the MovementCap modes dictionary.
+ * Renders one row per {mode, normal, max} entry with an Add button below.
+ * @param {Array<{mode: number, normal: number, max: number}>} modes
+ * @returns {HTMLElement}
+ */
+function _createMovementModesEditor(modes) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.movementModes = '';
+
+  const label = document.createElement('div');
+  label.textContent = 'Modes (Mode → [normal, max] speeds)';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const rowsContainer = document.createElement('div');
+  rowsContainer.dataset.movementModesRows = '';
+  wrapper.appendChild(rowsContainer);
+
+  /**
+   * Add one {mode, normal, max} row.
+   * @param {number} mode
+   * @param {number} normal
+   * @param {number} max
+   */
+  function addRow(mode, normal, max) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+    row.dataset.movementModeRow = '';
+
+    const modeSelect = document.createElement('select');
+    modeSelect.dataset.movementModeMode = '';
+    modeSelect.classList.add('prop-input');
+    modeSelect.style.flex = '1';
+    for (const opt of _MOVEMENT_MODE_OPTIONS) {
+      const option = document.createElement('option');
+      option.value = String(opt.value);
+      option.textContent = `${opt.value} — ${opt.label}`;
+      if (opt.value === mode) option.selected = true;
+      modeSelect.appendChild(option);
+    }
+
+    const normalInput = document.createElement('input');
+    normalInput.type = 'number';
+    normalInput.step = 'any';
+    normalInput.min = '0';
+    normalInput.placeholder = 'normal';
+    normalInput.value = String(normal);
+    normalInput.dataset.movementModeNormal = '';
+    normalInput.classList.add('prop-input');
+    normalInput.style.flex = '1';
+
+    const maxInput = document.createElement('input');
+    maxInput.type = 'number';
+    maxInput.step = 'any';
+    maxInput.min = '0';
+    maxInput.placeholder = 'max';
+    maxInput.value = String(max);
+    maxInput.dataset.movementModeMax = '';
+    maxInput.classList.add('prop-input');
+    maxInput.style.flex = '1';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(modeSelect);
+    row.appendChild(normalInput);
+    row.appendChild(maxInput);
+    row.appendChild(removeBtn);
+    rowsContainer.appendChild(row);
+  }
+
+  for (const entry of modes) {
+    addRow(entry.mode, entry.normal, entry.max);
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add Mode';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.addEventListener('click', () => addRow(0, 1.0, 1.0));
+  wrapper.appendChild(addBtn);
+
+  return wrapper;
+}
+
 // ============================================================
 // Master-Detail Split Layout
 // ============================================================
@@ -1351,8 +1502,7 @@ export function renderPropEditor(container, options) {
     // CATALOGABLE
     grid.appendChild(_createCapabilityPanel('catalogable', 'Catalogable', model.catalogable, (panel) => {
       _addField(panel, 'Scan Time', 'cap_catalogable_scan_time', 'number', model.catalogable ? model.catalogable.scan_time : 1.0, { step: 'any', min: '0' });
-      _addField(panel, 'Display Tag', 'cap_catalogable_display_tag', 'text', model.catalogable ? model.catalogable.display_tag : '');
-      _addField(panel, 'Category', 'cap_catalogable_category', 'number', model.catalogable ? model.catalogable.category : 0, { step: '1', min: '0', max: '3' });
+      _addCheckbox(panel, 'Show as Anomaly', 'cap_catalogable_show_as_anomaly', model.catalogable ? model.catalogable.show_as_anomaly : false);
     }));
 
     // ENDURANCE
@@ -1365,15 +1515,7 @@ export function renderPropEditor(container, options) {
 
     // MOVEMENT
     grid.appendChild(_createCapabilityPanel('movement', 'Movement', model.movement, (panel) => {
-      _addIntSelectField(panel, 'Mode', 'cap_movement_mode', model.movement ? model.movement.mode : 0, [
-        { value: 0, label: 'WALK' },
-        { value: 1, label: 'SWIM' },
-        { value: 2, label: 'FLY' },
-        { value: 3, label: 'BURROW' },
-        { value: 4, label: 'CLIMB' },
-      ]);
-      _addField(panel, 'Move Cooldown', 'cap_movement_move_cooldown', 'number', model.movement ? model.movement.move_cooldown : 1.0, { step: '0.1', min: '0' });
-      _addField(panel, 'Max Jump', 'cap_movement_max_jump', 'number', model.movement ? model.movement.max_jump : 1, { step: '1', min: '0' });
+      panel.appendChild(_createMovementModesEditor(model.movement ? model.movement.modes : []));
     }));
 
     // COMBAT
@@ -1394,6 +1536,8 @@ export function renderPropEditor(container, options) {
         { value: 0, label: 'SOLO' },
         { value: 1, label: 'PAIR' },
         { value: 2, label: 'PACK' },
+        { value: 3, label: 'HERD' },
+        { value: 4, label: 'SWARM' },
       ]);
       _addCsvField(panel, 'Diet (comma-separated)', 'cap_behavior_diet', model.behavior ? model.behavior.diet : []);
       _addPlaceholderNote(panel, 'Reactions will be wired when GameEvent picker is implemented');
@@ -1825,8 +1969,7 @@ export function collectPropFormData(formElement) {
   if (isChecked('cap_catalogable_enabled')) {
     model.catalogable = {
       scan_time: floatVal('cap_catalogable_scan_time'),
-      display_tag: val('cap_catalogable_display_tag').trim(),
-      category: intVal('cap_catalogable_category'),
+      show_as_anomaly: isChecked('cap_catalogable_show_as_anomaly'),
       properties: {},  // Properties editing not yet supported in UI
     };
   }
@@ -1842,9 +1985,7 @@ export function collectPropFormData(formElement) {
 
   if (isChecked('cap_movement_enabled')) {
     model.movement = {
-      mode: intVal('cap_movement_mode'),
-      move_cooldown: floatVal('cap_movement_move_cooldown') || 1.0,
-      max_jump: intVal('cap_movement_max_jump'),
+      modes: _collectMovementModesData(formElement),
     };
   }
 
@@ -1908,6 +2049,34 @@ function _collectKvData(formElement, name) {
       if (k) {
         result[k] = isNaN(v) ? 0 : v;
       }
+    }
+  }
+  return result;
+}
+
+/**
+ * Collect movement modes data from a movement-modes editor.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{mode: number, normal: number, max: number}>}
+ */
+function _collectMovementModesData(formElement) {
+  const result = [];
+  const container = formElement.querySelector('[data-movement-modes-rows]');
+  if (!container) return result;
+  const rows = container.children;
+  for (const row of rows) {
+    const modeSelect = row.querySelector('[data-movement-mode-mode]');
+    const normalInput = row.querySelector('[data-movement-mode-normal]');
+    const maxInput = row.querySelector('[data-movement-mode-max]');
+    if (modeSelect && normalInput && maxInput) {
+      const mode = parseInt(/** @type {HTMLSelectElement} */ (modeSelect).value, 10);
+      const normal = parseFloat(/** @type {HTMLInputElement} */ (normalInput).value);
+      const max = parseFloat(/** @type {HTMLInputElement} */ (maxInput).value);
+      result.push({
+        mode: isNaN(mode) ? 0 : mode,
+        normal: isNaN(normal) ? 0 : normal,
+        max: isNaN(max) ? 0 : max,
+      });
     }
   }
   return result;
@@ -2211,8 +2380,7 @@ export function propModelToRaw(model) {
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
     if (model.catalogable.scan_time !== 1.0) subFields.set('scan_time', { type: 'float', value: model.catalogable.scan_time });
-    if (model.catalogable.display_tag) subFields.set('display_tag', { type: 'stringname', value: model.catalogable.display_tag });
-    if (model.catalogable.category !== 0) subFields.set('category', { type: 'int', value: model.catalogable.category });
+    if (model.catalogable.show_as_anomaly) subFields.set('show_as_anomaly', { type: 'bool', value: true });
     if (model.catalogable.properties && Object.keys(model.catalogable.properties).length > 0) {
       const propEntries = Object.entries(model.catalogable.properties).map(([k, v]) => {
         if (typeof v === 'string') return [k, { type: 'stringname', value: v }];
@@ -2259,9 +2427,29 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/movement_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.movement.mode !== 0) subFields.set('mode', { type: 'int', value: model.movement.mode });
-    if (model.movement.move_cooldown !== 1.0) subFields.set('move_cooldown', { type: 'float', value: model.movement.move_cooldown });
-    if (model.movement.max_jump !== 1) subFields.set('max_jump', { type: 'int', value: model.movement.max_jump });
+    const modes = Array.isArray(model.movement.modes) ? model.movement.modes : [];
+    if (modes.length > 0) {
+      const modesMap = new Map();
+      for (const entry of modes) {
+        modesMap.set(
+          entry.mode,
+          {
+            type: 'array',
+            elementType: null,
+            value: [
+              { type: 'float', value: entry.normal },
+              { type: 'float', value: entry.max },
+            ],
+          },
+        );
+      }
+      subFields.set('modes', {
+        type: 'dict',
+        value: modesMap,
+        keyStyle: 'int',
+        braceSpaces: true,
+      });
+    }
     capEntries.push({ capName: 'movement', subId: 'movement_1', subFields });
     extId++;
   }

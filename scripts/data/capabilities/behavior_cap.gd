@@ -9,7 +9,7 @@ enum ActivityCycle { ALWAYS, DIURNAL, NOCTURNAL, CREPUSCULAR }
 @export var activity_cycle: ActivityCycle = ActivityCycle.ALWAYS
 
 ## Group behavior — how the entity organizes.
-enum GroupBehavior { SOLO, PAIR, PACK }
+enum GroupBehavior { SOLO, PAIR, PACK, HERD, SWARM }
 @export var group_behavior: GroupBehavior = GroupBehavior.SOLO
 
 ## Diet — tags representing what this entity eats (e.g., FLORA, FAUNA, MINERAL).

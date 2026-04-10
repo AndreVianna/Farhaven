@@ -78,9 +78,12 @@ func test_prop_def_round_trips_fauna_caps() -> void:
 	def.endurance = endurance
 
 	var movement := _MovementCap.new()
-	movement.mode = _MovementCap.Mode.FLY
-	movement.move_cooldown = 0.5
-	movement.max_jump = 3
+	# FLY mode with normal speed 2.0 (cooldown = 1/2.0 = 0.5s) and max speed 3.0,
+	# plus JUMP mode with normal value 3 (treated as max elevation diff).
+	movement.modes = {
+		int(_MovementCap.Mode.FLY): [2.0, 3.0],
+		int(_MovementCap.Mode.JUMP): [3.0, 3.0],
+	}
 	def.movement = movement
 
 	var combat := _CombatCap.new()
@@ -110,9 +113,13 @@ func test_prop_def_round_trips_fauna_caps() -> void:
 	assert_bool(def.endurance.resistances.has(&"BLUNT")).is_true()
 	assert_bool(def.endurance.immunities.has(&"POISON")).is_true()
 
-	assert_int(def.movement.mode).is_equal(_MovementCap.Mode.FLY)
-	assert_float(def.movement.move_cooldown).is_equal_approx(0.5, 0.001)
-	assert_int(def.movement.max_jump).is_equal(3)
+	assert_bool(def.movement.modes.has(int(_MovementCap.Mode.FLY))).is_true()
+	var fly_speeds: Array = def.movement.modes[int(_MovementCap.Mode.FLY)]
+	assert_float(fly_speeds[0]).is_equal_approx(2.0, 0.001)
+	assert_float(fly_speeds[1]).is_equal_approx(3.0, 0.001)
+	assert_bool(def.movement.modes.has(int(_MovementCap.Mode.JUMP))).is_true()
+	var jump_speeds: Array = def.movement.modes[int(_MovementCap.Mode.JUMP)]
+	assert_float(jump_speeds[0]).is_equal_approx(3.0, 0.001)
 
 	assert_int(def.combat.attacks.size()).is_equal(1)
 	assert_int(def.combat.defenses.size()).is_equal(2)
@@ -188,10 +195,11 @@ func test_load_berry_tags() -> void:
 func test_load_small_tree_catalog_data() -> void:
 	var def: Resource = load("res://data/props/P00001.tres")
 	assert_bool(def.catalogable != null).is_true()
-	assert_str(String(def.catalogable.display_tag)).is_equal("flora")
+	assert_bool(def.catalogable.show_as_anomaly).is_false()
 	# display_name now lives on the PropDef (Gear base), not the catalogable cap.
 	assert_str(def.display_name).is_equal("Thornwood Tree")
-	assert_int(def.catalogable.category).is_equal(0)
+	# prop_category comes from PropDef (Prop.Category.PLANT = 0)
+	assert_int(def.prop_category).is_equal(0)
 
 
 # --- Validation: catalogable consistency ---

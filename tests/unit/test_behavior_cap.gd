@@ -59,6 +59,27 @@ func test_group_behavior_can_be_pack() -> void:
 	assert_int(cap.group_behavior).is_equal(_BehaviorCap.GroupBehavior.PACK)
 
 
+func test_group_behavior_can_be_herd() -> void:
+	var cap := _BehaviorCap.new()
+	cap.group_behavior = _BehaviorCap.GroupBehavior.HERD
+	assert_int(cap.group_behavior).is_equal(_BehaviorCap.GroupBehavior.HERD)
+
+
+func test_group_behavior_can_be_swarm() -> void:
+	var cap := _BehaviorCap.new()
+	cap.group_behavior = _BehaviorCap.GroupBehavior.SWARM
+	assert_int(cap.group_behavior).is_equal(_BehaviorCap.GroupBehavior.SWARM)
+
+
+func test_group_behavior_enum_values() -> void:
+	# Sanity check on the int values to keep .tres files stable.
+	assert_int(int(_BehaviorCap.GroupBehavior.SOLO)).is_equal(0)
+	assert_int(int(_BehaviorCap.GroupBehavior.PAIR)).is_equal(1)
+	assert_int(int(_BehaviorCap.GroupBehavior.PACK)).is_equal(2)
+	assert_int(int(_BehaviorCap.GroupBehavior.HERD)).is_equal(3)
+	assert_int(int(_BehaviorCap.GroupBehavior.SWARM)).is_equal(4)
+
+
 func test_detection_range_custom() -> void:
 	var cap := _BehaviorCap.new()
 	cap.detection_range = 5

@@ -11,8 +11,6 @@
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("2_catalogable")
 scan_time = 3.0
-display_tag = &"fauna"
-category = 1
 properties = {"hostile": true, "damage": 10, "hp": 30}
 
 [sub_resource type="Resource" id="endurance_1"]
@@ -24,9 +22,7 @@ immunities = []
 
 [sub_resource type="Resource" id="movement_1"]
 script = ExtResource("4_movement")
-mode = 0
-move_cooldown = 1.0
-max_jump = 1
+modes = { 0: [1.0, 1.5] }
 
 [sub_resource type="Resource" id="combat_1"]
 script = ExtResource("5_combat")
