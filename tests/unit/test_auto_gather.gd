@@ -16,18 +16,18 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # World prop ids
-const ID_TREE: StringName = &"00001"
-const ID_BERRY_BUSH: StringName = &"00004"
-const ID_BOULDER: StringName = &"00005"
-const ID_IRON_DEPOSIT: StringName = &"00006"
+const ID_TREE: StringName = &"P00001"
+const ID_BERRY_BUSH: StringName = &"P00004"
+const ID_BOULDER: StringName = &"P00005"
+const ID_IRON_DEPOSIT: StringName = &"P00006"
 # Item ids
-const ID_WOOD: StringName = &"00010"
-const ID_STONE: StringName = &"00013"
-const ID_BERRIES: StringName = &"00020"
-const ID_ORE: StringName = &"00014"
+const ID_WOOD: StringName = &"P00010"
+const ID_STONE: StringName = &"P00013"
+const ID_BERRIES: StringName = &"P00020"
+const ID_ORE: StringName = &"P00014"
 # Tool ids
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
 
 
 # --- Minimal fakes ---
@@ -262,7 +262,7 @@ func test_tool_gated_prop_emits_tool_required_failure() -> void:
 
 
 func test_tool_equipped_gathers_gated_resource() -> void:
-	_inv.set_tool(&"pickaxe", &"00202")
+	_inv.set_tool(&"pickaxe", &"P00202")
 	var rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -384,7 +384,7 @@ func test_depleted_prop_skipped() -> void:
 func test_higher_priority_prop_gathered_first() -> void:
 	# Same tile: bare-hand wood (priority 0) and pickaxe ore (priority 2)
 	# Both at tile center — player on top of both
-	_inv.set_tool(&"pickaxe", &"00202")
+	_inv.set_tool(&"pickaxe", &"P00202")
 	var wood_rn := _make_prop(ID_TREE)
 	var ore_rn := _make_prop(ID_IRON_DEPOSIT, &"pickaxe")
 	var tile := _make_tile(Vector2i.ZERO, [wood_rn, ore_rn])
@@ -439,7 +439,7 @@ func test_gather_completes_adds_to_inventory() -> void:
 	assert_str(String(_completed_type)).is_equal(String(ID_TREE))
 	assert_int(_completed_amount).is_equal(1)  # wood gather_amount = 1
 	assert_int(rn.remaining).is_equal(2)  # 3 -> 2
-	assert_int(_inv.get_count(&"00010")).is_equal(1)
+	assert_int(_inv.get_count(&"P00010")).is_equal(1)
 
 
 func test_gather_completes_berries_gives_correct_amount() -> void:
@@ -453,7 +453,7 @@ func test_gather_completes_berries_gives_correct_amount() -> void:
 	_sys._on_gather_tween_complete()
 
 	assert_int(_completed_amount).is_equal(2)  # berries gather_amount = 2
-	assert_int(_inv.get_count(&"00020")).is_equal(2)
+	assert_int(_inv.get_count(&"P00020")).is_equal(2)
 
 
 func test_gather_decrements_remaining() -> void:
@@ -505,7 +505,7 @@ func test_depletion_with_respawn_adds_to_queue() -> void:
 
 
 func test_depletion_without_respawn_no_queue_entry() -> void:
-	var rn := _make_prop(&"00010", &"", 1, 0.0)  # no respawn
+	var rn := _make_prop(&"P00010", &"", 1, 0.0)  # no respawn
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog_prop(ID_TREE)
@@ -524,7 +524,7 @@ func test_depletion_without_respawn_no_queue_entry() -> void:
 func test_inventory_full_emits_failed() -> void:
 	# Fill the inventory completely
 	for i in 12:  # 12 slots × 99 max_stack for wood
-		_inv.add_item(&"00010", 99)
+		_inv.add_item(&"P00010", 99)
 
 	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
@@ -551,7 +551,7 @@ func test_is_gathering_blocks_new_proximity_check() -> void:
 	var tile1 := _make_tile(Vector2i.ZERO, [rn1])
 	_grid._tiles[Vector2i.ZERO] = tile1
 
-	var rn2 := _make_prop(&"00013", &"", 3)
+	var rn2 := _make_prop(&"P00013", &"", 3)
 	var tile2 := _make_tile(Vector2i(1, 0), [rn2])
 	_grid._tiles[Vector2i(1, 0)] = tile2
 
@@ -666,7 +666,7 @@ func test_effective_time_bare_hands_wood() -> void:
 
 
 func test_effective_time_with_axe_for_wood() -> void:
-	_inv.set_tool(&"axe", &"00201")
+	_inv.set_tool(&"axe", &"P00201")
 	var rn := _make_prop(ID_TREE, &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [rn])
 	_grid._tiles[Vector2i.ZERO] = tile
@@ -686,7 +686,7 @@ func test_effective_time_with_axe_for_wood() -> void:
 func test_mixed_cataloged_and_uncataloged_only_gathers_cataloged() -> void:
 	# Wood is cataloged, stone is NOT cataloged
 	var wood_rn := _make_prop(ID_TREE, &"", 3)
-	var stone_rn := _make_prop(&"00013", &"", 3)
+	var stone_rn := _make_prop(&"P00013", &"", 3)
 	var tile := _make_tile(Vector2i.ZERO, [wood_rn, stone_rn])
 	_grid._tiles[Vector2i.ZERO] = tile
 	_catalog_prop(ID_TREE)

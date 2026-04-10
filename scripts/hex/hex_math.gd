@@ -132,3 +132,83 @@ static func get_all_sub_hexes() -> Array[Vector2i]:
 ## Full world position of a prop: main hex center + sub-hex offset.
 static func prop_world_position(main_coords: Vector2i, sub_coords: Vector2i) -> Vector2:
 	return axial_to_world(main_coords) + sub_axial_to_world(sub_coords)
+
+
+# --- Sub-sub-hex (SSH) functions ---
+
+## Sub-sub-hex (SSH) size — finest placement grid (~32cm diameter).
+## Same derivation as SUB_HEX_SIZE: (parent_size / cos(30°)) / 5.
+const SSH_SIZE: float = (SUB_HEX_SIZE / cos(deg_to_rad(30.0))) / 5.0  # ~0.16
+
+
+## Convert SSH axial coordinates to world offset (relative to sub-hex center).
+## SSHs use POINTY-TOP layout (same orientation as sub-hexes).
+static func ssh_axial_to_world(ssh_q: int, ssh_r: int) -> Vector2:
+	var q: float = float(ssh_q)
+	var r: float = float(ssh_r)
+	# Pointy-top: x = size * (sqrt(3) * q + sqrt(3)/2 * r), y = size * (3/2 * r)
+	var x: float = SSH_SIZE * (sqrt(3.0) * q + sqrt(3.0) / 2.0 * r)
+	var y: float = SSH_SIZE * (3.0 / 2.0 * r)
+	return Vector2(x, y)
+
+
+## Convert world offset (relative to sub-hex center) to nearest SSH axial coordinates.
+## Inverse of ssh_axial_to_world (pointy-top layout).
+static func world_to_ssh_axial(world_offset: Vector2) -> Vector2i:
+	var x: float = world_offset.x
+	var y: float = world_offset.y
+	# Pointy-top inverse: q = (sqrt(3)/3 * x - 1/3 * y) / size, r = (2/3 * y) / size
+	var fq: float = (sqrt(3.0) / 3.0 * x - 1.0 / 3.0 * y) / SSH_SIZE
+	var fr: float = (2.0 / 3.0 * y) / SSH_SIZE
+	var fs: float = -fq - fr
+	return _cube_round_to_axial(fq, fr, fs)
+
+
+## Full position: tile (axial) + sub-hex (axial) + SSH (axial) -> world position.
+static func full_position_to_world(tile: Vector2i, sub_hex: Vector2i, ssh: Vector2i) -> Vector2:
+	var tile_world: Vector2 = axial_to_world(tile)
+	var sub_offset: Vector2 = sub_axial_to_world(sub_hex)
+	var ssh_offset: Vector2 = ssh_axial_to_world(ssh.x, ssh.y)
+	return tile_world + sub_offset + ssh_offset
+
+
+## Snap a world position to the nearest SSH center within a given tile.
+## Returns {sub_hex: Vector2i, ssh: Vector2i, snapped_world: Vector2}.
+static func snap_to_ssh(world_pos: Vector2, tile: Vector2i) -> Dictionary:
+	var tile_world: Vector2 = axial_to_world(tile)
+	var offset_from_tile: Vector2 = world_pos - tile_world
+	# Find nearest sub-hex
+	var sub_hex: Vector2i = world_to_sub_axial(offset_from_tile)
+	# Find offset from sub-hex center
+	var sub_world: Vector2 = sub_axial_to_world(sub_hex)
+	var offset_from_sub: Vector2 = offset_from_tile - sub_world
+	# Find nearest SSH within that sub-hex
+	var ssh: Vector2i = world_to_ssh_axial(offset_from_sub)
+	# Clamp to valid radius-2 SSH if rounding put us outside the grid
+	if not is_valid_ssh(ssh):
+		var best: Vector2i = Vector2i.ZERO
+		var best_dist: float = INF
+		for candidate in get_all_sshs():
+			var cw: Vector2 = ssh_axial_to_world(candidate.x, candidate.y)
+			var d: float = offset_from_sub.distance_squared_to(cw)
+			if d < best_dist:
+				best_dist = d
+				best = candidate
+		ssh = best
+	# Compute final snapped world position
+	var snapped_world: Vector2 = tile_world + sub_world + ssh_axial_to_world(ssh.x, ssh.y)
+	return {
+		"sub_hex": sub_hex,
+		"ssh": ssh,
+		"snapped_world": snapped_world,
+	}
+
+
+## Check if SSH coords are within the valid 19-hex grid (radius 2).
+static func is_valid_ssh(ssh_coords: Vector2i) -> bool:
+	return distance(Vector2i.ZERO, ssh_coords) <= 2
+
+
+## Get all 19 valid SSH positions (center + ring 1 + ring 2).
+static func get_all_sshs() -> Array[Vector2i]:
+	return get_tiles_in_range(Vector2i.ZERO, 2)

@@ -44,8 +44,8 @@ func _scan_recipes() -> void:
 
 func _register(recipe: _Recipe) -> void:
 	assert(recipe.id != &"", "RecipeRegistry: recipe loaded with empty id")
-	assert(recipe.id.length() == 5 and str(recipe.id).is_valid_int(),
-		"RecipeRegistry: recipe id '%s' must be a 5-digit numeric string" % recipe.id)
+	assert(String(recipe.id).begins_with("R"),
+		"RecipeRegistry: recipe id '%s' must start with 'R' prefix" % recipe.id)
 	_by_id[recipe.id] = recipe
 	_index_inputs(recipe)
 	_index_actions(recipe)

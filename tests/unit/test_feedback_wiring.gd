@@ -163,7 +163,7 @@ func test_fly_to_player_no_crash_without_player() -> void:
 func test_fly_to_player_prop_colors() -> void:
 	# Colors come from PropDef.placeholder_color via PropRegistry, no hardcoded dict.
 	# Verify each yieldable item id has a non-empty PropDef.
-	for item_id: StringName in [&"00010", &"00013", &"00020", &"00012", &"00014", &"00015"]:
+	for item_id: StringName in [&"P00010", &"P00013", &"P00020", &"P00012", &"P00014", &"P00015"]:
 		var def = PropRegistry.get_def(item_id)
 		assert_bool(def != null).override_failure_message(
 			"PropRegistry must have def for %s" % item_id
@@ -345,8 +345,8 @@ func test_gather_sound_has_audio_players() -> void:
 	add_child(sound)
 
 	# Should have two AudioStreamPlayer children
-	var gather_player := sound.get_node_or_null("GatherPlayer")
-	var craft_player := sound.get_node_or_null("CraftPlayer")
+	var gather_player: Node = sound.get_node_or_null("GatherPlayer")
+	var craft_player: Node = sound.get_node_or_null("CraftPlayer")
 	assert_object(gather_player).is_not_null()
 	assert_object(craft_player).is_not_null()
 

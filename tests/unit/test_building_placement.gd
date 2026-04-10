@@ -78,10 +78,12 @@ class MockHexGrid extends Node:
 			return 3  # BLOCKED
 		if tile_to.biome == _HexTile.Biome.WATER:
 			return 3  # BLOCKED
-		# Check blocks_movement
+		# Check if any structure prop has a collision shape (via STRUCTURE tag on wall type)
 		for prop in tile_to.props:
-			if prop.blocks_movement:
-				return 3  # BLOCKED
+			if PropRegistry.has_def(prop.type):
+				var def = PropRegistry.get_def(prop.type)
+				if def.has_tag(&"BLOCKS_MOVEMENT"):
+					return 3  # BLOCKED
 		return 0  # WALK
 
 	func world_to_axial(_world_pos: Vector2) -> Vector2i:
@@ -142,12 +144,12 @@ class FakeRegistry extends Node:
 # Prop IDs (matching data/props/*.tres)
 # ---------------------------------------------------------------------------
 
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_FIBER: StringName = &"00012"
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_WALL: StringName = &"00106"
-const ID_WORKBENCH: StringName = &"00105"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_FIBER: StringName = &"P00012"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_WALL: StringName = &"P00106"
+const ID_WORKBENCH: StringName = &"P00105"
 
 
 # ---------------------------------------------------------------------------
@@ -187,11 +189,8 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	_registered_defs.append(id)
 
 
-func _ensure_structure_def(id: StringName, blocks_movement: bool = false,
-		footprint: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
+func _ensure_structure_def(id: StringName) -> void:
 	var pcap := _PlaceableCap.new()
-	pcap.footprint = footprint
-	pcap.blocks_movement = blocks_movement
 	var tags: Array[StringName] = [&"STRUCTURE"]
 	_ensure_prop_def(id, tags, pcap, 1.0)
 
@@ -201,7 +200,7 @@ func _make_build_recipe(id: StringName, inputs_spec: Array,
 	var r := _Recipe.new()
 	r.id = id
 	r.kind = _Recipe.Kind.ASSEMBLE
-	r.time = time
+	r.duration = time
 	r.actions = [&"build"]
 	for spec: Dictionary in inputs_spec:
 		var inp := _RecipeInput.new()
@@ -265,9 +264,9 @@ func before_test() -> void:
 	_ensure_prop_def(ID_FIBER)
 
 	# Ensure structure defs exist.
-	_ensure_structure_def(ID_CAMPFIRE, false)
-	_ensure_structure_def(ID_WALL, true)
-	_ensure_structure_def(ID_WORKBENCH, false, [Vector2i(0, 0), Vector2i(1, 0)])
+	_ensure_structure_def(ID_CAMPFIRE)
+	_ensure_structure_def(ID_WALL)
+	_ensure_structure_def(ID_WORKBENCH)
 
 	# Create grid.
 	_grid = MockHexGrid.new()
@@ -389,7 +388,7 @@ func test_highlights_exclude_blocked_tiles() -> void:
 	# Neighbor with a wall (blocks movement).
 	var blocked_coord := Vector2i(1, 0)
 	var blocked_tile := _make_grassland_tile(blocked_coord)
-	var wall_prop := _Prop.create_structure(ID_WALL, true, Vector2i.ZERO, [Vector2i.ZERO])
+	var wall_prop := _Prop.create_structure(ID_WALL, Vector2i.ZERO)
 	blocked_tile.props.append(wall_prop)
 	_grid.set_tile(blocked_coord, blocked_tile)
 	# Other neighbors.

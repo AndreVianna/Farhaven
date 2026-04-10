@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Recipe" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/recipes/recipe_output.gd" id="3_output"]
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2_input")
+ref_or_tag = &"branch"
+count = 1
+
+[sub_resource type="Resource" id="input_2"]
+script = ExtResource("2_input")
+ref_or_tag = &"P00012"
+count = 1
+
+[sub_resource type="Resource" id="output_1"]
+script = ExtResource("3_output")
+prop_ref = &"trap"
+count = 1
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"R00012"
+display_name = "Craft Trap"
+kind = 0
+inputs = [SubResource("input_1"), SubResource("input_2")]
+outputs = [SubResource("output_1")]
+actions = [&"assemble"]
+duration = 3.0

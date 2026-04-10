@@ -6,24 +6,24 @@ const _Inventory = preload("res://scripts/inventory/inventory.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # World prop ids
-const ID_TREE: StringName = &"00001"
-const ID_LOOSE_ROCKS: StringName = &"00002"
-const ID_TALL_GRASS: StringName = &"00003"
-const ID_BERRY_BUSH: StringName = &"00004"
-const ID_BOULDER: StringName = &"00005"
-const ID_IRON_DEPOSIT: StringName = &"00006"
-const ID_CRYSTAL_CLUSTER: StringName = &"00007"
-const ID_TOXIC_BUSH: StringName = &"00008"
+const ID_TREE: StringName = &"P00001"
+const ID_LOOSE_ROCKS: StringName = &"P00002"
+const ID_TALL_GRASS: StringName = &"P00003"
+const ID_BERRY_BUSH: StringName = &"P00004"
+const ID_BOULDER: StringName = &"P00005"
+const ID_IRON_DEPOSIT: StringName = &"P00006"
+const ID_CRYSTAL_CLUSTER: StringName = &"P00007"
+const ID_TOXIC_BUSH: StringName = &"P00008"
 # Item ids (yields)
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_STONE: StringName = &"00013"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_STONE: StringName = &"P00013"
 # Anomaly id
-const ID_ANOMALY_FRAGMENT: StringName = &"10001"
+const ID_ANOMALY_FRAGMENT: StringName = &"P10001"
 # Tool ids
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
-const ID_KNIFE: StringName = &"00204"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
+const ID_KNIFE: StringName = &"P00204"
 
 var _sys: Node
 var _inv: RefCounted

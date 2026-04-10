@@ -25,9 +25,6 @@ enum Origin {
 @export var respawn_time: float = 0.0
 @export var rotation_deg: float = 0.0
 
-# Structure-specific fields
-@export var footprint: Array[Vector2i] = []           # Sub-hexes this structure occupies
-@export var blocks_movement: bool = false
 
 
 ## Returns true if this prop is considered an anomaly (derived state).
@@ -56,15 +53,12 @@ static func create_prop(type: StringName, remaining: int, max_amount: int,
 	return p
 
 
-static func create_structure(type: StringName, blocks_movement: bool = false,
-		sub_hex: Vector2i = Vector2i.ZERO,
-		footprint: Array[Vector2i] = []) -> Prop:
+static func create_structure(type: StringName,
+		sub_hex: Vector2i = Vector2i.ZERO) -> Prop:
 	var p := Prop.new()
 	p.type = type
 	p.category = Category.STRUCTURE
-	p.blocks_movement = blocks_movement
 	p.sub_hex = sub_hex
-	p.footprint = footprint
 	return p
 
 

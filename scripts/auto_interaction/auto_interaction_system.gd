@@ -24,7 +24,7 @@ signal ground_item_picked_up(item_name: StringName, amount: int)
 # Keyed by the equipped weapon's PropDef id.
 
 const WEAPON_DAMAGE: Dictionary = {
-	&"00204": 10,  # survival_knife
+	&"P00204": 10,  # survival_knife
 	&"": 5,
 }
 
@@ -380,7 +380,7 @@ func _begin_gather(coords: Vector2i, prop_index: int, node: Resource, recipe: Re
 	# Compute effective gather time
 	var effective_time: float = 1.0
 	if recipe != null:
-		effective_time = recipe.time
+		effective_time = recipe.duration
 	else:
 		# Legacy fallback: use PropDef gather_time + tool speed
 		if PropRegistry.has_def(node.type):

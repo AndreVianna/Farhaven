@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 1.0
+display_tag = &"minerals"
+category = 2
+display_name = "Loose Rocks"
+description = "Scattered rock fragments. Easy to pick up by hand."
+properties = {"resource_type": &"loose_rock", "tool_required": &""}
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00002"
+display_name = "Loose Rocks"
+tags = [&"SOURCE", &"STONE"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 99
+origin = 0
+gather_time = 1.0
+gather_amount = 2
+yield_type = &"P00011"
+prop_category = 1
+placeholder_mesh_type = &"cube"
+placeholder_params = { "half_size": 0.25 }
+placeholder_color = Color(0.7, 0.65, 0.55, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = { "half_size": 0.08 }
+placeholder_depleted_color = Color(0.7, 0.65, 0.55, 1.0)

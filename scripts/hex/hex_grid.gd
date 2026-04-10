@@ -119,10 +119,12 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 		return TraversalType.BLOCKED
 	if tile_to.biome == _HexTile.Biome.WATER:
 		return TraversalType.BLOCKED
-	# Check if any prop blocks movement
+	# Check if any structure blocks movement (data-driven via BLOCKS_MOVEMENT tag).
 	for prop in tile_to.props:
-		if prop.blocks_movement:
-			return TraversalType.BLOCKED
+		if PropRegistry.has_def(prop.type):
+			var def = PropRegistry.get_def(prop.type)
+			if def.has_tag(&"BLOCKS_MOVEMENT"):
+				return TraversalType.BLOCKED
 	var diff: int = get_elevation_diff(from, to)
 	if diff <= WALK_MAX_DIFF:
 		return TraversalType.WALK
@@ -277,7 +279,6 @@ func get_save_data() -> Dictionary:
 				"tool_required": String(prop.tool_required),
 				"respawn_time": prop.respawn_time,
 				"rotation": prop.rotation_deg,
-				"blocks_movement": prop.blocks_movement,
 			})
 		tiles_data.append({
 			"tile_col": coords.x,
@@ -328,7 +329,6 @@ func load_save_data(data: Dictionary) -> void:
 				prop.tool_required = StringName(pd.get("tool_required", ""))
 				prop.respawn_time = float(pd.get("respawn_time", 0.0))
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
-				prop.blocks_movement = bool(pd.get("blocks_movement", false))
 				tile.props.append(prop)
 		else:
 			# Legacy save format: "resources" + "structure" + "anomaly"
@@ -347,7 +347,6 @@ func load_save_data(data: Dictionary) -> void:
 			if structure_str != "":
 				tile.props.append(_Prop.create_structure(
 					StringName(structure_str),
-					false,  # Legacy structures default to walkable (blocks_movement from .tres)
 				))
 
 			var anomaly_str: String = td.get("anomaly", "")

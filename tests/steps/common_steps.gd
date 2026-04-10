@@ -171,9 +171,9 @@ func register_steps(registry) -> void:
 		ctx.set_value("day_count", 1)
 		ctx.set_value("phase", "DAY")
 
-		# Discovery: recipes with empty unlock_when are known
+		# Discovery: all pre_discovered recipes are known from start.
+		# Event-driven discovery (task-058) grants additional recipes via GameEvent effects.
 		var known_recipes: Array[StringName] = []
-		var unknown_recipes: Array[StringName] = []
 		var dir := DirAccess.open("res://data/recipes/")
 		if dir:
 			dir.list_dir_begin()
@@ -182,13 +182,10 @@ func register_steps(registry) -> void:
 				if fname.ends_with(".tres"):
 					var res := load("res://data/recipes/" + fname)
 					if res is _Recipe:
-						if res.unlock_when.size() == 0:
-							known_recipes.append(res.id)
-						else:
-							unknown_recipes.append(res.id)
+						known_recipes.append(res.id)
 				fname = dir.get_next()
 		ctx.set_value("known_recipes", known_recipes)
-		ctx.set_value("unknown_recipes", unknown_recipes)
+		ctx.set_value("unknown_recipes", [] as Array[StringName])
 		ctx.set_value("cataloged_count", 0)
 	)
 
@@ -313,6 +310,13 @@ func register_steps(registry) -> void:
 		ctx.assert_equal(count, expected)
 	)
 
+	registry.then("every pre-discovered recipe is known", func(ctx):
+		# All recipes are pre_discovered in MVP. Event-driven discovery unlocks additional ones.
+		var known: Array = ctx.get_value("known_recipes", [])
+		ctx.assert_greater(known.size(), 0, "Expected at least one known recipe")
+	)
+
+	# Legacy step aliases (kept for backward compatibility with older feature files)
 	registry.then("every recipe with empty unlock_when is known", func(ctx):
 		var known: Array = ctx.get_value("known_recipes", [])
 		ctx.assert_greater(known.size(), 0, "Expected at least one known recipe")
@@ -320,5 +324,5 @@ func register_steps(registry) -> void:
 
 	registry.then("no recipe with non-empty unlock_when is known", func(ctx):
 		var unknown: Array = ctx.get_value("unknown_recipes", [])
-		ctx.assert_greater(unknown.size(), 0, "Expected at least one locked recipe")
+		ctx.assert_equal(unknown.size(), 0, "Expected no locked recipes")
 	)

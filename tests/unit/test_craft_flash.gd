@@ -17,26 +17,26 @@ func test_flash_color_is_white_with_alpha() -> void:
 
 
 func test_ready_sets_invisible() -> void:
-	var flash := auto_free(_CraftFlash.new())
+	var flash: CraftFlash = auto_free(_CraftFlash.new())
 	add_child(flash)
 	assert_bool(flash.visible).is_false()
 
 
 func test_ready_sets_transparent_color() -> void:
-	var flash := auto_free(_CraftFlash.new())
+	var flash: CraftFlash = auto_free(_CraftFlash.new())
 	add_child(flash)
 	assert_float(flash.color.a).is_equal_approx(0.0, 0.01)
 
 
 func test_flash_makes_visible() -> void:
-	var flash := auto_free(_CraftFlash.new())
+	var flash: CraftFlash = auto_free(_CraftFlash.new())
 	add_child(flash)
 	flash.flash()
 	assert_bool(flash.visible).is_true()
 
 
 func test_flash_sets_flash_color() -> void:
-	var flash := auto_free(_CraftFlash.new())
+	var flash: CraftFlash = auto_free(_CraftFlash.new())
 	add_child(flash)
 	flash.flash()
 	assert_float(flash.color.a).is_equal_approx(0.3, 0.01)

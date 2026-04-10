@@ -2,11 +2,11 @@ Feature: Building
   Players build structures by placing them on buildable tiles via recipes.
 
   Scenario: Build campfire places structure on tile
-    Given an inventory with 3 "00010" and 2 "00012"
-    And recipe "00019" is known
+    Given an inventory with 3 "P00010" and 2 "P00012"
+    And recipe "R00019" is known
     And a buildable tile at 1,0
-    When the player builds recipe "00019" on tile 1,0
-    Then tile 1,0 has a structure prop "00101"
+    When the player builds recipe "R00019" on tile 1,0
+    Then tile 1,0 has a structure prop "P00101"
 
   Scenario: Wall blocks movement after placement
     Given a hex grid with tile at 0,0 elevation 0 biome GRASSLAND
@@ -32,7 +32,7 @@ Feature: Building
     Then the placement is rejected
 
   Scenario: Placement cancel consumes no materials
-    Given an inventory with 3 "00010" and 2 "00012"
+    Given an inventory with 3 "P00010" and 2 "P00012"
     When the player cancels placement before confirming
-    Then the inventory has 3 "00010"
-    And the inventory has 2 "00012"
+    Then the inventory has 3 "P00010"
+    And the inventory has 2 "P00012"

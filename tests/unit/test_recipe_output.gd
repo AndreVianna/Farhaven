@@ -25,10 +25,10 @@ func test_default_prob_is_one() -> void:
 
 func test_output_with_custom_values() -> void:
 	var out := _RecipeOutput.new()
-	out.prop_ref = &"00010"
+	out.prop_ref = &"P00010"
 	out.count = 3
 	out.prob = 0.75
-	assert_str(String(out.prop_ref)).is_equal("00010")
+	assert_str(String(out.prop_ref)).is_equal("P00010")
 	assert_int(out.count).is_equal(3)
 	assert_float(out.prob).is_equal_approx(0.75, 0.001)
 

@@ -41,14 +41,14 @@ func test_default_rotation_deg_is_zero() -> void:
 
 func test_configured_tree_node() -> void:
 	var pn := _PropNode.new()
-	pn.type = &"00001"
+	pn.type = &"P00001"
 	pn.remaining = 5
 	pn.max_amount = 5
 	pn.tool_required = &"axe"
 	pn.respawn_time = 30.0
 	pn.offset = Vector2(0.3, -0.2)
 	pn.rotation_deg = 45.0
-	assert_str(String(pn.type)).is_equal("00001")
+	assert_str(String(pn.type)).is_equal("P00001")
 	assert_int(pn.remaining).is_equal(5)
 	assert_int(pn.max_amount).is_equal(5)
 	assert_str(String(pn.tool_required)).is_equal("axe")

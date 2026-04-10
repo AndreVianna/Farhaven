@@ -6,6 +6,7 @@ class_name FlyToPlayer
 ## Used as visual feedback on auto_gather_completed.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 ## Uses preload because tests can be parsed before class_name registration completes.
 const _PropDef = preload("res://scripts/data/prop_def.gd")
@@ -50,7 +51,7 @@ func spawn_fly(coords: Vector2i, prop_type: StringName, grid: Node) -> void:
 	if grid != null and grid.has_method("get_terrain_y"):
 		elevation_y = grid.get_terrain_y(wx, wz)
 	elif tile != null:
-		elevation_y = float(tile.elevation) * 0.5
+		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	var start_pos := Vector3(wx, elevation_y + 0.6, wz)
 
 	var sprite := _create_sprite(prop_type)

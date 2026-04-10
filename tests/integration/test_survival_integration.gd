@@ -22,10 +22,10 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
 # Numeric PropDef ids
-const ID_BERRIES: StringName = &"00020"
-const ID_TOXIC_BERRIES: StringName = &"00021"
-const ID_MEAT: StringName = &"00022"
-const ID_AXE: StringName = &"00201"
+const ID_BERRIES: StringName = &"P00020"
+const ID_TOXIC_BERRIES: StringName = &"P00021"
+const ID_MEAT: StringName = &"P00022"
+const ID_AXE: StringName = &"P00201"
 
 
 # --- Mock classes ---
@@ -360,13 +360,13 @@ func test_respawn_teleports_to_respawn_tile() -> void:
 
 
 func test_shelter_updates_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(4, 2), &"00102")
+	_grid.structure_placed.emit(Vector2i(4, 2), &"P00102")
 	assert_object(_ss._respawn_tile).is_equal(Vector2i(4, 2))
 
 
 func test_shelter_destroy_resets_respawn_tile() -> void:
-	_grid.structure_placed.emit(Vector2i(4, 2), &"00102")
-	_grid.structure_destroyed.emit(Vector2i(4, 2), &"00102")
+	_grid.structure_placed.emit(Vector2i(4, 2), &"P00102")
+	_grid.structure_destroyed.emit(Vector2i(4, 2), &"P00102")
 	assert_object(_ss._respawn_tile).is_equal(Vector2i.ZERO)
 
 

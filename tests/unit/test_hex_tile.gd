@@ -58,7 +58,7 @@ func test_biome_water_value() -> void:
 func test_get_props_returns_natural_props() -> void:
 	var tile := _HexTile.new()
 	var natural_prop := _Prop.new()
-	natural_prop.type = &"00001"
+	natural_prop.type = &"P00001"
 	natural_prop.origin = _Prop.Origin.NATURAL
 	tile.props.append(natural_prop)
 	var result := tile.get_props()
@@ -68,7 +68,7 @@ func test_get_props_returns_natural_props() -> void:
 func test_get_props_excludes_crafted_props() -> void:
 	var tile := _HexTile.new()
 	var crafted_prop := _Prop.new()
-	crafted_prop.type = &"00101"
+	crafted_prop.type = &"P00101"
 	crafted_prop.origin = _Prop.Origin.CRAFTED
 	tile.props.append(crafted_prop)
 	var result := tile.get_props()

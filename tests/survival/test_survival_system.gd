@@ -5,9 +5,9 @@ const _SurvivalSystem = preload("res://scripts/survival/survival_system.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
 # Numeric PropDef ids for consumables.
-const ID_BERRIES: StringName = &"00020"
-const ID_TOXIC_BERRIES: StringName = &"00021"
-const ID_MEAT: StringName = &"00022"
+const ID_BERRIES: StringName = &"P00020"
+const ID_TOXIC_BERRIES: StringName = &"P00021"
+const ID_MEAT: StringName = &"P00022"
 
 var _sys: _SurvivalSystem
 var _inv: _Inventory

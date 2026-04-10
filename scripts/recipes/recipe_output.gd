@@ -1,7 +1,7 @@
 class_name RecipeOutput
 extends Resource
 
-## PropDef id of the produced prop (e.g. &"00010" for wood).
+## PropDef id of the produced prop (e.g. &"P00010" for wood).
 @export var prop_ref: StringName
 
 ## How many are produced on success.

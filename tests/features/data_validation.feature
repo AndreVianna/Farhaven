@@ -24,9 +24,9 @@ Feature: Data Integrity
     Given all PropDefs are loaded
     Then every PropDef with a portable capability has weight greater than 0
 
-  Scenario: Structure placeable props have a non-empty footprint
+  Scenario: Structure props have placeable capability
     Given all PropDefs are loaded
-    Then every PropDef tagged "STRUCTURE" with a placeable capability has a non-empty footprint
+    Then every PropDef tagged "STRUCTURE" has a placeable capability
 
   # --- Recipe Validation ---
 
@@ -56,6 +56,6 @@ Feature: Data Integrity
     Given all Recipes are loaded
     Then every Recipe output has prob between 0 and 1
 
-  Scenario: Recipe ids are 5-digit numeric strings
+  Scenario: Recipe ids start with R prefix
     Given all Recipes are loaded
-    Then every Recipe id is a 5-digit numeric string
+    Then every Recipe id starts with R prefix

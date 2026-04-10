@@ -146,17 +146,19 @@ When this lands:
 
 ### delivery-006a: Engine Refactors — Gear, Events, IDs, SSH
 
+**Status:** Complete (2026-04-09)
 **Features:** Engine-level, no direct gameplay features
 **Depends on:** delivery-005b
 **Cumulative state:** Unified entity model (Gear hierarchy), Event system for milestones/flags/chapters, universal ID namespace, SSH spatial grid with mesh collision.
 
-Build order:
-1. Gear hierarchy (gear.gd → script_base.gd → recipe.gd + event.gd; element base → prop, biome)
-2. Event system (Script kind=EVENT, count/max_count, world flags as event counts)
-3. ID namespace (P/R/E/CS/J prefixes — universal unique Gear IDs)
-4. Remove unlock_when from Recipe → migrate to Event .tres files with grant_script effect
-5. SSH grid + mesh collision (3-level hex grid, abandon footprint arrays, 3D mesh collision)
-6. Doc cascade
+Build order (all tasks complete):
+1. Gear hierarchy (gear.gd → script_base.gd → recipe.gd + event.gd; PropDef extends Gear)
+2. Event system (GameEvent extends ScriptBase, count/max_count, world flags as event counts, EventRegistry autoload)
+3. ID namespace (P/R/E/CS/J prefixes — all .tres files renamed)
+4. Remove unlock_when from Recipe → 12 discovery Event .tres files with grant_recipe effects
+5. SSH grid + mesh collision (3-level hex grid: Hex 6m → Sub-hex 1.39m → SSH 0.32m, CollisionHelper, StructureRenderer StaticBody3D)
+6. PlaceableCap cleanup (removed footprint + blocks_movement)
+7. Doc cascade (knowledge base updated)
 
 Pure engine refactor. No new gameplay. Schema changes propagate to delivery-006b (editor).
 
@@ -218,7 +220,9 @@ delivery-003: Interact   → "Resources auto-gather! I can craft tools! The worl
 delivery-004: Survive    → "Time passes. I need to eat. I died... but I came back."
 delivery-005a: Refactor → (engine-only — no new gameplay; enables 005b)
 delivery-005b: Defend    → "Night is dangerous. I built shelter. I killed a creature and got meat!"
-delivery-006: Understand → "There were people here before. What happened? I need to find out..."
+delivery-006a: Refactor  → (engine-only — Gear hierarchy, Events, IDs, SSH, mesh collision; enables 006b)
+delivery-006b: Editor    → (editor-only — sync all pages with new schema; enables 006c)
+delivery-006c: Understand → "There were people here before. What happened? I need to find out..."
 ```
 
 Each delivery is playable and testable standalone. Each builds on the previous.
@@ -241,3 +245,4 @@ The core loop (deliveries 1-3) has zero P1 dependencies.
 | 2026-04-08 | Split delivery-005 into 005a (Engine Refactor — lighting, yields, refinement chains, inventory weight, consumables) and 005b (Night Falls — Building + Threats, formerly delivery-005). Fog of war removal in post-PR#10 cleanup flagged several 005b criteria for redesign. | post-PR#10 review |
 | 2026-04-08 | delivery-005a task list rewritten after Props/Recipes design conversation. Tasks 040-044 collapsed into unified Recipe system (tasks 046-051). DESIGN.md created as authoritative spec. | Andre + Lola design conversation |
 | 2026-04-08 | delivery-005a implementation complete (tasks 039, 046, 046b, 047, 048, 049, 050, 051, 052). Knowledge docs updated. | task-052 documentation cascade |
+| 2026-04-09 | delivery-006a implementation complete (tasks 055-065). Gear hierarchy, Event system, ID namespace, SSH grid, mesh collision, PlaceableCap cleanup. Knowledge docs updated. | task-065 documentation cascade |

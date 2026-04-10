@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="3_container"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="4_catalogable"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+
+[sub_resource type="Resource" id="container_1"]
+script = ExtResource("3_container")
+capacity_weight = 100.0
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("4_catalogable")
+scan_time = 1.5
+display_tag = &"storage"
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00104"
+display_name = "Storage Chest"
+tags = [&"STRUCTURE", &"STORAGE"]
+placeable = SubResource("placeable_1")
+container = SubResource("container_1")
+catalogable = SubResource("catalogable_1")
+max_stack = 1
+origin = 1
+footprint = [Vector2i(0, 0)]
+category = &"structure"
+prop_category = 9
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
+placeholder_color = Color(0.5019607843137255, 0.34901960784313724, 0.14901960784313725, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.4, "size_y": 0.3, "size_z": 0.3 }
+placeholder_depleted_color = Color(0.34901960784313724, 0.25098039215686274, 0.10196078431372549, 1.0)

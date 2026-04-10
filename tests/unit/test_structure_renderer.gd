@@ -44,12 +44,12 @@ class MockGrid extends Node:
 # Prop IDs (matching data/props/*.tres)
 # ---------------------------------------------------------------------------
 
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_SHELTER: StringName = &"00102"
-const ID_TORCH: StringName = &"00103"
-const ID_STORAGE_CHEST: StringName = &"00104"
-const ID_WORKBENCH: StringName = &"00105"
-const ID_WALL: StringName = &"00106"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_SHELTER: StringName = &"P00102"
+const ID_TORCH: StringName = &"P00103"
+const ID_STORAGE_CHEST: StringName = &"P00104"
+const ID_WORKBENCH: StringName = &"P00105"
+const ID_WALL: StringName = &"P00106"
 
 
 # ---------------------------------------------------------------------------
@@ -67,9 +67,7 @@ var _registered_defs: Array[StringName] = []
 
 
 func _ensure_structure_def(id: StringName, mesh_type: StringName = &"box",
-		params: Dictionary = {}, color: Color = Color.WHITE,
-		blocks_movement: bool = false,
-		footprint: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
+		params: Dictionary = {}, color: Color = Color.WHITE) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
@@ -80,8 +78,6 @@ func _ensure_structure_def(id: StringName, mesh_type: StringName = &"box",
 	def.placeholder_params = params
 	def.placeholder_color = color
 	var pcap := _PlaceableCap.new()
-	pcap.footprint = footprint
-	pcap.blocks_movement = blocks_movement
 	def.placeable = pcap
 	def.max_stack = 1
 	def.origin = 1  # CRAFTED
@@ -98,9 +94,8 @@ func _make_tile(coords: Vector2i = Vector2i.ZERO, elevation: int = 0) -> Resourc
 
 
 func _add_structure_prop(tile: Resource, type: StringName,
-		sub_hex: Vector2i = Vector2i.ZERO,
-		footprint: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
-	var prop := _Prop.create_structure(type, false, sub_hex, footprint)
+		sub_hex: Vector2i = Vector2i.ZERO) -> void:
+	var prop := _Prop.create_structure(type, sub_hex)
 	prop.origin = _Prop.Origin.CRAFTED
 	tile.props.append(prop)
 
@@ -119,8 +114,7 @@ func before_test() -> void:
 		Color(0.9, 0.4, 0.1, 1.0))
 	_ensure_structure_def(ID_SHELTER, &"box",
 		{"size_x": 1.0, "size_y": 0.6, "size_z": 1.0},
-		Color(0.45, 0.35, 0.2, 1.0), false,
-		[Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
+		Color(0.45, 0.35, 0.2, 1.0))
 	_ensure_structure_def(ID_TORCH, &"cylinder",
 		{"radius": 0.05, "height": 0.5},
 		Color(0.8, 0.6, 0.1, 1.0))
@@ -129,11 +123,10 @@ func before_test() -> void:
 		Color(0.5, 0.35, 0.15, 1.0))
 	_ensure_structure_def(ID_WORKBENCH, &"box",
 		{"size_x": 0.8, "size_y": 0.4, "size_z": 0.5},
-		Color(0.6, 0.4, 0.2, 1.0), false,
-		[Vector2i(0, 0), Vector2i(1, 0)])
+		Color(0.6, 0.4, 0.2, 1.0))
 	_ensure_structure_def(ID_WALL, &"box",
 		{"size_x": 0.8, "size_y": 0.6, "size_z": 0.2},
-		Color(0.5, 0.4, 0.3, 1.0), true)
+		Color(0.5, 0.4, 0.3, 1.0))
 
 	# Create mock grid.
 	_grid = MockGrid.new()
@@ -205,8 +198,10 @@ func test_structure_placed_node_has_mesh_child() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	assert_int(node.get_child_count()).is_equal(1)
+	# Node has MeshInstance3D + StaticBody3D (with CollisionShape3D) children.
+	assert_int(node.get_child_count()).is_equal(2)
 	assert_bool(node.get_child(0) is MeshInstance3D).is_true()
+	assert_bool(node.get_child(1) is StaticBody3D).is_true()
 
 
 # ===========================================================================
@@ -328,8 +323,7 @@ func test_torch_uses_cylinder_mesh() -> void:
 
 func test_workbench_uses_box_mesh() -> void:
 	var tile := _make_tile()
-	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO,
-		[Vector2i(0, 0), Vector2i(1, 0)])
+	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WORKBENCH)
@@ -383,7 +377,7 @@ func test_wall_has_correct_color() -> void:
 # ===========================================================================
 
 
-func test_structure_at_sub_hex_has_offset_position() -> void:
+func test_structure_at_sub_hex_has_ssh_snapped_position() -> void:
 	var tile := _make_tile()
 	var sub_hex := Vector2i(1, -1)
 	_add_structure_prop(tile, ID_TORCH, sub_hex)
@@ -392,16 +386,17 @@ func test_structure_at_sub_hex_has_offset_position() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_TORCH)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_TORCH)
-	# Position should include sub-hex offset, not just tile center.
+	# Position should be SSH-snapped from sub-hex offset.
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
 	var sub_offset: Vector2 = _HexMath.sub_axial_to_world(sub_hex)
-	var expected_x: float = tile_center.x + sub_offset.x
-	var expected_z: float = tile_center.y + sub_offset.y
-	assert_float(node.position.x).is_equal_approx(expected_x, 0.01)
-	assert_float(node.position.z).is_equal_approx(expected_z, 0.01)
+	var raw_pos: Vector2 = tile_center + sub_offset
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(raw_pos, Vector2i.ZERO)
+	var snapped: Vector2 = ssh_result["snapped_world"]
+	assert_float(node.position.x).is_equal_approx(snapped.x, 0.01)
+	assert_float(node.position.z).is_equal_approx(snapped.y, 0.01)
 
 
-func test_structure_at_tile_center_uses_tile_world_pos() -> void:
+func test_structure_at_tile_center_uses_ssh_snapped_pos() -> void:
 	var coords := Vector2i(2, 3)
 	var tile := _make_tile(coords)
 	_add_structure_prop(tile, ID_CAMPFIRE)
@@ -411,8 +406,10 @@ func test_structure_at_tile_center_uses_tile_world_pos() -> void:
 
 	var node: Node3D = _renderer.get_instance(coords, ID_CAMPFIRE)
 	var expected_2d: Vector2 = _HexMath.axial_to_world(coords)
-	assert_float(node.position.x).is_equal_approx(expected_2d.x, 0.01)
-	assert_float(node.position.z).is_equal_approx(expected_2d.y, 0.01)
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(expected_2d, coords)
+	var snapped: Vector2 = ssh_result["snapped_world"]
+	assert_float(node.position.x).is_equal_approx(snapped.x, 0.01)
+	assert_float(node.position.z).is_equal_approx(snapped.y, 0.01)
 
 
 # ===========================================================================
@@ -451,38 +448,41 @@ func test_structure_at_zero_elevation() -> void:
 # ===========================================================================
 
 
-func test_workbench_renders_at_anchor_not_footprint_center() -> void:
-	# Workbench has 2-hex footprint [(0,0), (1,0)] anchored at sub_hex (0,0).
+func test_workbench_renders_at_anchor_ssh_snapped() -> void:
+	# Workbench anchored at sub_hex (0,0), rendered at SSH-snapped position.
 	var tile := _make_tile()
-	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO,
-		[Vector2i(0, 0), Vector2i(1, 0)])
+	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WORKBENCH)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WORKBENCH)
-	# Anchor is at sub_hex (0,0), so position should be tile center.
+	# Anchor is at sub_hex (0,0), SSH snap of tile center should be near tile center.
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
-	assert_float(node.position.x).is_equal_approx(tile_center.x, 0.01)
-	assert_float(node.position.z).is_equal_approx(tile_center.y, 0.01)
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(tile_center, Vector2i.ZERO)
+	var snapped: Vector2 = ssh_result["snapped_world"]
+	assert_float(node.position.x).is_equal_approx(snapped.x, 0.01)
+	assert_float(node.position.z).is_equal_approx(snapped.y, 0.01)
 
 
-func test_shelter_renders_at_anchor_position() -> void:
-	# Shelter has 3-hex footprint [(0,0), (1,0), (0,1)].
+func test_shelter_renders_at_anchor_ssh_snapped() -> void:
+	# Shelter anchored at sub_hex (1,1).
 	var tile := _make_tile()
 	var anchor := Vector2i(1, 1)
-	_add_structure_prop(tile, ID_SHELTER, anchor,
-		[Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)])
+	_add_structure_prop(tile, ID_SHELTER, anchor)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_SHELTER)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_SHELTER)
-	# Position at anchor sub_hex (1,1) offset.
+	# Position should be SSH-snapped from anchor sub_hex (1,1).
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
 	var sub_offset: Vector2 = _HexMath.sub_axial_to_world(anchor)
-	assert_float(node.position.x).is_equal_approx(tile_center.x + sub_offset.x, 0.01)
-	assert_float(node.position.z).is_equal_approx(tile_center.y + sub_offset.y, 0.01)
+	var raw_pos: Vector2 = tile_center + sub_offset
+	var ssh_result: Dictionary = _HexMath.snap_to_ssh(raw_pos, Vector2i.ZERO)
+	var snapped: Vector2 = ssh_result["snapped_world"]
+	assert_float(node.position.x).is_equal_approx(snapped.x, 0.01)
+	assert_float(node.position.z).is_equal_approx(snapped.y, 0.01)
 
 
 # ===========================================================================
@@ -531,7 +531,7 @@ func test_key_format_includes_coords_and_type() -> void:
 
 	var keys: Array = _renderer.get_all_keys()
 	assert_int(keys.size()).is_equal(1)
-	assert_str(keys[0]).is_equal("3,-2:00103")
+	assert_str(keys[0]).is_equal("3,-2:P00103")
 
 
 # ===========================================================================

@@ -90,32 +90,32 @@ func test_pools_have_zero_visible_instances_initially() -> void:
 
 
 func test_wood_pool_uses_cylinder_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00010")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00010")
 	assert_bool(mesh is CylinderMesh).is_true()
 
 
 func test_stone_pool_uses_box_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00013")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00013")
 	assert_bool(mesh is BoxMesh).is_true()
 
 
 func test_berries_pool_uses_sphere_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00020")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00020")
 	assert_bool(mesh is SphereMesh).is_true()
 
 
 func test_fiber_pool_uses_box_mesh() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00012")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00012")
 	assert_bool(mesh is BoxMesh).is_true()
 
 
 func test_ore_pool_mesh_exists() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00014")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00014")
 	assert_bool(mesh != null).is_true()
 
 
 func test_crystal_pool_mesh_exists() -> void:
-	var mesh: Mesh = _renderer.get_pool_mesh(&"00015")
+	var mesh: Mesh = _renderer.get_pool_mesh(&"P00015")
 	assert_bool(mesh != null).is_true()
 
 
@@ -124,23 +124,23 @@ func test_crystal_pool_mesh_exists() -> void:
 # ===========================================
 
 func test_map_generated_populates_tile() -> void:
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"00010")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"P00010")
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(&"00010")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00010")).is_equal(1)
 
 
 func test_map_generated_populates_all_tiles() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00010")
-	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"00013")
-	_grid._tiles[Vector2i(2, 0)] = _make_tile(&"00020")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00010")
+	_grid._tiles[Vector2i(1, 0)] = _make_tile(&"P00013")
+	_grid._tiles[Vector2i(2, 0)] = _make_tile(&"P00020")
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(&"00010")).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(&"00013")).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(&"00020")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00010")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00013")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00020")).is_equal(1)
 
 
 # ===========================================
@@ -148,45 +148,45 @@ func test_map_generated_populates_all_tiles() -> void:
 # ===========================================
 
 func test_wood_maps_to_wood_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00010")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00010")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00010")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00010")).is_equal(1)
 
 
 func test_stone_maps_to_stone_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00013")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00013")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00013")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00013")).is_equal(1)
 
 
 func test_berries_maps_to_berries_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00020")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00020")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00020")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00020")).is_equal(1)
 
 
 func test_fiber_maps_to_fiber_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00012")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00012")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00012")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00012")).is_equal(1)
 
 
 func test_ore_maps_to_ore_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00014")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00014")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00014")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00014")).is_equal(1)
 
 
 func test_crystal_maps_to_crystal_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00015")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00015")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00015")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00015")).is_equal(1)
 
 
 func test_loose_rock_maps_to_loose_rock_pool() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"00011")
+	_grid._tiles[Vector2i(0, 0)] = _make_tile(&"P00011")
 	_grid.map_generated.emit()
-	assert_int(_renderer.get_pool_visible_count(&"00011")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00011")).is_equal(1)
 
 
 # ===========================================
@@ -194,12 +194,12 @@ func test_loose_rock_maps_to_loose_rock_pool() -> void:
 # ===========================================
 
 func test_multi_prop_tile() -> void:
-	_grid._tiles[Vector2i(0, 0)] = _make_tile_multi([&"00010", &"00020"])
+	_grid._tiles[Vector2i(0, 0)] = _make_tile_multi([&"P00010", &"P00020"])
 
 	_grid.map_generated.emit()
 
-	assert_int(_renderer.get_pool_visible_count(&"00010")).is_equal(1)
-	assert_int(_renderer.get_pool_visible_count(&"00020")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00010")).is_equal(1)
+	assert_int(_renderer.get_pool_visible_count(&"P00020")).is_equal(1)
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_int(entries[Vector2i(0, 0)].size()).is_equal(2)
 
@@ -209,28 +209,28 @@ func test_multi_prop_tile() -> void:
 # ===========================================
 
 func test_prop_depleted_marks_entry() -> void:
-	var tile: HexTile = _make_tile(&"00010")
+	var tile: HexTile = _make_tile(&"P00010")
 	_grid._tiles[Vector2i(0, 0)] = tile
 	_grid.map_generated.emit()
 
 	# Deplete the prop
 	tile.props[0].remaining = 0
-	_grid.prop_depleted.emit(Vector2i(0, 0), &"00010")
+	_grid.prop_depleted.emit(Vector2i(0, 0), &"P00010")
 
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(0, 0)][0].depleted).is_true()
 
 
 func test_prop_respawned_clears_depleted() -> void:
-	var tile: HexTile = _make_tile(&"00013")
+	var tile: HexTile = _make_tile(&"P00013")
 	_grid._tiles[Vector2i(0, 0)] = tile
 	_grid.map_generated.emit()
 
 	tile.props[0].remaining = 0
-	_grid.prop_depleted.emit(Vector2i(0, 0), &"00013")
+	_grid.prop_depleted.emit(Vector2i(0, 0), &"P00013")
 
 	tile.props[0].remaining = 3
-	_grid.prop_respawned.emit(Vector2i(0, 0), &"00013")
+	_grid.prop_respawned.emit(Vector2i(0, 0), &"P00013")
 
 	var entries: Dictionary = _renderer.get_tile_entries()
 	assert_bool(entries[Vector2i(0, 0)][0].depleted).is_false()
@@ -253,7 +253,7 @@ func test_normal_meshes_exist_for_all_pools() -> void:
 func test_prop_with_offset_creates_entry() -> void:
 	var tile: HexTile = _HexTile.new()
 	tile.elevation = 0
-	tile.props = [_Prop.create_prop(&"00020", 3, 3, &"", 0.0, 45.0, Vector2i(1, -1))]
+	tile.props = [_Prop.create_prop(&"P00020", 3, 3, &"", 0.0, 45.0, Vector2i(1, -1))]
 	_grid._tiles[Vector2i(0, 0)] = tile
 
 	_grid.map_generated.emit()

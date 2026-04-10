@@ -7,6 +7,7 @@ extends Node3D
 ## task-038: Fauna renderer + signal wiring.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 
 # --- Constants ---
 
@@ -195,7 +196,7 @@ func _make_transform(coords: Vector2i) -> Transform3D:
 	elif _grid != null and _grid.has_method("get_tile"):
 		var tile = _grid.get_tile(coords)
 		if tile != null and "elevation" in tile:
-			elevation_y = float(tile.elevation) * 0.5
+			elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	var pos := Vector3(world_2d.x, elevation_y + FAUNA_Y_OFFSET, world_2d.y)
 	var xform := Transform3D.IDENTITY
 	xform.origin = pos

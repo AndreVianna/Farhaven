@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="2_portable"]
+
+[sub_resource type="Resource" id="portable_1"]
+script = ExtResource("2_portable")
+weight = 0.5
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00204"
+display_name = "Survival Knife"
+tags = [&"TOOL", &"WEAPON", &"HUMAN"]
+portable = SubResource("portable_1")
+max_stack = 1
+origin = 2
+tool_slot = &"weapon"
+category = &"tool"
+prop_category = 8
+placeholder_mesh_type = &"box"
+placeholder_params = { "size_x": 0.04, "size_y": 0.02, "size_z": 0.25 }
+placeholder_color = Color(0.7, 0.7, 0.75, 1.0)
+placeholder_depleted_type = &"box"
+placeholder_depleted_params = { "size_x": 0.04, "size_y": 0.02, "size_z": 0.25 }
+placeholder_depleted_color = Color(0.4, 0.4, 0.45, 1.0)

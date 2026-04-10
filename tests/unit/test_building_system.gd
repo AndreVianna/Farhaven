@@ -87,15 +87,15 @@ class FakeRegistry extends Node:
 # Prop IDs (matching data/props/*.tres)
 # ---------------------------------------------------------------------------
 
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_FIBER: StringName = &"00012"
-const ID_CAMPFIRE: StringName = &"00101"
-const ID_SHELTER: StringName = &"00102"
-const ID_TORCH: StringName = &"00103"
-const ID_STORAGE_CHEST: StringName = &"00104"
-const ID_WORKBENCH: StringName = &"00105"
-const ID_WALL: StringName = &"00106"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_FIBER: StringName = &"P00012"
+const ID_CAMPFIRE: StringName = &"P00101"
+const ID_SHELTER: StringName = &"P00102"
+const ID_TORCH: StringName = &"P00103"
+const ID_STORAGE_CHEST: StringName = &"P00104"
+const ID_WORKBENCH: StringName = &"P00105"
+const ID_WALL: StringName = &"P00106"
 
 
 # ---------------------------------------------------------------------------
@@ -133,11 +133,8 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	_registered_defs.append(id)
 
 
-func _ensure_structure_def(id: StringName, blocks_movement: bool = false,
-		footprint: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
+func _ensure_structure_def(id: StringName) -> void:
 	var pcap := _PlaceableCap.new()
-	pcap.footprint = footprint
-	pcap.blocks_movement = blocks_movement
 	var tags: Array[StringName] = [&"STRUCTURE"]
 	_ensure_prop_def(id, tags, pcap, 1.0)
 
@@ -147,7 +144,7 @@ func _make_build_recipe(id: StringName, inputs_spec: Array,
 	var r := _Recipe.new()
 	r.id = id
 	r.kind = _Recipe.Kind.ASSEMBLE
-	r.time = time
+	r.duration = time
 	r.actions = [&"build"]
 	for spec: Dictionary in inputs_spec:
 		var inp := _RecipeInput.new()
@@ -201,12 +198,12 @@ func before_test() -> void:
 	_ensure_prop_def(ID_FIBER)
 
 	# Ensure structure defs exist.
-	_ensure_structure_def(ID_CAMPFIRE, false)
-	_ensure_structure_def(ID_SHELTER, false, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
-	_ensure_structure_def(ID_TORCH, false)
-	_ensure_structure_def(ID_STORAGE_CHEST, false)
-	_ensure_structure_def(ID_WORKBENCH, false, [Vector2i(0, 0), Vector2i(1, 0)])
-	_ensure_structure_def(ID_WALL, true)
+	_ensure_structure_def(ID_CAMPFIRE)
+	_ensure_structure_def(ID_SHELTER)
+	_ensure_structure_def(ID_TORCH)
+	_ensure_structure_def(ID_STORAGE_CHEST)
+	_ensure_structure_def(ID_WORKBENCH)
+	_ensure_structure_def(ID_WALL)
 
 	# Create grid.
 	_grid = MockHexGrid.new()
@@ -275,14 +272,14 @@ func _mock_randf() -> float:
 
 
 func test_enter_placement_mode_sets_recipe() -> void:
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
 	_building.enter_placement_mode(recipe)
 	assert_bool(_building.is_placing()).is_true()
 	assert_that(_building.get_selected_recipe()).is_same(recipe)
 
 
 func test_exit_placement_mode_clears_recipe() -> void:
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
 	_building.enter_placement_mode(recipe)
 	_building.exit_placement_mode()
 	assert_bool(_building.is_placing()).is_false()
@@ -290,14 +287,14 @@ func test_exit_placement_mode_clears_recipe() -> void:
 
 
 func test_placement_mode_entered_signal() -> void:
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
 	var monitor := monitor_signals(_building)
 	_building.enter_placement_mode(recipe)
-	verify(monitor, 1).emit_signal("placement_mode_entered", &"00024")
+	verify(monitor, 1).emit_signal("placement_mode_entered", &"P00024")
 
 
 func test_placement_mode_exited_signal() -> void:
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
 	_building.enter_placement_mode(recipe)
 	var monitor := monitor_signals(_building)
 	_building.exit_placement_mode()
@@ -325,8 +322,8 @@ func test_try_place_without_recipe_fails() -> void:
 
 
 func test_try_place_at_missing_tile_fails() -> void:
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var monitor := monitor_signals(_building)
@@ -344,8 +341,8 @@ func test_try_place_on_water_fails() -> void:
 	var tile := _make_water_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var monitor := monitor_signals(_building)
@@ -355,39 +352,39 @@ func test_try_place_on_water_fails() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Validation — footprint overlap
+# Tests: Validation — sub-hex overlap
 # ---------------------------------------------------------------------------
 
 
-func test_try_place_with_footprint_overlap_fails() -> void:
+func test_try_place_with_sub_hex_overlap_fails() -> void:
 	var tile := _make_grassland_tile()
 	# Add an existing prop at sub-hex (0, 0).
-	var existing := _Prop.create_structure(ID_CAMPFIRE, false, Vector2i.ZERO, [Vector2i.ZERO])
+	var existing := _Prop.create_structure(ID_CAMPFIRE, Vector2i.ZERO)
 	tile.props.append(existing)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var monitor := monitor_signals(_building)
 	var result: bool = _building.try_place_at(Vector2i.ZERO, Vector2i.ZERO)
 	assert_bool(result).is_false()
-	verify(monitor, 1).emit_signal("structure_build_failed", &"footprint_overlap")
+	verify(monitor, 1).emit_signal("structure_build_failed", &"sub_hex_occupied")
 
 
 func test_try_place_non_overlapping_sub_hex_succeeds() -> void:
 	var tile := _make_grassland_tile()
 	# Existing prop at sub-hex (0, 0).
-	var existing := _Prop.create_structure(ID_CAMPFIRE, false, Vector2i.ZERO, [Vector2i.ZERO])
+	var existing := _Prop.create_structure(ID_CAMPFIRE, Vector2i.ZERO)
 	tile.props.append(existing)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	# Give player enough wood.
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	# Place at sub-hex (1, 0) — no overlap.
@@ -407,8 +404,8 @@ func test_try_place_insufficient_materials_fails() -> void:
 	# Give player only 1 wood (need 3).
 	_player.inventory.add_item(ID_WOOD, 1)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var monitor := monitor_signals(_building)
@@ -429,8 +426,8 @@ func test_successful_wall_build_places_structure_on_tile() -> void:
 	# Give player enough wood.
 	_player.inventory.add_item(ID_WOOD, 5)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var result: bool = _building.try_place_at(Vector2i.ZERO)
@@ -445,7 +442,7 @@ func test_successful_wall_build_places_structure_on_tile() -> void:
 		if prop.type == ID_WALL:
 			structures.append(prop)
 	assert_int(structures.size()).is_equal(1)
-	assert_bool(structures[0].blocks_movement).is_true()
+	assert_int(structures[0].category).is_equal(_Prop.Category.STRUCTURE)
 
 
 func test_successful_build_emits_structure_placed() -> void:
@@ -454,8 +451,8 @@ func test_successful_build_emits_structure_placed() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var monitor := monitor_signals(_grid)
@@ -463,38 +460,38 @@ func test_successful_build_emits_structure_placed() -> void:
 	verify(monitor, 1).emit_signal("structure_placed", Vector2i.ZERO, ID_WALL)
 
 
-func test_wall_has_blocks_movement_true() -> void:
+func test_wall_placed_as_structure_category() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
-	# Wall should block movement.
+	# Wall should be placed as STRUCTURE category.
 	var wall_prop = tile.props[0]
-	assert_bool(wall_prop.blocks_movement).is_true()
+	assert_int(wall_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
-func test_campfire_does_not_block_movement() -> void:
+func test_campfire_placed_as_structure_category() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_player.inventory.add_item(ID_WOOD, 3)
 	_player.inventory.add_item(ID_FIBER, 2)
 
-	var recipe := _make_build_recipe(&"00019",
+	var recipe := _make_build_recipe(&"P00019",
 		[{"ref": ID_WOOD, "count": 3}, {"ref": ID_FIBER, "count": 2}],
 		ID_CAMPFIRE)
-	_discovery.set_known(&"00019")
+	_discovery.set_known(&"P00019")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
 	var campfire_prop = tile.props[0]
-	assert_bool(campfire_prop.blocks_movement).is_false()
+	assert_int(campfire_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------
@@ -511,10 +508,10 @@ func test_storage_chest_increases_inventory_capacity() -> void:
 
 	var initial_capacity: float = _player.inventory.capacity_weight
 
-	var recipe := _make_build_recipe(&"00022",
+	var recipe := _make_build_recipe(&"P00022",
 		[{"ref": ID_WOOD, "count": 8}, {"ref": ID_ROCK, "count": 4}],
 		ID_STORAGE_CHEST)
-	_discovery.set_known(&"00022")
+	_discovery.set_known(&"P00022")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
@@ -530,10 +527,10 @@ func test_non_storage_chest_does_not_change_capacity() -> void:
 
 	var initial_capacity: float = _player.inventory.capacity_weight
 
-	var recipe := _make_build_recipe(&"00024",
+	var recipe := _make_build_recipe(&"P00024",
 		[{"ref": ID_WOOD, "count": 3}],
 		ID_WALL)
-	_discovery.set_known(&"00024")
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
@@ -552,8 +549,8 @@ func test_structure_not_in_inventory_after_build() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
@@ -572,8 +569,8 @@ func test_exits_placement_mode_after_successful_build() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
@@ -585,8 +582,8 @@ func test_exits_placement_mode_after_failed_build() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
@@ -604,9 +601,9 @@ func test_timed_build_places_structure_after_time() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024",
+	var recipe := _make_build_recipe(&"P00024",
 		[{"ref": ID_WOOD, "count": 3}], ID_WALL, 2.0)
-	_discovery.set_known(&"00024")
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 
 	var result: bool = _building.try_place_at(Vector2i.ZERO)
@@ -634,31 +631,31 @@ func test_timed_build_places_structure_after_time() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Multi-hex footprint
+# Tests: Structure placed with correct category
 # ---------------------------------------------------------------------------
 
 
-func test_workbench_footprint_placed_correctly() -> void:
+func test_workbench_placed_correctly() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_player.inventory.add_item(ID_WOOD, 5)
 	_player.inventory.add_item(ID_ROCK, 3)
 
-	var recipe := _make_build_recipe(&"00021",
+	var recipe := _make_build_recipe(&"P00021",
 		[{"ref": ID_WOOD, "count": 5}, {"ref": ID_ROCK, "count": 3}],
 		ID_WORKBENCH)
-	_discovery.set_known(&"00021")
+	_discovery.set_known(&"P00021")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
-	# Workbench placed with correct 2-cell footprint.
+	# Workbench placed as structure.
 	var wb_props: Array = []
 	for prop in tile.props:
 		if prop.type == ID_WORKBENCH:
 			wb_props.append(prop)
 	assert_int(wb_props.size()).is_equal(1)
-	assert_int(wb_props[0].footprint.size()).is_equal(2)
+	assert_int(wb_props[0].category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------
@@ -672,8 +669,8 @@ func test_structure_placed_at_specified_sub_hex() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO, Vector2i(2, 1))
 
@@ -682,11 +679,11 @@ func test_structure_placed_at_specified_sub_hex() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Only wall blocks movement
+# Tests: Structures placed as STRUCTURE category
 # ---------------------------------------------------------------------------
 
 
-func test_shelter_does_not_block_movement() -> void:
+func test_shelter_placed_as_structure() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
@@ -694,33 +691,33 @@ func test_shelter_does_not_block_movement() -> void:
 	_player.inventory.add_item(ID_ROCK, 5)
 	_player.inventory.add_item(ID_FIBER, 3)
 
-	var recipe := _make_build_recipe(&"00023",
+	var recipe := _make_build_recipe(&"P00023",
 		[{"ref": ID_WOOD, "count": 10}, {"ref": ID_ROCK, "count": 5}, {"ref": ID_FIBER, "count": 3}],
 		ID_SHELTER)
-	_discovery.set_known(&"00023")
+	_discovery.set_known(&"P00023")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
 	var shelter_prop = tile.props[0]
-	assert_bool(shelter_prop.blocks_movement).is_false()
+	assert_int(shelter_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
-func test_torch_does_not_block_movement() -> void:
+func test_torch_placed_as_structure() -> void:
 	var tile := _make_grassland_tile()
 	_grid.set_tile(Vector2i.ZERO, tile)
 
 	_player.inventory.add_item(ID_WOOD, 2)
 	_player.inventory.add_item(ID_FIBER, 1)
 
-	var recipe := _make_build_recipe(&"00025",
+	var recipe := _make_build_recipe(&"P00025",
 		[{"ref": ID_WOOD, "count": 2}, {"ref": ID_FIBER, "count": 1}],
 		ID_TORCH)
-	_discovery.set_known(&"00025")
+	_discovery.set_known(&"P00025")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
 	var torch_prop = tile.props[0]
-	assert_bool(torch_prop.blocks_movement).is_false()
+	assert_int(torch_prop.category).is_equal(_Prop.Category.STRUCTURE)
 
 
 # ---------------------------------------------------------------------------
@@ -734,8 +731,8 @@ func test_placed_structure_has_crafted_origin() -> void:
 
 	_player.inventory.add_item(ID_WOOD, 3)
 
-	var recipe := _make_build_recipe(&"00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
-	_discovery.set_known(&"00024")
+	var recipe := _make_build_recipe(&"P00024", [{"ref": ID_WOOD, "count": 3}], ID_WALL)
+	_discovery.set_known(&"P00024")
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 

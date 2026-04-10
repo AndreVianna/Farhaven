@@ -1,11 +1,18 @@
 extends Node
 
-## Owns the player's known-recipes list. Listens to global signals
-## (Catalog.entry_cataloged, tool equip, grant_recipe effects) and
-## evaluates unlock_when predicates to discover new recipes.
-## Autoload registered AFTER RecipeRegistry.
+## Owns the player's known-recipes list. Watches discovery Events from
+## EventRegistry and grants recipes when their conditions are met.
+## Autoload registered AFTER RecipeRegistry AND EventRegistry.
+##
+## Flow:
+##   1. On _ready, mark recipes with NO discovery Event as known from start.
+##   2. Listen to EventRegistry.event_fired — process grant_recipe effects.
+##   3. Listen to Catalog.entry_cataloged — re-evaluate pending discovery Events.
+##   4. check_unlocks(ctx) — manual re-evaluation (called externally).
 
 const _Recipe = preload("res://scripts/recipes/recipe.gd")
+const _GameEvent = preload("res://scripts/core/event.gd")
+const _RecipeEffect = preload("res://scripts/recipes/recipe_effect.gd")
 const _PredicateEvaluator = preload("res://scripts/recipes/predicate_evaluator.gd")
 const _WorldContext = preload("res://scripts/recipes/world_context.gd")
 
@@ -17,15 +24,26 @@ var _known_recipes: Dictionary = {}
 ## Injectable for testing. Defaults to RecipeRegistry autoload.
 var _registry: Node = null
 
+## Injectable for testing. Defaults to EventRegistry autoload.
+var _event_registry: Node = null
+
 ## Injectable for testing. Catalog instance.
 var _catalog: RefCounted = null
+
+## recipe_id → GameEvent. Discovery events that haven't fired yet.
+## Built on _ready by scanning all events for grant_recipe effects.
+var _discovery_events: Dictionary = {}
 
 
 func _ready() -> void:
 	if _registry == null:
 		_registry = _get_autoload(&"RecipeRegistry")
+	if _event_registry == null:
+		_event_registry = _get_autoload(&"EventRegistry")
+	_index_discovery_events()
 	if _registry != null:
 		_populate_initial_known()
+	_connect_event_registry_signal()
 	_connect_catalog_signal()
 
 
@@ -63,19 +81,20 @@ func load_save_data(data: Dictionary) -> void:
 		_known_recipes[StringName(id)] = true
 
 
-## Re-evaluate unlock_when for all unknown recipes.
+## Re-evaluate all pending (unfired) discovery events against a context.
 ## Called when external state changes (catalog, tool equip, etc.).
 func check_unlocks(ctx: _WorldContext) -> void:
-	if _registry == null:
+	if _event_registry == null:
 		return
-	var all_recipes: Array = _registry.get_all_recipes()
-	for recipe in all_recipes:
-		if _known_recipes.has(recipe.id):
+	var to_fire: Array = []
+	for recipe_id: StringName in _discovery_events:
+		var event: _GameEvent = _discovery_events[recipe_id]
+		if not event.can_fire():
 			continue
-		if recipe.unlock_when.is_empty():
-			continue
-		if _all_unlock_predicates_pass(recipe, ctx):
-			grant_recipe(recipe.id)
+		if _all_conditions_met(event, ctx):
+			to_fire.append(event)
+	for event: _GameEvent in to_fire:
+		_event_registry.try_fire(event)
 
 
 # ---------------------------------------------------------------------------
@@ -83,51 +102,64 @@ func check_unlocks(ctx: _WorldContext) -> void:
 # ---------------------------------------------------------------------------
 
 
+## Scan all events for grant_recipe effects and build the discovery index.
+func _index_discovery_events() -> void:
+	_discovery_events.clear()
+	if _event_registry == null:
+		return
+	var all_events: Array = _event_registry.get_all_events()
+	for event in all_events:
+		for eff in event.effects:
+			if eff.kind == &"grant_recipe":
+				var recipe_id := StringName(eff.params.get("recipe_id", ""))
+				if recipe_id != &"":
+					_discovery_events[recipe_id] = event
+
+
+## Mark recipes that have NO discovery event as known from start.
 func _populate_initial_known() -> void:
 	if _registry == null:
 		return
 	var all_recipes: Array = _registry.get_all_recipes()
 	for recipe in all_recipes:
-		if recipe.unlock_when.is_empty():
+		if not _discovery_events.has(recipe.id):
 			_known_recipes[recipe.id] = true
+
+
+func _connect_event_registry_signal() -> void:
+	if _event_registry == null:
+		return
+	if not _event_registry.is_connected("event_fired", _on_event_fired):
+		_event_registry.connect("event_fired", _on_event_fired)
 
 
 func _connect_catalog_signal() -> void:
 	if _catalog != null and _catalog.has_signal("entry_cataloged"):
 		if not _catalog.is_connected("entry_cataloged", _on_entry_cataloged):
 			_catalog.connect("entry_cataloged", _on_entry_cataloged)
-		return
-	# Try to find Catalog from the scene tree (it's usually on Player or a singleton).
-	# For now, callers set _catalog directly or connect externally.
 
 
-func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
-	if _registry == null:
-		return
-	# Build a minimal context for predicate evaluation.
+## When an event fires, process its grant_recipe effects.
+func _on_event_fired(_event_id: StringName, event: Resource) -> void:
+	for eff in event.effects:
+		if eff.kind == &"grant_recipe":
+			var recipe_id := StringName(eff.params.get("recipe_id", ""))
+			if recipe_id != &"":
+				grant_recipe(recipe_id)
+
+
+## When a catalog entry is cataloged, re-evaluate pending discovery events.
+func _on_entry_cataloged(_entry_id: StringName, _category: int) -> void:
 	var ctx := _build_current_context()
-	var all_recipes: Array = _registry.get_all_recipes()
-	for recipe in all_recipes:
-		if _known_recipes.has(recipe.id):
-			continue
-		if recipe.unlock_when.is_empty():
-			continue
-		# Quick filter: only check recipes that reference cataloged() predicates
-		var has_catalog_pred := false
-		for pred in recipe.unlock_when:
-			if pred.kind == &"cataloged":
-				has_catalog_pred = true
-				break
-		if not has_catalog_pred:
-			continue
-		if _all_unlock_predicates_pass(recipe, ctx):
-			grant_recipe(recipe.id)
+	check_unlocks(ctx)
 
 
-func _all_unlock_predicates_pass(recipe: _Recipe, ctx: _WorldContext) -> bool:
-	for pred in recipe.unlock_when:
-		if not _PredicateEvaluator.evaluate(pred, ctx):
-			return false
+## Check if all conditions on an event are met.
+func _all_conditions_met(event: _GameEvent, ctx: _WorldContext) -> bool:
+	for cond in event.conditions:
+		if cond.predicate != null:
+			if not _PredicateEvaluator.evaluate(cond.predicate, ctx):
+				return false
 	return true
 
 

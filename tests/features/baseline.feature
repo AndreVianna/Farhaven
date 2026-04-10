@@ -11,13 +11,12 @@ Feature: Fresh Game State
     Then the player is at tile 0, 0
 
   Scenario: Starting loadout has knife, scanner, and flint_steel equipped
-    Then tool "weapon" is "00204"
-    And tool "scanner" is "00205"
-    And tool "firestarter" is "00206"
+    Then tool "weapon" is "P00204"
+    And tool "scanner" is "P00205"
+    And tool "firestarter" is "P00206"
 
-  Scenario: Known recipes are those with empty unlock_when
-    Then every recipe with empty unlock_when is known
-    And no recipe with non-empty unlock_when is known
+  Scenario: All pre-discovered recipes are known from start
+    Then every pre-discovered recipe is known
 
   Scenario: Catalog is empty on fresh game
     Then the catalog has 0 cataloged entries

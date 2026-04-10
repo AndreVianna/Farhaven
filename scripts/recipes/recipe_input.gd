@@ -1,7 +1,7 @@
 class_name RecipeInput
 extends Resource
 
-## Prop ref (PropDef id, e.g. &"00020") or tag (e.g. &"BURNABLE.log").
+## Prop ref (PropDef id, e.g. &"P00020") or tag (e.g. &"BURNABLE.log").
 ## Whether this is a ref or tag is determined by is_tag.
 @export var ref_or_tag: StringName
 

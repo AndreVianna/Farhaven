@@ -28,7 +28,7 @@ var _bonus_slots: int = 0
 var capacity_weight: float = 50.0
 var _current_weight: float = 0.0
 
-## Tool slots store PropDef ids (numeric, e.g. &"00204" for survival_knife).
+## Tool slots store PropDef ids (prefixed, e.g. &"P00204" for survival_knife).
 ## Defaults are empty — starting tools are applied from map's starting_loadout.
 var _tool_slots: Dictionary = {
 	&"axe":      &"",

@@ -31,20 +31,20 @@ const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # World prop ids (placed on tiles)
-const ID_TREE: StringName = &"00001"
-const ID_LOOSE_ROCKS: StringName = &"00002"
-const ID_BERRY_BUSH: StringName = &"00004"
-const ID_BOULDER: StringName = &"00005"
-const ID_IRON_DEPOSIT: StringName = &"00006"
+const ID_TREE: StringName = &"P00001"
+const ID_LOOSE_ROCKS: StringName = &"P00002"
+const ID_BERRY_BUSH: StringName = &"P00004"
+const ID_BOULDER: StringName = &"P00005"
+const ID_IRON_DEPOSIT: StringName = &"P00006"
 # Inventory item ids (yielded when gathered)
-const ID_WOOD: StringName = &"00010"
-const ID_ROCK: StringName = &"00011"
-const ID_STONE: StringName = &"00013"
-const ID_BERRIES: StringName = &"00020"
-const ID_ORE: StringName = &"00014"
+const ID_WOOD: StringName = &"P00010"
+const ID_ROCK: StringName = &"P00011"
+const ID_STONE: StringName = &"P00013"
+const ID_BERRIES: StringName = &"P00020"
+const ID_ORE: StringName = &"P00014"
 # Tool ids
-const ID_AXE: StringName = &"00201"
-const ID_PICKAXE: StringName = &"00202"
+const ID_AXE: StringName = &"P00201"
+const ID_PICKAXE: StringName = &"P00202"
 
 const _CraftingPanelScene = preload("res://scenes/ui/crafting_panel.tscn")
 
@@ -296,7 +296,7 @@ func test_scan_catalog_then_auto_gather() -> void:
 	assert_bool(_scanner.is_scanning()).is_true()
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)  # complete scan
-	assert_bool(_catalog.is_cataloged(&"00004")).is_true()
+	assert_bool(_catalog.is_cataloged(&"P00004")).is_true()
 
 	# Step 2: Position player near the berries prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -335,7 +335,7 @@ func test_tool_gated_prop_emits_tool_required_failure() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog ore so it passes the catalog gate
-	_catalog.catalog_entry(&"00006")
+	_catalog.catalog_entry(&"P00006")
 
 	var failed: Array = []
 	_auto_interaction.auto_gather_failed.connect(func(c: Vector2i, r: StringName) -> void:
@@ -378,7 +378,7 @@ func test_prop_depletion_signal_and_visual_change() -> void:
 	assert_bool(entries[Vector2i(1, 0)][0]["depleted"]).is_false()
 
 	# Catalog wood_tree so auto-gather works
-	_catalog.catalog_entry(&"00001")
+	_catalog.catalog_entry(&"P00001")
 
 	# Track prop_depleted
 	var depleted_signals: Array = []
@@ -421,7 +421,7 @@ func test_respawn_timer_always_ticks_restores_resource() -> void:
 	# Position player at the wood prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"00001")
+	_catalog.catalog_entry(&"P00001")
 
 	# Show prop
 	_grid.map_generated.emit()
@@ -474,8 +474,8 @@ func test_chain_gathering_multiple_props() -> void:
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog both
-	_catalog.catalog_entry(&"00001")
-	_catalog.catalog_entry(&"00005")
+	_catalog.catalog_entry(&"P00001")
+	_catalog.catalog_entry(&"P00005")
 
 	var completed: Array = []
 	_auto_interaction.auto_gather_completed.connect(func(c: Vector2i, t: StringName, a: int) -> void:
@@ -526,13 +526,13 @@ func test_tool_gating_round_trip_craft_unlocks_ore() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_IRON_DEPOSIT, 3, &"pickaxe")
 	# Add a workbench neighbor for crafting
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Position player at the ore prop
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
 	# Catalog ore
-	_catalog.catalog_entry(&"00006")
+	_catalog.catalog_entry(&"P00006")
 
 	# Step 1: ore is gated, can't gather (silently skipped)
 	_auto_interaction._check_gather_proximity()
@@ -615,7 +615,7 @@ func test_crafting_flow_panel_states_and_craft() -> void:
 
 	# Workbench adjacent
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -855,7 +855,7 @@ func test_craft_fails_when_already_owned() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -893,7 +893,7 @@ func test_craft_fails_with_insufficient_materials() -> void:
 	_setup_full_tree()
 
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i.ZERO] = _make_empty_tile()
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 	_place_player_at_tile(Vector2i.ZERO)
@@ -965,7 +965,7 @@ func test_respawn_always_ticks_regardless_of_visibility() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 1, &"", 1.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"00005")
+	_catalog.catalog_entry(&"P00005")
 
 	# Deplete
 	_auto_interaction._check_gather_proximity()
@@ -993,7 +993,7 @@ func test_zero_respawn_time_never_enters_queue() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 1, &"", 0.0)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"00001")
+	_catalog.catalog_entry(&"P00001")
 
 	_auto_interaction._check_gather_proximity()
 	_auto_interaction._on_gather_tween_complete()
@@ -1026,7 +1026,7 @@ func test_workbench_proximity_signal_on_change() -> void:
 
 	# Add workbench neighbor
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i(1, 0)] = wb_tile
 
 	_crafting._check_station_proximity()
@@ -1087,7 +1087,7 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_BOULDER, 3)
 	_grid._tiles[Vector2i(0, 1)] = _make_tile(ID_IRON_DEPOSIT, 3, &"pickaxe")
 	var wb_tile: HexTile = _make_empty_tile()
-	wb_tile.props = [_Prop.create_structure(&"00105")]
+	wb_tile.props = [_Prop.create_structure(&"P00105")]
 	_grid._tiles[Vector2i(-1, 0)] = wb_tile
 	# Extra wood tile for crafting materials
 	_grid._tiles[Vector2i(0, -1)] = _make_tile(ID_TREE, 5)
@@ -1097,19 +1097,19 @@ func test_full_loop_scan_gather_discover_craft_unlock() -> void:
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"00005")).is_true()
+	assert_bool(_catalog.is_cataloged(&"P00005")).is_true()
 
 	# Step 2: Scan wood (move scanner to pick next)
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"00001")).is_true()
+	assert_bool(_catalog.is_cataloged(&"P00001")).is_true()
 
 	# Step 3: Scan ore
 	_scanner._process(0.016)
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
-	assert_bool(_catalog.is_cataloged(&"00006")).is_true()
+	assert_bool(_catalog.is_cataloged(&"P00006")).is_true()
 
 	# Step 4: Move player to stone prop and auto-gather
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
@@ -1194,7 +1194,7 @@ func test_inventory_full_blocks_auto_gather() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile(ID_TREE, 3)
 	_place_player_near_prop(Vector2i(1, 0), Vector2.ZERO, Vector2i.ZERO)
 
-	_catalog.catalog_entry(&"00001")
+	_catalog.catalog_entry(&"P00001")
 
 	# Fill inventory completely
 	for i in range(12):

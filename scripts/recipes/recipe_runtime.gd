@@ -70,8 +70,8 @@ func try_start_recipe(recipe: _Recipe, ctx: _WorldContext) -> PendingRecipe:
 		_return_inputs(bound_inputs, ctx)
 		return null
 
-	# 4. Instant resolution (time == 0).
-	if recipe.time <= 0.0:
+	# 4. Instant resolution (duration == 0).
+	if recipe.duration <= 0.0:
 		var pending := PendingRecipe.new()
 		pending.recipe = recipe
 		pending.start_time = Time.get_ticks_msec() / 1000.0
@@ -126,8 +126,8 @@ func _process(delta: float) -> void:
 			i -= 1
 			continue
 
-		# Check if time is up.
-		if pending.elapsed >= pending.recipe.time:
+		# Check if duration is up.
+		if pending.elapsed >= pending.recipe.duration:
 			_resolve(pending)
 			i -= 1
 			continue

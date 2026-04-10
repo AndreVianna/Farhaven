@@ -2,7 +2,7 @@
 
 > **Source:** discovery-architect
 > **Status:** Active
-> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
+> **Last Updated:** 2026-04-09 (updated for delivery-006a: Gear hierarchy, Events, IDs, SSH, mesh collision)
 
 > **Authoritative design spec for Props & Recipes:** `.aid/work-001-core/delivery-005a/DESIGN.md`
 
@@ -14,19 +14,21 @@ Single-player mobile game (portrait, 1080x1920). Monolithic Godot 4.6 project, n
 
 ```
 Farhaven/
-+-- scripts/           # Core game logic (57 .gd files in scripts/ + 13 in ui/), organized by system
++-- scripts/           # Core game logic (66 .gd files in scripts/ + 15 in ui/), organized by system
 |   +-- main.gd        # Bootstrap: loads map, wires all systems together
 |   +-- audio/          # Sound effects (gather ding, craft success)
 |   +-- auto_interaction/  # Proximity-based auto-gather (delegates to RecipeRuntime), auto-defend, respawn queue
+|   +-- building/       # Building system: structure placement (SSH snap + mesh collision), structure renderer
+|   +-- core/           # Gear hierarchy (gear.gd, script_base.gd), Event system (event.gd, event_registry.gd), CollisionHelper
 |   +-- crafting/       # Legacy crafting system (being replaced by Recipe system)
-|   +-- data/           # PropDef resource class + PropRegistry autoload
+|   +-- data/           # PropDef resource class (extends Gear) + PropRegistry autoload
 |   |   +-- capabilities/  # Capability inner Resources (PortableCap, PlaceableCap, etc.)
-|   +-- hex/            # Hex grid core: math, tile model, biome data, map loader
+|   +-- hex/            # Hex grid core: math (incl. SSH), tile model, biome data, map loader
 |   +-- hud/            # HUD controller, stat bars, notifications, floating text
 |   +-- inventory/      # Weight-based inventory with tool slots
 |   +-- lighting/       # LightingManager autoload — shader-based local lighting
 |   +-- player/         # Player controller (movement, camera, input, pathfinding)
-|   +-- recipes/        # Recipe system: Recipe resources, RecipeRegistry, RecipeRuntime, DiscoveryWatcher, PredicateEvaluator
+|   +-- recipes/        # Recipe system: Recipe (extends ScriptBase), RecipeRegistry, RecipeRuntime, DiscoveryWatcher, PredicateEvaluator
 |   +-- rendering/      # Visual renderers (resources, labels, scan progress, fly-to-player)
 |   +-- scanner/        # Scanner/catalog system (proximity auto-scan, knowledge states)
 +-- scenes/            # Godot scene files (.tscn)
@@ -35,12 +37,13 @@ Farhaven/
 |   +-- ui/             # UI panel scenes (hud, inventory, catalog, crafting)
 |   +-- world/          # World renderers (hex grid, resources, labels, scan progress)
 +-- ui/                # UI scripts (13 .gd files): panels, slots, joystick overlay
-+-- data/              # Game data resources (53 .tres + 1 .json)
++-- data/              # Game data resources (76 .tres + 1 .json)
 |   +-- biomes/         # BiomeData .tres (5 biomes: crash_site, grassland, forest, rocky, water)
 |   +-- catalog/        # CatalogEntry .tres (anomalies, fauna, flora, minerals)
+|   +-- events/         # GameEvent .tres (12 discovery events, E-prefixed IDs) — added delivery-006a
 |   +-- maps/           # Hand-designed map JSON (ch1.json)
-|   +-- props/          # PropDef .tres (37 files: source props, items, structures, tools, consumables)
-|   +-- recipes/        # Recipe .tres (16 files: gather, craft, cook, consume, passive recipes)
+|   +-- props/          # PropDef .tres (32 files, P-prefixed IDs: source props, items, structures, tools)
+|   +-- recipes/        # Recipe .tres (26 files, R-prefixed IDs: gather, craft, cook, consume, passive)
 +-- shaders/           # GLSL shaders (3: hex_tile, icon_billboard, scan_progress)
 +-- tests/             # gdUnit4 test suites (41 .gd files)
 |   +-- integration/    # Delivery-level integration tests
@@ -73,12 +76,18 @@ There is also a clear **data/presentation separation:**
 
 ## Module Boundaries
 
+### core/ -- Gear Hierarchy, Events, Collision (added delivery-006a)
+- **Files:** gear.gd, script_base.gd, event.gd, event_registry.gd, collision_helper.gd
+- **Responsibility:** Base entity classes (Gear → ScriptBase → Recipe/GameEvent, Gear → PropDef), event system with occurrence tracking, and collision shape generation from PropDef placeholder params.
+- **Dependencies:** None (foundational). RecipeCondition/RecipeEffect/Predicate preloaded from recipes/.
+- **Consumers:** PropDef extends Gear; Recipe extends ScriptBase; GameEvent extends ScriptBase; EventRegistry autoload; DiscoveryWatcher watches events; CollisionHelper used by BuildingSystem and StructureRenderer.
+
 ### hex/ -- Hex Grid Core
 - **Files:** hex_grid.gd, hex_math.gd, hex_tile.gd, biome_data.gd, map_loader.gd, prop.gd
-- **Responsibility:** Map data model, coordinate math, tile queries, traversal rules, serialization
+- **Responsibility:** Map data model, coordinate math (including 3-level SSH grid), tile queries, traversal rules, serialization
 - **Dependencies:** PropRegistry (autoload, for tag/capability queries on HexTile helper methods)
 - **Consumers:** Every other module reads from HexGrid autoload
-- **Updated 2026-04-08:** HexTile gained `get_props_with_tag()` and `get_props_with_capability()` methods. Old category-based behavioral code is deprecated; origin-based checks remain.
+- **Updated 2026-04-09:** HexMath gained SSH (sub-sub-hex) coordinate math: `snap_to_ssh()`, `is_valid_ssh()`, `get_all_sshs()`, `ssh_axial_to_world()`, `world_to_ssh_axial()`. 3-level grid: Hex (6m) → Sub-hex (1.39m) → SSH (0.32m). Prop.footprint and Prop.blocks_movement removed (mesh-based collision replaces them).
 
 ### player/ -- Player Controller
 - **Files:** player.gd, player_input.gd, player_camera.gd, player_pathfinder.gd
@@ -112,15 +121,16 @@ There is also a clear **data/presentation separation:**
 
 ### data/ -- Prop Definitions and Capabilities
 - **Files:** prop_def.gd, prop_registry.gd, capabilities/*.gd (7 files: portable_cap, placeable_cap, container_cap, light_cap, movable_cap, station_cap, catalogable_cap)
-- **Responsibility:** Data-driven prop configuration via composable capabilities + tags. PropRegistry autoload scans data/props/*.tres at startup. Deprecated gather/consumable fields kept for backward compat.
-- **Dependencies:** None
-- **Updated 2026-04-08:** PropDef now carries 7 capability fields (small inner Resources) and a tags array. Old category-based fields deprecated.
+- **Responsibility:** Data-driven prop configuration via composable capabilities + tags. PropDef extends Gear (inherits id, display_name, short_description, long_description). PropRegistry autoload scans data/props/*.tres at startup. Deprecated gather/consumable fields kept for backward compat.
+- **Dependencies:** Gear (scripts/core/gear.gd)
+- **Updated 2026-04-09:** PropDef extends Gear. IDs use P prefix. PlaceableCap simplified (footprint and blocks_movement removed — collision is mesh-based via CollisionHelper).
 
-### recipes/ -- Recipe System (added delivery-005a)
+### recipes/ -- Recipe System (added delivery-005a, refactored delivery-006a)
 - **Files:** recipe.gd, recipe_input.gd, recipe_output.gd, recipe_effect.gd, recipe_condition.gd, predicate.gd, predicate_evaluator.gd, world_context.gd, recipe_registry.gd, recipe_runtime.gd, discovery_watcher.gd
-- **Responsibility:** Unified Recipe system that handles crafting, gathering, cooking, consuming, burning, decaying, growing, and traps. RecipeRegistry indexes recipes from data/recipes/*.tres. RecipeRuntime executes pending recipes with sustain checks. DiscoveryWatcher manages the player's known-recipes list. PredicateEvaluator is the single source of truth for condition evaluation (15 predicate kinds).
-- **Dependencies:** PropRegistry (autoload), HexGrid (autoload), DayNightCycle (autoload, for time predicates)
+- **Responsibility:** Unified Recipe system that handles crafting, gathering, cooking, consuming, burning, decaying, growing, and traps. Recipe extends ScriptBase (conditions/effects/actions/duration inherited). RecipeRegistry indexes recipes from data/recipes/*.tres. RecipeRuntime executes pending recipes with sustain checks. DiscoveryWatcher manages the player's known-recipes list by watching EventRegistry.event_fired for grant_recipe effects. PredicateEvaluator is the single source of truth for condition evaluation (15 predicate kinds).
+- **Dependencies:** ScriptBase (scripts/core/), PropRegistry (autoload), HexGrid (autoload), EventRegistry (autoload), DayNightCycle (autoload, for time predicates)
 - **Consumers:** AutoInteractionSystem, future UI (crafting panel refresh)
+- **Updated 2026-04-09:** Recipe extends ScriptBase. `unlock_when` removed — discovery handled by GameEvent .tres files. `time` renamed to `duration` (on ScriptBase). DiscoveryWatcher rewritten to watch EventRegistry instead of Recipe.unlock_when.
 
 ### lighting/ -- Local Lighting (added delivery-005a)
 - **Files:** lighting_manager.gd
@@ -186,7 +196,7 @@ AutoInteractionSystem._process() [throttled 0.1s]
       -> Filter: DiscoveryWatcher.is_known(recipe.id)
       -> Filter: PredicateEvaluator.evaluate(condition, WorldContext)
       -> If matching recipe found:
-        -> _begin_gather(): create tween timer using recipe.time
+        -> _begin_gather(): create tween timer using recipe.duration
           -> auto_gather_started signal
         -> _on_gather_tween_complete():
           -> RecipeRuntime resolves outputs + effects
@@ -207,22 +217,25 @@ World state change (prop interaction, tool equip, station enter)
   -> If actions empty (passive): start immediately
   -> RecipeRuntime.try_start_recipe(recipe, ctx)
     -> Validate inputs available, consume them
-    -> If time == 0: resolve instantly
-    -> If time > 0: enqueue as PendingRecipe
+    -> If duration == 0: resolve instantly
+    -> If duration > 0: enqueue as PendingRecipe
       -> recipe_started signal
       -> Each tick: re-check sustain conditions
         -> Sustain fails -> cancel_recipe() -> return inputs -> recipe_cancelled signal
-        -> Time elapsed -> _resolve() -> produce outputs + effects -> recipe_resolved signal
+        -> Duration elapsed -> _resolve() -> produce outputs + effects -> recipe_resolved signal
 ```
 
-### Recipe Discovery Flow (added delivery-005a)
+### Recipe Discovery Flow (rewritten delivery-006a)
 ```
 External event (Catalog.entry_cataloged, tool equipped, world flag changed)
   -> DiscoveryWatcher._on_entry_cataloged (or check_unlocks)
-    -> For each unknown recipe with unlock_when predicates:
-      -> PredicateEvaluator.evaluate(all unlock_when, context)
-      -> If all pass: grant_recipe(recipe_id)
-        -> recipe_unlocked signal -> HUD notification
+    -> For each unfired discovery GameEvent in data/events/:
+      -> PredicateEvaluator.evaluate(all event.conditions, context)
+      -> If all pass: EventRegistry.try_fire(event)
+        -> EventRegistry.event_fired signal
+          -> DiscoveryWatcher._on_event_fired
+            -> Process grant_recipe effects -> grant_recipe(recipe_id)
+              -> recipe_unlocked signal -> HUD notification
 ```
 
 ### Auto-Scan Flow
@@ -239,13 +252,14 @@ ScannerSystem._process() [every frame]
 
 There is no formal DI framework. Dependencies are resolved through four mechanisms:
 
-1. **Autoload singletons** (project.godot, loaded in order):
+1. **Autoload singletons** (project.godot, loaded in order — 9 singletons):
    - PropRegistry -> scripts/data/prop_registry.gd (loaded first, no dependencies)
    - HexGrid -> scripts/hex/hex_grid.gd
    - DayNightCycle -> scripts/day_night/day_night_cycle.gd
    - LightingManager -> scripts/lighting/lighting_manager.gd (after DayNightCycle)
    - RecipeRegistry -> scripts/recipes/recipe_registry.gd (after PropRegistry + HexGrid)
-   - DiscoveryWatcher -> scripts/recipes/discovery_watcher.gd (after RecipeRegistry)
+   - EventRegistry -> scripts/core/event_registry.gd (after RecipeRegistry — added delivery-006a)
+   - DiscoveryWatcher -> scripts/recipes/discovery_watcher.gd (after RecipeRegistry + EventRegistry)
    - RecipeRuntime -> scripts/recipes/recipe_runtime.gd (after DiscoveryWatcher)
    - SaveManager -> scripts/save/save_manager.gd (last — depends on all others)
    - Accessed as global names in any script (e.g., HexGrid.get_tile(coords))
@@ -273,7 +287,8 @@ There is no formal DI framework. Dependencies are resolved through four mechanis
 | scripts/data/prop_registry.gd | Autoload: indexes PropDef .tres files | project.godot autoload |
 | scripts/hex/hex_grid.gd | Autoload: map container, signal bus, public API | project.godot autoload |
 | scripts/recipes/recipe_registry.gd | Autoload: indexes Recipe .tres files, query API | project.godot autoload (added 005a) |
-| scripts/recipes/discovery_watcher.gd | Autoload: manages known-recipes list | project.godot autoload (added 005a) |
+| scripts/core/event_registry.gd | Autoload: indexes GameEvent .tres files, fires events | project.godot autoload (added 006a) |
+| scripts/recipes/discovery_watcher.gd | Autoload: manages known-recipes list, watches events | project.godot autoload (added 005a, rewritten 006a) |
 | scripts/recipes/recipe_runtime.gd | Autoload: executes pending recipes, tick loop | project.godot autoload (added 005a) |
 | scripts/lighting/lighting_manager.gd | Autoload: tracks active light sources | project.godot autoload (added 005a) |
 

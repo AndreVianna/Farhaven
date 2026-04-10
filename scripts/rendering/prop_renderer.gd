@@ -8,6 +8,7 @@ extends Node3D
 ## On prop_respawned: swap back to original mesh.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
+const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 
 # --- Constants ---
 
@@ -261,7 +262,7 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 	if _grid != null and _grid.has_method("get_terrain_y"):
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
-		elevation_y = float(tile.elevation) * 0.5
+		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	var y_off: float = _pool_y_offsets.get(anomaly_pool_id, PROP_Y_OFFSET)
 	var pos := Vector3(world_2d.x, elevation_y + y_off, world_2d.y)
 
@@ -304,7 +305,7 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 	if _grid != null and _grid.has_method("get_terrain_y"):
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
-		elevation_y = float(tile.elevation) * 0.5
+		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
 	var y_off: float = _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
 	var pos := Vector3(wx, elevation_y + y_off, wz)
 

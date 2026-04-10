@@ -98,12 +98,12 @@ func register_steps(registry) -> void:
 					"PropDef '%s' (%s) has portable weight <= %d" % [def.id, def.display_name, threshold])
 	)
 
-	registry.then("every PropDef tagged {string} with a placeable capability has a non-empty footprint", func(ctx, tag: String):
+	registry.then("every PropDef tagged {string} has a placeable capability", func(ctx, tag: String):
 		var defs: Array = ctx.get_value("propdefs", [])
 		for def in defs:
-			if def.has_tag(StringName(tag)) and def.placeable != null:
-				ctx.assert_greater(def.placeable.footprint.size(), 0,
-					"PropDef '%s' (%s) has STRUCTURE + placeable with empty footprint" % [def.id, def.display_name])
+			if def.has_tag(StringName(tag)):
+				ctx.assert_not_null(def.placeable,
+					"PropDef '%s' (%s) tagged %s must have placeable capability" % [def.id, def.display_name, tag])
 	)
 
 	registry.then("PropDef {string} has a catalogable capability", func(ctx, prop_id: String):
@@ -151,9 +151,9 @@ func register_steps(registry) -> void:
 		for recipe in recipes:
 			for input_res in recipe.inputs:
 				if not input_res.is_tag:
-					# Only validate numeric refs (5-digit IDs), skip placeholder names
+					# Only validate prefixed prop refs (P-prefixed IDs), skip placeholder names
 					var ref_str := String(input_res.ref_or_tag)
-					if ref_str.is_valid_int():
+					if ref_str.begins_with("P"):
 						ctx.assert_true(def_ids.has(input_res.ref_or_tag),
 							"Recipe '%s' input references unknown PropDef '%s'" % [recipe.id, input_res.ref_or_tag])
 	)
@@ -166,9 +166,9 @@ func register_steps(registry) -> void:
 			def_ids[def.id] = true
 		for recipe in recipes:
 			for output_res in recipe.outputs:
-				# Only validate numeric refs (5-digit IDs), skip placeholder names
+				# Only validate prefixed prop refs (P-prefixed IDs), skip placeholder names
 				var ref_str := String(output_res.prop_ref)
-				if ref_str.is_valid_int():
+				if ref_str.begins_with("P"):
 					ctx.assert_true(def_ids.has(output_res.prop_ref),
 						"Recipe '%s' output references unknown PropDef '%s'" % [recipe.id, output_res.prop_ref])
 	)
@@ -183,12 +183,10 @@ func register_steps(registry) -> void:
 					"Recipe '%s' output '%s' has prob > %d" % [recipe.id, output_res.prop_ref, hi])
 	)
 
-	registry.then("every Recipe id is a 5-digit numeric string", func(ctx):
+	registry.then("every Recipe id starts with R prefix", func(ctx):
 		var recipes: Array = ctx.get_value("recipes", [])
 		for recipe in recipes:
 			var id_str := String(recipe.id)
-			ctx.assert_equal(id_str.length(), 5,
-				"Recipe id '%s' is not 5 characters" % id_str)
-			ctx.assert_true(id_str.is_valid_int(),
-				"Recipe id '%s' is not numeric" % id_str)
+			ctx.assert_true(id_str.begins_with("R"),
+				"Recipe id '%s' must start with 'R' prefix" % id_str)
 	)

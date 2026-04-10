@@ -159,9 +159,6 @@ export class PropDefModel {
 
     if (d.placeable && typeof d.placeable === 'object') {
       model.placeable = {
-        footprint: _footprintArray(d.placeable.footprint),
-        blocks_movement: !!d.placeable.blocks_movement,
-        rotation_snap: _num(d.placeable.rotation_snap),
       };
     }
 
@@ -1264,9 +1261,6 @@ export function renderPropEditor(container, options) {
 
     // PLACEABLE
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
-      panel.appendChild(_createCapFootprintEditor(model.placeable ? model.placeable.footprint : []));
-      _addCheckbox(panel, 'Blocks Movement', 'cap_placeable_blocks_movement', model.placeable ? model.placeable.blocks_movement : false);
-      _addField(panel, 'Rotation Snap', 'cap_placeable_rotation_snap', 'number', model.placeable ? model.placeable.rotation_snap : 0, { step: '1', min: '0' });
     }));
 
     // CONTAINER
@@ -1580,11 +1574,7 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
-    model.placeable = {
-      footprint: _collectCapFootprintData(formElement),
-      blocks_movement: isChecked('cap_placeable_blocks_movement'),
-      rotation_snap: intVal('cap_placeable_rotation_snap'),
-    };
+    model.placeable = {};
   }
 
   if (isChecked('cap_container_enabled')) {
@@ -1780,11 +1770,7 @@ export function validatePropForm(model, isNew) {
     }
   }
 
-  if (model.placeable) {
-    if (!model.placeable.footprint || model.placeable.footprint.length === 0) {
-      errors.push('PLACEABLE footprint must be non-empty');
-    }
-  }
+  // PlaceableCap is a marker — no fields to validate.
 
   if (model.light) {
     if (model.light.radius < 1) {
@@ -1886,14 +1872,6 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.placeable.footprint && model.placeable.footprint.length > 0) {
-      subFields.set('footprint', {
-        type: 'array', elementType: null,
-        value: model.placeable.footprint.map(p => ({ type: 'vector2i', value: { x: p.x, y: p.y } })),
-      });
-    }
-    if (model.placeable.blocks_movement) subFields.set('blocks_movement', { type: 'bool', value: true });
-    if (model.placeable.rotation_snap) subFields.set('rotation_snap', { type: 'int', value: model.placeable.rotation_snap });
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
     extId++;
   }
@@ -2058,9 +2036,16 @@ export function propModelToRaw(model) {
   // Without this pass, @export PropDef properties the editor has no UI for
   // would be silently dropped on save, causing permanent data loss when
   // real meshes/materials are added via the Godot editor.
+  // Capability fields are excluded — their presence is fully controlled by
+  // the capability checkboxes above. If unchecked, the reference must NOT
+  // survive from the old raw.
+  const MANAGED_FIELDS = new Set([
+    'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
+    'category', 'footprint',
+  ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
-      if (!fields.has(key)) {
+      if (!fields.has(key) && !MANAGED_FIELDS.has(key)) {
         fields.set(key, value);
       }
     }
@@ -2168,9 +2153,24 @@ export class EditPropDefCommand {
     const raw = propModelToRaw(this._newModel);
     const content = TresParser.serialize(raw);
 
+    // Resolve sub_resource references (same logic as _parseTresFile in file-discovery)
+    const subResourceMap = new Map();
+    if (raw.subResources) {
+      for (const sub of raw.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) {
+          subData[k] = v.value;
+        }
+        subResourceMap.set(sub.id, subData);
+      }
+    }
     const data = {};
     for (const [key, tv] of raw.resourceFields) {
-      data[key] = tv.value;
+      if (tv.type === 'sub_resource') {
+        data[key] = subResourceMap.get(tv.value) || null;
+      } else {
+        data[key] = tv.value;
+      }
     }
 
     const entry = ProjectContext.files.props.get(this._filename);

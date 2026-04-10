@@ -1,11 +1,4 @@
-class_name PropDef extends Resource
-
-## Unique identifier — numeric StringName matching the .tres filename (e.g. &"00010").
-## Used as item type in inventory, prop type in maps, and tool id in equipment slots.
-@export var id: StringName
-
-## Human-readable name for UI
-@export var display_name: String
+class_name PropDef extends Gear
 
 # --- Tags ---
 ## Free-form labels (e.g. &"SOURCE", &"WOOD", &"BURNABLE.log", &"CONSUMABLE.edible").
@@ -39,12 +32,12 @@ class_name PropDef extends Resource
 
 # --- Gathering (DEPRECATED — replaced by Recipe system; kept for legacy fallback) ---
 # DEPRECATED in task-053: remove when legacy gather fallback in AutoInteractionSystem is removed.
-@export var gather_time: float = 1.0   # DEPRECATED: use Recipe.time
+@export var gather_time: float = 1.0   # DEPRECATED: use Recipe.duration
 @export var gather_amount: int = 1     # DEPRECATED: use RecipeOutput.count
 @export var tool_required: StringName = &""  # DEPRECATED: use Recipe condition has_tool
 @export var respawn_time: float = 30.0  # DEPRECATED: use Recipe system
 @export var yield_type: StringName = &""  # DEPRECATED: use RecipeOutput.prop_ref
-@export var tool_speed: Dictionary = {}  # DEPRECATED: use Recipe.time per tool
+@export var tool_speed: Dictionary = {}  # DEPRECATED: use Recipe.duration per tool
 
 # --- Consumable (DEPRECATED — replaced by eat_*/drink_* recipes; kept for legacy fallback) ---
 # DEPRECATED in task-053: remove when eat_*/drink_* recipes fully replace consumable fields.

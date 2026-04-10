@@ -2,13 +2,13 @@
 
 > **Source:** discovery-scout
 > **Status:** Active
-> **Last Updated:** 2026-04-08 (updated for delivery-005a: Props & Recipes engine)
+> **Last Updated:** 2026-04-09 (updated for delivery-006a: Gear hierarchy, Events, IDs, SSH, mesh collision)
 
 ## Repository Overview
 
 - **Repository:** https://github.com/AndreVianna/Farhaven.git (private)
 - **VCS:** Git, hosted on GitHub
-- **Current branch:** delivery-003 (off main)
+- **Current branch:** delivery-006a (off main)
 - **Engine:** Godot 4.6-stable (standard edition, not .NET)
 - **Language:** GDScript
 - **Test framework:** gdUnit4 v6.0.3 (Godot addon)
@@ -30,12 +30,13 @@ Farhaven/
 |   +-- templates/                 # Document templates
 +-- addons/                        # Godot addons
 |   +-- gdUnit4/                   # Unit testing framework (934 files)
-+-- data/                          # Game data resources (53 .tres + 1 .json)
++-- data/                          # Game data resources (76 .tres + 1 .json)
 |   +-- biomes/                    # BiomeData .tres (5 biomes)
 |   +-- catalog/                   # CatalogEntry .tres (4 files: anomalies, fauna, flora, minerals)
+|   +-- events/                    # GameEvent .tres (12 discovery events, E-prefixed) — added delivery-006a
 |   +-- maps/                      # Map definitions (.json)
-|   +-- props/                     # PropDef .tres (37 files)
-|   +-- recipes/                   # Recipe .tres (16 files) — added delivery-005a
+|   +-- props/                     # PropDef .tres (32 files, P-prefixed)
+|   +-- recipes/                   # Recipe .tres (26 files, R-prefixed)
 +-- docs/                          # Design documentation (17 files)
 |   +-- design/                    # Design system, mockups, redesigns
 |   +-- references/                # Competitor analysis
@@ -43,17 +44,19 @@ Farhaven/
 |   +-- player/                    # Player scene
 |   +-- ui/                        # UI panel scenes
 |   +-- world/                     # World renderer scenes + scripts
-+-- scripts/                       # GDScript source (57 .gd files)
++-- scripts/                       # GDScript source (66 .gd files)
 |   +-- auto_interaction/          # Proximity-based auto-gather (delegates to RecipeRuntime)
+|   +-- building/                  # Building system: placement (SSH snap + collision) + structure renderer
+|   +-- core/                      # Gear hierarchy + Event system + CollisionHelper — added delivery-006a
 |   +-- crafting/                  # Legacy crafting system
-|   +-- data/                      # PropDef + PropRegistry
+|   +-- data/                      # PropDef (extends Gear) + PropRegistry
 |   |   +-- capabilities/          # Capability Resources (7 files) — added delivery-005a
-|   +-- hex/                       # Hex grid core (math, tiles, biomes, map loader)
+|   +-- hex/                       # Hex grid core (math incl. SSH, tiles, biomes, map loader)
 |   +-- hud/                       # HUD elements (stat bars, notifications, floating text)
 |   +-- inventory/                 # Weight-based inventory management
 |   +-- lighting/                  # LightingManager autoload — added delivery-005a
 |   +-- player/                    # Player controller, camera, input, pathfinding
-|   +-- recipes/                   # Recipe system (11 files) — added delivery-005a
+|   +-- recipes/                   # Recipe system (11 files, Recipe extends ScriptBase) — added delivery-005a, refactored 006a
 |   +-- rendering/                 # Visual renderers (resources, labels, scan progress)
 |   +-- scanner/                   # Scanner/catalog system
 +-- shaders/                       # GLSL shaders (3 files)
@@ -72,16 +75,16 @@ Farhaven/
 
 | Directory | .gd files | .tscn files | .tres files | Other | Total |
 |-----------|-----------|-------------|-------------|-------|-------|
-| scripts/ | 57 | -- | -- | ~57 .uid | ~114 |
-| scenes/ | 1 | 8 | -- | 1 .uid | 10 (+3 in world/) |
-| ui/ | 13 | 1 | -- | ~13 .uid | ~27 |
-| tests/ | 41 | -- | -- | ~41 .uid | ~82 |
-| data/ | -- | -- | 53 | 1 .json | 54 |
+| scripts/ | 66 | -- | -- | ~66 .uid | ~132 |
+| scenes/ | 1 | 15 | -- | 1 .uid | 17 |
+| ui/ | 15 | 1 | -- | ~15 .uid | ~31 |
+| tests/ | 98 | -- | -- | ~98 .uid | ~196 |
+| data/ | -- | -- | 76 | 1 .json | 77 |
 | shaders/ | -- | -- | -- | 3 .gdshader + 3 .uid | 6 |
 | docs/ | -- | -- | -- | 13 .md + 3 .png + 1 .import | 17 |
 | addons/ | 900+ | -- | -- | misc | 934 |
 
-> File counts updated 2026-04-08 after delivery-005a. scripts/ grew from 32 to 57 (recipes/11, lighting/1, capabilities/7, other additions). data/ grew from 18 to 53 .tres (props expanded to 37, recipes added 16).
+> File counts updated 2026-04-09 after delivery-006a. scripts/ grew to 66 (core/5 added, building/ added). data/ grew to 76 .tres (props=32 P-prefixed, recipes=26 R-prefixed, events=12 added, biomes=5, catalog=1). tests/ grew to 98.
 
 ## Key Files and Entry Points
 
@@ -99,6 +102,7 @@ Farhaven/
 | `scripts/data/prop_registry.gd` | Autoload singleton (`PropRegistry`) -- indexes all PropDef files | `project.godot`: autoload declaration |
 | `scripts/hex/hex_grid.gd` | Autoload singleton (`HexGrid`) -- map container, signal bus, resource state | `project.godot`: autoload declaration |
 | `scripts/recipes/recipe_registry.gd` | Autoload singleton (`RecipeRegistry`) -- indexes all Recipe files | `project.godot`: autoload (added 005a) |
+| `scripts/core/event_registry.gd` | Autoload singleton (`EventRegistry`) -- indexes all GameEvent files | `project.godot`: autoload (added 006a) |
 | `scripts/recipes/recipe_runtime.gd` | Autoload singleton (`RecipeRuntime`) -- executes pending recipes | `project.godot`: autoload (added 005a) |
 
 ### Scene Structure (from main.tscn)
@@ -118,8 +122,9 @@ Farhaven/
 | `data/maps/ch1.json` | JSON | Chapter 1 map definition (tile positions, biomes, resources, structures) |
 | `data/biomes/*.tres` | Godot Resource | Biome definitions (crash_site, forest, grassland, rocky, water) |
 | `data/catalog/*.tres` | Godot Resource | Catalog entries (anomalies, fauna, flora, minerals) |
-| `data/props/*.tres` | Godot Resource | PropDef definitions (37 files: source props, items, structures, tools) |
-| `data/recipes/*.tres` | Godot Resource | Recipe definitions (16 files: gather, craft, cook, consume, passive) — added delivery-005a |
+| `data/props/*.tres` | Godot Resource | PropDef definitions (32 files, P-prefixed: source props, items, structures, tools) |
+| `data/recipes/*.tres` | Godot Resource | Recipe definitions (26 files, R-prefixed: gather, craft, cook, consume, passive) |
+| `data/events/*.tres` | Godot Resource | GameEvent definitions (12 discovery events) — added delivery-006a |
 
 ### Shader Files
 | File | Purpose |
@@ -156,15 +161,16 @@ Farhaven/
 - Renderer: `mobile` (Godot Mobile renderer)
 - Texture compression: ETC2/ASTC enabled (for Android/iOS)
 
-### Autoloads (8 singletons, loaded in order)
+### Autoloads (9 singletons, loaded in order)
 1. `PropRegistry` -- `scripts/data/prop_registry.gd` — indexes all PropDef files
 2. `HexGrid` -- `scripts/hex/hex_grid.gd` — map container, tile queries, signal bus
 3. `DayNightCycle` -- `scripts/day_night/day_night_cycle.gd` — time phase management
 4. `LightingManager` -- `scripts/lighting/lighting_manager.gd` — local light tracking (added delivery-005a)
 5. `RecipeRegistry` -- `scripts/recipes/recipe_registry.gd` — indexes all Recipe files (added delivery-005a)
-6. `DiscoveryWatcher` -- `scripts/recipes/discovery_watcher.gd` — known-recipes list (added delivery-005a)
-7. `RecipeRuntime` -- `scripts/recipes/recipe_runtime.gd` — recipe execution engine (added delivery-005a)
-8. `SaveManager` -- `scripts/save/save_manager.gd` — game persistence
+6. `EventRegistry` -- `scripts/core/event_registry.gd` — indexes all GameEvent files (added delivery-006a)
+7. `DiscoveryWatcher` -- `scripts/recipes/discovery_watcher.gd` — known-recipes list, watches events (added delivery-005a, rewritten 006a)
+8. `RecipeRuntime` -- `scripts/recipes/recipe_runtime.gd` — recipe execution engine (added delivery-005a)
+9. `SaveManager` -- `scripts/save/save_manager.gd` — game persistence
 
 ### Editor Plugins
 - gdUnit4 -- unit testing framework
@@ -181,6 +187,6 @@ Farhaven/
 
 5. **No CI/CD pipeline.** No `.github/workflows/`, no `Jenkinsfile`, no `Makefile`, no build scripts of any kind.
 
-6. **Heavy addon footprint.** The `addons/gdUnit4/` directory contains 934 files -- far more than the project's own source code (32 scripts + 8 UI scripts + 23 tests = 63 files).
+6. **Heavy addon footprint.** The `addons/gdUnit4/` directory contains 934 files -- more than the project's own source code (66 scripts + 15 UI scripts + 98 tests = 179 files).
 
 7. **Map is hand-crafted, not procedural.** Despite the GDD mentioning procedural generation, `data/maps/ch1.json` is a hand-designed map loaded by `MapLoader`. The vision pivot moved to episodic chapters with designed maps.

@@ -28,24 +28,24 @@ func after_test() -> void:
 
 func test_all_canonical_recipes_load() -> void:
 	var expected_ids: Array[StringName] = [
-		&"00001",  # eat_berry
-		&"00002",  # eat_toxic_berry
-		&"00003",  # chop_small_tree
-		&"00004",  # gather_loose_rocks
-		&"00005",  # gather_tall_grass
-		&"00006",  # gather_berry_bush
-		&"00007",  # gather_boulder
-		&"00008",  # gather_iron_deposit
-		&"00009",  # gather_crystal_cluster
-		&"00010",  # gather_toxic_bush
-		&"00011",  # cook_meat
-		&"00012",  # craft_trap
-		&"00013",  # trap_fires
-		&"00014",  # meat_rots
-		&"00015",  # burn_log_in_fireplace
-		&"00016",  # craft_stone_axe
-		&"00017",  # craft_stone_pickaxe
-		&"00018",  # gather_tree
+		&"R00001",  # eat_berry
+		&"R00002",  # eat_toxic_berry
+		&"R00003",  # chop_small_tree
+		&"R00004",  # gather_loose_rocks
+		&"R00005",  # gather_tall_grass
+		&"R00006",  # gather_berry_bush
+		&"R00007",  # gather_boulder
+		&"R00008",  # gather_iron_deposit
+		&"R00009",  # gather_crystal_cluster
+		&"R00010",  # gather_toxic_bush
+		&"R00011",  # cook_meat
+		&"R00012",  # craft_trap
+		&"R00013",  # trap_fires
+		&"R00014",  # meat_rots
+		&"R00015",  # burn_log_in_fireplace
+		&"R00016",  # craft_stone_axe
+		&"R00017",  # craft_stone_pickaxe
+		&"R00018",  # gather_tree
 	]
 	for id in expected_ids:
 		var recipe = _registry.get_recipe(id)
@@ -60,12 +60,12 @@ func test_get_all_recipes_returns_twenty_six() -> void:
 # --- get_recipe returns correct fields ---
 
 func test_eat_berry_fields() -> void:
-	var r = _registry.get_recipe(&"00001")
+	var r = _registry.get_recipe(&"R00001")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Eat Berry")
 	assert_int(r.kind).is_equal(_Recipe.Kind.TRANSFORM)
 	assert_int(r.inputs.size()).is_equal(1)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00020")
+	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00020")
 	assert_int(r.inputs[0].count).is_equal(1)
 	assert_bool(r.inputs[0].is_tag).is_false()
 	assert_int(r.outputs.size()).is_equal(0)
@@ -74,66 +74,63 @@ func test_eat_berry_fields() -> void:
 	assert_str(String(r.effects[1].kind)).is_equal("sound")
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("eat")
-	assert_float(r.time).is_equal(0.0)
-	assert_int(r.unlock_when.size()).is_equal(1)
+	assert_float(r.duration).is_equal(0.0)
 
 
 func test_chop_small_tree_fields() -> void:
-	var r = _registry.get_recipe(&"00003")
+	var r = _registry.get_recipe(&"R00003")
 	assert_that(r).is_not_null()
 	assert_int(r.kind).is_equal(_Recipe.Kind.BREAKDOWN)
 	assert_int(r.inputs.size()).is_equal(1)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00001")
+	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00001")
 	assert_str(String(r.inputs[0].source)).is_equal("world_tile")
 	assert_int(r.outputs.size()).is_equal(2)
 	assert_float(r.outputs[0].prob).is_equal(1.0)
 	assert_float(r.outputs[1].prob).is_equal_approx(0.8, 0.0001)
 	assert_int(r.conditions.size()).is_equal(1)
 	assert_bool(r.conditions[0].must_sustain).is_true()
-	assert_float(r.time).is_equal(4.0)
-	assert_int(r.unlock_when.size()).is_equal(2)
+	assert_float(r.duration).is_equal(4.0)
 
 
 func test_cook_meat_fields() -> void:
-	var r = _registry.get_recipe(&"00011")
+	var r = _registry.get_recipe(&"R00011")
 	assert_that(r).is_not_null()
 	assert_int(r.kind).is_equal(_Recipe.Kind.TRANSFORM)
 	assert_int(r.conditions.size()).is_equal(2)
 	assert_bool(r.conditions[0].must_sustain).is_true()
 	assert_bool(r.conditions[1].must_sustain).is_true()
-	assert_float(r.time).is_equal(15.0)
+	assert_float(r.duration).is_equal(15.0)
 
 
 func test_craft_trap_fields() -> void:
-	var r = _registry.get_recipe(&"00012")
+	var r = _registry.get_recipe(&"R00012")
 	assert_that(r).is_not_null()
 	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
 	assert_int(r.outputs.size()).is_equal(1)
 	assert_int(r.conditions.size()).is_equal(0)
-	assert_int(r.unlock_when.size()).is_equal(0)
-	assert_float(r.time).is_equal(3.0)
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_trap_fires_is_passive() -> void:
-	var r = _registry.get_recipe(&"00013")
+	var r = _registry.get_recipe(&"R00013")
 	assert_that(r).is_not_null()
 	assert_int(r.actions.size()).is_equal(0)
 	assert_int(r.conditions.size()).is_equal(1)
 	assert_bool(r.conditions[0].must_sustain).is_false()
-	assert_float(r.time).is_equal(0.0)
+	assert_float(r.duration).is_equal(0.0)
 
 
 func test_meat_rots_is_passive_time_only() -> void:
-	var r = _registry.get_recipe(&"00014")
+	var r = _registry.get_recipe(&"R00014")
 	assert_that(r).is_not_null()
 	assert_int(r.actions.size()).is_equal(0)
 	assert_int(r.conditions.size()).is_equal(0)
-	assert_float(r.time).is_equal(86400.0)
+	assert_float(r.duration).is_equal(86400.0)
 
 
 func test_burn_log_uses_tag_input() -> void:
-	var r = _registry.get_recipe(&"00015")
+	var r = _registry.get_recipe(&"R00015")
 	assert_that(r).is_not_null()
 	assert_int(r.inputs.size()).is_equal(1)
 	assert_bool(r.inputs[0].is_tag).is_true()
@@ -142,7 +139,7 @@ func test_burn_log_uses_tag_input() -> void:
 
 
 func test_eat_toxic_berry_negative_health() -> void:
-	var r = _registry.get_recipe(&"00002")
+	var r = _registry.get_recipe(&"R00002")
 	assert_that(r).is_not_null()
 	assert_int(r.effects.size()).is_equal(2)
 	# Find the health effect
@@ -157,37 +154,37 @@ func test_eat_toxic_berry_negative_health() -> void:
 # --- Index queries ---
 
 func test_find_recipes_for_input_berry() -> void:
-	var results: Array = _registry.find_recipes_for_input(&"00020")
+	var results: Array = _registry.find_recipes_for_input(&"P00020")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00001")
+	assert_str(String(results[0].id)).is_equal("R00001")
 
 
 func test_find_recipes_for_input_toxic_berry() -> void:
-	var results: Array = _registry.find_recipes_for_input(&"00021")
+	var results: Array = _registry.find_recipes_for_input(&"P00021")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00002")
+	assert_str(String(results[0].id)).is_equal("R00002")
 
 
 func test_find_recipes_for_input_small_tree() -> void:
-	var results: Array = _registry.find_recipes_for_input(&"00001")
+	var results: Array = _registry.find_recipes_for_input(&"P00001")
 	assert_int(results.size()).is_equal(2)
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
-	assert_bool(ids.has("00003")).is_true()  # chop_small_tree
-	assert_bool(ids.has("00018")).is_true()  # gather_tree
+	assert_bool(ids.has("R00003")).is_true()  # chop_small_tree
+	assert_bool(ids.has("R00018")).is_true()  # gather_tree
 
 
 func test_find_recipes_for_input_raw_meat() -> void:
-	var results: Array = _registry.find_recipes_for_input(&"00022")
+	var results: Array = _registry.find_recipes_for_input(&"P00022")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00011")
+	assert_str(String(results[0].id)).is_equal("R00011")
 
 
 func test_find_recipes_for_tag_burnable_log() -> void:
 	var results: Array = _registry.find_recipes_for_tag(&"BURNABLE.log")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00015")
+	assert_str(String(results[0].id)).is_equal("R00015")
 
 
 func test_find_recipes_for_action_eat() -> void:
@@ -196,32 +193,32 @@ func test_find_recipes_for_action_eat() -> void:
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
-	assert_bool(ids.has("00001")).is_true()  # eat_berry
-	assert_bool(ids.has("00002")).is_true()  # eat_toxic_berry
+	assert_bool(ids.has("R00001")).is_true()  # eat_berry
+	assert_bool(ids.has("R00002")).is_true()  # eat_toxic_berry
 
 
 func test_find_recipes_for_action_chop() -> void:
 	var results: Array = _registry.find_recipes_for_action(&"chop")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00003")
+	assert_str(String(results[0].id)).is_equal("R00003")
 
 
 func test_find_recipes_for_action_assemble() -> void:
 	var results: Array = _registry.find_recipes_for_action(&"assemble")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00012")
+	assert_str(String(results[0].id)).is_equal("R00012")
 
 
 func test_find_recipes_for_station_cook() -> void:
 	var results: Array = _registry.find_recipes_for_station(&"cook")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00011")
+	assert_str(String(results[0].id)).is_equal("R00011")
 
 
 func test_find_recipes_for_station_fire() -> void:
 	var results: Array = _registry.find_recipes_for_station(&"fire")
 	assert_int(results.size()).is_equal(1)
-	assert_str(String(results[0].id)).is_equal("00015")
+	assert_str(String(results[0].id)).is_equal("R00015")
 
 
 func test_find_recipes_for_action_gather() -> void:
@@ -230,13 +227,13 @@ func test_find_recipes_for_action_gather() -> void:
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
-	assert_bool(ids.has("00018")).is_true()  # gather_tree
-	assert_bool(ids.has("00006")).is_true()  # gather_berry_bush
-	assert_bool(ids.has("00007")).is_true()  # gather_boulder
+	assert_bool(ids.has("R00018")).is_true()  # gather_tree
+	assert_bool(ids.has("R00006")).is_true()  # gather_berry_bush
+	assert_bool(ids.has("R00007")).is_true()  # gather_boulder
 
 
 func test_find_recipes_for_nonexistent_input_returns_empty() -> void:
-	var results: Array = _registry.find_recipes_for_input(&"99999")
+	var results: Array = _registry.find_recipes_for_input(&"P99999")
 	assert_int(results.size()).is_equal(0)
 
 
@@ -258,42 +255,40 @@ func test_get_recipe_nonexistent_returns_null() -> void:
 # --- New craft recipes ---
 
 func test_craft_stone_axe_fields() -> void:
-	var r = _registry.get_recipe(&"00016")
+	var r = _registry.get_recipe(&"R00016")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Axe")
 	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00010")  # wood
+	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(2)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00011")  # rock
+	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("P00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(1)
 	assert_int(r.outputs.size()).is_equal(1)
-	assert_str(String(r.outputs[0].prop_ref)).is_equal("00201")  # axe
+	assert_str(String(r.outputs[0].prop_ref)).is_equal("P00201")  # axe
 	assert_int(r.effects.size()).is_equal(1)
 	assert_str(String(r.effects[0].kind)).is_equal("sound")
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("craft")
-	assert_float(r.time).is_equal(3.0)
-	assert_int(r.unlock_when.size()).is_equal(0)  # known from start
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_craft_stone_pickaxe_fields() -> void:
-	var r = _registry.get_recipe(&"00017")
+	var r = _registry.get_recipe(&"R00017")
 	assert_that(r).is_not_null()
 	assert_str(r.display_name).is_equal("Craft Stone Pickaxe")
 	assert_int(r.kind).is_equal(_Recipe.Kind.ASSEMBLE)
 	assert_int(r.inputs.size()).is_equal(2)
-	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("00010")  # wood
+	assert_str(String(r.inputs[0].ref_or_tag)).is_equal("P00010")  # wood
 	assert_int(r.inputs[0].count).is_equal(3)
-	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("00011")  # rock
+	assert_str(String(r.inputs[1].ref_or_tag)).is_equal("P00011")  # rock
 	assert_int(r.inputs[1].count).is_equal(2)
 	assert_int(r.outputs.size()).is_equal(1)
-	assert_str(String(r.outputs[0].prop_ref)).is_equal("00202")  # pickaxe
+	assert_str(String(r.outputs[0].prop_ref)).is_equal("P00202")  # pickaxe
 	assert_int(r.effects.size()).is_equal(1)
 	assert_int(r.actions.size()).is_equal(1)
 	assert_str(String(r.actions[0])).is_equal("craft")
-	assert_float(r.time).is_equal(3.0)
-	assert_int(r.unlock_when.size()).is_equal(0)  # known from start
+	assert_float(r.duration).is_equal(3.0)
 
 
 func test_find_recipes_for_action_craft() -> void:
@@ -302,8 +297,8 @@ func test_find_recipes_for_action_craft() -> void:
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
-	assert_bool(ids.has("00016")).is_true()  # craft_stone_axe
-	assert_bool(ids.has("00017")).is_true()  # craft_stone_pickaxe
+	assert_bool(ids.has("R00016")).is_true()  # craft_stone_axe
+	assert_bool(ids.has("R00017")).is_true()  # craft_stone_pickaxe
 
 
 func test_find_recipes_for_action_build() -> void:
@@ -312,12 +307,12 @@ func test_find_recipes_for_action_build() -> void:
 	var ids: Array[String] = []
 	for r in results:
 		ids.append(String(r.id))
-	assert_bool(ids.has("00019")).is_true()  # build_campfire
-	assert_bool(ids.has("00021")).is_true()  # build_workbench
-	assert_bool(ids.has("00022")).is_true()  # build_storage_chest
-	assert_bool(ids.has("00023")).is_true()  # build_shelter
-	assert_bool(ids.has("00024")).is_true()  # build_wall
-	assert_bool(ids.has("00025")).is_true()  # build_torch
+	assert_bool(ids.has("R00019")).is_true()  # build_campfire
+	assert_bool(ids.has("R00021")).is_true()  # build_workbench
+	assert_bool(ids.has("R00022")).is_true()  # build_storage_chest
+	assert_bool(ids.has("R00023")).is_true()  # build_shelter
+	assert_bool(ids.has("R00024")).is_true()  # build_wall
+	assert_bool(ids.has("R00025")).is_true()  # build_torch
 
 
 func test_display_name_populated_for_all_recipes() -> void:

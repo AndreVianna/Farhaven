@@ -11,9 +11,9 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
 # Numeric world prop ids used by scanner tests.
-const ID_TREE: StringName = &"00001"
-const ID_BERRY_BUSH: StringName = &"00004"
-const ID_BOULDER: StringName = &"00005"
+const ID_TREE: StringName = &"P00001"
+const ID_BERRY_BUSH: StringName = &"P00004"
+const ID_BOULDER: StringName = &"P00005"
 
 
 # --- Minimal fakes ---
@@ -227,7 +227,7 @@ func test_proximity_detects_adjacent_uncataloged_prop() -> void:
 	_system._process(0.016)
 
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("00004")
+	assert_str(String(_started_entry_id)).is_equal("P00004")
 	assert_int(_started_coords.x).is_equal(1)
 
 
@@ -243,7 +243,7 @@ func test_proximity_no_scan_when_no_uncataloged_nearby() -> void:
 func test_proximity_no_scan_when_all_cataloged() -> void:
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
-	_system._catalog.catalog_entry(&"00004")
+	_system._catalog.catalog_entry(&"P00004")
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
@@ -258,7 +258,7 @@ func test_proximity_detects_on_player_tile() -> void:
 	_system._process(0.016)
 
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("00004")
+	assert_str(String(_started_entry_id)).is_equal("P00004")
 
 
 func test_proximity_nearest_first() -> void:
@@ -270,7 +270,7 @@ func test_proximity_nearest_first() -> void:
 	_system._process(0.016)
 
 	# Should pick player tile (distance 0) over adjacent (distance 1)
-	assert_str(String(_started_entry_id)).is_equal("00004")
+	assert_str(String(_started_entry_id)).is_equal("P00004")
 
 
 # --- Scan lifecycle: start on proximity → progress → complete ---
@@ -285,7 +285,7 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	# Start scan via proximity
 	_system._process(0.016)
 	assert_bool(_system.is_scanning()).is_true()
-	assert_str(String(_started_entry_id)).is_equal("00004")
+	assert_str(String(_started_entry_id)).is_equal("P00004")
 
 	# Advance progress (flora = 2.0s)
 	_system._process(1.0)
@@ -296,8 +296,8 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	_system._process(1.5)  # total > 2.0s
 
 	assert_bool(_system.is_scanning()).is_false()
-	assert_str(String(_completed_entry_id)).is_equal("00004")
-	assert_str(String(_cataloged_entry_id)).is_equal("00004")
+	assert_str(String(_completed_entry_id)).is_equal("P00004")
+	assert_str(String(_cataloged_entry_id)).is_equal("P00004")
 	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.FLORA)
 
 
@@ -375,7 +375,7 @@ func test_scan_duration_mineral_is_2s() -> void:
 
 func test_scan_duration_anomaly_is_3s() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"10001")]
+	tile.props = [_Prop.create_anomaly(&"P10001")]
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = tile
 	_player.current_tile = Vector2i.ZERO
@@ -426,17 +426,17 @@ func test_flora_goes_unknown_to_cataloged_directly() -> void:
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.CATALOGED)
 	# Should NOT be ENCOUNTERED
-	assert_bool(_system._catalog.is_encountered(&"00004")).is_false()
+	assert_bool(_system._catalog.is_encountered(&"P00004")).is_false()
 
 
 # --- Passive identification with 3 states ---
 
 func test_passive_id_cataloged_emits_element_identified() -> void:
-	_system._catalog.catalog_entry(&"00004")
+	_system._catalog.catalog_entry(&"P00004")
 	_grid._tiles[Vector2i(2, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 
 	_system._check_passive_identification(Vector2i(2, 0))
-	assert_str(String(_identified_entry_id)).is_equal("00004")
+	assert_str(String(_identified_entry_id)).is_equal("P00004")
 	assert_int(_identified_count).is_equal(1)
 
 
@@ -445,7 +445,7 @@ func test_passive_id_unknown_emits_element_unknown_with_category() -> void:
 
 	_system._check_passive_identification(Vector2i(2, 0))
 	assert_int(_unknown_count).is_equal(1)
-	assert_str(String(_unknown_entry_id)).is_equal("00004")
+	assert_str(String(_unknown_entry_id)).is_equal("P00004")
 	assert_int(_unknown_category).is_equal(_Catalog.CatalogCategory.FLORA)
 
 
@@ -457,7 +457,7 @@ func test_passive_id_encountered_emits_element_encountered() -> void:
 
 func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"10001")]
+	tile.props = [_Prop.create_anomaly(&"P10001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
@@ -466,13 +466,13 @@ func test_passive_id_unknown_anomaly_emits_element_unknown() -> void:
 
 
 func test_passive_id_cataloged_anomaly_emits_element_identified() -> void:
-	_system._catalog.catalog_entry(&"10001")
+	_system._catalog.catalog_entry(&"P10001")
 	var tile: HexTile = _HexTile.new()
-	tile.props = [_Prop.create_anomaly(&"10001")]
+	tile.props = [_Prop.create_anomaly(&"P10001")]
 	_grid._tiles[Vector2i(3, 0)] = tile
 
 	_system._check_passive_identification(Vector2i(3, 0))
-	assert_str(String(_identified_entry_id)).is_equal("10001")
+	assert_str(String(_identified_entry_id)).is_equal("P10001")
 
 
 # --- entry_cataloged emitted on completion with correct data ---
@@ -486,7 +486,7 @@ func test_entry_cataloged_emitted_with_correct_data() -> void:
 	_system._scan_progress = 0.99
 	_system._process(0.05)  # complete
 
-	assert_str(String(_cataloged_entry_id)).is_equal("00005")
+	assert_str(String(_cataloged_entry_id)).is_equal("P00005")
 	assert_int(_cataloged_category).is_equal(_Catalog.CatalogCategory.MINERAL)
 
 
@@ -501,7 +501,7 @@ func test_knowledge_state_changed_on_scan_complete() -> void:
 	_system._scan_progress = 0.99
 	_system._process(0.05)
 
-	assert_str(String(_ksc_entry_id)).is_equal("00004")
+	assert_str(String(_ksc_entry_id)).is_equal("P00004")
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.CATALOGED)
 
