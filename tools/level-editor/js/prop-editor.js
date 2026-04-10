@@ -835,6 +835,8 @@ export function renderPropEditor(container, options) {
   const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
   const onChange = options && typeof options.onChange === 'function' ? options.onChange : () => {};
   const onSave = options && typeof options.onSave === 'function' ? options.onSave : onChange;
+  /** @type {string|null} If set, locks the category filter to this value and hides the dropdowns. */
+  const lockedCategory = options && options.categoryFilter ? options.categoryFilter : null;
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -904,12 +906,19 @@ export function renderPropEditor(container, options) {
   newBtn.textContent = '+ New';
   newBtn.classList.add('editor-new-btn');
 
-  listHeader.appendChild(originLabel);
-  listHeader.appendChild(originFilter);
-  listHeader.appendChild(catLabel);
-  listHeader.appendChild(catFilter);
+  if (!lockedCategory) {
+    listHeader.appendChild(originLabel);
+    listHeader.appendChild(originFilter);
+    listHeader.appendChild(catLabel);
+    listHeader.appendChild(catFilter);
+  }
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
+
+  // If category is locked by parent (tab-per-category UI), force the filter
+  if (lockedCategory) {
+    catFilter.value = lockedCategory;
+  }
   listPanel.appendChild(listHeader);
 
   const listItems = document.createElement('div');
@@ -1334,6 +1343,16 @@ export function renderPropEditor(container, options) {
 
     // Auto-increment ID with P prefix
     editingModel.id = nextId('P', ProjectContext.files.props);
+
+    // If the editor is locked to a category (tab-per-category), pre-set it
+    // so the new prop joins the current tab's list immediately.
+    if (lockedCategory) {
+      editingModel.prop_category = lockedCategory;
+      // STUFF defaults to non-natural origin (per Andre, 2026-04-10)
+      if (lockedCategory === 'stuff') {
+        editingModel.prop_origin = 'crafted';
+      }
+    }
 
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();

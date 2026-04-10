@@ -12,6 +12,7 @@ import { HEX_SIZE, HexMath } from './hex-math.js';
 export const CATEGORIES = [
   'plant', 'mineral', 'animal', 'fungi', 'liquid', 'ooze',
   'structure', 'vehicle', 'equipment', 'storage',
+  'stuff',
 ];
 
 /** Maps internal string categories to engine JSON integer values. */
@@ -21,6 +22,30 @@ export const INT_TO_CATEGORY = Object.fromEntries(CATEGORIES.map((name, i) => [i
 
 /** Natural category indices (0-5). */
 export const NATURAL_CATEGORIES = new Set([0, 1, 2, 3, 4, 5]);
+
+/**
+ * Display labels (plural where applicable) for category tab bar.
+ * Internal name → user-facing label.
+ */
+export const CATEGORY_LABELS = {
+  mineral: 'Minerals',
+  plant: 'Flora',
+  animal: 'Fauna',
+  fungi: 'Fungi',
+  ooze: 'Oozes',
+  liquid: 'Liquids',
+  stuff: 'Stuff',
+  structure: 'Structures',
+  equipment: 'Equipment',
+  vehicle: 'Vehicles',
+  storage: 'Containers',
+};
+
+/** Display order for category tabs (Andre's preferred order, 2026-04-10). */
+export const CATEGORY_TAB_ORDER = [
+  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid',
+  'stuff', 'structure', 'equipment', 'vehicle', 'storage',
+];
 
 /**
  * Origin names indexed by engine integer value.

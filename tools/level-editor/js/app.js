@@ -66,11 +66,27 @@ let hexInspector = null;
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
   map: 'Map Editor',
-  props: 'Props',
+  mineral: 'Minerals',
+  plant: 'Flora',
+  animal: 'Fauna',
+  fungi: 'Fungi',
+  ooze: 'Oozes',
+  liquid: 'Liquids',
+  stuff: 'Stuff',
+  structure: 'Structures',
+  equipment: 'Equipment',
+  vehicle: 'Vehicles',
+  storage: 'Containers',
   biomes: 'Biomes',
   recipes: 'Recipes',
   events: 'Events',
 };
+
+/** Tab IDs that show the prop editor (one per category). */
+const PROP_CATEGORY_TABS = [
+  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid',
+  'stuff', 'structure', 'equipment', 'vehicle', 'storage',
+];
 
 /**
  * Switch to the specified tab.
@@ -218,7 +234,9 @@ function updateTabIndicators() {
     const tab = btn.dataset.tab;
     const baseLabel = TAB_LABELS[tab];
     if (!baseLabel) return;
-    if (dirtyTracker.isDirty(tab)) {
+    // Category tabs share the 'props' dirty bucket since they all edit prop files
+    const dirtyKey = PROP_CATEGORY_TABS.includes(tab) ? 'props' : tab;
+    if (dirtyTracker.isDirty(dirtyKey)) {
       btn.textContent = baseLabel + ' *';
       btn.classList.add('tab-dirty');
     } else {
@@ -495,16 +513,19 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
-  // Render prop list in the Props tab (task-012/013)
-  const propTabEl = document.getElementById('tab-props');
-  if (propTabEl) {
-    renderPropEditor(propTabEl, {
-      commandHistory,
-      onChange: refreshPalettes,
-      onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
-    });
-    console.log('Prop editor rendered.');
+  // Render prop editor in each category tab with the category filter locked.
+  for (const cat of PROP_CATEGORY_TABS) {
+    const tabEl = document.getElementById(`tab-${cat}`);
+    if (tabEl) {
+      renderPropEditor(tabEl, {
+        commandHistory,
+        categoryFilter: cat,
+        onChange: refreshPalettes,
+        onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+      });
+    }
   }
+  console.log('Prop editors rendered (one per category tab).');
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');

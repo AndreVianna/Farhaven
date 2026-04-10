@@ -322,7 +322,9 @@ html, body {
   font-size: 12px;
 }
 
-#tab-props, #tab-biomes, #tab-recipes, #tab-events {
+#tab-mineral, #tab-plant, #tab-animal, #tab-fungi, #tab-ooze, #tab-liquid,
+#tab-stuff, #tab-structure, #tab-equipment, #tab-vehicle, #tab-storage,
+#tab-biomes, #tab-recipes, #tab-events {
   flex-direction: column;
   gap: 0;
 }
@@ -797,7 +799,17 @@ html, body {
     </header>
     <nav id="tabs">
       <button class="tab-btn active" data-tab="map">Map Editor</button>
-      <button class="tab-btn" data-tab="props">Props</button>
+      <button class="tab-btn" data-tab="mineral">Minerals</button>
+      <button class="tab-btn" data-tab="plant">Flora</button>
+      <button class="tab-btn" data-tab="animal">Fauna</button>
+      <button class="tab-btn" data-tab="fungi">Fungi</button>
+      <button class="tab-btn" data-tab="ooze">Oozes</button>
+      <button class="tab-btn" data-tab="liquid">Liquids</button>
+      <button class="tab-btn" data-tab="stuff">Stuff</button>
+      <button class="tab-btn" data-tab="structure">Structures</button>
+      <button class="tab-btn" data-tab="equipment">Equipment</button>
+      <button class="tab-btn" data-tab="vehicle">Vehicles</button>
+      <button class="tab-btn" data-tab="storage">Containers</button>
       <button class="tab-btn" data-tab="biomes">Biomes</button>
       <button class="tab-btn" data-tab="recipes">Recipes</button>
       <button class="tab-btn" data-tab="events">Events</button>
@@ -879,9 +891,17 @@ html, body {
           </div>
         </aside>
       </div>
-      <div id="tab-props" class="tab-panel">
-        <p style="color: var(--text-secondary);">Prop Editor</p>
-      </div>
+      <div id="tab-mineral" class="tab-panel"></div>
+      <div id="tab-plant" class="tab-panel"></div>
+      <div id="tab-animal" class="tab-panel"></div>
+      <div id="tab-fungi" class="tab-panel"></div>
+      <div id="tab-ooze" class="tab-panel"></div>
+      <div id="tab-liquid" class="tab-panel"></div>
+      <div id="tab-stuff" class="tab-panel"></div>
+      <div id="tab-structure" class="tab-panel"></div>
+      <div id="tab-equipment" class="tab-panel"></div>
+      <div id="tab-vehicle" class="tab-panel"></div>
+      <div id="tab-storage" class="tab-panel"></div>
       <div id="tab-biomes" class="tab-panel">
         <p style="color: var(--text-secondary);">Biome Editor</p>
       </div>
