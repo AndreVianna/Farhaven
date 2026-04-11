@@ -18,6 +18,8 @@ import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
 import { renderRecipeEditor } from './recipe-editor.js';
 import { renderEventEditor } from './event-editor.js';
+import { renderJournalEditor } from './journal-editor.js';
+import { renderCutsceneEditor } from './cutscene-editor.js';
 
 // ============================================================
 // Module-level state
@@ -80,6 +82,8 @@ const TAB_LABELS = {
   biomes: 'Biomes',
   recipes: 'Recipes',
   events: 'Events',
+  journal: 'Journal',
+  cutscenes: 'Cutscenes',
 };
 
 /** Tab IDs that show the prop editor (one per category). */
@@ -348,7 +352,7 @@ async function saveAll() {
     return;
   }
 
-  const tabs = ['map', 'props', 'biomes', 'recipes', 'events'];
+  const tabs = ['map', 'props', 'biomes', 'recipes', 'events', 'journal', 'cutscenes'];
   let hadError = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
@@ -400,6 +404,24 @@ async function saveTab(tab) {
     for (const [filename, entry] of ProjectContext.files.events) {
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/events', text, filename);
+    }
+  } else if (tab === 'journal') {
+    // Edits are persisted per-command by journal-editor.js (Create/Edit/Delete).
+    // This pass re-serializes any entries that still have raw data so an
+    // unmodified round-trip stays byte-clean on explicit Save.
+    for (const [filename, entry] of ProjectContext.files.journal) {
+      if (!entry || !entry.raw) continue;
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/journal', text, filename);
+    }
+  } else if (tab === 'cutscenes') {
+    // Edits are persisted per-command by cutscene-editor.js (Create/Edit/Delete).
+    // This pass re-serializes any entries that still have raw data so an
+    // unmodified round-trip stays byte-clean on explicit Save.
+    for (const [filename, entry] of ProjectContext.files.cutscenes) {
+      if (!entry || !entry.raw) continue;
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/cutscenes', text, filename);
     }
   }
 }
@@ -570,6 +592,28 @@ function initializeAfterLoad() {
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('events'); },
     });
     console.log('Event editor rendered.');
+  }
+
+  // Render journal editor in the Journal tab (task-076)
+  const journalTabEl = document.getElementById('tab-journal');
+  if (journalTabEl) {
+    renderJournalEditor(journalTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { dirtyTracker.markClean('journal'); },
+    });
+    console.log('Journal editor rendered.');
+  }
+
+  // Render cutscene editor in the Cutscenes tab (task-077)
+  const cutsceneTabEl = document.getElementById('tab-cutscenes');
+  if (cutsceneTabEl) {
+    renderCutsceneEditor(cutsceneTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { dirtyTracker.markClean('cutscenes'); },
+    });
+    console.log('Cutscene editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)

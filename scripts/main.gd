@@ -92,6 +92,10 @@ func _wire_survival(player: Node, hud: Node) -> void:
 		ground_renderer.connect_survival(survival)
 	survival.player_died.connect(SaveManager.save_now)
 	survival.player_respawned.connect(SaveManager.save_now)
+	# task-082: feed the Status screen's stats section as well.
+	var status_panel: Node = hud.get_node_or_null("StatusPanel")
+	if status_panel != null and status_panel.has_method("set_survival_system"):
+		status_panel.set_survival_system(survival)
 
 
 func _wire_day_night(hud: Node) -> void:
@@ -104,6 +108,10 @@ func _wire_day_night(hud: Node) -> void:
 			hud.update_phase(DayNightCycle.phase_to_string(new_phase))
 		SaveManager.mark_dirty()
 	)
+	# task-082: feed the Status screen's day counter so it updates with DayNightCycle.
+	var status_panel: Node = hud.get_node_or_null("StatusPanel")
+	if status_panel != null and status_panel.has_method("set_day_night_cycle"):
+		status_panel.set_day_night_cycle(DayNightCycle)
 
 
 func _wire_save_triggers(player: Node, crafting: Node) -> void:

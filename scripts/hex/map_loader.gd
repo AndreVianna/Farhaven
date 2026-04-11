@@ -242,4 +242,3 @@ func _validate_reachability(spawn: Vector2i) -> void:
 			push_warning("MapLoader: tile %s (biome=%d elev=%d) unreachable from spawn" % [
 				str(coords), t.biome, t.elevation
 			])
-

@@ -204,6 +204,12 @@ func _apply_effect(eff: _RecipeEffect, pending: PendingRecipe) -> void:
 			var recipe_id := StringName(eff.params.get("recipe_id", ""))
 			if recipe_id != &"" and _discovery != null:
 				_discovery.grant_recipe(recipe_id)
+		&"unlock_journal_entry":
+			var entry_id := StringName(eff.params.get("entry_id", ""))
+			if entry_id != &"":
+				var journal: Node = _get_autoload(&"Journal")
+				if journal != null and journal.has_method("add_entry"):
+					journal.add_entry(entry_id)
 		_:
 			# Emit signal for sound, fx, emit_light, spawn_heat, world_change, etc.
 			effect_requested.emit(eff)

@@ -12,7 +12,7 @@ import { renderGearHeader } from './editor-common.js';
 // ============================================================
 
 /** Known effect kinds (from DESIGN.md). */
-export const EFFECT_KINDS = ['stat_delta', 'sound', 'fx', 'emit_light', 'spawn_heat', 'world_change', 'grant_recipe'];
+export const EFFECT_KINDS = ['stat_delta', 'sound', 'fx', 'emit_light', 'spawn_heat', 'world_change', 'grant_recipe', 'unlock_journal_entry'];
 
 /** Known predicate kinds (from DESIGN.md). */
 export const PREDICATE_KINDS = [
