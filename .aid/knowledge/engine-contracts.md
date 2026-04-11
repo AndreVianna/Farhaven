@@ -36,8 +36,8 @@ next section. They have no runtime behavior of their own — they are pure data 
 
 ### Base and composition
 
-- **[Gear](contracts/gear.md)** — [contract pending] — base class with `id`, `display_name`,
-  `short_description`, `long_description`. Every data resource extends Gear.
+- **[Gear](contracts/gear.md)** — base class with `id`, `display_name`, `short_description`,
+  `long_description`. Every data resource extends Gear.
 - **[PropDef](contracts/prop_def.md)** — composition root for "everything is a prop."
   Inherits Gear identity, opts into zero or more capabilities. **Sample contract — complete.**
 
@@ -46,38 +46,40 @@ next section. They have no runtime behavior of their own — they are pure data 
 Each capability is a small optional `Resource` attached to a PropDef as a sub-resource. They
 are independently opt-in and non-interacting.
 
-- **[PortableCap](contracts/portable_cap.md)** — [contract pending] — makes a prop carryable,
-  holds size.
-- **[PlaceableCap](contracts/placeable_cap.md)** — [contract pending] — makes a prop
-  world-placeable, holds footprint.
-- **[ContainerCap](contracts/container_cap.md)** — [contract pending] — gives a prop internal
-  storage, capacity and filter rules.
-- **[LightCap](contracts/light_cap.md)** — [contract pending] — makes a prop emit light,
-  radius and colour.
-- **[MovableCap](contracts/movable_cap.md)** — [contract pending] — lets a prop be pushed or
-  repositioned after placement.
-- **[StationCap](contracts/station_cap.md)** — [contract pending] — marks a prop as an
-  interactive station (crafting, respawn, etc.).
-- **[CatalogableCap](contracts/catalogable_cap.md)** — [contract pending] — makes a prop
-  scannable and catalog-trackable, holds scan time and anomaly override.
-- **[EnduranceCap](contracts/endurance_cap.md)** — [contract pending] — hit points plus
-  vulnerability / resistance / immunity lists (genre-specific: survival).
-- **[MovementCap](contracts/movement_cap.md)** — [contract pending] — map-movement modes and
-  per-mode speeds (genre-specific: hex grid, real-time).
-- **[CombatCap](contracts/combat_cap.md)** — [contract pending] — attack/defense GameEvent
-  lists (runtime not yet implemented).
-- **[BehaviorCap](contracts/behavior_cap.md)** — [contract pending] — creature AI policy:
-  detection range, activity cycle, diet, reactions.
-- **[SpawnableCap](contracts/spawnable_cap.md)** — [contract pending] — world-spawn
-  parameters: count range, first-day gate, biome filter.
+- **[PortableCap](contracts/portable_cap.md)** — makes a prop carryable, holds `size` in
+  slot-units (post-006b rename from `weight`).
+- **[PlaceableCap](contracts/placeable_cap.md)** — pure marker class; presence enables
+  player placement via BuildingSystem.
+- **[ContainerCap](contracts/container_cap.md)** — gives a prop internal storage; holds
+  `capacity_size` (slot-units) and an `accepts_filter` tag allowlist.
+- **[LightCap](contracts/light_cap.md)** — makes a prop emit light; radius, colour, flicker.
+- **[MovableCap](contracts/movable_cap.md)** — lets a placed prop be pushed or repositioned;
+  holds `push_cost`. Distinct from MovementCap — runtime consumer pending.
+- **[StationCap](contracts/station_cap.md)** — marks a prop as an interactive station
+  (`craft`, `respawn`, `fireplace`, etc.); holds a free-form `station_tags` list.
+- **[CatalogableCap](contracts/catalogable_cap.md)** — makes a prop scannable and
+  catalog-trackable; holds scan time, anomaly override, icon, and open properties dict.
+- **[EnduranceCap](contracts/endurance_cap.md)** — hit points plus vulnerability /
+  resistance / immunity tag lists (genre-specific: survival/RPG).
+- **[MovementCap](contracts/movement_cap.md)** — map-movement modes (WALK/SWIM/FLY/...) with
+  per-mode `[normal, max]` speed pairs in sub-hex per second (genre-specific: hex grid,
+  real-time).
+- **[CombatCap](contracts/combat_cap.md)** — attack/defense GameEvent lists; **runtime not
+  yet implemented** (scheduled for delivery-006d task-088).
+- **[BehaviorCap](contracts/behavior_cap.md)** — creature AI policy: detection range,
+  activity cycle, group behavior, diet tags, reaction events (genre-adjacent: fauna AI).
+- **[SpawnableCap](contracts/spawnable_cap.md)** — world-spawn parameters: count range,
+  first-day gate, minimum distance from player, biome allowlist.
 
 ### Other data resources
 
-- **[CutsceneDef](contracts/cutscene_def.md)** — [contract pending] — declarative cutscene
-  description, used by CutsceneManager.
-- **[JournalEntry](contracts/journal_entry.md)** — [contract pending] — single journal-entry
-  resource, loaded by JournalEntryRegistry. *(Note: may be folded into the Journal contract
-  during the 083e review if it has no standalone surface.)*
+- **[CutsceneDef](contracts/cutscene_def.md)** — declarative cutscene description (media
+  path, trigger-event id, advisory duration), used by CutsceneManager. Engine plumbing only
+  in 006d; content comes in delivery-007.
+- **[JournalEntry](contracts/journal_entry.md)** — single journal-entry resource (id, title,
+  teaser, full `body`, category, advisory `day_added`), loaded by JournalEntryRegistry.
+  Engine plumbing only in 006d. *(Note: may be folded into the Journal contract during
+  the 083e review if it has no standalone surface.)*
 - **[GameEvent](contracts/game_event.md)** — [contract pending] — event definition with
   preconditions, effects, and max-count, used by EventRegistry.
 - **[Recipe family](contracts/recipe.md)** — [contract pending] — covers `Recipe`,
