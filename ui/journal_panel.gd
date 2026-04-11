@@ -304,8 +304,14 @@ func _populate_filter_row_from_scene() -> void:
 			var btn: Button = child
 			var meta_name := StringName(btn.get_meta("category", &""))
 			btn.toggle_mode = true
-			if not btn.pressed.is_connected(_on_filter_pressed):
-				btn.pressed.connect(_on_filter_pressed.bind(meta_name))
+			# Build the bound Callable once so is_connected() and connect()
+			# compare against the SAME Callable. _on_filter_pressed.bind(x)
+			# is a distinct Callable from the unbound _on_filter_pressed —
+			# without this, the guard never trips and re-entry would raise
+			# a "signal already connected" error.
+			var bound_handler := _on_filter_pressed.bind(meta_name)
+			if not btn.pressed.is_connected(bound_handler):
+				btn.pressed.connect(bound_handler)
 			_filter_buttons[meta_name] = btn
 	_update_filter_button_state()
 

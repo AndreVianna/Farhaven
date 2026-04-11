@@ -9,9 +9,15 @@ const _DiscoveriesSection = preload("res://ui/status_discoveries_section.gd")
 const _NavSection = preload("res://ui/status_nav_section.gd")
 
 var _inventory_panel: InventoryPanel = null
-var _stats_section: VBoxContainer = null       # StatusStatsSection (preloaded)
-var _discoveries_section: VBoxContainer = null # StatusDiscoveriesSection (preloaded)
-var _nav_section: VBoxContainer = null         # StatusNavSection (preloaded)
+# Sections are typed as Node (duck-typed) on purpose: the concrete classes
+# (StatusStatsSection / StatusDiscoveriesSection / StatusNavSection) are
+# loaded via preload-as-const above, matching inventory_panel.gd's pattern
+# that avoids the class_name-not-yet-registered race at parse time. The
+# methods called below (set_survival_system / set_day_night_cycle /
+# set_catalog) live on the concrete subclasses and are resolved at runtime.
+var _stats_section: Node = null
+var _discoveries_section: Node = null
+var _nav_section: Node = null
 
 
 func _init() -> void:
@@ -101,13 +107,13 @@ func get_inventory_panel() -> InventoryPanel:
 	return _inventory_panel
 
 
-func get_stats_section() -> VBoxContainer:
+func get_stats_section() -> Node:
 	return _stats_section
 
 
-func get_discoveries_section() -> VBoxContainer:
+func get_discoveries_section() -> Node:
 	return _discoveries_section
 
 
-func get_nav_section() -> VBoxContainer:
+func get_nav_section() -> Node:
 	return _nav_section
