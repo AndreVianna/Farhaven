@@ -44,6 +44,41 @@ var _skip_button: Button = null
 
 func _ready() -> void:
 	_scan_cutscenes()
+	_connect_event_registry_signal()
+
+
+## Connects to EventRegistry.event_fired so cutscenes with a non-empty
+## `trigger_event` auto-play when their matching event fires. Mirrors
+## Journal's listener pattern. Safe to call when EventRegistry is missing
+## (e.g. during isolated unit tests) — the lookup fails silently.
+func _connect_event_registry_signal() -> void:
+	var er: Node = _get_autoload(&"EventRegistry")
+	if er == null or not er.has_signal("event_fired"):
+		return
+	if not er.is_connected("event_fired", _on_event_fired):
+		er.connect("event_fired", _on_event_fired)
+
+
+## When a GameEvent fires, scan loaded CutsceneDefs for any with a matching
+## `trigger_event` id and play the first match. Only one cutscene per event —
+## if multiple defs somehow share a trigger, the iteration order of _defs
+## determines which wins (authoring is expected to keep trigger_event unique).
+func _on_event_fired(event_id: StringName, _event: Resource) -> void:
+	if event_id == &"" or is_playing():
+		return
+	for def in _defs.values():
+		if def == null:
+			continue
+		if def.trigger_event == event_id:
+			play(def.id)
+			return
+
+
+func _get_autoload(p_name: StringName) -> Node:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		return tree.root.get_node_or_null(NodePath(p_name))
+	return null
 
 
 func _scan_cutscenes() -> void:
