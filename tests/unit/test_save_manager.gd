@@ -189,3 +189,108 @@ func test_save_timer_created_in_ready() -> void:
 	var sm: Node = _make_save_manager()
 	assert_object(sm._save_timer).is_not_null()
 	assert_float(sm._save_timer.wait_time).is_equal(5.0)
+
+
+# ---------------------------------------------------------------------------
+# Aggregate save shape (task-084c gap-fill)
+# ---------------------------------------------------------------------------
+#
+# SaveManager collects data from the nodes listed in _SYSTEM_KEYS, keyed by
+# a short string. These tests document which keys participate and verify the
+# aggregate format is JSON-parseable round-trip through whatever autoloads
+# ARE reachable from the test harness (typically /root/HexGrid and
+# /root/DayNightCycle — player-scoped nodes are not present).
+
+func test_system_keys_contract() -> void:
+	# Fail-loud if the contract shifts. If this breaks, someone added/removed a
+	# system and didn't update either the test or the docs.
+	var expected_keys := [
+		"hex_grid", "day_night", "player", "camera",
+		"crafting", "scanner", "survival",
+	]
+	var actual_keys: Array = []
+	for entry in SaveManagerScript._SYSTEM_KEYS:
+		actual_keys.append(entry["key"])
+	assert_int(actual_keys.size()).is_equal(expected_keys.size())
+	for key in expected_keys:
+		assert_bool(actual_keys.has(key)).is_true()
+
+
+func test_aggregate_save_shape_includes_reachable_autoloads() -> void:
+	# /root/HexGrid and /root/DayNightCycle are real autoloads in the test env.
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var text: String = _read_save_file()
+	var parsed: Variant = JSON.parse_string(text)
+	assert_bool(parsed is Dictionary).is_true()
+	var data: Dictionary = parsed as Dictionary
+	# HexGrid is an autoload with get_save_data() — must appear in the dict.
+	assert_bool(data.has("hex_grid")).is_true()
+	# DayNightCycle is also an autoload with get_save_data().
+	assert_bool(data.has("day_night")).is_true()
+
+
+func test_aggregate_save_hex_grid_section_shape() -> void:
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var parsed: Dictionary = JSON.parse_string(_read_save_file())
+	# HexGrid.get_save_data() returns {"seed": int, "tiles": Array}
+	assert_bool(parsed.has("hex_grid")).is_true()
+	var hg_data: Dictionary = parsed["hex_grid"]
+	assert_bool(hg_data.has("seed")).is_true()
+	assert_bool(hg_data.has("tiles")).is_true()
+	assert_bool(hg_data["tiles"] is Array).is_true()
+
+
+func test_aggregate_save_json_roundtrip_stable() -> void:
+	# Save twice back-to-back; the two serialized dicts should have the same
+	# top-level key set (contributing autoloads produce deterministic sections
+	# when state is unchanged).
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var first_text := _read_save_file()
+	sm.save_game()
+	var second_text := _read_save_file()
+	var first_parsed: Dictionary = JSON.parse_string(first_text)
+	var second_parsed: Dictionary = JSON.parse_string(second_text)
+	assert_int(first_parsed.size()).is_equal(second_parsed.size())
+	for key in first_parsed.keys():
+		assert_bool(second_parsed.has(key)).is_true()
+
+
+func test_aggregate_save_is_valid_json_dictionary() -> void:
+	# The stored string must parse to a Dictionary. If SaveManager ever started
+	# writing an Array or a primitive, load_game would treat it as corrupt.
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var parsed: Variant = JSON.parse_string(_read_save_file())
+	assert_bool(parsed is Dictionary).is_true()
+
+
+func test_roundtrip_via_load_does_not_crash_with_autoloads() -> void:
+	# Save, then load — distribute_save_data walks _SYSTEM_KEYS and calls
+	# load_save_data on whatever nodes are reachable. Must not crash even when
+	# only a subset of systems are present.
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var ok: bool = sm.load_game()
+	assert_bool(ok).is_true()
+
+
+# ---------------------------------------------------------------------------
+# Signal wiring (task-084c gap-fill)
+# ---------------------------------------------------------------------------
+#
+# SaveManager intentionally emits NO signals — it is a passive collector
+# driven by mark_dirty() / save_now() / _on_save_timer. Document the
+# absence so future work doesn't silently add a signal without a test.
+
+func test_save_manager_has_no_declared_signals() -> void:
+	var sm: Node = _make_save_manager()
+	var sig_list: Array = sm.get_signal_list()
+	# Filter out inherited Node signals — SaveManager's own script declares none.
+	var script_signals: Array = []
+	var script: Script = sm.get_script() as Script
+	if script != null:
+		script_signals = script.get_script_signal_list()
+	assert_int(script_signals.size()).is_equal(0)
