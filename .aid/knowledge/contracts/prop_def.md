@@ -141,9 +141,11 @@ expect to ship additional or replacement packs for other genres.
   pickaxe slot, etc.) is explicitly flagged for redesign in delivery-006d task-088. The field
   stays on PropDef for now; a future refactor may move it into a dedicated `ToolCap` or replace
   slot-name strings with a different mechanism.
-- **`max_stack` is temporary.** Will be replaced by `portable.weight` in task-049, at which
-  point stack logic becomes weight-based instead of count-based. Content should not lean on
-  `max_stack` as a long-term contract.
+- **`max_stack` is transitional.** `PortableCap.size` (slot-unit capacity) was introduced in
+  delivery-006b and is already the primary inventory constraint, but `max_stack` still lives on
+  PropDef and is still read by `Inventory.gd` for slot-fill limits alongside `size`. The
+  long-term direction is slot-unit only; the transition is not yet complete. Content should
+  lean on `portable.size` as the load-bearing field and treat `max_stack` as legacy.
 - **Large legacy field surface.** Roughly half the fields on PropDef are deprecated remnants
   from pre-capabilities Farhaven. They remain on the class because old `.tres` files still set
   them and because AutoInteractionSystem's legacy gather fallback still reads some of them.
