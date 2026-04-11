@@ -291,7 +291,8 @@ func get_save_data() -> Dictionary:
 
 func load_save_data(data: Dictionary) -> void:
 	_bonus_slots = int(data.get("bonus_slots", 0))
-	capacity_size = float(data.get("capacity_size", 50.0))
+	# Accept both new and legacy key names so old saves don't lose capacity upgrades.
+	capacity_size = float(data.get("capacity_size", data.get("capacity_weight", 50.0)))
 	var slots_data: Array = data.get("slots", [])
 	var total: int = _base_slots + _bonus_slots
 

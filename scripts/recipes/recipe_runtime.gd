@@ -291,45 +291,76 @@ func _consume_tag_from_inventory(input: _RecipeInput, inv: _Inventory) -> bool:
 	return remaining <= 0
 
 
-## Consumes an input from the player's vicinity (current tile, and later —
-## potentially adjacent tiles). For now this looks at props on ctx.tile.
+## Consumes an input from the player's vicinity. Sources, in priority order:
+##  1. ctx.container.props/container_items (if the player is interacting with a
+##     container — e.g. fireplace recipes pulling fuel from the campfire's stash)
+##  2. ctx.station.props/container_items (if the station also acts as a container)
+##  3. ctx.tile.props (loose items on the player's current tile)
+## Tag matches scan PropDef tags via PropRegistry.
 func _consume_from_player_vicinity(input: _RecipeInput, ctx: _WorldContext) -> bool:
-	if ctx.tile == null:
+	# Build the list of source arrays we'll search and consume from, in order.
+	var sources: Array = []
+	if ctx.container != null:
+		var c_arr := _get_container_array(ctx.container)
+		if c_arr != null:
+			sources.append(c_arr)
+	if ctx.station != null and ctx.station != ctx.container:
+		var s_arr := _get_container_array(ctx.station)
+		if s_arr != null:
+			sources.append(s_arr)
+	if ctx.tile != null and "props" in ctx.tile:
+		sources.append(ctx.tile.props)
+	if sources.is_empty():
 		return false
-	# Check presence on the tile.
+
+	# First pass: count total matches across all sources to decide affordability.
 	var tag_name: StringName = input.get_tag() if input.is_tag() else &""
 	var ref_name: StringName = StringName(input.ref)
 	var count_found := 0
-	for prop in ctx.tile.props:
-		var prop_type: StringName = prop.type if "type" in prop else &""
-		if input.is_tag():
-			var def = PropRegistry.get_def(prop_type)
-			if def != null and def.has_tag(tag_name):
+	for source in sources:
+		for prop in source:
+			if _vicinity_prop_matches(prop, input, tag_name, ref_name):
 				count_found += 1
-		else:
-			if prop_type == ref_name:
-				count_found += 1
+				if count_found >= input.count:
+					break
 		if count_found >= input.count:
 			break
 	if count_found < input.count:
 		return false
-	# Remove props from tile.
+
+	# Second pass: remove matches from sources in priority order.
 	var to_remove := input.count
-	var idx: int = ctx.tile.props.size() - 1
-	while idx >= 0 and to_remove > 0:
-		var prop = ctx.tile.props[idx]
-		var prop_type: StringName = prop.type if "type" in prop else &""
-		var matches := false
-		if input.is_tag():
-			var def = PropRegistry.get_def(prop_type)
-			matches = def != null and def.has_tag(tag_name)
-		else:
-			matches = prop_type == ref_name
-		if matches:
-			ctx.tile.props.remove_at(idx)
-			to_remove -= 1
-		idx -= 1
+	for source in sources:
+		if to_remove <= 0:
+			break
+		var idx: int = source.size() - 1
+		while idx >= 0 and to_remove > 0:
+			if _vicinity_prop_matches(source[idx], input, tag_name, ref_name):
+				source.remove_at(idx)
+				to_remove -= 1
+			idx -= 1
 	return true
+
+
+## Helper: returns the array of contained props for a container/station prop,
+## or null if the prop has no container_items / props field.
+func _get_container_array(prop) -> Variant:
+	if prop == null:
+		return null
+	if "container_items" in prop:
+		return prop.container_items
+	if "props" in prop:
+		return prop.props
+	return null
+
+
+## Helper: returns true if a prop matches the input ref (or tag).
+func _vicinity_prop_matches(prop, input: _RecipeInput, tag_name: StringName, ref_name: StringName) -> bool:
+	var prop_type: StringName = prop.type if "type" in prop else &""
+	if input.is_tag():
+		var def = PropRegistry.get_def(prop_type)
+		return def != null and def.has_tag(tag_name)
+	return prop_type == ref_name
 
 
 func _return_inputs(bound_inputs: Array, ctx: _WorldContext) -> void:
