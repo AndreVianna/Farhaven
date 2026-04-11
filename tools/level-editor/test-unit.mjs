@@ -15,6 +15,7 @@ import { ProjectContext, nextId } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
 import { RecipeModel, recipeModelToRaw, validateRecipeForm, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
+import { JournalModel, journalModelToRaw, validateJournalForm, collectJournalFormData, JOURNAL_CATEGORIES } from './js/journal-editor.js';
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
@@ -3378,6 +3379,394 @@ for (const biomeFile of __biomeFiles) {
       assert(model2.prop_table[i].max_amount === model.prop_table[i].max_amount, `${biomeFile}: prop_table[${i}].max_amount survives`);
     }
     assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
+  });
+}
+
+// ============================================================
+// JournalModel — parsing, validation, round-trip (task-076)
+// ============================================================
+
+function _makeJournalEntry(resourceOverrides) {
+  const raw = new TresFile();
+  raw.scriptClass = 'JournalEntry';
+  raw.headerLine = '[gd_resource type="Resource" script_class="JournalEntry" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/journal/journal_entry.gd" id="1_journal"]'];
+  raw.subResources = [];
+  const data = {
+    script: 'ExtResource("1_journal")',
+    id: 'J00001',
+    display_name: 'Test Journal Entry',
+    body: '',
+    category: 'lore',
+    day_added: 0,
+    ...resourceOverrides,
+  };
+  raw.resourceFields = new Map();
+  raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_journal")' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id });
+  raw.resourceFields.set('display_name', { type: 'string', value: data.display_name });
+  if (data.short_description) {
+    raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  }
+  if (data.long_description) {
+    raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
+  }
+  raw.resourceFields.set('body', { type: 'string', value: data.body });
+  raw.resourceFields.set('category', { type: 'stringname', value: data.category });
+  raw.resourceFields.set('day_added', { type: 'int', value: data.day_added });
+  return { data, raw };
+}
+
+function _makeJournalModel(overrides) {
+  const model = new JournalModel();
+  model.id = 'J00001';
+  model.display_name = 'Test Entry';
+  model.body = '';
+  model.category = 'lore';
+  model.day_added = 0;
+  for (const [key, val] of Object.entries(overrides || {})) { model[key] = val; }
+  return model;
+}
+
+// --- fromEntry ---
+
+test('JournalModel — fromEntry reads basic fields', () => {
+  const entry = _makeJournalEntry({
+    id: 'J00042',
+    display_name: 'The Discovery',
+    short_description: 'teaser',
+    long_description: 'summary',
+    body: 'Full page of text.\nWith line breaks.',
+    category: 'chapter',
+    day_added: 3,
+  });
+  const model = JournalModel.fromEntry('J00042.tres', entry);
+  assert(model.id === 'J00042', 'id');
+  assert(model.display_name === 'The Discovery', 'display_name');
+  assert(model.short_description === 'teaser', 'short_description');
+  assert(model.long_description === 'summary', 'long_description');
+  assert(model.body === 'Full page of text.\nWith line breaks.', 'body preserves newlines');
+  assert(model.category === 'chapter', 'category');
+  assert(model.day_added === 3, 'day_added');
+  assert(model._filename === 'J00042.tres', '_filename');
+});
+
+test('JournalModel — fromEntry defaults category to lore when missing', () => {
+  const entry = _makeJournalEntry({});
+  entry.data.category = '';
+  entry.raw.resourceFields.set('category', { type: 'stringname', value: '' });
+  const model = JournalModel.fromEntry('J00001.tres', entry);
+  assert(model.category === 'lore', 'category defaults to lore');
+});
+
+// --- validateJournalForm ---
+
+test('validateJournalForm — valid minimal entry', () => {
+  const result = validateJournalForm(_makeJournalModel({}), true);
+  assert(result.valid, `should be valid; got: ${result.errors.join(', ')}`);
+  assert(result.errors.length === 0, 'no errors');
+});
+
+test('validateJournalForm — missing ID', () => {
+  const result = validateJournalForm(_makeJournalModel({ id: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('ID is required')), 'ID required error');
+});
+
+test('validateJournalForm — ID missing J prefix', () => {
+  const result = validateJournalForm(_makeJournalModel({ id: 'E00001' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('start with "J"')), 'J prefix error');
+});
+
+test('validateJournalForm — ID with bare number rejected', () => {
+  const result = validateJournalForm(_makeJournalModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('start with "J"')), 'J prefix error');
+});
+
+test('validateJournalForm — ID with invalid chars rejected', () => {
+  const result = validateJournalForm(_makeJournalModel({ id: 'J 01' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('alphanumeric')), 'chars error');
+});
+
+test('validateJournalForm — duplicate ID on create', () => {
+  ProjectContext.files.journal.set('J00001.tres', { data: {}, raw: new TresFile() });
+  const result = validateJournalForm(_makeJournalModel({}), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('already exists')), 'duplicate error');
+  ProjectContext.files.journal.delete('J00001.tres');
+});
+
+test('validateJournalForm — missing display_name', () => {
+  const result = validateJournalForm(_makeJournalModel({ display_name: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Display Name')), 'display_name error');
+});
+
+test('validateJournalForm — category must be one of chapter/lore/tutorial', () => {
+  const bad = validateJournalForm(_makeJournalModel({ category: 'bogus' }), true);
+  assert(!bad.valid, 'bogus category rejected');
+  assert(bad.errors.some(e => e.includes('Category')), 'category error');
+  for (const cat of ['chapter', 'lore', 'tutorial']) {
+    const ok = validateJournalForm(_makeJournalModel({ category: cat }), true);
+    assert(ok.valid, `${cat} should be valid`);
+  }
+});
+
+test('validateJournalForm — negative day_added rejected', () => {
+  const result = validateJournalForm(_makeJournalModel({ day_added: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Day Added')), 'day_added error');
+});
+
+test('JOURNAL_CATEGORIES — covers all three values', () => {
+  assert(JOURNAL_CATEGORIES.length === 3, 'three categories');
+  assert(JOURNAL_CATEGORIES.includes('chapter'), 'chapter');
+  assert(JOURNAL_CATEGORIES.includes('lore'), 'lore');
+  assert(JOURNAL_CATEGORIES.includes('tutorial'), 'tutorial');
+});
+
+// --- nextId('J') ---
+
+test("nextId('J') — returns J00001 when journal map empty", () => {
+  const saved = new Map(ProjectContext.files.journal);
+  ProjectContext.files.journal.clear();
+  const id = nextId('J', ProjectContext.files.journal);
+  assert(id === 'J00001', `expected J00001, got ${id}`);
+  // restore
+  for (const [k, v] of saved) ProjectContext.files.journal.set(k, v);
+});
+
+test("nextId('J') — returns J00002 after one entry exists", () => {
+  const saved = new Map(ProjectContext.files.journal);
+  ProjectContext.files.journal.clear();
+  ProjectContext.files.journal.set('J00001.tres', { data: {}, raw: new TresFile() });
+  const id = nextId('J', ProjectContext.files.journal);
+  assert(id === 'J00002', `expected J00002, got ${id}`);
+  ProjectContext.files.journal.clear();
+  for (const [k, v] of saved) ProjectContext.files.journal.set(k, v);
+});
+
+test("nextId('J') — skips gaps and returns max+1", () => {
+  const saved = new Map(ProjectContext.files.journal);
+  ProjectContext.files.journal.clear();
+  ProjectContext.files.journal.set('J00001.tres', { data: {}, raw: new TresFile() });
+  ProjectContext.files.journal.set('J00005.tres', { data: {}, raw: new TresFile() });
+  ProjectContext.files.journal.set('J00003.tres', { data: {}, raw: new TresFile() });
+  const id = nextId('J', ProjectContext.files.journal);
+  assert(id === 'J00006', `expected J00006, got ${id}`);
+  ProjectContext.files.journal.clear();
+  for (const [k, v] of saved) ProjectContext.files.journal.set(k, v);
+});
+
+// --- journalModelToRaw serialization ---
+
+test('journalModelToRaw — serializes basic entry', () => {
+  const raw = journalModelToRaw(_makeJournalModel({ display_name: 'Arrival' }));
+  assert(raw.scriptClass === 'JournalEntry', 'scriptClass');
+  assert(raw.headerLine.includes('JournalEntry'), 'header includes JournalEntry');
+  assert(raw.headerLine.includes('load_steps=2'), 'load_steps=2 (1 ext + 1 resource)');
+  assert(raw.resourceFields.get('id').value === 'J00001', 'id');
+  assert(raw.resourceFields.get('display_name').value === 'Arrival', 'display_name');
+  assert(raw.resourceFields.get('category').value === 'lore', 'category');
+  assert(raw.resourceFields.get('day_added').value === 0, 'day_added');
+});
+
+test('journalModelToRaw — no sub_resources (flat shape)', () => {
+  const raw = journalModelToRaw(_makeJournalModel({}));
+  assert(raw.subResources.length === 0, 'no sub_resources');
+  assert(raw.extResources.length === 1, 'exactly one ext_resource (the script)');
+});
+
+test('journalModelToRaw — escapes newlines in body for line-based .tres', () => {
+  const body = 'Line 1\nLine 2\n\nParagraph 2 after blank line.';
+  const raw = journalModelToRaw(_makeJournalModel({ body }));
+  const stored = raw.resourceFields.get('body').value;
+  // Real newlines would break the line-based TresParser. Must be escaped.
+  assert(stored.indexOf('\n') === -1, 'no raw newlines stored in field value');
+  assert(stored === 'Line 1\\nLine 2\\n\\nParagraph 2 after blank line.', 'body escaped with \\n');
+});
+
+test('journalModelToRaw — writes all categories as stringname', () => {
+  for (const cat of JOURNAL_CATEGORIES) {
+    const raw = journalModelToRaw(_makeJournalModel({ category: cat }));
+    const tv = raw.resourceFields.get('category');
+    assert(tv.type === 'stringname', `${cat} has stringname type`);
+    assert(tv.value === cat, `${cat} value matches`);
+  }
+});
+
+test('journalModelToRaw — serialized output is valid .tres', () => {
+  const raw = journalModelToRaw(_makeJournalModel({
+    display_name: 'The Test',
+    short_description: 'short',
+    long_description: 'long',
+    body: 'Body line 1\nBody line 2',
+    category: 'chapter',
+    day_added: 7,
+  }));
+  const text = TresParser.serialize(raw);
+  assert(text.includes('[gd_resource type="Resource" script_class="JournalEntry"'), 'header');
+  assert(text.includes('res://scripts/journal/journal_entry.gd'), 'journal_entry script path');
+  assert(text.includes('id = &"J00001"'), 'id as stringname');
+  assert(text.includes('display_name = "The Test"'), 'display_name');
+  assert(text.includes('short_description = "short"'), 'short_description');
+  assert(text.includes('long_description = "long"'), 'long_description');
+  assert(text.includes('category = &"chapter"'), 'category as stringname');
+  assert(text.includes('day_added = 7'), 'day_added as int');
+});
+
+// --- Full round-trip: model -> raw -> serialize -> parse -> fromEntry ---
+
+test('JournalModel — full round-trip with all fields', () => {
+  const original = _makeJournalModel({
+    id: 'J00007',
+    display_name: 'Seventh Day',
+    short_description: 'A brief teaser shown in the list.',
+    long_description: 'A longer tooltip summary shown on hover.',
+    body: 'Full body text.\nLine 2.\n\nParagraph after blank line.',
+    category: 'tutorial',
+    day_added: 7,
+  });
+  const raw = journalModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'JournalEntry', 'scriptClass survives');
+
+  // Build data map like file-discovery does
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    data[key] = tv.value;
+  }
+
+  const restored = JournalModel.fromEntry('J00007.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id survives');
+  assert(restored.display_name === original.display_name, 'display_name survives');
+  assert(restored.short_description === original.short_description, 'short_description survives');
+  assert(restored.long_description === original.long_description, 'long_description survives');
+  assert(restored.body === original.body, 'body survives (with newlines)');
+  assert(restored.category === original.category, 'category survives');
+  assert(restored.day_added === original.day_added, 'day_added survives');
+});
+
+test('JournalModel — round-trip with minimal fields (empty body/descriptions)', () => {
+  const original = _makeJournalModel({ id: 'J99999', display_name: 'Minimal' });
+  const raw = journalModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(serialized);
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    data[key] = tv.value;
+  }
+  const restored = JournalModel.fromEntry('J99999.tres', { data, raw: reparsed });
+  assert(restored.id === 'J99999', 'id');
+  assert(restored.display_name === 'Minimal', 'display_name');
+  assert(restored.body === '', 'empty body');
+  assert(restored.category === 'lore', 'default category');
+  assert(restored.day_added === 0, 'default day_added');
+});
+
+test('JournalModel — round-trip idempotent (serialize x2 produces same text)', () => {
+  const m = _makeJournalModel({
+    body: 'Multiline\nbody with\nthree lines.',
+    category: 'chapter',
+    day_added: 2,
+  });
+  const text1 = TresParser.serialize(journalModelToRaw(m));
+  const reparsed = TresParser.parse(text1);
+  const data = {};
+  for (const [k, v] of reparsed.resourceFields) data[k] = v.value;
+  const m2 = JournalModel.fromEntry('J00001.tres', { data, raw: reparsed });
+  const text2 = TresParser.serialize(journalModelToRaw(m2));
+  assert(text1 === text2, 'idempotent serialize');
+});
+
+// --- collectJournalFormData (smoke test with mock form) ---
+
+test('collectJournalFormData — reads all fields via querySelector', () => {
+  // Build a minimal fake form with only what collectJournalFormData needs.
+  // The test-dom-mocks.mjs createElement stub doesn't support querySelector,
+  // so we construct a targeted fake here.
+  const byName = {
+    id: 'J00123',
+    display_name: 'Form Test',
+    short_description: 'short',
+    long_description: 'long',
+    body: 'body text\nline 2',
+    category: 'tutorial',
+    day_added: '5',
+  };
+  const fakeForm = {
+    querySelector(selector) {
+      const match = selector.match(/\[name="([^"]+)"\]/);
+      if (!match) return null;
+      const name = match[1];
+      if (byName[name] == null) return null;
+      return { value: byName[name] };
+    },
+  };
+
+  const model = collectJournalFormData(fakeForm);
+  assert(model.id === 'J00123', 'id');
+  assert(model.display_name === 'Form Test', 'display_name');
+  assert(model.short_description === 'short', 'short_description');
+  assert(model.long_description === 'long', 'long_description');
+  assert(model.body === 'body text\nline 2', 'body preserves newlines in collected model');
+  assert(model.category === 'tutorial', 'category');
+  assert(model.day_added === 5, 'day_added parsed as int');
+});
+
+// ============================================================
+// JournalEntry round-trip from actual fixture .tres file (task-076)
+// ============================================================
+
+const __journalDir = join(__projectRoot, 'data', 'journal');
+const __journalFiles = readdirSync(__journalDir).filter(f => f.endsWith('.tres'));
+
+for (const journalFile of __journalFiles) {
+  test(`JournalEntry round-trip — ${journalFile}`, () => {
+    const filePath = join(__journalDir, journalFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    // Parse the .tres file
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'JournalEntry', `${journalFile}: scriptClass is JournalEntry`);
+
+    // Exact byte-for-byte round-trip through TresParser
+    const reserialized = TresParser.serialize(parsed);
+    assert(reserialized === text, `${journalFile}: TresParser round-trip exact match`);
+
+    // Build data map (mirrors file-discovery._parseTresFile)
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      data[key] = tv.value;
+    }
+
+    // Model round-trip: parse → fromEntry → toRaw → serialize → parse → fromEntry
+    const model = JournalModel.fromEntry(journalFile, { data, raw: parsed });
+    assert(model.id, `${journalFile}: model has id`);
+    assert(model.display_name, `${journalFile}: model has display_name`);
+
+    const raw2 = journalModelToRaw(model);
+    const text2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(text2);
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      data2[key] = tv.value;
+    }
+    const model2 = JournalModel.fromEntry(journalFile, { data: data2, raw: reparsed });
+
+    assert(model2.id === model.id, `${journalFile}: id survives model round-trip`);
+    assert(model2.display_name === model.display_name, `${journalFile}: display_name survives`);
+    assert(model2.short_description === model.short_description, `${journalFile}: short_description survives`);
+    assert(model2.long_description === model.long_description, `${journalFile}: long_description survives`);
+    assert(model2.body === model.body, `${journalFile}: body survives`);
+    assert(model2.category === model.category, `${journalFile}: category survives`);
+    assert(model2.day_added === model.day_added, `${journalFile}: day_added survives`);
   });
 }
 
