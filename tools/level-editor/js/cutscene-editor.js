@@ -158,9 +158,16 @@ export function validateCutsceneForm(model, isNew) {
     errors.push('Duration must be >= 0');
   }
 
-  // trigger_event may be empty (meaning "no trigger") but if set must look like an ID.
-  if (model.trigger_event && !/^[a-zA-Z0-9_]+$/.test(model.trigger_event)) {
-    errors.push('Trigger Event must be a valid ID');
+  // trigger_event may be empty (meaning "no trigger"). When set, it must be a
+  // valid GameEvent ID — the project enforces E-prefix on event IDs
+  // (see validateEventForm + EventRegistry). Dangling refs are allowed
+  // (the event may not exist yet), but the prefix is required.
+  if (model.trigger_event) {
+    if (!/^[a-zA-Z0-9_]+$/.test(model.trigger_event)) {
+      errors.push('Trigger Event must be a valid ID');
+    } else if (!model.trigger_event.startsWith('E')) {
+      errors.push('Trigger Event ID must start with "E" (e.g. E00001)');
+    }
   }
 
   return { valid: errors.length === 0, errors };

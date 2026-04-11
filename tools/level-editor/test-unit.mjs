@@ -3914,6 +3914,18 @@ test('validateCutsceneForm — trigger_event with bad chars rejected', () => {
   assert(result.errors.some(e => e.includes('Trigger Event')), 'trigger_event error');
 });
 
+test('validateCutsceneForm — trigger_event without E prefix rejected', () => {
+  // GameEvent IDs are E-prefixed by project convention (validateEventForm + EventRegistry).
+  const result = validateCutsceneForm(_makeCutsceneModel({ trigger_event: 'X00001' }), true);
+  assert(!result.valid, 'non-E-prefixed trigger_event should be invalid');
+  assert(result.errors.some(e => e.includes('E')), 'should mention E prefix requirement');
+});
+
+test('validateCutsceneForm — trigger_event with E prefix accepted', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ trigger_event: 'E00042' }), true);
+  assert(result.valid, 'E-prefixed trigger_event should be valid');
+});
+
 test('validateCutsceneForm — duplicate ID on create rejected', () => {
   ProjectContext.files.cutscenes.set('C00001.tres', { data: {}, raw: new TresFile() });
   const result = validateCutsceneForm(_makeCutsceneModel({}), true);

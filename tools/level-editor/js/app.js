@@ -594,7 +594,7 @@ function initializeAfterLoad() {
     console.log('Event editor rendered.');
   }
 
-  // Render journal editor stub in the Journal tab (task-076 fills this in)
+  // Render journal editor in the Journal tab (task-076)
   const journalTabEl = document.getElementById('tab-journal');
   if (journalTabEl) {
     renderJournalEditor(journalTabEl, {
@@ -602,10 +602,10 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { dirtyTracker.markClean('journal'); },
     });
-    console.log('Journal editor (stub) rendered.');
+    console.log('Journal editor rendered.');
   }
 
-  // Render cutscene editor stub in the Cutscenes tab (task-077 fills this in)
+  // Render cutscene editor in the Cutscenes tab (task-077)
   const cutsceneTabEl = document.getElementById('tab-cutscenes');
   if (cutsceneTabEl) {
     renderCutsceneEditor(cutsceneTabEl, {
@@ -613,7 +613,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { dirtyTracker.markClean('cutscenes'); },
     });
-    console.log('Cutscene editor (stub) rendered.');
+    console.log('Cutscene editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)
