@@ -213,7 +213,7 @@ func register_steps(registry) -> void:
 	registry.then("no Recipe has an unlock_when property", func(ctx):
 		var recipes: Array = ctx.get_value("recipes", [])
 		for recipe in recipes:
-			var props := recipe.get_property_list()
+			var props: Array = recipe.get_property_list()
 			for p in props:
 				ctx.assert_true(p["name"] != "unlock_when",
 					"Recipe '%s' still has unlock_when property" % recipe.id)
