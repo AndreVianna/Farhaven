@@ -31,6 +31,7 @@ EventRegistry="*res://scripts/core/event_registry.gd"
 DiscoveryWatcher="*res://scripts/recipes/discovery_watcher.gd"
 RecipeRuntime="*res://scripts/recipes/recipe_runtime.gd"
 Journal="*res://scripts/journal/journal.gd"
+JournalEntryRegistry="*res://scripts/journal/journal_entry_registry.gd"
 CutsceneManager="*res://scripts/cutscenes/cutscene_manager.gd"
 SaveManager="*res://scripts/save/save_manager.gd"
 
