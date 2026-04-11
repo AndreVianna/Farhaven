@@ -24,6 +24,12 @@ export const ProjectContext = {
     /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
      * Holds event definitions (GameEvent .tres files). */
     events: new Map(),
+    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
+     * Holds journal entry definitions (JournalEntry .tres files). */
+    journal: new Map(),
+    /** @type {Map<string, {handle: FileSystemFileHandle|null, data: Object, raw: import('./tres-parser.js').TresFile}>}
+     * Holds cutscene definitions (CutsceneDef .tres files). */
+    cutscenes: new Map(),
   },
 };
 
@@ -220,7 +226,9 @@ export class FileDiscovery {
     const biomeFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/biomes', '.tres');
     const recipeFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/recipes', '.tres');
     const eventFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/events', '.tres');
-    console.log(`Scan results — maps: ${mapFiles.length}, props: ${propFiles.length}, biomes: ${biomeFiles.length}, recipes: ${recipeFiles.length}, events: ${eventFiles.length}`);
+    const journalFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/journal', '.tres');
+    const cutsceneFiles = await FileDiscovery.scanDirectory(rootHandle, 'data/cutscenes', '.tres');
+    console.log(`Scan results — maps: ${mapFiles.length}, props: ${propFiles.length}, biomes: ${biomeFiles.length}, recipes: ${recipeFiles.length}, events: ${eventFiles.length}, journal: ${journalFiles.length}, cutscenes: ${cutsceneFiles.length}`);
 
     // Parse map files
     for (const { name, handle } of mapFiles) {
@@ -236,13 +244,15 @@ export class FileDiscovery {
       }
     }
 
-    // Parse prop, biome, and recipe .tres files
+    // Parse prop, biome, recipe, event, journal, and cutscene .tres files
     await _loadTresFilesFromHandles(propFiles, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesFromHandles(biomeFiles, 'BiomeData', ProjectContext.files.biomes, 'Biome');
     await _loadTresFilesFromHandles(recipeFiles, 'Recipe', ProjectContext.files.recipes, 'Recipe');
     await _loadTresFilesFromHandles(eventFiles, 'GameEvent', ProjectContext.files.events, 'Event');
+    await _loadTresFilesFromHandles(journalFiles, 'JournalEntry', ProjectContext.files.journal, 'Journal');
+    await _loadTresFilesFromHandles(cutsceneFiles, 'CutsceneDef', ProjectContext.files.cutscenes, 'Cutscene');
 
-    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}, recipes: ${ProjectContext.files.recipes.size}, events: ${ProjectContext.files.events.size}`);
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}, recipes: ${ProjectContext.files.recipes.size}, events: ${ProjectContext.files.events.size}, journal: ${ProjectContext.files.journal.size}, cutscenes: ${ProjectContext.files.cutscenes.size}`);
     console.groupEnd();
     return { success: true };
   }
@@ -319,6 +329,18 @@ export class FileDiscovery {
           const result = _parseTresFile(name, text, 'GameEvent');
           if (!result) continue;
           ProjectContext.files.events.set(name, { handle: null, data: result.data, raw: result.raw });
+        } else if (relPath.startsWith('data/journal/') && relPath.endsWith('.tres')) {
+          const name = relPath.split('/').pop();
+          const text = await readFileText(file);
+          const result = _parseTresFile(name, text, 'JournalEntry');
+          if (!result) continue;
+          ProjectContext.files.journal.set(name, { handle: null, data: result.data, raw: result.raw });
+        } else if (relPath.startsWith('data/cutscenes/') && relPath.endsWith('.tres')) {
+          const name = relPath.split('/').pop();
+          const text = await readFileText(file);
+          const result = _parseTresFile(name, text, 'CutsceneDef');
+          if (!result) continue;
+          ProjectContext.files.cutscenes.set(name, { handle: null, data: result.data, raw: result.raw });
         }
       } catch (err) {
         const name = file.webkitRelativePath.split('/').pop();
@@ -384,7 +406,7 @@ export class FileDiscovery {
       return { success: false, error: `Server API unavailable: ${err.message}` };
     }
 
-    console.log(`Manifest — maps: ${manifest.maps.files.length}, props: ${manifest.props.files.length}, biomes: ${manifest.biomes.files.length}, recipes: ${(manifest.recipes || { files: [] }).files.length}, events: ${(manifest.events || { files: [] }).files.length}`);
+    console.log(`Manifest — maps: ${manifest.maps.files.length}, props: ${manifest.props.files.length}, biomes: ${manifest.biomes.files.length}, recipes: ${(manifest.recipes || { files: [] }).files.length}, events: ${(manifest.events || { files: [] }).files.length}, journal: ${(manifest.journal || { files: [] }).files.length}, cutscenes: ${(manifest.cutscenes || { files: [] }).files.length}`);
 
     // Load map files
     for (const name of manifest.maps.files) {
@@ -400,7 +422,7 @@ export class FileDiscovery {
       }
     }
 
-    // Load prop, biome, and recipe .tres files
+    // Load prop, biome, recipe, event, journal, and cutscene .tres files
     await _loadTresFilesViaApi(manifest.props.files, manifest.props.dir, 'PropDef', ProjectContext.files.props, 'Prop');
     await _loadTresFilesViaApi(manifest.biomes.files, manifest.biomes.dir, 'BiomeData', ProjectContext.files.biomes, 'Biome');
     if (manifest.recipes) {
@@ -409,8 +431,14 @@ export class FileDiscovery {
     if (manifest.events) {
       await _loadTresFilesViaApi(manifest.events.files, manifest.events.dir, 'GameEvent', ProjectContext.files.events, 'Event');
     }
+    if (manifest.journal) {
+      await _loadTresFilesViaApi(manifest.journal.files, manifest.journal.dir, 'JournalEntry', ProjectContext.files.journal, 'Journal');
+    }
+    if (manifest.cutscenes) {
+      await _loadTresFilesViaApi(manifest.cutscenes.files, manifest.cutscenes.dir, 'CutsceneDef', ProjectContext.files.cutscenes, 'Cutscene');
+    }
 
-    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}, recipes: ${ProjectContext.files.recipes.size}, events: ${ProjectContext.files.events.size}`);
+    console.log(`Summary — maps: ${ProjectContext.files.maps.size}, props: ${ProjectContext.files.props.size}, biomes: ${ProjectContext.files.biomes.size}, recipes: ${ProjectContext.files.recipes.size}, events: ${ProjectContext.files.events.size}, journal: ${ProjectContext.files.journal.size}, cutscenes: ${ProjectContext.files.cutscenes.size}`);
     console.groupEnd();
     return { success: true };
   }

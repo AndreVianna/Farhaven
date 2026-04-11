@@ -29,10 +29,12 @@ SCAN_DIRS = {
     'biomes': ('data/biomes', '.tres'),
     'recipes': ('data/recipes', '.tres'),
     'events': ('data/events', '.tres'),
+    'journal': ('data/journal', '.tres'),
+    'cutscenes': ('data/cutscenes', '.tres'),
 }
 
 # Only allow access to files under these prefixes
-ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/', 'data/recipes/', 'data/events/']
+ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/', 'data/recipes/', 'data/events/', 'data/journal/', 'data/cutscenes/']
 
 
 def is_safe_path(rel_path):
