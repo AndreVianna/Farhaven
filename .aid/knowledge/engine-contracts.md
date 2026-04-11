@@ -95,31 +95,30 @@ Singletons registered in `project.godot`, initialised in the order listed below 
 real order in `project.godot` — PropRegistry runs first so every later autoload can call
 `PropRegistry.get_def` unconditionally).
 
-- **[PropRegistry](contracts/prop_registry.md)** — [contract pending] — scans
-  `res://data/props/` on `_ready`, exposes `get_def(id)`, `has_def(id)`, `get_all()`. Owner of
-  every PropDef in memory.
-- **[HexGrid](contracts/hex_grid.md)** — [contract pending] — map topology and coordinate math
-  (with a reference to `hex_math.md` for the pure-utility layer).
-- **[DayNightCycle](contracts/day_night_cycle.md)** — [contract pending] — in-game time,
-  day/dusk/night/dawn transitions, tick signals.
-- **[LightingManager](contracts/lighting_manager.md)** — [contract pending] — global light
-  state, phase-driven light toggling, LightCap aggregation.
-- **[RecipeRegistry](contracts/recipe_registry.md)** — [contract pending] — loads Recipe
-  resources, exposes lookup and unlock state.
-- **[EventRegistry](contracts/event_registry.md)** — [contract pending] — loads GameEvent
-  resources, provides `try_fire` and event-count persistence.
-- **[DiscoveryWatcher](contracts/discovery_watcher.md)** — [contract pending] — bridges
-  scanner/catalog events into EventRegistry firings.
-- **[RecipeRuntime](contracts/recipe_runtime.md)** — [contract pending] — runs recipe
-  lifecycle (start, sustain, complete, cancel), owns WorldContext and PredicateEvaluator.
-- **[Journal](contracts/journal.md)** — [contract pending] — player-facing journal state:
-  unlocked entries, add/has queries, signals.
-- **[JournalEntryRegistry](contracts/journal_entry_registry.md)** — [contract pending] —
-  loads JournalEntry resources.
-- **[CutsceneManager](contracts/cutscene_manager.md)** — [contract pending] — plays
-  CutsceneDef sequences, signals on start/end.
-- **[SaveManager](contracts/save_manager.md)** — [contract pending] — full-state
-  serialisation and restore across every autoload.
+- **[PropRegistry](contracts/prop_registry.md)** — scans `res://data/props/` on `_ready`,
+  exposes `get_def(id)`, `has_def(id)`, `get_all()`. Owner of every PropDef in memory.
+- **[HexGrid](contracts/hex_grid.md)** — map topology and coordinate math (with a reference
+  to `hex_math.md` for the pure-utility layer).
+- **[DayNightCycle](contracts/day_night_cycle.md)** — in-game time, day/dusk/night/dawn
+  transitions, tick signals.
+- **[LightingManager](contracts/lighting_manager.md)** — global light state, phase-driven
+  light toggling, LightCap aggregation.
+- **[RecipeRegistry](contracts/recipe_registry.md)** — loads Recipe resources, exposes
+  lookup and unlock state.
+- **[EventRegistry](contracts/event_registry.md)** — loads GameEvent resources, provides
+  `try_fire` and event-count persistence.
+- **[DiscoveryWatcher](contracts/discovery_watcher.md)** — bridges scanner/catalog events
+  into EventRegistry firings.
+- **[RecipeRuntime](contracts/recipe_runtime.md)** — runs recipe lifecycle (start, sustain,
+  complete, cancel), owns WorldContext and PredicateEvaluator.
+- **[Journal](contracts/journal.md)** — player-facing journal state: unlocked entries,
+  add/has queries, signals.
+- **[JournalEntryRegistry](contracts/journal_entry_registry.md)** — loads JournalEntry
+  resources.
+- **[CutsceneManager](contracts/cutscene_manager.md)** — plays CutsceneDef sequences,
+  signals on start/end.
+- **[SaveManager](contracts/save_manager.md)** — full-state serialisation and restore
+  across every autoload.
 
 ---
 
