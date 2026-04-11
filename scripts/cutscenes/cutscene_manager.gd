@@ -115,9 +115,18 @@ func is_playing() -> bool:
 
 
 ## Looks up the CutsceneDef by id, creates a fullscreen overlay with a
-## VideoStreamPlayer and a Skip button, and starts playback. Returns true if
-## playback started, false if the id is unknown, the video cannot be loaded,
-## or another cutscene is already playing.
+## VideoStreamPlayer and a Skip button, and starts playback.
+##
+## Returns true if:
+##  - playback started with a real video stream, OR
+##  - the CutsceneDef exists but has an empty video_path (authoring placeholder —
+##    overlay is shown, caller must `skip()` to end).
+##
+## Returns false if:
+##  - another cutscene is already playing,
+##  - the id is empty or unknown,
+##  - video_path is set but the file cannot be loaded (missing / wrong type).
+##    In this case no overlay is built and no signal is emitted.
 func play(cutscene_id: StringName) -> bool:
 	if is_playing():
 		push_warning("CutsceneManager: play() rejected — '%s' already playing" % _current_id)
@@ -128,6 +137,25 @@ func play(cutscene_id: StringName) -> bool:
 	if def == null:
 		push_warning("CutsceneManager: unknown cutscene id '%s'" % cutscene_id)
 		return false
+
+	# Resolve the video stream BEFORE building the overlay so that a
+	# non-empty-but-unloadable `video_path` returns false cleanly without
+	# leaving a stuck overlay. An empty `video_path` is allowed as an
+	# authoring placeholder — it yields a null stream and the overlay still
+	# spawns, requiring the caller to skip() to end.
+	var stream: VideoStream = null
+	if def.video_path != "":
+		var resource_path := def.video_path
+		if not resource_path.begins_with("res://"):
+			resource_path = "res://" + resource_path
+		if not ResourceLoader.exists(resource_path):
+			push_warning("CutsceneManager: video file '%s' not found" % resource_path)
+			return false
+		var loaded = load(resource_path)
+		if not (loaded is VideoStream):
+			push_warning("CutsceneManager: '%s' is not a VideoStream" % resource_path)
+			return false
+		stream = loaded
 
 	# Build overlay node tree.
 	_overlay = CanvasLayer.new()
@@ -169,22 +197,11 @@ func play(cutscene_id: StringName) -> bool:
 		# can still exercise the playback lifecycle.
 		add_child(_overlay)
 
-	# Try to load the referenced video stream. Missing/invalid files fail
-	# gracefully — we still mark the cutscene as "playing" so callers can skip
-	# out, but natural-end will not fire because there is no stream.
-	if def.video_path != "":
-		var resource_path := def.video_path
-		if not resource_path.begins_with("res://"):
-			resource_path = "res://" + resource_path
-		if ResourceLoader.exists(resource_path):
-			var stream := load(resource_path)
-			if stream is VideoStream:
-				_video_player.stream = stream
-				_video_player.play()
-			else:
-				push_warning("CutsceneManager: '%s' is not a VideoStream" % resource_path)
-		else:
-			push_warning("CutsceneManager: video file '%s' not found" % resource_path)
+	# Attach the already-resolved stream (null for empty video_path — overlay
+	# shows, waits for skip()).
+	if stream != null:
+		_video_player.stream = stream
+		_video_player.play()
 
 	_current_id = cutscene_id
 	return true

@@ -210,7 +210,9 @@ export function cutsceneModelToRaw(model) {
   ];
   const subResources = [];
 
-  const loadSteps = extResources.length + subResources.length;
+  // load_steps = extResources + subResources + 1 (main [resource] block).
+  // Matches the ecosystem convention used by journal-editor.js and fixture .tres files.
+  const loadSteps = extResources.length + subResources.length + 1;
   raw.headerLine = `[gd_resource type="Resource" script_class="CutsceneDef" load_steps=${loadSteps} format=3]`;
   raw.extResources = extResources;
   raw.subResources = subResources;
@@ -350,11 +352,11 @@ export class DeleteCutsceneCommand {
   execute() {
     this._savedEntry = ProjectContext.files.cutscenes.get(this._filename) || null;
     ProjectContext.files.cutscenes.delete(this._filename);
-    FileDiscovery.saveFile('data/cutscenes', '', this._filename).catch(() => {
-      // Fallback: the editor can't actually delete a file via the API,
-      // so we rely on the ProjectContext map being the source of truth.
-      // The file remains on disk until a subsequent save overwrites it.
-    });
+    // Intentionally DO NOT write an empty file to disk — that would corrupt
+    // the .tres and break the next scan. ProjectContext is the in-memory
+    // source of truth; the stale file on disk remains until the user
+    // removes it manually or the editor gains a dedicated DELETE endpoint.
+    // Mirrors DeleteJournalCommand behavior.
   }
 
   undo() {
