@@ -2,8 +2,14 @@ extends RefCounted
 
 ## Step definitions for fauna feature.
 ## Uses dictionaries for tiles/props to avoid autoload dependencies.
+##
+## Wave 3 (delivery-006b): the source-of-truth for these numbers now lives in
+## data/props/P00108.tres (PropDef caps); this dict is a step-local snapshot
+## that mirrors them so the BDD scenarios stay self-contained and don't have
+## to bootstrap PropRegistry.
 
-const FAUNA_CONFIG := {
+## Snapshot of P00108 (Thornback) — keep in sync with data/props/P00108.tres.
+const THORNBACK_CONFIG := {
 	"hp": 20,
 	"contact_damage": 10,
 	"move_cooldown": 1.0,
@@ -33,7 +39,7 @@ func register_steps(registry) -> void:
 
 	registry.given("a fauna adjacent to the player", func(ctx):
 		ctx.set_value("fauna_adjacent", true)
-		ctx.set_value("fauna_hp", FAUNA_CONFIG["hp"])
+		ctx.set_value("fauna_hp", THORNBACK_CONFIG["hp"])
 	)
 
 	registry.given("the player is not on a shelter tile", func(ctx):
@@ -61,7 +67,7 @@ func register_steps(registry) -> void:
 	# --- When: night arrives ---
 	registry.when("night arrives", func(ctx):
 		var day: int = ctx.get_value("day_count", 1)
-		if day < FAUNA_CONFIG["first_spawn_day"]:
+		if day < THORNBACK_CONFIG["first_spawn_day"]:
 			ctx.set_value("fauna_count", 0)
 		else:
 			ctx.set_value("fauna_count", 0)
@@ -69,10 +75,10 @@ func register_steps(registry) -> void:
 
 	registry.when("night arrives and spawn is triggered", func(ctx):
 		var day: int = ctx.get_value("day_count", 1)
-		if day < FAUNA_CONFIG["first_spawn_day"]:
+		if day < THORNBACK_CONFIG["first_spawn_day"]:
 			ctx.set_value("fauna_count", 0)
 		else:
-			var count: int = FAUNA_CONFIG["spawn_count_min"] + randi() % (FAUNA_CONFIG["spawn_count_max"] - FAUNA_CONFIG["spawn_count_min"] + 1)
+			var count: int = THORNBACK_CONFIG["spawn_count_min"] + randi() % (THORNBACK_CONFIG["spawn_count_max"] - THORNBACK_CONFIG["spawn_count_min"] + 1)
 			ctx.set_value("fauna_count", count)
 	)
 
@@ -83,7 +89,7 @@ func register_steps(registry) -> void:
 		if on_shelter:
 			damage = 0
 		else:
-			damage = FAUNA_CONFIG["contact_damage"]
+			damage = THORNBACK_CONFIG["contact_damage"]
 		ctx.set_value("last_damage", damage)
 		var health: float = ctx.get_value("health", 100.0)
 		health -= float(damage)

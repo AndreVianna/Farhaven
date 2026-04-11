@@ -11,6 +11,7 @@ signal panel_opened()
 
 const CatalogEntryUI = preload("res://ui/catalog_entry_ui.gd")
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 @onready var _counter_label: Label = $VBox/Header/CounterLabel
 @onready var _close_button: Button = $VBox/Header/CloseButton
@@ -73,16 +74,28 @@ func _refresh() -> void:
 	if _catalog == null:
 		return
 	_counter_label.text = _catalog.get_discovery_text()
-	_populate_list(_flora_list, Catalog.CatalogCategory.FLORA)
-	_populate_list(_fauna_list, Catalog.CatalogCategory.FAUNA)
-	_populate_list(_mineral_list, Catalog.CatalogCategory.MINERAL)
-	_populate_list(_anomaly_list, Catalog.CatalogCategory.ANOMALY)
+	# Map the 4 legacy tabs to prop_category buckets (plus the anomaly override).
+	_populate_list_by_category(_flora_list, _Prop.Category.PLANT)
+	_populate_list_by_category(_fauna_list, _Prop.Category.ANIMAL)
+	_populate_list_by_category(_mineral_list, _Prop.Category.MINERAL)
+	_populate_list_anomalies(_anomaly_list)
 
 
-func _populate_list(list: VBoxContainer, category: int) -> void:
+func _populate_list_by_category(list: VBoxContainer, prop_category: int) -> void:
 	for child in list.get_children():
 		child.queue_free()
-	var discovered: Array = _catalog.get_discovered_by_category(category)
+	var discovered: Array = _catalog.get_discovered_by_category(prop_category)
+	_add_rows_to_list(list, discovered)
+
+
+func _populate_list_anomalies(list: VBoxContainer) -> void:
+	for child in list.get_children():
+		child.queue_free()
+	var discovered: Array = _catalog.get_discovered_anomalies()
+	_add_rows_to_list(list, discovered)
+
+
+func _add_rows_to_list(list: VBoxContainer, discovered: Array) -> void:
 	for item in discovered:
 		var row := CatalogEntryUI.new()
 		list.add_child(row)

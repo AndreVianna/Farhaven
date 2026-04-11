@@ -15,7 +15,6 @@ station_tags = [&"respawn"]
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("4_catalogable")
 scan_time = 1.0
-display_tag = &"survival"
 
 [resource]
 script = ExtResource("1_script")

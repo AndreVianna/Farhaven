@@ -106,11 +106,32 @@ func _can_afford(inventory) -> bool:
 	if _recipe == null:
 		return false
 	for input in _recipe.inputs:
-		if input.source != &"player_inventory" and input.source != &"":
+		if not input.must_hold:
 			continue
-		if not inventory.has_item(input.ref_or_tag, input.count):
-			return false
+		if input.is_tag():
+			# Sum counts across all inventory slots whose PropDef has the tag.
+			var owned: int = _count_inventory_by_tag(inventory, input.get_tag())
+			if owned < input.count:
+				return false
+		else:
+			var ref_sn := StringName(input.ref)
+			if not inventory.has_item(ref_sn, input.count):
+				return false
 	return true
+
+
+## Returns the total count of inventory items whose PropDef has the given tag.
+func _count_inventory_by_tag(inventory, tag_name: StringName) -> int:
+	var total: int = 0
+	if inventory == null or not inventory.has_method("get_slots"):
+		return total
+	for slot in inventory.get_slots():
+		if slot["type"] == &"":
+			continue
+		var def = PropRegistry.get_def(slot["type"])
+		if def != null and def.has_tag(tag_name):
+			total += int(slot["quantity"])
+	return total
 
 
 func _update_ingredients(inventory) -> void:
@@ -121,15 +142,21 @@ func _update_ingredients(inventory) -> void:
 		return
 
 	for input in _recipe.inputs:
-		if input.source != &"player_inventory" and input.source != &"":
+		if not input.must_hold:
 			continue
 		var needed: int = input.count
-		var owned: int = inventory.get_count(input.ref_or_tag)
+		var owned: int
+		var display_name: String
+		if input.is_tag():
+			owned = _count_inventory_by_tag(inventory, input.get_tag())
+			display_name = "Any " + String(input.get_tag())
+		else:
+			var ref_sn := StringName(input.ref)
+			owned = inventory.get_count(ref_sn)
+			var def: _PropDef = PropRegistry.get_def(ref_sn)
+			display_name = def.display_name if def != null and def.display_name != "" else input.ref
 		var lbl := Label.new()
 		lbl.add_theme_font_size_override("font_size", 18)
-
-		var def: _PropDef = PropRegistry.get_def(input.ref_or_tag)
-		var display_name: String = def.display_name if def != null and def.display_name != "" else String(input.ref_or_tag)
 		lbl.text = "%s: %d/%d" % [display_name, owned, needed]
 
 		if owned >= needed:

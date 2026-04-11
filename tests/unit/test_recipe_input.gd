@@ -6,9 +6,9 @@ const _RecipeInput = preload("res://scripts/recipes/recipe_input.gd")
 
 # --- Defaults ---
 
-func test_default_ref_or_tag_is_empty() -> void:
+func test_default_ref_is_empty() -> void:
 	var inp := _RecipeInput.new()
-	assert_str(String(inp.ref_or_tag)).is_empty()
+	assert_str(inp.ref).is_empty()
 
 
 func test_default_count_is_one() -> void:
@@ -16,56 +16,64 @@ func test_default_count_is_one() -> void:
 	assert_int(inp.count).is_equal(1)
 
 
-func test_default_source_is_player_inventory() -> void:
+func test_default_must_hold_is_false() -> void:
 	var inp := _RecipeInput.new()
-	assert_str(String(inp.source)).is_equal("player_inventory")
+	assert_bool(inp.must_hold).is_false()
 
 
-func test_default_is_tag_is_false() -> void:
+func test_default_is_tag_returns_false() -> void:
 	var inp := _RecipeInput.new()
-	assert_bool(inp.is_tag).is_false()
+	assert_bool(inp.is_tag()).is_false()
 
 
 # --- Exact ref input ---
 
 func test_exact_ref_input() -> void:
 	var inp := _RecipeInput.new()
-	inp.ref_or_tag = &"P00010"
+	inp.ref = "P00010"
 	inp.count = 5
-	inp.is_tag = false
-	assert_str(String(inp.ref_or_tag)).is_equal("P00010")
+	inp.must_hold = true
+	assert_str(inp.ref).is_equal("P00010")
 	assert_int(inp.count).is_equal(5)
-	assert_bool(inp.is_tag).is_false()
+	assert_bool(inp.must_hold).is_true()
+	assert_bool(inp.is_tag()).is_false()
 
 
 # --- Tag-based input ---
 
 func test_tag_input_with_burnable() -> void:
 	var inp := _RecipeInput.new()
-	inp.ref_or_tag = &"BURNABLE.log"
-	inp.is_tag = true
-	assert_str(String(inp.ref_or_tag)).is_equal("BURNABLE.log")
-	assert_bool(inp.is_tag).is_true()
+	inp.ref = "&BURNABLE.log"
+	assert_str(inp.ref).is_equal("&BURNABLE.log")
+	assert_bool(inp.is_tag()).is_true()
+	assert_str(String(inp.get_tag())).is_equal("BURNABLE.log")
 
 
-# --- Different source locations ---
-
-func test_source_container() -> void:
+func test_tag_input_simple() -> void:
 	var inp := _RecipeInput.new()
-	inp.source = &"container"
-	assert_str(String(inp.source)).is_equal("container")
+	inp.ref = "&BURNABLE"
+	assert_bool(inp.is_tag()).is_true()
+	assert_str(String(inp.get_tag())).is_equal("BURNABLE")
 
 
-func test_source_world_tile() -> void:
+func test_get_tag_returns_empty_for_non_tag() -> void:
 	var inp := _RecipeInput.new()
-	inp.source = &"world_tile"
-	assert_str(String(inp.source)).is_equal("world_tile")
+	inp.ref = "P00010"
+	assert_str(String(inp.get_tag())).is_empty()
 
 
-func test_source_world_anywhere() -> void:
+# --- must_hold semantics ---
+
+func test_must_hold_true_means_inventory() -> void:
 	var inp := _RecipeInput.new()
-	inp.source = &"world_anywhere"
-	assert_str(String(inp.source)).is_equal("world_anywhere")
+	inp.must_hold = true
+	assert_bool(inp.must_hold).is_true()
+
+
+func test_must_hold_false_means_world_vicinity() -> void:
+	var inp := _RecipeInput.new()
+	inp.must_hold = false
+	assert_bool(inp.must_hold).is_false()
 
 
 # --- Edge cases ---

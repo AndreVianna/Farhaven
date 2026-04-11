@@ -136,13 +136,13 @@ func after_test() -> void:
 func test_unknown_label_shows_question_mark() -> void:
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(&"berries")
 
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Prop.Category.PLANT)
 
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 
 
 func test_unknown_mineral_label() -> void:
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"stone_deposit", _Catalog.CatalogCategory.MINERAL)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"stone_deposit", _Prop.Category.MINERAL)
 
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 
@@ -168,15 +168,15 @@ func test_identified_element_creates_no_marker() -> void:
 
 func test_bulk_label_update_on_entry_cataloged() -> void:
 	# Add two unknown berry markers
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
-	_scanner.element_unknown.emit(Vector2i(2, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Prop.Category.PLANT)
+	_scanner.element_unknown.emit(Vector2i(2, 0), &"berry_bush", _Prop.Category.PLANT)
 
 	# Verify they show ❓
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
 	assert_str(_label_renderer.get_label_text_at(Vector2i(2, 0))).is_equal("❓")
 
 	# Catalog berry_bush — bulk update: markers cleared
-	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.entry_cataloged.emit(&"berry_bush", _Prop.Category.PLANT)
 
 	# Both markers should now be empty (CATALOGED = no marker)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
@@ -184,10 +184,10 @@ func test_bulk_label_update_on_entry_cataloged() -> void:
 
 
 func test_bulk_label_update_only_affects_matching_entry() -> void:
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
-	_scanner.element_unknown.emit(Vector2i(2, 0), &"stone_deposit", _Catalog.CatalogCategory.MINERAL)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Prop.Category.PLANT)
+	_scanner.element_unknown.emit(Vector2i(2, 0), &"stone_deposit", _Prop.Category.MINERAL)
 
-	_scanner.entry_cataloged.emit(&"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.entry_cataloged.emit(&"berry_bush", _Prop.Category.PLANT)
 
 	# Berry marker cleared, stone marker unchanged
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
@@ -196,7 +196,7 @@ func test_bulk_label_update_only_affects_matching_entry() -> void:
 
 func test_label_update_on_entry_encountered() -> void:
 	# Add unknown fauna marker
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"thornback", _Catalog.CatalogCategory.FAUNA)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"thornback", _Prop.Category.ANIMAL)
 
 	# Verify it shows ❓
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("❓")
@@ -209,7 +209,7 @@ func test_label_update_on_entry_encountered() -> void:
 
 
 func test_labels_billboard_enabled() -> void:
-	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Catalog.CatalogCategory.FLORA)
+	_scanner.element_unknown.emit(Vector2i(1, 0), &"berry_bush", _Prop.Category.PLANT)
 
 	var labels: Dictionary = _label_renderer.get_tile_labels()
 	var label_node: Label3D = labels[Vector2i(1, 0)][0].label_node

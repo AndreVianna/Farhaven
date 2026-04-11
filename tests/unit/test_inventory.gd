@@ -15,7 +15,7 @@ const ID_SCANNER: StringName = &"P00205"
 const ID_FIBER: StringName = &"P00012"
 const ID_ROCK: StringName = &"P00011"
 
-# Weights from DESIGN.md §14:
+# Sizes (slot-units) from DESIGN.md §14:
 # Wood=1.0, Rock=0.2, Fiber=0.05, Stone=0.5, Iron Ore=0.4, Crystal=0.15
 # Berry=0.01, Toxic Berry=0.01, Meat=0.3, Torch=0.5
 
@@ -42,20 +42,20 @@ func test_starting_state_12_empty_slots() -> void:
 		assert_int(slot["quantity"]).is_equal(0)
 
 
-func test_starting_weight_zero() -> void:
-	assert_float(_inv.get_current_weight()).is_equal(0.0)
+func test_starting_size_zero() -> void:
+	assert_float(_inv.get_current_size()).is_equal(0.0)
 
 
-func test_starting_capacity_weight_50() -> void:
-	assert_float(_inv.get_capacity_weight()).is_equal(50.0)
+func test_starting_capacity_size_50() -> void:
+	assert_float(_inv.get_capacity_size()).is_equal(50.0)
 
 
 func test_starting_remaining_capacity_50() -> void:
 	assert_float(_inv.get_remaining_capacity()).is_equal(50.0)
 
 
-func test_starting_weight_display() -> void:
-	assert_str(_inv.get_weight_display()).is_equal("0.0 / 50.0")
+func test_starting_size_display() -> void:
+	assert_str(_inv.get_size_display()).is_equal("0.0 / 50.0")
 
 
 func test_starting_tool_weapon_empty() -> void:
@@ -111,8 +111,8 @@ func test_prop_defs_have_portable_capability() -> void:
 		assert_bool(def.portable != null).override_failure_message(
 			"%s must have PORTABLE capability" % id
 		).is_true()
-		assert_bool(def.portable.weight > 0.0).override_failure_message(
-			"%s PORTABLE.weight must be > 0" % id
+		assert_bool(def.portable.size > 0.0).override_failure_message(
+			"%s PORTABLE.size must be > 0" % id
 		).is_true()
 
 
@@ -128,9 +128,9 @@ func test_add_item_tool_does_not_appear_in_slots() -> void:
 	assert_int(_inv.get_count(ID_AXE)).is_equal(0)
 
 
-func test_add_item_tool_does_not_change_weight() -> void:
+func test_add_item_tool_does_not_change_size() -> void:
 	_inv.add_item(ID_AXE, 1)
-	assert_float(_inv.get_current_weight()).is_equal(0.0)
+	assert_float(_inv.get_current_size()).is_equal(0.0)
 
 
 # --- add_item: new stack ---
@@ -146,49 +146,49 @@ func test_add_item_new_stack_uses_one_slot() -> void:
 	assert_int(_inv.get_used_slot_count()).is_equal(1)
 
 
-# --- add_item: weight tracking ---
+# --- add_item: size tracking ---
 
-func test_add_item_updates_current_weight() -> void:
-	# Wood weight = 1.0
+func test_add_item_updates_current_size() -> void:
+	# Wood size = 1.0
 	_inv.add_item(ID_WOOD, 5)
-	assert_float(_inv.get_current_weight()).is_equal_approx(5.0, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(5.0, 0.001)
 
 
 func test_add_item_updates_remaining_capacity() -> void:
-	# Wood weight = 1.0
+	# Wood size = 1.0
 	_inv.add_item(ID_WOOD, 5)
 	assert_float(_inv.get_remaining_capacity()).is_equal_approx(45.0, 0.001)
 
 
-func test_add_berry_light_weight() -> void:
-	# Berry weight = 0.01
+func test_add_berry_light_size() -> void:
+	# Berry size = 0.01
 	_inv.add_item(ID_BERRIES, 20)
-	assert_float(_inv.get_current_weight()).is_equal_approx(0.2, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(0.2, 0.001)
 
 
-func test_add_multiple_types_accumulates_weight() -> void:
+func test_add_multiple_types_accumulates_size() -> void:
 	# Wood 1.0 * 5 = 5.0, Stone 0.5 * 10 = 5.0
 	_inv.add_item(ID_WOOD, 5)
 	_inv.add_item(ID_STONE, 10)
-	assert_float(_inv.get_current_weight()).is_equal_approx(10.0, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(10.0, 0.001)
 
 
-# --- add_item: weight-based rejection ---
+# --- add_item: size-based rejection ---
 
-func test_add_item_weight_exceeds_capacity_rejects() -> void:
+func test_add_item_size_exceeds_capacity_rejects() -> void:
 	# Wood = 1.0 each. Capacity = 50.0. Try to add 51.
 	var added: int = _inv.add_item(ID_WOOD, 51)
 	assert_int(added).is_equal(50)
 	assert_int(_inv.get_count(ID_WOOD)).is_equal(50)
 
 
-func test_add_item_partial_weight_fit() -> void:
+func test_add_item_partial_size_fit() -> void:
 	# Fill to 49.0 with wood (1.0 each)
 	_inv.add_item(ID_WOOD, 49)
 	# Try to add 5 more — only 1 fits
 	var added: int = _inv.add_item(ID_WOOD, 5)
 	assert_int(added).is_equal(1)
-	assert_float(_inv.get_current_weight()).is_equal_approx(50.0, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(50.0, 0.001)
 
 
 func test_add_item_zero_remaining_capacity_rejects() -> void:
@@ -197,7 +197,7 @@ func test_add_item_zero_remaining_capacity_rejects() -> void:
 	assert_int(added).is_equal(0)
 
 
-func test_add_item_emits_inventory_full_on_weight_overflow() -> void:
+func test_add_item_emits_inventory_full_on_size_overflow() -> void:
 	_inv.add_item(ID_WOOD, 50)
 	var fired: Array = []
 	_inv.inventory_full.connect(func(t: StringName, r: int) -> void:
@@ -211,14 +211,14 @@ func test_add_item_emits_inventory_full_on_weight_overflow() -> void:
 # --- add_item: single item too heavy for capacity ---
 
 func test_add_item_too_heavy_for_capacity_rejects() -> void:
-	# Set capacity to 0.5, then try adding wood (weight 1.0)
-	_inv.capacity_weight = 0.5
+	# Set capacity to 0.5, then try adding wood (size 1.0)
+	_inv.capacity_size = 0.5
 	var added: int = _inv.add_item(ID_WOOD, 1)
 	assert_int(added).is_equal(0)
 
 
 func test_add_item_too_heavy_emits_inventory_full() -> void:
-	_inv.capacity_weight = 0.5
+	_inv.capacity_size = 0.5
 	var fired: Array = []
 	_inv.inventory_full.connect(func(t: StringName, r: int) -> void:
 		fired.append({"type": t, "rejected": r})
@@ -228,10 +228,10 @@ func test_add_item_too_heavy_emits_inventory_full() -> void:
 	assert_int(fired[0]["rejected"]).is_equal(3)
 
 
-# --- add_item: max_stack still respected alongside weight ---
+# --- add_item: max_stack still respected alongside size ---
 
-func test_max_stack_limits_even_if_weight_allows() -> void:
-	# Berries max_stack=20, weight=0.01. Weight allows thousands.
+func test_max_stack_limits_even_if_size_allows() -> void:
+	# Berries max_stack=20, size=0.01. Size allows thousands.
 	# But max_stack should still limit per-slot to 20.
 	_inv.add_item(ID_BERRIES, 20)
 	_inv.add_item(ID_BERRIES, 1)
@@ -243,7 +243,7 @@ func test_max_stack_limits_even_if_weight_allows() -> void:
 # --- add_item: partial stack fill ---
 
 func test_add_item_fills_partial_stack() -> void:
-	# Berry weight=0.01, max_stack=20. Use berries for stack behavior tests.
+	# Berry size=0.01, max_stack=20. Use berries for stack behavior tests.
 	_inv.add_item(ID_BERRIES, 15)
 	# Slot has 15 berries (max 20). Adding 10 → fills to 20 then new stack of 5.
 	var added: int = _inv.add_item(ID_BERRIES, 10)
@@ -274,9 +274,9 @@ func test_add_item_overflow_emits_inventory_full() -> void:
 	_inv.inventory_full.connect(func(t: StringName, r: int) -> void:
 		fired.append({"type": t, "rejected": r})
 	)
-	# Fill capacity with berries (0.01 each). 50 / 0.01 = 5000 berries max by weight.
+	# Fill capacity with berries (0.01 each). 50 / 0.01 = 5000 berries max by size.
 	# But max_stack=20, so 12 slots * 20 = 240 berries max by slots.
-	# 240 * 0.01 = 2.4 weight. Fill all slots first.
+	# 240 * 0.01 = 2.4 size. Fill all slots first.
 	for i in 12:
 		_inv.add_item(ID_BERRIES, 20)
 	_inv.add_item(ID_BERRIES, 1)
@@ -307,16 +307,16 @@ func test_stacking_berries_max_20() -> void:
 
 
 func test_stacking_wood_max_99() -> void:
-	# Weight allows only 50 wood (1.0 each) — won't reach 99 before weight cap
+	# Size allows only 50 wood (1.0 each) — won't reach 99 before size cap
 	# This test verifies that adding up to max_stack spills correctly
-	_inv.capacity_weight = 200.0  # override for this test
+	_inv.capacity_size = 200.0  # override for this test
 	_inv.add_item(ID_WOOD, 99)
 	_inv.add_item(ID_WOOD, 1)
 	assert_int(_inv.get_used_slot_count()).is_equal(2)
 
 
 func test_stacking_crystal_max_50() -> void:
-	# Crystal weight=0.15, 50 * 0.15 = 7.5 fits in capacity
+	# Crystal size=0.15, 50 * 0.15 = 7.5 fits in capacity
 	_inv.add_item(ID_CRYSTAL, 50)
 	_inv.add_item(ID_CRYSTAL, 1)
 	assert_int(_inv.get_used_slot_count()).is_equal(2)
@@ -366,7 +366,7 @@ func test_remove_item_clears_empty_slot() -> void:
 
 func test_remove_item_reverse_order() -> void:
 	# Increase capacity to fit 149 wood (149 * 1.0)
-	_inv.capacity_weight = 200.0
+	_inv.capacity_size = 200.0
 	# Add 99 wood (slot 0), then 50 wood (slot 1)
 	_inv.add_item(ID_WOOD, 99)
 	_inv.add_item(ID_WOOD, 50)
@@ -399,18 +399,18 @@ func test_remove_item_not_present_returns_zero() -> void:
 	assert_int(removed).is_equal(0)
 
 
-# --- remove_item: weight tracking ---
+# --- remove_item: size tracking ---
 
-func test_remove_item_decreases_weight() -> void:
+func test_remove_item_decreases_size() -> void:
 	_inv.add_item(ID_WOOD, 10)  # 10 * 1.0 = 10.0
 	_inv.remove_item(ID_WOOD, 4)  # remove 4 * 1.0 = 4.0
-	assert_float(_inv.get_current_weight()).is_equal_approx(6.0, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(6.0, 0.001)
 
 
-func test_remove_all_items_weight_returns_to_zero() -> void:
+func test_remove_all_items_size_returns_to_zero() -> void:
 	_inv.add_item(ID_WOOD, 10)
 	_inv.remove_item(ID_WOOD, 10)
-	assert_float(_inv.get_current_weight()).is_equal_approx(0.0, 0.001)
+	assert_float(_inv.get_current_size()).is_equal_approx(0.0, 0.001)
 
 
 func test_remove_item_increases_remaining_capacity() -> void:
@@ -432,7 +432,7 @@ func test_has_item_false_when_insufficient() -> void:
 
 
 func test_get_count_sums_across_slots() -> void:
-	_inv.capacity_weight = 200.0  # allow 149 wood
+	_inv.capacity_size = 200.0  # allow 149 wood
 	_inv.add_item(ID_WOOD, 99)
 	_inv.add_item(ID_WOOD, 50)
 	assert_int(_inv.get_count(ID_WOOD)).is_equal(149)
@@ -444,7 +444,7 @@ func test_is_full_false_when_slots_available() -> void:
 	assert_bool(_inv.is_full()).is_false()
 
 
-func test_is_full_true_when_weight_at_capacity() -> void:
+func test_is_full_true_when_size_at_capacity() -> void:
 	_inv.add_item(ID_WOOD, 50)  # 50 * 1.0 = 50.0
 	assert_bool(_inv.is_full()).is_true()
 
@@ -502,11 +502,11 @@ func test_use_item_no_signal_when_not_present() -> void:
 	assert_int(fired.size()).is_equal(0)
 
 
-func test_use_item_decreases_weight() -> void:
+func test_use_item_decreases_size() -> void:
 	_inv.add_item(ID_BERRIES, 5)
-	var before: float = _inv.get_current_weight()
+	var before: float = _inv.get_current_size()
 	_inv.use_item(ID_BERRIES)
-	var after: float = _inv.get_current_weight()
+	var after: float = _inv.get_current_size()
 	assert_float(after).is_less(before)
 
 
@@ -630,7 +630,7 @@ func test_save_data_format_has_required_keys() -> void:
 	assert_bool(data.has("bonus_slots")).is_true()
 	assert_bool(data.has("tools")).is_true()
 	assert_bool(data.has("slots")).is_true()
-	assert_bool(data.has("capacity_weight")).is_true()
+	assert_bool(data.has("capacity_size")).is_true()
 
 
 func test_save_load_preserves_slot_positions() -> void:
@@ -646,22 +646,22 @@ func test_save_load_preserves_slot_positions() -> void:
 	assert_int(slots[1]["quantity"]).is_equal(3)
 
 
-func test_save_load_recomputes_weight() -> void:
+func test_save_load_recomputes_size() -> void:
 	_inv.add_item(ID_WOOD, 10)
 	_inv.add_item(ID_STONE, 5)
-	var expected_weight: float = _inv.get_current_weight()
+	var expected_size: float = _inv.get_current_size()
 	var data: Dictionary = _inv.get_save_data()
 	var inv2: _Inventory = _Inventory.new()
 	inv2.load_save_data(data)
-	assert_float(inv2.get_current_weight()).is_equal_approx(expected_weight, 0.001)
+	assert_float(inv2.get_current_size()).is_equal_approx(expected_size, 0.001)
 
 
-func test_save_load_preserves_capacity_weight() -> void:
-	_inv.capacity_weight = 75.0
+func test_save_load_preserves_capacity_size() -> void:
+	_inv.capacity_size = 75.0
 	var data: Dictionary = _inv.get_save_data()
 	var inv2: _Inventory = _Inventory.new()
 	inv2.load_save_data(data)
-	assert_float(inv2.get_capacity_weight()).is_equal(75.0)
+	assert_float(inv2.get_capacity_size()).is_equal(75.0)
 
 
 # --- get_stacks ---
@@ -677,8 +677,8 @@ func test_get_stacks_single_type() -> void:
 	assert_int(stacks.size()).is_equal(1)
 	assert_object(stacks[0]["type"]).is_equal(ID_WOOD)
 	assert_int(stacks[0]["count"]).is_equal(5)
-	assert_float(stacks[0]["weight_per_unit"]).is_equal_approx(1.0, 0.001)
-	assert_float(stacks[0]["total_weight"]).is_equal_approx(5.0, 0.001)
+	assert_float(stacks[0]["size_per_unit"]).is_equal_approx(1.0, 0.001)
+	assert_float(stacks[0]["total_size"]).is_equal_approx(5.0, 0.001)
 
 
 func test_get_stacks_multiple_types() -> void:
@@ -695,21 +695,21 @@ func test_get_stacks_multiple_types() -> void:
 
 
 func test_get_stacks_merges_across_slots() -> void:
-	_inv.capacity_weight = 200.0  # allow more
+	_inv.capacity_size = 200.0  # allow more
 	_inv.add_item(ID_WOOD, 99)
 	_inv.add_item(ID_WOOD, 50)
 	var stacks: Array[Dictionary] = _inv.get_stacks()
 	assert_int(stacks.size()).is_equal(1)
 	assert_int(stacks[0]["count"]).is_equal(149)
-	assert_float(stacks[0]["total_weight"]).is_equal_approx(149.0, 0.001)
+	assert_float(stacks[0]["total_size"]).is_equal_approx(149.0, 0.001)
 
 
-# --- Weight display ---
+# --- Size display ---
 
-func test_weight_display_after_adding_items() -> void:
+func test_size_display_after_adding_items() -> void:
 	_inv.add_item(ID_WOOD, 10)  # 10.0
 	_inv.add_item(ID_STONE, 5)  # 2.5
-	assert_str(_inv.get_weight_display()).is_equal("12.5 / 50.0")
+	assert_str(_inv.get_size_display()).is_equal("12.5 / 50.0")
 
 
 # --- Backward compat: items without PORTABLE default to 1.0 ---
@@ -717,11 +717,11 @@ func test_weight_display_after_adding_items() -> void:
 # but they normally wouldn't be added to inventory anyway.
 # This test uses a hypothetical case.
 
-func test_item_without_portable_defaults_to_weight_1() -> void:
+func test_item_without_portable_defaults_to_size_1() -> void:
 	# Source props (e.g. Small Tree 00001) don't have PORTABLE
 	# They shouldn't normally enter inventory, but if they did the
-	# default weight of 1.0 would apply. We verify _get_item_weight
-	# by checking the public weight_display after adding a known-weight item.
-	# The internal _get_item_weight is tested through add_item behavior.
-	_inv.add_item(ID_WOOD, 1)  # wood has portable.weight = 1.0
-	assert_float(_inv.get_current_weight()).is_equal_approx(1.0, 0.001)
+	# default size of 1.0 would apply. We verify _get_item_size
+	# by checking the public size_display after adding a known-size item.
+	# The internal _get_item_size is tested through add_item behavior.
+	_inv.add_item(ID_WOOD, 1)  # wood has portable.size = 1.0
+	assert_float(_inv.get_current_size()).is_equal_approx(1.0, 0.001)

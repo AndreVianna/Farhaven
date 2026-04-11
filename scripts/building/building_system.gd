@@ -205,11 +205,11 @@ func _on_recipe_resolved(recipe_id: StringName, outputs: Array, _effects: Array)
 			tile.props.append(structure)
 			_grid.structure_placed.emit(coords, prop_ref)
 
-			# Storage Chest effect: increase inventory capacity_weight.
+			# Storage Chest effect: increase inventory capacity_size.
 			if prop_ref == &"P00104" and player != null:
 				var inv = _get_player_inventory(player)
 				if inv != null:
-					inv.capacity_weight += 50.0
+					inv.capacity_size += 50.0
 
 
 # ---------------------------------------------------------------------------

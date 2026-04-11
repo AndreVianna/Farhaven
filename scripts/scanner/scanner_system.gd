@@ -10,15 +10,21 @@ class_name ScannerSystem
 ## when player leaves range (no grace period). One scan at a time, nearest first.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
-# --- Scan duration per category (seconds) ---
+# --- Scan duration per prop category (seconds) ---
 
 const SCAN_DURATIONS: Dictionary = {
-	_Catalog.CatalogCategory.FLORA:   2.0,
-	_Catalog.CatalogCategory.MINERAL: 2.0,
-	_Catalog.CatalogCategory.FAUNA:   3.0,
-	_Catalog.CatalogCategory.ANOMALY: 3.0,
+	_Prop.Category.PLANT:   2.0,
+	_Prop.Category.MINERAL: 2.0,
+	_Prop.Category.ANIMAL:  3.0,
+	_Prop.Category.FUNGI:   2.0,
+	_Prop.Category.LIQUID:  2.0,
+	_Prop.Category.OOZE:    2.0,
 }
+
+## Scan duration override for anomalies (overrides prop_category duration when show_as_anomaly=true)
+const SCAN_DURATION_ANOMALY: float = 3.0
 
 # --- Proximity scan constants ---
 
@@ -31,13 +37,17 @@ signal scan_progress_updated(progress: float)
 signal scan_completed(entry_id: StringName)
 signal scan_interrupted()
 
-signal entry_cataloged(entry_id: StringName, category: int)
+## bucket: int — display bucket for catalog UI. Either a Prop.Category enum
+## value (PLANT, ANIMAL, MINERAL) OR Catalog.ANOMALY_BUCKET (-1) when the
+## entry has catalogable.show_as_anomaly = true.
+signal entry_cataloged(entry_id: StringName, bucket: int)
 signal entry_encountered(entry_id: StringName, label: String)
 signal knowledge_state_changed(entry_id: StringName, old_state: int, new_state: int)
 signal surprise_cataloged(entry_id: StringName)
 
 signal element_identified(coords: Vector2i, entry_id: StringName)
-signal element_unknown(coords: Vector2i, entry_id: StringName, category: int)
+## bucket: see entry_cataloged signal documentation above.
+signal element_unknown(coords: Vector2i, entry_id: StringName, bucket: int)
 signal element_encountered(coords: Vector2i, entry_id: StringName, label: String)
 
 # --- Properties ---
@@ -118,8 +128,16 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		_scan_target_entry_id = best_entry_id
 		_scan_progress = 0.0
 		var entry = _catalog.get_entry(best_entry_id)
-		var category: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
-		_scan_duration = SCAN_DURATIONS.get(category, 2.0)
+		var prop_category: int = _Prop.Category.PLANT
+		var is_anomaly: bool = false
+		if entry != null:
+			prop_category = entry.prop_category
+			if entry.catalogable != null and entry.catalogable.show_as_anomaly:
+				is_anomaly = true
+		if is_anomaly:
+			_scan_duration = SCAN_DURATION_ANOMALY
+		else:
+			_scan_duration = SCAN_DURATIONS.get(prop_category, 2.0)
 		# Apply scanning survival cost + start drain
 		var survival: Node = _get_survival_system()
 		if survival:
@@ -146,10 +164,10 @@ func _complete_scan() -> void:
 	_catalog.catalog_entry(entry_id)
 
 	var entry = _catalog.get_entry(entry_id)
-	var category: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+	var bucket: int = _resolve_display_bucket(entry)
 
 	scan_completed.emit(entry_id)
-	entry_cataloged.emit(entry_id, category)
+	entry_cataloged.emit(entry_id, bucket)
 	knowledge_state_changed.emit(entry_id, old_state, _Catalog.KnowledgeState.CATALOGED)
 
 
@@ -191,7 +209,7 @@ func _check_passive_identification(coords: Vector2i) -> void:
 		if not PropRegistry.has_def(prop.type):
 			continue
 		var def = PropRegistry.get_def(prop.type)
-		if def.catalogable == null or String(def.catalogable.display_name) == "":
+		if def.catalogable == null or String(def.display_name) == "":
 			continue
 		var entry_id: StringName = def.id
 		var state: int = _catalog.get_knowledge_state(entry_id)
@@ -203,7 +221,9 @@ func _check_passive_identification(coords: Vector2i) -> void:
 				element_encountered.emit(coords, entry_id, label)
 			_Catalog.KnowledgeState.UNKNOWN:
 				var entry = _catalog.get_entry(entry_id)
-				var cat: int = entry.category if entry != null else _Catalog.CatalogCategory.FLORA
+				var cat: int = _Prop.Category.PLANT
+				if entry != null:
+					cat = _resolve_display_bucket(entry)
 				element_unknown.emit(coords, entry_id, cat)
 	for prop in tile.get_anomalies():
 		var anomaly_id: StringName = prop.type
@@ -212,7 +232,18 @@ func _check_passive_identification(coords: Vector2i) -> void:
 			_Catalog.KnowledgeState.CATALOGED:
 				element_identified.emit(coords, anomaly_id)
 			_:
-				element_unknown.emit(coords, anomaly_id, _Catalog.CatalogCategory.ANOMALY)
+				element_unknown.emit(coords, anomaly_id, _Catalog.ANOMALY_BUCKET)
+
+
+## Resolve the display bucket for a PropDef entry — returns the Prop.Category
+## int value, or Catalog.ANOMALY_BUCKET when the entry's catalogable cap has
+## show_as_anomaly=true.
+func _resolve_display_bucket(entry) -> int:
+	if entry == null:
+		return _Prop.Category.PLANT
+	if entry.catalogable != null and entry.catalogable.show_as_anomaly:
+		return _Catalog.ANOMALY_BUCKET
+	return entry.prop_category
 
 
 # --- Survival System Helper ---

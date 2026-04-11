@@ -10,16 +10,13 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 1.0
-display_tag = &"flora"
-category = 0
-display_name = "Thornwood Tree"
-description = "A twisted alien tree with dense bark. Burns well."
 properties = {"edible": false, "toxic": false, "resource_type": &"wood"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00001"
-display_name = "Small Tree"
+display_name = "Thornwood Tree"
+short_description = "A twisted alien tree with dense bark. Burns well."
 tags = [&"SOURCE", &"WOOD"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

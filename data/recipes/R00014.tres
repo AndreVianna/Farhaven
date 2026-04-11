@@ -6,9 +6,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"cooked_meat"
+ref = "cooked_meat"
 count = 1
-source = &"world_anywhere"
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -19,7 +18,6 @@ count = 1
 script = ExtResource("1_recipe")
 id = &"R00014"
 display_name = "Meat Rots"
-kind = 1
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 duration = 86400.0

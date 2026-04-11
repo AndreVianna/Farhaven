@@ -6,13 +6,15 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"branch"
+ref = "branch"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="input_2"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00012"
+ref = "P00012"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -23,7 +25,6 @@ count = 1
 script = ExtResource("1_recipe")
 id = &"R00012"
 display_name = "Craft Trap"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 actions = [&"assemble"]

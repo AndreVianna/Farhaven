@@ -9,10 +9,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"BURNABLE.log"
+ref = "&BURNABLE.log"
 count = 1
-source = &"container"
-is_tag = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -53,7 +51,6 @@ must_sustain = true
 script = ExtResource("1_recipe")
 id = &"R00015"
 display_name = "Burn Log in Fireplace"
-kind = 2
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]

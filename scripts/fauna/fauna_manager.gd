@@ -4,6 +4,12 @@ extends Node
 ## Child of Player. Fauna spawn at night (Day 4+), move toward player,
 ## deal contact damage, and despawn at dawn.
 ## task-037: FaunaManager — spawn, AI, contact, despawn
+##
+## Wave 3 refactor (delivery-006b): per-species config now lives in PropDef
+## capabilities (endurance / movement / behavior / spawnable). FaunaManager
+## reads them through PropRegistry instead of a hardcoded FAUNA_CONFIG dict.
+## Contact damage will move onto attack events later — until then it stays
+## as a constant default here.
 
 const _Prop = preload("res://scripts/hex/prop.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
@@ -11,18 +17,11 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _DayNightCycle = preload("res://scripts/day_night/day_night_cycle.gd")
 
 # --- Config ---
-const FAUNA_CONFIG: Dictionary = {
-	"hp": 20,
-	"contact_damage": 10,
-	"move_cooldown": 1.0,
-	"detection_range": 2,
-	"spawn_min": 1,
-	"spawn_max": 3,
-	"first_spawn_day": 4,
-	"spawn_min_distance": 3,
-}
+## Default contact damage until attack events land (wave 5+).
+const DEFAULT_CONTACT_DAMAGE: int = 10
 
-const CHAPTER1_SPECIES: Array[StringName] = [&"thornback"]
+## Chapter-1 spawnable fauna species (PropDef ids).
+const CHAPTER1_SPECIES: Array[StringName] = [&"P00108"]
 
 # --- Signals ---
 signal fauna_spawned(id: int, coords: Vector2i, species_type: StringName)
@@ -82,39 +81,46 @@ func _process(delta: float) -> void:
 func _on_night() -> void:
 	if _dnc == null:
 		return
-	if _dnc.day_count < FAUNA_CONFIG["first_spawn_day"]:
-		return
-	_spawn_fauna()
+	# Spawn each chapter-1 species whose first_spawn_day has been reached.
+	for species_id in CHAPTER1_SPECIES:
+		var def := _get_species_def(species_id)
+		if def == null:
+			push_warning("FaunaManager: no PropDef registered for species '%s' — skipping" % species_id)
+			continue
+		if not _has_required_caps(def, species_id):
+			continue
+		if _dnc.day_count < def.spawnable.first_spawn_day:
+			continue
+		_spawn_species(species_id, def)
 
 
-func _spawn_fauna() -> void:
+func _spawn_species(species_id: StringName, def: Resource) -> void:
 	var player_coords := _get_player_coords()
-	var candidates := _get_spawn_candidates(player_coords)
+	var candidates := _get_spawn_candidates(player_coords, def.spawnable.spawn_min_distance)
 	if candidates.is_empty():
 		return
 
-	var count: int = randi_range(FAUNA_CONFIG["spawn_min"], FAUNA_CONFIG["spawn_max"])
+	var count: int = randi_range(def.spawnable.spawn_min, def.spawnable.spawn_max)
 	count = mini(count, candidates.size())
 	candidates.shuffle()
 
 	for i in count:
 		var coords: Vector2i = candidates[i]
-		var species: StringName = CHAPTER1_SPECIES[0]
 		var fauna_entry: Dictionary = {
 			"id": _next_id,
-			"species_type": species,
+			"species_type": species_id,
 			"coords": coords,
-			"hp": FAUNA_CONFIG["hp"],
-			"move_cooldown": FAUNA_CONFIG["move_cooldown"],
+			"hp": def.endurance.hp,
+			"move_cooldown": _get_move_cooldown(def),
 			"cooldown_remaining": 0.0,
 			"was_in_light": false,
 		}
 		_fauna.append(fauna_entry)
-		fauna_spawned.emit(_next_id, coords, species)
+		fauna_spawned.emit(_next_id, coords, species_id)
 		_next_id += 1
 
 
-func _get_spawn_candidates(player_coords: Vector2i) -> Array[Vector2i]:
+func _get_spawn_candidates(player_coords: Vector2i, spawn_min_distance: int) -> Array[Vector2i]:
 	var candidates: Array[Vector2i] = []
 	if _grid == null:
 		return candidates
@@ -122,14 +128,15 @@ func _get_spawn_candidates(player_coords: Vector2i) -> Array[Vector2i]:
 	var active_lights: Array[Dictionary] = _get_active_lights()
 
 	for coords: Vector2i in all_tiles:
-		if not _is_valid_spawn_tile(coords, player_coords, all_tiles, active_lights):
+		if not _is_valid_spawn_tile(coords, player_coords, all_tiles, active_lights, spawn_min_distance):
 			continue
 		candidates.append(coords)
 	return candidates
 
 
 func _is_valid_spawn_tile(coords: Vector2i, player_coords: Vector2i,
-		all_tiles: Dictionary, active_lights: Array[Dictionary]) -> bool:
+		all_tiles: Dictionary, active_lights: Array[Dictionary],
+		spawn_min_distance: int) -> bool:
 	var tile: Resource = all_tiles.get(coords, null)
 	if tile == null:
 		return false
@@ -149,7 +156,7 @@ func _is_valid_spawn_tile(coords: Vector2i, player_coords: Vector2i,
 
 	# Distance >= spawn_min_distance from player
 	var dist: int = _HexMath.distance(coords, player_coords)
-	if dist < FAUNA_CONFIG["spawn_min_distance"]:
+	if dist < spawn_min_distance:
 		return false
 
 	# Not within any active light radius
@@ -186,11 +193,13 @@ func _update_cooldowns_and_move(delta: float) -> void:
 		var fauna_coords: Vector2i = fauna["coords"]
 		var dist_to_player: int = _HexMath.distance(fauna_coords, player_coords)
 
-		# Only move if within detection range
-		if dist_to_player > FAUNA_CONFIG["detection_range"]:
+		# Only move if within detection range (read from species PropDef behavior cap;
+		# fall back to a no-op if the def is missing so the AI degrades gracefully).
+		var detection_range := _get_detection_range(fauna["species_type"])
+		if dist_to_player > detection_range:
 			continue
 
-		var best_neighbor := _find_best_move(fauna, player_coords, active_lights)
+		var best_neighbor := _find_best_move(fauna, player_coords, active_lights, _get_max_jump_for_species(fauna["species_type"]))
 		if best_neighbor != Vector2i(-99999, -99999):
 			var old_coords: Vector2i = fauna["coords"]
 			# Check surprise encounter: fauna was outside light, now entering player adjacency
@@ -208,7 +217,7 @@ func _update_cooldowns_and_move(delta: float) -> void:
 
 
 func _find_best_move(fauna: Dictionary, player_coords: Vector2i,
-		active_lights: Array[Dictionary]) -> Vector2i:
+		active_lights: Array[Dictionary], max_jump: int = 1) -> Vector2i:
 	var fauna_coords: Vector2i = fauna["coords"]
 	var neighbors: Array[Vector2i] = _HexMath.get_neighbors(fauna_coords)
 	var best_coords := Vector2i(-99999, -99999)
@@ -219,7 +228,7 @@ func _find_best_move(fauna: Dictionary, player_coords: Vector2i,
 		if _grid == null or not _grid.has_tile(neighbor):
 			continue
 		# Check passability with fauna-specific rules
-		if not _is_fauna_passable(fauna_coords, neighbor, 1):
+		if not _is_fauna_passable(fauna_coords, neighbor, max_jump):
 			continue
 		# Avoid lit tiles
 		if _is_tile_lit(neighbor, active_lights):
@@ -253,7 +262,7 @@ func _is_fauna_passable(from: Vector2i, to: Vector2i, max_jump: int) -> bool:
 			var def = PropRegistry.get_def(prop.type)
 			if def.has_tag(&"BLOCKS_MOVEMENT"):
 				return false
-	# Check elevation difference (max_jump for thornback = 1)
+	# Check elevation difference against species max_jump (default 1).
 	if _grid.has_method("get_elevation_diff"):
 		var elev_diff: int = _grid.get_elevation_diff(from, to)
 		if elev_diff > max_jump:
@@ -278,8 +287,10 @@ func _check_contact_damage(player_coords: Vector2i, active_ids: Array[int] = [])
 		var dist: int = _HexMath.distance(fauna["coords"], player_coords)
 		if dist > 1:
 			continue
-		# Adjacent or on same tile — check shelter
-		var damage: int = FAUNA_CONFIG["contact_damage"]
+		# Adjacent or on same tile — check shelter.
+		# Contact damage is a placeholder until attack events land (wave 5+);
+		# for now every species shares DEFAULT_CONTACT_DAMAGE.
+		var damage: int = DEFAULT_CONTACT_DAMAGE
 		if _is_player_sheltered(player_coords):
 			damage = 0
 		fauna_attacked_player.emit(fauna["id"], damage, fauna["species_type"])
@@ -346,7 +357,7 @@ func _place_corpse(coords: Vector2i, species_type: StringName) -> void:
 
 func _get_corpse_type(species_type: StringName) -> StringName:
 	match species_type:
-		&"thornback":
+		&"P00108":
 			return &"P00107"
 	return &"P00107"  # Default fallback
 
@@ -383,6 +394,95 @@ func get_all_fauna() -> Array[Dictionary]:
 	for fauna: Dictionary in _fauna:
 		result.append(fauna.duplicate())
 	return result
+
+
+# --- Species def helpers ---
+
+## Returns the PropDef for a species id, or null if not registered.
+## Reads through the injected `_registry` (PropRegistry autoload by default).
+func _get_species_def(species_id: StringName) -> Resource:
+	if _registry == null:
+		return null
+	if not _registry.has_method("has_def") or not _registry.has_method("get_def"):
+		return null
+	if not _registry.has_def(species_id):
+		return null
+	return _registry.get_def(species_id)
+
+
+## Logs a warning and returns false if the species def is missing any cap
+## FaunaManager needs to spawn / drive a creature.
+func _has_required_caps(def: Resource, species_id: StringName) -> bool:
+	if def.endurance == null:
+		push_warning("FaunaManager: species '%s' has no endurance cap — skipping" % species_id)
+		return false
+	if def.movement == null:
+		push_warning("FaunaManager: species '%s' has no movement cap — skipping" % species_id)
+		return false
+	if def.behavior == null:
+		push_warning("FaunaManager: species '%s' has no behavior cap — skipping" % species_id)
+		return false
+	if def.spawnable == null:
+		push_warning("FaunaManager: species '%s' has no spawnable cap — skipping" % species_id)
+		return false
+	return true
+
+
+## Resolves the detection range for a species id, falling back to 0 if the
+## def or behavior cap is unavailable (so an unknown species effectively
+## stops moving rather than crashing).
+func _get_detection_range(species_id: StringName) -> int:
+	var def := _get_species_def(species_id)
+	if def == null or def.behavior == null:
+		return 0
+	return def.behavior.detection_range
+
+
+## Derives move cooldown from a species def's movement cap.
+## Picks WALK if present, otherwise the lowest Mode key for deterministic
+## ordering (Dictionary.values() iteration order is not guaranteed).
+## Returns 1.0 if the def or movement cap is missing or modes is empty.
+func _get_move_cooldown(def: Resource) -> float:
+	if def.movement == null or def.movement.modes.is_empty():
+		return 1.0  # Default
+	var modes: Dictionary = def.movement.modes
+	# Prefer WALK (mode 0); otherwise the lowest mode key (deterministic).
+	var walk_key: int = 0  # Mode.WALK int value
+	var chosen_key: int
+	if modes.has(walk_key):
+		chosen_key = walk_key
+	else:
+		var keys: Array = modes.keys()
+		keys.sort()
+		chosen_key = keys[0]
+	var speeds: Array = modes[chosen_key]
+	if speeds.size() < 1 or speeds[0] <= 0.0:
+		return 1.0
+	return 1.0 / float(speeds[0])
+
+
+## Derives max elevation jump from a species def's movement cap.
+## If JUMP mode (int 5) is present, uses its normal speed value as the
+## max traversable elevation difference. Otherwise defaults to 1.
+func _get_max_jump(def: Resource) -> int:
+	if def.movement == null or def.movement.modes.is_empty():
+		return 1  # Default
+	# If JUMP mode is present, use its normal value
+	var jump_mode_key: int = 5  # Mode.JUMP int value
+	if def.movement.modes.has(jump_mode_key):
+		var jump_speeds: Array = def.movement.modes[jump_mode_key]
+		if jump_speeds.size() >= 1:
+			return int(jump_speeds[0])
+	return 1
+
+
+## Resolves the max elevation jump for a species id, falling back to 1 if
+## the def or movement cap is unavailable.
+func _get_max_jump_for_species(species_id: StringName) -> int:
+	var def := _get_species_def(species_id)
+	if def == null:
+		return 1
+	return _get_max_jump(def)
 
 
 # --- Helpers ---

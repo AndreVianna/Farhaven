@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="portable_1"]
 script = ExtResource("2_portable")
-weight = 1.8
+size = 1.8
 
 [resource]
 script = ExtResource("1_script")

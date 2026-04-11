@@ -114,10 +114,10 @@ There is also a clear **data/presentation separation:**
 
 ### inventory/ -- Inventory Management
 - **Files:** inventory.gd
-- **Responsibility:** Weight-based resource/consumable storage (12 base slots, primary constraint is weight capacity 50.0), 4 fixed tool slots, stack management, save/load
-- **Dependencies:** PropRegistry (autoload, for stack size and weight lookups via PortableCap)
+- **Responsibility:** Slot-size based resource/consumable storage (12 base slots, primary constraint is size capacity 50.0), 4 fixed tool slots, stack management, save/load
+- **Dependencies:** PropRegistry (autoload, for stack size and size lookups via PortableCap)
 - **Note:** Extends RefCounted (not Node) -- pure data, not in scene tree
-- **Updated 2026-04-08:** Refactored from slot-count to weight-based. `capacity_weight`, `_current_weight` fields added. Weight derived from `PropDef.portable.weight`. Items without PORTABLE default to 1.0. No hardcoded ITEM_CONFIG -- all items are PropDefs.
+- **Updated 2026-04-08:** Refactored from slot-count to slot-size based. `capacity_size`, `_current_size` fields added. Size derived from `PropDef.portable.size`. Items without PORTABLE default to 1.0. No hardcoded ITEM_CONFIG -- all items are PropDefs.
 
 ### data/ -- Prop Definitions and Capabilities
 - **Files:** prop_def.gd, prop_registry.gd, capabilities/*.gd (7 files: portable_cap, placeable_cap, container_cap, light_cap, movable_cap, station_cap, catalogable_cap)

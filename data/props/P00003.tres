@@ -10,16 +10,13 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 0.5
-display_tag = &"flora"
-category = 0
-display_name = "Fiber Grass"
-description = "Coarse, stringy grass useful for weaving and rope-making."
 properties = {"edible": false, "toxic": false, "resource_type": &"fiber"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00003"
-display_name = "Tall Grass"
+display_name = "Fiber Grass"
+short_description = "Coarse, stringy grass useful for weaving and rope-making."
 tags = [&"SOURCE", &"PLANT"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

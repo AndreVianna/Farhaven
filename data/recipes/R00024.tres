@@ -9,8 +9,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00010"
+ref = "P00010"
 count = 3
+must_hold = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -36,7 +37,6 @@ must_sustain = false
 script = ExtResource("1_recipe")
 id = &"R00024"
 display_name = "Build Wall"
-kind = 0
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

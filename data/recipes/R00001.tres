@@ -6,8 +6,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00020"
+ref = "P00020"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("3_effect")
@@ -23,7 +24,6 @@ params = { "sound_id": "crunch" }
 script = ExtResource("1_recipe")
 id = &"R00001"
 display_name = "Eat Berry"
-kind = 1
 inputs = [SubResource("input_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]
 actions = [&"eat"]

@@ -10,6 +10,7 @@ const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
 
 # --- Constants ---
 
@@ -19,23 +20,30 @@ const LABEL_Y_OFFSET: float = 2.0
 ## HEX_SIZE for multi-prop offset calculation
 const HEX_SIZE: float = 3.0
 
-## Category colors for UNKNOWN ❓ markers
+## Bucket colors for UNKNOWN ❓ markers. Keys are Prop.Category int values
+## plus Catalog.ANOMALY_BUCKET for show_as_anomaly overrides.
 const CATEGORY_COLORS: Dictionary = {
-	_Catalog.CatalogCategory.MINERAL: Color(0.3, 0.5, 1.0),   # Blue
-	_Catalog.CatalogCategory.FLORA:   Color(0.3, 0.8, 0.3),   # Green
-	_Catalog.CatalogCategory.FAUNA:   Color(1.0, 0.3, 0.3),   # Red
-	_Catalog.CatalogCategory.ANOMALY: Color(0.7, 0.3, 0.9),   # Purple
+	_Prop.Category.PLANT:   Color(0.3, 0.8, 0.3),   # Green
+	_Prop.Category.MINERAL: Color(0.3, 0.5, 1.0),   # Blue
+	_Prop.Category.ANIMAL:  Color(1.0, 0.3, 0.3),   # Red
+	_Prop.Category.FUNGI:   Color(0.7, 0.5, 0.85),  # Lavender
+	_Prop.Category.LIQUID:  Color(0.3, 0.7, 1.0),   # Cyan
+	_Prop.Category.OOZE:    Color(0.5, 0.6, 0.3),   # Olive
+	_Catalog.ANOMALY_BUCKET: Color(0.7, 0.3, 0.9),  # Purple — anomaly override
 }
 
 ## Color for ENCOUNTERED ⚠️ markers
 const ENCOUNTERED_COLOR: Color = Color(1.0, 0.6, 0.1)  # Orange/amber
 
-## Category display names (kept for compatibility with test assertions)
+## Display names by bucket. Keys match CATEGORY_COLORS.
 const CATEGORY_NAMES: Dictionary = {
-	_Catalog.CatalogCategory.FLORA:   "Vegetation",
-	_Catalog.CatalogCategory.FAUNA:   "Creature",
-	_Catalog.CatalogCategory.MINERAL: "Mineral",
-	_Catalog.CatalogCategory.ANOMALY: "Anomaly",
+	_Prop.Category.PLANT:   "Vegetation",
+	_Prop.Category.MINERAL: "Mineral",
+	_Prop.Category.ANIMAL:  "Creature",
+	_Prop.Category.FUNGI:   "Fungi",
+	_Prop.Category.LIQUID:  "Liquid",
+	_Prop.Category.OOZE:    "Ooze",
+	_Catalog.ANOMALY_BUCKET: "Anomaly",
 }
 
 # --- State ---
@@ -105,7 +113,7 @@ func _on_element_unknown(coords: Vector2i, entry_id: StringName, category: int) 
 
 
 func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: String) -> void:
-	_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, _Catalog.KnowledgeState.ENCOUNTERED, _Catalog.CatalogCategory.FAUNA)
+	_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, _Catalog.KnowledgeState.ENCOUNTERED, _Prop.Category.ANIMAL)
 
 
 func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:

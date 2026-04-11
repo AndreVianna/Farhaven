@@ -17,6 +17,7 @@ import { validateMap } from './validator.js';
 import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
 import { renderRecipeEditor } from './recipe-editor.js';
+import { renderEventEditor } from './event-editor.js';
 
 // ============================================================
 // Module-level state
@@ -65,10 +66,27 @@ let hexInspector = null;
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
   map: 'Map Editor',
-  props: 'Props',
+  mineral: 'Minerals',
+  plant: 'Flora',
+  animal: 'Fauna',
+  fungi: 'Fungi',
+  ooze: 'Oozes',
+  liquid: 'Liquids',
+  stuff: 'Stuff',
+  structure: 'Structures',
+  equipment: 'Equipment',
+  vehicle: 'Vehicles',
+  storage: 'Containers',
   biomes: 'Biomes',
   recipes: 'Recipes',
+  events: 'Events',
 };
+
+/** Tab IDs that show the prop editor (one per category). */
+const PROP_CATEGORY_TABS = [
+  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid',
+  'stuff', 'structure', 'equipment', 'vehicle', 'storage',
+];
 
 /**
  * Switch to the specified tab.
@@ -216,7 +234,9 @@ function updateTabIndicators() {
     const tab = btn.dataset.tab;
     const baseLabel = TAB_LABELS[tab];
     if (!baseLabel) return;
-    if (dirtyTracker.isDirty(tab)) {
+    // Category tabs share the 'props' dirty bucket since they all edit prop files
+    const dirtyKey = PROP_CATEGORY_TABS.includes(tab) ? 'props' : tab;
+    if (dirtyTracker.isDirty(dirtyKey)) {
       btn.textContent = baseLabel + ' *';
       btn.classList.add('tab-dirty');
     } else {
@@ -328,7 +348,7 @@ async function saveAll() {
     return;
   }
 
-  const tabs = ['map', 'props', 'biomes'];
+  const tabs = ['map', 'props', 'biomes', 'recipes', 'events'];
   let hadError = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
@@ -348,7 +368,7 @@ async function saveAll() {
 
 /**
  * Save files for a specific tab.
- * @param {string} tab - 'map' | 'props' | 'biomes'
+ * @param {string} tab - 'map' | 'props' | 'biomes' | 'recipes' | 'events'
  * @returns {Promise<void>}
  */
 async function saveTab(tab) {
@@ -370,6 +390,16 @@ async function saveTab(tab) {
     for (const [filename, entry] of ProjectContext.files.biomes) {
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/biomes', text, filename);
+    }
+  } else if (tab === 'recipes') {
+    for (const [filename, entry] of ProjectContext.files.recipes) {
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/recipes', text, filename);
+    }
+  } else if (tab === 'events') {
+    for (const [filename, entry] of ProjectContext.files.events) {
+      const text = TresParser.serialize(entry.raw);
+      await FileDiscovery.saveFile(entry.dir || 'data/events', text, filename);
     }
   }
 }
@@ -493,16 +523,19 @@ function initializeAfterLoad() {
     console.warn('hexCanvas is null — canvas not initialized.');
   }
 
-  // Render prop list in the Props tab (task-012/013)
-  const propTabEl = document.getElementById('tab-props');
-  if (propTabEl) {
-    renderPropEditor(propTabEl, {
-      commandHistory,
-      onChange: refreshPalettes,
-      onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
-    });
-    console.log('Prop editor rendered.');
+  // Render prop editor in each category tab with the category filter locked.
+  for (const cat of PROP_CATEGORY_TABS) {
+    const tabEl = document.getElementById(`tab-${cat}`);
+    if (tabEl) {
+      renderPropEditor(tabEl, {
+        commandHistory,
+        categoryFilter: cat,
+        onChange: refreshPalettes,
+        onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+      });
+    }
   }
+  console.log('Prop editors rendered (one per category tab).');
 
   // Render biome list in the Biomes tab (task-014/015)
   const biomeTabEl = document.getElementById('tab-biomes');
@@ -526,6 +559,17 @@ function initializeAfterLoad() {
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('recipes'); },
     });
     console.log('Recipe editor rendered.');
+  }
+
+  // Render event editor in the Events tab
+  const eventTabEl = document.getElementById('tab-events');
+  if (eventTabEl) {
+    renderEventEditor(eventTabEl, {
+      commandHistory,
+      onChange: refreshPalettes,
+      onSave: () => { refreshPalettes(); dirtyTracker.markClean('events'); },
+    });
+    console.log('Event editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)

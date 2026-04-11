@@ -3,12 +3,14 @@ class_name TestCatalog
 
 ## Unit tests for Catalog data layer (task-011).
 ## Tests 3-state knowledge system: UNKNOWN → ENCOUNTERED → CATALOGED.
-## After catalog merge: entry IDs are PropDef IDs for flora/mineral/anomaly,
-## and CatalogEntry.entry_id for fauna (fallback from fauna.tres).
+## After catalog merge: entry IDs are PropDef IDs for all catalog entries
+## (flora, fauna, minerals, anomalies). The catalog stores PropDef objects
+## directly; reach their CatalogableCap via `entry.catalogable`.
 
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+const _PropCategory = _Prop.Category
 
 
 # Minimal fake HexGrid for get_scannable_at tests
@@ -81,8 +83,8 @@ func test_get_knowledge_state_cataloged_after_catalog_entry() -> void:
 
 
 func test_get_knowledge_state_encountered_after_encounter_entry() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_int(_catalog.get_knowledge_state(&"thornback")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_int(_catalog.get_knowledge_state(&"P00108")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
 
 
 # --- is_cataloged before/after catalog_entry ---
@@ -102,35 +104,35 @@ func test_is_cataloged_only_marks_specific_id() -> void:
 
 
 func test_is_cataloged_false_when_encountered() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_bool(_catalog.is_cataloged(&"thornback")).is_false()
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_bool(_catalog.is_cataloged(&"P00108")).is_false()
 
 
 # --- is_encountered ---
 
 func test_is_encountered_false_by_default() -> void:
-	assert_bool(_catalog.is_encountered(&"thornback")).is_false()
+	assert_bool(_catalog.is_encountered(&"P00108")).is_false()
 
 
 func test_is_encountered_true_after_encounter_entry() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_bool(_catalog.is_encountered(&"thornback")).is_true()
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_bool(_catalog.is_encountered(&"P00108")).is_true()
 
 
 func test_is_encountered_false_after_catalog_entry() -> void:
-	_catalog.catalog_entry(&"thornback")
-	assert_bool(_catalog.is_encountered(&"thornback")).is_false()
+	_catalog.catalog_entry(&"P00108")
+	assert_bool(_catalog.is_encountered(&"P00108")).is_false()
 
 
 # --- is_known ---
 
 func test_is_known_false_for_unknown() -> void:
-	assert_bool(_catalog.is_known(&"thornback")).is_false()
+	assert_bool(_catalog.is_known(&"P00108")).is_false()
 
 
 func test_is_known_true_for_encountered() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_bool(_catalog.is_known(&"thornback")).is_true()
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_bool(_catalog.is_known(&"P00108")).is_true()
 
 
 func test_is_known_true_for_cataloged() -> void:
@@ -141,36 +143,36 @@ func test_is_known_true_for_cataloged() -> void:
 # --- encounter_entry sets ENCOUNTERED + stores label ---
 
 func test_encounter_entry_stores_hostile_label() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_str(_catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_str(_catalog.get_encounter_label(&"P00108")).is_equal("Hostile")
 
 
 func test_encounter_entry_stores_shy_label() -> void:
-	_catalog.encounter_entry(&"thornback", "Shy")
-	assert_str(_catalog.get_encounter_label(&"thornback")).is_equal("Shy")
+	_catalog.encounter_entry(&"P00108", "Shy")
+	assert_str(_catalog.get_encounter_label(&"P00108")).is_equal("Shy")
 
 
 func test_encounter_entry_does_not_override_encountered() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	_catalog.encounter_entry(&"thornback", "Shy")  # should not override
-	assert_str(_catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
-	assert_int(_catalog.get_knowledge_state(&"thornback")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Shy")  # should not override
+	assert_str(_catalog.get_encounter_label(&"P00108")).is_equal("Hostile")
+	assert_int(_catalog.get_knowledge_state(&"P00108")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
 
 
 func test_encounter_entry_does_not_downgrade_cataloged() -> void:
-	_catalog.catalog_entry(&"thornback")
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_int(_catalog.get_knowledge_state(&"thornback")).is_equal(_Catalog.KnowledgeState.CATALOGED)
+	_catalog.catalog_entry(&"P00108")
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_int(_catalog.get_knowledge_state(&"P00108")).is_equal(_Catalog.KnowledgeState.CATALOGED)
 
 
 # --- catalog_entry can upgrade from ENCOUNTERED to CATALOGED ---
 
 func test_catalog_entry_upgrades_encountered_to_cataloged() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	_catalog.catalog_entry(&"thornback")
-	assert_int(_catalog.get_knowledge_state(&"thornback")).is_equal(_Catalog.KnowledgeState.CATALOGED)
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	_catalog.catalog_entry(&"P00108")
+	assert_int(_catalog.get_knowledge_state(&"P00108")).is_equal(_Catalog.KnowledgeState.CATALOGED)
 	# Encounter label should be cleared
-	assert_str(_catalog.get_encounter_label(&"thornback")).is_equal("")
+	assert_str(_catalog.get_encounter_label(&"P00108")).is_equal("")
 
 
 # --- get_discovered_entries returns ENCOUNTERED + CATALOGED ---
@@ -186,14 +188,14 @@ func test_get_discovered_entries_includes_cataloged() -> void:
 
 
 func test_get_discovered_entries_includes_encountered() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	var found: Array = _catalog.get_discovered_entries()
 	assert_int(found.size()).is_equal(1)
 
 
 func test_get_discovered_entries_includes_both() -> void:
 	_catalog.catalog_entry(&"P00004")
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	var found: Array = _catalog.get_discovered_entries()
 	assert_int(found.size()).is_equal(2)
 
@@ -208,23 +210,39 @@ func test_get_discovered_entries_contains_correct_entry() -> void:
 # --- get_discovered_by_category filtering ---
 
 func test_get_discovered_by_category_filters_correctly() -> void:
-	_catalog.catalog_entry(&"P00004")       # FLORA = 0
-	_catalog.catalog_entry(&"P00005")       # MINERAL = 2
-	_catalog.encounter_entry(&"thornback", "Hostile")  # FAUNA = 1
+	_catalog.catalog_entry(&"P00004")       # PLANT
+	_catalog.catalog_entry(&"P00005")       # MINERAL
+	_catalog.encounter_entry(&"P00108", "Hostile")  # ANIMAL
 
-	var flora: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FLORA)
-	var fauna: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FAUNA)
-	var minerals: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.MINERAL)
+	var plants: Array = _catalog.get_discovered_by_category(_PropCategory.PLANT)
+	var animals: Array = _catalog.get_discovered_by_category(_PropCategory.ANIMAL)
+	var minerals: Array = _catalog.get_discovered_by_category(_PropCategory.MINERAL)
 
-	assert_int(flora.size()).is_equal(1)
-	assert_int(fauna.size()).is_equal(1)
+	assert_int(plants.size()).is_equal(1)
+	assert_int(animals.size()).is_equal(1)
 	assert_int(minerals.size()).is_equal(1)
 
 
 func test_get_discovered_by_category_empty_when_none() -> void:
 	_catalog.catalog_entry(&"P00004")
-	var fauna: Array = _catalog.get_discovered_by_category(_Catalog.CatalogCategory.FAUNA)
-	assert_int(fauna.size()).is_equal(0)
+	var animals: Array = _catalog.get_discovered_by_category(_PropCategory.ANIMAL)
+	assert_int(animals.size()).is_equal(0)
+
+
+func test_get_discovered_anomalies_returns_show_as_anomaly_entries() -> void:
+	# P10001 (Alien Beacon) has show_as_anomaly=true
+	_catalog.catalog_entry(&"P10001")
+	var anomalies: Array = _catalog.get_discovered_anomalies()
+	assert_int(anomalies.size()).is_equal(1)
+	assert_str(String(anomalies[0].entry_id)).is_equal("P10001")
+
+
+func test_get_discovered_by_category_excludes_anomalies() -> void:
+	# P10001 has prop_category=STRUCTURE(6) + show_as_anomaly=true.
+	# It should NOT appear in the structure bucket.
+	_catalog.catalog_entry(&"P10001")
+	var structures: Array = _catalog.get_discovered_by_category(_PropCategory.STRUCTURE)
+	assert_int(structures.size()).is_equal(0)
 
 
 # --- get_discovery_count counts ENCOUNTERED + CATALOGED ---
@@ -241,18 +259,21 @@ func test_get_discovery_count_increments_on_catalog_entry() -> void:
 
 
 func test_get_discovery_count_increments_on_encounter_entry() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	assert_int(_catalog.get_discovery_count()).is_equal(1)
 
 
 func test_get_discovery_count_both_states() -> void:
 	_catalog.catalog_entry(&"P00004")
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	assert_int(_catalog.get_discovery_count()).is_equal(2)
 
 
 func test_get_total_count_matches_all_entries() -> void:
-	# 4 flora + 1 fauna + 4 minerals + 1 anomaly = 10
+	# 4 flora (P00001/P00003/P00004/P00008) + 4 minerals (P00002/P00005/P00006/P00007)
+	# + 1 fauna (P00108) + 1 anomaly (P10001) = 10
+	# Structures (P00101..P00106) are excluded — they have catalogable cap but
+	# prop_category=STRUCTURE which isn't a displayed category in the catalog UI.
 	assert_int(_catalog.get_total_count()).is_equal(10)
 
 
@@ -270,7 +291,7 @@ func test_get_discovery_text_zero() -> void:
 
 func test_get_discovery_text_multiple() -> void:
 	_catalog.catalog_entry(&"P00004")
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	assert_str(_catalog.get_discovery_text()).is_equal("2 entries")
 
 
@@ -280,7 +301,14 @@ func test_catalog_entry_emits_entry_cataloged_signal() -> void:
 	_catalog.entry_cataloged.connect(_on_entry_cataloged)
 	_catalog.catalog_entry(&"P00004")
 	assert_str(String(_signal_id)).is_equal("P00004")
-	assert_int(_signal_cat).is_equal(_Catalog.CatalogCategory.FLORA)
+	assert_int(_signal_cat).is_equal(_PropCategory.PLANT)
+
+
+func test_catalog_entry_emits_anomaly_bucket_for_show_as_anomaly() -> void:
+	_catalog.entry_cataloged.connect(_on_entry_cataloged)
+	_catalog.catalog_entry(&"P10001")  # show_as_anomaly=true
+	assert_str(String(_signal_id)).is_equal("P10001")
+	assert_int(_signal_cat).is_equal(_Catalog.ANOMALY_BUCKET)
 
 
 func test_catalog_entry_emits_knowledge_state_changed() -> void:
@@ -308,23 +336,23 @@ func test_catalog_entry_marks_discovered() -> void:
 
 func test_encounter_entry_emits_entry_encountered_signal() -> void:
 	_catalog.entry_encountered.connect(_on_entry_encountered)
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_str(String(_encountered_id)).is_equal("thornback")
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_str(String(_encountered_id)).is_equal("P00108")
 	assert_str(_encountered_label).is_equal("Hostile")
 
 
 func test_encounter_entry_emits_knowledge_state_changed() -> void:
 	_catalog.knowledge_state_changed.connect(_on_knowledge_state_changed)
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	assert_str(String(_ksc_id)).is_equal("thornback")
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	assert_str(String(_ksc_id)).is_equal("P00108")
 	assert_int(_ksc_old).is_equal(_Catalog.KnowledgeState.UNKNOWN)
 	assert_int(_ksc_new).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
 
 
 func test_encounter_entry_does_not_emit_twice() -> void:
 	_catalog.entry_encountered.connect(_on_entry_encountered)
-	_catalog.encounter_entry(&"thornback", "Hostile")
-	_catalog.encounter_entry(&"thornback", "Shy")  # duplicate
+	_catalog.encounter_entry(&"P00108", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Shy")  # duplicate
 	assert_int(_encountered_count).is_equal(1)
 
 
@@ -400,7 +428,7 @@ func test_get_scannable_at_anomaly_cataloged_returns_empty() -> void:
 
 func test_save_load_round_trip_preserves_cataloged() -> void:
 	_catalog.catalog_entry(&"P00004")
-	_catalog.catalog_entry(&"thornback")
+	_catalog.catalog_entry(&"P00108")
 
 	var save_data: Dictionary = _catalog.get_save_data()
 
@@ -409,13 +437,13 @@ func test_save_load_round_trip_preserves_cataloged() -> void:
 	catalog2.load_save_data(save_data)
 
 	assert_bool(catalog2.is_cataloged(&"P00004")).is_true()
-	assert_bool(catalog2.is_cataloged(&"thornback")).is_true()
+	assert_bool(catalog2.is_cataloged(&"P00108")).is_true()
 	assert_bool(catalog2.is_cataloged(&"P00001")).is_false()
 	assert_int(catalog2.get_discovery_count()).is_equal(2)
 
 
 func test_save_load_round_trip_preserves_encountered() -> void:
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 
 	var save_data: Dictionary = _catalog.get_save_data()
 
@@ -423,14 +451,14 @@ func test_save_load_round_trip_preserves_encountered() -> void:
 	catalog2.initialize()
 	catalog2.load_save_data(save_data)
 
-	assert_bool(catalog2.is_encountered(&"thornback")).is_true()
-	assert_str(catalog2.get_encounter_label(&"thornback")).is_equal("Hostile")
+	assert_bool(catalog2.is_encountered(&"P00108")).is_true()
+	assert_str(catalog2.get_encounter_label(&"P00108")).is_equal("Hostile")
 	assert_int(catalog2.get_discovery_count()).is_equal(1)
 
 
 func test_save_load_round_trip_mixed_states() -> void:
 	_catalog.catalog_entry(&"P00004")
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 
 	var save_data: Dictionary = _catalog.get_save_data()
 
@@ -439,20 +467,20 @@ func test_save_load_round_trip_mixed_states() -> void:
 	catalog2.load_save_data(save_data)
 
 	assert_int(catalog2.get_knowledge_state(&"P00004")).is_equal(_Catalog.KnowledgeState.CATALOGED)
-	assert_int(catalog2.get_knowledge_state(&"thornback")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
-	assert_str(catalog2.get_encounter_label(&"thornback")).is_equal("Hostile")
+	assert_int(catalog2.get_knowledge_state(&"P00108")).is_equal(_Catalog.KnowledgeState.ENCOUNTERED)
+	assert_str(catalog2.get_encounter_label(&"P00108")).is_equal("Hostile")
 	assert_int(catalog2.get_discovery_count()).is_equal(2)
 
 
 func test_save_data_format() -> void:
 	_catalog.catalog_entry(&"P00003")
-	_catalog.encounter_entry(&"thornback", "Hostile")
+	_catalog.encounter_entry(&"P00108", "Hostile")
 	var data: Dictionary = _catalog.get_save_data()
 	assert_bool(data.has("knowledge")).is_true()
 	assert_bool(data.has("encounter_labels")).is_true()
 	assert_str(data["knowledge"]["P00003"]).is_equal("CATALOGED")
-	assert_str(data["knowledge"]["thornback"]).is_equal("ENCOUNTERED")
-	assert_str(data["encounter_labels"]["thornback"]).is_equal("Hostile")
+	assert_str(data["knowledge"]["P00108"]).is_equal("ENCOUNTERED")
+	assert_str(data["encounter_labels"]["P00108"]).is_equal("Hostile")
 
 
 func test_load_save_data_empty() -> void:
@@ -476,11 +504,13 @@ func test_catalogable_prop_defs_have_catalog_entries() -> void:
 	for def in PropRegistry.get_all():
 		if def.catalogable == null:
 			continue
-		if String(def.catalogable.display_name) == "":
-			continue
 		var entry = _catalog.get_entry(def.id)
 		assert_bool(entry != null).override_failure_message(
-			"PropDef[%s] has CatalogableCap with display_name but no matching catalog entry" % def.id
+			"PropDef[%s] has CatalogableCap but no matching catalog entry" % def.id
+		).is_true()
+		# Catalog now stores PropDef directly, not CatalogableCap.
+		assert_bool(entry == def).override_failure_message(
+			"PropDef[%s] catalog entry should be the PropDef itself" % def.id
 		).is_true()
 
 

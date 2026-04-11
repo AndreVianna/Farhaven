@@ -7,11 +7,19 @@ extends PanelContainer
 ##   - ENCOUNTERED: "Unidentified Fauna (Hostile/Shy)" with no details
 ## Builds itself programmatically — no child scene required.
 
+const _Catalog = preload("res://scripts/scanner/catalog.gd")
+const _Prop = preload("res://scripts/hex/prop.gd")
+
+## Row colors keyed by Prop.Category int value, plus Catalog.ANOMALY_BUCKET
+## for the show_as_anomaly override.
 const CATEGORY_COLORS: Dictionary = {
-	0: Color(0.3, 0.7, 0.3),   # FLORA
-	1: Color(0.8, 0.3, 0.3),   # FAUNA
-	2: Color(0.6, 0.6, 0.6),   # MINERAL
-	3: Color(0.5, 0.3, 0.8),   # ANOMALY
+	_Prop.Category.PLANT:    Color(0.3, 0.7, 0.3),   # Green
+	_Prop.Category.MINERAL:  Color(0.6, 0.6, 0.6),   # Grey
+	_Prop.Category.ANIMAL:   Color(0.8, 0.3, 0.3),   # Red
+	_Prop.Category.FUNGI:    Color(0.7, 0.5, 0.85),  # Lavender
+	_Prop.Category.LIQUID:   Color(0.3, 0.6, 0.9),   # Blue
+	_Prop.Category.OOZE:     Color(0.5, 0.6, 0.3),   # Olive
+	_Catalog.ANOMALY_BUCKET: Color(0.5, 0.3, 0.8),   # Purple
 }
 
 const ENCOUNTERED_COLOR: Color = Color(0.7, 0.5, 0.1)  # Warning amber
@@ -65,13 +73,27 @@ func _ready() -> void:
 
 
 ## Setup for CATALOGED entries — full info display.
-## Accepts CatalogableCap or CatalogEntry (fauna fallback).
+## Accepts a PropDef whose `catalogable` capability provides the catalog data.
 func setup(entry: Resource) -> void:
 	_is_encountered = false
 	_name_label.text = entry.display_name
-	_desc_label.text = entry.description
+	# Prefer long description; fall back to short description.
+	var desc: String = ""
+	if entry.long_description != "":
+		desc = entry.long_description
+	elif entry.short_description != "":
+		desc = entry.short_description
+	_desc_label.text = desc
 	_props_label.text = _format_properties(entry)
-	_icon_rect.color = CATEGORY_COLORS.get(entry.category, Color(0.5, 0.5, 0.5))
+	_icon_rect.color = CATEGORY_COLORS.get(_resolve_bucket(entry), Color(0.5, 0.5, 0.5))
+
+
+func _resolve_bucket(entry: Resource) -> int:
+	if entry == null:
+		return _Prop.Category.PLANT
+	if entry.catalogable != null and entry.catalogable.show_as_anomaly:
+		return _Catalog.ANOMALY_BUCKET
+	return entry.prop_category
 
 
 ## Setup for ENCOUNTERED entries — minimal display, no details.
@@ -89,30 +111,35 @@ func is_encountered() -> bool:
 
 func _format_properties(entry: Resource) -> String:
 	var parts: Array[String] = []
-	match entry.category:
-		0:  # FLORA
-			if entry.properties.get("edible", false):
-				parts.append("Edible")
-			if entry.properties.get("toxic", false):
-				parts.append("Toxic")
-			var res: StringName = entry.properties.get("prop_type", &"")
-			if res != &"":
-				parts.append("Prop: %s" % String(res).replace("_", " "))
-		1:  # FAUNA
-			if entry.properties.get("hostile", false):
-				parts.append("Hostile")
-			else:
-				parts.append("Passive")
-			var dmg: int = entry.properties.get("damage", 0)
-			if dmg > 0:
-				parts.append("DMG %d" % dmg)
-		2:  # MINERAL
-			var res: StringName = entry.properties.get("prop_type", &"")
-			if res != &"":
-				parts.append(String(res).capitalize())
-			var tool: StringName = entry.properties.get("tool_required", &"")
-			if tool != &"":
-				parts.append("Needs: %s" % String(tool).replace("_", " "))
-		3:  # ANOMALY
-			parts.append("Anomaly")
+	if entry.catalogable == null:
+		return ""
+	var props: Dictionary = entry.catalogable.properties
+	var bucket: int = _resolve_bucket(entry)
+	if bucket == _Catalog.ANOMALY_BUCKET:
+		parts.append("Anomaly")
+	else:
+		match bucket:
+			_Prop.Category.PLANT, _Prop.Category.FUNGI:
+				if props.get("edible", false):
+					parts.append("Edible")
+				if props.get("toxic", false):
+					parts.append("Toxic")
+				var res: StringName = props.get("resource_type", props.get("prop_type", &""))
+				if res != &"":
+					parts.append("Prop: %s" % String(res).replace("_", " "))
+			_Prop.Category.ANIMAL:
+				if props.get("hostile", false):
+					parts.append("Hostile")
+				else:
+					parts.append("Passive")
+				var dmg: int = props.get("damage", 0)
+				if dmg > 0:
+					parts.append("DMG %d" % dmg)
+			_Prop.Category.MINERAL:
+				var res: StringName = props.get("resource_type", props.get("prop_type", &""))
+				if res != &"":
+					parts.append(String(res).capitalize())
+				var tool: StringName = props.get("tool_required", &"")
+				if tool != &"":
+					parts.append("Needs: %s" % String(tool).replace("_", " "))
 	return " · ".join(parts)

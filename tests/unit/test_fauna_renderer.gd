@@ -151,7 +151,7 @@ func test_fauna_spawned_signal_adds_instance() -> void:
 	_renderer._connect_fauna_manager()
 	add_child(_fauna_mgr)
 
-	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"thornback")
+	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(1)
 
 	remove_child(_fauna_mgr)
@@ -164,8 +164,8 @@ func test_fauna_moved_signal_updates_position() -> void:
 	_renderer._connect_fauna_manager()
 	add_child(_fauna_mgr)
 
-	_fauna_mgr.fauna_spawned.emit(0, Vector2i(0, 0), &"thornback")
-	_fauna_mgr.fauna_moved.emit(0, Vector2i(0, 0), Vector2i(2, 1), &"thornback")
+	_fauna_mgr.fauna_spawned.emit(0, Vector2i(0, 0), &"P00108")
+	_fauna_mgr.fauna_moved.emit(0, Vector2i(0, 0), Vector2i(2, 1), &"P00108")
 	assert_object(_renderer.get_fauna_coords(0)).is_equal(Vector2i(2, 1))
 
 	remove_child(_fauna_mgr)
@@ -178,9 +178,9 @@ func test_fauna_killed_signal_removes_instance() -> void:
 	_renderer._connect_fauna_manager()
 	add_child(_fauna_mgr)
 
-	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"thornback")
+	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(1)
-	_fauna_mgr.fauna_killed.emit(0, Vector2i(1, 0), &"thornback")
+	_fauna_mgr.fauna_killed.emit(0, Vector2i(1, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
 	remove_child(_fauna_mgr)
@@ -193,8 +193,8 @@ func test_fauna_despawned_signal_removes_instance() -> void:
 	_renderer._connect_fauna_manager()
 	add_child(_fauna_mgr)
 
-	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"thornback")
-	_fauna_mgr.fauna_despawned.emit(0, Vector2i(1, 0), &"thornback")
+	_fauna_mgr.fauna_spawned.emit(0, Vector2i(1, 0), &"P00108")
+	_fauna_mgr.fauna_despawned.emit(0, Vector2i(1, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
 	remove_child(_fauna_mgr)
@@ -208,15 +208,15 @@ func test_multiple_spawn_and_despawn_cycle() -> void:
 	add_child(_fauna_mgr)
 
 	# Spawn 3
-	_fauna_mgr.fauna_spawned.emit(0, Vector2i(3, 0), &"thornback")
-	_fauna_mgr.fauna_spawned.emit(1, Vector2i(4, 0), &"thornback")
-	_fauna_mgr.fauna_spawned.emit(2, Vector2i(5, 0), &"thornback")
+	_fauna_mgr.fauna_spawned.emit(0, Vector2i(3, 0), &"P00108")
+	_fauna_mgr.fauna_spawned.emit(1, Vector2i(4, 0), &"P00108")
+	_fauna_mgr.fauna_spawned.emit(2, Vector2i(5, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(3)
 
 	# Despawn all
-	_fauna_mgr.fauna_despawned.emit(0, Vector2i(3, 0), &"thornback")
-	_fauna_mgr.fauna_despawned.emit(1, Vector2i(4, 0), &"thornback")
-	_fauna_mgr.fauna_despawned.emit(2, Vector2i(5, 0), &"thornback")
+	_fauna_mgr.fauna_despawned.emit(0, Vector2i(3, 0), &"P00108")
+	_fauna_mgr.fauna_despawned.emit(1, Vector2i(4, 0), &"P00108")
+	_fauna_mgr.fauna_despawned.emit(2, Vector2i(5, 0), &"P00108")
 	assert_int(_renderer.get_visible_count()).is_equal(0)
 
 	remove_child(_fauna_mgr)

@@ -7,13 +7,15 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00010"
+ref = "P00010"
 count = 2
+must_hold = true
 
 [sub_resource type="Resource" id="input_2"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00011"
+ref = "P00011"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -29,7 +31,6 @@ params = { "sound_id": "craft_success" }
 script = ExtResource("1_recipe")
 id = &"R00016"
 display_name = "Craft Stone Axe"
-kind = 0
 inputs = [SubResource("input_1"), SubResource("input_2")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]

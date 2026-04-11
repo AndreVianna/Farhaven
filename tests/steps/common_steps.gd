@@ -18,21 +18,21 @@ class SimpleInventory extends RefCounted:
 		&"scanner": &"",
 		&"firestarter": &"",
 	}
-	var capacity_weight: float = 50.0
-	var _current_weight: float = 0.0
-	## Default weight per item when we don't know better.
-	const DEFAULT_WEIGHT: float = 1.0
+	var capacity_size: float = 50.0
+	var _current_size: float = 0.0
+	## Default size per item when we don't know better.
+	const DEFAULT_SIZE: float = 1.0
 
 	func add_item(type: StringName, amount: int = 1) -> int:
-		var unit_w: float = DEFAULT_WEIGHT
-		if unit_w > capacity_weight:
+		var unit_s: float = DEFAULT_SIZE
+		if unit_s > capacity_size:
 			return 0
-		var can_fit: int = int(floor((capacity_weight - _current_weight) / unit_w)) if unit_w > 0.0 else amount
+		var can_fit: int = int(floor((capacity_size - _current_size) / unit_s)) if unit_s > 0.0 else amount
 		if can_fit <= 0:
 			return 0
 		var to_add: int = mini(amount, can_fit)
 		items[type] = items.get(type, 0) + to_add
-		_current_weight += unit_w * to_add
+		_current_size += unit_s * to_add
 		return to_add
 
 	func remove_item(type: StringName, amount: int = 1) -> int:
@@ -43,9 +43,9 @@ class SimpleInventory extends RefCounted:
 		items[type] = have - to_remove
 		if items[type] <= 0:
 			items.erase(type)
-		_current_weight -= DEFAULT_WEIGHT * to_remove
-		if _current_weight < 0.0:
-			_current_weight = 0.0
+		_current_size -= DEFAULT_SIZE * to_remove
+		if _current_size < 0.0:
+			_current_size = 0.0
 		return to_remove
 
 	func has_item(type: StringName, amount: int = 1) -> bool:
@@ -54,11 +54,11 @@ class SimpleInventory extends RefCounted:
 	func get_count(type: StringName) -> int:
 		return items.get(type, 0)
 
-	func get_current_weight() -> float:
-		return _current_weight
+	func get_current_size() -> float:
+		return _current_size
 
-	func get_capacity_weight() -> float:
-		return capacity_weight
+	func get_capacity_size() -> float:
+		return capacity_size
 
 	func get_tool(slot: StringName) -> StringName:
 		return tools.get(slot, &"")
@@ -79,19 +79,19 @@ class SimpleInventory extends RefCounted:
 		return {
 			"items": items_copy,
 			"tools": tools_copy,
-			"capacity_weight": capacity_weight,
+			"capacity_size": capacity_size,
 		}
 
 	func load_save_data(data: Dictionary) -> void:
-		capacity_weight = float(data.get("capacity_weight", 50.0))
+		capacity_size = float(data.get("capacity_size", 50.0))
 		items.clear()
-		_current_weight = 0.0
+		_current_size = 0.0
 		var saved_items: Dictionary = data.get("items", {})
 		for k in saved_items:
 			var sn := StringName(k)
 			var count: int = int(saved_items[k])
 			items[sn] = count
-			_current_weight += DEFAULT_WEIGHT * count
+			_current_size += DEFAULT_SIZE * count
 		var saved_tools: Dictionary = data.get("tools", {})
 		for k in saved_tools:
 			tools[StringName(k)] = StringName(saved_tools[k])
@@ -192,7 +192,7 @@ func register_steps(registry) -> void:
 	# --- Given: inventory setup ---
 	registry.given("an empty inventory with capacity {float}", func(ctx, cap: float):
 		var inv := SimpleInventory.new()
-		inv.capacity_weight = cap
+		inv.capacity_size = cap
 		ctx.set_value("inventory", inv)
 	)
 
@@ -221,7 +221,7 @@ func register_steps(registry) -> void:
 
 	registry.given("an inventory with capacity {float}", func(ctx, cap: float):
 		var inv := get_or_create_inventory(ctx)
-		inv.capacity_weight = cap
+		inv.capacity_size = cap
 	)
 
 	# --- Given: player position ---
@@ -242,10 +242,10 @@ func register_steps(registry) -> void:
 		ctx.set_value("last_added", added)
 	)
 
-	registry.when("the player picks up {int} {string} weighing {float} each", func(ctx, count: int, item_id: String, weight: float):
+	registry.when("the player picks up {int} {string} of size {float} each", func(ctx, count: int, item_id: String, size: float):
 		# For the "heavy item rejected" scenario: set capacity low enough
 		var inv := get_or_create_inventory(ctx)
-		# Item weight is DEFAULT_WEIGHT (1.0). If capacity < 1.0, reject.
+		# Item size is DEFAULT_SIZE (1.0). If capacity < 1.0, reject.
 		var added: int = inv.add_item(StringName(item_id), count)
 		ctx.set_value("last_added", added)
 	)
@@ -257,10 +257,10 @@ func register_steps(registry) -> void:
 			"Expected %d of %s in inventory" % [count, item_id])
 	)
 
-	registry.then("the inventory weight is greater than {int}", func(ctx, threshold: int):
+	registry.then("the inventory size is greater than {int}", func(ctx, threshold: int):
 		var inv := get_or_create_inventory(ctx)
-		ctx.assert_greater(inv.get_current_weight(), float(threshold),
-			"Expected weight > %d, got %.1f" % [threshold, inv.get_current_weight()])
+		ctx.assert_greater(inv.get_current_size(), float(threshold),
+			"Expected size > %d, got %.1f" % [threshold, inv.get_current_size()])
 	)
 
 	registry.then("the inventory is empty", func(ctx):
@@ -270,8 +270,8 @@ func register_steps(registry) -> void:
 
 	registry.then("the inventory capacity is {float}", func(ctx, cap: float):
 		var inv := get_or_create_inventory(ctx)
-		ctx.assert_equal(inv.get_capacity_weight(), cap,
-			"Expected capacity %.1f, got %.1f" % [cap, inv.get_capacity_weight()])
+		ctx.assert_equal(inv.get_capacity_size(), cap,
+			"Expected capacity %.1f, got %.1f" % [cap, inv.get_capacity_size()])
 	)
 
 	# --- Then: tool assertions ---

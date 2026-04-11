@@ -10,12 +10,11 @@ script = ExtResource("2_placeable")
 
 [sub_resource type="Resource" id="container_1"]
 script = ExtResource("3_container")
-capacity_weight = 100.0
+capacity_size = 100.0
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("4_catalogable")
 scan_time = 1.5
-display_tag = &"storage"
 
 [resource]
 script = ExtResource("1_script")

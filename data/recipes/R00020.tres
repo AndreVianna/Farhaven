@@ -8,9 +8,8 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00101"
+ref = "P00101"
 count = 1
-source = &"world_tile"
 
 [sub_resource type="Resource" id="pred_tool"]
 script = ExtResource("5_pred")
@@ -31,7 +30,6 @@ params = { "sound_id": "fire_light" }
 script = ExtResource("1_recipe")
 id = &"R00020"
 display_name = "Light Campfire"
-kind = 1
 inputs = [SubResource("input_1")]
 outputs = []
 effects = [SubResource("effect_1")]

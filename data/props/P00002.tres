@@ -10,16 +10,13 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 1.0
-display_tag = &"minerals"
-category = 2
-display_name = "Loose Rocks"
-description = "Scattered rock fragments. Easy to pick up by hand."
 properties = {"resource_type": &"loose_rock", "tool_required": &""}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00002"
 display_name = "Loose Rocks"
+short_description = "Scattered rock fragments. Easy to pick up by hand."
 tags = [&"SOURCE", &"STONE"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

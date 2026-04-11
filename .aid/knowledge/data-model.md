@@ -91,13 +91,18 @@ Godot Resource defining a prop type's static properties. Loaded from `data/props
 
 | Field | Type (class) | Inner Fields | Notes |
 |-------|-------------|-------------|-------|
-| portable | PortableCap | `weight: float = 1.0` | Prop can be carried. Weight determines inventory capacity consumed. |
-| placeable | PlaceableCap | `rotation_snap: int = 0` | Prop can be placed in world. Collision is mesh-based (CollisionHelper + StaticBody3D), not footprint-based. |
-| container | ContainerCap | `capacity_weight: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
+| portable | PortableCap | `size: float = 1.0` | Prop can be carried. Size in slot units (berry=0.00001, rock=0.2, wood=2, stone=4, log=100). |
+| placeable | PlaceableCap | _(marker — no fields)_ | Prop can be placed in world. Rotation is per-placement. Collision is mesh-based (CollisionHelper + StaticBody3D). |
+| container | ContainerCap | `capacity_size: float = 0.0`, `accepts_filter: Array[StringName] = []` | Prop holds other props inside it. |
 | light | LightCap | `radius: float = 0.0`, `color: Color = warm_orange`, `flicker: bool = false` | Prop emits light while active (used by LightingManager). |
 | movable | MovableCap | `push_cost: float = 1.0` | Prop can be pushed across tiles. |
 | station | StationCap | `station_tags: Array[StringName] = []` | Prop is a crafting/cooking station. Tags list roles (e.g. ["cook", "fire"]). |
-| catalogable | CatalogableCap | `scan_time: float = 1.0`, `display_tag: StringName = &""` | Prop can be cataloged by ScannerSystem. |
+| catalogable | CatalogableCap | `scan_time: float = 1.0`, `show_as_anomaly: bool = false`, `icon: Texture2D = null`, `properties: Dictionary = {}` | Prop can be cataloged by ScannerSystem. `show_as_anomaly=true` overrides catalog UI grouping into the Anomalies bucket regardless of prop_category. |
+| endurance | EnduranceCap | `hp: int = 1`, `vulnerabilities: Array[StringName] = []`, `resistances: Array[StringName] = []`, `immunities: Array[StringName] = []` | HP / durability + damage-tag modifiers (vulnerable=2x, resistant=0.5x, immune=0x). |
+| movement | MovementCap | `modes: Dictionary = {}` (Mode int → `[normal_speed, max_speed]` in sub-hex/sec) | Movement modes (WALK, SWIM, FLY, BURROW, CLIMB, JUMP). cooldown derived = 1/normal_speed; max_jump derived from JUMP mode or default 1. |
+| combat | CombatCap | `attacks: Array[Resource] = []`, `defenses: Array[Resource] = []` | Combat behavior as event references (attacks/defenses are GameEvents). Empty until event-driven combat runtime lands. |
+| behavior | BehaviorCap | `detection_range: int = 2`, `activity_cycle: int (enum)`, `group_behavior: int (enum)`, `diet: Array[StringName] = []`, `reactions: Array[Resource] = []` | AI behavior. activity_cycle = ALWAYS/DIURNAL/NOCTURNAL/CREPUSCULAR. group_behavior = SOLO/PAIR/PACK/HERD/SWARM. reactions are GameEvents fired by stimuli. |
+| spawnable | SpawnableCap | `spawn_min: int = 1`, `spawn_max: int = 1`, `first_spawn_day: int = 1`, `spawn_min_distance: int = 3`, `allowed_biomes: Array[StringName] = []` | Spawn rules for transient entities (fauna). Empty allowed_biomes = any biome. |
 
 **Helper methods:**
 - `has_capability(cap_name: StringName) -> bool` — checks if a capability is non-null
@@ -304,14 +309,14 @@ Source: `scripts/scanner/catalog_data.gd`
 
 ### Inventory (scripts/inventory/inventory.gd -- in-memory)
 
-> **Updated 2026-04-08 (delivery-005a).** Inventory is now weight-based. The primary constraint is weight capacity, not slot count. Items are still stored in slots with max_stack limits, but total weight is the binding limit.
+> **Updated 2026-04-08 (delivery-005a).** Inventory is now slot-size based. The primary constraint is size capacity, not slot count. Items are still stored in slots with max_stack limits, but total size is the binding limit.
 
-**Weight model:**
+**Size model:**
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| capacity_weight | float | 50.0 | Maximum total weight. Expandable. |
-| _current_weight | float | 0.0 | Cached, updated incrementally on add/remove. Recomputed on load. |
+| capacity_size | float | 50.0 | Maximum total size. Expandable. |
+| _current_size | float | 0.0 | Cached, updated incrementally on add/remove. Recomputed on load. |
 
 **Slot structure (unchanged):**
 
@@ -322,7 +327,7 @@ Source: `scripts/scanner/catalog_data.gd`
 
 Tool slots stored separately: `{&"axe": &"", &"pickaxe": &"", &"weapon": &"00204", &"scanner": &"00205"}`
 
-**Item weight:** Derived from `PropDef.portable.weight`. Items without PORTABLE capability default to 1.0 for backward compat. Items with weight > capacity_weight are rejected entirely (must be transported via MOVABLE + CONTAINER props).
+**Item size:** Derived from `PropDef.portable.size`. Items without PORTABLE capability default to 1.0 for backward compat. Items with size > capacity_size are rejected entirely (must be transported via MOVABLE + CONTAINER props).
 
 **No hardcoded ITEM_CONFIG.** All items (resources, consumables, tools) are PropDefs loaded from `data/props/*.tres` by PropRegistry. The old hardcoded ITEM_CONFIG is removed.
 
@@ -547,7 +552,7 @@ Performed at load time. All failures log push_warning but do not prevent map fro
 ### Inventory Validation (updated delivery-005a)
 - add_item() validates item type exists in PropRegistry before adding. Items without a PropDef are rejected (returns 0).
 - Tools (PropDef.tool_slot != "") rejected from resource slots (must use set_tool).
-- Weight check: `current_weight + (unit_weight * count) <= capacity_weight`. Items exceeding total capacity rejected entirely.
+- Size check: `current_size + (unit_size * count) <= capacity_size`. Items exceeding total capacity rejected entirely.
 - Stack overflow tracked; excess returned as int, inventory_full signal emitted.
 
 ### Recipe Validation (RecipeRuntime.try_start_recipe())

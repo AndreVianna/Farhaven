@@ -10,16 +10,13 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 2.0
-display_tag = &"minerals"
-category = 2
-display_name = "Iron Deposit"
-description = "Rust-coloured ore embedded in rock. Needs a pickaxe to extract."
 properties = {"resource_type": &"ore", "tool_required": &"stone_pickaxe"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P00006"
 display_name = "Iron Deposit"
+short_description = "Rust-coloured ore embedded in rock. Needs a pickaxe to extract."
 tags = [&"SOURCE", &"ORE.iron"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

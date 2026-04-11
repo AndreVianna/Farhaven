@@ -11,9 +11,11 @@ import { HEX_SIZE, HexMath } from './js/hex-math.js';
 import { HexGrid, createTileData, createProp, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, CATEGORY_COLORS, CATEGORY_TO_INT, INT_TO_CATEGORY } from './js/hex-grid.js';
 import { validateMap } from './js/validator.js';
 import { TresParser, TresFile, generateTresUid } from './js/tres-parser.js';
-import { ProjectContext } from './js/file-discovery.js';
+import { ProjectContext, nextId } from './js/file-discovery.js';
 import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor.js';
-import { RecipeModel, recipeModelToRaw, validateRecipeForm, RECIPE_KINDS, INPUT_SOURCES, PREDICATE_KINDS } from './js/recipe-editor.js';
+import { RecipeModel, recipeModelToRaw, validateRecipeForm, PREDICATE_KINDS } from './js/recipe-editor.js';
+import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
+import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -267,6 +269,60 @@ test('TresParser — parseValue string-keyed dict', () => {
   assert(v.type === 'dict', 'type should be dict');
   assert(v.keyStyle === 'string', 'keyStyle should be string');
   assert(v.value.get('radius').value === 0.3, 'should have radius = 0.3');
+});
+
+test('TresParser — parseValue int-keyed dict (single mode)', () => {
+  // MovementCap.modes uses int Mode enum keys
+  const v = TresParser.parseValue('{ 0: [1.0, 1.5] }');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 1, 'should have 1 entry');
+  const entry = v.value.get(0);
+  assert(entry !== undefined, 'should have key 0');
+  assert(entry.type === 'array', 'value should be an array');
+  assert(entry.value.length === 2, 'array should have 2 elements');
+  assert(entry.value[0].value === 1.0, 'normal speed should be 1.0');
+  assert(entry.value[1].value === 1.5, 'max speed should be 1.5');
+});
+
+test('TresParser — parseValue int-keyed dict (multiple modes, multiline)', () => {
+  // Frog: walks + jumps
+  const v = TresParser.parseValue('{\n  0: [1.0, 1.5],\n  5: [2.0, 3.0]\n}');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 2, 'should have 2 entries');
+  assert(v.value.get(0).value[0].value === 1.0, 'WALK normal = 1.0');
+  assert(v.value.get(5).value[1].value === 3.0, 'JUMP max = 3.0');
+});
+
+test('TresParser — parseValue int-keyed dict supports negative keys', () => {
+  // Catalog.ANOMALY_BUCKET uses -1 as a sentinel
+  const v = TresParser.parseValue('{ -1: 42 }');
+  assert(v.type === 'dict', 'type should be dict');
+  assert(v.keyStyle === 'int', 'keyStyle should be int');
+  assert(v.value.size === 1, 'should have 1 entry');
+  assert(v.value.get(-1).value === 42, 'should have -1 = 42');
+});
+
+test('TresParser — serializeValue int-keyed dict round-trips', () => {
+  const original = '{ 0: [1.0, 1.5], 5: [2.0, 3.0] }';
+  const parsed = TresParser.parseValue(original);
+  const serialized = TresParser.serializeValue(parsed);
+  // Parse the serialized form again to verify equivalence
+  const reparsed = TresParser.parseValue(serialized);
+  assert(reparsed.type === 'dict', 'should reparse as dict');
+  assert(reparsed.keyStyle === 'int', 'should preserve int keyStyle');
+  assert(reparsed.value.size === 2, 'should still have 2 entries');
+  assert(reparsed.value.get(0).value[0].value === 1.0, 'WALK normal preserved');
+  assert(reparsed.value.get(5).value[1].value === 3.0, 'JUMP max preserved');
+});
+
+test('TresParser — serializeValue int-keyed dict with negative key round-trips', () => {
+  const original = '{ -1: 42 }';
+  const parsed = TresParser.parseValue(original);
+  const serialized = TresParser.serializeValue(parsed);
+  const reparsed = TresParser.parseValue(serialized);
+  assert(reparsed.value.get(-1).value === 42, 'should preserve -1 key');
 });
 
 test('TresParser — parseValue empty array', () => {
@@ -1303,7 +1359,7 @@ test('TresParser — parse file with sub_resource blocks', () => {
     '',
     '[sub_resource type="Resource" id="portable_1"]',
     'script = ExtResource("2_portable")',
-    'weight = 2.5',
+    'size = 2.5',
     '',
     '[resource]',
     'script = ExtResource("1_script")',
@@ -1316,8 +1372,8 @@ test('TresParser — parse file with sub_resource blocks', () => {
   assert(file.subResources.length === 1, 'should have 1 sub_resource');
   assert(file.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
   assert(file.subResources[0].type === 'Resource', 'sub_resource type should be Resource');
-  assert(file.subResources[0].fields.get('weight').type === 'float', 'weight should be float');
-  assert(file.subResources[0].fields.get('weight').value === 2.5, 'weight value should be 2.5');
+  assert(file.subResources[0].fields.get('size').type === 'float', 'size should be float');
+  assert(file.subResources[0].fields.get('size').value === 2.5, 'size value should be 2.5');
 
   const portableRef = file.resourceFields.get('portable');
   assert(portableRef.type === 'sub_resource', 'portable field should be sub_resource reference');
@@ -1373,7 +1429,7 @@ test('TresParser — parse multiple sub_resources', () => {
     '',
     '[sub_resource type="Resource" id="container_1"]',
     'script = ExtResource("3_container")',
-    'capacity_weight = 20.0',
+    'capacity_size = 20.0',
     'accepts_filter = [&"BURNABLE"]',
     '',
     '[sub_resource type="Resource" id="light_1"]',
@@ -1444,11 +1500,11 @@ test('PropDefModel — fromEntry reads tags', () => {
 
 test('PropDefModel — fromEntry reads portable capability', () => {
   const entry = _makePropEntry({
-    portable: { weight: 2.5 },
+    portable: { size: 2.5 },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.portable !== null, 'portable should not be null');
-  assert(model.portable.weight === 2.5, 'weight should be 2.5');
+  assert(model.portable.size === 2.5, 'size should be 2.5');
 });
 
 test('PropDefModel — fromEntry reads placeable capability', () => {
@@ -1461,11 +1517,11 @@ test('PropDefModel — fromEntry reads placeable capability', () => {
 
 test('PropDefModel — fromEntry reads container capability', () => {
   const entry = _makePropEntry({
-    container: { capacity_weight: 50, accepts_filter: ['BURNABLE', 'WOOD'] },
+    container: { capacity_size: 50, accepts_filter: ['BURNABLE', 'WOOD'] },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.container !== null, 'container should not be null');
-  assert(model.container.capacity_weight === 50, 'capacity_weight should be 50');
+  assert(model.container.capacity_size === 50, 'capacity_size should be 50');
   assert(model.container.accepts_filter.length === 2, 'accepts_filter should have 2 items');
   assert(model.container.accepts_filter[0] === 'BURNABLE', 'first filter should be BURNABLE');
 });
@@ -1502,15 +1558,183 @@ test('PropDefModel — fromEntry reads station capability', () => {
 
 test('PropDefModel — fromEntry reads catalogable capability', () => {
   const entry = _makePropEntry({
-    catalogable: { scan_time: 2.5, display_tag: 'flora', category: 0, display_name: 'Test Plant', description: 'A test plant.', properties: new Map() },
+    catalogable: { scan_time: 2.5, show_as_anomaly: false, properties: new Map() },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.catalogable !== null, 'catalogable should not be null');
   assert(model.catalogable.scan_time === 2.5, 'scan_time should be 2.5');
-  assert(model.catalogable.display_tag === 'flora', 'display_tag should be flora');
-  assert(model.catalogable.category === 0, 'category should be 0');
-  assert(model.catalogable.display_name === 'Test Plant', 'display_name should be Test Plant');
-  assert(model.catalogable.description === 'A test plant.', 'description should be A test plant.');
+  assert(model.catalogable.show_as_anomaly === false, 'show_as_anomaly should be false');
+});
+
+test('PropDefModel — fromEntry reads catalogable show_as_anomaly', () => {
+  const entry = _makePropEntry({
+    catalogable: { scan_time: 3.0, show_as_anomaly: true, properties: new Map() },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.catalogable !== null, 'catalogable should not be null');
+  assert(model.catalogable.show_as_anomaly === true, 'show_as_anomaly should be true');
+});
+
+test('PropDefModel — fromEntry reads endurance capability', () => {
+  const entry = _makePropEntry({
+    endurance: { hp: 20, vulnerabilities: ['FIRE'], resistances: [], immunities: ['POISON'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.endurance !== null, 'endurance should not be null');
+  assert(model.endurance.hp === 20, 'hp should be 20');
+  assert(model.endurance.vulnerabilities.length === 1, 'vulnerabilities should have 1 item');
+  assert(model.endurance.vulnerabilities[0] === 'FIRE', 'vulnerability should be FIRE');
+  assert(model.endurance.resistances.length === 0, 'resistances should be empty');
+  assert(model.endurance.immunities[0] === 'POISON', 'immunity should be POISON');
+});
+
+test('PropDefModel — fromEntry reads endurance with default hp', () => {
+  const entry = _makePropEntry({
+    endurance: { vulnerabilities: [], resistances: [], immunities: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.endurance !== null, 'endurance should not be null');
+  assert(model.endurance.hp === 1, 'hp should default to 1 when missing');
+});
+
+test('PropDefModel — fromEntry reads movement capability (modes dict)', () => {
+  // Simulate what file-discovery builds from the parsed .tres:
+  // movement sub_resource's `modes` field is a Map<int, TresValue> where
+  // each value is an array TresValue of two float TresValues.
+  const modesMap = new Map();
+  modesMap.set(2, {
+    type: 'array',
+    elementType: null,
+    value: [
+      { type: 'float', value: 3.0 },
+      { type: 'float', value: 5.0 },
+    ],
+  });
+  const entry = _makePropEntry({
+    movement: { modes: modesMap },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movement !== null, 'movement should not be null');
+  assert(Array.isArray(model.movement.modes), 'modes should be an array');
+  assert(model.movement.modes.length === 1, 'modes should have 1 entry');
+  assert(model.movement.modes[0].mode === 2, 'mode should be 2 (FLY)');
+  assert(model.movement.modes[0].normal === 3.0, 'normal speed should be 3.0');
+  assert(model.movement.modes[0].max === 5.0, 'max speed should be 5.0');
+});
+
+test('PropDefModel — fromEntry reads movement with empty modes', () => {
+  const entry = _makePropEntry({
+    movement: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movement !== null, 'movement should not be null');
+  assert(Array.isArray(model.movement.modes), 'modes should default to an array');
+  assert(model.movement.modes.length === 0, 'modes should be empty');
+});
+
+test('PropDefModel — fromEntry reads movement with multiple modes (amphibian)', () => {
+  const modesMap = new Map();
+  modesMap.set(0, {
+    type: 'array',
+    elementType: null,
+    value: [
+      { type: 'float', value: 1.0 },
+      { type: 'float', value: 1.5 },
+    ],
+  });
+  modesMap.set(1, {
+    type: 'array',
+    elementType: null,
+    value: [
+      { type: 'float', value: 0.8 },
+      { type: 'float', value: 1.2 },
+    ],
+  });
+  const entry = _makePropEntry({
+    movement: { modes: modesMap },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.movement.modes.length === 2, 'modes should have 2 entries');
+  assert(model.movement.modes[0].mode === 0, 'first mode is WALK');
+  assert(model.movement.modes[1].mode === 1, 'second mode is SWIM');
+});
+
+test('PropDefModel — fromEntry reads combat capability', () => {
+  const entry = _makePropEntry({
+    combat: { attacks: [], defenses: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.combat !== null, 'combat should not be null');
+  assert(Array.isArray(model.combat.attacks), 'attacks should be an array');
+  assert(Array.isArray(model.combat.defenses), 'defenses should be an array');
+});
+
+test('PropDefModel — fromEntry reads behavior capability', () => {
+  const entry = _makePropEntry({
+    behavior: { detection_range: 5, activity_cycle: 2, group_behavior: 1, diet: ['FAUNA'], reactions: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior !== null, 'behavior should not be null');
+  assert(model.behavior.detection_range === 5, 'detection_range should be 5');
+  assert(model.behavior.activity_cycle === 2, 'activity_cycle should be 2 (NOCTURNAL)');
+  assert(model.behavior.group_behavior === 1, 'group_behavior should be 1 (PAIR)');
+  assert(model.behavior.diet.length === 1, 'diet should have 1 item');
+  assert(model.behavior.diet[0] === 'FAUNA', 'diet should be FAUNA');
+  assert(Array.isArray(model.behavior.reactions), 'reactions should be an array');
+});
+
+test('PropDefModel — fromEntry reads behavior with defaults', () => {
+  const entry = _makePropEntry({
+    behavior: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior !== null, 'behavior should not be null');
+  assert(model.behavior.detection_range === 2, 'detection_range should default to 2');
+  assert(model.behavior.activity_cycle === 0, 'activity_cycle should default to 0 (ALWAYS)');
+  assert(model.behavior.group_behavior === 0, 'group_behavior should default to 0 (SOLO)');
+});
+
+test('PropDefModel — fromEntry reads behavior group_behavior HERD', () => {
+  const entry = _makePropEntry({
+    behavior: { detection_range: 3, activity_cycle: 1, group_behavior: 3, diet: [], reactions: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior.group_behavior === 3, 'group_behavior should be 3 (HERD)');
+});
+
+test('PropDefModel — fromEntry reads behavior group_behavior SWARM', () => {
+  const entry = _makePropEntry({
+    behavior: { detection_range: 4, activity_cycle: 0, group_behavior: 4, diet: [], reactions: [] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.behavior.group_behavior === 4, 'group_behavior should be 4 (SWARM)');
+});
+
+test('PropDefModel — fromEntry reads spawnable capability', () => {
+  const entry = _makePropEntry({
+    spawnable: { spawn_min: 2, spawn_max: 5, first_spawn_day: 4, spawn_min_distance: 6, allowed_biomes: ['FOREST', 'GRASSLAND'] },
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.spawnable !== null, 'spawnable should not be null');
+  assert(model.spawnable.spawn_min === 2, 'spawn_min should be 2');
+  assert(model.spawnable.spawn_max === 5, 'spawn_max should be 5');
+  assert(model.spawnable.first_spawn_day === 4, 'first_spawn_day should be 4');
+  assert(model.spawnable.spawn_min_distance === 6, 'spawn_min_distance should be 6');
+  assert(model.spawnable.allowed_biomes.length === 2, 'allowed_biomes should have 2 items');
+  assert(model.spawnable.allowed_biomes[0] === 'FOREST', 'first biome should be FOREST');
+});
+
+test('PropDefModel — fromEntry reads spawnable with defaults', () => {
+  const entry = _makePropEntry({
+    spawnable: {},
+  });
+  const model = PropDefModel.fromEntry('test.tres', entry);
+  assert(model.spawnable !== null, 'spawnable should not be null');
+  assert(model.spawnable.spawn_min === 1, 'spawn_min should default to 1');
+  assert(model.spawnable.spawn_max === 1, 'spawn_max should default to 1');
+  assert(model.spawnable.first_spawn_day === 1, 'first_spawn_day should default to 1');
+  assert(model.spawnable.spawn_min_distance === 3, 'spawn_min_distance should default to 3');
+  assert(model.spawnable.allowed_biomes.length === 0, 'allowed_biomes should be empty');
 });
 
 test('PropDefModel — fromEntry null capabilities when not present', () => {
@@ -1523,23 +1747,28 @@ test('PropDefModel — fromEntry null capabilities when not present', () => {
   assert(model.movable === null, 'movable should be null');
   assert(model.station === null, 'station should be null');
   assert(model.catalogable === null, 'catalogable should be null');
+  assert(model.endurance === null, 'endurance should be null');
+  assert(model.movement === null, 'movement should be null');
+  assert(model.combat === null, 'combat should be null');
+  assert(model.behavior === null, 'behavior should be null');
+  assert(model.spawnable === null, 'spawnable should be null');
 });
 
 // ============================================================
 // validatePropForm — capability validation (task-046b)
 // ============================================================
 
-test('validatePropForm — PORTABLE.weight >= 0', () => {
-  const model = _makeModel({ portable: { weight: -1 } });
+test('validatePropForm — PORTABLE.size >= 0', () => {
+  const model = _makeModel({ portable: { size: -1 } });
   const result = validatePropForm(model, false);
   assert(!result.valid, 'should be invalid');
-  assert(result.errors.some(e => e.includes('PORTABLE weight')), 'should mention PORTABLE weight');
+  assert(result.errors.some(e => e.includes('PORTABLE size')), 'should mention PORTABLE size');
 });
 
-test('validatePropForm — PORTABLE.weight = 0 is valid', () => {
-  const model = _makeModel({ portable: { weight: 0 } });
+test('validatePropForm — PORTABLE.size = 0 is valid', () => {
+  const model = _makeModel({ portable: { size: 0 } });
   const result = validatePropForm(model, false);
-  assert(result.valid, 'weight 0 should be valid');
+  assert(result.valid, 'size 0 should be valid');
 });
 
 test('validatePropForm — PLACEABLE marker is always valid', () => {
@@ -1580,6 +1809,59 @@ test('validatePropForm — no capabilities = valid', () => {
   assert(result.valid, 'should be valid with no capabilities');
 });
 
+test('validatePropForm — ID missing P prefix', () => {
+  const result = validatePropForm(_makeModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid without P prefix');
+  assert(result.errors.some(e => e.includes('start with "P"')), 'should mention P prefix');
+});
+
+test('validatePropForm — ID with P prefix is valid', () => {
+  const result = validatePropForm(_makeModel({ id: 'P00001' }), false);
+  assert(result.valid, 'should be valid with P prefix');
+});
+
+// ============================================================
+// nextId — shared auto-increment helper
+// ============================================================
+
+test('nextId — returns prefix + 00001 for empty map', () => {
+  const empty = new Map();
+  assert(nextId('P', empty) === 'P00001', 'should be P00001');
+  assert(nextId('R', empty) === 'R00001', 'should be R00001');
+  assert(nextId('E', empty) === 'E00001', 'should be E00001');
+});
+
+test('nextId — increments past highest existing ID', () => {
+  const map = new Map();
+  map.set('P00003.tres', {});
+  map.set('P00010.tres', {});
+  map.set('P00005.tres', {});
+  assert(nextId('P', map) === 'P00011', 'should be P00011 (max was 10)');
+});
+
+test('nextId — ignores entries with wrong prefix', () => {
+  const map = new Map();
+  map.set('R00050.tres', {});
+  map.set('P00002.tres', {});
+  assert(nextId('P', map) === 'P00003', 'should be P00003, ignoring R entry');
+  assert(nextId('R', map) === 'R00051', 'should be R00051, ignoring P entry');
+});
+
+test('nextId — ignores non-numeric suffixes', () => {
+  const map = new Map();
+  map.set('Pabc.tres', {});
+  map.set('P00007.tres', {});
+  assert(nextId('P', map) === 'P00008', 'should be P00008, ignoring Pabc');
+});
+
+test('nextId — pads to 5 digits', () => {
+  const map = new Map();
+  map.set('E00001.tres', {});
+  const result = nextId('E', map);
+  assert(result === 'E00002', 'should be E00002');
+  assert(result.length === 6, 'prefix + 5 digits = 6 chars');
+});
+
 // ============================================================
 // propModelToRaw — capability serialization (task-046b)
 // ============================================================
@@ -1595,7 +1877,7 @@ test('propModelToRaw — serializes tags', () => {
 });
 
 test('propModelToRaw — serializes portable as sub_resource', () => {
-  const model = _makeModel({ portable: { weight: 2.0 } });
+  const model = _makeModel({ portable: { size: 2.0 } });
   const raw = propModelToRaw(model);
   assert(raw.subResources.length === 1, 'should have 1 sub_resource');
   assert(raw.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
@@ -1606,9 +1888,9 @@ test('propModelToRaw — serializes portable as sub_resource', () => {
 
 test('propModelToRaw — serializes multiple capabilities', () => {
   const model = _makeModel({
-    portable: { weight: 1.0 },
+    portable: { size: 1.0 },
     placeable: {},
-    catalogable: { scan_time: 1.0, display_tag: 'flora', category: 0, display_name: '', description: '', properties: {} },
+    catalogable: { scan_time: 1.0, show_as_anomaly: false, properties: {} },
   });
   const raw = propModelToRaw(model);
   assert(raw.subResources.length === 3, `should have 3 sub_resources, got ${raw.subResources.length}`);
@@ -1628,7 +1910,7 @@ test('propModelToRaw — serialized output is valid .tres', () => {
     placeable: {},
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
-    catalogable: { scan_time: 1.0, display_tag: 'survival', category: 0, display_name: '', description: '', properties: {} },
+    catalogable: { scan_time: 1.0, show_as_anomaly: false, properties: {} },
   });
   const raw = propModelToRaw(model);
   const text = TresParser.serialize(raw);
@@ -1637,7 +1919,7 @@ test('propModelToRaw — serialized output is valid .tres', () => {
   const reparsed = TresParser.parse(text);
   assert(reparsed.scriptClass === 'PropDef', 'should parse as PropDef');
   assert(reparsed.subResources.length === 4, 'should have 4 sub_resources');
-  assert(reparsed.resourceFields.get('id').value === 'test', 'id should round-trip');
+  assert(reparsed.resourceFields.get('id').value === 'Ptest', 'id should round-trip');
 });
 
 // ============================================================
@@ -1647,12 +1929,12 @@ test('propModelToRaw — serialized output is valid .tres', () => {
 test('PropDefModel — full round-trip with capabilities', () => {
   const original = _makeModel({
     tags: ['SOURCE', 'WOOD', 'BURNABLE.log'],
-    portable: { weight: 1.5 },
+    portable: { size: 1.5 },
     placeable: {},
-    container: { capacity_weight: 20, accepts_filter: ['BURNABLE'] },
+    container: { capacity_size: 20, accepts_filter: ['BURNABLE'] },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
-    catalogable: { scan_time: 2.0, display_tag: 'survival', category: 2, display_name: 'Test Mineral', description: 'A test mineral.', properties: {} },
+    catalogable: { scan_time: 2.0, show_as_anomaly: true, properties: {} },
   });
 
   // Serialize
@@ -1686,10 +1968,10 @@ test('PropDefModel — full round-trip with capabilities', () => {
   // Verify capabilities survived
   assert(restored.tags.length === 3, `tags should have 3 items, got ${restored.tags.length}`);
   assert(restored.portable !== null, 'portable should survive');
-  assert(restored.portable.weight === 1.5, 'portable weight should be 1.5');
+  assert(restored.portable.size === 1.5, 'portable size should be 1.5');
   assert(restored.placeable !== null, 'placeable should survive');
   assert(restored.container !== null, 'container should survive');
-  assert(restored.container.capacity_weight === 20, 'capacity_weight should be 20');
+  assert(restored.container.capacity_size === 20, 'capacity_size should be 20');
   assert(restored.container.accepts_filter.length === 1, 'accepts_filter should have 1 item');
   assert(restored.light !== null, 'light should survive');
   assert(restored.light.radius === 4, 'light radius should be 4');
@@ -1698,10 +1980,142 @@ test('PropDefModel — full round-trip with capabilities', () => {
   assert(restored.station.station_tags.length === 2, 'station_tags should have 2 items');
   assert(restored.catalogable !== null, 'catalogable should survive');
   assert(restored.catalogable.scan_time === 2.0, 'scan_time should be 2.0');
-  assert(restored.catalogable.display_tag === 'survival', 'display_tag should be survival');
-  assert(restored.catalogable.category === 2, 'category should be 2');
-  assert(restored.catalogable.display_name === 'Test Mineral', 'display_name should be Test Mineral');
-  assert(restored.catalogable.description === 'A test mineral.', 'description should be A test mineral.');
+  assert(restored.catalogable.show_as_anomaly === true, 'show_as_anomaly should be true');
+});
+
+test('PropDefModel — full round-trip with fauna capabilities', () => {
+  const original = _makeModel({
+    tags: ['FAUNA', 'HOSTILE'],
+    catalogable: { scan_time: 3.0, show_as_anomaly: false, properties: {} },
+    endurance: { hp: 20, vulnerabilities: ['FIRE'], resistances: [], immunities: [] },
+    movement: { modes: [{ mode: 0, normal: 1.0, max: 1.5 }] },
+    combat: { attacks: [], defenses: [] },
+    behavior: { detection_range: 2, activity_cycle: 2, group_behavior: 0, diet: ['FAUNA'], reactions: [] },
+    spawnable: { spawn_min: 1, spawn_max: 3, first_spawn_day: 4, spawn_min_distance: 3, allowed_biomes: [] },
+  });
+
+  // Serialize
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(text);
+
+  // Build data object (simulates what file-discovery does)
+  const subResourceMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) {
+      subData[k] = v.value;
+    }
+    subResourceMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') {
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
+  }
+
+  // Reconstruct model
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+
+  // Verify all fauna caps survived
+  assert(restored.catalogable !== null, 'catalogable should survive');
+  assert(restored.catalogable.scan_time === 3.0, 'catalogable.scan_time should be 3.0');
+  assert(restored.catalogable.show_as_anomaly === false, 'catalogable.show_as_anomaly should be false');
+
+  assert(restored.endurance !== null, 'endurance should survive');
+  assert(restored.endurance.hp === 20, 'endurance.hp should be 20');
+  assert(restored.endurance.vulnerabilities.length === 1, 'vulnerabilities should have 1 item');
+  assert(restored.endurance.vulnerabilities[0] === 'FIRE', 'vulnerability should be FIRE');
+  assert(restored.endurance.resistances.length === 0, 'resistances should be empty');
+  assert(restored.endurance.immunities.length === 0, 'immunities should be empty');
+
+  assert(restored.movement !== null, 'movement should survive');
+  assert(Array.isArray(restored.movement.modes), 'movement.modes should be an array');
+  assert(restored.movement.modes.length === 1, 'modes should have 1 entry');
+  assert(restored.movement.modes[0].mode === 0, 'movement.modes[0].mode should be 0 (WALK)');
+  assert(restored.movement.modes[0].normal === 1.0, 'normal speed should be 1.0');
+  assert(restored.movement.modes[0].max === 1.5, 'max speed should be 1.5');
+
+  assert(restored.combat !== null, 'combat should survive');
+  assert(Array.isArray(restored.combat.attacks), 'combat.attacks should be an array');
+  assert(Array.isArray(restored.combat.defenses), 'combat.defenses should be an array');
+
+  assert(restored.behavior !== null, 'behavior should survive');
+  assert(restored.behavior.detection_range === 2, 'detection_range should be 2');
+  assert(restored.behavior.activity_cycle === 2, 'activity_cycle should be 2 (NOCTURNAL)');
+  assert(restored.behavior.group_behavior === 0, 'group_behavior should be 0 (SOLO)');
+  assert(restored.behavior.diet.length === 1, 'diet should have 1 item');
+  assert(restored.behavior.diet[0] === 'FAUNA', 'diet should be FAUNA');
+
+  assert(restored.spawnable !== null, 'spawnable should survive');
+  assert(restored.spawnable.spawn_min === 1, 'spawn_min should be 1');
+  assert(restored.spawnable.spawn_max === 3, 'spawn_max should be 3');
+  assert(restored.spawnable.first_spawn_day === 4, 'first_spawn_day should be 4');
+  assert(restored.spawnable.spawn_min_distance === 3, 'spawn_min_distance should be 3');
+  assert(restored.spawnable.allowed_biomes.length === 0, 'allowed_biomes should be empty');
+});
+
+test('PropDefModel — round-trip fauna caps with non-default values', () => {
+  const original = _makeModel({
+    endurance: { hp: 50, vulnerabilities: ['FIRE', 'BLUNT'], resistances: ['PIERCING'], immunities: ['POISON'] },
+    movement: { modes: [
+      { mode: 2, normal: 3.0, max: 5.0 },
+      { mode: 5, normal: 4.0, max: 4.0 },
+    ] },
+    behavior: { detection_range: 8, activity_cycle: 1, group_behavior: 2, diet: ['FLORA', 'FAUNA'], reactions: [] },
+    spawnable: { spawn_min: 3, spawn_max: 7, first_spawn_day: 10, spawn_min_distance: 5, allowed_biomes: ['FOREST', 'MOUNTAIN'] },
+  });
+
+  const raw = propModelToRaw(original);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+
+  const subResourceMap = new Map();
+  for (const sub of reparsed.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) {
+      subData[k] = v.value;
+    }
+    subResourceMap.set(sub.id, subData);
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') {
+      data[key] = subResourceMap.get(tv.value) || null;
+    } else {
+      data[key] = tv.value;
+    }
+  }
+
+  const restored = PropDefModel.fromEntry('test.tres', { data, raw: reparsed });
+
+  assert(restored.endurance.hp === 50, 'hp should be 50');
+  assert(restored.endurance.vulnerabilities.length === 2, 'vulnerabilities should have 2 items');
+  assert(restored.endurance.resistances[0] === 'PIERCING', 'resistance should be PIERCING');
+  assert(restored.endurance.immunities[0] === 'POISON', 'immunity should be POISON');
+
+  assert(restored.movement.modes.length === 2, 'modes should have 2 entries');
+  assert(restored.movement.modes[0].mode === 2, 'first mode should be 2 (FLY)');
+  assert(restored.movement.modes[0].normal === 3.0, 'fly normal speed should be 3.0');
+  assert(restored.movement.modes[0].max === 5.0, 'fly max speed should be 5.0');
+  assert(restored.movement.modes[1].mode === 5, 'second mode should be 5 (JUMP)');
+  assert(restored.movement.modes[1].normal === 4.0, 'jump normal should be 4.0 (max elev diff)');
+
+  assert(restored.behavior.detection_range === 8, 'detection_range should be 8');
+  assert(restored.behavior.activity_cycle === 1, 'activity_cycle should be 1 (DIURNAL)');
+  assert(restored.behavior.group_behavior === 2, 'group_behavior should be 2 (PACK)');
+  assert(restored.behavior.diet.length === 2, 'diet should have 2 items');
+
+  assert(restored.spawnable.spawn_min === 3, 'spawn_min should be 3');
+  assert(restored.spawnable.spawn_max === 7, 'spawn_max should be 7');
+  assert(restored.spawnable.first_spawn_day === 10, 'first_spawn_day should be 10');
+  assert(restored.spawnable.spawn_min_distance === 5, 'spawn_min_distance should be 5');
+  assert(restored.spawnable.allowed_biomes.length === 2, 'allowed_biomes should have 2 items');
 });
 
 test('PropDefModel — round-trip with no capabilities', () => {
@@ -1723,6 +2137,11 @@ test('PropDefModel — round-trip with no capabilities', () => {
   assert(restored.movable === null, 'movable should be null');
   assert(restored.station === null, 'station should be null');
   assert(restored.catalogable === null, 'catalogable should be null');
+  assert(restored.endurance === null, 'endurance should be null');
+  assert(restored.movement === null, 'movement should be null');
+  assert(restored.combat === null, 'combat should be null');
+  assert(restored.behavior === null, 'behavior should be null');
+  assert(restored.spawnable === null, 'spawnable should be null');
   assert(restored.id === 'test', 'id should survive');
   assert(restored.display_name === 'Test Prop', 'display_name should survive');
 });
@@ -1795,8 +2214,122 @@ for (const propFile of __propFiles) {
     if (parsed.resourceFields.has('catalogable')) {
       assert(model.catalogable !== null, `${propFile}: catalogable should be parsed`);
     }
+    if (parsed.resourceFields.has('endurance')) {
+      assert(model.endurance !== null, `${propFile}: endurance should be parsed`);
+    }
+    if (parsed.resourceFields.has('movement')) {
+      assert(model.movement !== null, `${propFile}: movement should be parsed`);
+    }
+    if (parsed.resourceFields.has('combat')) {
+      assert(model.combat !== null, `${propFile}: combat should be parsed`);
+    }
+    if (parsed.resourceFields.has('behavior')) {
+      assert(model.behavior !== null, `${propFile}: behavior should be parsed`);
+    }
+    if (parsed.resourceFields.has('spawnable')) {
+      assert(model.spawnable !== null, `${propFile}: spawnable should be parsed`);
+    }
   });
 }
+
+// ============================================================
+// P00108.tres model round-trip: load → serialize → load again → identical model
+// ============================================================
+
+test('PropDefModel — P00108.tres fauna model round-trips through editor', () => {
+  const filePath = join(__propsDir, 'P00108.tres');
+  const text = readFileSync(filePath, 'utf-8');
+
+  // First load
+  const parsed1 = TresParser.parse(text);
+  const subMap1 = new Map();
+  for (const sub of parsed1.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) subData[k] = v.value;
+    subMap1.set(sub.id, subData);
+  }
+  const data1 = {};
+  for (const [key, tv] of parsed1.resourceFields) {
+    data1[key] = tv.type === 'sub_resource' ? (subMap1.get(tv.value) || null) : tv.value;
+  }
+  const model1 = PropDefModel.fromEntry('P00108.tres', { data: data1, raw: parsed1 });
+
+  // Verify we actually loaded the expected fauna data
+  assert(model1.endurance !== null, 'P00108 should have endurance');
+  assert(model1.endurance.hp === 20, 'P00108 hp should be 20');
+  assert(model1.endurance.vulnerabilities[0] === 'FIRE', 'P00108 vulnerability should be FIRE');
+  assert(model1.movement !== null, 'P00108 should have movement');
+  assert(Array.isArray(model1.movement.modes), 'P00108 movement.modes should be an array');
+  assert(model1.movement.modes.length >= 1, 'P00108 should have at least one movement mode');
+  assert(model1.movement.modes[0].mode === 0, 'P00108 first movement mode should be 0 (WALK)');
+  assert(model1.movement.modes[0].normal === 1.0, 'P00108 walk normal speed should be 1.0');
+  assert(model1.movement.modes[0].max === 1.5, 'P00108 walk max speed should be 1.5');
+  assert(model1.combat !== null, 'P00108 should have combat');
+  assert(model1.behavior !== null, 'P00108 should have behavior');
+  assert(model1.behavior.activity_cycle === 2, 'P00108 activity_cycle should be 2 (NOCTURNAL)');
+  assert(model1.behavior.diet[0] === 'FAUNA', 'P00108 diet should be FAUNA');
+  assert(model1.spawnable !== null, 'P00108 should have spawnable');
+  assert(model1.spawnable.spawn_max === 3, 'P00108 spawn_max should be 3');
+  assert(model1.spawnable.first_spawn_day === 4, 'P00108 first_spawn_day should be 4');
+  assert(model1.catalogable !== null, 'P00108 should have catalogable');
+  assert(model1.tags.length === 2, 'P00108 should have 2 tags');
+
+  // Serialize back to text through the editor model
+  const raw2 = propModelToRaw(model1);
+  const text2 = TresParser.serialize(raw2);
+
+  // Second load
+  const parsed2 = TresParser.parse(text2);
+  const subMap2 = new Map();
+  for (const sub of parsed2.subResources) {
+    const subData = {};
+    for (const [k, v] of sub.fields) subData[k] = v.value;
+    subMap2.set(sub.id, subData);
+  }
+  const data2 = {};
+  for (const [key, tv] of parsed2.resourceFields) {
+    data2[key] = tv.type === 'sub_resource' ? (subMap2.get(tv.value) || null) : tv.value;
+  }
+  const model2 = PropDefModel.fromEntry('P00108.tres', { data: data2, raw: parsed2 });
+
+  // Verify the two models are structurally identical for all fauna caps
+  assert(model2.id === model1.id, 'id should match');
+  assert(model2.display_name === model1.display_name, 'display_name should match');
+  assert(JSON.stringify(model2.tags) === JSON.stringify(model1.tags), 'tags should match');
+
+  assert(model2.catalogable !== null, 'catalogable should survive round-trip');
+  assert(model2.catalogable.scan_time === model1.catalogable.scan_time, 'scan_time should match');
+  assert(model2.catalogable.show_as_anomaly === model1.catalogable.show_as_anomaly, 'show_as_anomaly should match');
+
+  assert(model2.endurance !== null, 'endurance should survive round-trip');
+  assert(model2.endurance.hp === model1.endurance.hp, 'endurance.hp should match');
+  assert(JSON.stringify(model2.endurance.vulnerabilities) === JSON.stringify(model1.endurance.vulnerabilities), 'vulnerabilities should match');
+  assert(JSON.stringify(model2.endurance.resistances) === JSON.stringify(model1.endurance.resistances), 'resistances should match');
+  assert(JSON.stringify(model2.endurance.immunities) === JSON.stringify(model1.endurance.immunities), 'immunities should match');
+
+  assert(model2.movement !== null, 'movement should survive round-trip');
+  assert(model2.movement.modes.length === model1.movement.modes.length, 'modes length should match');
+  for (let i = 0; i < model1.movement.modes.length; i++) {
+    assert(model2.movement.modes[i].mode === model1.movement.modes[i].mode, `modes[${i}].mode should match`);
+    assert(model2.movement.modes[i].normal === model1.movement.modes[i].normal, `modes[${i}].normal should match`);
+    assert(model2.movement.modes[i].max === model1.movement.modes[i].max, `modes[${i}].max should match`);
+  }
+
+  assert(model2.combat !== null, 'combat should survive round-trip');
+
+  assert(model2.behavior !== null, 'behavior should survive round-trip');
+  assert(model2.behavior.detection_range === model1.behavior.detection_range, 'detection_range should match');
+  assert(model2.behavior.activity_cycle === model1.behavior.activity_cycle, 'activity_cycle should match');
+  assert(model2.behavior.group_behavior === model1.behavior.group_behavior, 'group_behavior should match');
+  assert(JSON.stringify(model2.behavior.diet) === JSON.stringify(model1.behavior.diet), 'diet should match');
+
+  assert(model2.spawnable !== null, 'spawnable should survive round-trip');
+  assert(model2.spawnable.spawn_min === model1.spawnable.spawn_min, 'spawn_min should match');
+  assert(model2.spawnable.spawn_max === model1.spawnable.spawn_max, 'spawn_max should match');
+  assert(model2.spawnable.first_spawn_day === model1.spawnable.first_spawn_day, 'first_spawn_day should match');
+  assert(model2.spawnable.spawn_min_distance === model1.spawnable.spawn_min_distance, 'spawn_min_distance should match');
+  assert(JSON.stringify(model2.spawnable.allowed_biomes) === JSON.stringify(model1.spawnable.allowed_biomes), 'allowed_biomes should match');
+});
 
 // ============================================================
 // Test Helpers (task-046b)
@@ -1837,7 +2370,7 @@ function _makePropEntry(overrides) {
  */
 function _makeModel(overrides) {
   const model = new PropDefModel();
-  model.id = 'test';
+  model.id = 'Ptest';
   model.display_name = 'Test Prop';
   model.max_stack = 99;
   model.placeholder_mesh_type = 'cube';
@@ -1860,10 +2393,10 @@ function _makeRecipeEntry(resourceOverrides, subResources) {
   raw.headerLine = '[gd_resource type="Resource" script_class="Recipe" load_steps=2 format=3]';
   raw.extResources = ['[ext_resource type="Script" path="res://scripts/recipes/recipe.gd" id="1_recipe"]'];
   raw.subResources = subResources || [];
-  const data = { script: 'ExtResource("1_recipe")', id: 'test', display_name: 'Test Recipe', kind: 0, ...resourceOverrides };
+  const data = { script: 'ExtResource("1_recipe")', id: 'Rtest', display_name: 'Test Recipe', ...resourceOverrides };
   raw.resourceFields = new Map();
   raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_recipe")' });
-  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'test' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'Rtest' });
   raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Recipe' });
   raw.resourceFields.set('kind', { type: 'int', value: data.kind || 0 });
   if (data.inputs) raw.resourceFields.set('inputs', { type: 'array', elementType: null, value: data.inputs });
@@ -1871,61 +2404,72 @@ function _makeRecipeEntry(resourceOverrides, subResources) {
   if (data.effects) raw.resourceFields.set('effects', { type: 'array', elementType: null, value: data.effects });
   if (data.conditions) raw.resourceFields.set('conditions', { type: 'array', elementType: null, value: data.conditions });
   if (data.actions) raw.resourceFields.set('actions', { type: 'array', elementType: null, value: data.actions });
-  if (data.time != null && data.time !== 0) raw.resourceFields.set('time', { type: 'float', value: data.time });
-  if (data.unlock_when) raw.resourceFields.set('unlock_when', { type: 'array', elementType: null, value: data.unlock_when });
+  if (data.duration != null && data.duration !== 0) raw.resourceFields.set('duration', { type: 'float', value: data.duration });
+  if (data.short_description) raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  if (data.long_description) raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
   return { data, raw };
 }
 
 function _makeRecipeModel(overrides) {
   const model = new RecipeModel();
-  model.id = 'test';
+  model.id = 'Rtest';
   model.display_name = 'Test Recipe';
-  model.kind = 0;
-  model.time = 0;
+  model.duration = 0;
   for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
   return model;
 }
 
 test('RecipeModel — fromEntry reads basic fields', () => {
-  const entry = _makeRecipeEntry({ kind: 2, time: 4.0 }, []);
-  const model = RecipeModel.fromEntry('00001.tres', entry);
-  assert(model.id === '00001', 'id should be 00001');
+  const entry = _makeRecipeEntry({ duration: 4.0 }, []);
+  const model = RecipeModel.fromEntry('R00001.tres', entry);
+  assert(model.id === 'R00001', 'id should be R00001');
   assert(model.display_name === 'Test Recipe', 'display_name');
-  assert(model.kind === 2, 'kind should be 2');
-  assert(model._filename === '00001.tres', '_filename');
+  assert(model.duration === 4.0, 'duration should be 4.0');
+  assert(model._filename === 'R00001.tres', '_filename');
 });
 
 test('RecipeModel — fromEntry reads inputs via sub_resource resolution', () => {
   const inputFields = new Map();
   inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
-  inputFields.set('ref_or_tag', { type: 'stringname', value: '00020' });
+  inputFields.set('ref', { type: 'string', value: 'P00020' });
   inputFields.set('count', { type: 'int', value: 3 });
-  inputFields.set('source', { type: 'stringname', value: 'world_tile' });
   const entry = _makeRecipeEntry(
     { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
     [{ type: 'Resource', id: 'input_1', fields: inputFields }],
   );
   const model = RecipeModel.fromEntry('test.tres', entry);
   assert(model.inputs.length === 1, 'should have 1 input');
-  assert(model.inputs[0].ref_or_tag === '00020', 'input ref_or_tag');
+  assert(model.inputs[0].ref === 'P00020', 'input ref');
   assert(model.inputs[0].count === 3, 'input count');
-  assert(model.inputs[0].source === 'world_tile', 'input source');
-  assert(model.inputs[0].is_tag === false, 'input is_tag');
+  assert(model.inputs[0].must_hold === false, 'input must_hold default false');
 });
 
-test('RecipeModel — fromEntry reads input with is_tag', () => {
+test('RecipeModel — fromEntry reads input with tag ref', () => {
   const inputFields = new Map();
   inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
-  inputFields.set('ref_or_tag', { type: 'stringname', value: 'BURNABLE.log' });
+  inputFields.set('ref', { type: 'string', value: '&BURNABLE.log' });
   inputFields.set('count', { type: 'int', value: 1 });
-  inputFields.set('is_tag', { type: 'bool', value: true });
   const entry = _makeRecipeEntry(
     { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
     [{ type: 'Resource', id: 'input_1', fields: inputFields }],
   );
   const model = RecipeModel.fromEntry('test.tres', entry);
-  assert(model.inputs[0].is_tag === true, 'is_tag should be true');
-  assert(model.inputs[0].ref_or_tag === 'BURNABLE.log', 'ref_or_tag');
+  assert(model.inputs[0].ref === '&BURNABLE.log', 'ref preserves & prefix');
+  assert(model.inputs[0].ref.startsWith('&'), 'tag refs start with &');
+});
+
+test('RecipeModel — fromEntry reads input with must_hold true', () => {
+  const inputFields = new Map();
+  inputFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_input")' });
+  inputFields.set('ref', { type: 'string', value: 'P00010' });
+  inputFields.set('count', { type: 'int', value: 2 });
+  inputFields.set('must_hold', { type: 'bool', value: true });
+  const entry = _makeRecipeEntry(
+    { inputs: [{ type: 'sub_resource', value: 'input_1' }] },
+    [{ type: 'Resource', id: 'input_1', fields: inputFields }],
+  );
+  const model = RecipeModel.fromEntry('test.tres', entry);
+  assert(model.inputs[0].must_hold === true, 'must_hold true');
 });
 
 test('RecipeModel — fromEntry reads outputs with prob', () => {
@@ -1984,21 +2528,6 @@ test('RecipeModel — fromEntry reads conditions with nested predicate', () => {
   assert(model.conditions[0].must_sustain === true, 'must_sustain');
 });
 
-test('RecipeModel — fromEntry reads unlock_when predicates', () => {
-  const predFields = new Map();
-  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("6_predicate")' });
-  predFields.set('kind', { type: 'stringname', value: 'cataloged' });
-  predFields.set('params', { type: 'dict', value: new Map([['prop', { type: 'string', value: '00020' }]]), braceSpaces: true });
-  const entry = _makeRecipeEntry(
-    { unlock_when: [{ type: 'sub_resource', value: 'unlock_pred_1' }] },
-    [{ type: 'Resource', id: 'unlock_pred_1', fields: predFields }],
-  );
-  const model = RecipeModel.fromEntry('test.tres', entry);
-  assert(model.unlock_when.length === 1, 'should have 1 unlock predicate');
-  assert(model.unlock_when[0].kind === 'cataloged', 'unlock kind');
-  assert(model.unlock_when[0].params.prop === '00020', 'unlock params.prop');
-});
-
 test('RecipeModel — fromEntry reads actions', () => {
   const entry = _makeRecipeEntry(
     { actions: [{ type: 'stringname', value: 'eat' }, { type: 'stringname', value: 'chop' }] }, [],
@@ -2017,7 +2546,6 @@ test('RecipeModel — fromEntry handles empty arrays', () => {
   assert(model.effects.length === 0, 'no effects');
   assert(model.conditions.length === 0, 'no conditions');
   assert(model.actions.length === 0, 'no actions');
-  assert(model.unlock_when.length === 0, 'no unlock_when');
 });
 
 // ============================================================
@@ -2042,11 +2570,11 @@ test('validateRecipeForm — invalid ID chars', () => {
 });
 
 test('validateRecipeForm — duplicate ID on create', () => {
-  ProjectContext.files.recipes.set('test.tres', { data: {}, raw: new TresFile() });
+  ProjectContext.files.recipes.set('Rtest.tres', { data: {}, raw: new TresFile() });
   const result = validateRecipeForm(_makeRecipeModel({}), true);
   assert(result.valid === false, 'should be invalid');
   assert(result.errors.some(e => e.includes('already exists')), 'mention duplicate');
-  ProjectContext.files.recipes.delete('test.tres');
+  ProjectContext.files.recipes.delete('Rtest.tres');
 });
 
 test('validateRecipeForm — missing display_name', () => {
@@ -2054,28 +2582,18 @@ test('validateRecipeForm — missing display_name', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — negative time', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ time: -1 }), true);
+test('validateRecipeForm — negative duration', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ duration: -1 }), true);
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — invalid kind', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ kind: 5 }), true);
-  assert(result.valid === false, 'should be invalid');
-});
-
-test('validateRecipeForm — input missing ref_or_tag', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '', count: 1, source: 'player_inventory', is_tag: false }] }), false);
-  assert(result.valid === false, 'should be invalid');
-});
-
-test('validateRecipeForm — input invalid source', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 1, source: 'invalid', is_tag: false }] }), false);
+test('validateRecipeForm — input missing ref', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref: '', count: 1, must_hold: true }] }), false);
   assert(result.valid === false, 'should be invalid');
 });
 
 test('validateRecipeForm — input count < 1', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref_or_tag: '00001', count: 0, source: 'player_inventory', is_tag: false }] }), false);
+  const result = validateRecipeForm(_makeRecipeModel({ inputs: [{ ref: 'P00001', count: 0, must_hold: true }] }), false);
   assert(result.valid === false, 'should be invalid');
 });
 
@@ -2109,19 +2627,19 @@ test('validateRecipeForm — condition missing predicate kind', () => {
   assert(result.valid === false, 'should be invalid');
 });
 
-test('validateRecipeForm — unlock_when missing kind', () => {
-  const result = validateRecipeForm(_makeRecipeModel({ unlock_when: [{ kind: '', params: {} }] }), false);
+test('validateRecipeForm — ID missing R prefix', () => {
+  const result = validateRecipeForm(_makeRecipeModel({ id: '00001' }), true);
   assert(result.valid === false, 'should be invalid');
+  assert(result.errors.some(e => e.includes('R')), 'mention R prefix');
 });
 
 test('validateRecipeForm — valid full recipe', () => {
   const result = validateRecipeForm(_makeRecipeModel({
-    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+    inputs: [{ ref: 'P00020', count: 1, must_hold: true }],
     outputs: [{ prop_ref: '00010', count: 2, prob: 0.8 }],
     effects: [{ kind: 'stat_delta', params: { stat: 'hunger', value: 5 } }],
     conditions: [{ predicate_kind: 'at_station', predicate_params: { tag: 'fire' }, must_sustain: true }],
-    actions: ['eat'], time: 3.0,
-    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
+    actions: ['eat'], duration: 3.0,
   }), true);
   assert(result.valid === true, 'should be valid');
   assert(result.errors.length === 0, 'no errors');
@@ -2132,20 +2650,39 @@ test('validateRecipeForm — valid full recipe', () => {
 // ============================================================
 
 test('recipeModelToRaw — serializes basic recipe', () => {
-  const raw = recipeModelToRaw(_makeRecipeModel({ kind: 1, display_name: 'Eat Berry' }));
+  const raw = recipeModelToRaw(_makeRecipeModel({ display_name: 'Eat Berry' }));
   assert(raw.scriptClass === 'Recipe', 'scriptClass');
   assert(raw.resourceFields.has('id'), 'should have id');
-  assert(raw.resourceFields.get('kind').value === 1, 'kind value');
+  assert(raw.resourceFields.get('display_name').value === 'Eat Berry', 'display_name value');
 });
 
 test('recipeModelToRaw — serializes inputs as sub_resources', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({
-    inputs: [{ ref_or_tag: '00020', count: 1, source: 'player_inventory', is_tag: false }],
+    inputs: [{ ref: 'P00020', count: 1, must_hold: true }],
   }));
   assert(raw.subResources.length >= 1, 'should have sub_resources');
   const inputSub = raw.subResources.find(s => s.id === 'input_1');
   assert(inputSub != null, 'should have input_1');
-  assert(inputSub.fields.get('ref_or_tag').value === '00020', 'ref_or_tag');
+  assert(inputSub.fields.get('ref').value === 'P00020', 'ref');
+  assert(inputSub.fields.get('must_hold').value === true, 'must_hold written when true');
+});
+
+test('recipeModelToRaw — omits must_hold when false', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
+  }));
+  const inputSub = raw.subResources.find(s => s.id === 'input_1');
+  assert(inputSub != null, 'should have input_1');
+  assert(!inputSub.fields.has('must_hold'), 'must_hold omitted when false');
+});
+
+test('recipeModelToRaw — serializes tag input with & prefix', () => {
+  const raw = recipeModelToRaw(_makeRecipeModel({
+    inputs: [{ ref: '&BURNABLE.log', count: 1, must_hold: false }],
+  }));
+  const inputSub = raw.subResources.find(s => s.id === 'input_1');
+  assert(inputSub != null, 'should have input_1');
+  assert(inputSub.fields.get('ref').value === '&BURNABLE.log', 'tag ref keeps & prefix');
 });
 
 test('recipeModelToRaw — serializes outputs with prob', () => {
@@ -2188,15 +2725,6 @@ test('recipeModelToRaw — serializes actions', () => {
   assert(actionsField.value[0].value === 'eat', 'action value');
 });
 
-test('recipeModelToRaw — serializes unlock_when', () => {
-  const raw = recipeModelToRaw(_makeRecipeModel({
-    unlock_when: [{ kind: 'cataloged', params: { prop: '00020' } }],
-  }));
-  const unlockSub = raw.subResources.find(s => s.id === 'unlock_pred_1');
-  assert(unlockSub != null, 'should have unlock_pred_1');
-  assert(unlockSub.fields.get('kind').value === 'cataloged', 'unlock kind');
-});
-
 test('recipeModelToRaw — no sub_resources when empty', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({}));
   assert(raw.subResources.length === 0, 'no sub_resources');
@@ -2204,11 +2732,10 @@ test('recipeModelToRaw — no sub_resources when empty', () => {
 
 test('recipeModelToRaw — serialized output is valid .tres', () => {
   const raw = recipeModelToRaw(_makeRecipeModel({
-    kind: 2,
-    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
-    actions: ['chop'], time: 4.0,
+    actions: ['chop'], duration: 4.0,
   }));
   const text = TresParser.serialize(raw);
   assert(text.includes('[gd_resource'), 'should have header');
@@ -2223,13 +2750,12 @@ test('recipeModelToRaw — serialized output is valid .tres', () => {
 
 test('RecipeModel — full round-trip with all fields', () => {
   const original = _makeRecipeModel({
-    kind: 2, display_name: 'Chop Small Tree',
-    inputs: [{ ref_or_tag: '00001', count: 1, source: 'world_tile', is_tag: false }],
+    display_name: 'Chop Small Tree',
+    inputs: [{ ref: 'P00001', count: 1, must_hold: false }],
     outputs: [{ prop_ref: '00010', count: 3, prob: 1.0 }, { prop_ref: 'branch', count: 2, prob: 0.8 }],
     effects: [{ kind: 'sound', params: { sound_id: 'chop' } }],
     conditions: [{ predicate_kind: 'has_tool', predicate_params: { tool: 'axe' }, must_sustain: true }],
-    actions: ['chop'], time: 4.0,
-    unlock_when: [{ kind: 'has_tool', params: { tool: 'axe' } }, { kind: 'cataloged', params: { prop: '00001' } }],
+    actions: ['chop'], duration: 4.0,
   });
   const raw = recipeModelToRaw(original);
   const text = TresParser.serialize(raw);
@@ -2245,16 +2771,15 @@ test('RecipeModel — full round-trip with all fields', () => {
     if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
     else { data[key] = tv.value; }
   }
-  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
+  const restored = RecipeModel.fromEntry('Rtest.tres', { data, raw: reparsed });
   assert(restored.id === original.id, 'id round-trip');
   assert(restored.display_name === original.display_name, 'display_name round-trip');
-  assert(restored.kind === original.kind, 'kind round-trip');
-  assert(restored.time === original.time, 'time round-trip');
+  assert(restored.duration === original.duration, 'duration round-trip');
   assert(restored.actions.length === 1, 'actions count');
   assert(restored.actions[0] === 'chop', 'actions[0]');
   assert(restored.inputs.length === 1, 'inputs count');
-  assert(restored.inputs[0].ref_or_tag === '00001', 'input ref_or_tag');
-  assert(restored.inputs[0].source === 'world_tile', 'input source');
+  assert(restored.inputs[0].ref === 'P00001', 'input ref');
+  assert(restored.inputs[0].must_hold === false, 'input must_hold');
   assert(restored.outputs.length === 2, 'outputs count');
   assert(restored.outputs[0].prop_ref === '00010', 'output[0] prop_ref');
   assert(restored.outputs[1].prob === 0.8, 'output[1] prob');
@@ -2263,9 +2788,6 @@ test('RecipeModel — full round-trip with all fields', () => {
   assert(restored.conditions.length === 1, 'conditions count');
   assert(restored.conditions[0].predicate_kind === 'has_tool', 'condition predicate_kind');
   assert(restored.conditions[0].must_sustain === true, 'condition must_sustain');
-  assert(restored.unlock_when.length === 2, 'unlock_when count');
-  assert(restored.unlock_when[0].kind === 'has_tool', 'unlock[0] kind');
-  assert(restored.unlock_when[1].kind === 'cataloged', 'unlock[1] kind');
 });
 
 test('RecipeModel — round-trip with no optional fields', () => {
@@ -2284,8 +2806,8 @@ test('RecipeModel — round-trip with no optional fields', () => {
     if (tv.type === 'sub_resource') { data[key] = subMap.get(tv.value) || null; }
     else { data[key] = tv.value; }
   }
-  const restored = RecipeModel.fromEntry('test.tres', { data, raw: reparsed });
-  assert(restored.id === 'test', 'id');
+  const restored = RecipeModel.fromEntry('Rtest.tres', { data, raw: reparsed });
+  assert(restored.id === 'Rtest', 'id');
   assert(restored.display_name === 'Test Recipe', 'display_name');
   assert(restored.inputs.length === 0, 'no inputs');
   assert(restored.outputs.length === 0, 'no outputs');
@@ -2329,15 +2851,15 @@ for (const recipeFile of __recipeFiles) {
     const model = RecipeModel.fromEntry(recipeFile, { data, raw: parsed });
     assert(model.id === recipeFile.replace('.tres', ''), `${recipeFile}: id`);
     assert(typeof model.display_name === 'string', `${recipeFile}: display_name is string`);
-    assert(model.kind >= 0 && model.kind <= 3, `${recipeFile}: kind in range`);
-    assert(model.time >= 0, `${recipeFile}: time >= 0`);
+    assert(model.duration >= 0, `${recipeFile}: duration >= 0`);
     assert(Array.isArray(model.inputs), `${recipeFile}: inputs is array`);
     assert(Array.isArray(model.outputs), `${recipeFile}: outputs is array`);
 
     // Verify inputs have valid fields
     for (const inp of model.inputs) {
-      assert(typeof inp.ref_or_tag === 'string' && inp.ref_or_tag.length > 0, `${recipeFile}: input ref_or_tag`);
+      assert(typeof inp.ref === 'string' && inp.ref.length > 0, `${recipeFile}: input ref`);
       assert(inp.count >= 1, `${recipeFile}: input count >= 1`);
+      assert(typeof inp.must_hold === 'boolean', `${recipeFile}: input must_hold boolean`);
     }
     // Verify outputs have valid fields
     for (const out of model.outputs) {
@@ -2366,13 +2888,12 @@ for (const recipeFile of __recipeFiles) {
     const model2 = RecipeModel.fromEntry(recipeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${recipeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${recipeFile}: display_name survives`);
-    assert(model2.kind === model.kind, `${recipeFile}: kind survives`);
     assert(model2.inputs.length === model.inputs.length, `${recipeFile}: inputs count survives`);
     assert(model2.outputs.length === model.outputs.length, `${recipeFile}: outputs count survives`);
     assert(model2.effects.length === model.effects.length, `${recipeFile}: effects count survives`);
     assert(model2.conditions.length === model.conditions.length, `${recipeFile}: conditions count survives`);
     assert(model2.actions.length === model.actions.length, `${recipeFile}: actions count survives`);
-    assert(model2.unlock_when.length === model.unlock_when.length, `${recipeFile}: unlock_when count survives`);
+    assert(model2.duration === model.duration, `${recipeFile}: duration survives`);
   });
 }
 
@@ -2380,23 +2901,485 @@ for (const recipeFile of __recipeFiles) {
 // Constants exports (task-039b)
 // ============================================================
 
-test('Recipe constants — RECIPE_KINDS has 4 entries', () => {
-  assert(RECIPE_KINDS.length === 4, 'should have 4 kinds');
-  assert(RECIPE_KINDS[0] === 'Assemble', 'first is Assemble');
-  assert(RECIPE_KINDS[3] === 'Combine', 'last is Combine');
-});
-
-test('Recipe constants — INPUT_SOURCES has 4 entries', () => {
-  assert(INPUT_SOURCES.length === 4, 'should have 4 sources');
-  assert(INPUT_SOURCES.includes('player_inventory'), 'includes player_inventory');
-  assert(INPUT_SOURCES.includes('world_tile'), 'includes world_tile');
-});
-
 test('Recipe constants — PREDICATE_KINDS has expected entries', () => {
   assert(PREDICATE_KINDS.includes('has_tool'), 'includes has_tool');
   assert(PREDICATE_KINDS.includes('cataloged'), 'includes cataloged');
   assert(PREDICATE_KINDS.includes('at_station'), 'includes at_station');
 });
+
+// ============================================================
+// EventModel — parsing
+// ============================================================
+
+function _makeEventEntry(resourceOverrides, subResources) {
+  const raw = new TresFile();
+  raw.scriptClass = 'GameEvent';
+  raw.headerLine = '[gd_resource type="Resource" script_class="GameEvent" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/core/event.gd" id="1_event"]'];
+  raw.subResources = subResources || [];
+  const data = { script: 'ExtResource("1_event")', id: 'E00001', display_name: 'Test Event', max_count: 1, ...resourceOverrides };
+  raw.resourceFields = new Map();
+  raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_event")' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'E00001' });
+  raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Event' });
+  if (data.max_count != null) raw.resourceFields.set('max_count', { type: 'int', value: data.max_count });
+  if (data.count != null && data.count !== 0) raw.resourceFields.set('count', { type: 'int', value: data.count });
+  if (data.conditions) raw.resourceFields.set('conditions', { type: 'array', elementType: null, value: data.conditions });
+  if (data.effects) raw.resourceFields.set('effects', { type: 'array', elementType: null, value: data.effects });
+  if (data.actions) raw.resourceFields.set('actions', { type: 'array', elementType: null, value: data.actions });
+  if (data.duration != null && data.duration !== 0) raw.resourceFields.set('duration', { type: 'float', value: data.duration });
+  if (data.short_description) raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  if (data.long_description) raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
+  return { data, raw };
+}
+
+function _makeEventModel(overrides) {
+  const model = new EventModel();
+  model.id = 'Etest';
+  model.display_name = 'Test Event';
+  model.max_count = 1;
+  model.count = 0;
+  model.duration = 0;
+  for (const [key, val] of Object.entries(overrides)) { model[key] = val; }
+  return model;
+}
+
+test('EventModel — fromEntry reads basic fields', () => {
+  const entry = _makeEventEntry({ max_count: 3, id: 'E00005', display_name: 'Discover Something' }, []);
+  const model = EventModel.fromEntry('E00005.tres', entry);
+  assert(model.id === 'E00005', 'id should be E00005');
+  assert(model.display_name === 'Discover Something', 'display_name');
+  assert(model.max_count === 3, 'max_count should be 3');
+  assert(model.count === 0, 'count should default to 0');
+  assert(model._filename === 'E00005.tres', '_filename');
+});
+
+test('EventModel — fromEntry reads effects via sub_resource resolution', () => {
+  const effectFields = new Map();
+  effectFields.set('script', { type: 'ext_resource', value: 'ExtResource("4_effect")' });
+  effectFields.set('kind', { type: 'stringname', value: 'grant_recipe' });
+  effectFields.set('params', { type: 'dict', value: new Map([['recipe_id', { type: 'string', value: 'R00001' }]]) });
+  const entry = _makeEventEntry(
+    { effects: [{ type: 'sub_resource', value: 'effect_1' }] },
+    [{ type: 'Resource', id: 'effect_1', fields: effectFields }],
+  );
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.effects.length === 1, 'should have 1 effect');
+  assert(model.effects[0].kind === 'grant_recipe', 'effect kind');
+  assert(model.effects[0].params.recipe_id === 'R00001', 'effect param');
+});
+
+test('EventModel — fromEntry reads conditions with nested predicate', () => {
+  const predFields = new Map();
+  predFields.set('script', { type: 'ext_resource', value: 'ExtResource("3_predicate")' });
+  predFields.set('kind', { type: 'stringname', value: 'cataloged' });
+  predFields.set('params', { type: 'dict', value: new Map([['prop', { type: 'string', value: 'P00001' }]]) });
+  const condFields = new Map();
+  condFields.set('script', { type: 'ext_resource', value: 'ExtResource("2_condition")' });
+  condFields.set('predicate', { type: 'sub_resource', value: 'cond_pred_1' });
+  condFields.set('must_sustain', { type: 'bool', value: false });
+  const entry = _makeEventEntry(
+    { conditions: [{ type: 'sub_resource', value: 'condition_1' }] },
+    [
+      { type: 'Resource', id: 'cond_pred_1', fields: predFields },
+      { type: 'Resource', id: 'condition_1', fields: condFields },
+    ],
+  );
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.conditions.length === 1, 'should have 1 condition');
+  assert(model.conditions[0].predicate_kind === 'cataloged', 'predicate kind');
+  assert(model.conditions[0].predicate_params.prop === 'P00001', 'predicate param');
+});
+
+test('EventModel — fromEntry reads actions', () => {
+  const entry = _makeEventEntry({
+    actions: [{ type: 'stringname', value: 'discover' }, { type: 'stringname', value: 'trigger' }],
+  }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.actions.length === 2, 'should have 2 actions');
+  assert(model.actions[0] === 'discover', 'first action');
+  assert(model.actions[1] === 'trigger', 'second action');
+});
+
+test('EventModel — fromEntry handles empty arrays', () => {
+  const entry = _makeEventEntry({}, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.conditions.length === 0, 'conditions empty');
+  assert(model.effects.length === 0, 'effects empty');
+  assert(model.actions.length === 0, 'actions empty');
+});
+
+test('EventModel — fromEntry reads duration', () => {
+  const entry = _makeEventEntry({ duration: 5.0 }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.duration === 5.0, 'duration should be 5.0');
+});
+
+test('EventModel — fromEntry reads short/long description', () => {
+  const entry = _makeEventEntry({ short_description: 'short', long_description: 'long' }, []);
+  const model = EventModel.fromEntry('test.tres', entry);
+  assert(model.short_description === 'short', 'short_description');
+  assert(model.long_description === 'long', 'long_description');
+});
+
+// ============================================================
+// validateEventForm
+// ============================================================
+
+test('validateEventForm — valid minimal event', () => {
+  const result = validateEventForm(_makeEventModel({}), true);
+  assert(result.valid, 'should be valid');
+  assert(result.errors.length === 0, 'no errors');
+});
+
+test('validateEventForm — missing ID', () => {
+  const result = validateEventForm(_makeEventModel({ id: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('ID is required')), 'ID required error');
+});
+
+test('validateEventForm — invalid ID chars', () => {
+  const result = validateEventForm(_makeEventModel({ id: 'bad event!' }), true);
+  assert(!result.valid, 'should be invalid');
+});
+
+test('validateEventForm — ID missing E prefix', () => {
+  const result = validateEventForm(_makeEventModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('start with "E"')), 'E prefix error');
+});
+
+test('validateEventForm — duplicate ID on create', () => {
+  ProjectContext.files.events.set('Etest.tres', { data: {}, raw: new TresFile() });
+  const result = validateEventForm(_makeEventModel({}), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('already exists')), 'duplicate error');
+  ProjectContext.files.events.delete('Etest.tres');
+});
+
+test('validateEventForm — missing display_name', () => {
+  const result = validateEventForm(_makeEventModel({ display_name: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Display Name')), 'display_name error');
+});
+
+test('validateEventForm — negative max_count', () => {
+  const result = validateEventForm(_makeEventModel({ max_count: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Max Count')), 'max_count error');
+});
+
+test('validateEventForm — max_count 0 is valid (unlimited)', () => {
+  const result = validateEventForm(_makeEventModel({ max_count: 0 }), true);
+  assert(result.valid, 'should be valid');
+});
+
+test('validateEventForm — negative duration', () => {
+  const result = validateEventForm(_makeEventModel({ duration: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Duration')), 'duration error');
+});
+
+test('validateEventForm — effect missing kind', () => {
+  const result = validateEventForm(_makeEventModel({ effects: [{ kind: '', params: {} }] }), false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Effect #1')), 'effect error');
+});
+
+test('validateEventForm — condition missing predicate kind', () => {
+  const result = validateEventForm(_makeEventModel({ conditions: [{ predicate_kind: '', predicate_params: {}, must_sustain: false }] }), false);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Condition #1')), 'condition error');
+});
+
+// ============================================================
+// eventModelToRaw — serialization
+// ============================================================
+
+test('eventModelToRaw — serializes basic event', () => {
+  const raw = eventModelToRaw(_makeEventModel({ display_name: 'Discover Berry' }));
+  assert(raw.scriptClass === 'GameEvent', 'scriptClass');
+  assert(raw.headerLine.includes('GameEvent'), 'header');
+  assert(raw.resourceFields.get('display_name').value === 'Discover Berry', 'display_name');
+  assert(raw.resourceFields.get('id').value === 'Etest', 'id');
+});
+
+test('eventModelToRaw — serializes conditions with nested predicate', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+  }));
+  assert(raw.subResources.length === 2, 'should have 2 sub_resources (predicate + condition)');
+  assert(raw.resourceFields.get('conditions').value.length === 1, '1 condition ref');
+});
+
+test('eventModelToRaw — serializes effects', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00001' } }],
+  }));
+  assert(raw.subResources.length === 1, 'should have 1 sub_resource (effect)');
+  assert(raw.resourceFields.get('effects').value.length === 1, '1 effect ref');
+});
+
+test('eventModelToRaw — serializes actions', () => {
+  const raw = eventModelToRaw(_makeEventModel({ actions: ['discover', 'trigger'] }));
+  const actions = raw.resourceFields.get('actions');
+  assert(actions, 'should have actions field');
+  assert(actions.value.length === 2, '2 actions');
+  assert(actions.value[0].value === 'discover', 'first action');
+});
+
+test('eventModelToRaw — no sub_resources when empty', () => {
+  const raw = eventModelToRaw(_makeEventModel({}));
+  assert(raw.subResources.length === 0, 'no sub_resources');
+});
+
+test('eventModelToRaw — serializes max_count', () => {
+  const raw = eventModelToRaw(_makeEventModel({ max_count: 5 }));
+  assert(raw.resourceFields.get('max_count').value === 5, 'max_count should be 5');
+});
+
+test('eventModelToRaw — serialized output is valid .tres', () => {
+  const raw = eventModelToRaw(_makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00018' } }],
+    max_count: 1,
+  }));
+  const text = TresParser.serialize(raw);
+  assert(text.includes('[gd_resource type="Resource" script_class="GameEvent"'), 'header');
+  assert(text.includes('res://scripts/core/event.gd'), 'event script');
+  assert(text.includes('res://scripts/recipes/recipe_condition.gd'), 'condition script');
+  assert(text.includes('res://scripts/recipes/predicate.gd'), 'predicate script');
+  assert(text.includes('res://scripts/recipes/recipe_effect.gd'), 'effect script');
+});
+
+// ============================================================
+// EventModel round-trip: fromEntry -> eventModelToRaw -> parse -> fromEntry
+// ============================================================
+
+test('EventModel — full round-trip with all fields', () => {
+  const original = _makeEventModel({
+    conditions: [{ predicate_kind: 'cataloged', predicate_params: { prop: 'P00001' }, must_sustain: false }],
+    effects: [{ kind: 'grant_recipe', params: { recipe_id: 'R00018' } }],
+    actions: ['discover'],
+    duration: 2.5,
+    max_count: 1,
+  });
+  const raw = eventModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'GameEvent', 'reparsed scriptClass');
+
+  const subResourceMap = new Map();
+  if (reparsed.subResources) {
+    for (const sub of reparsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subResourceMap.set(sub.id, subData);
+    }
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+
+  const restored = EventModel.fromEntry('Etest.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id survives round-trip');
+  assert(restored.display_name === original.display_name, 'display_name survives');
+  assert(restored.conditions.length === original.conditions.length, 'conditions count survives');
+  assert(restored.effects.length === original.effects.length, 'effects count survives');
+  assert(restored.actions.length === original.actions.length, 'actions count survives');
+  assert(restored.duration === original.duration, 'duration survives');
+  assert(restored.max_count === original.max_count, 'max_count survives');
+  assert(restored.conditions[0].predicate_kind === 'cataloged', 'condition predicate survives');
+  assert(restored.effects[0].kind === 'grant_recipe', 'effect kind survives');
+});
+
+test('EventModel — round-trip with no optional fields', () => {
+  const original = _makeEventModel({});
+  const raw = eventModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'GameEvent', 'reparsed scriptClass');
+
+  const subResourceMap = new Map();
+  if (reparsed.subResources) {
+    for (const sub of reparsed.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) { subData[k] = v.value; }
+      subResourceMap.set(sub.id, subData);
+    }
+  }
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+    else { data[key] = tv.value; }
+  }
+
+  const restored = EventModel.fromEntry('Etest.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id');
+  assert(restored.display_name === original.display_name, 'display_name');
+  assert(restored.conditions.length === 0, 'conditions empty');
+  assert(restored.effects.length === 0, 'effects empty');
+  assert(restored.actions.length === 0, 'actions empty');
+});
+
+// ============================================================
+// EventModel round-trip from actual .tres files
+// ============================================================
+
+const __eventsDir = join(__projectRoot, 'data', 'events');
+let __eventFiles = [];
+try { __eventFiles = readdirSync(__eventsDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/events/:', e.message); }
+
+for (const eventFile of __eventFiles) {
+  test(`EventModel round-trip — ${eventFile}`, () => {
+    const filePath = join(__eventsDir, eventFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'GameEvent', `${eventFile}: scriptClass`);
+
+    // TresParser round-trip
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${eventFile}: TresParser round-trip`);
+
+    // Build data for fromEntry
+    const subResourceMap = new Map();
+    if (parsed.subResources) {
+      for (const sub of parsed.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) { subData[k] = v.value; }
+        subResourceMap.set(sub.id, subData);
+      }
+    }
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data[key] = subResourceMap.get(tv.value) || null; }
+      else { data[key] = tv.value; }
+    }
+
+    // Parse into model
+    const model = EventModel.fromEntry(eventFile, { data, raw: parsed });
+    assert(typeof model.id === 'string' && model.id.length > 0, `${eventFile}: id`);
+    assert(typeof model.display_name === 'string', `${eventFile}: display_name is string`);
+    assert(model.max_count >= 0, `${eventFile}: max_count >= 0`);
+    assert(model.duration >= 0, `${eventFile}: duration >= 0`);
+    assert(Array.isArray(model.conditions), `${eventFile}: conditions is array`);
+    assert(Array.isArray(model.effects), `${eventFile}: effects is array`);
+
+    // Re-serialize and compare
+    const raw2 = eventModelToRaw(model);
+    const serialized2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(serialized2);
+    assert(reparsed.scriptClass === 'GameEvent', `${eventFile}: re-serialized scriptClass`);
+
+    // Build data2 for fromEntry
+    const subResourceMap2 = new Map();
+    if (reparsed.subResources) {
+      for (const sub of reparsed.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) { subData[k] = v.value; }
+        subResourceMap2.set(sub.id, subData);
+      }
+    }
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      if (tv.type === 'sub_resource') { data2[key] = subResourceMap2.get(tv.value) || null; }
+      else { data2[key] = tv.value; }
+    }
+
+    const model2 = EventModel.fromEntry(eventFile, { data: data2, raw: reparsed });
+    assert(model2.id === model.id, `${eventFile}: id survives round-trip`);
+    assert(model2.display_name === model.display_name, `${eventFile}: display_name survives`);
+    assert(model2.conditions.length === model.conditions.length, `${eventFile}: conditions count survives`);
+    assert(model2.effects.length === model.effects.length, `${eventFile}: effects count survives`);
+    assert(model2.actions.length === model.actions.length, `${eventFile}: actions count survives`);
+    assert(model2.duration === model.duration, `${eventFile}: duration survives`);
+    assert(model2.max_count === model.max_count, `${eventFile}: max_count survives`);
+  });
+}
+
+// ============================================================
+// BiomeDataModel round-trip from actual .tres files
+// ============================================================
+
+const __biomesDir = join(__projectRoot, 'data', 'biomes');
+let __biomeFiles = [];
+try { __biomeFiles = readdirSync(__biomesDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/biomes:', e.message); }
+
+for (const biomeFile of __biomeFiles) {
+  test(`BiomeDataModel round-trip — ${biomeFile}`, () => {
+    const filePath = join(__biomesDir, biomeFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    // Parse
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'BiomeData', `${biomeFile}: scriptClass should be BiomeData`);
+
+    // Verify TresParser round-trip
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${biomeFile}: TresParser round-trip`);
+
+    // Build data object (same as file-discovery _parseTresFile)
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      data[key] = tv.value;
+    }
+
+    // Parse into model
+    const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
+    assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
+    assert(typeof model.biome_name === 'string' && model.biome_name.length > 0, `${biomeFile}: biome_name`);
+    assert(typeof model.elevation_range.min === 'number', `${biomeFile}: elevation_range.min is number`);
+    assert(typeof model.elevation_range.max === 'number', `${biomeFile}: elevation_range.max is number`);
+    assert(model.elevation_range.min <= model.elevation_range.max, `${biomeFile}: elevation min <= max`);
+    assert(Array.isArray(model.prop_table), `${biomeFile}: prop_table is array`);
+    assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
+    assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
+
+    // Verify prop_table entries have P-prefixed types (if non-empty)
+    for (let i = 0; i < model.prop_table.length; i++) {
+      const entry = model.prop_table[i];
+      assert(typeof entry.type === 'string', `${biomeFile}: prop_table[${i}].type is string`);
+      assert(entry.type.startsWith('P'), `${biomeFile}: prop_table[${i}].type "${entry.type}" has P prefix`);
+      assert(typeof entry.chance === 'number', `${biomeFile}: prop_table[${i}].chance is number`);
+      assert(typeof entry.min_amount === 'number', `${biomeFile}: prop_table[${i}].min_amount is number`);
+      assert(typeof entry.max_amount === 'number', `${biomeFile}: prop_table[${i}].max_amount is number`);
+    }
+
+    // Re-serialize through model and compare
+    const raw2 = biomeModelToRaw(model);
+    const text2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(text2);
+    assert(reparsed.scriptClass === 'BiomeData', `${biomeFile}: re-serialized scriptClass`);
+
+    // Build data2 for fromEntry
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) {
+      data2[key] = tv.value;
+    }
+
+    const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
+    assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
+    assert(model2.biome_name === model.biome_name, `${biomeFile}: biome_name survives`);
+    assert(model2.elevation_range.min === model.elevation_range.min, `${biomeFile}: elevation min survives`);
+    assert(model2.elevation_range.max === model.elevation_range.max, `${biomeFile}: elevation max survives`);
+    assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
+    for (let i = 0; i < model.prop_table.length; i++) {
+      assert(model2.prop_table[i].type === model.prop_table[i].type, `${biomeFile}: prop_table[${i}].type survives`);
+      assert(model2.prop_table[i].chance === model.prop_table[i].chance, `${biomeFile}: prop_table[${i}].chance survives`);
+      assert(model2.prop_table[i].min_amount === model.prop_table[i].min_amount, `${biomeFile}: prop_table[${i}].min_amount survives`);
+      assert(model2.prop_table[i].max_amount === model.prop_table[i].max_amount, `${biomeFile}: prop_table[${i}].max_amount survives`);
+    }
+    assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
+  });
+}
 
 // ============================================================
 // Summary

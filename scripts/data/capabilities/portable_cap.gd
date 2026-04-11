@@ -1,3 +1,3 @@
 class_name PortableCap
 extends Resource
-@export var weight: float = 1.0
+@export var size: float = 1.0

@@ -2,10 +2,11 @@
 // PropEditor — Master-Detail Split Layout (Side-by-Side Detail)
 // ============================================================
 
-import { ProjectContext, FileDiscovery } from './file-discovery.js';
+import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
+import { renderGearHeader } from './editor-common.js';
 
 /**
  * Maps a parsed .tres PropDef to an editable JS prop model.
@@ -25,11 +26,11 @@ export class PropDefModel {
     this.tags = [];
 
     // --- Capabilities (null = not enabled) ---
-    /** @type {{ weight: number }|null} */
+    /** @type {{ size: number }|null} */
     this.portable = null;
     /** @type {{ footprint: Array<{x:number,y:number}>, blocks_movement: boolean, rotation_snap: number }|null} */
     this.placeable = null;
-    /** @type {{ capacity_weight: number, accepts_filter: string[] }|null} */
+    /** @type {{ capacity_size: number, accepts_filter: string[] }|null} */
     this.container = null;
     /** @type {{ radius: number, color: {r:number,g:number,b:number,a:number}, flicker: boolean }|null} */
     this.light = null;
@@ -37,8 +38,28 @@ export class PropDefModel {
     this.movable = null;
     /** @type {{ station_tags: string[] }|null} */
     this.station = null;
-    /** @type {{ scan_time: number, display_tag: string, category: number, display_name: string, description: string, properties: Object }|null} */
+    /** @type {{ scan_time: number, show_as_anomaly: boolean, properties: Object }|null} */
     this.catalogable = null;
+    /** @type {{ hp: number, vulnerabilities: string[], resistances: string[], immunities: string[] }|null} */
+    this.endurance = null;
+    /**
+     * Movement cap: array of {mode, normal, max} rows.
+     * null = capability disabled; [] = enabled but no modes yet.
+     * @type {{ modes: Array<{mode: number, normal: number, max: number}> }|null}
+     */
+    this.movement = null;
+    /** @type {{ attacks: Array, defenses: Array }|null} */
+    this.combat = null;
+    /** @type {{ detection_range: number, activity_cycle: number, group_behavior: number, diet: string[], reactions: Array }|null} */
+    this.behavior = null;
+    /** @type {{ spawn_min: number, spawn_max: number, first_spawn_day: number, spawn_min_distance: number, allowed_biomes: string[] }|null} */
+    this.spawnable = null;
+
+    // --- Gear base fields ---
+    /** @type {string} One-line summary for tooltips */
+    this.short_description = '';
+    /** @type {string} Full description for detail panels */
+    this.long_description = '';
 
     // --- Inventory ---
     /** @type {number} */
@@ -125,6 +146,8 @@ export class PropDefModel {
 
     // Simple string fields
     model.display_name = _str(d.display_name);
+    model.short_description = _str(d.short_description);
+    model.long_description = _str(d.long_description);
     model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
     model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
     model.tool_slot = _str(d.tool_slot);
@@ -132,7 +155,7 @@ export class PropDefModel {
     // Tags (array of stringname values -> string[])
     model.tags = _strArray(d.tags);
 
-    // Numeric fields
+    // Numeric fields (max_stack still read for round-trip but no longer shown in UI)
     model.max_stack = _num(d.max_stack) || 99;
 
     // Dict fields (TresParser stores as Map<string, TresValue>)
@@ -153,7 +176,7 @@ export class PropDefModel {
     // --- Capabilities (resolved sub_resource data from file-discovery) ---
     if (d.portable && typeof d.portable === 'object') {
       model.portable = {
-        weight: _num(d.portable.weight != null ? d.portable.weight : 1.0),
+        size: _num(d.portable.size != null ? d.portable.size : 1.0),
       };
     }
 
@@ -164,7 +187,7 @@ export class PropDefModel {
 
     if (d.container && typeof d.container === 'object') {
       model.container = {
-        capacity_weight: _num(d.container.capacity_weight),
+        capacity_size: _num(d.container.capacity_size),
         accepts_filter: _strArray(d.container.accepts_filter),
       };
     }
@@ -192,11 +215,50 @@ export class PropDefModel {
     if (d.catalogable && typeof d.catalogable === 'object') {
       model.catalogable = {
         scan_time: _num(d.catalogable.scan_time != null ? d.catalogable.scan_time : 1.0),
-        display_tag: _str(d.catalogable.display_tag),
-        category: _num(d.catalogable.category),
-        display_name: _str(d.catalogable.display_name),
-        description: _str(d.catalogable.description),
+        show_as_anomaly: !!d.catalogable.show_as_anomaly,
         properties: _dictToObj(d.catalogable.properties),
+      };
+    }
+
+    if (d.endurance && typeof d.endurance === 'object') {
+      model.endurance = {
+        hp: _num(d.endurance.hp != null ? d.endurance.hp : 1),
+        vulnerabilities: _strArray(d.endurance.vulnerabilities),
+        resistances: _strArray(d.endurance.resistances),
+        immunities: _strArray(d.endurance.immunities),
+      };
+    }
+
+    if (d.movement && typeof d.movement === 'object') {
+      model.movement = {
+        modes: _movementModes(d.movement.modes),
+      };
+    }
+
+    if (d.combat && typeof d.combat === 'object') {
+      model.combat = {
+        attacks: [],   // TODO: wire GameEvent refs when editor supports them
+        defenses: [],
+      };
+    }
+
+    if (d.behavior && typeof d.behavior === 'object') {
+      model.behavior = {
+        detection_range: _num(d.behavior.detection_range != null ? d.behavior.detection_range : 2),
+        activity_cycle: _num(d.behavior.activity_cycle),
+        group_behavior: _num(d.behavior.group_behavior),
+        diet: _strArray(d.behavior.diet),
+        reactions: [],  // TODO: wire GameEvent refs
+      };
+    }
+
+    if (d.spawnable && typeof d.spawnable === 'object') {
+      model.spawnable = {
+        spawn_min: _num(d.spawnable.spawn_min != null ? d.spawnable.spawn_min : 1),
+        spawn_max: _num(d.spawnable.spawn_max != null ? d.spawnable.spawn_max : 1),
+        first_spawn_day: _num(d.spawnable.first_spawn_day != null ? d.spawnable.first_spawn_day : 1),
+        spawn_min_distance: _num(d.spawnable.spawn_min_distance != null ? d.spawnable.spawn_min_distance : 3),
+        allowed_biomes: _strArray(d.spawnable.allowed_biomes),
       };
     }
 
@@ -284,6 +346,56 @@ function _dictToObj(val) {
     obj[key] = tv && typeof tv === 'object' && 'value' in tv ? tv.value : tv;
   }
   return obj;
+}
+
+/**
+ * Convert a parsed movement `modes` dict into the editor model's array form.
+ * Input is a Map<int, TresValue> where each value is an array TresValue of
+ * two float TresValues: [normal_speed, max_speed].
+ * Also tolerates plain objects/arrays for robustness in tests.
+ * @param {*} val
+ * @returns {Array<{mode: number, normal: number, max: number}>}
+ */
+function _movementModes(val) {
+  const result = [];
+  if (val == null) return result;
+
+  /**
+   * Normalize a "speeds" entry to [normal, max] numbers.
+   * @param {*} speeds
+   * @returns {[number, number]}
+   */
+  function _speedPair(speeds) {
+    // TresValue array: { type: 'array', value: [ {type:'float',value:n}, ... ] }
+    if (speeds && typeof speeds === 'object' && 'type' in speeds && speeds.type === 'array') {
+      const elems = Array.isArray(speeds.value) ? speeds.value : [];
+      const n = elems[0] && typeof elems[0] === 'object' && 'value' in elems[0] ? elems[0].value : 0;
+      const m = elems[1] && typeof elems[1] === 'object' && 'value' in elems[1] ? elems[1].value : 0;
+      return [Number(n) || 0, Number(m) || 0];
+    }
+    // Plain array with TresValue or primitive numbers
+    if (Array.isArray(speeds)) {
+      const n = speeds[0] && typeof speeds[0] === 'object' && 'value' in speeds[0] ? speeds[0].value : speeds[0];
+      const m = speeds[1] && typeof speeds[1] === 'object' && 'value' in speeds[1] ? speeds[1].value : speeds[1];
+      return [Number(n) || 0, Number(m) || 0];
+    }
+    return [0, 0];
+  }
+
+  if (val instanceof Map) {
+    for (const [k, speeds] of val) {
+      const [n, m] = _speedPair(speeds);
+      result.push({ mode: Number(k) || 0, normal: n, max: m });
+    }
+    return result;
+  }
+  if (typeof val === 'object') {
+    for (const [k, speeds] of Object.entries(val)) {
+      const [n, m] = _speedPair(speeds);
+      result.push({ mode: parseInt(k, 10) || 0, normal: n, max: m });
+    }
+  }
+  return result;
 }
 
 /**
@@ -810,6 +922,106 @@ function _createStringArrayEditor(name, labelText, values) {
   return wrapper;
 }
 
+/** Mode int value -> label used by the movement editor dropdown. */
+const _MOVEMENT_MODE_OPTIONS = [
+  { value: 0, label: 'WALK' },
+  { value: 1, label: 'SWIM' },
+  { value: 2, label: 'FLY' },
+  { value: 3, label: 'BURROW' },
+  { value: 4, label: 'CLIMB' },
+  { value: 5, label: 'JUMP' },
+];
+
+/**
+ * Create an editor for the MovementCap modes dictionary.
+ * Renders one row per {mode, normal, max} entry with an Add button below.
+ * @param {Array<{mode: number, normal: number, max: number}>} modes
+ * @returns {HTMLElement}
+ */
+function _createMovementModesEditor(modes) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.movementModes = '';
+
+  const label = document.createElement('div');
+  label.textContent = 'Modes (Mode → [normal, max] speeds)';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const rowsContainer = document.createElement('div');
+  rowsContainer.dataset.movementModesRows = '';
+  wrapper.appendChild(rowsContainer);
+
+  /**
+   * Add one {mode, normal, max} row.
+   * @param {number} mode
+   * @param {number} normal
+   * @param {number} max
+   */
+  function addRow(mode, normal, max) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+    row.dataset.movementModeRow = '';
+
+    const modeSelect = document.createElement('select');
+    modeSelect.dataset.movementModeMode = '';
+    modeSelect.classList.add('prop-input');
+    modeSelect.style.flex = '1';
+    for (const opt of _MOVEMENT_MODE_OPTIONS) {
+      const option = document.createElement('option');
+      option.value = String(opt.value);
+      option.textContent = `${opt.value} — ${opt.label}`;
+      if (opt.value === mode) option.selected = true;
+      modeSelect.appendChild(option);
+    }
+
+    const normalInput = document.createElement('input');
+    normalInput.type = 'number';
+    normalInput.step = 'any';
+    normalInput.min = '0';
+    normalInput.placeholder = 'normal';
+    normalInput.value = String(normal);
+    normalInput.dataset.movementModeNormal = '';
+    normalInput.classList.add('prop-input');
+    normalInput.style.flex = '1';
+
+    const maxInput = document.createElement('input');
+    maxInput.type = 'number';
+    maxInput.step = 'any';
+    maxInput.min = '0';
+    maxInput.placeholder = 'max';
+    maxInput.value = String(max);
+    maxInput.dataset.movementModeMax = '';
+    maxInput.classList.add('prop-input');
+    maxInput.style.flex = '1';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(modeSelect);
+    row.appendChild(normalInput);
+    row.appendChild(maxInput);
+    row.appendChild(removeBtn);
+    rowsContainer.appendChild(row);
+  }
+
+  for (const entry of modes) {
+    addRow(entry.mode, entry.normal, entry.max);
+  }
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Add Mode';
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.addEventListener('click', () => addRow(0, 1.0, 1.0));
+  wrapper.appendChild(addBtn);
+
+  return wrapper;
+}
+
 // ============================================================
 // Master-Detail Split Layout
 // ============================================================
@@ -827,6 +1039,8 @@ export function renderPropEditor(container, options) {
   const cmdHistory = options && options.commandHistory ? options.commandHistory : null;
   const onChange = options && typeof options.onChange === 'function' ? options.onChange : () => {};
   const onSave = options && typeof options.onSave === 'function' ? options.onSave : onChange;
+  /** @type {string|null} If set, locks the category filter to this value and hides the dropdowns. */
+  const lockedCategory = options && options.categoryFilter ? options.categoryFilter : null;
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -896,12 +1110,19 @@ export function renderPropEditor(container, options) {
   newBtn.textContent = '+ New';
   newBtn.classList.add('editor-new-btn');
 
-  listHeader.appendChild(originLabel);
-  listHeader.appendChild(originFilter);
-  listHeader.appendChild(catLabel);
-  listHeader.appendChild(catFilter);
+  if (!lockedCategory) {
+    listHeader.appendChild(originLabel);
+    listHeader.appendChild(originFilter);
+    listHeader.appendChild(catLabel);
+    listHeader.appendChild(catFilter);
+  }
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
+
+  // If category is locked by parent (tab-per-category UI), force the filter
+  if (lockedCategory) {
+    catFilter.value = lockedCategory;
+  }
   listPanel.appendChild(listHeader);
 
   const listItems = document.createElement('div');
@@ -1104,7 +1325,13 @@ export function renderPropEditor(container, options) {
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
     form.appendChild(errorArea);
 
-    // --- Two-column body ---
+    // --- Gear base-fields header (2-col: id/name/short | long) ---
+    const gearHeaderWrap = document.createElement('div');
+    gearHeaderWrap.style.cssText = 'padding:10px 14px 0;';
+    renderGearHeader(gearHeaderWrap, model, { idReadonly: !isNew });
+    form.appendChild(gearHeaderWrap);
+
+    // --- Two-column body (left: General/Capabilities, right: Visuals) ---
     const columnsWrapper = document.createElement('div');
     columnsWrapper.style.cssText = 'display:flex;flex:1;overflow:hidden;';
 
@@ -1226,10 +1453,8 @@ export function renderPropEditor(container, options) {
     const grid = document.createElement('div');
     grid.classList.add('prop-grid');
 
-    // ID
-    _addField(grid, 'ID', 'id', 'text', model.id, isNew ? { pattern: '^[a-zA-Z0-9_]+$' } : { disabled: '' });
-    // Display Name
-    _addField(grid, 'Display Name', 'display_name', 'text', model.display_name);
+    // Note: id/display_name/short_description/long_description are rendered
+    // above this tab via renderGearHeader() in _renderDetail.
 
     // -- Tags --
     _addSeparator(grid, 'Tags');
@@ -1239,24 +1464,12 @@ export function renderPropEditor(container, options) {
     _addSeparator(grid, 'Placement Defaults');
     _addOriginCategoryFields(grid, model);
 
-    // -- Footprint (legacy top-level) --
-    _addSeparator(grid, 'Footprint (legacy)');
-    grid.appendChild(_createFootprintEditor(model.footprint));
-
-    // -- Gameplay --
-    _addSeparator(grid, 'Gameplay');
-    _addField(grid, 'Tool Slot', 'tool_slot', 'text', model.tool_slot);
-
-    // -- Inventory --
-    _addSeparator(grid, 'Inventory');
-    _addField(grid, 'Max Stack', 'max_stack', 'number', model.max_stack, { step: '1', min: '1' });
-
     // -- Capabilities --
     _addSeparator(grid, 'Capabilities');
 
     // PORTABLE
     grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
-      _addField(panel, 'Weight', 'cap_portable_weight', 'number', model.portable ? model.portable.weight : 1.0, { step: 'any', min: '0' });
+      _addField(panel, 'Size (slots)', 'cap_portable_size', 'number', model.portable ? model.portable.size : 1.0, { step: 'any', min: '0' });
     }));
 
     // PLACEABLE
@@ -1265,7 +1478,7 @@ export function renderPropEditor(container, options) {
 
     // CONTAINER
     grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
-      _addField(panel, 'Capacity Weight', 'cap_container_capacity_weight', 'number', model.container ? model.container.capacity_weight : 0, { step: 'any', min: '0' });
+      _addField(panel, 'Capacity Size (slots)', 'cap_container_capacity_size', 'number', model.container ? model.container.capacity_size : 0, { step: 'any', min: '0' });
       panel.appendChild(_createStringArrayEditor('cap_container_accepts_filter', 'Accepts Filter', model.container ? model.container.accepts_filter : []));
     }));
 
@@ -1289,10 +1502,54 @@ export function renderPropEditor(container, options) {
     // CATALOGABLE
     grid.appendChild(_createCapabilityPanel('catalogable', 'Catalogable', model.catalogable, (panel) => {
       _addField(panel, 'Scan Time', 'cap_catalogable_scan_time', 'number', model.catalogable ? model.catalogable.scan_time : 1.0, { step: 'any', min: '0' });
-      _addField(panel, 'Display Tag', 'cap_catalogable_display_tag', 'text', model.catalogable ? model.catalogable.display_tag : '');
-      _addField(panel, 'Category', 'cap_catalogable_category', 'number', model.catalogable ? model.catalogable.category : 0, { step: '1', min: '0', max: '3' });
-      _addField(panel, 'Display Name', 'cap_catalogable_display_name', 'text', model.catalogable ? model.catalogable.display_name : '');
-      _addField(panel, 'Description', 'cap_catalogable_description', 'text', model.catalogable ? model.catalogable.description : '');
+      _addCheckbox(panel, 'Show as Anomaly', 'cap_catalogable_show_as_anomaly', model.catalogable ? model.catalogable.show_as_anomaly : false);
+    }));
+
+    // ENDURANCE
+    grid.appendChild(_createCapabilityPanel('endurance', 'Endurance', model.endurance, (panel) => {
+      _addField(panel, 'HP', 'cap_endurance_hp', 'number', model.endurance ? model.endurance.hp : 1, { step: '1', min: '1' });
+      _addCsvField(panel, 'Vulnerabilities (comma-separated)', 'cap_endurance_vulnerabilities', model.endurance ? model.endurance.vulnerabilities : []);
+      _addCsvField(panel, 'Resistances (comma-separated)', 'cap_endurance_resistances', model.endurance ? model.endurance.resistances : []);
+      _addCsvField(panel, 'Immunities (comma-separated)', 'cap_endurance_immunities', model.endurance ? model.endurance.immunities : []);
+    }));
+
+    // MOVEMENT
+    grid.appendChild(_createCapabilityPanel('movement', 'Movement', model.movement, (panel) => {
+      panel.appendChild(_createMovementModesEditor(model.movement ? model.movement.modes : []));
+    }));
+
+    // COMBAT
+    grid.appendChild(_createCapabilityPanel('combat', 'Combat', model.combat, (panel) => {
+      _addPlaceholderNote(panel, 'Attacks/defenses will be wired when GameEvent picker is implemented');
+    }));
+
+    // BEHAVIOR
+    grid.appendChild(_createCapabilityPanel('behavior', 'Behavior', model.behavior, (panel) => {
+      _addField(panel, 'Detection Range', 'cap_behavior_detection_range', 'number', model.behavior ? model.behavior.detection_range : 2, { step: '1', min: '0' });
+      _addIntSelectField(panel, 'Activity Cycle', 'cap_behavior_activity_cycle', model.behavior ? model.behavior.activity_cycle : 0, [
+        { value: 0, label: 'ALWAYS' },
+        { value: 1, label: 'DIURNAL' },
+        { value: 2, label: 'NOCTURNAL' },
+        { value: 3, label: 'CREPUSCULAR' },
+      ]);
+      _addIntSelectField(panel, 'Group Behavior', 'cap_behavior_group_behavior', model.behavior ? model.behavior.group_behavior : 0, [
+        { value: 0, label: 'SOLO' },
+        { value: 1, label: 'PAIR' },
+        { value: 2, label: 'PACK' },
+        { value: 3, label: 'HERD' },
+        { value: 4, label: 'SWARM' },
+      ]);
+      _addCsvField(panel, 'Diet (comma-separated)', 'cap_behavior_diet', model.behavior ? model.behavior.diet : []);
+      _addPlaceholderNote(panel, 'Reactions will be wired when GameEvent picker is implemented');
+    }));
+
+    // SPAWNABLE
+    grid.appendChild(_createCapabilityPanel('spawnable', 'Spawnable', model.spawnable, (panel) => {
+      _addField(panel, 'Spawn Min', 'cap_spawnable_spawn_min', 'number', model.spawnable ? model.spawnable.spawn_min : 1, { step: '1', min: '1' });
+      _addField(panel, 'Spawn Max', 'cap_spawnable_spawn_max', 'number', model.spawnable ? model.spawnable.spawn_max : 1, { step: '1', min: '1' });
+      _addField(panel, 'First Spawn Day', 'cap_spawnable_first_spawn_day', 'number', model.spawnable ? model.spawnable.first_spawn_day : 1, { step: '1', min: '1' });
+      _addField(panel, 'Spawn Min Distance', 'cap_spawnable_spawn_min_distance', 'number', model.spawnable ? model.spawnable.spawn_min_distance : 3, { step: '1', min: '0' });
+      _addCsvField(panel, 'Allowed Biomes (comma-separated, empty = any)', 'cap_spawnable_allowed_biomes', model.spawnable ? model.spawnable.allowed_biomes : []);
     }));
 
     body.appendChild(grid);
@@ -1331,6 +1588,20 @@ export function renderPropEditor(container, options) {
     isNewMode = true;
     selectedId = null;
     editingModel = new PropDefModel();
+
+    // Auto-increment ID with P prefix
+    editingModel.id = nextId('P', ProjectContext.files.props);
+
+    // If the editor is locked to a category (tab-per-category), pre-set it
+    // so the new prop joins the current tab's list immediately.
+    if (lockedCategory) {
+      editingModel.prop_category = lockedCategory;
+      // STUFF defaults to non-natural origin (per Andre, 2026-04-10)
+      if (lockedCategory === 'stuff') {
+        editingModel.prop_origin = 'crafted';
+      }
+    }
+
     initialJson = JSON.stringify(_modelToPlain(editingModel));
     _updateListSelection();
     _renderDetail();
@@ -1376,6 +1647,29 @@ function _addField(grid, labelText, name, type, value, attrs) {
 }
 
 /**
+ * Add a labeled textarea to a prop-grid.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string} value
+ * @returns {void}
+ */
+function _addTextArea(grid, labelText, name, value) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+
+  const textarea = document.createElement('textarea');
+  textarea.name = name;
+  textarea.value = value || '';
+  textarea.classList.add('prop-input');
+  textarea.rows = 3;
+
+  grid.appendChild(label);
+  grid.appendChild(textarea);
+}
+
+/**
  * Add a labeled checkbox to a prop-grid.
  * @param {HTMLElement} grid
  * @param {string} labelText
@@ -1409,6 +1703,75 @@ function _addSeparator(grid, text) {
     sep.textContent = text;
   }
   grid.appendChild(sep);
+}
+
+/**
+ * Add a label + comma-separated-value text input row to a prop-grid.
+ * The value is joined with ", " for display and split back on collect.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {string[]} values - Current values
+ * @returns {void}
+ */
+function _addCsvField(grid, labelText, name, values) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = name;
+  input.value = Array.isArray(values) ? values.join(', ') : '';
+  input.classList.add('prop-input');
+  input.dataset.csvField = '';
+
+  grid.appendChild(label);
+  grid.appendChild(input);
+}
+
+/**
+ * Add a label + select dropdown row with integer values to a prop-grid.
+ * Used for GDScript enum fields that serialize as ints.
+ * @param {HTMLElement} grid
+ * @param {string} labelText
+ * @param {string} name
+ * @param {number} value - Currently selected integer value
+ * @param {Array<{value: number, label: string}>} options - Available options
+ * @returns {void}
+ */
+function _addIntSelectField(grid, labelText, name, value, options) {
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.classList.add('prop-label');
+  const select = document.createElement('select');
+  select.name = name;
+  select.classList.add('prop-input');
+  select.dataset.intSelect = '';
+  for (const opt of options) {
+    const option = document.createElement('option');
+    option.value = String(opt.value);
+    option.textContent = `${opt.value} — ${opt.label}`;
+    if (opt.value === value) option.selected = true;
+    select.appendChild(option);
+  }
+  grid.appendChild(label);
+  grid.appendChild(select);
+}
+
+/**
+ * Add a placeholder note row spanning the full prop-grid width.
+ * Used for capabilities whose fields aren't yet editable (e.g. GameEvent refs).
+ * @param {HTMLElement} grid
+ * @param {string} text
+ * @returns {void}
+ */
+function _addPlaceholderNote(grid, text) {
+  const note = document.createElement('div');
+  note.classList.add('prop-full');
+  note.style.cssText = 'font-size:11px;color:var(--text-secondary);font-style:italic;padding:4px 0;';
+  note.textContent = text;
+  grid.appendChild(note);
 }
 
 /**
@@ -1557,20 +1920,21 @@ export function collectPropFormData(formElement) {
   model.id = val('id').trim();
   model.display_name = val('display_name').trim();
 
+  // Gear base fields
+  model.short_description = val('short_description').trim();
+  model.long_description = val('long_description').trim();
+
   // Tags
   model.tags = _collectTagData(formElement);
 
   // Placement defaults (editor-only)
   model.prop_category = val('prop_category') || 'plant';
   model.prop_origin = val('prop_origin') || 'natural';
-  model.tool_slot = val('tool_slot').trim();
-
-  // Inventory
-  model.max_stack = intVal('max_stack') || 99;
+  // tool_slot and max_stack preserved from model (not in form)
 
   // --- Capabilities ---
   if (isChecked('cap_portable_enabled')) {
-    model.portable = { weight: floatVal('cap_portable_weight') };
+    model.portable = { size: floatVal('cap_portable_size') };
   }
 
   if (isChecked('cap_placeable_enabled')) {
@@ -1579,7 +1943,7 @@ export function collectPropFormData(formElement) {
 
   if (isChecked('cap_container_enabled')) {
     model.container = {
-      capacity_weight: floatVal('cap_container_capacity_weight'),
+      capacity_size: floatVal('cap_container_capacity_size'),
       accepts_filter: _collectStringArrayData(formElement, 'cap_container_accepts_filter'),
     };
   }
@@ -1605,11 +1969,50 @@ export function collectPropFormData(formElement) {
   if (isChecked('cap_catalogable_enabled')) {
     model.catalogable = {
       scan_time: floatVal('cap_catalogable_scan_time'),
-      display_tag: val('cap_catalogable_display_tag').trim(),
-      category: intVal('cap_catalogable_category'),
-      display_name: val('cap_catalogable_display_name').trim(),
-      description: val('cap_catalogable_description').trim(),
+      show_as_anomaly: isChecked('cap_catalogable_show_as_anomaly'),
       properties: {},  // Properties editing not yet supported in UI
+    };
+  }
+
+  if (isChecked('cap_endurance_enabled')) {
+    model.endurance = {
+      hp: intVal('cap_endurance_hp') || 1,
+      vulnerabilities: _csvToArray(val('cap_endurance_vulnerabilities')),
+      resistances: _csvToArray(val('cap_endurance_resistances')),
+      immunities: _csvToArray(val('cap_endurance_immunities')),
+    };
+  }
+
+  if (isChecked('cap_movement_enabled')) {
+    model.movement = {
+      modes: _collectMovementModesData(formElement),
+    };
+  }
+
+  if (isChecked('cap_combat_enabled')) {
+    model.combat = {
+      attacks: [],   // TODO: wire GameEvent refs
+      defenses: [],
+    };
+  }
+
+  if (isChecked('cap_behavior_enabled')) {
+    model.behavior = {
+      detection_range: intVal('cap_behavior_detection_range'),
+      activity_cycle: intVal('cap_behavior_activity_cycle'),
+      group_behavior: intVal('cap_behavior_group_behavior'),
+      diet: _csvToArray(val('cap_behavior_diet')),
+      reactions: [],  // TODO: wire GameEvent refs
+    };
+  }
+
+  if (isChecked('cap_spawnable_enabled')) {
+    model.spawnable = {
+      spawn_min: intVal('cap_spawnable_spawn_min') || 1,
+      spawn_max: intVal('cap_spawnable_spawn_max') || 1,
+      first_spawn_day: intVal('cap_spawnable_first_spawn_day') || 1,
+      spawn_min_distance: intVal('cap_spawnable_spawn_min_distance'),
+      allowed_biomes: _csvToArray(val('cap_spawnable_allowed_biomes')),
     };
   }
 
@@ -1621,8 +2024,7 @@ export function collectPropFormData(formElement) {
   model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
   model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
 
-  // Legacy footprint (top-level)
-  model.footprint = _collectFootprintData(formElement);
+  // Legacy footprint preserved from model (no longer in form UI)
 
   return model;
 }
@@ -1647,6 +2049,34 @@ function _collectKvData(formElement, name) {
       if (k) {
         result[k] = isNaN(v) ? 0 : v;
       }
+    }
+  }
+  return result;
+}
+
+/**
+ * Collect movement modes data from a movement-modes editor.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{mode: number, normal: number, max: number}>}
+ */
+function _collectMovementModesData(formElement) {
+  const result = [];
+  const container = formElement.querySelector('[data-movement-modes-rows]');
+  if (!container) return result;
+  const rows = container.children;
+  for (const row of rows) {
+    const modeSelect = row.querySelector('[data-movement-mode-mode]');
+    const normalInput = row.querySelector('[data-movement-mode-normal]');
+    const maxInput = row.querySelector('[data-movement-mode-max]');
+    if (modeSelect && normalInput && maxInput) {
+      const mode = parseInt(/** @type {HTMLSelectElement} */ (modeSelect).value, 10);
+      const normal = parseFloat(/** @type {HTMLInputElement} */ (normalInput).value);
+      const max = parseFloat(/** @type {HTMLInputElement} */ (maxInput).value);
+      result.push({
+        mode: isNaN(mode) ? 0 : mode,
+        normal: isNaN(normal) ? 0 : normal,
+        max: isNaN(max) ? 0 : max,
+      });
     }
   }
   return result;
@@ -1712,6 +2142,16 @@ function _collectCapFootprintData(formElement) {
 }
 
 /**
+ * Split a comma-separated string into a trimmed, non-empty array.
+ * @param {string} str
+ * @returns {string[]}
+ */
+function _csvToArray(str) {
+  if (!str || typeof str !== 'string') return [];
+  return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+}
+
+/**
  * Collect string array data from a string array editor.
  * @param {HTMLFormElement} formElement
  * @param {string} name - The string array editor name
@@ -1750,6 +2190,8 @@ export function validatePropForm(model, isNew) {
     errors.push('ID is required');
   } else if (!/^[a-zA-Z0-9_]+$/.test(model.id)) {
     errors.push('ID must contain only alphanumeric characters and underscores');
+  } else if (!model.id.startsWith('P')) {
+    errors.push('Prop ID must start with "P" (e.g. P00001)');
   } else if (isNew && ProjectContext.files.props.has(model.id + '.tres')) {
     errors.push(`Prop "${model.id}" already exists`);
   }
@@ -1759,14 +2201,10 @@ export function validatePropForm(model, isNew) {
     errors.push('Display Name is required');
   }
 
-  if (model.max_stack < 1) {
-    errors.push('Max Stack must be >= 1');
-  }
-
   // --- Capability validations ---
   if (model.portable) {
-    if (model.portable.weight < 0) {
-      errors.push('PORTABLE weight must be >= 0');
+    if (model.portable.size < 0) {
+      errors.push('PORTABLE size must be >= 0');
     }
   }
 
@@ -1800,6 +2238,8 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
+    short_description: model.short_description,
+    long_description: model.long_description,
     tags: model.tags,
     portable: model.portable,
     placeable: model.placeable,
@@ -1808,6 +2248,11 @@ function _modelToPlain(model) {
     movable: model.movable,
     station: model.station,
     catalogable: model.catalogable,
+    endurance: model.endurance,
+    movement: model.movement,
+    combat: model.combat,
+    behavior: model.behavior,
+    spawnable: model.spawnable,
     max_stack: model.max_stack,
     placeholder_mesh_type: model.placeholder_mesh_type,
     placeholder_params: model.placeholder_params,
@@ -1862,7 +2307,7 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.portable.weight !== 1.0) subFields.set('weight', { type: 'float', value: model.portable.weight });
+    if (model.portable.size !== 1.0) subFields.set('size', { type: 'float', value: model.portable.size });
     capEntries.push({ capName: 'portable', subId: 'portable_1', subFields });
     extId++;
   }
@@ -1881,7 +2326,7 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.container.capacity_weight) subFields.set('capacity_weight', { type: 'float', value: model.container.capacity_weight });
+    if (model.container.capacity_size) subFields.set('capacity_size', { type: 'float', value: model.container.capacity_size });
     if (model.container.accepts_filter && model.container.accepts_filter.length > 0) {
       subFields.set('accepts_filter', {
         type: 'array', elementType: null,
@@ -1935,10 +2380,7 @@ export function propModelToRaw(model) {
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
     if (model.catalogable.scan_time !== 1.0) subFields.set('scan_time', { type: 'float', value: model.catalogable.scan_time });
-    if (model.catalogable.display_tag) subFields.set('display_tag', { type: 'stringname', value: model.catalogable.display_tag });
-    if (model.catalogable.category !== 0) subFields.set('category', { type: 'int', value: model.catalogable.category });
-    if (model.catalogable.display_name) subFields.set('display_name', { type: 'string', value: model.catalogable.display_name });
-    if (model.catalogable.description) subFields.set('description', { type: 'string', value: model.catalogable.description });
+    if (model.catalogable.show_as_anomaly) subFields.set('show_as_anomaly', { type: 'bool', value: true });
     if (model.catalogable.properties && Object.keys(model.catalogable.properties).length > 0) {
       const propEntries = Object.entries(model.catalogable.properties).map(([k, v]) => {
         if (typeof v === 'string') return [k, { type: 'stringname', value: v }];
@@ -1949,6 +2391,114 @@ export function propModelToRaw(model) {
       subFields.set('properties', { type: 'dict', value: new Map(propEntries) });
     }
     capEntries.push({ capName: 'catalogable', subId: 'catalogable_1', subFields });
+    extId++;
+  }
+
+  if (model.endurance) {
+    const eid = `${extId}_endurance`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/endurance_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.endurance.hp !== 1) subFields.set('hp', { type: 'int', value: model.endurance.hp });
+    if (model.endurance.vulnerabilities && model.endurance.vulnerabilities.length > 0) {
+      subFields.set('vulnerabilities', {
+        type: 'array', elementType: null,
+        value: model.endurance.vulnerabilities.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    if (model.endurance.resistances && model.endurance.resistances.length > 0) {
+      subFields.set('resistances', {
+        type: 'array', elementType: null,
+        value: model.endurance.resistances.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    if (model.endurance.immunities && model.endurance.immunities.length > 0) {
+      subFields.set('immunities', {
+        type: 'array', elementType: null,
+        value: model.endurance.immunities.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    capEntries.push({ capName: 'endurance', subId: 'endurance_1', subFields });
+    extId++;
+  }
+
+  if (model.movement) {
+    const eid = `${extId}_movement`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/movement_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    const modes = Array.isArray(model.movement.modes) ? model.movement.modes : [];
+    if (modes.length > 0) {
+      const modesMap = new Map();
+      for (const entry of modes) {
+        modesMap.set(
+          entry.mode,
+          {
+            type: 'array',
+            elementType: null,
+            value: [
+              { type: 'float', value: entry.normal },
+              { type: 'float', value: entry.max },
+            ],
+          },
+        );
+      }
+      subFields.set('modes', {
+        type: 'dict',
+        value: modesMap,
+        keyStyle: 'int',
+        braceSpaces: true,
+      });
+    }
+    capEntries.push({ capName: 'movement', subId: 'movement_1', subFields });
+    extId++;
+  }
+
+  if (model.combat) {
+    const eid = `${extId}_combat`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/combat_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    // attacks/defenses are arrays of GameEvent refs — leave empty until editor supports them.
+    capEntries.push({ capName: 'combat', subId: 'combat_1', subFields });
+    extId++;
+  }
+
+  if (model.behavior) {
+    const eid = `${extId}_behavior`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/behavior_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.behavior.detection_range !== 2) subFields.set('detection_range', { type: 'int', value: model.behavior.detection_range });
+    if (model.behavior.activity_cycle !== 0) subFields.set('activity_cycle', { type: 'int', value: model.behavior.activity_cycle });
+    if (model.behavior.group_behavior !== 0) subFields.set('group_behavior', { type: 'int', value: model.behavior.group_behavior });
+    if (model.behavior.diet && model.behavior.diet.length > 0) {
+      subFields.set('diet', {
+        type: 'array', elementType: null,
+        value: model.behavior.diet.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    // reactions are GameEvent refs — leave empty until editor supports them.
+    capEntries.push({ capName: 'behavior', subId: 'behavior_1', subFields });
+    extId++;
+  }
+
+  if (model.spawnable) {
+    const eid = `${extId}_spawnable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/spawnable_cap.gd" id="${eid}"]`);
+    const subFields = new Map();
+    subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (model.spawnable.spawn_min !== 1) subFields.set('spawn_min', { type: 'int', value: model.spawnable.spawn_min });
+    if (model.spawnable.spawn_max !== 1) subFields.set('spawn_max', { type: 'int', value: model.spawnable.spawn_max });
+    if (model.spawnable.first_spawn_day !== 1) subFields.set('first_spawn_day', { type: 'int', value: model.spawnable.first_spawn_day });
+    if (model.spawnable.spawn_min_distance !== 3) subFields.set('spawn_min_distance', { type: 'int', value: model.spawnable.spawn_min_distance });
+    if (model.spawnable.allowed_biomes && model.spawnable.allowed_biomes.length > 0) {
+      subFields.set('allowed_biomes', {
+        type: 'array', elementType: null,
+        value: model.spawnable.allowed_biomes.map(v => ({ type: 'stringname', value: v })),
+      });
+    }
+    capEntries.push({ capName: 'spawnable', subId: 'spawnable_1', subFields });
     extId++;
   }
 
@@ -1971,6 +2521,10 @@ export function propModelToRaw(model) {
   // StringName fields
   fields.set('id', { type: 'stringname', value: model.id });
   fields.set('display_name', { type: 'string', value: model.display_name });
+
+  // Gear base fields (only when non-empty)
+  if (model.short_description) fields.set('short_description', { type: 'string', value: model.short_description });
+  if (model.long_description) fields.set('long_description', { type: 'string', value: model.long_description });
 
   // Tags
   if (model.tags && model.tags.length > 0) {
@@ -2041,6 +2595,7 @@ export function propModelToRaw(model) {
   // survive from the old raw.
   const MANAGED_FIELDS = new Set([
     'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
+    'endurance', 'movement', 'combat', 'behavior', 'spawnable',
     'category', 'footprint',
   ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {

@@ -6,8 +6,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00021"
+ref = "P00021"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="effect_1"]
 script = ExtResource("3_effect")
@@ -23,7 +24,6 @@ params = { "stat": "health", "value": -25 }
 script = ExtResource("1_recipe")
 id = &"R00002"
 display_name = "Eat Toxic Berry"
-kind = 1
 inputs = [SubResource("input_1")]
 effects = [SubResource("effect_1"), SubResource("effect_2")]
 actions = [&"eat"]

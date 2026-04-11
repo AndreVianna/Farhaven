@@ -27,7 +27,10 @@ class PendingRecipe extends RefCounted:
 	var recipe: _Recipe = null
 	var start_time: float = 0.0
 	var elapsed: float = 0.0
-	## Array of Dictionaries: {type: StringName, count: int, source: StringName}
+	## Array of Dictionaries: {type: String, count: int, must_hold: bool}
+	## type holds the input.ref value as-is, which may be a prop ID ("P00010")
+	## or a tag with "&" prefix ("&BURNABLE"). Tag refs are skipped on return
+	## since the recipe stored the tag, not the actual concrete prop type.
 	var bound_inputs: Array = []
 	var context: _WorldContext = null
 
@@ -240,29 +243,17 @@ func _consume_inputs(recipe: _Recipe, ctx: _WorldContext, out_bound: Array) -> b
 		if not consumed:
 			return false
 		out_bound.append({
-			"type": input.ref_or_tag,
+			"type": input.ref,
 			"count": input.count,
-			"source": input.source,
-			"is_tag": input.is_tag,
+			"must_hold": input.must_hold,
 		})
 	return true
 
 
 func _consume_single_input(input: _RecipeInput, ctx: _WorldContext) -> bool:
-	if input.source not in [&"player_inventory", &"world_tile", &"container", &"world_anywhere"]:
-		push_error("RecipeRuntime: unknown input source '%s' — must be one of: player_inventory, world_tile, container, world_anywhere" % input.source)
-		return false
-	match input.source:
-		&"player_inventory":
-			return _consume_from_inventory(input, ctx)
-		&"world_tile":
-			return _consume_from_world_tile(input, ctx)
-		&"container":
-			return _consume_from_container(input, ctx)
-		_:
-			# world_anywhere: not yet implemented.
-			push_warning("RecipeRuntime: unsupported input source '%s'" % input.source)
-			return false
+	if input.must_hold:
+		return _consume_from_inventory(input, ctx)
+	return _consume_from_player_vicinity(input, ctx)
 
 
 func _consume_from_inventory(input: _RecipeInput, ctx: _WorldContext) -> bool:
@@ -271,24 +262,26 @@ func _consume_from_inventory(input: _RecipeInput, ctx: _WorldContext) -> bool:
 	var inv = _get_player_inventory(ctx.player)
 	if inv == null:
 		return false
-	if input.is_tag:
+	if input.is_tag():
 		return _consume_tag_from_inventory(input, inv)
 	# Direct ref: check and remove.
-	if not inv.has_item(input.ref_or_tag, input.count):
+	var ref_name: StringName = StringName(input.ref)
+	if not inv.has_item(ref_name, input.count):
 		return false
-	inv.remove_item(input.ref_or_tag, input.count)
+	inv.remove_item(ref_name, input.count)
 	return true
 
 
 func _consume_tag_from_inventory(input: _RecipeInput, inv: _Inventory) -> bool:
 	# Find any item matching the tag in inventory.
+	var tag_name: StringName = input.get_tag()
 	var remaining := input.count
 	var slots: Array = inv.get_slots()
 	for slot in slots:
 		if slot["type"] == &"":
 			continue
 		var def = PropRegistry.get_def(slot["type"])
-		if def != null and def.has_tag(input.ref_or_tag):
+		if def != null and def.has_tag(tag_name):
 			var available: int = slot["quantity"]
 			var to_remove: int = mini(available, remaining)
 			inv.remove_item(slot["type"], to_remove)
@@ -298,134 +291,106 @@ func _consume_tag_from_inventory(input: _RecipeInput, inv: _Inventory) -> bool:
 	return remaining <= 0
 
 
-func _consume_from_world_tile(input: _RecipeInput, ctx: _WorldContext) -> bool:
-	if ctx.tile == null:
+## Consumes an input from the player's vicinity. Sources, in priority order:
+##  1. ctx.container.props/container_items (if the player is interacting with a
+##     container — e.g. fireplace recipes pulling fuel from the campfire's stash)
+##  2. ctx.station.props/container_items (if the station also acts as a container)
+##  3. ctx.tile.props (loose items on the player's current tile)
+## Tag matches scan PropDef tags via PropRegistry.
+func _consume_from_player_vicinity(input: _RecipeInput, ctx: _WorldContext) -> bool:
+	# Build the list of source arrays we'll search and consume from, in order.
+	var sources: Array = []
+	if ctx.container != null:
+		var c_arr := _get_container_array(ctx.container)
+		if c_arr != null:
+			sources.append(c_arr)
+	if ctx.station != null and ctx.station != ctx.container:
+		var s_arr := _get_container_array(ctx.station)
+		if s_arr != null:
+			sources.append(s_arr)
+	if ctx.tile != null and "props" in ctx.tile:
+		sources.append(ctx.tile.props)
+	if sources.is_empty():
 		return false
-	# For world_tile sources, we check props on the tile.
-	# This is a simplified version — actual prop removal will be handled by task-051.
-	# For now, validate presence.
+
+	# First pass: count total matches across all sources to decide affordability.
+	var tag_name: StringName = input.get_tag() if input.is_tag() else &""
+	var ref_name: StringName = StringName(input.ref)
 	var count_found := 0
-	for prop in ctx.tile.props:
-		var prop_type: StringName = prop.type if "type" in prop else &""
-		if input.is_tag:
-			var def = PropRegistry.get_def(prop_type)
-			if def != null and def.has_tag(input.ref_or_tag):
+	for source in sources:
+		for prop in source:
+			if _vicinity_prop_matches(prop, input, tag_name, ref_name):
 				count_found += 1
-		else:
-			if prop_type == input.ref_or_tag:
-				count_found += 1
+				if count_found >= input.count:
+					break
 		if count_found >= input.count:
 			break
 	if count_found < input.count:
 		return false
-	# Remove props from tile.
+
+	# Second pass: remove matches from sources in priority order.
 	var to_remove := input.count
-	var idx: int = ctx.tile.props.size() - 1
-	while idx >= 0 and to_remove > 0:
-		var prop = ctx.tile.props[idx]
-		var prop_type: StringName = prop.type if "type" in prop else &""
-		var matches := false
-		if input.is_tag:
-			var def = PropRegistry.get_def(prop_type)
-			matches = def != null and def.has_tag(input.ref_or_tag)
-		else:
-			matches = prop_type == input.ref_or_tag
-		if matches:
-			ctx.tile.props.remove_at(idx)
-			to_remove -= 1
-		idx -= 1
+	for source in sources:
+		if to_remove <= 0:
+			break
+		var idx: int = source.size() - 1
+		while idx >= 0 and to_remove > 0:
+			if _vicinity_prop_matches(source[idx], input, tag_name, ref_name):
+				source.remove_at(idx)
+				to_remove -= 1
+			idx -= 1
 	return true
 
 
-func _consume_from_container(input: _RecipeInput, ctx: _WorldContext) -> bool:
-	# Get container contents from station or ctx.container.
-	var container_items: Array = _get_container_items(ctx)
-	if container_items.is_empty():
-		return false
-	# Check and remove.
-	var remaining := input.count
-	var idx: int = container_items.size() - 1
-	while idx >= 0 and remaining > 0:
-		var item = container_items[idx]
-		var item_type: StringName = &""
-		var item_qty: int = 1
-		if item is Dictionary:
-			item_type = StringName(item.get("type", ""))
-			item_qty = int(item.get("quantity", 1))
-		elif "type" in item:
-			item_type = item.type
-		var matches := false
-		if input.is_tag:
-			var def = PropRegistry.get_def(item_type)
-			matches = def != null and def.has_tag(input.ref_or_tag)
-		else:
-			matches = item_type == input.ref_or_tag
-		if matches:
-			var to_take: int = mini(item_qty, remaining)
-			if item is Dictionary:
-				item["quantity"] = item_qty - to_take
-				if item["quantity"] <= 0:
-					container_items.remove_at(idx)
-			else:
-				container_items.remove_at(idx)
-			remaining -= to_take
-		idx -= 1
-	return remaining <= 0
+## Helper: returns the array of contained props for a container/station prop,
+## or null if the prop has no container_items / props field.
+func _get_container_array(prop) -> Variant:
+	if prop == null:
+		return null
+	if "container_items" in prop:
+		return prop.container_items
+	if "props" in prop:
+		return prop.props
+	return null
+
+
+## Helper: returns true if a prop matches the input ref (or tag).
+func _vicinity_prop_matches(prop, input: _RecipeInput, tag_name: StringName, ref_name: StringName) -> bool:
+	var prop_type: StringName = prop.type if "type" in prop else &""
+	if input.is_tag():
+		var def = PropRegistry.get_def(prop_type)
+		return def != null and def.has_tag(tag_name)
+	return prop_type == ref_name
 
 
 func _return_inputs(bound_inputs: Array, ctx: _WorldContext) -> void:
 	for entry: Dictionary in bound_inputs:
-		var source: StringName = StringName(entry.get("source", "player_inventory"))
-		var item_type: StringName = StringName(entry.get("type", ""))
+		var must_hold: bool = bool(entry.get("must_hold", false))
+		var item_ref_str: String = String(entry.get("type", ""))
+		var item_type: StringName = StringName(item_ref_str)
 		var count: int = int(entry.get("count", 0))
-		var is_tag: bool = entry.get("is_tag", false)
-		if item_type == &"" or count <= 0:
+		if item_ref_str == "" or count <= 0:
 			continue
-		match source:
-			&"player_inventory":
-				if ctx.player != null:
-					var inv = _get_player_inventory(ctx.player)
-					if inv != null:
-						# For tag inputs, we return the type as-is (same tag).
-						# In practice, tag returns are imperfect — we stored the tag, not the actual item.
-						# For delivery-005a this is acceptable; task-051 can refine.
-						if not is_tag:
-							inv.add_item(item_type, count)
-			&"world_tile":
-				if ctx.tile != null:
-					# Re-add props to tile.
-					for _j in count:
-						ctx.tile.props.append(_Prop.create_prop(item_type, 1, 1))
-			&"container":
-				var container_items: Array = _get_container_items(ctx)
-				# Add back to container.
-				var found := false
-				for item in container_items:
-					if item is Dictionary and StringName(item.get("type", "")) == item_type:
-						item["quantity"] = int(item.get("quantity", 0)) + count
-						found = true
-						break
-				if not found:
-					container_items.append({"type": item_type, "quantity": count})
+		# Tag inputs can't be returned cleanly — we stored the tag ref, not the actual prop.
+		# Only return non-tag refs.
+		var is_tag_ref: bool = item_ref_str.begins_with("&")
+		if is_tag_ref:
+			continue
+		if must_hold:
+			if ctx.player != null:
+				var inv = _get_player_inventory(ctx.player)
+				if inv != null:
+					inv.add_item(item_type, count)
+		else:
+			if ctx.tile != null:
+				# Re-add props to tile.
+				for _j in count:
+					ctx.tile.props.append(_Prop.create_prop(item_type, 1, 1))
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-func _get_container_items(ctx: _WorldContext) -> Array:
-	if ctx.container != null:
-		if "container_items" in ctx.container:
-			return ctx.container.container_items
-		if "props" in ctx.container:
-			return ctx.container.props
-	if ctx.station != null:
-		if "container_items" in ctx.station:
-			return ctx.station.container_items
-		if "props" in ctx.station:
-			return ctx.station.props
-	return []
 
 
 func _get_player_inventory(player: Node):

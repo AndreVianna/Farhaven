@@ -1,11 +1,11 @@
-Feature: Inventory Weight System
-  Inventory uses weight-based capacity. Items are accepted or rejected
-  based on total weight, not slot count.
+Feature: Inventory Size System
+  Inventory uses slot-size based capacity. Items are accepted or rejected
+  based on total size, not slot count.
 
-  Scenario: Weight increases on item pickup
+  Scenario: Size increases on item pickup
     Given an empty inventory with capacity 50.0
     When the player picks up 3 "P00010"
-    Then the inventory weight is greater than 0
+    Then the inventory size is greater than 0
 
   Scenario: Item rejected when inventory capacity is exhausted
     Given an empty inventory with capacity 0.5

@@ -10,16 +10,14 @@ script = ExtResource("2_placeable")
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 3.0
-display_tag = &"anomalies"
-category = 3
-display_name = "Alien Beacon"
-description = "A pulsing monolith of unknown origin. Your scanner goes wild near it."
+show_as_anomaly = true
 properties = {"journal_entry_id": &"anomaly_ch1_001", "cutscene_id": &"cs_first_anomaly"}
 
 [resource]
 script = ExtResource("1_script")
 id = &"P10001"
-display_name = "Anomaly Fragment"
+display_name = "Alien Beacon"
+short_description = "A pulsing monolith of unknown origin. Your scanner goes wild near it."
 tags = [&"SOURCE", &"ANOMALY", &"NATIVE_ALIEN"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")

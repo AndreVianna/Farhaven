@@ -385,7 +385,7 @@ func test_three_state_labels() -> void:
 
 	# CATALOGED via scan (catalog berry_bush directly for testing marker)
 	# Label nodes are freed and removed from tracking on catalog — no label exists anymore.
-	_scanner.entry_cataloged.emit(&"P00004", _Catalog.CatalogCategory.FLORA)
+	_scanner.entry_cataloged.emit(&"P00004", _Prop.Category.PLANT)
 	assert_str(_label_renderer.get_label_text_at(Vector2i(1, 0))).is_equal("")
 	assert_int(_label_renderer.get_label_state_at(Vector2i(1, 0))).is_equal(-1)
 
@@ -507,7 +507,7 @@ func test_ac5_12_base_slots() -> void:
 
 func test_ac5_stacking_within_max_stack() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.capacity_weight = 200.0  # Override for stack test — need room for 80 wood (80 * 1.0)
+	inv.capacity_size = 200.0  # Override for stack test — need room for 80 wood (80 * 1.0)
 	inv.add_item(ID_WOOD, 50)
 	inv.add_item(ID_WOOD, 30)
 	assert_int(inv.get_count(ID_WOOD)).is_equal(80)
@@ -516,7 +516,7 @@ func test_ac5_stacking_within_max_stack() -> void:
 
 func test_ac5_stacking_overflow_creates_new_slot() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.capacity_weight = 200.0  # Override for stack test — need room for 109 wood (109 * 1.0)
+	inv.capacity_size = 200.0  # Override for stack test — need room for 109 wood (109 * 1.0)
 	inv.add_item(ID_WOOD, 99)
 	inv.add_item(ID_WOOD, 10)
 	assert_int(inv.get_count(ID_WOOD)).is_equal(109)
@@ -614,7 +614,7 @@ func test_ac11_mineral_scan_complete() -> void:
 	_scanner._process(0.05)
 
 	assert_str(String(_sig_entry_id)).is_equal("P00005")
-	assert_int(_sig_category).is_equal(_Catalog.CatalogCategory.MINERAL)
+	assert_int(_sig_category).is_equal(_Prop.Category.MINERAL)
 
 	_teardown_scanner_tree()
 
@@ -635,7 +635,7 @@ func test_ac11_anomaly_scan_complete_and_signal() -> void:
 	_scanner._process(0.05)
 
 	assert_str(String(_sig_entry_id)).is_equal("P10001")
-	assert_int(_sig_category).is_equal(_Catalog.CatalogCategory.ANOMALY)
+	assert_int(_sig_category).is_equal(_Catalog.ANOMALY_BUCKET)
 
 	_teardown_scanner_tree()
 

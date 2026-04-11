@@ -173,7 +173,7 @@ var _registered_defs: Array[StringName] = []
 
 
 func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
-		placeable: _PlaceableCap = null, weight: float = 0.1) -> void:
+		placeable: _PlaceableCap = null, size: float = 0.1) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
@@ -183,7 +183,7 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	def.placeable = placeable
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.weight = weight
+	cap.size = size
 	def.portable = cap
 	PropRegistry._defs[id] = def
 	_registered_defs.append(id)
@@ -199,14 +199,13 @@ func _make_build_recipe(id: StringName, inputs_spec: Array,
 		output_ref: StringName, time: float = 0.0) -> _Recipe:
 	var r := _Recipe.new()
 	r.id = id
-	r.kind = _Recipe.Kind.ASSEMBLE
 	r.duration = time
 	r.actions = [&"build"]
 	for spec: Dictionary in inputs_spec:
 		var inp := _RecipeInput.new()
-		inp.ref_or_tag = spec["ref"]
+		inp.ref = String(spec["ref"])
 		inp.count = spec["count"]
-		inp.source = &"player_inventory"
+		inp.must_hold = true
 		r.inputs.append(inp)
 	var out := _RecipeOutput.new()
 	out.prop_ref = output_ref

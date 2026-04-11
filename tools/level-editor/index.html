@@ -322,7 +322,9 @@ html, body {
   font-size: 12px;
 }
 
-#tab-props, #tab-biomes, #tab-recipes {
+#tab-mineral, #tab-plant, #tab-animal, #tab-fungi, #tab-ooze, #tab-liquid,
+#tab-stuff, #tab-structure, #tab-equipment, #tab-vehicle, #tab-storage,
+#tab-biomes, #tab-recipes, #tab-events {
   flex-direction: column;
   gap: 0;
 }
@@ -512,6 +514,76 @@ html, body {
 
 .prop-grid .prop-full {
   grid-column: 1 / -1;
+}
+
+/* ---- 2-column layouts shared by Gear-derived editors ---- */
+.editor-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.editor-2col > .col-left,
+.editor-2col > .col-right {
+  min-width: 0; /* allow children to shrink inside the grid cell */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Gear base-fields header: id + name on one row, short-desc full width */
+.editor-gear-header {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-gear-header .editor-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.editor-gear-header .editor-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.editor-gear-header .editor-field-wrap.full-height {
+  flex: 1;
+  height: 100%;
+}
+
+.editor-gear-header .prop-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.editor-gear-header .prop-input {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.editor-gear-header .full-height-textarea {
+  flex: 1;
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Body 2-col layout (left: actions/inputs/conditions, right: duration/outputs/effects) */
+.editor-body-grid {
+  align-items: start;
 }
 
 .editor-btn-save {
@@ -797,9 +869,20 @@ html, body {
     </header>
     <nav id="tabs">
       <button class="tab-btn active" data-tab="map">Map Editor</button>
-      <button class="tab-btn" data-tab="props">Props</button>
+      <button class="tab-btn" data-tab="mineral">Minerals</button>
+      <button class="tab-btn" data-tab="plant">Flora</button>
+      <button class="tab-btn" data-tab="animal">Fauna</button>
+      <button class="tab-btn" data-tab="fungi">Fungi</button>
+      <button class="tab-btn" data-tab="ooze">Oozes</button>
+      <button class="tab-btn" data-tab="liquid">Liquids</button>
+      <button class="tab-btn" data-tab="stuff">Stuff</button>
+      <button class="tab-btn" data-tab="structure">Structures</button>
+      <button class="tab-btn" data-tab="equipment">Equipment</button>
+      <button class="tab-btn" data-tab="vehicle">Vehicles</button>
+      <button class="tab-btn" data-tab="storage">Containers</button>
       <button class="tab-btn" data-tab="biomes">Biomes</button>
       <button class="tab-btn" data-tab="recipes">Recipes</button>
+      <button class="tab-btn" data-tab="events">Events</button>
     </nav>
     <main id="tab-content">
       <div id="tab-map" class="tab-panel active">
@@ -878,14 +961,25 @@ html, body {
           </div>
         </aside>
       </div>
-      <div id="tab-props" class="tab-panel">
-        <p style="color: var(--text-secondary);">Prop Editor</p>
-      </div>
+      <div id="tab-mineral" class="tab-panel"></div>
+      <div id="tab-plant" class="tab-panel"></div>
+      <div id="tab-animal" class="tab-panel"></div>
+      <div id="tab-fungi" class="tab-panel"></div>
+      <div id="tab-ooze" class="tab-panel"></div>
+      <div id="tab-liquid" class="tab-panel"></div>
+      <div id="tab-stuff" class="tab-panel"></div>
+      <div id="tab-structure" class="tab-panel"></div>
+      <div id="tab-equipment" class="tab-panel"></div>
+      <div id="tab-vehicle" class="tab-panel"></div>
+      <div id="tab-storage" class="tab-panel"></div>
       <div id="tab-biomes" class="tab-panel">
         <p style="color: var(--text-secondary);">Biome Editor</p>
       </div>
       <div id="tab-recipes" class="tab-panel">
         <p style="color: var(--text-secondary);">Recipe Editor</p>
+      </div>
+      <div id="tab-events" class="tab-panel">
+        <p style="color: var(--text-secondary);">Event Editor</p>
       </div>
     </main>
     <footer id="status-bar">

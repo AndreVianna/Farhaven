@@ -8,7 +8,7 @@
 
 [sub_resource type="Resource" id="portable_1"]
 script = ExtResource("2_portable")
-weight = 0.5
+size = 0.5
 
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("3_placeable")
@@ -22,7 +22,6 @@ flicker = true
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("5_catalogable")
 scan_time = 1.0
-display_tag = &"survival"
 
 [resource]
 script = ExtResource("1_script")

@@ -14,7 +14,7 @@ Feature: Building
     And a wall prop on tile 1,0
     Then traversal from 0,0 to 1,0 is BLOCKED
 
-  Scenario: Storage chest increases inventory weight capacity
+  Scenario: Storage chest increases inventory size capacity
     Given an inventory with capacity 50.0
     When a storage chest is placed
     Then the inventory capacity is 100.0

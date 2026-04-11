@@ -7,6 +7,7 @@ extends Resource
 enum Category {
 	PLANT, MINERAL, ANIMAL, FUNGI, LIQUID, OOZE,
 	STRUCTURE, VEHICLE, EQUIPMENT, STORAGE,
+	STUFF,
 }
 
 enum Origin {

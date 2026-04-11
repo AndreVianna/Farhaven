@@ -9,8 +9,9 @@
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2_input")
-ref_or_tag = &"P00022"
+ref = "P00022"
 count = 1
+must_hold = true
 
 [sub_resource type="Resource" id="output_1"]
 script = ExtResource("3_output")
@@ -46,7 +47,6 @@ must_sustain = true
 script = ExtResource("1_recipe")
 id = &"R00011"
 display_name = "Cook Meat"
-kind = 1
 inputs = [SubResource("input_1")]
 outputs = [SubResource("output_1")]
 effects = [SubResource("effect_1")]
