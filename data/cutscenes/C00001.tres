@@ -7,5 +7,5 @@ script = ExtResource("1_cutscene")
 id = &"C00001"
 display_name = "Intro"
 short_description = "Placeholder intro cutscene."
-video_path = "media/placeholder.mp4"
+video_path = ""
 duration_seconds = 0

@@ -406,18 +406,18 @@ async function saveTab(tab) {
       await FileDiscovery.saveFile(entry.dir || 'data/events', text, filename);
     }
   } else if (tab === 'journal') {
-    // Wave 0 stub: real serialization lands in task-076. Saving iterates any
-    // raw entries that were already loaded so round-trip is preserved even
-    // though the editor doesn't yet mutate them.
+    // Edits are persisted per-command by journal-editor.js (Create/Edit/Delete).
+    // This pass re-serializes any entries that still have raw data so an
+    // unmodified round-trip stays byte-clean on explicit Save.
     for (const [filename, entry] of ProjectContext.files.journal) {
       if (!entry || !entry.raw) continue;
       const text = TresParser.serialize(entry.raw);
       await FileDiscovery.saveFile(entry.dir || 'data/journal', text, filename);
     }
   } else if (tab === 'cutscenes') {
-    // Wave 0 stub: real serialization lands in task-077. Saving iterates any
-    // raw entries that were already loaded so round-trip is preserved even
-    // though the editor doesn't yet mutate them.
+    // Edits are persisted per-command by cutscene-editor.js (Create/Edit/Delete).
+    // This pass re-serializes any entries that still have raw data so an
+    // unmodified round-trip stays byte-clean on explicit Save.
     for (const [filename, entry] of ProjectContext.files.cutscenes) {
       if (!entry || !entry.raw) continue;
       const text = TresParser.serialize(entry.raw);

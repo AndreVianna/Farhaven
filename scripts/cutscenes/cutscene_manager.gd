@@ -21,9 +21,10 @@ const CUTSCENES_PATH := "res://data/cutscenes/"
 ## Layer index for the overlay CanvasLayer — high enough to sit above HUD.
 const OVERLAY_LAYER := 100
 
-## Emitted when a cutscene finishes playing. `skipped` is true if the user
-## pressed the skip button or `ui_cancel`, false if the video ended naturally
-## or the cutscene was unplayable (missing video file, etc.).
+## Emitted when an actively playing cutscene finishes. `skipped` is true if
+## the user pressed the skip button or `ui_cancel`, and false if the video
+## ended naturally. If `play()` cannot start playback (for example, missing
+## or invalid video data), it returns false and this signal is not emitted.
 signal cutscene_finished(cutscene_id: StringName, skipped: bool)
 
 ## Cutscene id (e.g. &"C00001") → CutsceneDef resource.

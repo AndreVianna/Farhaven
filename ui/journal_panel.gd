@@ -82,8 +82,11 @@ func set_registry(registry: Node) -> void:
 
 
 func set_journal(journal: Node) -> void:
-	if _journal != null and _journal.journal_entry_added.is_connected(_on_journal_entry_added):
-		_journal.journal_entry_added.disconnect(_on_journal_entry_added)
+	# Duck-typed: tolerate any Node. Check has_signal before disconnecting
+	# so a test double without the signal doesn't crash.
+	if _journal != null and _journal.has_signal(&"journal_entry_added"):
+		if _journal.journal_entry_added.is_connected(_on_journal_entry_added):
+			_journal.journal_entry_added.disconnect(_on_journal_entry_added)
 	_journal = journal
 	if is_inside_tree():
 		_connect_journal_signal()
@@ -127,6 +130,10 @@ func _get_autoload(p_name: StringName) -> Node:
 
 func _connect_journal_signal() -> void:
 	if _journal == null:
+		return
+	# Duck-typed: a Journal without the signal (test double, future refactor)
+	# is tolerated — we just don't wire anything up.
+	if not _journal.has_signal(&"journal_entry_added"):
 		return
 	if not _journal.journal_entry_added.is_connected(_on_journal_entry_added):
 		_journal.journal_entry_added.connect(_on_journal_entry_added)

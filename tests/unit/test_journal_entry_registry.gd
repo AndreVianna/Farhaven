@@ -3,9 +3,11 @@ extends GdUnitTestSuite
 
 ## Tests for the JournalEntryRegistry autoload (task-075b).
 ##
-## The autoload scans res://data/journal/ on _ready(). In Wave 1 that
-## directory is empty / non-existent, so these tests exercise the
-## in-memory register_entry() helper to populate fixtures.
+## The autoload scans res://data/journal/ on _ready(), and that directory
+## may contain committed fixtures in this wave (e.g. J00001.tres from
+## task-076). These tests clear the registry before each case so they can
+## exercise empty-state behavior and the in-memory register_entry() helper
+## deterministically.
 
 const _JournalEntry = preload("res://scripts/journal/journal_entry.gd")
 
