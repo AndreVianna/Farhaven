@@ -2,24 +2,19 @@ class_name StatusStatsSection
 extends VBoxContainer
 
 ## Player stats sub-section for the Status combined panel (task-082).
-## Shows HP / Hunger / Thirst / Stamina bars, day counter, chapter label.
+## Shows HP / Hunger / Thirst bars, day counter, chapter label.
 ## Reads live state from a SurvivalSystem (duck-typed — any Node with the
 ## expected fields + stat_changed signal works). DayNightCycle is also
 ## duck-typed so tests can inject a mock.
-##
-## Stamina is listed in design docs but not yet implemented in SurvivalSystem.
-## Until it exists, the stamina row renders as "N/A".
 
 const _STAT_HP: StringName = &"hp"
 const _STAT_HUNGER: StringName = &"hunger"
 const _STAT_THIRST: StringName = &"thirst"
-const _STAT_STAMINA: StringName = &"stamina"
 
 const _STAT_ROWS: Array = [
 	{"key": _STAT_HP, "label": "HP"},
 	{"key": _STAT_HUNGER, "label": "Hunger"},
 	{"key": _STAT_THIRST, "label": "Thirst"},
-	{"key": _STAT_STAMINA, "label": "Stamina"},
 ]
 
 var _bars: Dictionary = {}         # StringName → ProgressBar
@@ -209,7 +204,6 @@ func _refresh_all() -> void:
 	_refresh_stat(_STAT_HP)
 	_refresh_stat(_STAT_HUNGER)
 	_refresh_stat(_STAT_THIRST)
-	_refresh_stat(_STAT_STAMINA)
 	_refresh_day()
 
 
@@ -259,9 +253,6 @@ func _read_stat(key: StringName) -> Array:
 		_STAT_THIRST:
 			if "thirst" in _survival and "thirst_max" in _survival:
 				return [float(_survival.thirst), float(_survival.thirst_max)]
-		_STAT_STAMINA:
-			if "stamina" in _survival and "stamina_max" in _survival:
-				return [float(_survival.stamina), float(_survival.stamina_max)]
 	return [-1.0, -1.0]
 
 
@@ -302,12 +293,6 @@ static func _color_for_stat(stat_name: StringName, ratio: float) -> Color:
 			return Color(0.2, 0.5, 0.9)
 		elif ratio > 0.25:
 			return Color(0.9, 0.8, 0.2)
-		return Color(0.9, 0.2, 0.2)
-	if stat_name == &"stamina":
-		if ratio > 0.5:
-			return Color(0.85, 0.85, 0.3)
-		elif ratio > 0.25:
-			return Color(0.9, 0.6, 0.2)
 		return Color(0.9, 0.2, 0.2)
 	# hp and hunger default
 	if ratio > 0.5:

@@ -179,11 +179,6 @@ func test_stats_section_has_thirst_bar() -> void:
 	assert_object(section.get_bar(&"thirst")).is_not_null()
 
 
-func test_stats_section_has_stamina_bar() -> void:
-	var section = _make_stats()
-	assert_object(section.get_bar(&"stamina")).is_not_null()
-
-
 func test_stats_section_has_day_label() -> void:
 	var section = _make_stats()
 	assert_object(section.get_day_label()).is_not_null()
@@ -227,13 +222,6 @@ func test_stats_section_reads_thirst_from_survival_system() -> void:
 	_survival.thirst = 25.0
 	section.set_survival_system(_survival)
 	assert_str(section.get_value_label(&"thirst").text).is_equal("25 / 100")
-
-
-func test_stats_section_stamina_shows_na_when_missing() -> void:
-	# MockSurvival does not expose stamina — the section should render N/A.
-	var section = _make_stats()
-	section.set_survival_system(_survival)
-	assert_str(section.get_value_label(&"stamina").text).is_equal("N/A")
 
 
 func test_stats_section_reads_day_from_cycle() -> void:
