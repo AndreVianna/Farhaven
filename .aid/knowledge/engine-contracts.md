@@ -80,14 +80,17 @@ are independently opt-in and non-interacting.
   teaser, full `body`, category, advisory `day_added`), loaded by JournalEntryRegistry.
   Engine plumbing only in 006d. *(Note: may be folded into the Journal contract during
   the 083e review if it has no standalone surface.)*
-- **[GameEvent](contracts/game_event.md)** — [contract pending] — event definition with
-  preconditions, effects, and max-count, used by EventRegistry.
-- **[Recipe family](contracts/recipe.md)** — [contract pending] — covers `Recipe`,
-  `RecipeInput`, `RecipeOutput`, `RecipeEffect`, `RecipeCondition`, and `Predicate` as a single
-  contract (they only make sense together).
-- **[BiomeData](contracts/biome_data.md)** — [contract pending] — biome configuration resource.
-- **[HexTile](contracts/hex_tile.md)** — [contract pending] — single hex-tile resource; note
-  this is a data shape, not the HexGrid autoload.
+- **[GameEvent](contracts/game_event.md)** — event definition with preconditions, effects,
+  and max-count, used by EventRegistry. *(Data class only — the loader/firing infrastructure
+  is `event_registry.md`, which 083b owns.)*
+- **[Recipe](contracts/recipe.md)** — the `Recipe` data class root (id, inputs, outputs,
+  conditions, effects, actions, duration). The sibling classes (`RecipeInput`, `RecipeOutput`,
+  `RecipeEffect`, `RecipeCondition`, `Predicate`) are covered by task-083c as independent
+  contracts; the loader is `recipe_registry.md`; the runtime executor is `recipe_runtime.md`.
+- **[BiomeData](contracts/biome_data.md)** — biome configuration resource (colour, elevation
+  range, prop table) loaded from `res://data/biomes/*.tres`.
+- **[HexTile](contracts/hex_tile.md)** — single hex-tile resource with coords, biome,
+  elevation, and a prop list. This is the data shape, not the HexGrid autoload.
 
 ---
 
@@ -129,20 +132,27 @@ real order in `project.godot` — PropRegistry runs first so every later autoloa
 World-level systems that are **not** autoloads but are created and owned by the running scene.
 They coordinate behavior across multiple autoloads.
 
-- **[AutoInteractionSystem](contracts/auto_interaction_system.md)** — [contract pending] —
-  player proximity-based interaction dispatch, legacy gather fallback.
-- **[BuildingSystem](contracts/building_system.md)** — [contract pending] — player placement
-  of Placeable props, footprint validation, rotation.
-- **[FaunaManager](contracts/fauna_manager.md)** — [contract pending] — spawn loop for
-  SpawnableCap props, activity cycle integration, per-creature Behavior ticking.
-- **[SurvivalSystem](contracts/survival_system.md)** — [contract pending] — hunger, thirst,
-  health, exhaustion bookkeeping and day/night modulation.
-- **[Scanner / ScannerSystem + Catalog](contracts/scanner_system.md)** — [contract pending] —
-  scan lifecycle, ENCOUNTERED/CATALOGED transitions, catalog state, anomaly bucket.
-- **[Inventory](contracts/inventory.md)** — [contract pending] — owned by Player, not an
-  autoload. Regular slots and tool slots, capacity enforcement, save/load.
-- **[MapLoader](contracts/map_loader.md)** — [contract pending] — loads map JSON into HexGrid
-  state at session start.
+- **[AutoInteractionSystem](contracts/auto_interaction_system.md)** — player proximity-based
+  interaction dispatch: gather recipe matching, tween-based gather timer, auto-pickup of
+  ground items, and an auto-defend stub.
+- **[BuildingSystem](contracts/building_system.md)** — player placement of Placeable props.
+  Thin UX wrapper over `recipe_runtime.md` that handles placement mode, tile validation,
+  highlight display, and SSH-snapped structure prop creation.
+- **[FaunaManager](contracts/fauna_manager.md)** — night-time creature simulation: spawn,
+  movement, contact damage, corpse placement, dawn despawn. Reads species config from
+  SpawnableCap / BehaviorCap / MovementCap / EnduranceCap.
+- **[SurvivalSystem](contracts/survival_system.md)** — HP / hunger / thirst tick clock plus
+  activity costs, death + respawn sequence, and ground-item store.
+- **[ScannerSystem](contracts/scanner_system.md)** — proximity auto-scan controller. Owns
+  a [Catalog](contracts/catalog.md) instance and drives its state transitions. The
+  separation is deliberate: ScannerSystem is the controller Node, Catalog is the pure data
+  store.
+- **[Catalog](contracts/catalog.md)** — knowledge data store (RefCounted) tracking
+  UNKNOWN/ENCOUNTERED/CATALOGED state per entry, owned by ScannerSystem.
+- **[Inventory](contracts/inventory.md)** — owned by Player, not an autoload. Prop slots +
+  four fixed tool slots, size-based capacity enforcement, save/load.
+- **[MapLoader](contracts/map_loader.md)** — one-shot JSON-to-HexGrid loader. Supports
+  both the new `props` array format and the legacy `resources+structure+anomaly` format.
 
 ---
 
@@ -153,31 +163,41 @@ list what engine state the panel reads, what signals it subscribes to, and what 
 trigger back. They exist so that future UI rewrites can swap the panel without accidentally
 relying on an undeclared engine assumption.
 
-- **[Hud](contracts/hud.md)** — [contract pending] — root HUD container, coordinates all
-  child panels.
-- **[JournalPanel](contracts/journal_panel.md)** — [contract pending] — reads Journal state
-  and JournalEntryRegistry resources.
-- **[StatusCombinedPanel](contracts/status_combined_panel.md)** — [contract pending] — reads
-  SurvivalSystem stats, Scanner/Catalog state, discovery state.
-- **[InventoryPanel](contracts/inventory_panel.md)** — [contract pending] — reads Player
-  inventory, binds drag/drop to Inventory actions.
-- **[CatalogPanel](contracts/catalog_panel.md)** — [contract pending] — reads Catalog state
-  from Scanner/ScannerSystem.
+- **[HUD](contracts/hud.md)** — root HUD container. Owns stat bars, day counter, floating
+  text, notifications, placement label, craft flash, and three combined panels (Status,
+  Gear, Log). Routes external system signals to the right child widget and enforces mutual
+  panel exclusion.
+- **[JournalPanel](contracts/journal_panel.md)** — read-only view over Journal +
+  JournalEntryRegistry. Master-detail layout with category filter. Embedded inside
+  LogCombinedPanel alongside CatalogPanel.
+- **[StatusCombinedPanel](contracts/status_combined_panel.md)** — STATUS button's two-column
+  panel: left = stats + discoveries + nav sections, right = embedded InventoryPanel. Reads
+  SurvivalSystem, DayNightCycle, Catalog, Inventory.
+- **[InventoryPanel](contracts/inventory_panel.md)** — touch-first inventory drawer. Reads
+  Inventory slots + tool slots, writes only via `Inventory.use_item` (tap-to-consume with a
+  toxic-flora confirmation dialog).
+- **[CatalogPanel](contracts/catalog_panel.md)** — read-only view over Catalog. Four-tab
+  layout (Flora / Fauna / Minerals / Anomalies), counter header, per-entry rows that
+  render ENCOUNTERED placeholders vs CATALOGED full entries. Embedded inside
+  LogCombinedPanel alongside JournalPanel.
 
 ---
 
 ## Totals
 
 - Data / capability contracts: 19 (Gear + PropDef + 12 caps + CutsceneDef + JournalEntry +
-  GameEvent + Recipe-family + BiomeData + HexTile)
+  GameEvent + Recipe + BiomeData + HexTile) — plus the Recipe-family sub-resources
+  (RecipeInput, RecipeOutput, RecipeEffect, RecipeCondition, Predicate) contracted under
+  task-083c which bring the layer to 24 files.
 - Autoload contracts: 12
-- System contracts: 7
+- System contracts: 8 (the 7 non-autoload systems plus `catalog.md` which was split off
+  from `scanner_system.md` during 083d to separate the data store from the controller)
 - UI contracts: 5
 
-**Target total: ~43 files.** The DETAIL estimate of "~32" treats the Recipe family as a single
-contract and does not separately list BiomeData / HexTile / Gear / JournalEntry / CutsceneDef;
-when those are counted individually the figure rises. Task-083b/c/d agents should confirm the
-final count against this index during 083e.
+**Target total: ~49 files.** The DETAIL estimate of "~32" treats the Recipe family as a
+single contract and does not separately list BiomeData / HexTile / Gear / JournalEntry /
+CutsceneDef / Catalog; when those are counted individually the figure rises. 083e should
+confirm the final count against this index.
 
 ---
 
