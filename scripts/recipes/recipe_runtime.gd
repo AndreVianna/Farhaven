@@ -301,11 +301,11 @@ func _consume_from_player_vicinity(input: _RecipeInput, ctx: _WorldContext) -> b
 	# Build the list of source arrays we'll search and consume from, in order.
 	var sources: Array = []
 	if ctx.container != null:
-		var c_arr := _get_container_array(ctx.container)
+		var c_arr: Variant = _get_container_array(ctx.container)
 		if c_arr != null:
 			sources.append(c_arr)
 	if ctx.station != null and ctx.station != ctx.container:
-		var s_arr := _get_container_array(ctx.station)
+		var s_arr: Variant = _get_container_array(ctx.station)
 		if s_arr != null:
 			sources.append(s_arr)
 	if ctx.tile != null and "props" in ctx.tile:
