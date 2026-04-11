@@ -16,6 +16,7 @@ import { PropDefModel, propModelToRaw, validatePropForm } from './js/prop-editor
 import { RecipeModel, recipeModelToRaw, validateRecipeForm, PREDICATE_KINDS } from './js/recipe-editor.js';
 import { EventModel, eventModelToRaw, validateEventForm } from './js/event-editor.js';
 import { JournalModel, journalModelToRaw, validateJournalForm, collectJournalFormData, JOURNAL_CATEGORIES } from './js/journal-editor.js';
+import { CutsceneModel, cutsceneModelToRaw, validateCutsceneForm } from './js/cutscene-editor.js';
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
@@ -3767,6 +3768,403 @@ for (const journalFile of __journalFiles) {
     assert(model2.body === model.body, `${journalFile}: body survives`);
     assert(model2.category === model.category, `${journalFile}: category survives`);
     assert(model2.day_added === model.day_added, `${journalFile}: day_added survives`);
+  });
+}
+
+// ============================================================
+// CutsceneModel — task-077
+// ============================================================
+
+function _makeCutsceneEntry(resourceOverrides) {
+  const raw = new TresFile();
+  raw.scriptClass = 'CutsceneDef';
+  raw.headerLine = '[gd_resource type="Resource" script_class="CutsceneDef" load_steps=2 format=3]';
+  raw.extResources = ['[ext_resource type="Script" path="res://scripts/data/cutscene_def.gd" id="1_cutscene"]'];
+  raw.subResources = [];
+  const data = {
+    script: 'ExtResource("1_cutscene")',
+    id: 'C00001',
+    display_name: 'Test Cutscene',
+    video_path: '',
+    duration_seconds: 0,
+    ...resourceOverrides,
+  };
+  raw.resourceFields = new Map();
+  raw.resourceFields.set('script', { type: 'ext_resource', value: 'ExtResource("1_cutscene")' });
+  raw.resourceFields.set('id', { type: 'stringname', value: data.id || 'C00001' });
+  raw.resourceFields.set('display_name', { type: 'string', value: data.display_name || 'Test Cutscene' });
+  if (data.short_description) raw.resourceFields.set('short_description', { type: 'string', value: data.short_description });
+  if (data.long_description) raw.resourceFields.set('long_description', { type: 'string', value: data.long_description });
+  raw.resourceFields.set('video_path', { type: 'string', value: data.video_path || '' });
+  if (data.trigger_event) raw.resourceFields.set('trigger_event', { type: 'stringname', value: data.trigger_event });
+  raw.resourceFields.set('duration_seconds', { type: 'int', value: data.duration_seconds | 0 });
+  return { data, raw };
+}
+
+function _makeCutsceneModel(overrides) {
+  const model = new CutsceneModel();
+  model.id = 'C00001';
+  model.display_name = 'Test Cutscene';
+  model.short_description = '';
+  model.long_description = '';
+  model.video_path = '';
+  model.trigger_event = '';
+  model.duration_seconds = 0;
+  for (const [key, val] of Object.entries(overrides || {})) { model[key] = val; }
+  return model;
+}
+
+// ------------------------------------------------------------
+// CutsceneModel.fromEntry
+// ------------------------------------------------------------
+
+test('CutsceneModel — fromEntry reads basic fields', () => {
+  const entry = _makeCutsceneEntry({ id: 'C00003', display_name: 'Prologue', duration_seconds: 12 });
+  const model = CutsceneModel.fromEntry('C00003.tres', entry);
+  assert(model.id === 'C00003', 'id should be C00003');
+  assert(model.display_name === 'Prologue', 'display_name');
+  assert(model.duration_seconds === 12, 'duration_seconds should be 12');
+  assert(model._filename === 'C00003.tres', '_filename set');
+  assert(model._raw === entry.raw, '_raw set');
+});
+
+test('CutsceneModel — fromEntry reads Gear header fields (short/long description)', () => {
+  const entry = _makeCutsceneEntry({ short_description: 'short', long_description: 'long text here' });
+  const model = CutsceneModel.fromEntry('C00001.tres', entry);
+  assert(model.short_description === 'short', 'short_description');
+  assert(model.long_description === 'long text here', 'long_description');
+});
+
+test('CutsceneModel — fromEntry reads video_path', () => {
+  const entry = _makeCutsceneEntry({ video_path: 'media/cutscenes/intro.ogv' });
+  const model = CutsceneModel.fromEntry('C00001.tres', entry);
+  assert(model.video_path === 'media/cutscenes/intro.ogv', 'video_path');
+});
+
+test('CutsceneModel — fromEntry reads trigger_event', () => {
+  const entry = _makeCutsceneEntry({ trigger_event: 'E00005' });
+  const model = CutsceneModel.fromEntry('C00001.tres', entry);
+  assert(model.trigger_event === 'E00005', 'trigger_event');
+});
+
+test('CutsceneModel — fromEntry defaults trigger_event to empty', () => {
+  const entry = _makeCutsceneEntry({});
+  const model = CutsceneModel.fromEntry('C00001.tres', entry);
+  assert(model.trigger_event === '', 'trigger_event defaults to empty string');
+});
+
+// ------------------------------------------------------------
+// validateCutsceneForm
+// ------------------------------------------------------------
+
+test('validateCutsceneForm — valid minimal cutscene', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({}), true);
+  assert(result.valid, 'should be valid');
+  assert(result.errors.length === 0, 'no errors');
+});
+
+test('validateCutsceneForm — missing ID', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ id: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('ID is required')), 'ID required error');
+});
+
+test('validateCutsceneForm — ID without C prefix rejected', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ id: 'E00001' }), true);
+  assert(!result.valid, 'should be invalid (E prefix)');
+  assert(result.errors.some(e => e.includes('start with "C"')), 'C prefix error');
+});
+
+test('validateCutsceneForm — ID with digits only rejected', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ id: '00001' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('start with "C"')), 'C prefix error');
+});
+
+test('validateCutsceneForm — ID with bad chars rejected', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ id: 'C 001' }), true);
+  assert(!result.valid, 'should be invalid');
+});
+
+test('validateCutsceneForm — missing display_name', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ display_name: '' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Display Name')), 'display_name error');
+});
+
+test('validateCutsceneForm — negative duration rejected', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ duration_seconds: -1 }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Duration')), 'duration error');
+});
+
+test('validateCutsceneForm — duration zero is valid (placeholder)', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ duration_seconds: 0 }), true);
+  assert(result.valid, 'duration 0 should be valid');
+});
+
+test('validateCutsceneForm — empty trigger_event is valid (none)', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ trigger_event: '' }), true);
+  assert(result.valid, 'empty trigger_event should be valid');
+});
+
+test('validateCutsceneForm — trigger_event with bad chars rejected', () => {
+  const result = validateCutsceneForm(_makeCutsceneModel({ trigger_event: 'bad event!' }), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('Trigger Event')), 'trigger_event error');
+});
+
+test('validateCutsceneForm — duplicate ID on create rejected', () => {
+  ProjectContext.files.cutscenes.set('C00001.tres', { data: {}, raw: new TresFile() });
+  const result = validateCutsceneForm(_makeCutsceneModel({}), true);
+  assert(!result.valid, 'should be invalid');
+  assert(result.errors.some(e => e.includes('already exists')), 'duplicate error');
+  ProjectContext.files.cutscenes.delete('C00001.tres');
+});
+
+test('validateCutsceneForm — duplicate ID on edit is allowed', () => {
+  ProjectContext.files.cutscenes.set('C00001.tres', { data: {}, raw: new TresFile() });
+  const result = validateCutsceneForm(_makeCutsceneModel({}), false); // isNew=false
+  assert(result.valid, 'edit should not trip duplicate check');
+  ProjectContext.files.cutscenes.delete('C00001.tres');
+});
+
+// ------------------------------------------------------------
+// cutsceneModelToRaw — serialization
+// ------------------------------------------------------------
+
+test('cutsceneModelToRaw — serializes basic cutscene', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({ display_name: 'Intro', duration_seconds: 5 }));
+  assert(raw.scriptClass === 'CutsceneDef', 'scriptClass');
+  assert(raw.headerLine.includes('CutsceneDef'), 'header has CutsceneDef');
+  assert(raw.resourceFields.get('id').value === 'C00001', 'id');
+  assert(raw.resourceFields.get('display_name').value === 'Intro', 'display_name');
+  assert(raw.resourceFields.get('duration_seconds').value === 5, 'duration_seconds');
+});
+
+test('cutsceneModelToRaw — has exactly 1 ext_resource and 0 sub_resources', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({}));
+  assert(raw.extResources.length === 1, '1 ext_resource (script)');
+  assert(raw.subResources.length === 0, 'no sub_resources');
+  assert(raw.extResources[0].includes('res://scripts/data/cutscene_def.gd'), 'script path');
+});
+
+test('cutsceneModelToRaw — omits trigger_event when empty', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({ trigger_event: '' }));
+  assert(!raw.resourceFields.has('trigger_event'), 'trigger_event omitted when empty');
+});
+
+test('cutsceneModelToRaw — serializes trigger_event when set', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({ trigger_event: 'E00010' }));
+  const tv = raw.resourceFields.get('trigger_event');
+  assert(tv, 'trigger_event field exists');
+  assert(tv.type === 'stringname', 'trigger_event is stringname');
+  assert(tv.value === 'E00010', 'trigger_event value');
+});
+
+test('cutsceneModelToRaw — always serializes duration_seconds (including 0)', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({ duration_seconds: 0 }));
+  const tv = raw.resourceFields.get('duration_seconds');
+  assert(tv, 'duration_seconds field exists');
+  assert(tv.type === 'int', 'duration_seconds is int');
+  assert(tv.value === 0, 'duration_seconds = 0 preserved');
+});
+
+test('cutsceneModelToRaw — always serializes video_path (including empty)', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({ video_path: '' }));
+  const tv = raw.resourceFields.get('video_path');
+  assert(tv, 'video_path field exists');
+  assert(tv.type === 'string', 'video_path is string');
+  assert(tv.value === '', 'empty video_path preserved');
+});
+
+test('cutsceneModelToRaw — serialized output is valid .tres', () => {
+  const raw = cutsceneModelToRaw(_makeCutsceneModel({
+    display_name: 'Intro',
+    short_description: 'A test',
+    long_description: 'A longer test description',
+    video_path: 'media/cutscenes/intro.ogv',
+    trigger_event: 'E00001',
+    duration_seconds: 10,
+  }));
+  const text = TresParser.serialize(raw);
+  assert(text.includes('[gd_resource type="Resource" script_class="CutsceneDef"'), 'header');
+  assert(text.includes('res://scripts/data/cutscene_def.gd'), 'script ext_resource path');
+  assert(text.includes('id = &"C00001"'), 'id as stringname');
+  assert(text.includes('display_name = "Intro"'), 'display_name');
+  assert(text.includes('video_path = "media/cutscenes/intro.ogv"'), 'video_path');
+  assert(text.includes('trigger_event = &"E00001"'), 'trigger_event as stringname');
+  assert(text.includes('duration_seconds = 10'), 'duration_seconds int');
+  assert(text.includes('short_description = "A test"'), 'short_description');
+  assert(text.includes('long_description = "A longer test description"'), 'long_description');
+});
+
+// ------------------------------------------------------------
+// CutsceneModel — full round-trip (in-memory)
+// ------------------------------------------------------------
+
+test('CutsceneModel — full round-trip with all fields', () => {
+  const original = _makeCutsceneModel({
+    id: 'C00042',
+    display_name: 'Awakening',
+    short_description: 'The hero wakes',
+    long_description: 'A cinematic about the hero waking in the cave.',
+    video_path: 'media/cutscenes/awakening.ogv',
+    trigger_event: 'E00007',
+    duration_seconds: 30,
+  });
+  const raw = cutsceneModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  // Re-parse
+  const reparsed = TresParser.parse(serialized);
+  assert(reparsed.scriptClass === 'CutsceneDef', 'reparsed scriptClass');
+
+  // Rebuild data for fromEntry
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) {
+    data[key] = tv.value;
+  }
+
+  const restored = CutsceneModel.fromEntry('C00042.tres', { data, raw: reparsed });
+  assert(restored.id === original.id, 'id survives');
+  assert(restored.display_name === original.display_name, 'display_name survives');
+  assert(restored.short_description === original.short_description, 'short_description survives');
+  assert(restored.long_description === original.long_description, 'long_description survives');
+  assert(restored.video_path === original.video_path, 'video_path survives');
+  assert(restored.trigger_event === original.trigger_event, 'trigger_event survives');
+  assert(restored.duration_seconds === original.duration_seconds, 'duration_seconds survives');
+});
+
+test('CutsceneModel — round-trip with minimal fields (no trigger, no descriptions)', () => {
+  const original = _makeCutsceneModel({ id: 'C00099', display_name: 'Minimal' });
+  const raw = cutsceneModelToRaw(original);
+  const serialized = TresParser.serialize(raw);
+
+  const reparsed = TresParser.parse(serialized);
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) { data[key] = tv.value; }
+
+  const restored = CutsceneModel.fromEntry('C00099.tres', { data, raw: reparsed });
+  assert(restored.id === 'C00099', 'id');
+  assert(restored.display_name === 'Minimal', 'display_name');
+  assert(restored.short_description === '', 'short_description empty');
+  assert(restored.long_description === '', 'long_description empty');
+  assert(restored.trigger_event === '', 'trigger_event empty');
+  assert(restored.duration_seconds === 0, 'duration_seconds 0');
+});
+
+// ------------------------------------------------------------
+// nextId('C') — ID namespace
+// ------------------------------------------------------------
+
+test('nextId(C) — returns C00001 when cutscenes map empty', () => {
+  const empty = new Map();
+  assert(nextId('C', empty) === 'C00001', 'first ID is C00001');
+});
+
+test('nextId(C) — returns C00002 after one cutscene exists', () => {
+  const map = new Map();
+  map.set('C00001.tres', {});
+  assert(nextId('C', map) === 'C00002', 'second ID is C00002');
+});
+
+test('nextId(C) — increments past highest existing C ID', () => {
+  const map = new Map();
+  map.set('C00001.tres', {});
+  map.set('C00002.tres', {});
+  map.set('C00042.tres', {});
+  assert(nextId('C', map) === 'C00043', 'should be C00043 (max was 42)');
+});
+
+test('nextId(C) — ignores entries with non-C prefix', () => {
+  const map = new Map();
+  map.set('C00005.tres', {});
+  map.set('E00100.tres', {});
+  map.set('P00200.tres', {});
+  assert(nextId('C', map) === 'C00006', 'ignores non-C entries');
+});
+
+// ------------------------------------------------------------
+// trigger_event dropdown — data sourced from ProjectContext.files.events
+// ------------------------------------------------------------
+
+test('trigger_event dropdown — events map is the source of truth', () => {
+  // The editor reads ProjectContext.files.events to build the dropdown.
+  // Verify the bucket exists and can hold entries keyed by filename.
+  assert(ProjectContext.files.events instanceof Map, 'events map exists');
+
+  // Simulate one event entry with a data.id (the dropdown pulls this).
+  ProjectContext.files.events.set('E00999.tres', {
+    data: { id: 'E00999', display_name: 'Test Event' },
+    raw: new TresFile(),
+  });
+  let found = false;
+  for (const [, entry] of ProjectContext.files.events) {
+    if (entry.data && entry.data.id === 'E00999') { found = true; break; }
+  }
+  assert(found, 'event can be looked up via entry.data.id');
+  ProjectContext.files.events.delete('E00999.tres');
+});
+
+test('trigger_event dropdown — "(none)" maps to empty StringName', () => {
+  // In the editor, selecting "(none)" sets trigger_event = ''. Serialization
+  // then omits the field entirely (see cutsceneModelToRaw).
+  const model = _makeCutsceneModel({ trigger_event: '' });
+  const raw = cutsceneModelToRaw(model);
+  assert(!raw.resourceFields.has('trigger_event'), 'empty trigger_event is omitted from .tres');
+});
+
+// ------------------------------------------------------------
+// CutsceneModel round-trip — real .tres fixtures from data/cutscenes
+// ------------------------------------------------------------
+
+const __cutscenesDir = join(__projectRoot, 'data', 'cutscenes');
+let __cutsceneFiles = [];
+try { __cutsceneFiles = readdirSync(__cutscenesDir).filter(f => f.endsWith('.tres')); }
+catch (e) { console.warn('Could not read data/cutscenes/:', e.message); }
+
+for (const csFile of __cutsceneFiles) {
+  test(`CutsceneModel round-trip — ${csFile}`, () => {
+    const filePath = join(__cutscenesDir, csFile);
+    const text = readFileSync(filePath, 'utf-8');
+
+    const parsed = TresParser.parse(text);
+    assert(parsed.scriptClass === 'CutsceneDef', `${csFile}: scriptClass`);
+
+    // TresParser round-trip: serialized must equal original byte-for-byte
+    const serialized = TresParser.serialize(parsed);
+    assert(serialized === text, `${csFile}: TresParser round-trip identical`);
+
+    // Build data object for fromEntry (no sub_resources to resolve)
+    const data = {};
+    for (const [key, tv] of parsed.resourceFields) {
+      data[key] = tv.value;
+    }
+
+    const model = CutsceneModel.fromEntry(csFile, { data, raw: parsed });
+    assert(typeof model.id === 'string' && model.id.startsWith('C'), `${csFile}: id has C prefix`);
+    assert(typeof model.display_name === 'string', `${csFile}: display_name is string`);
+    assert(typeof model.video_path === 'string', `${csFile}: video_path is string`);
+    assert(model.duration_seconds >= 0, `${csFile}: duration_seconds >= 0`);
+
+    // Re-serialize through the editor path and confirm re-parse matches
+    const raw2 = cutsceneModelToRaw(model);
+    const serialized2 = TresParser.serialize(raw2);
+    const reparsed = TresParser.parse(serialized2);
+    assert(reparsed.scriptClass === 'CutsceneDef', `${csFile}: re-serialized scriptClass`);
+
+    const data2 = {};
+    for (const [key, tv] of reparsed.resourceFields) { data2[key] = tv.value; }
+    const model2 = CutsceneModel.fromEntry(csFile, { data: data2, raw: reparsed });
+
+    assert(model2.id === model.id, `${csFile}: id survives round-trip`);
+    assert(model2.display_name === model.display_name, `${csFile}: display_name survives`);
+    assert(model2.short_description === model.short_description, `${csFile}: short_description survives`);
+    assert(model2.long_description === model.long_description, `${csFile}: long_description survives`);
+    assert(model2.video_path === model.video_path, `${csFile}: video_path survives`);
+    assert(model2.trigger_event === model.trigger_event, `${csFile}: trigger_event survives`);
+    assert(model2.duration_seconds === model.duration_seconds, `${csFile}: duration_seconds survives`);
   });
 }
 
