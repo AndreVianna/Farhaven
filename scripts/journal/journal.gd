@@ -4,9 +4,9 @@ extends Node
 ## Registered in project.godot AFTER EventRegistry so effect handlers can
 ## call `Journal.add_entry(entry_id)` safely.
 ##
-## Wave 0 scaffolding (delivery-006c): this is a minimal working stub. It
-## tracks unlocked ids in a Dictionary, emits a signal on add, and supports
-## save/load. A registry-backed lookup and full panel UI land in task-075.
+## Intentionally minimal: tracks unlocked ids in a Dictionary, emits a signal
+## on add, supports save/load. Metadata lookup (title, body, category) lives
+## in JournalEntryRegistry (task-075b). Panel UI lives in ui/journal_panel.gd.
 
 const _JournalEntry = preload("res://scripts/journal/journal_entry.gd")
 
@@ -59,8 +59,11 @@ func _get_autoload(p_name: StringName) -> Node:
 ## Returns true if the entry was newly added, false if it was already unlocked
 ## or the id was empty.
 ##
-## Wave 0 stub: does NOT validate that the entry exists as a .tres file. That
-## validation, along with registry-backed metadata lookup, lands in task-075.
+## By design this does NOT validate that the entry exists in
+## JournalEntryRegistry — add_entry is a pure unlock-tracker. Callers that
+## care about metadata (panel UI, save/load) resolve ids through the registry
+## when they display. Deferring registry validation here keeps tests simple
+## (BDD scenarios can use synthetic ids without seeding the registry).
 func add_entry(entry_id: StringName) -> bool:
 	if entry_id == &"":
 		return false

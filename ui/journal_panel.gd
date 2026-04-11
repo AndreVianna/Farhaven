@@ -442,7 +442,9 @@ func _format_date(entry: Resource) -> String:
 
 
 ## Resolve body text. Uses dedicated `body` field first, then falls back to
-## long_description then short_description. See Wave 0 note in journal_entry.gd.
+## long_description then short_description. The split between `body` and
+## `long_description` is documented in journal_entry.gd — `long_description`
+## is the tooltip/teaser hook, `body` is the full-page text.
 func _resolve_body_text(entry: Resource) -> String:
 	if "body" in entry and entry.body != "":
 		return entry.body
