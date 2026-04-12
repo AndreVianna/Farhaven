@@ -10,6 +10,16 @@ const _PropDef = preload("res://scripts/data/prop_def.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 
+## Resolve the PropRegistry — prefer ctx.prop_registry, fall back to autoload.
+static func _get_prop_registry(ctx: WorldContext) -> Node:
+	if ctx.prop_registry != null:
+		return ctx.prop_registry
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		return tree.root.get_node_or_null("PropRegistry")
+	return null
+
+
 ## Evaluate a single predicate against a world context. Returns true if satisfied.
 static func evaluate(pred: Predicate, ctx: WorldContext) -> bool:
 	match pred.kind:
@@ -79,7 +89,8 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 		if slot == tool_id:
 			return true
 		# Check PropDef.tool_slot in case the equipped prop has a matching slot name
-		var def: _PropDef = ctx.prop_registry.get_def(equipped) if ctx.prop_registry != null else null
+		var reg: Node = _get_prop_registry(ctx)
+		var def: _PropDef = reg.get_def(equipped) if reg != null else null
 		if def != null and def.tool_slot == tool_id:
 			return true
 	return false
@@ -97,7 +108,8 @@ static func _eval_at_station(params: Dictionary, ctx: WorldContext) -> bool:
 	var station_type: StringName = ctx.station.type if "type" in ctx.station else &""
 	if station_type == &"":
 		return false
-	var def: _PropDef = ctx.prop_registry.get_def(station_type) if ctx.prop_registry != null else null
+	var reg: Node = _get_prop_registry(ctx)
+	var def: _PropDef = reg.get_def(station_type) if reg != null else null
 	if def == null or def.station == null:
 		return false
 	return def.station.station_tags.has(tag)
@@ -235,7 +247,8 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 					return true
 				break  # One match per tile is enough
 			# Check PropDef tags
-			var def: _PropDef = ctx.prop_registry.get_def(prop_type) if ctx.prop_registry != null else null
+			var adj_reg: Node = _get_prop_registry(ctx)
+			var def: _PropDef = adj_reg.get_def(prop_type) if adj_reg != null else null
 			if def != null and def.has_tag(tag):
 				match_count += 1
 				if match_count >= count_ge:

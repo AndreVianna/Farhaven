@@ -22,7 +22,7 @@ func update_hp(hp: int, hp_max: int) -> void:
 
 
 func _draw() -> void:
-	var ratio: float = float(current_hp) / float(max_hp) if max_hp > 0 else 0.0
+	var ratio: float = clampf(float(current_hp) / float(max_hp), 0.0, 1.0) if max_hp > 0 else 0.0
 	var color: Color = Color.GREEN.lerp(Color.RED, 1.0 - ratio)
 	var bar_width: float = size.x * ratio
 	# Background
