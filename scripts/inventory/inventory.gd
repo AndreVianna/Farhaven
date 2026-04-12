@@ -513,6 +513,13 @@ func has_tool_for(slot: StringName) -> bool:
 	return _tool_slots.get(slot, &"") != &""
 
 
+## Returns a shallow copy of all current tool slots (slot_name -> PropDef id).
+## Used by PredicateEvaluator to iterate arbitrary slot names without
+## hardcoding the legacy set.
+func get_tool_slots() -> Dictionary:
+	return _tool_slots.duplicate()
+
+
 # ---------------------------------------------------------------------------
 # Save / Load (task-091)
 # ---------------------------------------------------------------------------
@@ -583,8 +590,12 @@ func _load_grid_save(data: Dictionary) -> void:
 		var type: StringName = StringName(entry.get("type", ""))
 		if type == &"":
 			continue
-		var origin_arr: Array = entry.get("origin", [0, 0])
-		var origin: Vector2i = Vector2i(int(origin_arr[0]), int(origin_arr[1]))
+		# Guard malformed origin arrays from hand-edited or older saves.
+		var origin_raw: Variant = entry.get("origin", [0, 0])
+		var origin_arr: Array = origin_raw if origin_raw is Array else [0, 0]
+		var ox: int = int(origin_arr[0]) if origin_arr.size() > 0 else 0
+		var oy: int = int(origin_arr[1]) if origin_arr.size() > 1 else 0
+		var origin: Vector2i = Vector2i(ox, oy)
 		var rotation: int = int(entry.get("rotation", 0))
 		var shape: Array[Vector2i] = _get_shape_for_type(type)
 

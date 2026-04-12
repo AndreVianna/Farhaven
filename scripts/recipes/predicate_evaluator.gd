@@ -66,20 +66,26 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 	if inv == null:
 		push_warning("PredicateEvaluator: 'has_tool' — player has no inventory, returning false")
 		return false
-	# 1. Check all legacy tool slots (scanner is body-integrated; others kept
-	#    during transition until task-096 migrates tools fully into the grid).
-	var _legacy_slots: Array[StringName] = [&"scanner", &"axe", &"pickaxe", &"weapon"]
-	for slot_name: StringName in _legacy_slots:
-		var equipped: StringName = inv.get_tool(slot_name)
-		if equipped == &"":
-			continue
-		if equipped == tool_id:
-			return true
-		if slot_name == tool_id:
-			return true
-		var sdef: _PropDef = PropRegistry.get_def(equipped)
-		if sdef != null and sdef.tool_slot == tool_id:
-			return true
+	# 1. Direct slot lookup — accepts any slot name (firestarter, axe, etc.),
+	#    not just the hardcoded legacy set. Inventory.get_tool returns &"" for
+	#    unknown slots, so this is safe for arbitrary tool_id strings.
+	var direct_equipped: StringName = inv.get_tool(tool_id)
+	if direct_equipped != &"":
+		return true
+	# 2. Walk every tool slot currently set on the inventory to catch
+	#    aliased ids (equipped id matches tool_id, or equipped PropDef's
+	#    tool_slot matches tool_id).
+	if inv.has_method("get_tool_slots"):
+		var tool_slots: Dictionary = inv.get_tool_slots()
+		for slot_name: StringName in tool_slots.keys():
+			var equipped: StringName = tool_slots[slot_name]
+			if equipped == &"":
+				continue
+			if equipped == tool_id:
+				return true
+			var sdef: _PropDef = PropRegistry.get_def(equipped)
+			if sdef != null and sdef.tool_slot == tool_id:
+				return true
 	# 2. Search grid inventory for tools matching tool_id.
 	var slots: Array = inv.get_slots()
 	for slot in slots:
