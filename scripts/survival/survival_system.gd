@@ -204,6 +204,18 @@ func stop_activity_drain(activity: StringName) -> void:
 # --- Death sequence ---
 
 func _execute_death() -> void:
+	# Decide strategy FIRST to avoid mutating state before save-load.
+	# If a save exists, we reload it without dropping items or emitting
+	# player_died (which is wired to SaveManager.save_now and would overwrite
+	# the checkpoint with post-death state).
+	var save_mgr: Node = get_node_or_null("/root/SaveManager")
+	var will_load_save: bool = save_mgr != null \
+		and save_mgr.has_method("has_save") \
+		and save_mgr.has_save()
+	if will_load_save:
+		_death_load_save(save_mgr)
+		return
+	# No save: fall back to legacy respawn flow (drop items, emit, respawn).
 	var death_tile: Vector2i = _get_player_tile()
 	_drop_items(death_tile)
 	player_died.emit()
@@ -257,6 +269,97 @@ func _start_death_sequence() -> void:
 		if not is_day and _day_night_cycle != null and _day_night_cycle.has_method("skip_to_dawn"):
 			_day_night_cycle.skip_to_dawn()
 		respawn()
+
+
+## Load from last save on death. Catalog and journal knowledge persist
+## across death — we snapshot them before load and re-apply after so the
+## save checkpoint doesn't erase discoveries made since the last save.
+func _death_load_save(save_mgr: Node) -> void:
+	if _screen_fade != null and _screen_fade.has_method("fade_out"):
+		_screen_fade.fade_out()
+		if _screen_fade.has_signal("fade_out_completed"):
+			await _screen_fade.fade_out_completed
+	# Preserve knowledge state before load overwrites it.
+	var catalog_snapshot: Dictionary = _snapshot_catalog()
+	var journal_snapshot: Array[StringName] = _snapshot_journal()
+	var load_ok: bool = save_mgr.load_game()
+	if not load_ok:
+		# Save corrupt or missing — fall back to normal respawn.
+		push_warning("SurvivalSystem: death load failed — falling back to respawn")
+		respawn()
+		return
+	# Re-apply knowledge so discoveries survive death.
+	_restore_catalog(catalog_snapshot)
+	_restore_journal(journal_snapshot)
+	# After load, SurvivalSystem.load_save_data resets is_dead = false and restores stats.
+	# Fade back in.
+	if _screen_fade != null and _screen_fade.has_method("fade_in"):
+		_screen_fade.fade_in()
+
+
+## Capture current catalog save data before a load overwrites it.
+func _snapshot_catalog() -> Dictionary:
+	var scanner: Node = _get_scanner_system()
+	if scanner != null and scanner.has_method("get_save_data"):
+		var data: Dictionary = scanner.get_save_data()
+		return data.get("catalog", {})
+	return {}
+
+
+## Capture current journal unlocked entries before a load overwrites it.
+func _snapshot_journal() -> Array[StringName]:
+	var journal: Node = get_node_or_null("/root/Journal")
+	if journal != null and journal.has_method("get_unlocked_ids"):
+		return journal.get_unlocked_ids()
+	return []
+
+
+## Re-apply catalog knowledge that may have been overwritten by load_game().
+func _restore_catalog(snapshot: Dictionary) -> void:
+	if snapshot.is_empty():
+		return
+	var scanner: Node = _get_scanner_system()
+	if scanner == null or not scanner.has_method("get_catalog"):
+		return
+	var catalog: RefCounted = scanner.get_catalog()
+	if catalog == null:
+		return
+	# Merge snapshot knowledge — keep whichever state is higher (CATALOGED > ENCOUNTERED > UNKNOWN).
+	var knowledge: Dictionary = snapshot.get("knowledge", {})
+	for id_str: String in knowledge:
+		var entry_id: StringName = StringName(id_str)
+		var saved_state_str: String = knowledge[id_str]
+		if saved_state_str == "CATALOGED":
+			if catalog.has_method("catalog_entry"):
+				catalog.catalog_entry(entry_id)
+		elif saved_state_str == "ENCOUNTERED":
+			if not catalog.is_known(entry_id):
+				var labels: Dictionary = snapshot.get("encounter_labels", {})
+				var label: String = labels.get(id_str, "")
+				if catalog.has_method("encounter_entry"):
+					catalog.encounter_entry(entry_id, label)
+
+
+## Re-apply journal entries that may have been overwritten by load_game().
+func _restore_journal(snapshot: Array[StringName]) -> void:
+	if snapshot.is_empty():
+		return
+	var journal: Node = get_node_or_null("/root/Journal")
+	if journal == null or not journal.has_method("add_entry"):
+		return
+	for entry_id: StringName in snapshot:
+		journal.add_entry(entry_id)
+
+
+## Find the ScannerSystem sibling on the player.
+func _get_scanner_system() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	for child: Node in parent.get_children():
+		if child != self and child.has_method("get_catalog"):
+			return child
+	return null
 
 
 func _try_respawn() -> void:

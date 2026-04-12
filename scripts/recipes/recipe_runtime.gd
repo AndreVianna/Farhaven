@@ -41,6 +41,9 @@ var _pending: Array = []
 var _registry: Node = null
 var _discovery: Node = null
 
+## Cached PropRegistry autoload — lazy-loaded via _get_prop_registry().
+var _prop_registry: Node = null
+
 ## Injectable random number generator (for output probability rolls).
 ## If null, uses randf(). Tests can replace with a deterministic source.
 var _rng: Callable = Callable()
@@ -286,7 +289,8 @@ func _consume_tag_from_inventory(input: _RecipeInput, inv: _Inventory) -> bool:
 	for slot in slots:
 		if slot["type"] == &"":
 			continue
-		var def = PropRegistry.get_def(slot["type"])
+		var reg: Node = _get_prop_registry()
+		var def = reg.get_def(slot["type"]) if reg != null else null
 		if def != null and def.has_tag(tag_name):
 			var available: int = slot["quantity"]
 			var to_remove: int = mini(available, remaining)
@@ -302,7 +306,7 @@ func _consume_tag_from_inventory(input: _RecipeInput, inv: _Inventory) -> bool:
 ##     container — e.g. fireplace recipes pulling fuel from the campfire's stash)
 ##  2. ctx.station.props/container_items (if the station also acts as a container)
 ##  3. ctx.tile.props (loose items on the player's current tile)
-## Tag matches scan PropDef tags via PropRegistry.
+## Tag matches scan PropDef tags via prop registry lookup.
 func _consume_from_player_vicinity(input: _RecipeInput, ctx: _WorldContext) -> bool:
 	# Build the list of source arrays we'll search and consume from, in order.
 	var sources: Array = []
@@ -364,7 +368,8 @@ func _get_container_array(prop) -> Variant:
 func _vicinity_prop_matches(prop, input: _RecipeInput, tag_name: StringName, ref_name: StringName) -> bool:
 	var prop_type: StringName = prop.type if "type" in prop else &""
 	if input.is_tag():
-		var def = PropRegistry.get_def(prop_type)
+		var reg: Node = _get_prop_registry()
+		var def = reg.get_def(prop_type) if reg != null else null
 		return def != null and def.has_tag(tag_name)
 	return prop_type == ref_name
 
@@ -418,6 +423,12 @@ func _roll_random() -> float:
 	if _rng.is_valid():
 		return _rng.call()
 	return randf()
+
+
+func _get_prop_registry() -> Node:
+	if _prop_registry == null:
+		_prop_registry = _get_autoload(&"PropRegistry")
+	return _prop_registry
 
 
 func _get_autoload(p_name: StringName) -> Node:

@@ -6,7 +6,6 @@ const _PortableCap = preload("res://scripts/data/capabilities/portable_cap.gd")
 const _PlaceableCap = preload("res://scripts/data/capabilities/placeable_cap.gd")
 const _ContainerCap = preload("res://scripts/data/capabilities/container_cap.gd")
 const _LightCap = preload("res://scripts/data/capabilities/light_cap.gd")
-const _MovableCap = preload("res://scripts/data/capabilities/movable_cap.gd")
 const _StationCap = preload("res://scripts/data/capabilities/station_cap.gd")
 const _CatalogableCap = preload("res://scripts/data/capabilities/catalogable_cap.gd")
 const _EnduranceCap = preload("res://scripts/data/capabilities/endurance_cap.gd")
@@ -30,13 +29,11 @@ func test_has_capability_all_types() -> void:
 	def.placeable = _PlaceableCap.new()
 	def.container = _ContainerCap.new()
 	def.light = _LightCap.new()
-	def.movable = _MovableCap.new()
 	def.station = _StationCap.new()
 	def.catalogable = _CatalogableCap.new()
 	assert_bool(def.has_capability(&"placeable")).is_true()
 	assert_bool(def.has_capability(&"container")).is_true()
 	assert_bool(def.has_capability(&"light")).is_true()
-	assert_bool(def.has_capability(&"movable")).is_true()
 	assert_bool(def.has_capability(&"station")).is_true()
 	assert_bool(def.has_capability(&"catalogable")).is_true()
 
@@ -157,11 +154,11 @@ func test_portable_size() -> void:
 	cap.size = 2.5
 	assert_float(cap.size).is_equal_approx(2.5, 0.0001)
 
-func test_placeable_is_marker() -> void:
-	# PlaceableCap is a pure marker — no fields.
+func test_placeable_default_footprint() -> void:
 	var cap := _PlaceableCap.new()
 	assert_bool(cap is Resource).is_true()
-	assert_bool("rotation_snap" in cap).is_false()
+	assert_int(cap.footprint.x).is_equal(1)
+	assert_int(cap.footprint.y).is_equal(1)
 
 func test_station_tags() -> void:
 	var cap := _StationCap.new()

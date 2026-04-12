@@ -11,12 +11,8 @@ extends Resource
 ## and pouches override these to smaller grids (e.g. 15 x 15 storage chest,
 ## 6 x 6 small pouch) in their own PropDef .tres files.
 ##
-## The previous float `capacity_size` field was removed in task-089 — old
-## .tres files carry it as an unknown field (harmless warning) until
-## task-095 rewrites them with proper grid dimensions.
-##
-## accepts_filter restricts which prop tags may be stored in this container
-## (empty = accepts everything). Unchanged by the tetris rewrite.
+## accepts_filter is DEPRECATED — no runtime consumer reads this field. Kept
+## for backward compatibility with level-editor tooling until migrated.
 @export var grid_width: int = 30
 @export var grid_height: int = 40
 @export var accepts_filter: Array[StringName] = []

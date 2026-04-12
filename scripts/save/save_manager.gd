@@ -6,6 +6,7 @@ extends Node
 
 const SAVE_PATH: String = "user://save.json"
 const SAVE_INTERVAL: float = 5.0
+const SCHEMA_VERSION: int = 1
 
 ## System registry: key used in save dict → NodePath or callable to locate the node.
 ## Autoloads are fetched from /root/<Name>.
@@ -34,6 +35,8 @@ func _ready() -> void:
 	_save_timer.autostart = true
 	add_child(_save_timer)
 	_save_timer.timeout.connect(_on_save_timer)
+	# Auto-save at start of each new day
+	_connect_day_started()
 
 
 func _notification(what: int) -> void:
@@ -101,6 +104,29 @@ func delete_save() -> void:
 
 # --- Internal ---
 
+func _connect_day_started() -> void:
+	var dnc: Node = get_node_or_null("/root/DayNightCycle")
+	if dnc == null or not dnc.has_signal("day_started"):
+		return
+	# Guard against duplicate connections. Multiple SaveManager instances
+	# (tests, hot-reload) otherwise register repeated save_now() calls per
+	# day_started emission.
+	if dnc.day_started.is_connected(_on_day_started):
+		return
+	dnc.day_started.connect(_on_day_started)
+
+
+func _exit_tree() -> void:
+	var dnc: Node = get_node_or_null("/root/DayNightCycle")
+	if dnc != null and dnc.has_signal("day_started") \
+			and dnc.day_started.is_connected(_on_day_started):
+		dnc.day_started.disconnect(_on_day_started)
+
+
+func _on_day_started() -> void:
+	save_now()
+
+
 func _on_save_timer() -> void:
 	if _dirty:
 		if save_game():
@@ -108,7 +134,7 @@ func _on_save_timer() -> void:
 
 
 func _collect_save_data() -> Dictionary:
-	var data: Dictionary = {}
+	var data: Dictionary = {"schema_version": SCHEMA_VERSION}
 	for entry: Dictionary in _SYSTEM_KEYS:
 		var key: String = entry["key"]
 		var node: Node = get_node_or_null(entry["path"])
@@ -121,6 +147,9 @@ func _collect_save_data() -> Dictionary:
 
 
 func _distribute_save_data(data: Dictionary) -> void:
+	var version: int = int(data.get("schema_version", 0))
+	if version > SCHEMA_VERSION:
+		push_warning("SaveManager: save file schema_version %d is newer than supported %d — loading anyway." % [version, SCHEMA_VERSION])
 	for entry: Dictionary in _SYSTEM_KEYS:
 		var key: String = entry["key"]
 		if not data.has(key):

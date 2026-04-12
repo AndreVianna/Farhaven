@@ -557,8 +557,7 @@ func register_steps(registry) -> void:
 
 ## Minimal PropRegistry shim that LightingManager._update_torch_from_player
 ## will query for tool -> PropDef lookup. Only `get_def` / `has_def` are
-## exercised. Extends Node because LightingManager types its `_registry`
-## field as `Node` (injection seam for the real PropRegistry autoload).
+## exercised. Extends Node (could also be RefCounted now that _registry is untyped).
 class _StubRegistry extends Node:
 	var _defs: Dictionary
 
@@ -580,7 +579,6 @@ class _StubInventory extends RefCounted:
 		&"pickaxe": &"",
 		&"weapon": &"",
 		&"scanner": &"",
-		&"firestarter": &"",
 	}
 
 	func get_tool(slot: StringName) -> StringName:

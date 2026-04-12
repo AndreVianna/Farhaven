@@ -18,10 +18,11 @@ is a GameEvent with a precondition ("being attacked with tag BLUNT") and an effe
 ("reduce incoming damage"). This keeps the shape uniform and leaves the details to the
 event definitions.
 
-**⚠️ Runtime not yet implemented.** The shape is authored and round-trips through saves, but
-there is no combat loop in delivery-006d that reads `attacks`/`defenses` and dispatches them.
-The fields are `Array[Resource]` placeholders until the combat runtime lands. See
-**[delivery-006d task-088](../../work-001-core/delivery-006d/DETAIL.md)** for the scheduled fix.
+**✅ Runtime implemented in delivery-006e.** `CombatRuntime.apply_attack()` reads the first
+attack from `attacks[0]`, extracts `deal_damage` effect params (damage_type + amount), creates
+a `DamageEvent`, and resolves it through `DamageResolver` (applying EnduranceCap multipliers).
+Falls back to 10 PHYSICAL damage when no combat cap or no deal_damage effect exists.
+See `scripts/combat/combat_runtime.gd`, `damage_resolver.gd`, `damage_event.gd`.
 
 ## Promises to content
 
@@ -111,12 +112,9 @@ slot on PropDef unused for strategy-game props.
 
 ## Known limitations and TODOs
 
-- **🚨 Combat runtime not implemented.** The single biggest gap. `attacks` and `defenses`
-  are authored and serialise correctly, but no engine code reads them and dispatches the
-  events as combat moves. Adding, removing, or editing entries today has zero runtime
-  effect. This is explicitly scheduled for
-  **[delivery-006d task-088](../../work-001-core/delivery-006d/DETAIL.md)**. Until then,
-  CombatCap is a shape-only contract.
+- **✅ Combat runtime implemented (delivery-006e).** `CombatRuntime.apply_attack()` reads
+  attacks and dispatches damage through the DamageResolver pipeline. The first attack in
+  `attacks[0]` is used; multi-attack cycling is not yet implemented.
 - **Array typing is loose.** `attacks` and `defenses` are `Array[Resource]` rather than
   `Array[GameEvent]` because of the cross-script type constraint. This is a GDScript
   limitation, not a design choice, and it means content can author garbage elements

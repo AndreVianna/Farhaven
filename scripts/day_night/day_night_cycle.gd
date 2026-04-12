@@ -71,7 +71,9 @@ var _lighting_tween: Tween = null
 
 
 func _ready() -> void:
-	HexGrid.tile_entered.connect(_on_tile_entered)
+	var grid: Node = get_node_or_null("/root/HexGrid")
+	if grid != null:
+		grid.tile_entered.connect(_on_tile_entered)
 
 
 const TIME_SCALE: float = 1.0  # Set > 1.0 for timelapse testing (e.g. 20.0)

@@ -12,19 +12,8 @@ class_name ScannerSystem
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-# --- Scan duration per prop category (seconds) ---
-
-const SCAN_DURATIONS: Dictionary = {
-	_Prop.Category.PLANT:   2.0,
-	_Prop.Category.MINERAL: 2.0,
-	_Prop.Category.ANIMAL:  3.0,
-	_Prop.Category.FUNGI:   2.0,
-	_Prop.Category.LIQUID:  2.0,
-	_Prop.Category.OOZE:    2.0,
-}
-
-## Scan duration override for anomalies (overrides prop_category duration when show_as_anomaly=true)
-const SCAN_DURATION_ANOMALY: float = 3.0
+# --- Fallback scan duration when PropDef has no catalogable.scan_time ---
+const DEFAULT_SCAN_DURATION: float = 2.0
 
 # --- Proximity scan constants ---
 
@@ -61,11 +50,12 @@ var _scan_duration: float = 2.0
 
 var _grid: Node  # HexGrid autoload
 var _player: Node3D  # Parent Player node
+var _prop_registry: Node = null  # Cached PropRegistry autoload
 
 
 func _ready() -> void:
 	if _grid == null:
-		_grid = HexGrid
+		_grid = get_node_or_null("/root/HexGrid")
 	_player = get_parent()
 	_catalog = _Catalog.new()
 	_catalog.initialize(_grid, null)
@@ -128,16 +118,12 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		_scan_target_entry_id = best_entry_id
 		_scan_progress = 0.0
 		var entry = _catalog.get_entry(best_entry_id)
-		var prop_category: int = _Prop.Category.PLANT
-		var is_anomaly: bool = false
-		if entry != null:
-			prop_category = entry.prop_category
-			if entry.catalogable != null and entry.catalogable.show_as_anomaly:
-				is_anomaly = true
-		if is_anomaly:
-			_scan_duration = SCAN_DURATION_ANOMALY
+		if entry != null and entry.catalogable != null and entry.catalogable.scan_time > 0.0:
+			_scan_duration = entry.catalogable.scan_time
 		else:
-			_scan_duration = SCAN_DURATIONS.get(prop_category, 2.0)
+			# Guard against content-authored 0 or negative scan_time to avoid
+			# division-by-zero / inverted progress downstream.
+			_scan_duration = DEFAULT_SCAN_DURATION
 		# Apply scanning survival cost + start drain
 		var survival: Node = _get_survival_system()
 		if survival:
@@ -205,10 +191,11 @@ func _check_passive_identification(coords: Vector2i) -> void:
 	if tile == null:
 		return
 
+	var reg: Node = _get_prop_registry()
 	for prop in tile.get_props():
-		if not PropRegistry.has_def(prop.type):
+		if reg == null or not reg.has_def(prop.type):
 			continue
-		var def = PropRegistry.get_def(prop.type)
+		var def = reg.get_def(prop.type)
 		if def.catalogable == null or String(def.display_name) == "":
 			continue
 		var entry_id: StringName = def.id
@@ -244,6 +231,15 @@ func _resolve_display_bucket(entry) -> int:
 	if entry.catalogable != null and entry.catalogable.show_as_anomaly:
 		return _Catalog.ANOMALY_BUCKET
 	return entry.prop_category
+
+
+# --- Autoload Helpers ---
+
+
+func _get_prop_registry() -> Node:
+	if _prop_registry == null:
+		_prop_registry = get_node_or_null("/root/PropRegistry")
+	return _prop_registry
 
 
 # --- Survival System Helper ---

@@ -10,6 +10,16 @@ const _PropDef = preload("res://scripts/data/prop_def.gd")
 const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 
 
+## Resolve the PropRegistry — prefer ctx.prop_registry, fall back to autoload.
+static func _get_prop_registry(ctx: WorldContext) -> Node:
+	if ctx.prop_registry != null:
+		return ctx.prop_registry
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		return tree.root.get_node_or_null("PropRegistry")
+	return null
+
+
 ## Evaluate a single predicate against a world context. Returns true if satisfied.
 static func evaluate(pred: Predicate, ctx: WorldContext) -> bool:
 	match pred.kind:
@@ -66,6 +76,8 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 	if inv == null:
 		push_warning("PredicateEvaluator: 'has_tool' — player has no inventory, returning false")
 		return false
+	# Resolve registry once for the whole call (avoids repeated SceneTree lookups).
+	var reg: Node = _get_prop_registry(ctx)
 	# 1. Direct slot lookup — accepts any slot name (firestarter, axe, etc.),
 	#    not just the hardcoded legacy set. Inventory.get_tool returns &"" for
 	#    unknown slots, so this is safe for arbitrary tool_id strings.
@@ -83,16 +95,16 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 				continue
 			if equipped == tool_id:
 				return true
-			var sdef: _PropDef = PropRegistry.get_def(equipped)
+			var sdef: _PropDef = reg.get_def(equipped) if reg != null else null
 			if sdef != null and sdef.tool_slot == tool_id:
 				return true
-	# 2. Search grid inventory for tools matching tool_id.
+	# 3. Search grid inventory for tools matching tool_id.
 	var slots: Array = inv.get_slots()
 	for slot in slots:
 		var item_type: StringName = slot["type"]
 		if item_type == tool_id:
 			return true
-		var def: _PropDef = PropRegistry.get_def(item_type)
+		var def: _PropDef = reg.get_def(item_type) if reg != null else null
 		if def == null:
 			continue
 		if def.tool_slot == tool_id:
@@ -110,11 +122,12 @@ static func _eval_at_station(params: Dictionary, ctx: WorldContext) -> bool:
 	var tag: StringName = StringName(params.get("tag", &""))
 	if tag == &"":
 		return false
-	# station is a Prop instance; look up its PropDef via PropRegistry.
+	# station is a Prop instance; look up its PropDef via ctx.prop_registry.
 	var station_type: StringName = ctx.station.type if "type" in ctx.station else &""
 	if station_type == &"":
 		return false
-	var def: _PropDef = PropRegistry.get_def(station_type)
+	var reg: Node = _get_prop_registry(ctx)
+	var def: _PropDef = reg.get_def(station_type) if reg != null else null
 	if def == null or def.station == null:
 		return false
 	return def.station.station_tags.has(tag)
@@ -231,6 +244,8 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 	var count_ge: int = int(params.get("count_ge", 1))
 	if tag == &"":
 		return false
+	# Resolve registry once before the loops (avoids per-prop SceneTree lookups).
+	var adj_reg: Node = _get_prop_registry(ctx)
 	var neighbors: Array = ctx.grid.get_neighbors(ctx.tile.coords)
 	var match_count: int = 0
 	for neighbor_coords: Vector2i in neighbors:
@@ -252,7 +267,7 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 					return true
 				break  # One match per tile is enough
 			# Check PropDef tags
-			var def: _PropDef = PropRegistry.get_def(prop_type)
+			var def: _PropDef = adj_reg.get_def(prop_type) if adj_reg != null else null
 			if def != null and def.has_tag(tag):
 				match_count += 1
 				if match_count >= count_ge:
@@ -318,15 +333,17 @@ static func _eval_container_has(params: Dictionary, ctx: WorldContext) -> bool:
 	var container_props: Array = _get_container_contents(ctx)
 	if container_props.is_empty():
 		return false
+	# Resolve registry once before the loop (avoids per-item SceneTree lookups).
+	var reg: Node = _get_prop_registry(ctx)
 	var match_count: int = 0
 	for item in container_props:
 		var item_type: StringName = &""
 		if item is Dictionary:
 			item_type = StringName(item.get("type", &""))
-			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)))
+			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)), reg)
 		elif "type" in item:
 			item_type = item.type
-			match_count += _count_matches(item_type, ref_or_tag, 1)
+			match_count += _count_matches(item_type, ref_or_tag, 1, reg)
 		if match_count >= count_ge:
 			return true
 	return false
@@ -448,14 +465,14 @@ static func _get_container_contents(ctx: WorldContext) -> Array:
 
 
 ## Count how many of an item match a ref or tag.
-static func _count_matches(item_type: StringName, ref_or_tag: StringName, quantity: int) -> int:
+static func _count_matches(item_type: StringName, ref_or_tag: StringName, quantity: int, prop_reg: Node = null) -> int:
 	if item_type == &"":
 		return 0
 	# Direct ref match
 	if item_type == ref_or_tag:
 		return quantity
 	# Tag match: look up PropDef and check tags
-	var def: _PropDef = PropRegistry.get_def(item_type)
+	var def: _PropDef = prop_reg.get_def(item_type) if prop_reg != null else null
 	if def != null and def.has_tag(ref_or_tag):
 		return quantity
 	return 0
