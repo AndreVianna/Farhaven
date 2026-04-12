@@ -41,12 +41,14 @@ tools on the grid and querying via `find_best_tool_for_action`.
 - **`place_item_at(type, origin, rotation) -> int` places at an explicit cell.** Returns 0
   if the shape (at that rotation) collides with any occupied cell or goes out of bounds.
 - **`remove_item_by_id(item_id) -> bool` removes a specific instance.** Returns `false` if
-  the id is unknown. Clears every cell the item occupied and emits `item_removed(type, 1)`
-  and `inventory_changed`.
+  the id is unknown. Clears every cell the item occupied and removes the item record. This
+  is a low-level helper and does not itself emit `item_removed` or `inventory_changed` —
+  callers that need signals should go through `remove_item(type, amount)`.
 - **`move_item(item_id, new_origin, new_rotation) -> bool` is atomic.** Clears the old
   cells, checks the new placement (excluding the item's own cells via `exclude_id`), and
   either commits the move or rolls back to the original position. Returns `false` without
-  side effects if the new placement is invalid.
+  side effects if the new placement is invalid. Low-level helper — does not emit
+  `inventory_changed`.
 - **`can_fit(shape, origin, rotation, exclude_id) -> bool` is a pure query.** Does not
   mutate state. `exclude_id` allows checking whether an item can move to a new position
   without treating its own current cells as blocked.

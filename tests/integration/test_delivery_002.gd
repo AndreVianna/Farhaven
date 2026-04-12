@@ -496,31 +496,32 @@ func test_mutual_exclusion_inventory_closes_catalog() -> void:
 
 
 # ===========================================================================
-# AC5: 12 slots, 13th rejected, stacking, tool slots
+# AC5 (migrated to grid model in delivery-006f): grid cells, no stacking, tool routing
 # ===========================================================================
 
-func test_ac5_12_base_slots() -> void:
+func test_ac5_default_grid_is_30x40() -> void:
+	# Default grid is 30 wide x 40 tall = 1200 cells.
 	var inv: Inventory = _Inventory.new()
-	assert_int(inv.get_max_slots()).is_equal(12)
+	assert_int(inv.get_max_slots()).is_equal(1200)
 	assert_int(inv.get_used_slot_count()).is_equal(0)
 
 
-func test_ac5_stacking_within_max_stack() -> void:
+func test_ac5_multiple_berries_each_take_a_cell() -> void:
+	# Grid model: no stacking. Each berry (1-cell shape) occupies a distinct cell.
 	var inv: Inventory = _Inventory.new()
-	inv.capacity_size = 200.0  # Override for stack test — need room for 80 wood (80 * 1.0)
-	inv.add_item(ID_WOOD, 50)
-	inv.add_item(ID_WOOD, 30)
-	assert_int(inv.get_count(ID_WOOD)).is_equal(80)
-	assert_int(inv.get_used_slot_count()).is_equal(1)
+	inv.add_item(ID_BERRIES, 50)
+	inv.add_item(ID_BERRIES, 30)
+	assert_int(inv.get_count(ID_BERRIES)).is_equal(80)
+	assert_int(inv.get_used_slot_count()).is_equal(80)  # 80 instances
 
 
-func test_ac5_stacking_overflow_creates_new_slot() -> void:
+func test_ac5_high_count_still_fits_in_grid() -> void:
+	# 1200 cells can hold up to 1200 single-cell items like berries.
 	var inv: Inventory = _Inventory.new()
-	inv.capacity_size = 200.0  # Override for stack test — need room for 109 wood (109 * 1.0)
-	inv.add_item(ID_WOOD, 99)
-	inv.add_item(ID_WOOD, 10)
-	assert_int(inv.get_count(ID_WOOD)).is_equal(109)
-	assert_int(inv.get_used_slot_count()).is_equal(2)
+	inv.add_item(ID_BERRIES, 99)
+	inv.add_item(ID_BERRIES, 10)
+	assert_int(inv.get_count(ID_BERRIES)).is_equal(109)
+	assert_int(inv.get_used_slot_count()).is_equal(109)
 
 
 func test_ac5_tool_slots_starting_state() -> void:
@@ -539,11 +540,11 @@ func test_ac5_tool_routing_rejection() -> void:
 	assert_int(inv.get_used_slot_count()).is_equal(0)
 
 
-func test_ac5_expansion_adds_12_slots() -> void:
+func test_ac5_expansion_adds_rows() -> void:
+	# expand() now adds rows to the grid. 12 rows at width 30 = +360 cells.
 	var inv: Inventory = _Inventory.new()
 	inv.expand(12)
-	assert_int(inv.get_max_slots()).is_equal(24)
-	assert_int(inv.get_slots().size()).is_equal(24)
+	assert_int(inv.get_max_slots()).is_equal(1200 + 360)  # 30 * 52
 
 
 # ===========================================================================
@@ -839,7 +840,8 @@ func test_inventory_save_load_round_trip() -> void:
 	assert_int(inv2.get_count(ID_WOOD)).is_equal(40)
 	assert_int(inv2.get_count(ID_BERRIES)).is_equal(10)
 	assert_object(inv2.get_tool(&"axe")).is_equal(ID_AXE)
-	assert_int(inv2.get_max_slots()).is_equal(24)
+	# Grid expanded by 12 rows * 30 width = +360 cells from default 1200.
+	assert_int(inv2.get_max_slots()).is_equal(1560)
 
 
 func test_catalog_save_load_round_trip() -> void:
