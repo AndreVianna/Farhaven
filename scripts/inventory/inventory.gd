@@ -271,7 +271,8 @@ func get_count(type: StringName) -> int:
 
 ## Find an item in the grid (or tool slots) whose PropDef supports the
 ## requested action. Returns item_id (>0), -1 if found in a tool slot, or 0.
-## TODO(task-096): implement PropDef.supports_actions; for now returns 0.
+## TODO(task-096): add PropDef.supports_actions field; for now uses tool_slot
+## heuristic as fallback.
 func find_best_tool_for_action(action: StringName) -> int:
 	# Search grid items — PropDef.supports_actions will be added in task-096.
 	for item_id: int in _items:
