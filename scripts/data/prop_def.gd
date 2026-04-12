@@ -10,7 +10,6 @@ class_name PropDef extends Gear
 @export var placeable: PlaceableCap = null
 @export var container: ContainerCap = null
 @export var light: LightCap = null
-@export var movable: MovableCap = null
 @export var station: StationCap = null
 @export var catalogable: CatalogableCap = null
 @export var endurance: EnduranceCap = null
@@ -81,7 +80,6 @@ func has_capability(cap_name: StringName) -> bool:
 		&"placeable": return placeable != null
 		&"container": return container != null
 		&"light": return light != null
-		&"movable": return movable != null
 		&"station": return station != null
 		&"catalogable": return catalogable != null
 		&"endurance": return endurance != null

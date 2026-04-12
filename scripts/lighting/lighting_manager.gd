@@ -24,7 +24,7 @@ signal light_source_moved(position: Vector2)
 # --- Injectable dependencies (set before _ready for testing) ---
 var _grid: Node = null      # HexGrid autoload or mock
 var _dnc: Node = null       # DayNightCycle autoload or mock
-var _registry: Node = null  # PropRegistry autoload or mock
+var _registry = null  # PropRegistry autoload or mock (untyped: allows RefCounted BDD shims)
 
 # --- State ---
 
@@ -183,7 +183,7 @@ func _update_torch_from_player(player: Node) -> void:
 	# Check all tool slots for an item with light capability
 	var found_light: bool = false
 	var light_radius: float = 3.0 * RING_TO_WORLD
-	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner", &"firestarter"]:
+	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner"]:
 		var tool_id: StringName = inv.get_tool(slot)
 		if tool_id == &"":
 			continue

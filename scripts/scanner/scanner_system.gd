@@ -12,19 +12,8 @@ class_name ScannerSystem
 const _Catalog = preload("res://scripts/scanner/catalog.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-# --- Scan duration per prop category (seconds) ---
-
-const SCAN_DURATIONS: Dictionary = {
-	_Prop.Category.PLANT:   2.0,
-	_Prop.Category.MINERAL: 2.0,
-	_Prop.Category.ANIMAL:  3.0,
-	_Prop.Category.FUNGI:   2.0,
-	_Prop.Category.LIQUID:  2.0,
-	_Prop.Category.OOZE:    2.0,
-}
-
-## Scan duration override for anomalies (overrides prop_category duration when show_as_anomaly=true)
-const SCAN_DURATION_ANOMALY: float = 3.0
+# --- Fallback scan duration when PropDef has no catalogable.scan_time ---
+const DEFAULT_SCAN_DURATION: float = 2.0
 
 # --- Proximity scan constants ---
 
@@ -135,10 +124,10 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 			prop_category = entry.prop_category
 			if entry.catalogable != null and entry.catalogable.show_as_anomaly:
 				is_anomaly = true
-		if is_anomaly:
-			_scan_duration = SCAN_DURATION_ANOMALY
+		if entry != null and entry.catalogable != null:
+			_scan_duration = entry.catalogable.scan_time
 		else:
-			_scan_duration = SCAN_DURATIONS.get(prop_category, 2.0)
+			_scan_duration = DEFAULT_SCAN_DURATION
 		# Apply scanning survival cost + start drain
 		var survival: Node = _get_survival_system()
 		if survival:
