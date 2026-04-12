@@ -22,6 +22,7 @@ var _tool_slot_nodes: Dictionary = {}
 var _pending_use_type: StringName = &""
 var _confirm_dialog: ConfirmationDialog
 var _grid_canvas: Control  # GridCanvas inner class instance
+var _pending_inventory = null  # set_inventory() called before _ready()
 
 @onready var _tool_slots_row: HBoxContainer = $VBox/ToolSlotsRow
 @onready var _scroll: ScrollContainer = $VBox/ScrollContainer
@@ -43,6 +44,12 @@ func _ready() -> void:
 	_grid_canvas = GridCanvas.new()
 	_grid_canvas.item_clicked.connect(_on_grid_item_clicked)
 	_scroll.add_child(_grid_canvas)
+
+	# Apply any inventory that was set before _ready() ran.
+	if _pending_inventory != null:
+		_grid_canvas.set_inventory(_pending_inventory)
+		_refresh_all()
+		_pending_inventory = null
 
 	# Toxic warning dialog
 	_confirm_dialog = ConfirmationDialog.new()
@@ -73,8 +80,13 @@ func set_inventory(inv) -> void:
 	if _inventory != null:
 		_inventory.inventory_changed.connect(_on_inventory_changed)
 		_inventory.tool_changed.connect(_on_tool_changed)
-		_grid_canvas.set_inventory(_inventory)
-		_refresh_all()
+		# Guard against set_inventory() being called before _ready() creates
+		# _grid_canvas. We stash the inventory and apply it in _ready().
+		if _grid_canvas != null:
+			_grid_canvas.set_inventory(_inventory)
+			_refresh_all()
+		else:
+			_pending_inventory = _inventory
 
 
 func set_catalog(cat) -> void:
@@ -105,7 +117,11 @@ func close() -> void:
 func _refresh_all() -> void:
 	if _inventory == null:
 		return
-	_grid_canvas.queue_redraw()
+	if _grid_canvas != null:
+		# Recompute custom_minimum_size in case the grid dimensions changed
+		# (e.g. expand(), capacity_size setter, or load_save_data).
+		_grid_canvas._update_size()
+		_grid_canvas.queue_redraw()
 	for slot_name: StringName in TOOL_SLOT_ORDER:
 		var tool_type: StringName = _inventory.get_tool(slot_name)
 		if _tool_slot_nodes.has(slot_name):
@@ -275,8 +291,6 @@ class GridCanvas extends Control:
 		var item_id: int = _inventory.get_grid_cell(cell_x, cell_y)
 		if item_id == 0:
 			return
-		# Consume the click so ScrollContainer doesn't also process it.
-		accept_event()
 
 		# Get the item type
 		var item: Variant = _inventory.get_item(item_id)
@@ -285,8 +299,10 @@ class GridCanvas extends Control:
 
 		var type: StringName = item["type"]
 
-		# Only act on consumables
+		# Only act on consumables. We defer accept_event() until we know the
+		# click will actually be consumed, so ScrollContainer drag/scroll
+		# gestures starting on non-consumable items still work.
 		var def: _InnerPropDef = PropRegistry.get_def(type)
 		if def != null and def.is_consumable:
-			item_clicked.emit(type)
 			accept_event()
+			item_clicked.emit(type)

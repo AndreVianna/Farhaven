@@ -246,9 +246,13 @@ func move_item(item_id: int, new_origin: Vector2i, new_rotation: int) -> bool:
 
 ## Return a copy of an item's data, or null if not found.
 func get_item(item_id: int) -> Variant:
-	if _items.has(item_id):
-		return _items[item_id].duplicate()
-	return null
+	if not _items.has(item_id):
+		return null
+	var item: Dictionary = _items[item_id].duplicate()
+	# Deep-copy the shape array so callers can't mutate internal state.
+	if item.has("shape"):
+		item["shape"] = (item["shape"] as Array).duplicate()
+	return item
 
 
 ## Return all item_ids for a given prop type.
@@ -264,7 +268,11 @@ func get_items_by_type(type: StringName) -> Array[int]:
 func get_all_items() -> Dictionary:
 	var copy: Dictionary = {}
 	for item_id: int in _items:
-		copy[item_id] = _items[item_id].duplicate()
+		var entry: Dictionary = _items[item_id].duplicate()
+		# Deep-copy the shape array so callers can't mutate internal state.
+		if entry.has("shape"):
+			entry["shape"] = (entry["shape"] as Array).duplicate()
+		copy[item_id] = entry
 	return copy
 
 
@@ -530,6 +538,13 @@ func get_save_data() -> Dictionary:
 
 
 func load_save_data(data: Dictionary) -> void:
+	# Reset legacy tool slots to defaults before applying loaded data so
+	# stale values from a previous session don't leak into the new one.
+	_tool_slots[&"axe"] = &""
+	_tool_slots[&"pickaxe"] = &""
+	_tool_slots[&"weapon"] = &""
+	_tool_slots[&"scanner"] = &""
+
 	# Detect save format: new grid-based vs legacy slot-based.
 	if data.has("items") and data.has("grid_width"):
 		_load_grid_save(data)
