@@ -138,11 +138,11 @@ func _clear_cells(item_id: int) -> void:
 
 
 ## Resolve the base shape for a prop type from PropRegistry.
+## Empty shapes are normalized to a single cell so placement always works.
 func _get_shape_for_type(type: StringName) -> Array[Vector2i]:
 	var def: _PropDef = PropRegistry.get_def(type)
-	if def != null and def.portable != null:
+	if def != null and def.portable != null and def.portable.slot_shape.size() > 0:
 		return def.portable.slot_shape
-	# Default: single cell.
 	return [Vector2i(0, 0)]
 
 
@@ -260,6 +260,21 @@ func get_items_by_type(type: StringName) -> Array[int]:
 	return result
 
 
+## Read-only copy of all items. Keys are item_ids, values are item dicts.
+func get_all_items() -> Dictionary:
+	var copy: Dictionary = {}
+	for item_id: int in _items:
+		copy[item_id] = _items[item_id].duplicate()
+	return copy
+
+
+## Return the item_id occupying grid cell (x, y), or 0 if empty/out-of-bounds.
+func get_grid_cell(x: int, y: int) -> int:
+	if not _is_in_bounds(x, y):
+		return 0
+	return _grid[_cell_index(x, y)]
+
+
 ## Count instances of a given prop type in the grid.
 func get_count(type: StringName) -> int:
 	var count: int = 0
@@ -271,17 +286,13 @@ func get_count(type: StringName) -> int:
 
 ## Find an item in the grid (or tool slots) whose PropDef supports the
 ## requested action. Returns item_id (>0), -1 if found in a tool slot, or 0.
-## TODO(task-096): add PropDef.supports_actions field; for now uses tool_slot
-## heuristic as fallback.
 func find_best_tool_for_action(action: StringName) -> int:
-	# Search grid items — PropDef.supports_actions will be added in task-096.
+	# Search grid items via PropDef.supports_actions.
 	for item_id: int in _items:
 		var type: StringName = _items[item_id]["type"]
 		var def: _PropDef = PropRegistry.get_def(type)
-		if def != null and &"supports_actions" in def:
-			var actions: Variant = def.get(&"supports_actions")
-			if actions is Array and actions.has(action):
-				return item_id
+		if def != null and def.supports_actions.size() > 0 and def.supports_actions.has(action):
+			return item_id
 	# Fallback: check tool slots (backward compat until task-096 migrates).
 	var _slot_map: Dictionary = {
 		&"chop": &"axe",
@@ -407,13 +418,21 @@ func expand(additional_rows: int) -> void:
 
 
 ## Rebuild the flat grid array from the items dict (after resize, load, etc.).
+## Items that no longer fit after a resize are removed with a warning.
 func _rebuild_grid() -> void:
 	_grid = PackedInt32Array()
 	_grid.resize(grid_width * grid_height)
 	_grid.fill(0)
+	var to_remove: Array[int] = []
 	for item_id: int in _items:
 		var item: Dictionary = _items[item_id]
-		_write_cells(item_id, item["shape"], item["origin"], item["rotation"])
+		if can_fit(item["shape"], item["origin"], item["rotation"]):
+			_write_cells(item_id, item["shape"], item["origin"], item["rotation"])
+		else:
+			push_warning("Inventory._rebuild_grid: item %d no longer fits — removed" % item_id)
+			to_remove.append(item_id)
+	for item_id in to_remove:
+		_items.erase(item_id)
 
 
 # ---------------------------------------------------------------------------
@@ -435,15 +454,16 @@ func get_capacity_size() -> float:
 
 
 ## Writable capacity_size for backward compat (tests, legacy saves).
-## Setting this resizes the grid to approximately that many cells.
+## Keeps grid_width fixed and only increases grid_height. Refuses shrink.
 var capacity_size: float:
 	get:
 		return float(grid_width * grid_height)
 	set(value):
-		var total_cells: int = int(max(1.0, value))
-		var side: int = int(ceil(sqrt(float(total_cells))))
-		grid_width = side
-		grid_height = int(ceil(float(total_cells) / float(side)))
+		var target_cells: int = int(max(1.0, value))
+		var current_cells: int = grid_width * grid_height
+		if target_cells <= current_cells:
+			return  # refuse shrink
+		grid_height = int(ceil(float(target_cells) / float(grid_width)))
 		_rebuild_grid()
 
 

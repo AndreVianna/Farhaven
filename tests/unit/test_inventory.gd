@@ -2,8 +2,8 @@ extends GdUnitTestSuite
 class_name TestInventory
 
 ## Tests for the grid-based Inventory (delivery-006f, tasks 090+091).
-## All current props default to single-cell shapes (slot_shape = [Vector2i(0,0)]).
-## Multi-cell shape tests use the static rotation/bounds utilities directly.
+## Props have varying shapes: berries/fiber/rock are 1-cell, wood is 2-cell,
+## stone is 2x2 (4-cell). Tests that need single-cell items use berries/fiber.
 
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
 
@@ -163,7 +163,7 @@ func test_find_placement_finds_first_fit() -> void:
 
 
 func test_find_placement_skips_occupied_cell() -> void:
-	_inv.place_item_at(ID_WOOD, Vector2i(0, 0))
+	_inv.place_item_at(ID_BERRIES, Vector2i(0, 0))
 	var result: Dictionary = _inv.find_placement(_single)
 	assert_bool(result.is_empty()).is_false()
 	# Should find (1,0) next since scanning left-to-right
@@ -175,7 +175,7 @@ func test_find_placement_skips_occupied_cell() -> void:
 # ---------------------------------------------------------------------------
 
 func test_remove_item_by_id_frees_cells() -> void:
-	var id: int = _inv.place_item_at(ID_WOOD, Vector2i(0, 0))
+	var id: int = _inv.place_item_at(ID_BERRIES, Vector2i(0, 0))
 	assert_float(_inv.get_current_size()).is_equal(1.0)
 	var ok: bool = _inv.remove_item_by_id(id)
 	assert_bool(ok).is_true()
@@ -199,8 +199,8 @@ func test_move_item_to_new_position() -> void:
 
 
 func test_move_item_fails_on_overlap() -> void:
-	var id1: int = _inv.place_item_at(ID_WOOD, Vector2i(0, 0))
-	_inv.place_item_at(ID_STONE, Vector2i(1, 0))
+	var id1: int = _inv.place_item_at(ID_BERRIES, Vector2i(0, 0))
+	_inv.place_item_at(ID_BERRIES, Vector2i(1, 0))
 	var ok: bool = _inv.move_item(id1, Vector2i(1, 0), 0)
 	assert_bool(ok).is_false()
 	# Item should still be in original position
@@ -222,20 +222,20 @@ func test_get_item_returns_null_for_invalid_id() -> void:
 
 
 func test_get_items_by_type() -> void:
-	_inv.place_item_at(ID_WOOD, Vector2i(0, 0))
-	_inv.place_item_at(ID_WOOD, Vector2i(1, 0))
-	_inv.place_item_at(ID_STONE, Vector2i(2, 0))
-	var wood_ids: Array[int] = _inv.get_items_by_type(ID_WOOD)
-	assert_int(wood_ids.size()).is_equal(2)
-	var stone_ids: Array[int] = _inv.get_items_by_type(ID_STONE)
-	assert_int(stone_ids.size()).is_equal(1)
+	_inv.place_item_at(ID_BERRIES, Vector2i(0, 0))
+	_inv.place_item_at(ID_BERRIES, Vector2i(1, 0))
+	_inv.place_item_at(ID_FIBER, Vector2i(2, 0))
+	var berry_ids: Array[int] = _inv.get_items_by_type(ID_BERRIES)
+	assert_int(berry_ids.size()).is_equal(2)
+	var fiber_ids: Array[int] = _inv.get_items_by_type(ID_FIBER)
+	assert_int(fiber_ids.size()).is_equal(1)
 
 
 func test_get_count() -> void:
-	_inv.place_item_at(ID_WOOD, Vector2i(0, 0))
-	_inv.place_item_at(ID_WOOD, Vector2i(1, 0))
-	assert_int(_inv.get_count(ID_WOOD)).is_equal(2)
-	assert_int(_inv.get_count(ID_STONE)).is_equal(0)
+	_inv.place_item_at(ID_BERRIES, Vector2i(0, 0))
+	_inv.place_item_at(ID_BERRIES, Vector2i(1, 0))
+	assert_int(_inv.get_count(ID_BERRIES)).is_equal(2)
+	assert_int(_inv.get_count(ID_FIBER)).is_equal(0)
 
 
 # ---------------------------------------------------------------------------
@@ -304,27 +304,27 @@ func test_is_full_false_when_empty() -> void:
 
 
 func test_fill_small_grid_completely() -> void:
-	# 5x5 = 25 cells, all single-cell items
-	var added: int = _inv.add_item(ID_WOOD, 25)
+	# 5x5 = 25 cells; berries are single-cell
+	var added: int = _inv.add_item(ID_BERRIES, 25)
 	assert_int(added).is_equal(25)
 	assert_bool(_inv.is_full()).is_true()
 
 
 func test_add_item_on_full_grid_returns_zero() -> void:
-	_inv.add_item(ID_WOOD, 25)
-	var added: int = _inv.add_item(ID_STONE, 1)
+	_inv.add_item(ID_BERRIES, 25)
+	var added: int = _inv.add_item(ID_FIBER, 1)
 	assert_int(added).is_equal(0)
 
 
 func test_add_item_partial_fit_on_nearly_full_grid() -> void:
-	_inv.add_item(ID_WOOD, 23)
-	var added: int = _inv.add_item(ID_STONE, 5)
+	_inv.add_item(ID_BERRIES, 23)
+	var added: int = _inv.add_item(ID_FIBER, 5)
 	assert_int(added).is_equal(2)
 	assert_bool(_inv.is_full()).is_true()
 
 
 func test_get_remaining_capacity() -> void:
-	_inv.add_item(ID_WOOD, 10)
+	_inv.add_item(ID_BERRIES, 10)
 	assert_float(_inv.get_remaining_capacity()).is_equal(15.0)
 
 
@@ -342,27 +342,27 @@ func test_capacity_size_property_set_resizes_grid() -> void:
 
 
 func test_get_current_size_tracks_occupied_cells() -> void:
-	_inv.add_item(ID_WOOD, 7)
+	_inv.add_item(ID_BERRIES, 7)
 	assert_float(_inv.get_current_size()).is_equal(7.0)
 
 
 func test_get_slots_groups_by_type() -> void:
-	_inv.add_item(ID_WOOD, 3)
-	_inv.add_item(ID_STONE, 2)
+	_inv.add_item(ID_BERRIES, 3)
+	_inv.add_item(ID_FIBER, 2)
 	var slots: Array[Dictionary] = _inv.get_slots()
 	assert_int(slots.size()).is_equal(2)
 	var types: Array = []
 	for s in slots:
 		types.append(s["type"])
-	assert_bool(types.has(ID_WOOD)).is_true()
-	assert_bool(types.has(ID_STONE)).is_true()
+	assert_bool(types.has(ID_BERRIES)).is_true()
+	assert_bool(types.has(ID_FIBER)).is_true()
 
 
 func test_get_stacks_includes_size_info() -> void:
-	_inv.add_item(ID_WOOD, 4)
+	_inv.add_item(ID_BERRIES, 4)
 	var stacks: Array[Dictionary] = _inv.get_stacks()
 	assert_int(stacks.size()).is_equal(1)
-	assert_object(stacks[0]["type"]).is_equal(ID_WOOD)
+	assert_object(stacks[0]["type"]).is_equal(ID_BERRIES)
 	assert_int(stacks[0]["count"]).is_equal(4)
 	assert_float(stacks[0]["size_per_unit"]).is_equal(1.0)
 	assert_float(stacks[0]["total_size"]).is_equal(4.0)
@@ -483,12 +483,12 @@ func test_add_item_emits_inventory_changed() -> void:
 
 
 func test_add_item_on_full_grid_emits_inventory_full() -> void:
-	_inv.add_item(ID_WOOD, 25)
+	_inv.add_item(ID_BERRIES, 25)
 	var fired: Array = []
 	_inv.inventory_full.connect(func(t: StringName, r: int) -> void: fired.append({"type": t, "rejected": r}))
-	_inv.add_item(ID_STONE, 3)
+	_inv.add_item(ID_FIBER, 3)
 	assert_int(fired.size()).is_equal(1)
-	assert_object(fired[0]["type"]).is_equal(ID_STONE)
+	assert_object(fired[0]["type"]).is_equal(ID_FIBER)
 	assert_int(fired[0]["rejected"]).is_equal(3)
 
 
@@ -531,12 +531,12 @@ func test_set_tool_emits_tool_changed() -> void:
 
 
 func test_partial_add_emits_both_item_added_and_inventory_full() -> void:
-	_inv.add_item(ID_WOOD, 23)
+	_inv.add_item(ID_BERRIES, 23)
 	var added_fired: Array = []
 	var full_fired: Array = []
 	_inv.item_added.connect(func(t: StringName, a: int) -> void: added_fired.append(a))
 	_inv.inventory_full.connect(func(t: StringName, r: int) -> void: full_fired.append(r))
-	_inv.add_item(ID_STONE, 5)
+	_inv.add_item(ID_FIBER, 5)
 	assert_int(added_fired.size()).is_equal(1)
 	assert_int(added_fired[0]).is_equal(2)
 	assert_int(full_fired.size()).is_equal(1)

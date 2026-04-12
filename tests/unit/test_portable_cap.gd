@@ -42,10 +42,14 @@ func test_custom_blob_shape() -> void:
 	assert_int(cap.slot_shape.size()).is_equal(4)
 
 
-func test_empty_shape_is_allowed_but_represents_nothing() -> void:
+func test_empty_shape_normalized_by_inventory() -> void:
+	## PortableCap allows empty shapes at the Resource level, but Inventory
+	## normalizes them to [Vector2i(0,0)] via _get_shape_for_type.
 	var cap := _PortableCap.new()
 	cap.slot_shape = []
+	# The Resource itself stores what was set.
 	assert_int(cap.slot_shape.size()).is_equal(0)
+	# The Inventory engine treats this as a 1-cell default (tested in test_inventory.gd).
 
 
 func test_cap_is_resource() -> void:

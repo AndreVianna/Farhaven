@@ -66,14 +66,18 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 	if inv == null:
 		push_warning("PredicateEvaluator: 'has_tool' — player has no inventory, returning false")
 		return false
-	# 1. Check scanner tool slot (body-integrated).
-	var scanner: StringName = inv.get_tool(&"scanner")
-	if scanner != &"":
-		if scanner == tool_id:
+	# 1. Check all legacy tool slots (scanner is body-integrated; others kept
+	#    during transition until task-096 migrates tools fully into the grid).
+	var _legacy_slots: Array[StringName] = [&"scanner", &"axe", &"pickaxe", &"weapon"]
+	for slot_name: StringName in _legacy_slots:
+		var equipped: StringName = inv.get_tool(slot_name)
+		if equipped == &"":
+			continue
+		if equipped == tool_id:
 			return true
-		if &"scanner" == tool_id:
+		if slot_name == tool_id:
 			return true
-		var sdef: _PropDef = PropRegistry.get_def(scanner)
+		var sdef: _PropDef = PropRegistry.get_def(equipped)
 		if sdef != null and sdef.tool_slot == tool_id:
 			return true
 	# 2. Search grid inventory for tools matching tool_id.

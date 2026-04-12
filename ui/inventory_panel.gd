@@ -224,9 +224,10 @@ class GridCanvas extends Control:
 				_grid_line_color
 			)
 
-		# 3. Item shapes as colored silhouettes
-		for item_id: int in _inventory._items:
-			var item: Dictionary = _inventory._items[item_id]
+		# 3. Item shapes as colored silhouettes (via read-only API)
+		var all_items: Dictionary = _inventory.get_all_items()
+		for item_id: int in all_items:
+			var item: Dictionary = all_items[item_id]
 			var type: StringName = item["type"]
 			var def: _InnerPropDef = PropRegistry.get_def(type)
 			var color: Color = def.placeholder_color if def != null else Color.WHITE
@@ -261,29 +262,25 @@ class GridCanvas extends Control:
 		if not clicked:
 			return
 
-		# Determine which grid cell was hit
-		var cell_x: int = int(click_pos.x) / _cell_size
-		var cell_y: int = int(click_pos.y) / _cell_size
+		# Determine which grid cell was hit (floori handles negative positions)
+		var cell_x: int = floori(click_pos.x / _cell_size)
+		var cell_y: int = floori(click_pos.y / _cell_size)
 
 		if cell_x < 0 or cell_x >= _inventory.grid_width:
 			return
 		if cell_y < 0 or cell_y >= _inventory.grid_height:
 			return
 
-		# Look up which item occupies that cell
-		var idx: int = cell_y * _inventory.grid_width + cell_x
-		if idx < 0 or idx >= _inventory._grid.size():
-			return
-
-		var item_id: int = _inventory._grid[idx]
+		# Look up which item occupies that cell (via read-only API)
+		var item_id: int = _inventory.get_grid_cell(cell_x, cell_y)
 		if item_id == 0:
 			return
 
 		# Get the item type
-		if not _inventory._items.has(item_id):
+		var item: Variant = _inventory.get_item(item_id)
+		if item == null:
 			return
 
-		var item: Dictionary = _inventory._items[item_id]
 		var type: StringName = item["type"]
 
 		# Only act on consumables

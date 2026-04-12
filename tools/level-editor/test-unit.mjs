@@ -1777,6 +1777,19 @@ test('validatePropForm — PORTABLE.slot_shape with one cell is valid', () => {
   assert(result.valid, 'single cell shape should be valid');
 });
 
+test('validatePropForm — PORTABLE.slot_shape missing origin (0,0) is invalid', () => {
+  const model = _makeModel({ portable: { slot_shape: [{x:1,y:0}, {x:2,y:0}] } });
+  const result = validatePropForm(model, false);
+  assert(!result.valid, 'should be invalid without origin cell');
+  assert(result.errors.some(e => e.includes('origin cell (0,0)')), 'should mention origin cell');
+});
+
+test('validatePropForm — PORTABLE.slot_shape with origin and extra cells is valid', () => {
+  const model = _makeModel({ portable: { slot_shape: [{x:0,y:0}, {x:1,y:0}, {x:2,y:0}] } });
+  const result = validatePropForm(model, false);
+  assert(result.valid, 'shape with origin should be valid');
+});
+
 test('validatePropForm — PLACEABLE marker is always valid', () => {
   const model = _makeModel({ placeable: {} });
   const result = validatePropForm(model, false);

@@ -2312,6 +2312,8 @@ export function validatePropForm(model, isNew) {
   if (model.portable) {
     if (!model.portable.slot_shape || model.portable.slot_shape.length === 0) {
       errors.push('PORTABLE slot_shape must have at least one cell');
+    } else if (!model.portable.slot_shape.some(c => c.x === 0 && c.y === 0)) {
+      errors.push('PORTABLE slot_shape must include the origin cell (0,0)');
     }
   }
 
