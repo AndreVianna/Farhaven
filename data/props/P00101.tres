@@ -23,7 +23,7 @@ flicker = true
 
 [sub_resource type="Resource" id="station_1"]
 script = ExtResource("5_station")
-station_tags = [&"fire", &"cook", &"light"]
+station_tags = [&"fire", &"cook", &"light", &"save"]
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("6_catalogable")
@@ -33,7 +33,7 @@ scan_time = 1.0
 script = ExtResource("1_script")
 id = &"P00101"
 display_name = "Campfire"
-tags = [&"STRUCTURE", &"STATION.fire", &"STATION.cook", &"STATION.light"]
+tags = [&"STRUCTURE", &"STATION.fire", &"STATION.cook", &"STATION.light", &"SAVE_STATION"]
 placeable = SubResource("placeable_1")
 container = SubResource("container_1")
 light = SubResource("light_1")

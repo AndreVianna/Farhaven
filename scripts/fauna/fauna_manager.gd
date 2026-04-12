@@ -337,6 +337,9 @@ func _on_fauna_death(fauna: Dictionary) -> void:
 	# Place corpse prop on tile
 	_place_corpse(coords, species)
 
+	# Drop loot from yield_type if defined on the species PropDef
+	_drop_loot(coords, species)
+
 	# Remove from fauna list
 	_fauna.erase(fauna)
 
@@ -360,6 +363,24 @@ func _get_corpse_type(species_type: StringName) -> StringName:
 		&"P00108":
 			return &"P00107"
 	return &"P00107"  # Default fallback
+
+
+## Drop loot items on the tile when a fauna dies.
+## Reads yield_type from the species PropDef. If empty, no drop.
+func _drop_loot(coords: Vector2i, species_type: StringName) -> void:
+	var def := _get_species_def(species_type)
+	if def == null:
+		return
+	var yield_type: StringName = def.yield_type
+	if yield_type == &"":
+		return
+	if _grid == null:
+		return
+	var tile: Resource = _grid.get_tile(coords)
+	if tile == null:
+		return
+	var loot := _Prop.create_prop(yield_type, 1, 1)
+	tile.props.append(loot)
 
 
 # --- Despawn ---
@@ -394,6 +415,40 @@ func get_all_fauna() -> Array[Dictionary]:
 	for fauna: Dictionary in _fauna:
 		result.append(fauna.duplicate())
 	return result
+
+
+## Returns the species PropDef id for the given fauna instance, or empty if not found.
+## Used by AutoInteractionSystem for auto-defend catalog checks.
+func get_fauna_entry_id(fauna_id: int) -> StringName:
+	var fauna := _find_fauna(fauna_id)
+	if fauna.is_empty():
+		return &""
+	return fauna.get("species_type", &"")
+
+
+## Returns true if the given fauna instance is hostile (has combat capability).
+## Used by AutoInteractionSystem for auto-defend targeting.
+func is_hostile(fauna_id: int) -> bool:
+	var fauna := _find_fauna(fauna_id)
+	if fauna.is_empty():
+		return false
+	var def := _get_species_def(fauna["species_type"])
+	if def == null:
+		return false
+	# A fauna is hostile if it has a combat cap (can attack)
+	return def.combat != null
+
+
+## Check if a fauna instance is dead (hp <= 0) and handle death if so.
+## Called after applying damage. Returns true if the fauna died.
+func check_death(fauna_id: int) -> bool:
+	var fauna := _find_fauna(fauna_id)
+	if fauna.is_empty():
+		return false
+	if fauna["hp"] > 0:
+		return false
+	_on_fauna_death(fauna)
+	return true
 
 
 # --- Species def helpers ---

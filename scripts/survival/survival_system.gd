@@ -207,7 +207,12 @@ func _execute_death() -> void:
 	var death_tile: Vector2i = _get_player_tile()
 	_drop_items(death_tile)
 	player_died.emit()
-	_start_death_sequence()
+	# Try save-load path: reload from last save (catalog + journal persist through death)
+	var save_mgr: Node = get_node_or_null("/root/SaveManager")
+	if save_mgr != null and save_mgr.has_method("has_save") and save_mgr.has_save():
+		_death_load_save(save_mgr)
+	else:
+		_start_death_sequence()
 
 
 func _get_player_tile() -> Vector2i:
@@ -257,6 +262,21 @@ func _start_death_sequence() -> void:
 		if not is_day and _day_night_cycle != null and _day_night_cycle.has_method("skip_to_dawn"):
 			_day_night_cycle.skip_to_dawn()
 		respawn()
+
+
+## Load from last save on death. Catalog and journal knowledge persist
+## (SaveManager restores scanner state which includes catalog).
+## Inventory and position reset to the save point.
+func _death_load_save(save_mgr: Node) -> void:
+	if _screen_fade != null and _screen_fade.has_method("fade_out"):
+		_screen_fade.fade_out()
+		if _screen_fade.has_signal("fade_out_completed"):
+			await _screen_fade.fade_out_completed
+	save_mgr.load_game()
+	# After load, SurvivalSystem.load_save_data resets is_dead = false and restores stats.
+	# Fade back in.
+	if _screen_fade != null and _screen_fade.has_method("fade_in"):
+		_screen_fade.fade_in()
 
 
 func _try_respawn() -> void:

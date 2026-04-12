@@ -302,6 +302,43 @@ func test_roundtrip_via_load_does_not_crash_with_autoloads() -> void:
 # driven by mark_dirty() / save_now() / _on_save_timer. Document the
 # absence so future work doesn't silently add a signal without a test.
 
+# ---------------------------------------------------------------------------
+# Schema version (task-113)
+# ---------------------------------------------------------------------------
+
+func test_save_includes_schema_version() -> void:
+	var sm: Node = _make_save_manager()
+	sm.save_game()
+	var text: String = _read_save_file()
+	var parsed: Variant = JSON.parse_string(text)
+	assert_bool(parsed is Dictionary).is_true()
+	var data: Dictionary = parsed as Dictionary
+	assert_bool(data.has("schema_version")).is_true()
+	assert_int(int(data["schema_version"])).is_equal(1)
+
+
+func test_load_without_schema_version_succeeds() -> void:
+	# Old saves without schema_version should load fine (defaults to 0)
+	var data: Dictionary = {"hex_grid": {"seed": 42, "tiles": []}}
+	_write_save_file(JSON.stringify(data))
+	var sm: Node = _make_save_manager()
+	var result: bool = sm.load_game()
+	assert_bool(result).is_true()
+
+
+func test_load_future_schema_version_succeeds_with_warning() -> void:
+	# Save with a future schema version should still load (with a warning)
+	var data: Dictionary = {"schema_version": 999}
+	_write_save_file(JSON.stringify(data))
+	var sm: Node = _make_save_manager()
+	var result: bool = sm.load_game()
+	assert_bool(result).is_true()
+
+
+# ---------------------------------------------------------------------------
+# Signal wiring (task-084c gap-fill)
+# ---------------------------------------------------------------------------
+
 func test_save_manager_has_no_declared_signals() -> void:
 	var sm: Node = _make_save_manager()
 	# SaveManager's own script declares no signals. We check the script's
