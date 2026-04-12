@@ -1,16 +1,15 @@
 class_name Inventory
 extends RefCounted
 
-## Grid-based Tetris inventory (delivery-006f).
+## Grid-based Tetris inventory (delivery-006f, tasks 090+091).
 ##
 ## The player's backpack is a 2D grid of cells. Each item occupies a set of
 ## cells defined by its PortableCap.slot_shape (an Array[Vector2i] of offsets
-## relative to the item origin). Items can be rotated 90 degrees (4
-## orientations). No stacking: 1 prop instance = 1 shape on the grid.
+## relative to the item origin). Items can be rotated in 90-degree increments
+## (4 orientations). No stacking: 1 prop instance = 1 shape on the grid.
 ##
-## Tool slots are kept for backward compat during the transition. Scanner
-## remains body-integrated (not a grid item). Other tools will migrate into the
-## grid in task-096.
+## Scanner remains body-integrated (not a grid item). All other tools live in
+## the grid and are located via find_best_tool_for_action (task-096).
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
@@ -23,24 +22,24 @@ signal tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName
 
 # --- Grid data ---
 
-## Grid dimensions (cells). Player backpack default: 30 wide x 40 tall.
+## Grid dimensions (cells). Player backpack default: 30 wide × 40 tall.
 var grid_width: int = 30
 var grid_height: int = 40
 
-## Flat 1D array of size grid_width * grid_height.
+## Flat 1D array of size grid_width × grid_height.
 ## Each cell stores an item_id (0 = empty, >0 = occupied by that item).
 var _grid: PackedInt32Array
 
-## Item instances: item_id -> { type: StringName, origin: Vector2i,
-##   rotation: int (0-3, number of 90-degree CW rotations), shape: Array[Vector2i] }
+## Item instances: item_id → { type: StringName, origin: Vector2i,
+##   rotation: int (0-3, number of 90° CW rotations), shape: Array[Vector2i] }
 var _items: Dictionary = {}
 
 ## Next available item id. Monotonically increasing.
 var _next_id: int = 1
 
-## Tool slots: slot_name -> PropDef id (or &"" if empty).
-## Kept for backward compat. Scanner is body-integrated; other slots transition
-## to grid in task-096.
+## Tool slots: slot_name → PropDef id (or &"" if empty).
+## Kept for backward compat (crafting_system, auto_interaction_system).
+## Scanner is body-integrated; other slots transition to grid in task-096.
 var _tool_slots: Dictionary = {
 	&"axe":      &"",
 	&"pickaxe":  &"",
@@ -49,7 +48,9 @@ var _tool_slots: Dictionary = {
 }
 
 
-func _init() -> void:
+func _init(p_grid_width: int = 30, p_grid_height: int = 40) -> void:
+	grid_width = p_grid_width
+	grid_height = p_grid_height
 	_init_grid()
 
 
@@ -63,8 +64,8 @@ func _init_grid() -> void:
 # Shape rotation utilities
 # ---------------------------------------------------------------------------
 
-## Rotate a shape 90 degrees clockwise once: (x, y) -> (-y, x), then
-## normalize so all offsets are in the positive quadrant (min x/y = 0).
+## Rotate a shape 90° clockwise once: (x, y) → (-y, x), then normalize so
+## all offsets are in the positive quadrant (min x/y = 0).
 static func rotate_shape_once(shape: Array[Vector2i]) -> Array[Vector2i]:
 	var rotated: Array[Vector2i] = []
 	rotated.resize(shape.size())
@@ -79,14 +80,13 @@ static func rotate_shape_once(shape: Array[Vector2i]) -> Array[Vector2i]:
 			min_x = rx
 		if ry < min_y:
 			min_y = ry
-	# Normalize to positive quadrant.
 	if min_x != 0 or min_y != 0:
 		for i in rotated.size():
 			rotated[i] = Vector2i(rotated[i].x - min_x, rotated[i].y - min_y)
 	return rotated
 
 
-## Get a shape rotated by `times` * 90 degrees clockwise.
+## Get a shape rotated by `times` × 90° clockwise.
 static func get_rotated_shape(base_shape: Array[Vector2i], times: int) -> Array[Vector2i]:
 	var n: int = times % 4
 	if n < 0:
@@ -166,9 +166,9 @@ func can_fit(shape: Array[Vector2i], origin: Vector2i, rotation: int = 0, exclud
 
 
 ## First-fit search for a shape across the entire grid.
-## Tries rotations 0-3, scanning left-to-right, top-to-bottom.
-## Returns { "origin": Vector2i, "rotation": int } or null.
-func find_placement(shape: Array[Vector2i]) -> Variant:
+## Tries rotations 0–3, scanning left-to-right, top-to-bottom.
+## Returns { "origin": Vector2i, "rotation": int } or empty Dictionary.
+func find_placement(shape: Array[Vector2i]) -> Dictionary:
 	for rot in 4:
 		var rotated: Array[Vector2i] = get_rotated_shape(shape, rot)
 		var bounds: Vector2i = get_shape_bounds(rotated)
@@ -183,18 +183,32 @@ func find_placement(shape: Array[Vector2i]) -> Variant:
 						break
 				if fits:
 					return {"origin": Vector2i(ox, oy), "rotation": rot}
-	return null
+	return {}
 
 
 # ---------------------------------------------------------------------------
 # Grid item operations (new API)
 # ---------------------------------------------------------------------------
 
+## Auto-place a single item into the grid. Returns item_id (>0) or 0 on failure.
+func place_item(type: StringName) -> int:
+	var shape: Array[Vector2i] = _get_shape_for_type(type)
+	var placement: Dictionary = find_placement(shape)
+	if placement.is_empty():
+		return 0
+	return _place_internal(type, shape, placement["origin"], placement["rotation"])
+
+
 ## Place an item at an explicit position. Returns item_id (>0) or 0 on failure.
-func add_item_at(type: StringName, origin: Vector2i, rotation: int = 0) -> int:
+func place_item_at(type: StringName, origin: Vector2i, rotation: int = 0) -> int:
 	var shape: Array[Vector2i] = _get_shape_for_type(type)
 	if not can_fit(shape, origin, rotation):
 		return 0
+	return _place_internal(type, shape, origin, rotation)
+
+
+## Internal: allocate id, record item, write cells. No signals.
+func _place_internal(type: StringName, shape: Array[Vector2i], origin: Vector2i, rotation: int) -> int:
 	var item_id: int = _next_id
 	_next_id += 1
 	_items[item_id] = {
@@ -246,10 +260,18 @@ func get_items_by_type(type: StringName) -> Array[int]:
 	return result
 
 
+## Count instances of a given prop type in the grid.
+func get_count(type: StringName) -> int:
+	var count: int = 0
+	for item_id: int in _items:
+		if _items[item_id]["type"] == type:
+			count += 1
+	return count
+
+
 ## Find an item in the grid (or tool slots) whose PropDef supports the
 ## requested action. Returns item_id (>0), -1 if found in a tool slot, or 0.
-## TODO(task-096): add PropDef.supports_actions field; for now uses tool_slot
-## heuristic as fallback.
+## TODO(task-096): implement PropDef.supports_actions; for now returns 0.
 func find_best_tool_for_action(action: StringName) -> int:
 	# Search grid items — PropDef.supports_actions will be added in task-096.
 	for item_id: int in _items:
@@ -259,7 +281,7 @@ func find_best_tool_for_action(action: StringName) -> int:
 			var actions: Variant = def.get(&"supports_actions")
 			if actions is Array and actions.has(action):
 				return item_id
-	# Fallback: check tool slots (backward compat until task-096).
+	# Fallback: check tool slots (backward compat until task-096 migrates).
 	var _slot_map: Dictionary = {
 		&"chop": &"axe",
 		&"mine": &"pickaxe",
@@ -278,29 +300,21 @@ func find_best_tool_for_action(action: StringName) -> int:
 
 ## Add items to the grid by auto-placing each instance.
 ## Returns the number of instances successfully placed.
+## Tools with a dedicated slot go through set_tool, not the grid.
 func add_item(type: StringName, amount: int = 1) -> int:
 	var def: _PropDef = PropRegistry.get_def(type)
 	if def == null:
 		return 0
-	# Tools with a dedicated slot go through set_tool, not the grid.
 	if def.tool_slot != &"":
 		return 0
 
 	var shape: Array[Vector2i] = _get_shape_for_type(type)
 	var added: int = 0
 	for _i in amount:
-		var placement: Variant = find_placement(shape)
-		if placement == null:
+		var placement: Dictionary = find_placement(shape)
+		if placement.is_empty():
 			break
-		var item_id: int = _next_id
-		_next_id += 1
-		_items[item_id] = {
-			"type": type,
-			"origin": placement["origin"],
-			"rotation": placement["rotation"],
-			"shape": shape,
-		}
-		_write_cells(item_id, shape, placement["origin"], placement["rotation"])
+		_place_internal(type, shape, placement["origin"], placement["rotation"])
 		added += 1
 
 	if added > 0:
@@ -330,16 +344,23 @@ func has_item(type: StringName, amount: int = 1) -> bool:
 	return get_count(type) >= amount
 
 
-func get_count(type: StringName) -> int:
-	var count: int = 0
-	for item_id: int in _items:
-		if _items[item_id]["type"] == type:
-			count += 1
-	return count
+func use_item(type: StringName) -> bool:
+	if not has_item(type):
+		return false
+	remove_item(type, 1)
+	item_used.emit(type)
+	return true
+
+
+func is_full() -> bool:
+	for i in _grid.size():
+		if _grid[i] == 0:
+			return false
+	return true
 
 
 ## Backward compat: returns items grouped by type as {type, quantity}.
-## Empty types are never included (callers already skip them).
+## Empty types are never included.
 func get_slots() -> Array[Dictionary]:
 	var type_counts: Dictionary = {}
 	for item_id: int in _items:
@@ -375,21 +396,6 @@ func get_stacks() -> Array[Dictionary]:
 			"total_size": cells_per * float(count),
 		})
 	return result
-
-
-func use_item(type: StringName) -> bool:
-	if not has_item(type):
-		return false
-	remove_item(type, 1)
-	item_used.emit(type)
-	return true
-
-
-func is_full() -> bool:
-	for i in _grid.size():
-		if _grid[i] == 0:
-			return false
-	return true
 
 
 ## Expand the grid by adding rows.
@@ -459,7 +465,7 @@ func get_used_slot_count() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Tool API (unchanged)
+# Tool API (scanner only — body-integrated)
 # ---------------------------------------------------------------------------
 
 func get_tool(slot: StringName) -> StringName:
@@ -479,7 +485,7 @@ func has_tool_for(slot: StringName) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Save / Load
+# Save / Load (task-091)
 # ---------------------------------------------------------------------------
 
 func get_save_data() -> Dictionary:
@@ -492,30 +498,35 @@ func get_save_data() -> Dictionary:
 			"origin": [item["origin"].x, item["origin"].y],
 			"rotation": item["rotation"],
 		})
-	var tools_data: Dictionary = {}
-	for key: StringName in _tool_slots:
-		tools_data[str(key)] = str(_tool_slots[key])
 	return {
 		"grid_width": grid_width,
 		"grid_height": grid_height,
 		"items": items_data,
-		"tools": tools_data,
+		"scanner": str(_tool_slots.get(&"scanner", &"")),
 	}
 
 
 func load_save_data(data: Dictionary) -> void:
-	# Detect save format: new (grid-based) vs legacy (slot-based).
+	# Detect save format: new grid-based vs legacy slot-based.
 	if data.has("items") and data.has("grid_width"):
 		_load_grid_save(data)
 	elif data.has("slots"):
 		_load_legacy_save(data)
-	else:
-		# Empty or unknown — just load tools.
-		pass
 
-	var tools_data: Dictionary = data.get("tools", {})
-	for key in tools_data:
-		_tool_slots[StringName(key)] = StringName(tools_data[key])
+	# Load scanner from new format.
+	if data.has("scanner"):
+		var scanner_type: StringName = StringName(data["scanner"])
+		if scanner_type != &"":
+			_tool_slots[&"scanner"] = scanner_type
+
+	# Load tools from old format (backward compat).
+	if data.has("tools"):
+		var tools_data: Dictionary = data["tools"]
+		for key in tools_data:
+			var slot: StringName = StringName(key)
+			# Only accept scanner in the new model; other tools are grid items.
+			if slot == &"scanner":
+				_tool_slots[slot] = StringName(tools_data[key])
 
 
 func _load_grid_save(data: Dictionary) -> void:
@@ -568,21 +579,12 @@ func _load_legacy_save(data: Dictionary) -> void:
 		if type == &"":
 			continue
 		var quantity: int = int(entry.get("quantity", 0))
-		# Replay into grid via auto-placement (no signals during load).
 		var shape: Array[Vector2i] = _get_shape_for_type(type)
 		for _i in quantity:
-			var placement: Variant = find_placement(shape)
-			if placement == null:
+			var placement: Dictionary = find_placement(shape)
+			if placement.is_empty():
 				push_warning(
 					"Inventory.load_legacy: no room for %s — skipped" % type
 				)
 				break
-			var item_id: int = _next_id
-			_next_id += 1
-			_items[item_id] = {
-				"type": type,
-				"origin": placement["origin"],
-				"rotation": placement["rotation"],
-				"shape": shape,
-			}
-			_write_cells(item_id, shape, placement["origin"], placement["rotation"])
+			_place_internal(type, shape, placement["origin"], placement["rotation"])
