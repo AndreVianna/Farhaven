@@ -43,7 +43,9 @@ static func apply_attack(attacker_def: _PropDef, target_endurance: _EnduranceCap
 static func _parse_deal_damage_effect(attack_event: Resource) -> Dictionary:
 	if attack_event == null:
 		return {}
-	if not "effects" in attack_event:
+	# Parenthesize the membership check — GDScript parses `not "effects" in x`
+	# as `(not "effects") in x` due to operator precedence, which would misfire.
+	if not ("effects" in attack_event):
 		return {}
 	for effect: Resource in attack_event.effects:
 		if effect is _RecipeEffect and effect.kind == &"deal_damage":

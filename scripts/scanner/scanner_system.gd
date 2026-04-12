@@ -118,9 +118,11 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		_scan_target_entry_id = best_entry_id
 		_scan_progress = 0.0
 		var entry = _catalog.get_entry(best_entry_id)
-		if entry != null and entry.catalogable != null:
+		if entry != null and entry.catalogable != null and entry.catalogable.scan_time > 0.0:
 			_scan_duration = entry.catalogable.scan_time
 		else:
+			# Guard against content-authored 0 or negative scan_time to avoid
+			# division-by-zero / inverted progress downstream.
 			_scan_duration = DEFAULT_SCAN_DURATION
 		# Apply scanning survival cost + start drain
 		var survival: Node = _get_survival_system()
