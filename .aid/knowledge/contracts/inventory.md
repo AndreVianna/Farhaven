@@ -36,8 +36,8 @@ tools on the grid and querying via `find_best_tool_for_action`.
   is rejected.
 - **`place_item(type) -> int` auto-places and returns the item_id.** Returns 0 on failure.
   Internally calls `find_placement(shape)` which tries all four rotations in row-major order
-  and picks the first fit. Emits `item_added(type, 1)` and `inventory_changed` on success;
-  emits `inventory_full(type, 1)` and returns 0 on failure.
+  and picks the first fit. Does not emit signals — callers that need signals should use
+  `add_item(type, 1)` which wraps `place_item` with signal emission.
 - **`place_item_at(type, origin, rotation) -> int` places at an explicit cell.** Returns 0
   if the shape (at that rotation) collides with any occupied cell or goes out of bounds.
 - **`remove_item_by_id(item_id) -> bool` removes a specific instance.** Returns `false` if

@@ -178,7 +178,7 @@ class GridCanvas extends Control:
 
 
 	func _init() -> void:
-		mouse_filter = MOUSE_FILTER_STOP
+		mouse_filter = MOUSE_FILTER_PASS
 
 
 	func set_inventory(inv) -> void:
@@ -275,6 +275,8 @@ class GridCanvas extends Control:
 		var item_id: int = _inventory.get_grid_cell(cell_x, cell_y)
 		if item_id == 0:
 			return
+		# Consume the click so ScrollContainer doesn't also process it.
+		accept_event()
 
 		# Get the item type
 		var item: Variant = _inventory.get_item(item_id)

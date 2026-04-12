@@ -511,7 +511,9 @@ func has_tool_for(slot: StringName) -> bool:
 
 func get_save_data() -> Dictionary:
 	var items_data: Array = []
-	for item_id: int in _items:
+	var sorted_ids: Array = _items.keys()
+	sorted_ids.sort()
+	for item_id: int in sorted_ids:
 		var item: Dictionary = _items[item_id]
 		items_data.append({
 			"id": item_id,
@@ -560,6 +562,9 @@ func _load_grid_save(data: Dictionary) -> void:
 	var items_data: Array = data.get("items", [])
 	for entry in items_data:
 		var item_id: int = int(entry.get("id", _next_id))
+		# Sanitize: item_id must be >= 1 (0 is the empty-cell sentinel).
+		if item_id < 1:
+			item_id = _next_id
 		var type: StringName = StringName(entry.get("type", ""))
 		if type == &"":
 			continue
