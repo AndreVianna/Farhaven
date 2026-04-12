@@ -192,6 +192,32 @@ class GridModel extends RefCounted:
 	func get_tool(slot: StringName) -> StringName:
 		return _tool_slots.get(slot, &"")
 
+	# action_type_map is populated by a Given step (type X supports action Y)
+	# so find_best_tool_for_action can mirror PropDef.supports_actions.
+	var action_type_map: Dictionary = {}
+
+	# Legacy slot map mirrors Inventory.find_best_tool_for_action fallback.
+	const _ACTION_SLOT_MAP: Dictionary = {
+		&"chop": &"axe",
+		&"mine": &"pickaxe",
+		&"attack_melee": &"weapon",
+		&"scan": &"scanner",
+	}
+
+	## Returns item_id > 0 if a grid item supports the action,
+	## -1 if a legacy slot holds a matching tool,
+	## 0 otherwise.
+	func find_best_tool_for_action(action: StringName) -> int:
+		var supporting_type: StringName = action_type_map.get(action, &"")
+		if supporting_type != &"":
+			for item_id: int in _items:
+				if _items[item_id]["type"] == supporting_type:
+					return item_id
+		var slot: StringName = _ACTION_SLOT_MAP.get(action, &"")
+		if slot != &"" and _tool_slots.get(slot, &"") != &"":
+			return -1
+		return 0
+
 	func get_save_data() -> Dictionary:
 		var items_data: Array = []
 		var sorted_ids: Array = _items.keys()
@@ -318,13 +344,16 @@ func register_steps(registry) -> void:
 
 	registry.given("a grid item type {string} supports action {string}",
 		func(ctx, type_id: String, action: String):
-			# Pin the intended (type, action) pair. The Then step below
-			# verifies the grid-layer lookup (get_items_by_type) finds
-			# this type once it's placed — that's the pure-grid half of
-			# find_best_tool_for_action; the PropRegistry supports_actions
-			# half is covered by unit tests.
-			ctx.set_value("grid_tool_type", StringName(type_id))
-			ctx.set_value("grid_tool_action", StringName(action))
+			# Register the (type, action) pair in the model so
+			# find_best_tool_for_action can resolve it like the production
+			# PropDef.supports_actions lookup does.
+			var inv := _get_inv(ctx)
+			var type_sn: StringName = StringName(type_id)
+			var action_sn: StringName = StringName(action)
+			if inv != null:
+				inv.action_type_map[action_sn] = type_sn
+			ctx.set_value("grid_tool_type", type_sn)
+			ctx.set_value("grid_tool_action", action_sn)
 	)
 
 	registry.given("the legacy tool slot {string} holds {string}",
@@ -468,24 +497,19 @@ func register_steps(registry) -> void:
 	)
 
 	registry.then("find_best_tool_for_action {string} returns a grid item",
-		func(ctx, _action: String):
+		func(ctx, action: String):
 			var inv := _get_inv(ctx)
-			var tool_type: StringName = ctx.get_value("grid_tool_type", &"")
-			ctx.assert_not_equal(String(tool_type), "",
-				"grid_tool_type must be set by an earlier step")
-			var ids: Array[int] = inv.get_items_by_type(tool_type)
-			ctx.assert_greater(ids.size(), 0,
-				"expected at least one grid item of type %s" % tool_type)
+			var result: int = inv.find_best_tool_for_action(StringName(action))
+			ctx.assert_greater(result, 0,
+				"expected find_best_tool_for_action(%s) to return a grid item_id > 0, got %d" % [action, result])
 	)
 
 	registry.then("find_best_tool_for_action {string} falls back to the tool slot",
-		func(ctx, _action: String):
-			# Legacy slot fallback in Inventory.find_best_tool_for_action
-			# maps "chop" -> "axe". We assert the tool slot is non-empty —
-			# the production method would return -1 to signal "found in
-			# slot, not grid".
+		func(ctx, action: String):
+			# Production contract: -1 signals "found in a legacy tool slot,
+			# not in the grid". 0 signals "not found anywhere."
 			var inv := _get_inv(ctx)
-			var slot_val: StringName = inv.get_tool(&"axe")
-			ctx.assert_not_equal(String(slot_val), "",
-				"expected legacy axe slot to hold a tool for fallback")
+			var result: int = inv.find_best_tool_for_action(StringName(action))
+			ctx.assert_equal(result, -1,
+				"expected find_best_tool_for_action(%s) to return -1 (slot fallback), got %d" % [action, result])
 	)

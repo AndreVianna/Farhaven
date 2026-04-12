@@ -5,10 +5,14 @@ Feature: Tetris Inventory — grid placement, rotation, save/load, tool lookup
   per instance. Scanner stays body-integrated; all other tools live in
   the grid and are located via find_best_tool_for_action.
 
-  These scenarios use the real Inventory class (RefCounted) with direct
-  shape placement — no PropRegistry dependency — so the Tetris mechanics
-  (can_fit, find_placement, _rebuild_grid, legacy migration) can be
-  exercised without bootstrapping the autoload.
+  These scenarios use a standalone in-feature GridModel (see
+  tetris_inventory_steps.gd) that mirrors the production invariants
+  without a PropRegistry autoload dependency. This is intentionally
+  model-level BDD — the cell-writing, fit-check, rotation, rebuild,
+  save/load, and slot→grid-aware tool lookup logic mirrors inventory.gd
+  so the scenarios describe the contract the production code is expected
+  to satisfy. Unit tests in tests/unit/test_inventory_grid.gd exercise
+  the real Inventory class directly.
 
   Scenario: Single-cell item fits on an empty grid
     Given a fresh tetris inventory 4 wide by 4 tall
