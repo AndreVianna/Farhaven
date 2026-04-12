@@ -106,8 +106,21 @@ func delete_save() -> void:
 
 func _connect_day_started() -> void:
 	var dnc: Node = get_node_or_null("/root/DayNightCycle")
-	if dnc != null and dnc.has_signal("day_started"):
-		dnc.day_started.connect(_on_day_started)
+	if dnc == null or not dnc.has_signal("day_started"):
+		return
+	# Guard against duplicate connections. Multiple SaveManager instances
+	# (tests, hot-reload) otherwise register repeated save_now() calls per
+	# day_started emission.
+	if dnc.day_started.is_connected(_on_day_started):
+		return
+	dnc.day_started.connect(_on_day_started)
+
+
+func _exit_tree() -> void:
+	var dnc: Node = get_node_or_null("/root/DayNightCycle")
+	if dnc != null and dnc.has_signal("day_started") \
+			and dnc.day_started.is_connected(_on_day_started):
+		dnc.day_started.disconnect(_on_day_started)
 
 
 func _on_day_started() -> void:
