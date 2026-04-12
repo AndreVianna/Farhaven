@@ -180,7 +180,23 @@ func _on_auto_gather_failed(_coords: Vector2i, reason: StringName) -> void:
 
 
 func _on_auto_defend_triggered(_fauna_id: int, damage: int) -> void:
-	# Stub: show damage at player position until fauna positions are available.
+	# Show outgoing damage to enemy (white) at player position until fauna
+	# positions are available.  Incoming player damage uses Color.RED.
+	var player: Node = _get_player()
+	if player:
+		show_text(player.position, "-%d" % damage, Color.WHITE)
+
+
+# --- Fauna combat feedback (task-108) ---
+
+func connect_fauna_manager(fauna_mgr: Node) -> void:
+	if fauna_mgr.has_signal("fauna_attacked_player"):
+		fauna_mgr.fauna_attacked_player.connect(_on_fauna_attacked_player)
+
+
+func _on_fauna_attacked_player(_fauna_id: int, damage: int, _species: StringName) -> void:
+	if damage <= 0:
+		return
 	var player: Node = _get_player()
 	if player:
 		show_text(player.position, "-%d" % damage, Color.RED)

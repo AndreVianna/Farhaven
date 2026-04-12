@@ -166,6 +166,11 @@ func _wire_fauna(player: Node, scanner: Node, auto_interaction: Node) -> void:
 				auto_interaction._on_fauna_moved(id, new_c)
 		)
 
+	# fauna_attacked_player → HUD floating damage text (red)
+	var hud: Node = get_node_or_null("HUD/HUD")
+	if hud != null and hud.has_method("connect_fauna_manager"):
+		hud.connect_fauna_manager(fauna_mgr)
+
 	# fauna_spawned → PropLabelRenderer for knowledge state markers
 	# Deferred: PropLabelRenderer needs a label update API for fauna.
 	# When available, wire fauna_mgr.fauna_spawned → label_renderer.on_fauna_spawned
