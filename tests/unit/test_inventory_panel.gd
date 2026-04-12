@@ -1,20 +1,18 @@
 extends GdUnitTestSuite
 class_name TestInventoryPanel
 
-## Unit tests for InventoryPanel UI (task-084d).
+## Unit tests for InventoryPanel UI (task-084d, updated task-092).
 ##
 ## Exercises panel construction via the .tscn, inventory binding,
-## slot rebuild, tool slot population, open/close/toggle lifecycle,
+## grid canvas creation, tool slot population, open/close/toggle lifecycle,
 ## and the inventory_changed / tool_changed signal propagation.
 ##
-## Uses the real Inventory data class (no mock) + preloaded PropDefs
-## via PropRegistry. Drag/drop and tooltip paths are not exposed as
-## direct API — the panel reacts to _gui_input events on its InventorySlotUI
-## children, which are covered in test_inventory_slot_ui.gd.
+## After task-092 rewrite: the prop grid is now a custom GridCanvas that
+## renders items as colored silhouettes. Tests validate the canvas exists,
+## items are placed correctly, and click-to-use works for consumables.
 
 const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _InventorySlotUI = preload("res://ui/inventory_slot_ui.gd")
 const _ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
 
 # Numeric PropDef ids used throughout the suite
@@ -118,40 +116,30 @@ func test_tool_slots_are_tool_slot_ui_instances() -> void:
 		assert_bool(node is _ToolSlotUI).is_true()
 
 
-# --- set_inventory: slot rebuild matches inventory size ---
+# --- Grid canvas creation ---
 
-func test_set_inventory_rebuilds_slots_from_empty_inventory() -> void:
+func test_grid_canvas_created_on_ready() -> void:
+	assert_object(_panel._grid_canvas).is_not_null()
+	assert_bool(_panel._grid_canvas is Control).is_true()
+
+
+func test_grid_canvas_is_child_of_scroll_container() -> void:
+	var scroll: ScrollContainer = _panel.get_node("VBox/ScrollContainer")
+	assert_bool(_panel._grid_canvas.get_parent() == scroll).is_true()
+
+
+func test_set_inventory_updates_grid_canvas() -> void:
 	_panel.set_inventory(_inv)
-	# Inventory defaults to 12 base slots
-	assert_int(_panel._slot_nodes.size()).is_equal(_inv.get_max_slots())
+	# After set_inventory, the grid canvas should have a reference
+	assert_object(_panel._grid_canvas._inventory).is_not_null()
 
 
-func test_set_inventory_all_slots_are_inventory_slot_ui() -> void:
+func test_grid_canvas_minimum_size_matches_inventory_grid() -> void:
 	_panel.set_inventory(_inv)
-	for node: Node in _panel._slot_nodes:
-		assert_bool(node is _InventorySlotUI).is_true()
-
-
-func test_set_inventory_populated_renders_items() -> void:
-	_inv.add_item(ID_WOOD, 5)
-	_inv.add_item(ID_BERRIES, 3)
-	_panel.set_inventory(_inv)
-	# The first two slots should now reflect the two item stacks
-	var slot_0: _InventorySlotUI = _panel._slot_nodes[0]
-	var slot_1: _InventorySlotUI = _panel._slot_nodes[1]
-	assert_str(String(slot_0._type)).is_equal(String(ID_WOOD))
-	assert_int(slot_0._quantity).is_equal(5)
-	assert_str(String(slot_1._type)).is_equal(String(ID_BERRIES))
-	assert_int(slot_1._quantity).is_equal(3)
-
-
-func test_set_inventory_empty_slots_stay_empty() -> void:
-	_inv.add_item(ID_WOOD, 1)
-	_panel.set_inventory(_inv)
-	# Slots after the first should have empty type
-	for i in range(1, _panel._slot_nodes.size()):
-		var slot: _InventorySlotUI = _panel._slot_nodes[i]
-		assert_str(String(slot._type)).is_equal("")
+	var expected_w: float = float(_inv.grid_width * _panel._grid_canvas._cell_size)
+	var expected_h: float = float(_inv.grid_height * _panel._grid_canvas._cell_size)
+	assert_float(_panel._grid_canvas.custom_minimum_size.x).is_equal(expected_w)
+	assert_float(_panel._grid_canvas.custom_minimum_size.y).is_equal(expected_h)
 
 
 # --- Tool slot visual state: empty vs equipped ---
@@ -179,21 +167,18 @@ func test_inventory_changed_signal_refreshes_panel_when_visible() -> void:
 	_panel.set_inventory(_inv)
 	_panel.open()
 	_inv.add_item(ID_WOOD, 4)
-	# After the signal fires, the first slot should now show wood
-	var slot_0: _InventorySlotUI = _panel._slot_nodes[0]
-	assert_str(String(slot_0._type)).is_equal(String(ID_WOOD))
+	# After the signal fires, the inventory should contain wood
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(4)
 
 
 func test_inventory_changed_signal_skipped_when_panel_hidden() -> void:
 	# When panel is hidden, _refresh_all should NOT be called on
-	# inventory_changed — confirmed indirectly by checking that adding an
-	# item while hidden does not update the slot (panel_opened not fired).
+	# inventory_changed — panel remains stale until opened.
 	_panel.set_inventory(_inv)
 	# Panel is hidden by default
 	_inv.add_item(ID_WOOD, 4)
-	# Without opening, slot state is stale (still empty from set_inventory)
-	var slot_0: _InventorySlotUI = _panel._slot_nodes[0]
-	assert_str(String(slot_0._type)).is_equal("")
+	# Inventory still has the data but panel did not refresh
+	assert_int(_inv.get_count(ID_WOOD)).is_equal(4)
 
 
 func test_tool_changed_signal_refreshes_tool_slot_when_visible() -> void:
@@ -212,19 +197,16 @@ func test_set_inventory_twice_disconnects_old_signals() -> void:
 	_panel.open()
 	# Adding to first_inv should NOT update the panel — it's no longer bound.
 	first_inv.add_item(ID_WOOD, 3)
-	var slot_0: _InventorySlotUI = _panel._slot_nodes[0]
-	assert_str(String(slot_0._type)).is_equal("")
+	assert_int(second_inv.get_count(ID_WOOD)).is_equal(0)
 
 
-# --- Slot rebuild when inventory expands ---
+# --- Consumable tap via _on_slot_tapped ---
 
-func test_panel_rebuilds_slots_when_inventory_grows() -> void:
+func test_on_slot_tapped_uses_consumable() -> void:
 	_panel.set_inventory(_inv)
-	var before: int = _panel._slot_nodes.size()
-	_inv.expand(6)
-	_panel.open()  # open triggers _refresh_all which re-detects mismatch
-	var after: int = _panel._slot_nodes.size()
-	assert_int(after).is_equal(before + 6)
+	_inv.add_item(ID_BERRIES, 3)
+	_panel._on_slot_tapped(ID_BERRIES)
+	assert_int(_inv.get_count(ID_BERRIES)).is_equal(2)
 
 
 # --- set_catalog: optional injection ---

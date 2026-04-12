@@ -62,6 +62,13 @@ through this class.
   tool (axe, pickaxe, scanner) must set `tool_slot` to the slot name; tool handling is keyed off
   this field, not off the presence of a capability. This is explicitly a design call from the
   Open Question §11.6 discussion and is subject to redesign (see known limitations below).
+- **`supports_actions` declares what a tool can do.** `Array[StringName]`, default empty. Lists
+  the action verbs this prop enables — e.g. `[&"chop"]` for axe, `[&"mine"]` for pickaxe,
+  `[&"cut", &"attack_melee"]` for knife, `[&"scan"]` for scanner, `[&"ignite"]` for flint & steel,
+  `[&"dig"]` for shovel. `Inventory.find_best_tool_for_action(action)` searches grid items by this
+  field to locate the right tool. Content must populate this for any prop that should be discovered
+  as a tool by the grid inventory search. Props without `supports_actions` are invisible to
+  action-based tool lookup.
 - **Setup order during game start.** PropRegistry is the first autoload in `project.godot`,
   ahead of HexGrid and every other system. Content that runs later can call `PropRegistry.get_def(id)`
   unconditionally; any code that needs PropRegistry before its `_ready` runs (another autoload
@@ -154,15 +161,16 @@ expect to ship additional or replacement packs for other genres.
   like `CONSUMABLE.edible` hint at hierarchy but are just strings — `has_tag(&"CONSUMABLE")`
   will not match `CONSUMABLE.edible`. Future work may introduce a tag tree; for now, callers
   that want hierarchy must check every leaf explicitly.
-- **`tool_slot` redesign pending.** The current slot-by-type constraint (one axe slot, one
-  pickaxe slot, etc.) is explicitly flagged for redesign in delivery-006d task-088. The field
-  stays on PropDef for now; a future refactor may move it into a dedicated `ToolCap` or replace
-  slot-name strings with a different mechanism.
-- **`max_stack` is transitional.** `PortableCap.size` (slot-unit capacity) was introduced in
-  delivery-006b and is already the primary inventory constraint, but `max_stack` still lives on
-  PropDef and is still read by `Inventory.gd` for slot-fill limits alongside `size`. The
-  long-term direction is slot-unit only; the transition is not yet complete. Content should
-  lean on `portable.size` as the load-bearing field and treat `max_stack` as legacy.
+- **`tool_slot` partially superseded by `supports_actions`.** Delivery-006f introduced the
+  grid-based inventory where tools live in the grid alongside other items. The new
+  `supports_actions` field and `Inventory.find_best_tool_for_action()` are the forward-looking
+  tool discovery mechanism. `tool_slot` still exists for backward compat (scanner is body-
+  integrated via the `&"scanner"` tool slot) and for `add_item` rejection gating (items with
+  a non-empty `tool_slot` are rejected from the grid's backward-compat `add_item` path). The
+  field will be cleaned up when the tool-slot model is fully retired.
+- **`max_stack` is dead.** Delivery-006f replaced the slot+size inventory with a 2D grid where
+  each item instance occupies its own cells (no stacking). `max_stack` still lives on PropDef
+  but is no longer read by `Inventory.gd`. Content should not set it. Cleanup pending.
 - **Large legacy field surface.** Roughly half the fields on PropDef are deprecated remnants
   from pre-capabilities Farhaven. They remain on the class because old `.tres` files still set
   them and because AutoInteractionSystem's legacy gather fallback still reads some of them.

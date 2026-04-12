@@ -35,6 +35,11 @@ class_name PropDef extends Gear
 ## Empty = not a tool. Kept per design decision (Open Question §11.6).
 @export var tool_slot: StringName = &""
 
+## Actions this prop can perform when used as a tool (e.g., [&"chop"], [&"mine"], [&"attack_melee"]).
+## Used by Inventory.find_best_tool_for_action() to locate the right tool in the grid.
+## Empty for non-tool props. Authored per PropDef in task-095 (content migration).
+@export var supports_actions: Array[StringName] = []
+
 # --- Gathering (DEPRECATED — replaced by Recipe system; kept for legacy fallback) ---
 # DEPRECATED in task-053: remove when legacy gather fallback in AutoInteractionSystem is removed.
 @export var gather_time: float = 1.0   # DEPRECATED: use Recipe.duration
