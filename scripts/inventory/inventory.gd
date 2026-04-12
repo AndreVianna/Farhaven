@@ -1,12 +1,16 @@
 class_name Inventory
 extends RefCounted
 
-## Inventory data layer — owned by Player, not in scene tree.
-## Manages prop/consumable slots and 4 fixed tool slots.
-## Slot-size based capacity: each item has a size from its PORTABLE capability.
-## Items are still stored in slots with max_stack limits, but the primary
-## constraint for add/remove is size, not slot count.
-## Uses preload because tests can be parsed before class_name registration completes.
+## Grid-based Tetris inventory (delivery-006f).
+##
+## The player's backpack is a 2D grid of cells. Each item occupies a set of
+## cells defined by its PortableCap.slot_shape (an Array[Vector2i] of offsets
+## relative to the item origin). Items can be rotated 90 degrees (4
+## orientations). No stacking: 1 prop instance = 1 shape on the grid.
+##
+## Tool slots are kept for backward compat during the transition. Scanner
+## remains body-integrated (not a grid item). Other tools will migrate into the
+## grid in task-096.
 
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
@@ -17,19 +21,26 @@ signal inventory_full(type: StringName, rejected: int)
 signal item_used(type: StringName)
 signal tool_changed(slot: StringName, new_tool: StringName, old_tool: StringName)
 
-## All items (gathered resources, consumables, tools) are PropDefs loaded by
-## PropRegistry from data/props/*.tres. No hardcoded item configuration.
+# --- Grid data ---
 
-var _slots: Array[Dictionary]
-var _base_slots: int = 12
-var _bonus_slots: int = 0
+## Grid dimensions (cells). Player backpack default: 30 wide x 40 tall.
+var grid_width: int = 30
+var grid_height: int = 40
 
-## Slot-size based capacity (primary constraint).
-var capacity_size: float = 50.0
-var _current_size: float = 0.0
+## Flat 1D array of size grid_width * grid_height.
+## Each cell stores an item_id (0 = empty, >0 = occupied by that item).
+var _grid: PackedInt32Array
 
-## Tool slots store PropDef ids (prefixed, e.g. &"P00204" for survival_knife).
-## Defaults are empty — starting tools are applied from map's starting_loadout.
+## Item instances: item_id -> { type: StringName, origin: Vector2i,
+##   rotation: int (0-3, number of 90-degree CW rotations), shape: Array[Vector2i] }
+var _items: Dictionary = {}
+
+## Next available item id. Monotonically increasing.
+var _next_id: int = 1
+
+## Tool slots: slot_name -> PropDef id (or &"" if empty).
+## Kept for backward compat. Scanner is body-integrated; other slots transition
+## to grid in task-096.
 var _tool_slots: Dictionary = {
 	&"axe":      &"",
 	&"pickaxe":  &"",
@@ -39,136 +50,260 @@ var _tool_slots: Dictionary = {
 
 
 func _init() -> void:
-	_slots.resize(_base_slots)
-	for i in _base_slots:
-		_slots[i] = { "type": &"", "quantity": 0 }
+	_init_grid()
 
 
-# --- Size helpers ---
-
-## Get the size of one unit of a prop type.
-## Items without PORTABLE capability default to 1.0 for backward compat.
-##
-## TODO(task-090): delete this helper and the whole size-count model.
-## Delivery-006f replaces slot-based inventory with a 2D grid. PortableCap's
-## float `size` field was removed in task-089 and replaced by
-## `slot_shape: Array[Vector2i]` (the cell footprint of the item). Until the
-## grid engine lands in task-090, this method bridges the old float math by
-## returning `slot_shape.size()` as a cell count: 1 cell = 1 size unit.
-## Props whose .tres has not been migrated yet (task-095) default to a
-## single-cell shape, so they still report size 1.0.
-func _get_item_size(type: StringName) -> float:
-	var def: _PropDef = PropRegistry.get_def(type)
-	if def != null and def.portable != null:
-		return float(def.portable.slot_shape.size())
-	return 1.0
+func _init_grid() -> void:
+	_grid = PackedInt32Array()
+	_grid.resize(grid_width * grid_height)
+	_grid.fill(0)
 
 
-## Returns the current total size of all items in the inventory.
-func get_current_size() -> float:
-	return _current_size
+# ---------------------------------------------------------------------------
+# Shape rotation utilities
+# ---------------------------------------------------------------------------
+
+## Rotate a shape 90 degrees clockwise once: (x, y) -> (-y, x), then
+## normalize so all offsets are in the positive quadrant (min x/y = 0).
+static func rotate_shape_once(shape: Array[Vector2i]) -> Array[Vector2i]:
+	var rotated: Array[Vector2i] = []
+	rotated.resize(shape.size())
+	var min_x: int = 0
+	var min_y: int = 0
+	for i in shape.size():
+		var cell: Vector2i = shape[i]
+		var rx: int = -cell.y
+		var ry: int = cell.x
+		rotated[i] = Vector2i(rx, ry)
+		if rx < min_x:
+			min_x = rx
+		if ry < min_y:
+			min_y = ry
+	# Normalize to positive quadrant.
+	if min_x != 0 or min_y != 0:
+		for i in rotated.size():
+			rotated[i] = Vector2i(rotated[i].x - min_x, rotated[i].y - min_y)
+	return rotated
 
 
-## Returns the maximum size capacity.
-func get_capacity_size() -> float:
-	return capacity_size
-
-
-## Returns remaining size capacity.
-func get_remaining_capacity() -> float:
-	return capacity_size - _current_size
-
-
-## Returns a display string like "32.5 / 50.0".
-func get_size_display() -> String:
-	return "%.1f / %.1f" % [_current_size, capacity_size]
-
-
-## Returns items grouped by type with count and total size per stack.
-func get_stacks() -> Array[Dictionary]:
-	var stacks: Dictionary = {}
-	for slot in _slots:
-		if slot["type"] == &"":
-			continue
-		var t: StringName = slot["type"]
-		if stacks.has(t):
-			stacks[t]["count"] += slot["quantity"]
-		else:
-			stacks[t] = { "type": t, "count": slot["quantity"] }
-	var result: Array[Dictionary] = []
-	for key in stacks:
-		var entry: Dictionary = stacks[key]
-		var s: float = _get_item_size(entry["type"])
-		entry["size_per_unit"] = s
-		entry["total_size"] = s * entry["count"]
-		result.append(entry)
+## Get a shape rotated by `times` * 90 degrees clockwise.
+static func get_rotated_shape(base_shape: Array[Vector2i], times: int) -> Array[Vector2i]:
+	var n: int = times % 4
+	if n < 0:
+		n += 4
+	if n == 0:
+		return base_shape.duplicate()
+	var result: Array[Vector2i] = base_shape
+	for _i in n:
+		result = rotate_shape_once(result)
 	return result
 
 
-## Recompute _current_size from slot contents. Used after load.
-func _recompute_size() -> void:
-	_current_size = 0.0
-	for slot in _slots:
-		if slot["type"] != &"":
-			_current_size += _get_item_size(slot["type"]) * slot["quantity"]
+## Compute the bounding-box size of a shape (max_x + 1, max_y + 1).
+static func get_shape_bounds(shape: Array[Vector2i]) -> Vector2i:
+	var mx: int = 0
+	var my: int = 0
+	for cell in shape:
+		if cell.x > mx:
+			mx = cell.x
+		if cell.y > my:
+			my = cell.y
+	return Vector2i(mx + 1, my + 1)
 
 
-# --- Resource/Consumable API ---
+# ---------------------------------------------------------------------------
+# Grid helpers
+# ---------------------------------------------------------------------------
 
+func _cell_index(x: int, y: int) -> int:
+	return y * grid_width + x
+
+
+func _is_in_bounds(x: int, y: int) -> bool:
+	return x >= 0 and x < grid_width and y >= 0 and y < grid_height
+
+
+## Write an item_id into all cells occupied by the rotated shape at origin.
+func _write_cells(item_id: int, shape: Array[Vector2i], origin: Vector2i, rotation: int) -> void:
+	var rotated: Array[Vector2i] = get_rotated_shape(shape, rotation)
+	for cell in rotated:
+		_grid[_cell_index(origin.x + cell.x, origin.y + cell.y)] = item_id
+
+
+## Clear all cells belonging to an item_id.
+func _clear_cells(item_id: int) -> void:
+	for i in _grid.size():
+		if _grid[i] == item_id:
+			_grid[i] = 0
+
+
+## Resolve the base shape for a prop type from PropRegistry.
+func _get_shape_for_type(type: StringName) -> Array[Vector2i]:
+	var def: _PropDef = PropRegistry.get_def(type)
+	if def != null and def.portable != null:
+		return def.portable.slot_shape
+	# Default: single cell.
+	return [Vector2i(0, 0)]
+
+
+# ---------------------------------------------------------------------------
+# Placement queries
+# ---------------------------------------------------------------------------
+
+## Check whether a shape fits at origin with rotation, ignoring cells occupied
+## by `exclude_id` (0 = ignore nothing).
+func can_fit(shape: Array[Vector2i], origin: Vector2i, rotation: int = 0, exclude_id: int = 0) -> bool:
+	var rotated: Array[Vector2i] = get_rotated_shape(shape, rotation)
+	for cell in rotated:
+		var x: int = origin.x + cell.x
+		var y: int = origin.y + cell.y
+		if not _is_in_bounds(x, y):
+			return false
+		var occupant: int = _grid[_cell_index(x, y)]
+		if occupant != 0 and occupant != exclude_id:
+			return false
+	return true
+
+
+## First-fit search for a shape across the entire grid.
+## Tries rotations 0-3, scanning left-to-right, top-to-bottom.
+## Returns { "origin": Vector2i, "rotation": int } or null.
+func find_placement(shape: Array[Vector2i]) -> Variant:
+	for rot in 4:
+		var rotated: Array[Vector2i] = get_rotated_shape(shape, rot)
+		var bounds: Vector2i = get_shape_bounds(rotated)
+		var max_ox: int = grid_width - bounds.x
+		var max_oy: int = grid_height - bounds.y
+		for oy in range(max_oy + 1):
+			for ox in range(max_ox + 1):
+				var fits: bool = true
+				for cell in rotated:
+					if _grid[_cell_index(ox + cell.x, oy + cell.y)] != 0:
+						fits = false
+						break
+				if fits:
+					return {"origin": Vector2i(ox, oy), "rotation": rot}
+	return null
+
+
+# ---------------------------------------------------------------------------
+# Grid item operations (new API)
+# ---------------------------------------------------------------------------
+
+## Place an item at an explicit position. Returns item_id (>0) or 0 on failure.
+func add_item_at(type: StringName, origin: Vector2i, rotation: int = 0) -> int:
+	var shape: Array[Vector2i] = _get_shape_for_type(type)
+	if not can_fit(shape, origin, rotation):
+		return 0
+	var item_id: int = _next_id
+	_next_id += 1
+	_items[item_id] = {
+		"type": type,
+		"origin": origin,
+		"rotation": rotation,
+		"shape": shape,
+	}
+	_write_cells(item_id, shape, origin, rotation)
+	return item_id
+
+
+## Remove a specific item instance by id. Returns true if removed.
+func remove_item_by_id(item_id: int) -> bool:
+	if not _items.has(item_id):
+		return false
+	_clear_cells(item_id)
+	_items.erase(item_id)
+	return true
+
+
+## Move an item to a new position/rotation. Atomic: reverts if new pos invalid.
+func move_item(item_id: int, new_origin: Vector2i, new_rotation: int) -> bool:
+	if not _items.has(item_id):
+		return false
+	var item: Dictionary = _items[item_id]
+	if not can_fit(item["shape"], new_origin, new_rotation, item_id):
+		return false
+	_clear_cells(item_id)
+	_write_cells(item_id, item["shape"], new_origin, new_rotation)
+	item["origin"] = new_origin
+	item["rotation"] = new_rotation
+	return true
+
+
+## Return a copy of an item's data, or null if not found.
+func get_item(item_id: int) -> Variant:
+	if _items.has(item_id):
+		return _items[item_id].duplicate()
+	return null
+
+
+## Return all item_ids for a given prop type.
+func get_items_by_type(type: StringName) -> Array[int]:
+	var result: Array[int] = []
+	for item_id: int in _items:
+		if _items[item_id]["type"] == type:
+			result.append(item_id)
+	return result
+
+
+## Find an item in the grid (or tool slots) whose PropDef supports the
+## requested action. Returns item_id (>0), -1 if found in a tool slot, or 0.
+## TODO(task-096): add PropDef.supports_actions field; for now uses tool_slot
+## heuristic as fallback.
+func find_best_tool_for_action(action: StringName) -> int:
+	# Search grid items — PropDef.supports_actions will be added in task-096.
+	for item_id: int in _items:
+		var type: StringName = _items[item_id]["type"]
+		var def: _PropDef = PropRegistry.get_def(type)
+		if def != null and &"supports_actions" in def:
+			var actions: Variant = def.get(&"supports_actions")
+			if actions is Array and actions.has(action):
+				return item_id
+	# Fallback: check tool slots (backward compat until task-096).
+	var _slot_map: Dictionary = {
+		&"chop": &"axe",
+		&"mine": &"pickaxe",
+		&"attack_melee": &"weapon",
+		&"scan": &"scanner",
+	}
+	var slot: StringName = _slot_map.get(action, &"")
+	if slot != &"" and _tool_slots.get(slot, &"") != &"":
+		return -1
+	return 0
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible item API
+# ---------------------------------------------------------------------------
+
+## Add items to the grid by auto-placing each instance.
+## Returns the number of instances successfully placed.
 func add_item(type: StringName, amount: int = 1) -> int:
 	var def: _PropDef = PropRegistry.get_def(type)
 	if def == null:
 		return 0
+	# Tools with a dedicated slot go through set_tool, not the grid.
 	if def.tool_slot != &"":
-		# Tools must use set_tool — reject from prop slots
 		return 0
 
-	var unit_size: float = _get_item_size(type)
-
-	# Reject entirely if a single unit exceeds total capacity
-	if unit_size > capacity_size:
-		inventory_full.emit(type, amount)
-		return 0
-
-	# Determine how many we can fit by size
-	var max_by_size: int
-	if unit_size <= 0.0:
-		max_by_size = amount
-	else:
-		max_by_size = int(floor((capacity_size - _current_size) / unit_size))
-
-	if max_by_size <= 0:
-		inventory_full.emit(type, amount)
-		return 0
-
-	# Respect both size limit and slot availability
-	var to_add: int = mini(amount, max_by_size)
-	var max_stack: int = def.max_stack
-	var remaining: int = to_add
-
-	# Fill partial stacks first
-	for slot in _slots:
-		if remaining <= 0:
+	var shape: Array[Vector2i] = _get_shape_for_type(type)
+	var added: int = 0
+	for _i in amount:
+		var placement: Variant = find_placement(shape)
+		if placement == null:
 			break
-		if slot["type"] == type and slot["quantity"] < max_stack:
-			var space: int = max_stack - slot["quantity"]
-			var chunk: int = mini(space, remaining)
-			slot["quantity"] += chunk
-			remaining -= chunk
+		var item_id: int = _next_id
+		_next_id += 1
+		_items[item_id] = {
+			"type": type,
+			"origin": placement["origin"],
+			"rotation": placement["rotation"],
+			"shape": shape,
+		}
+		_write_cells(item_id, shape, placement["origin"], placement["rotation"])
+		added += 1
 
-	# Fill empty slots
-	for slot in _slots:
-		if remaining <= 0:
-			break
-		if slot["type"] == &"":
-			var chunk: int = mini(max_stack, remaining)
-			slot["type"] = type
-			slot["quantity"] = chunk
-			remaining -= chunk
-
-	var added: int = to_add - remaining
 	if added > 0:
-		_current_size += unit_size * added
 		item_added.emit(type, added)
 		inventory_changed.emit()
 	var rejected: int = amount - added
@@ -177,29 +312,18 @@ func add_item(type: StringName, amount: int = 1) -> int:
 	return added
 
 
+## Remove `amount` instances of `type` from the grid.
+## Returns the number actually removed.
 func remove_item(type: StringName, amount: int = 1) -> int:
-	var remaining: int = amount
-	# Reverse-order to minimize fragmentation
-	for i in range(_slots.size() - 1, -1, -1):
-		if remaining <= 0:
-			break
-		var slot: Dictionary = _slots[i]
-		if slot["type"] == type:
-			var to_remove: int = mini(slot["quantity"], remaining)
-			slot["quantity"] -= to_remove
-			remaining -= to_remove
-			if slot["quantity"] == 0:
-				slot["type"] = &""
+	var ids: Array[int] = get_items_by_type(type)
+	var to_remove: int = mini(amount, ids.size())
+	for i in to_remove:
+		remove_item_by_id(ids[i])
 
-	var removed: int = amount - remaining
-	if removed > 0:
-		_current_size -= _get_item_size(type) * removed
-		# Guard against floating-point drift below zero
-		if _current_size < 0.0:
-			_current_size = 0.0
-		item_removed.emit(type, removed)
+	if to_remove > 0:
+		item_removed.emit(type, to_remove)
 		inventory_changed.emit()
-	return removed
+	return to_remove
 
 
 func has_item(type: StringName, amount: int = 1) -> bool:
@@ -207,63 +331,136 @@ func has_item(type: StringName, amount: int = 1) -> bool:
 
 
 func get_count(type: StringName) -> int:
-	var total: int = 0
-	for slot in _slots:
-		if slot["type"] == type:
-			total += slot["quantity"]
-	return total
-
-
-func get_slots() -> Array[Dictionary]:
-	var copy: Array[Dictionary] = []
-	for slot in _slots:
-		copy.append(slot.duplicate())
-	return copy
-
-
-func is_full() -> bool:
-	# Size-based: full if remaining capacity is less than the smallest
-	# possible item size. Use a small epsilon to account for float drift.
-	if _current_size >= capacity_size:
-		return true
-	# Also full if no slot space remains (all occupied and at max_stack)
-	for slot in _slots:
-		if slot["type"] == &"":
-			return false
-		var def: _PropDef = PropRegistry.get_def(slot["type"])
-		if def != null and slot["quantity"] < def.max_stack:
-			return false
-	return true
-
-
-func get_max_slots() -> int:
-	return _base_slots + _bonus_slots
-
-
-func get_used_slot_count() -> int:
 	var count: int = 0
-	for slot in _slots:
-		if slot["type"] != &"":
+	for item_id: int in _items:
+		if _items[item_id]["type"] == type:
 			count += 1
 	return count
+
+
+## Backward compat: returns items grouped by type as {type, quantity}.
+## Empty types are never included (callers already skip them).
+func get_slots() -> Array[Dictionary]:
+	var type_counts: Dictionary = {}
+	for item_id: int in _items:
+		var t: StringName = _items[item_id]["type"]
+		if type_counts.has(t):
+			type_counts[t] += 1
+		else:
+			type_counts[t] = 1
+	var result: Array[Dictionary] = []
+	for t: StringName in type_counts:
+		result.append({"type": t, "quantity": type_counts[t]})
+	return result
+
+
+## Backward compat: items grouped by type with cell-count size info.
+func get_stacks() -> Array[Dictionary]:
+	var type_counts: Dictionary = {}
+	for item_id: int in _items:
+		var t: StringName = _items[item_id]["type"]
+		if type_counts.has(t):
+			type_counts[t] += 1
+		else:
+			type_counts[t] = 1
+	var result: Array[Dictionary] = []
+	for t: StringName in type_counts:
+		var shape: Array[Vector2i] = _get_shape_for_type(t)
+		var cells_per: float = float(shape.size())
+		var count: int = type_counts[t]
+		result.append({
+			"type": t,
+			"count": count,
+			"size_per_unit": cells_per,
+			"total_size": cells_per * float(count),
+		})
+	return result
 
 
 func use_item(type: StringName) -> bool:
 	if not has_item(type):
 		return false
-	remove_item(type, 1)  # remove_item already emits inventory_changed
+	remove_item(type, 1)
 	item_used.emit(type)
 	return true
 
 
-func expand(additional_slots: int) -> void:
-	_bonus_slots += additional_slots
-	for i in additional_slots:
-		_slots.append({ "type": &"", "quantity": 0 })
+func is_full() -> bool:
+	for i in _grid.size():
+		if _grid[i] == 0:
+			return false
+	return true
+
+
+## Expand the grid by adding rows.
+func expand(additional_rows: int) -> void:
+	grid_height += additional_rows
+	_rebuild_grid()
 	inventory_changed.emit()
 
 
-# --- Tool API ---
+## Rebuild the flat grid array from the items dict (after resize, load, etc.).
+func _rebuild_grid() -> void:
+	_grid = PackedInt32Array()
+	_grid.resize(grid_width * grid_height)
+	_grid.fill(0)
+	for item_id: int in _items:
+		var item: Dictionary = _items[item_id]
+		_write_cells(item_id, item["shape"], item["origin"], item["rotation"])
+
+
+# ---------------------------------------------------------------------------
+# Size / capacity — backward compat (cell-count based)
+# ---------------------------------------------------------------------------
+
+## Total cells occupied by items.
+func get_current_size() -> float:
+	var occupied: int = 0
+	for i in _grid.size():
+		if _grid[i] != 0:
+			occupied += 1
+	return float(occupied)
+
+
+## Total grid cells.
+func get_capacity_size() -> float:
+	return float(grid_width * grid_height)
+
+
+## Writable capacity_size for backward compat (tests, legacy saves).
+## Setting this resizes the grid to approximately that many cells.
+var capacity_size: float:
+	get:
+		return float(grid_width * grid_height)
+	set(value):
+		var total_cells: int = int(max(1.0, value))
+		var side: int = int(ceil(sqrt(float(total_cells))))
+		grid_width = side
+		grid_height = int(ceil(float(total_cells) / float(side)))
+		_rebuild_grid()
+
+
+func get_remaining_capacity() -> float:
+	return get_capacity_size() - get_current_size()
+
+
+func get_size_display() -> String:
+	return "%.0f / %.0f" % [get_current_size(), get_capacity_size()]
+
+
+## Backward compat: total grid cells.
+func get_max_slots() -> int:
+	return grid_width * grid_height
+
+
+## Number of distinct item instances currently in the grid.
+func get_used_slot_count() -> int:
+	return _items.size()
+
+
+# ---------------------------------------------------------------------------
+# Tool API (unchanged)
+# ---------------------------------------------------------------------------
 
 func get_tool(slot: StringName) -> StringName:
 	return _tool_slots.get(slot, &"")
@@ -281,53 +478,111 @@ func has_tool_for(slot: StringName) -> bool:
 	return _tool_slots.get(slot, &"") != &""
 
 
-# --- Save / Load ---
+# ---------------------------------------------------------------------------
+# Save / Load
+# ---------------------------------------------------------------------------
 
 func get_save_data() -> Dictionary:
-	var slots_data: Array = []
-	for slot in _slots:
-		slots_data.append({ "type": str(slot["type"]), "quantity": slot["quantity"] })
+	var items_data: Array = []
+	for item_id: int in _items:
+		var item: Dictionary = _items[item_id]
+		items_data.append({
+			"id": item_id,
+			"type": str(item["type"]),
+			"origin": [item["origin"].x, item["origin"].y],
+			"rotation": item["rotation"],
+		})
 	var tools_data: Dictionary = {}
-	for key in _tool_slots:
+	for key: StringName in _tool_slots:
 		tools_data[str(key)] = str(_tool_slots[key])
 	return {
-		"bonus_slots": _bonus_slots,
-		"capacity_size": capacity_size,
+		"grid_width": grid_width,
+		"grid_height": grid_height,
+		"items": items_data,
 		"tools": tools_data,
-		"slots": slots_data,
 	}
 
 
 func load_save_data(data: Dictionary) -> void:
-	_bonus_slots = int(data.get("bonus_slots", 0))
-	# Accept both new and legacy key names so old saves don't lose capacity upgrades.
-	capacity_size = float(data.get("capacity_size", data.get("capacity_weight", 50.0)))
-	var slots_data: Array = data.get("slots", [])
-	var total: int = _base_slots + _bonus_slots
-
-	# Preserve all saved slots even if bonus_slots was missing or smaller than
-	# the slots array — expand capacity to avoid silent data loss.
-	if slots_data.size() > total:
-		push_warning(
-			"Inventory.load_save_data: saved %d slots but total is %d — expanding capacity" \
-				% [slots_data.size(), total]
-		)
-		total = slots_data.size()
-		_bonus_slots = total - _base_slots
-
-	_slots.clear()
-	_slots.resize(total)
-	for i in total:
-		_slots[i] = { "type": &"", "quantity": 0 }
-
-	for i in mini(slots_data.size(), total):
-		var entry: Dictionary = slots_data[i]
-		_slots[i]["type"] = StringName(entry.get("type", ""))
-		_slots[i]["quantity"] = int(entry.get("quantity", 0))
+	# Detect save format: new (grid-based) vs legacy (slot-based).
+	if data.has("items") and data.has("grid_width"):
+		_load_grid_save(data)
+	elif data.has("slots"):
+		_load_legacy_save(data)
+	else:
+		# Empty or unknown — just load tools.
+		pass
 
 	var tools_data: Dictionary = data.get("tools", {})
 	for key in tools_data:
 		_tool_slots[StringName(key)] = StringName(tools_data[key])
 
-	# Recompute size from loaded inventory contents
-	_recompute_size()
+
+func _load_grid_save(data: Dictionary) -> void:
+	grid_width = int(data.get("grid_width", 30))
+	grid_height = int(data.get("grid_height", 40))
+	_items.clear()
+	_next_id = 1
+	_init_grid()
+
+	var items_data: Array = data.get("items", [])
+	for entry in items_data:
+		var item_id: int = int(entry.get("id", _next_id))
+		var type: StringName = StringName(entry.get("type", ""))
+		if type == &"":
+			continue
+		var origin_arr: Array = entry.get("origin", [0, 0])
+		var origin: Vector2i = Vector2i(int(origin_arr[0]), int(origin_arr[1]))
+		var rotation: int = int(entry.get("rotation", 0))
+		var shape: Array[Vector2i] = _get_shape_for_type(type)
+
+		if can_fit(shape, origin, rotation):
+			_items[item_id] = {
+				"type": type,
+				"origin": origin,
+				"rotation": rotation,
+				"shape": shape,
+			}
+			_write_cells(item_id, shape, origin, rotation)
+		else:
+			push_warning(
+				"Inventory.load: item %d (%s) no longer fits at %s rot %d — skipped"
+				% [item_id, type, origin, rotation]
+			)
+
+		if item_id >= _next_id:
+			_next_id = item_id + 1
+
+
+func _load_legacy_save(data: Dictionary) -> void:
+	## Load old slot-based save format: replay items into the grid.
+	grid_width = 30
+	grid_height = 40
+	_items.clear()
+	_next_id = 1
+	_init_grid()
+
+	var slots_data: Array = data.get("slots", [])
+	for entry in slots_data:
+		var type: StringName = StringName(entry.get("type", ""))
+		if type == &"":
+			continue
+		var quantity: int = int(entry.get("quantity", 0))
+		# Replay into grid via auto-placement (no signals during load).
+		var shape: Array[Vector2i] = _get_shape_for_type(type)
+		for _i in quantity:
+			var placement: Variant = find_placement(shape)
+			if placement == null:
+				push_warning(
+					"Inventory.load_legacy: no room for %s — skipped" % type
+				)
+				break
+			var item_id: int = _next_id
+			_next_id += 1
+			_items[item_id] = {
+				"type": type,
+				"origin": placement["origin"],
+				"rotation": placement["rotation"],
+				"shape": shape,
+			}
+			_write_cells(item_id, shape, placement["origin"], placement["rotation"])
