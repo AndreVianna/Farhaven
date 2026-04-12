@@ -525,15 +525,14 @@ func test_catalogable_prop_defs_have_catalog_entries() -> void:
 
 ## Mirror of Catalog._is_displayable — a PropDef belongs in the catalog UI
 ## iff its prop_category is one of the displayed buckets, OR its catalogable
-## cap has show_as_anomaly=true.
+## cap has show_as_anomaly=true. References Catalog.DISPLAYED_CATEGORIES
+## directly so this stays in sync if the production constant changes.
 func _catalog_is_displayable(def) -> bool:
 	if def.catalogable == null:
 		return false
 	if def.catalogable.show_as_anomaly:
 		return true
-	return def.prop_category == _PropCategory.PLANT \
-			or def.prop_category == _PropCategory.ANIMAL \
-			or def.prop_category == _PropCategory.MINERAL
+	return _Catalog.DISPLAYED_CATEGORIES.has(def.prop_category)
 
 
 func test_prop_registry_loads_props() -> void:

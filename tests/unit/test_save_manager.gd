@@ -233,7 +233,14 @@ func test_aggregate_save_shape_includes_reachable_autoloads() -> void:
 func test_aggregate_save_hex_grid_section_shape() -> void:
 	var sm: Node = _make_save_manager()
 	sm.save_game()
-	var parsed: Dictionary = JSON.parse_string(_read_save_file())
+	# Parse as Variant first — JSON.parse_string returns Variant or null.
+	# Assigning into a typed Dictionary would hard-error on parse failure and
+	# lose the clean assertion message. Assert shape before casting.
+	var parsed_raw: Variant = JSON.parse_string(_read_save_file())
+	assert_bool(parsed_raw is Dictionary).override_failure_message(
+		"save file must parse to a Dictionary"
+	).is_true()
+	var parsed: Dictionary = parsed_raw
 	# HexGrid.get_save_data() returns {"seed": int, "tiles": Array}
 	assert_bool(parsed.has("hex_grid")).is_true()
 	var hg_data: Dictionary = parsed["hex_grid"]
@@ -251,8 +258,18 @@ func test_aggregate_save_json_roundtrip_stable() -> void:
 	var first_text := _read_save_file()
 	sm.save_game()
 	var second_text := _read_save_file()
-	var first_parsed: Dictionary = JSON.parse_string(first_text)
-	var second_parsed: Dictionary = JSON.parse_string(second_text)
+	# Parse as Variant and assert shape before casting — a parse failure on
+	# either read should produce a clear assertion message, not a hard error.
+	var first_raw: Variant = JSON.parse_string(first_text)
+	var second_raw: Variant = JSON.parse_string(second_text)
+	assert_bool(first_raw is Dictionary).override_failure_message(
+		"first save must parse to a Dictionary"
+	).is_true()
+	assert_bool(second_raw is Dictionary).override_failure_message(
+		"second save must parse to a Dictionary"
+	).is_true()
+	var first_parsed: Dictionary = first_raw
+	var second_parsed: Dictionary = second_raw
 	assert_int(first_parsed.size()).is_equal(second_parsed.size())
 	for key in first_parsed.keys():
 		assert_bool(second_parsed.has(key)).is_true()
