@@ -544,12 +544,15 @@ func _on_fauna_moved(fauna_id: int, coords: Vector2i) -> void:
 		return
 	if not _fauna_manager.is_hostile(fauna_id):
 		return
-	# Weapon lookup
+	# Weapon lookup — search grid inventory for any weapon (PropDef.tool_slot == "weapon").
 	var weapon: StringName = &""
 	if _inventory != null:
-		var equipped: StringName = _inventory.get_tool(&"weapon") if _inventory.has_method("get_tool") else &""
-		if equipped != &"":
-			weapon = equipped
+		var slots: Array = _inventory.get_slots()
+		for slot in slots:
+			var def = PropRegistry.get_def(slot["type"])
+			if def != null and def.tool_slot == &"weapon":
+				weapon = slot["type"]
+				break
 	var damage: int = WEAPON_DAMAGE.get(weapon, WEAPON_DAMAGE.get(&"", 5))
 	_defend_cooldown = AUTO_DEFEND_CONFIG["attack_cooldown"]
 	# Apply attacking survival cost

@@ -10,136 +10,216 @@
 Inventory is Farhaven's **player-pouch data layer**. It is a `RefCounted` object (not a
 Node) owned by the Player. It manages two concerns in one class:
 
-1. **Prop / consumable slots** — a grid of slot dictionaries with per-type max-stack limits,
-   primary-constraint *size-based* capacity (each item has a `PortableCap.size` that
-   accumulates into a `capacity_size` budget), and add/remove/query API.
-2. **Tool slots** — four fixed named slots (`&"axe"`, `&"pickaxe"`, `&"weapon"`, `&"scanner"`)
-   that store a single PropDef id each. Tools live outside the prop grid entirely and are
-   never subject to size constraints.
+1. **Grid-based item storage** — a 2D grid (`grid_width × grid_height` cells, default 30×40).
+   Each item occupies a set of cells defined by its `PortableCap.slot_shape` (an
+   `Array[Vector2i]` of cell offsets relative to an origin). Items can be rotated in 90°
+   increments (4 orientations). There is no stacking: one prop instance occupies exactly
+   one shape on the grid. The grid is stored as a flat `PackedInt32Array` where each cell
+   holds an `item_id` (0 = empty). Items are tracked in a dict keyed by `item_id`; ids are
+   assigned sequentially and never reused within a session.
 
-The separation is deliberate: the prop grid is for consumables and resources, which are
-abundant and subject to carry-limit constraints; tool slots are for equipment, which is
-singular and must never be subject to "you're too heavy to carry your axe" failure modes.
+2. **Tool slots** — four named slots (`&"axe"`, `&"pickaxe"`, `&"weapon"`, `&"scanner"`).
+   Scanner is body-integrated and always available. The other three slots exist for backward
+   compatibility; the new model treats tools as ordinary grid items found via
+   `find_best_tool_for_action()`, which searches grid items by `PropDef.supports_actions`.
+
+The separation is kept to avoid breaking existing callers. New content should favour placing
+tools on the grid and querying via `find_best_tool_for_action`.
 
 ## Promises to content
 
-- **Size is the primary constraint.** Every item has a size per unit derived from its
-  `PortableCap.size` (items without a portable cap default to 1.0). Adding items is gated
-  by the remaining `capacity_size`, not by slot count. A small number of large items can
-  fill the inventory even with many empty slots.
-- **Slot fragmentation is secondary.** Slots have `max_stack` limits; within a size budget,
-  items still distribute across slots using partial-fill-first then empty-slot allocation.
-  Same-type items are merged into existing partial stacks when possible.
-- **`add_item(type, amount)` returns the amount actually added.** On capacity overflow,
-  the return value is less than `amount` and `inventory_full(type, rejected)` fires. A
-  complete rejection returns 0 and still emits `inventory_full`.
-- **Items with a single-unit size exceeding total capacity are rejected fully.** You cannot
-  carry an item whose size alone is greater than your max budget. This is a guardrail
-  against absurdly large props sneaking into the inventory.
-- **`remove_item(type, amount)` returns the amount actually removed.** Walks slots in
-  reverse to minimise fragmentation. Emits `item_removed(type, amount)` and
-  `inventory_changed()` on success.
-- **`add_item` rejects tool-slot items.** Any PropDef with a non-empty `tool_slot` is
-  rejected from the prop grid regardless of size. Tools must use `set_tool`.
-- **Signals are the subscription surface.** `inventory_changed`, `item_added(type, amount)`,
-  `item_removed(type, amount)`, `inventory_full(type, rejected)`, `item_used(type)`,
-  `tool_changed(slot, new_tool, old_tool)`. InventoryPanel and HUD subscribe to these.
-- **`use_item(type)` is a one-shot consume hook.** Removes one unit and emits
-  `item_used(type)`. SurvivalSystem subscribes to `item_used` and dispatches to `consume(type)`
-  to apply stat deltas. The panel calls `use_item` on tap.
-- **Tool slots are four fixed StringNames.** `&"axe"`, `&"pickaxe"`, `&"weapon"`,
-  `&"scanner"`. Adding a fifth slot requires editing the `_tool_slots` dict literal.
-- **`set_tool(slot, tool)` returns the previous tool id.** `tool_changed(slot, new, old)`
-  fires. Swapping tools does not go through the prop grid — the old tool is simply dropped
-  (callers that want "return old tool to pouch" must handle it themselves).
+### Grid placement
+
+- **Shape is the primary spatial constraint.** Each item's footprint is its
+  `PortableCap.slot_shape` rotated by the chosen orientation. Items with no `PortableCap`
+  use a single-cell shape `[Vector2i(0,0)]`. A shape that does not fit anywhere in the grid
+  is rejected.
+- **`place_item(type) -> int` auto-places and returns the item_id.** Returns 0 on failure.
+  Internally calls `find_placement(shape)` which tries all four rotations in row-major order
+  and picks the first fit. Emits `item_added(type, 1)` and `inventory_changed` on success;
+  emits `inventory_full(type, 1)` and returns 0 on failure.
+- **`place_item_at(type, origin, rotation) -> int` places at an explicit cell.** Returns 0
+  if the shape (at that rotation) collides with any occupied cell or goes out of bounds.
+- **`remove_item_by_id(item_id) -> bool` removes a specific instance.** Returns `false` if
+  the id is unknown. Clears every cell the item occupied and emits `item_removed(type, 1)`
+  and `inventory_changed`.
+- **`move_item(item_id, new_origin, new_rotation) -> bool` is atomic.** Clears the old
+  cells, checks the new placement (excluding the item's own cells via `exclude_id`), and
+  either commits the move or rolls back to the original position. Returns `false` without
+  side effects if the new placement is invalid.
+- **`can_fit(shape, origin, rotation, exclude_id) -> bool` is a pure query.** Does not
+  mutate state. `exclude_id` allows checking whether an item can move to a new position
+  without treating its own current cells as blocked.
+- **`find_placement(shape) -> Dictionary` returns `{origin, rotation}` or `{}`.** Tries
+  rotations 0–3 in order; within each rotation scans cells in row-major order. Returns the
+  first fit found. Returns an empty dict if no placement is possible in any orientation.
+- **`get_item(item_id) -> Variant` returns item data or null.** Item data dict contains
+  `{id, type, origin: Vector2i, rotation: int}`.
+- **`get_items_by_type(type) -> Array[int]` returns all item_ids of that type.** Empty array
+  if none present.
+- **`get_count(type) -> int` counts instances.** 0 if none.
+- **`find_best_tool_for_action(action) -> int` returns an item_id or 0.** Searches grid
+  items first (checking `PropDef.supports_actions` for `action`), then falls back to named
+  tool slots. Returns 0 if nothing capable is found.
+
+### Static shape utilities
+
+- **`rotate_shape_once(shape) -> Array[Vector2i]`** — rotates a shape 90° clockwise.
+- **`get_rotated_shape(base_shape, times) -> Array[Vector2i]`** — applies `rotate_shape_once`
+  N times (N mod 4).
+- **`get_shape_bounds(shape) -> Vector2i`** — returns the bounding box (width, height) of a
+  shape as a `Vector2i`.
+
+### Tool slots
+
 - **`get_tool(slot)` returns `&""` if empty.** Querying an unknown slot also returns `&""`,
   never crashes.
-- **`expand(additional_slots)` grows the grid.** Structures like the Storage Chest call this
-  (via BuildingSystem's side-effect on place) to bump slot count. Bonus slots persist into
-  save format.
-- **`capacity_size` is mutable at runtime.** BuildingSystem directly writes
-  `inv.capacity_size += 50.0` when a Storage Chest is placed. This is part of the data
-  contract — external systems can bump capacity freely.
-- **Save/load round-trips slots, bonus_slots, capacity_size, and tools.** Load recovers
-  `capacity_size` from either the new key or the legacy `capacity_weight` key so older
-  saves don't lose upgrades. Missing bonus_slots with larger saved slot arrays is handled
-  by growing the total slot count to avoid silent data loss.
+- **`set_tool(slot, tool)` emits `tool_changed(slot, new_tool, old_tool)`.** Returns the
+  previous tool id. Swapping tools does not interact with the grid — callers that want to
+  return the old tool to the grid must do so themselves.
+- **`has_tool_for(slot) -> bool`** — true if the slot is non-empty.
+
+### Signals (all preserved)
+
+- `inventory_changed()` — fired after any mutation.
+- `item_added(type, amount)` — fired by `add_item` and `place_item*` on success.
+- `item_removed(type, amount)` — fired by `remove_item*` variants on success.
+- `inventory_full(type, rejected)` — fired when placement fails.
+- `item_used(type)` — fired by `use_item`.
+- `tool_changed(slot, new_tool, old_tool)` — fired by `set_tool`.
+
+### Backward-compatible API
+
+These methods preserve the call sites that existed before the grid model was introduced.
+They behave correctly against the grid internally and should not be removed.
+
+- **`add_item(type, amount) -> int`** — auto-places `amount` individual instances; returns
+  the count actually placed. On partial failure emits `inventory_full` for each rejected
+  instance.
+- **`remove_item(type, amount) -> int`** — removes up to `amount` instances of `type`;
+  returns count actually removed. Iterates `get_items_by_type(type)` and calls
+  `remove_item_by_id` until `amount` is satisfied.
+- **`has_item(type, amount) -> bool`** — true if `get_count(type) >= amount`.
+- **`use_item(type) -> bool`** — removes one instance and emits `item_used(type)`. Returns
+  `false` if none present.
+- **`is_full() -> bool`** — true if no empty cell exists in the grid.
+- **`get_slots() -> Array[Dictionary]`** — items grouped by type as `{type, quantity}`.
+  RecipeRuntime and PredicateEvaluator use this.
+- **`get_stacks() -> Array[Dictionary]`** — items grouped by type with cell-count size info
+  as `{type, quantity, size}`.
+- **`expand(additional_rows)`** — appends rows to the grid; existing items are unaffected.
+- **`capacity_size` property** — computed getter returns `grid_width * grid_height`; setter
+  resizes the grid to the nearest integer row count. BuildingSystem writes this property
+  directly (`inv.capacity_size += 50`); that contract is preserved.
+- **`get_current_size()`, `get_capacity_size()`, `get_remaining_capacity()`,
+  `get_size_display()`** — cell-count arithmetic helpers for UI display.
+- **`get_max_slots()`, `get_used_slot_count()`** — slot-count arithmetic helpers.
+
+### Save / load
+
+- **New format:** `{grid_width, grid_height, items: [{id, type, origin: [x,y], rotation}], scanner}`.
+- **Legacy migration:** On load, if the data contains a `slots` key (old format), each slot
+  entry is replayed via `find_placement` to reconstruct a valid grid layout. Only the
+  scanner entry is preserved from old `tools` dicts; the other tool slots are not migrated
+  (tools are expected to be rediscovered as grid items).
 
 ## Requirements from content
 
-- **Owned by Player, accessed via `player.get_inventory()`.** Every system that needs the
-  inventory walks up to the player and calls this method. Inventory is never an autoload.
-- **PropRegistry must be initialised before add/remove/consume paths run.** Every lookup
-  goes through `PropRegistry.get_def(type)` — an item whose type has no registered def is
-  rejected from `add_item` (returns 0). Content cannot add arbitrary StringNames; only
-  registered PropDef ids.
-- **Items with `tool_slot` must use `set_tool`.** A prop authored as a tool (non-empty
-  `tool_slot` field) cannot be added to the prop grid. Content that wants a tool to show up
-  in inventory must call `set_tool(slot, id)`.
-- **`PortableCap.size` drives the size budget.** Content can skip the cap for legacy items;
-  the default size is 1.0 per unit. For v1 the main consumers of portable cap are resources
-  and consumables that need "a small item takes little space."
-- **Slot count defaults.** `_base_slots = 12`. Capacity can only grow via `expand`.
+- **Owned by Player, accessed via `player.get_inventory()`.** Every system walks up to the
+  player and calls this method. Inventory is never an autoload.
+- **PropRegistry must be initialised before any add/remove/query path runs.** Every type
+  lookup goes through `PropRegistry.get_def(type)`. A type with no registered def is
+  rejected from all placement methods (returns 0 or false). Content cannot add arbitrary
+  StringNames — only registered PropDef ids.
+- **`PortableCap.slot_shape` drives spatial footprint.** Items without a `PortableCap`
+  default to a single-cell shape. Content authors must set `slot_shape` on any item that
+  should occupy more than one cell.
+- **Grid defaults.** `grid_width = 30`, `grid_height = 40`. Capacity can only grow via
+  `expand` or by writing `capacity_size`.
+- **RecipeRuntime** uses `add_item`, `remove_item`, `has_item`, `get_slots`.
+- **AutoInteractionSystem** searches grid items for a weapon by checking
+  `PropDef.tool_slot == &"weapon"`.
+- **PredicateEvaluator** (`_eval_has_tool`) checks the scanner slot first, then falls back
+  to `get_slots()` for other tools.
+- **SurvivalSystem** uses `use_item`.
+- **BuildingSystem** uses the `capacity_size` compat property.
+- **InventoryPanel** subscribes to `inventory_changed` and `tool_changed`.
+- **Player** calls `get_save_data()` / `load_save_data(data)`.
 
 ## Extension points
 
-- **New tool slot.** Edit `_tool_slots` literal. Everything else (save format, UI row,
-  signal routing) is driven off that dict.
-- **New items.** Drop a new PropDef `.tres` with or without `PortableCap`; Inventory will
-  accept it as soon as PropRegistry scans it.
-- **New capacity bump mechanic.** Any system can write `inv.capacity_size += N`. BuildingSystem
-  does this for Storage Chest; a future upgrade tree could do the same.
-- **Panel integration.** InventoryPanel subscribes to `inventory_changed` and `tool_changed`
-  and re-renders. Replacing the panel with a different UI only requires connecting those
-  two signals. The contract is "tell me when something changed, I'll re-read."
-- **Tests.** Because Inventory is a plain `RefCounted`, tests can construct one with `new()`,
-  drive the API directly, and assert on the slot array. PropRegistry needs to be populated
-  first (or the test doubles the registry).
+- **New tool slot.** Edit the `_tool_slots` dict literal. Save format, signal routing, and
+  UI rows are driven off that dict.
+- **New items.** Drop a new PropDef `.tres` with a `PortableCap` that has `slot_shape` set.
+  Inventory accepts it as soon as PropRegistry scans it.
+- **New capacity mechanic.** Any system can write `inv.capacity_size += N` or call
+  `expand(rows)`. BuildingSystem does this for Storage Chest; a future upgrade tree can do
+  the same.
+- **Custom shapes.** `slot_shape` is just an `Array[Vector2i]`; L-shapes, T-shapes,
+  irregular outlines all work. `rotate_shape_once` and `get_shape_bounds` are public for
+  content tools that want to preview placements.
+- **Panel integration.** InventoryPanel subscribes to `inventory_changed` and
+  `tool_changed` and re-renders. Replacing the panel with a different UI only requires
+  connecting those two signals. The contract is "tell me when something changed, I'll
+  re-read."
+- **Tests.** Because Inventory is a plain `RefCounted`, tests can construct one with
+  `new()`, drive the API directly, and assert on the grid array. PropRegistry must be
+  populated first (or the test doubles it).
 
 ## Genre-specific notes
 
-Inventory is **survival-genre flavoured** but its internals are more reusable than they
-look.
+Inventory is **survival-genre flavoured** with a **Tetris-style grid** that is more
+distinctive than it first appears.
 
-- **Size-based capacity is survival-genre typical.** Games with weight-based or volume-based
-  inventories (Skyrim, The Long Dark, Don't Starve's slots-with-stacks) all have some
-  version of this. A strategy game with abstract resources would drop it.
-- **Tool slots as a separate namespace is survival-genre convention.** Survival games
-  typically distinguish "equipment I carry" from "resources I carry" so that a full pouch
-  can't lock you out of your tools. Combat RPGs do the same with "equipped" vs "inventory."
-- **Max-stack + slot grid is retro-flavoured.** Minecraft-era inventory. Some modern games
-  (Path of Exile, Diablo) use a grid of shaped items instead. The v1 model is deliberately
-  simple.
-- **Ground-drop-on-death is survival-flavoured.** Inventory itself doesn't own this logic —
-  it's in `survival_system.md` — but the cooperation between the two (tool-slot skip +
-  ground item emit) is deeply genre-specific.
-- **Size-budget + slot-max dual constraint is Farhaven-specific.** The transition from
-  slot-count-primary to size-primary is documented in the `max_stack` limitation notes in
-  `prop_def.md`. The v1 dual model is transitional; long-term the plan is slot-units only.
+- **Shaped-item grid is survival/ARPG-genre iconic.** The 2D Tetris layout (Escape from
+  Tarkov, Diablo, Path of Exile) communicates "space is precious" viscerally and makes
+  item-management a tactile mini-game. The v1 model is a full implementation of this
+  pattern.
+- **No stacking is an intentional design choice.** Every prop instance is a discrete object
+  on the grid. This favours scarcity, decision-making, and player agency over convenience.
+  Games that want stacks would need a different model.
+- **Tool slots as a separate namespace is survival-genre convention.** Separating "equipment
+  I carry" from "resources I carry" prevents a full pouch from locking you out of your
+  tools. The new model migrates toward tools-as-grid-items, but the named slots are kept to
+  avoid breaking existing callers.
+- **`find_best_tool_for_action` is the new equip model.** Rather than checking a specific
+  slot, systems query for capability. This allows multi-tool items and future equipment
+  diversity without adding new named slots.
+- **Ground-drop-on-death is survival-flavoured.** Inventory does not own this logic — it
+  lives in SurvivalSystem — but the cooperation between the two is genre-specific.
+- **`expand` and `capacity_size` are Farhaven-specific progression hooks.** Placing a
+  Storage Chest growing your grid is a concrete survival-game advancement mechanic. A
+  pure-strategy game with unlimited resources would omit these.
 
-A game that wants to replace Inventory outright can do so as long as it implements the
-same public API: `add_item`, `remove_item`, `has_item`, `get_count`, `get_slots`, `is_full`,
-`get_max_slots`, `get_used_slot_count`, `use_item`, `expand`, `get_tool`, `set_tool`,
-`has_tool_for`, plus the signal set above. Every consumer in the engine calls through this
-interface.
+A game that wants to replace Inventory outright must implement the same public API:
+`add_item`, `remove_item`, `has_item`, `get_count`, `get_slots`, `is_full`, `get_max_slots`,
+`get_used_slot_count`, `use_item`, `expand`, `get_tool`, `set_tool`, `has_tool_for`,
+`place_item`, `place_item_at`, `remove_item_by_id`, `move_item`, `can_fit`,
+`find_placement`, `get_item`, `get_items_by_type`, `find_best_tool_for_action`, plus the
+full signal set above. Every consumer in the engine calls through this interface.
 
 ## Known limitations and TODOs
 
-- **Dual size + slot constraint is a transitional.** `portable.size` is the primary constraint
-  but `max_stack` still gates slot fill. The long-term direction is "one number — slot units
-  — on PortableCap, no separate max_stack." See `prop_def.md` "max_stack is transitional."
-- **No sorting / auto-arrange.** Slots accumulate in add order. A future pass could auto-
-  consolidate same-type stacks.
-- **No category tabs in prop grid.** All prop slots are one flat list. Survival games with
-  larger inventories usually group resources vs consumables.
-- **Capacity exceeded after a bonus-removal is possible.** If `expand(-10)` were ever
-  supported, items might end up overhanging capacity. Currently there's no shrinking API,
-  so this isn't a live bug.
-- **Floating-point drift guard.** `_current_size` has an explicit `if _current_size < 0.0:
-  _current_size = 0.0` guard for float drift. A future pass using integer sub-slot-units
-  (e.g. 1 size = 100 sub-units) would eliminate the drift entirely.
-- **Stack merging only on add.** If two stacks of the same type exist (via edit-time save
-  manipulation) they won't auto-merge on subsequent writes. Normal play can't produce this
-  situation.
-- **Save format key churn.** The `capacity_weight` → `capacity_size` rename is handled on
-  load but adds a little bit of back-compat noise. Cleanup deferred until pre-1.0 ships.
+- **No sorting / auto-arrange.** Items are placed in the order they were picked up. A future
+  pass could implement auto-consolidate or defragment to maximise free contiguous space.
+- **No category tabs or visual grouping.** All grid items occupy one flat 2D space. Survival
+  games with larger inventories typically group resources vs consumables in separate tabs.
+- **`find_placement` is first-fit, not optimal-fit.** It returns the first valid position in
+  row-major order across all four rotations. A best-fit or tightest-fit algorithm would
+  reduce fragmentation at the cost of placement speed.
+- **Legacy tool-slot migration is lossy.** When loading old save data, only the scanner is
+  preserved from the old `tools` dict. Axe, pickaxe, and weapon must be re-found as grid
+  items. This is intentional — the old named slots are being phased out — but it means old
+  saves lose equipped tools on first load under the new system.
+- **`capacity_size` setter rounds to nearest row.** Writing a non-multiple of `grid_width`
+  truncates to the nearest whole row. Callers that write fractional increments may see
+  unexpected grid sizes.
+- **Grid shrink is not supported.** `expand` only adds rows. There is no shrink API. If
+  `capacity_size` were written to a smaller value than the current grid, items in the
+  removed rows would be silently lost. The compat setter guards against this by not
+  shrinking below the current item footprint, but this is a live invariant that future
+  changes must respect.
+- **item_id monotonically increases and is never reused.** In very long sessions with
+  frequent add/remove cycles this counter could theoretically overflow an `int32`. In
+  practice Farhaven's item churn makes this unreachable, but it is worth noting for any
+  future port to a 16-bit id scheme.

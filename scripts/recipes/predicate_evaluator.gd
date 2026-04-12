@@ -66,21 +66,28 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 	if inv == null:
 		push_warning("PredicateEvaluator: 'has_tool' — player has no inventory, returning false")
 		return false
-	# Check each tool slot: the equipped tool's PropDef might have tool_slot == tool_id,
-	# or the equipped tool's PropDef id itself matches tool_id.
-	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner"]:
-		var equipped: StringName = inv.get_tool(slot)
-		if equipped == &"":
+	# 1. Check scanner tool slot (body-integrated).
+	var scanner: StringName = inv.get_tool(&"scanner")
+	if scanner != &"":
+		if scanner == tool_id:
+			return true
+		if &"scanner" == tool_id:
+			return true
+		var sdef: _PropDef = PropRegistry.get_def(scanner)
+		if sdef != null and sdef.tool_slot == tool_id:
+			return true
+	# 2. Search grid inventory for tools matching tool_id.
+	var slots: Array = inv.get_slots()
+	for slot in slots:
+		var item_type: StringName = slot["type"]
+		if item_type == tool_id:
+			return true
+		var def: _PropDef = PropRegistry.get_def(item_type)
+		if def == null:
 			continue
-		# Direct id match
-		if equipped == tool_id:
+		if def.tool_slot == tool_id:
 			return true
-		# tool_slot match (e.g. tool_id = "axe", PropDef.tool_slot = "axe")
-		if slot == tool_id:
-			return true
-		# Check PropDef.tool_slot in case the equipped prop has a matching slot name
-		var def: _PropDef = PropRegistry.get_def(equipped)
-		if def != null and def.tool_slot == tool_id:
+		if def.id == tool_id:
 			return true
 	return false
 
