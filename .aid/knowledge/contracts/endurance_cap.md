@@ -115,7 +115,7 @@ tag lists.
   no damage loop in delivery-006d that actually reads EnduranceCap and applies the
   multipliers. FaunaManager consumes `hp` at spawn time, but nothing currently subtracts
   from it or checks the tag lists. This lands alongside the combat runtime in
-  **[delivery-006d task-088](../work-001-core/delivery-006d/DETAIL.md)**.
+  **[delivery-006d task-088](../../work-001-core/delivery-006d/DETAIL.md)**.
 - **Multipliers are hardcoded.** 2x vulnerability and 0.5x resistance are not configurable
   per creature. A creature that is "mildly vulnerable to fire" (1.5x) or "completely
   destroyed by water" (5x) cannot express that nuance in the current schema.

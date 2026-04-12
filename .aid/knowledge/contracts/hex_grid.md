@@ -88,6 +88,18 @@ applying movement rules.
 - **Tile visitation signals.** New systems that need to react to "player moved here" or
   "something was built here" connect to the existing signals — no need to poll.
 
+**Consumers.** HexGrid is the world-state hub; the systems that read tile / traversal /
+topology from it include [`day_night_cycle.md`](day_night_cycle.md) (via the `tile_entered`
+hook for per-tile shader lighting), [`lighting_manager.md`](lighting_manager.md) (local
+light aggregation per tile), [`fauna_manager.md`](fauna_manager.md) (spawn tile selection
+and creature movement), [`map_loader.md`](map_loader.md) (tile construction at load),
+[`survival_system.md`](survival_system.md) (tile-based environmental damage),
+[`save_manager.md`](save_manager.md) (full tile-state serialisation),
+[`scanner_system.md`](scanner_system.md) + [`catalog.md`](catalog.md) (scannable lookup
+per tile), [`auto_interaction_system.md`](auto_interaction_system.md) (proximity gather
+radius interacts with tile props), and [`movement_cap.md`](movement_cap.md) (sub-hex
+per second speeds are defined against this grid's topology).
+
 ## Genre-specific notes
 
 HexGrid is **deeply Farhaven-specific**. A second game on this engine would keep a topology
@@ -109,8 +121,9 @@ The part of HexGrid that does generalise is the **"one autoload owns the world a
 topology + traversability + save/load"** shape. That pattern is reusable; the specifics
 aren't.
 
-See [`hex_math.md`](hex_math.md) for the pure-utility layer and [`map_loader.md`](map_loader.md)
-for how map JSON becomes HexGrid state.
+See `scripts/hex/hex_math.gd` for the pure-utility coordinate-math layer (no separate contract
+file — the helper is deliberately a stateless utility that HexGrid delegates to) and
+[`map_loader.md`](map_loader.md) for how map JSON becomes HexGrid state.
 
 ## Known limitations and TODOs
 

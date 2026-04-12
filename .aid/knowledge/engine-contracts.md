@@ -1,8 +1,8 @@
 # Engine Contracts — Index
 
-**Status:** In progress (task-083, delivery-006d). Sample contract (`prop_def.md`) landed via
-task-083a. Remaining files will be filled in by task-083b (autoloads), task-083c (data +
-capabilities), and task-083d (systems + UI). Final cross-reference pass is task-083e.
+**Status:** Complete (delivery-006d task-083). 45 per-system contract files plus this index,
+authored across sub-tasks 083a (template + sample), 083b (autoloads), 083c (data + capabilities),
+083d (systems + UI), and 083e (final review + cross-reference pass). Ready for Andre review.
 
 ## What this is
 
@@ -24,8 +24,8 @@ following the order in which the engine initialises. Within each layer, entries 
 how foundational they are (things other systems depend on come first).
 
 **Link convention.** Contract filenames match the canonical snake_case name of the system
-(`prop_def.md`, `hex_grid.md`, `journal_panel.md`). A `[contract pending]` marker means the
-contract file has not been authored yet; it will be delivered by one of task-083b/c/d.
+(`prop_def.md`, `hex_grid.md`, `journal_panel.md`). Every entry below points at a file that
+exists on disk — there are no `[contract pending]` stubs.
 
 ---
 
@@ -78,15 +78,16 @@ are independently opt-in and non-interacting.
   in 006d; content comes in delivery-007.
 - **[JournalEntry](contracts/journal_entry.md)** — single journal-entry resource (id, title,
   teaser, full `body`, category, advisory `day_added`), loaded by JournalEntryRegistry.
-  Engine plumbing only in 006d. *(Note: may be folded into the Journal contract during
-  the 083e review if it has no standalone surface.)*
+  Engine plumbing only in 006d; content comes in delivery-007.
 - **[GameEvent](contracts/game_event.md)** — event definition with preconditions, effects,
-  and max-count, used by EventRegistry. *(Data class only — the loader/firing infrastructure
-  is `event_registry.md`, which 083b owns.)*
+  and max-count. Data class consumed by [`event_registry.md`](contracts/event_registry.md)
+  (loader / firing infrastructure).
 - **[Recipe](contracts/recipe.md)** — the `Recipe` data class root (id, inputs, outputs,
-  conditions, effects, actions, duration). The sibling classes (`RecipeInput`, `RecipeOutput`,
-  `RecipeEffect`, `RecipeCondition`, `Predicate`) are covered by task-083c as independent
-  contracts; the loader is `recipe_registry.md`; the runtime executor is `recipe_runtime.md`.
+  conditions, effects, actions, duration). The five sibling classes (`RecipeInput`,
+  `RecipeOutput`, `RecipeCondition`, `RecipeEffect`, `Predicate`) are documented inline in
+  the Siblings section of the Recipe contract rather than as separate files — they are
+  small data shapes that only exist as nested elements inside a Recipe. The loader is
+  `recipe_registry.md`; the runtime executor is `recipe_runtime.md`.
 - **[BiomeData](contracts/biome_data.md)** — biome configuration resource (colour, elevation
   range, prop table) loaded from `res://data/biomes/*.tres`.
 - **[HexTile](contracts/hex_tile.md)** — single hex-tile resource with coords, biome,
@@ -102,8 +103,9 @@ real order in `project.godot` — PropRegistry runs first so every later autoloa
 
 - **[PropRegistry](contracts/prop_registry.md)** — scans `res://data/props/` on `_ready`,
   exposes `get_def(id)`, `has_def(id)`, `get_all()`. Owner of every PropDef in memory.
-- **[HexGrid](contracts/hex_grid.md)** — map topology and coordinate math (with a reference
-  to `hex_math.md` for the pure-utility layer).
+- **[HexGrid](contracts/hex_grid.md)** — map topology and coordinate math. The pure-utility
+  coordinate helpers live in `scripts/hex/hex_math.gd` (no separate contract — stateless
+  utility that HexGrid delegates to).
 - **[DayNightCycle](contracts/day_night_cycle.md)** — in-game time, day/dusk/night/dawn
   transitions, tick signals.
 - **[LightingManager](contracts/lighting_manager.md)** — global light state, phase-driven
@@ -185,19 +187,27 @@ relying on an undeclared engine assumption.
 
 ## Totals
 
-- Data / capability contracts: 19 (Gear + PropDef + 12 caps + CutsceneDef + JournalEntry +
-  GameEvent + Recipe + BiomeData + HexTile) — plus the Recipe-family sub-resources
-  (RecipeInput, RecipeOutput, RecipeEffect, RecipeCondition, Predicate) contracted under
-  task-083c which bring the layer to 24 files.
-- Autoload contracts: 12
-- System contracts: 8 (the 7 non-autoload systems plus `catalog.md` which was split off
-  from `scanner_system.md` during 083d to separate the data store from the controller)
-- UI contracts: 5
+- **Data / capability contracts: 20** — Gear, PropDef, 12 capability classes (Portable,
+  Placeable, Container, Light, Movable, Station, Catalogable, Endurance, Movement, Combat,
+  Behavior, Spawnable), CutsceneDef, JournalEntry, GameEvent, Recipe (with its five sibling
+  classes documented inline in the Recipe Siblings section), BiomeData, HexTile.
+- **Autoload contracts: 12** — PropRegistry, HexGrid, DayNightCycle, LightingManager,
+  RecipeRegistry, EventRegistry, DiscoveryWatcher, RecipeRuntime, Journal,
+  JournalEntryRegistry, CutsceneManager, SaveManager.
+- **System contracts: 8** — AutoInteractionSystem, BuildingSystem, FaunaManager,
+  SurvivalSystem, ScannerSystem, Catalog (split off from ScannerSystem to separate the
+  RefCounted data store from the controller Node), Inventory, MapLoader.
+- **UI contracts: 5** — HUD, JournalPanel, StatusCombinedPanel, InventoryPanel, CatalogPanel.
 
-**Target total: ~49 files.** The DETAIL estimate of "~32" treats the Recipe family as a
-single contract and does not separately list BiomeData / HexTile / Gear / JournalEntry /
-CutsceneDef / Catalog; when those are counted individually the figure rises. 083e should
-confirm the final count against this index.
+**Final total: 45 per-system contract files in `contracts/` + 1 index (this file) = 46
+markdown files for the engine-contracts deliverable.** The DETAIL estimate of "~32" treated
+the Recipe family as a single contract (still true in this delivery — the five siblings are
+documented inline in `recipe.md`) and did not separately list Gear / BiomeData / HexTile /
+JournalEntry / CutsceneDef / Catalog; counting those individually produces 45. No contracts
+were merged or dropped during the 083e final review; the Recipe siblings (RecipeInput /
+RecipeOutput / RecipeCondition / RecipeEffect / Predicate) were deliberately documented
+inline in `recipe.md` rather than as five extra files because their shape is meaningful
+only inside a containing Recipe.
 
 ---
 
@@ -209,5 +219,7 @@ confirm the final count against this index.
 - Cross-layer back-references are fine in prose (e.g. a data contract noting which autoload
   owns it) but must not create a hard cycle.
 - When Contract A lists B under *Depends on*, Contract B should mention A in its *Extension
-  points* or *Genre-specific notes* where relevant, so the graph is navigable in both directions.
-  The 083e pass verifies this.
+  points*, *Consumers* note, or *Genre-specific notes* where relevant, so the graph is
+  navigable in both directions. The 083e review pass verified this across all 45 contracts
+  and added explicit *Consumers* backlink summaries to the four most widely-depended-on
+  contracts (PropDef, PropRegistry, HexGrid, EventRegistry).

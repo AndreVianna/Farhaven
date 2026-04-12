@@ -115,7 +115,3 @@ level — the binding is entirely at the UI rendering layer.
 - **No "read" state in the data class.** JournalEntry does not track whether the player has
   opened it. That state (if it exists) lives on `Journal` and in the save file. This is the
   correct layering but worth flagging for content authors expecting a `read` flag.
-- **Panel folding possible (083e review).** The engine-contracts index notes that
-  JournalEntry may be folded into the Journal contract during the 083e review if it has no
-  standalone surface. This contract file assumes the standalone version stays; a fold would
-  move this content under `journal.md` and replace this file with a redirect.

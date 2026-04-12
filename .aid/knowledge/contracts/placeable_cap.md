@@ -26,11 +26,11 @@ itself.
   something the player places versus something the player keeps in the bag. An empty
   PlaceableCap on a PropDef is sufficient to enable placement.
 - **Footprint is not on PlaceableCap.** It lives on PropDef's deprecated `footprint` field
-  and will migrate to a first-class slot in a future pass. The task-083a sample contract
-  [`prop_def.md`](prop_def.md) describes the deprecation path — the comment in prop_def.gd
-  says `"DEPRECATED in task-053: use placeable.footprint instead"`, but the field has not
-  actually been moved onto PlaceableCap yet. Content authoring footprints today should
-  still use the PropDef-level field.
+  and will migrate to a first-class slot in a future pass. [`prop_def.md`](prop_def.md)
+  describes the deprecation path — the comment in prop_def.gd says `"DEPRECATED in
+  task-053: use placeable.footprint instead"`, but the field has not actually been moved
+  onto PlaceableCap yet. Content authoring footprints today should still use the
+  PropDef-level field.
 - **Rotation, validity, and placement previews are BuildingSystem concerns.** The cap is
   silent about all of them by design.
 - **PlaceableCap composes cleanly with any other cap.** It is frequently paired with
@@ -103,7 +103,7 @@ unused and the `placeable` slot on PropDef stays null on every entry.
   "in task-053: use placeable.footprint instead," but no `footprint` field actually
   exists on PlaceableCap. The migration was described in a prior delivery but not
   completed. Either the migration needs to land or the comment needs to be corrected.
-  Scoping: out of 083c, flag for the 083e review.
+  Deferred to task-088 engine cleanup backlog.
 - **Tag coupling is undeclared at the cap level.** BuildingSystem's requirement for a
   `STRUCTURE` tag alongside the cap is a two-sided contract (cap + tag) that lives
   entirely in BuildingSystem code. A future refactor could either move the tag check

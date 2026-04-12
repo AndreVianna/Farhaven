@@ -3,7 +3,7 @@
 **Source:** `scripts/auto_interaction/auto_interaction_system.gd`
 **Category:** genre-specific
 **Layer:** system
-**Depends on:** [`prop_def.md`](prop_def.md), [`recipe.md`](recipe.md), [`recipe_registry.md`](recipe_registry.md), [`predicate.md`](predicate.md) (indirectly through PredicateEvaluator), [`discovery_watcher.md`](discovery_watcher.md), [`catalog.md`](catalog.md), [`inventory.md`](inventory.md), [`hex_grid.md`](hex_grid.md), [`fauna_manager.md`](fauna_manager.md) (for auto-defend), [`survival_system.md`](survival_system.md) (for activity costs). Reads from `catalogable_cap.md` and `portable_cap.md` indirectly. Not an autoload — it is a child Node of Player.
+**Depends on:** [`prop_def.md`](prop_def.md), [`recipe.md`](recipe.md) (including its Siblings section on Predicate, used indirectly through PredicateEvaluator), [`recipe_registry.md`](recipe_registry.md), [`discovery_watcher.md`](discovery_watcher.md), [`catalog.md`](catalog.md), [`inventory.md`](inventory.md), [`hex_grid.md`](hex_grid.md), [`fauna_manager.md`](fauna_manager.md) (for auto-defend), [`survival_system.md`](survival_system.md) (for activity costs). Reads from `catalogable_cap.md` and `portable_cap.md` indirectly. Not an autoload — it is a child Node of Player.
 
 ## What this system is
 
