@@ -219,3 +219,106 @@ func test_max_instances_cap() -> void:
 
 	# Capped at MAX_INSTANCES (10)
 	assert_int(_renderer.get_visible_count()).is_equal(10)
+
+
+# ===========================================
+# Respawn edge cases (task-084d)
+# ===========================================
+
+func test_drop_same_type_different_sub_hex_creates_two_markers() -> void:
+	# Per-sub-hex marker keys: the same item type at different sub_hex
+	# coordinates on the same tile should create two distinct markers.
+	_grid._tiles[Vector2i(1, 0)] = _make_tile()
+	_survival.add_item(Vector2i(1, 0), &"berries", 5, Vector2i(0, 0))
+	_survival.add_item(Vector2i(1, 0), &"berries", 3, Vector2i(1, 0))
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5, Vector2i(0, 0))
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 3, Vector2i(1, 0))
+	assert_int(_renderer.get_visible_count()).is_equal(2)
+
+
+func test_drop_then_full_cleanup_then_redrop_reuses_pool() -> void:
+	# Drop, pick up everything, then drop a new item — the pool slot
+	# freed by the pickup must be reusable for the new marker.
+	_grid._tiles[Vector2i(1, 0)] = _make_tile()
+	_survival.add_item(Vector2i(1, 0), &"berries", 5)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(1)
+
+	# Pickup the entire berries stack
+	_survival.remove_item(Vector2i(1, 0), &"berries")
+	_survival.ground_item_picked_up.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(0)
+
+	# Drop a fresh item at the same tile — should reuse the freed slot
+	_survival.add_item(Vector2i(1, 0), &"stone", 4)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"stone", 4, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(1)
+
+
+func test_pickup_on_tile_with_no_items_is_noop() -> void:
+	# Sanity: emitting picked_up on an empty tile shouldn't crash or
+	# decrement the shared visible counter.
+	_grid._tiles[Vector2i(5, 5)] = _make_tile()
+	_survival.add_item(Vector2i(1, 0), &"berries", 3)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 3, Vector2i.ZERO)
+	# Fire pickup on an unrelated empty tile
+	_survival.ground_item_picked_up.emit(Vector2i(5, 5), &"berries", 0, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(1)
+
+
+func test_partial_pickup_of_one_type_leaves_other_types_alone() -> void:
+	# Multi-type tile: picking up one type should only clear that marker,
+	# not affect markers for other types at the same tile.
+	_grid._tiles[Vector2i(2, 2)] = _make_tile()
+	_survival.add_item(Vector2i(2, 2), &"berries", 5)
+	_survival.add_item(Vector2i(2, 2), &"stone", 3)
+	_survival.add_item(Vector2i(2, 2), &"wood", 2)
+	_survival.ground_item_dropped.emit(Vector2i(2, 2), &"berries", 5, Vector2i.ZERO)
+	_survival.ground_item_dropped.emit(Vector2i(2, 2), &"stone", 3, Vector2i.ZERO)
+	_survival.ground_item_dropped.emit(Vector2i(2, 2), &"wood", 2, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(3)
+
+	# Pick up only stone
+	_survival.remove_item(Vector2i(2, 2), &"stone")
+	_survival.ground_item_picked_up.emit(Vector2i(2, 2), &"stone", 3, Vector2i.ZERO)
+
+	# Two markers should remain
+	assert_int(_renderer.get_visible_count()).is_equal(2)
+	var instances: Dictionary = _renderer.get_tile_instances()
+	# Neither remaining key should mention stone
+	for key: String in instances:
+		assert_bool(key.ends_with("stone")).is_false()
+
+
+func test_pool_cap_respects_freed_slots() -> void:
+	# Fill the pool to MAX_INSTANCES, clear one, drop a new item.
+	# The freed slot should be reusable, not block new drops.
+	for i in range(10):
+		var coords := Vector2i(i, 0)
+		_grid._tiles[coords] = _make_tile()
+		_survival.add_item(coords, &"berries", 1)
+		_survival.ground_item_dropped.emit(coords, &"berries", 1, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(10)
+
+	# Clear one slot
+	_survival.remove_item(Vector2i(0, 0), &"berries")
+	_survival.ground_item_picked_up.emit(Vector2i(0, 0), &"berries", 1, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(9)
+
+	# A new drop at a fresh tile must now succeed
+	_grid._tiles[Vector2i(11, 0)] = _make_tile()
+	_survival.add_item(Vector2i(11, 0), &"berries", 1)
+	_survival.ground_item_dropped.emit(Vector2i(11, 0), &"berries", 1, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(10)
+
+
+func test_redrop_same_key_is_idempotent() -> void:
+	# Dropping twice with the exact same (tile, sub_hex, type) key should
+	# not duplicate (already covered by test_drop_same_type_same_sub_hex_only_one_marker,
+	# but this variant exercises the re-entry guard through the picked_up cleanup.
+	_grid._tiles[Vector2i(1, 0)] = _make_tile()
+	_survival.add_item(Vector2i(1, 0), &"berries", 5)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
+	_survival.ground_item_dropped.emit(Vector2i(1, 0), &"berries", 5, Vector2i.ZERO)
+	assert_int(_renderer.get_visible_count()).is_equal(1)
