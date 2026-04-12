@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="portable_1"]
 script = ExtResource("2_portable")
-size = 1.8
+slot_shape = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 3)]
 
 [resource]
 script = ExtResource("1_script")
@@ -16,6 +16,7 @@ portable = SubResource("portable_1")
 max_stack = 1
 origin = 1
 tool_slot = &"shovel"
+supports_actions = [&"dig"]
 category = &"tool"
 prop_category = 8
 placeholder_mesh_type = &"box"
