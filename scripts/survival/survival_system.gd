@@ -275,7 +275,12 @@ func _death_load_save(save_mgr: Node) -> void:
 	# Preserve knowledge state before load overwrites it.
 	var catalog_snapshot: Dictionary = _snapshot_catalog()
 	var journal_snapshot: Array[StringName] = _snapshot_journal()
-	save_mgr.load_game()
+	var load_ok: bool = save_mgr.load_game()
+	if not load_ok:
+		# Save corrupt or missing — fall back to normal respawn.
+		push_warning("SurvivalSystem: death load failed — falling back to respawn")
+		respawn()
+		return
 	# Re-apply knowledge so discoveries survive death.
 	_restore_catalog(catalog_snapshot)
 	_restore_journal(journal_snapshot)

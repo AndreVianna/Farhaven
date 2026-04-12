@@ -317,12 +317,13 @@ static func _eval_container_has(params: Dictionary, ctx: WorldContext) -> bool:
 	var match_count: int = 0
 	for item in container_props:
 		var item_type: StringName = &""
+		var reg: Node = _get_prop_registry(ctx)
 		if item is Dictionary:
 			item_type = StringName(item.get("type", &""))
-			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)), ctx.prop_registry)
+			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)), reg)
 		elif "type" in item:
 			item_type = item.type
-			match_count += _count_matches(item_type, ref_or_tag, 1, ctx.prop_registry)
+			match_count += _count_matches(item_type, ref_or_tag, 1, reg)
 		if match_count >= count_ge:
 			return true
 	return false
