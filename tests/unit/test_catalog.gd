@@ -501,8 +501,17 @@ func test_load_save_data_backwards_compatible_with_discovered_format() -> void:
 # --- PropDef catalogable mapping ---
 
 func test_catalogable_prop_defs_have_catalog_entries() -> void:
+	# Contract (set in ff30b8e after Copilot PR #13 review): catalog tracks
+	# only PropDefs whose prop_category is one of Catalog.DISPLAYED_CATEGORIES
+	# (PLANT/ANIMAL/MINERAL), or whose catalogable.show_as_anomaly=true.
+	# Player-placed structures (P00101..P00106) carry CatalogableCap for
+	# scanner infrastructure but are intentionally excluded from the catalog
+	# UI — see test_get_total_count_matches_all_entries for the authoritative
+	# 10-entry count.
 	for def in PropRegistry.get_all():
 		if def.catalogable == null:
+			continue
+		if not _catalog_is_displayable(def):
 			continue
 		var entry = _catalog.get_entry(def.id)
 		assert_bool(entry != null).override_failure_message(
@@ -512,6 +521,18 @@ func test_catalogable_prop_defs_have_catalog_entries() -> void:
 		assert_bool(entry == def).override_failure_message(
 			"PropDef[%s] catalog entry should be the PropDef itself" % def.id
 		).is_true()
+
+
+## Mirror of Catalog._is_displayable — a PropDef belongs in the catalog UI
+## iff its prop_category is one of the displayed buckets, OR its catalogable
+## cap has show_as_anomaly=true. References Catalog.DISPLAYED_CATEGORIES
+## directly so this stays in sync if the production constant changes.
+func _catalog_is_displayable(def) -> bool:
+	if def.catalogable == null:
+		return false
+	if def.catalogable.show_as_anomaly:
+		return true
+	return _Catalog.DISPLAYED_CATEGORIES.has(def.prop_category)
 
 
 func test_prop_registry_loads_props() -> void:

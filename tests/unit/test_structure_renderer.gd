@@ -531,7 +531,9 @@ func test_key_format_includes_coords_and_type() -> void:
 
 	var keys: Array = _renderer.get_all_keys()
 	assert_int(keys.size()).is_equal(1)
-	assert_str(keys[0]).is_equal("3,-2:P00103")
+	# Key format: "q,r:sq,sr:TYPE" — extended to include sub-hex coordinates
+	# so multiple structures of the same type on one tile are preserved.
+	assert_str(keys[0]).is_equal("3,-2:0,0:P00103")
 
 
 # ===========================================================================
