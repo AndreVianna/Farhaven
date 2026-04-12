@@ -114,11 +114,13 @@ just pauses the tree, cold-resume is "load_game() on startup if `has_save()`."
 
 ## Known limitations and TODOs
 
-- **Single save slot.** No multi-slot support, no named saves, no autosave-vs-manual
-  split. Task-088 scope.
-- **No save versioning.** The JSON has no schema version field; migrations would be
-  brittle without one. New fields can be added because systems tolerate missing keys,
-  but renames and removals are hard. Task-088 scope.
+- **Single save slot.** No multi-slot support, no named saves. Campfire manual save
+  uses the same single slot. Task-088 scope for multi-slot.
+- **✅ Save versioning added (delivery-006e).** `schema_version: int = 1` in the save
+  root. On load, warns if save is from a newer version. Migration hooks are not yet
+  implemented.
+- **✅ Auto-save at day start (delivery-006e).** Hooks into DayNightCycle.day_started
+  signal to auto-save at the beginning of each new day.
 - **Hardcoded node paths.** Moving a scene (e.g. renaming `Main/World` to `Main/Scene`)
   silently breaks save. A fix would register by group or by export, not by path.
 - **No load-order graph.** If loading HexGrid after Player broke some invariant, the
