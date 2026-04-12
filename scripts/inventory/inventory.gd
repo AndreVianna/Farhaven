@@ -48,10 +48,19 @@ func _init() -> void:
 
 ## Get the size of one unit of a prop type.
 ## Items without PORTABLE capability default to 1.0 for backward compat.
+##
+## TODO(task-090): delete this helper and the whole size-count model.
+## Delivery-006f replaces slot-based inventory with a 2D grid. PortableCap's
+## float `size` field was removed in task-089 and replaced by
+## `slot_shape: Array[Vector2i]` (the cell footprint of the item). Until the
+## grid engine lands in task-090, this method bridges the old float math by
+## returning `slot_shape.size()` as a cell count: 1 cell = 1 size unit.
+## Props whose .tres has not been migrated yet (task-095) default to a
+## single-cell shape, so they still report size 1.0.
 func _get_item_size(type: StringName) -> float:
 	var def: _PropDef = PropRegistry.get_def(type)
 	if def != null and def.portable != null:
-		return def.portable.size
+		return float(def.portable.slot_shape.size())
 	return 1.0
 
 
