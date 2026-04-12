@@ -10,10 +10,12 @@
 AutoInteractionSystem is the **player's proximity dispatcher**: the node that asks, every
 tenth of a second, "is there anything within arm's reach of the player that a gather recipe
 or a pickup should trigger right now?" If yes, it starts a gather timer, waits for it to
-complete, applies the recipe's outputs to the player's inventory, and chains into the next
-candidate. It also owns a small auto-defend hook that fires an attack when a hostile catalogued
-creature walks adjacent, and an auto-pickup hook that vacuums ground items the player walks
-over.
+complete, applies the prop's **resolved gather yield** to the player's inventory
+(`PropRegistry.get_yield_type(prop.type)` × `PropDef.gather_amount` — the recipe match gates
+*whether* the gather runs and *how long* it takes, but the item produced is still driven by the
+prop's own yield fields, not by `recipe.outputs`), and chains into the next candidate. It also
+owns a small auto-defend hook that fires an attack when a hostile catalogued creature walks
+adjacent, and an auto-pickup hook that vacuums ground items the player walks over.
 
 It is the gameplay "bridge" between the passive exploration loop (walk around) and the
 economic loop (items appear in your inventory). It never asks the player to tap anything —

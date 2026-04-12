@@ -725,6 +725,15 @@ func register_steps(registry) -> void:
 		ctx.set_value("last_load_result", result)
 	)
 
+	registry.when("SaveManager tries to load the save file", func(ctx):
+		var sm: Node = ctx.get_value("save_manager", null)
+		ctx.assert_not_null(sm, "save_manager must exist")
+		if sm == null:
+			return
+		var result: bool = sm.load_game()
+		ctx.set_value("last_load_result", result)
+	)
+
 	# ---- Then: restored state assertions ----
 	registry.then("the restored Journal has unlocked {string}", func(ctx, entry_id: String):
 		var fresh: Node = ctx.get_value("restored_journal", null)

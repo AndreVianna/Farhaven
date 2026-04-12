@@ -1,8 +1,15 @@
 Feature: Save/Load full integration — every autoload restored
-  A single save/load round trip that crosses every autoload with persistent
-  state: Journal, EventRegistry, DayNightCycle, Catalog, Inventory, plus the
-  SaveManager JSON file boundary. Each scenario exercises at least two
-  systems so unit tests alone cannot cover it.
+  Integration-level save/load coverage for persistent-state autoloads:
+  Journal, EventRegistry, DayNightCycle, Catalog, Inventory. Real Journal
+  and EventRegistry autoloads are exercised directly; DayNightCycle and
+  Catalog use schema-pinned snapshot shims because their production
+  classes cannot be preloaded under the --script BDD runner (bare global
+  identifier refs to HexGrid/PropRegistry fail at parse time). The
+  save path uses a direct JSON write/read in place of SaveManager's
+  aggregate _collect_save_data, which relies on full scene-tree node
+  paths that don't resolve under --script. SaveManager's corrupt/missing
+  file handlers ARE exercised against the real autoload. Each scenario
+  crosses at least two system boundaries.
 
   Background:
     Given a clean full-integration world with Journal, EventRegistry, DayNightCycle, Catalog and Inventory
@@ -92,5 +99,5 @@ Feature: Save/Load full integration — every autoload restored
 
   Scenario: Missing save file is reported without crashing
     Given no save file exists at the SaveManager path
-    When SaveManager tries to load the corrupt save
+    When SaveManager tries to load the save file
     Then SaveManager load_game returns false
