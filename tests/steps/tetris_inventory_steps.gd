@@ -256,7 +256,10 @@ class GridModel extends RefCounted:
 			var type: StringName = StringName(entry.get("type", ""))
 			if type == &"":
 				continue
-			var origin_arr: Array = entry.get("origin", [0, 0])
+			# Mirror production Inventory._load_grid_save sanitization: tolerate
+			# non-Array origin (hand-edited / older saves) by falling back to [0,0].
+			var origin_raw: Variant = entry.get("origin", [0, 0])
+			var origin_arr: Array = origin_raw if origin_raw is Array else [0, 0]
 			var ox: int = int(origin_arr[0]) if origin_arr.size() > 0 else 0
 			var oy: int = int(origin_arr[1]) if origin_arr.size() > 1 else 0
 			var origin: Vector2i = Vector2i(ox, oy)
@@ -489,7 +492,21 @@ func register_steps(registry) -> void:
 				"expected %d accepted, got %d" % [expected, actual])
 	)
 
+	registry.then("{int} copy of {string} was accepted",
+		func(ctx, expected: int, _shape_name: String):
+			var actual: int = ctx.get_value("auto_accepted", -1)
+			ctx.assert_equal(actual, expected,
+				"expected %d accepted, got %d" % [expected, actual])
+	)
+
 	registry.then("{int} copies of {string} were rejected",
+		func(ctx, expected: int, _shape_name: String):
+			var actual: int = ctx.get_value("auto_rejected", -1)
+			ctx.assert_equal(actual, expected,
+				"expected %d rejected, got %d" % [expected, actual])
+	)
+
+	registry.then("{int} copy of {string} was rejected",
 		func(ctx, expected: int, _shape_name: String):
 			var actual: int = ctx.get_value("auto_rejected", -1)
 			ctx.assert_equal(actual, expected,

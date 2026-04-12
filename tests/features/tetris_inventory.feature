@@ -48,7 +48,7 @@ Feature: Tetris Inventory — grid placement, rotation, save/load, tool lookup
     Given a fresh tetris inventory 2 wide by 2 tall
     When 5 copies of "single" are auto-placed
     Then 4 copies of "single" were accepted
-    And 1 copies of "single" were rejected
+    And 1 copy of "single" was rejected
 
   Scenario: Remove item clears all of its cells
     Given a fresh tetris inventory 6 wide by 8 tall
