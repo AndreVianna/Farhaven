@@ -54,7 +54,7 @@ tools on the grid and querying via `find_best_tool_for_action`.
   rotations 0–3 in order; within each rotation scans cells in row-major order. Returns the
   first fit found. Returns an empty dict if no placement is possible in any orientation.
 - **`get_item(item_id) -> Variant` returns item data or null.** Item data dict contains
-  `{id, type, origin: Vector2i, rotation: int}`.
+  `{type, origin: Vector2i, rotation: int, shape: Array[Vector2i]}`.
 - **`get_items_by_type(type) -> Array[int]` returns all item_ids of that type.** Empty array
   if none present.
 - **`get_count(type) -> int` counts instances.** 0 if none.
@@ -94,8 +94,8 @@ These methods preserve the call sites that existed before the grid model was int
 They behave correctly against the grid internally and should not be removed.
 
 - **`add_item(type, amount) -> int`** — auto-places `amount` individual instances; returns
-  the count actually placed. On partial failure emits `inventory_full` for each rejected
-  instance.
+  the count actually placed. On partial failure emits `inventory_full(type, rejected)` once
+  for the call, where `rejected` is the total number of instances that could not be placed.
 - **`remove_item(type, amount) -> int`** — removes up to `amount` instances of `type`;
   returns count actually removed. Iterates `get_items_by_type(type)` and calls
   `remove_item_by_id` until `amount` is satisfied.
@@ -106,7 +106,7 @@ They behave correctly against the grid internally and should not be removed.
 - **`get_slots() -> Array[Dictionary]`** — items grouped by type as `{type, quantity}`.
   RecipeRuntime and PredicateEvaluator use this.
 - **`get_stacks() -> Array[Dictionary]`** — items grouped by type with cell-count size info
-  as `{type, quantity, size}`.
+  as `{type, count, size_per_unit, total_size}`.
 - **`expand(additional_rows)`** — appends rows to the grid; existing items are unaffected.
 - **`capacity_size` property** — computed getter returns `grid_width * grid_height`; setter
   resizes the grid to the nearest integer row count. BuildingSystem writes this property
