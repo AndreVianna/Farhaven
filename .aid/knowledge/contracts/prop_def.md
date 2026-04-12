@@ -94,6 +94,23 @@ through this class.
   rendering system to use real assets instead of placeholders. There is no need to disable the
   placeholder fields; the renderer checks the real-asset fields first.
 
+**Consumers.** PropDef is the most widely-referenced data class in the engine. Systems
+that resolve a PropDef and inspect its capabilities or tags include
+[`prop_registry.md`](prop_registry.md) (owner / loader),
+[`hex_tile.md`](hex_tile.md) (tile prop composition),
+[`map_loader.md`](map_loader.md) (JSON-to-tile construction),
+[`inventory.md`](inventory.md) (portable cap / stacking),
+[`building_system.md`](building_system.md) (placeable cap checks),
+[`auto_interaction_system.md`](auto_interaction_system.md) (gather matching),
+[`fauna_manager.md`](fauna_manager.md) (creature template),
+[`scanner_system.md`](scanner_system.md) + [`catalog.md`](catalog.md) (catalogable cap
+filter), [`survival_system.md`](survival_system.md) (consumable effects), the UI panels
+[`hud.md`](hud.md), [`inventory_panel.md`](inventory_panel.md),
+[`catalog_panel.md`](catalog_panel.md), and the recipe/event machinery
+([`recipe_runtime.md`](recipe_runtime.md), [`discovery_watcher.md`](discovery_watcher.md)).
+Because PropDef is the composition root, every contract that describes one of the
+capabilities listed in *Depends on* above is, transitively, a PropDef consumer.
+
 ## Genre-specific notes
 
 PropDef is **partially genre-agnostic**. The composition-of-capabilities pattern transfers

@@ -50,8 +50,9 @@ for delivery-007.
 - **`video_path` is relative to `res://`.** The string is passed to Godot's resource loader
   or to a media plugin; absolute OS paths will not resolve inside a shipped build.
 - **`trigger_event` must reference an existing GameEvent id, or be empty.** CutsceneDef does
-  not validate this at load time; an unknown id will silently fail to trigger. The 083e
-  review pass or a future validator should cross-check these ids against EventRegistry.
+  not validate this at load time; an unknown id will silently fail to trigger. A future
+  content validator should cross-check these ids against EventRegistry (deferred to
+  task-088).
 - **`duration_seconds` is an `int`.** Authoring tools that want fractional durations should
   round up and treat the field as a coarse hint.
 
@@ -106,5 +107,5 @@ and the authoring pipeline.
   once-only cutscenes, in the save-game state). This is the correct layering — data is data —
   but content authors should be aware that deduplication logic lives on the manager side.
 - **`trigger_event` is not validated at load.** An invalid id in `trigger_event` will silently
-  fail to fire. A future 083e cross-check should scan every CutsceneDef and verify the id
-  resolves inside EventRegistry.
+  fail to fire. A future content validator should scan every CutsceneDef and verify the id
+  resolves inside EventRegistry (deferred to task-088).

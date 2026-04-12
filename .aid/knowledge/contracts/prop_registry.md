@@ -68,6 +68,16 @@ own `_ready` without ordering surprises.
   when scanning completes should run its work from its own `_ready` (which will execute after
   PropRegistry's, given the project.godot ordering).
 
+**Consumers.** Nearly every engine system calls `PropRegistry.get_def(id)` at some point;
+the most active consumers are [`hex_grid.md`](hex_grid.md) (tile prop resolution),
+[`inventory.md`](inventory.md) (portable cap lookup per item),
+[`catalog.md`](catalog.md) (master-list construction for catalogable props),
+[`fauna_manager.md`](fauna_manager.md) (creature template lookup at spawn),
+[`auto_interaction_system.md`](auto_interaction_system.md) (gather recipe matching),
+[`map_loader.md`](map_loader.md) (JSON `prop_ref` resolution during map load),
+[`lighting_manager.md`](lighting_manager.md), [`recipe_runtime.md`](recipe_runtime.md),
+and [`discovery_watcher.md`](discovery_watcher.md).
+
 ## Genre-specific notes
 
 PropRegistry itself is **fully engine-general**. A flat dictionary of typed resources keyed

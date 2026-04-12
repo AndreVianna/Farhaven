@@ -195,11 +195,20 @@ func test_event_fired_signal_not_emitted_when_try_fire_fails() -> void:
 func test_event_fired_signal_emits_per_each_successful_fire() -> void:
 	var event := _make_event(&"E0001", 0)  # unlimited
 	_registry._events[event.id] = event
-	var monitor := monitor_signals(_registry, false)
-	_registry.try_fire(event)
-	_registry.try_fire(event)
-	# Both fires should have produced the signal — payload stays the same (event ref).
-	await assert_signal(monitor).is_emitted("event_fired", [&"E0001", event])
+	# Direct signal counter. Using monitor_signals + assert_signal.is_emitted
+	# would pass even with a single emission because the gdUnit4 collector
+	# clears matching entries after the first assertion. An explicit counter
+	# lets us verify two distinct emissions unambiguously.
+	var fired_counter := [0]
+	var counter_fn := func(_id: StringName, _ev: Resource) -> void:
+		fired_counter[0] += 1
+	_registry.event_fired.connect(counter_fn)
+	var first_ok: bool = _registry.try_fire(event)
+	var second_ok: bool = _registry.try_fire(event)
+	_registry.event_fired.disconnect(counter_fn)
+	assert_bool(first_ok).is_true()
+	assert_bool(second_ok).is_true()
+	assert_int(fired_counter[0]).is_equal(2)
 
 
 # ---------------------------------------------------------------------------

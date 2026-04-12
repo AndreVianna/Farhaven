@@ -21,7 +21,7 @@ event definitions.
 **⚠️ Runtime not yet implemented.** The shape is authored and round-trips through saves, but
 there is no combat loop in delivery-006d that reads `attacks`/`defenses` and dispatches them.
 The fields are `Array[Resource]` placeholders until the combat runtime lands. See
-**[delivery-006d task-088](../work-001-core/delivery-006d/DETAIL.md)** for the scheduled fix.
+**[delivery-006d task-088](../../work-001-core/delivery-006d/DETAIL.md)** for the scheduled fix.
 
 ## Promises to content
 
@@ -115,7 +115,7 @@ slot on PropDef unused for strategy-game props.
   are authored and serialise correctly, but no engine code reads them and dispatches the
   events as combat moves. Adding, removing, or editing entries today has zero runtime
   effect. This is explicitly scheduled for
-  **[delivery-006d task-088](../work-001-core/delivery-006d/DETAIL.md)**. Until then,
+  **[delivery-006d task-088](../../work-001-core/delivery-006d/DETAIL.md)**. Until then,
   CombatCap is a shape-only contract.
 - **Array typing is loose.** `attacks` and `defenses` are `Array[Resource]` rather than
   `Array[GameEvent]` because of the cross-script type constraint. This is a GDScript

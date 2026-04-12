@@ -70,6 +70,17 @@ before DiscoveryWatcher, so downstream listeners are wired up in a deterministic
 - **Mock the registry.** DiscoveryWatcher and RecipeRuntime both accept a `_event_registry`
   field that defaults to this autoload but can be replaced in tests.
 
+**Consumers.** The current subscribers to `event_fired` are
+[`discovery_watcher.md`](discovery_watcher.md) (re-evaluates pending recipe-unlock events
+when the catalog changes), [`journal.md`](journal.md) (handles `unlock_journal_entry`
+effects), [`cutscene_manager.md`](cutscene_manager.md) (maps trigger events to CutsceneDef
+playback), and [`recipe_runtime.md`](recipe_runtime.md) (applies `stat_delta` and other
+side-effect kinds). Cap classes that *author* events into their own fields —
+[`behavior_cap.md`](behavior_cap.md) (reaction events),
+[`combat_cap.md`](combat_cap.md) (attack/defense events),
+[`cutscene_def.md`](cutscene_def.md) (trigger event id) — depend on EventRegistry only
+for the event ids to resolve.
+
 ## Genre-specific notes
 
 EventRegistry is **fully engine-general**. "Track named events with effects, emit a signal

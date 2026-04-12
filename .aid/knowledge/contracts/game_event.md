@@ -7,9 +7,10 @@
 
 > **Note.** This contract covers only the `GameEvent` data class itself — the `.tres` resource
 > shape and the tiny in-class API (`is_active`, `can_fire`, `fire`, `reset`). The loader and
-> firing infrastructure are covered by `event_registry.md`; the pre-condition evaluation is
-> covered by `predicate.md` and the conditions/effects it inherits are covered by their own
-> data-class contracts under task-083c scope.
+> firing infrastructure are covered by [`event_registry.md`](event_registry.md); the
+> pre-condition evaluation uses Predicate / RecipeCondition / RecipeEffect, all of which are
+> documented inline in the Siblings section of [`recipe.md`](recipe.md) because they are
+> shared between Recipe and GameEvent.
 
 ## What this system is
 
