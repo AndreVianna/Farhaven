@@ -76,6 +76,8 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 	if inv == null:
 		push_warning("PredicateEvaluator: 'has_tool' — player has no inventory, returning false")
 		return false
+	# Resolve registry once before the loop (avoids repeated SceneTree lookups).
+	var reg: Node = _get_prop_registry(ctx)
 	# Check each tool slot: the equipped tool's PropDef might have tool_slot == tool_id,
 	# or the equipped tool's PropDef id itself matches tool_id.
 	for slot: StringName in [&"axe", &"pickaxe", &"weapon", &"scanner"]:
@@ -89,7 +91,6 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 		if slot == tool_id:
 			return true
 		# Check PropDef.tool_slot in case the equipped prop has a matching slot name
-		var reg: Node = _get_prop_registry(ctx)
 		var def: _PropDef = reg.get_def(equipped) if reg != null else null
 		if def != null and def.tool_slot == tool_id:
 			return true
@@ -226,6 +227,8 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 	var count_ge: int = int(params.get("count_ge", 1))
 	if tag == &"":
 		return false
+	# Resolve registry once before the loops (avoids per-prop SceneTree lookups).
+	var adj_reg: Node = _get_prop_registry(ctx)
 	var neighbors: Array = ctx.grid.get_neighbors(ctx.tile.coords)
 	var match_count: int = 0
 	for neighbor_coords: Vector2i in neighbors:
@@ -247,7 +250,6 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 					return true
 				break  # One match per tile is enough
 			# Check PropDef tags
-			var adj_reg: Node = _get_prop_registry(ctx)
 			var def: _PropDef = adj_reg.get_def(prop_type) if adj_reg != null else null
 			if def != null and def.has_tag(tag):
 				match_count += 1
@@ -314,10 +316,11 @@ static func _eval_container_has(params: Dictionary, ctx: WorldContext) -> bool:
 	var container_props: Array = _get_container_contents(ctx)
 	if container_props.is_empty():
 		return false
+	# Resolve registry once before the loop (avoids per-item SceneTree lookups).
+	var reg: Node = _get_prop_registry(ctx)
 	var match_count: int = 0
 	for item in container_props:
 		var item_type: StringName = &""
-		var reg: Node = _get_prop_registry(ctx)
 		if item is Dictionary:
 			item_type = StringName(item.get("type", &""))
 			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)), reg)
