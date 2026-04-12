@@ -204,15 +204,22 @@ func stop_activity_drain(activity: StringName) -> void:
 # --- Death sequence ---
 
 func _execute_death() -> void:
+	# Decide strategy FIRST to avoid mutating state before save-load.
+	# If a save exists, we reload it without dropping items or emitting
+	# player_died (which is wired to SaveManager.save_now and would overwrite
+	# the checkpoint with post-death state).
+	var save_mgr: Node = get_node_or_null("/root/SaveManager")
+	var will_load_save: bool = save_mgr != null \
+		and save_mgr.has_method("has_save") \
+		and save_mgr.has_save()
+	if will_load_save:
+		_death_load_save(save_mgr)
+		return
+	# No save: fall back to legacy respawn flow (drop items, emit, respawn).
 	var death_tile: Vector2i = _get_player_tile()
 	_drop_items(death_tile)
 	player_died.emit()
-	# Try save-load path: reload from last save (catalog + journal persist through death)
-	var save_mgr: Node = get_node_or_null("/root/SaveManager")
-	if save_mgr != null and save_mgr.has_method("has_save") and save_mgr.has_save():
-		_death_load_save(save_mgr)
-	else:
-		_start_death_sequence()
+	_start_death_sequence()
 
 
 func _get_player_tile() -> Vector2i:
