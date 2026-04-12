@@ -118,12 +118,6 @@ func _start_nearest_scan(player_tile: Vector2i) -> void:
 		_scan_target_entry_id = best_entry_id
 		_scan_progress = 0.0
 		var entry = _catalog.get_entry(best_entry_id)
-		var prop_category: int = _Prop.Category.PLANT
-		var is_anomaly: bool = false
-		if entry != null:
-			prop_category = entry.prop_category
-			if entry.catalogable != null and entry.catalogable.show_as_anomaly:
-				is_anomaly = true
 		if entry != null and entry.catalogable != null:
 			_scan_duration = entry.catalogable.scan_time
 		else:
