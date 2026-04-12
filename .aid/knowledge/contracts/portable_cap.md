@@ -24,9 +24,10 @@ understood as "not carryable" — something that lives in the world, not in a ba
   the stack occupies, and compares the total against `Inventory.capacity_size`.
 - **`size` is the **post-006b** renamed field.** Older content and older documentation
   called it `weight`; it is now `size` to emphasise that the currency is slot-units, not
-  grams. The SaveManager's load path still accepts the legacy `capacity_weight` key for
-  backward compatibility with old saves (see [`inventory.md`](inventory.md)). New content
-  must author `size`, not `weight`.
+  grams. `Inventory.load_save_data` still accepts the legacy `capacity_weight` key for
+  backward compatibility with old saves (see [`inventory.md`](inventory.md)). The legacy
+  shim lives in Inventory itself — SaveManager is a generic collector/dispatcher and
+  does not inspect the key. New content must author `size`, not `weight`.
 - **Size is the shared currency between PortableCap and ContainerCap.** A chest with
   `container.capacity_size = 50.0` holds fifty units of "size 1.0" items, or twenty-five
   units of "size 2.0" items, etc. The unit is abstract and applies equally to bag
@@ -47,8 +48,10 @@ understood as "not carryable" — something that lives in the world, not in a ba
   but means "weightless" — the item takes no space in a bag, which breaks the "bag fills
   up" invariant; content should avoid zero unless intentional.
 - **Do not re-introduce `weight` as a field name.** The rename from `weight` to `size`
-  was a deliberate post-006b decision. The SaveManager accepts the legacy key on load
-  only; the canonical authored field is `size`.
+  was a deliberate post-006b decision. `Inventory.load_save_data` accepts the legacy
+  `capacity_weight` key on load only (for old-save compatibility); the canonical
+  authored field is `size`. SaveManager is not involved in this shim — the
+  compatibility logic lives in Inventory.
 - **A tool prop that goes into a tool slot still needs PortableCap.** Tool slot handling
   on PropDef uses the `tool_slot` string to decide which slot an equipped tool occupies,
   but the underlying "can I even carry this?" gate still goes through PortableCap. A
@@ -120,10 +123,11 @@ across genres. A second game is free to use either term internally.
 - **No quantity-gated packing.** `size = 0.5` items pack at 0.5 per count — there is no
   notion of "you need space for the whole item plus wrapping." Most games do not need
   this, but it is worth flagging.
-- **SaveManager accepts legacy `capacity_weight` key.** On load, the inventory capacity
-  field is set from whichever of `capacity_size` or `capacity_weight` is present. This
-  is a compatibility shim that will be removed in a future delivery. New saves write
-  `capacity_size` only.
+- **Inventory.load_save_data accepts legacy `capacity_weight` key.** On load, the
+  inventory capacity field is set from whichever of `capacity_size` or `capacity_weight`
+  is present. This compatibility shim lives in `scripts/inventory/inventory.gd` (not in
+  SaveManager — SaveManager only dispatches the payload to the autoload) and will be
+  removed in a future delivery. New saves write `capacity_size` only.
 - **Tool slots bypass size math in one place.** Tools occupy a named tool-slot on
   Inventory regardless of their `size` (an axe goes in the "axe" slot). PortableCap is
   still required for the item to exist in the inventory at all, but the tool-slot path

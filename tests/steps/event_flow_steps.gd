@@ -159,11 +159,13 @@ func register_steps(registry) -> void:
 		_store_event(ctx, ev)
 	)
 
-	# A "blocked precondition" event here is modeled as an event that has
-	# already reached its max_count — GameEvent.fire() will refuse, which is
-	# the same semantic as a predicate-gate failing before emission.
-	# See top-of-file note for why we cannot load the predicate evaluator.
-	registry.given("a GameEvent {string} with a blocked precondition", func(ctx, event_id: String):
+	# Saturated event: count == max_count, so GameEvent.fire() returns false.
+	# EventRegistry/GameEvent do NOT evaluate predicate conditions — try_fire
+	# only gates on max_count via GameEvent.fire(). This scenario exercises the
+	# max_count gate, not a predicate gate. True predicate-gated flows live in
+	# the recipe_lifecycle / discovery_chain features where PredicateEvaluator
+	# is in the path.
+	registry.given("a GameEvent {string} already at max_count", func(ctx, event_id: String):
 		var ev := _build_event(event_id, 1, [])
 		ev.count = 1  # Already saturated — fire() will return false.
 		_store_event(ctx, ev)

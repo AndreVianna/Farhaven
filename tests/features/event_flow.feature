@@ -8,13 +8,13 @@ Feature: GameEvent Flow — try_fire, effect routing, count persistence
   Background:
     Given a clean event world with EventRegistry, DiscoveryWatcher and Journal
 
-  Scenario: try_fire with failing precondition does not emit event_fired
-    Given a GameEvent "E_PRECOND" with a blocked precondition
+  Scenario: try_fire on a max_count-saturated event does not emit event_fired
+    Given a GameEvent "E_SATURATED" already at max_count
     And the event_fired spy is clean
-    When EventRegistry attempts to fire "E_PRECOND"
+    When EventRegistry attempts to fire "E_SATURATED"
     Then the event_fired spy has 0 entries
-    And the event "E_PRECOND" count is 1
-    And the event "E_PRECOND" cannot fire again
+    And the event "E_SATURATED" count is 1
+    And the event "E_SATURATED" cannot fire again
 
   Scenario: try_fire with met precondition emits event_fired and increments count
     Given an unlimited GameEvent "E_GO"
