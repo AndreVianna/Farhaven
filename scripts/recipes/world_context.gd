@@ -26,6 +26,9 @@ var day_night: Node = null
 ## Catalog instance (for cataloged predicates).
 var catalog: RefCounted = null
 
+## PropRegistry autoload ref (for PropDef lookups in predicate evaluation).
+var prop_registry: Node = null
+
 ## Named world flags (e.g. {"completed_quest_alpha": true}).
 var world_flags: Dictionary = {}
 
@@ -42,4 +45,5 @@ static func create(p_player: Node = null, p_tile: Resource = null, p_station: Re
 	if tree != null and tree.root != null:
 		ctx.grid = tree.root.get_node_or_null("HexGrid")
 		ctx.day_night = tree.root.get_node_or_null("DayNightCycle")
+		ctx.prop_registry = tree.root.get_node_or_null("PropRegistry")
 	return ctx

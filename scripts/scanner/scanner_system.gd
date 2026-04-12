@@ -61,11 +61,12 @@ var _scan_duration: float = 2.0
 
 var _grid: Node  # HexGrid autoload
 var _player: Node3D  # Parent Player node
+var _prop_registry: Node = null  # Cached PropRegistry autoload
 
 
 func _ready() -> void:
 	if _grid == null:
-		_grid = HexGrid
+		_grid = get_node_or_null("/root/HexGrid")
 	_player = get_parent()
 	_catalog = _Catalog.new()
 	_catalog.initialize(_grid, null)
@@ -205,10 +206,11 @@ func _check_passive_identification(coords: Vector2i) -> void:
 	if tile == null:
 		return
 
+	var reg: Node = _get_prop_registry()
 	for prop in tile.get_props():
-		if not PropRegistry.has_def(prop.type):
+		if reg == null or not reg.has_def(prop.type):
 			continue
-		var def = PropRegistry.get_def(prop.type)
+		var def = reg.get_def(prop.type)
 		if def.catalogable == null or String(def.display_name) == "":
 			continue
 		var entry_id: StringName = def.id
@@ -244,6 +246,15 @@ func _resolve_display_bucket(entry) -> int:
 	if entry.catalogable != null and entry.catalogable.show_as_anomaly:
 		return _Catalog.ANOMALY_BUCKET
 	return entry.prop_category
+
+
+# --- Autoload Helpers ---
+
+
+func _get_prop_registry() -> Node:
+	if _prop_registry == null:
+		_prop_registry = get_node_or_null("/root/PropRegistry")
+	return _prop_registry
 
 
 # --- Survival System Helper ---

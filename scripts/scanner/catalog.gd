@@ -24,11 +24,18 @@ var _all_entries: Dictionary = {}         # StringName → PropDef
 var _total_count: int = 0
 var _hex_grid = null
 var _fauna_manager = null
+var _prop_registry: Node = null  # Cached PropRegistry autoload
 
 
-func initialize(hex_grid = null, fauna_manager = null) -> void:
+func initialize(hex_grid = null, fauna_manager = null, prop_registry: Node = null) -> void:
 	_hex_grid = hex_grid
 	_fauna_manager = fauna_manager
+	if prop_registry != null:
+		_prop_registry = prop_registry
+	else:
+		var tree: SceneTree = Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			_prop_registry = tree.root.get_node_or_null("PropRegistry")
 	_load_all_entries()
 
 
@@ -47,7 +54,9 @@ func _load_all_entries() -> void:
 	# fit one of the catalog UI buckets (PLANT, ANIMAL, MINERAL, or anomaly).
 	# Structures, equipment, etc. with catalogable cap are excluded so the
 	# discovery count stays in sync with what the UI can actually display.
-	for def in PropRegistry.get_all():
+	if _prop_registry == null:
+		return
+	for def in _prop_registry.get_all():
 		if def.catalogable == null:
 			continue
 		if not _is_displayable(def):
@@ -214,9 +223,9 @@ func get_scannable_at(coords: Vector2i) -> StringName:
 		return &""
 
 	for prop in tile.get_props():
-		if not PropRegistry.has_def(prop.type):
+		if _prop_registry == null or not _prop_registry.has_def(prop.type):
 			continue
-		var def = PropRegistry.get_def(prop.type)
+		var def = _prop_registry.get_def(prop.type)
 		if def.catalogable == null:
 			continue
 		var entry_id: StringName = def.id

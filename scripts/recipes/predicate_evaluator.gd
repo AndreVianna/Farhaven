@@ -79,7 +79,7 @@ static func _eval_has_tool(params: Dictionary, ctx: WorldContext) -> bool:
 		if slot == tool_id:
 			return true
 		# Check PropDef.tool_slot in case the equipped prop has a matching slot name
-		var def: _PropDef = PropRegistry.get_def(equipped)
+		var def: _PropDef = ctx.prop_registry.get_def(equipped) if ctx.prop_registry != null else null
 		if def != null and def.tool_slot == tool_id:
 			return true
 	return false
@@ -93,11 +93,11 @@ static func _eval_at_station(params: Dictionary, ctx: WorldContext) -> bool:
 	var tag: StringName = StringName(params.get("tag", &""))
 	if tag == &"":
 		return false
-	# station is a Prop instance; look up its PropDef via PropRegistry.
+	# station is a Prop instance; look up its PropDef via ctx.prop_registry.
 	var station_type: StringName = ctx.station.type if "type" in ctx.station else &""
 	if station_type == &"":
 		return false
-	var def: _PropDef = PropRegistry.get_def(station_type)
+	var def: _PropDef = ctx.prop_registry.get_def(station_type) if ctx.prop_registry != null else null
 	if def == null or def.station == null:
 		return false
 	return def.station.station_tags.has(tag)
@@ -235,7 +235,7 @@ static func _eval_adjacent_to(params: Dictionary, ctx: WorldContext) -> bool:
 					return true
 				break  # One match per tile is enough
 			# Check PropDef tags
-			var def: _PropDef = PropRegistry.get_def(prop_type)
+			var def: _PropDef = ctx.prop_registry.get_def(prop_type) if ctx.prop_registry != null else null
 			if def != null and def.has_tag(tag):
 				match_count += 1
 				if match_count >= count_ge:
@@ -306,10 +306,10 @@ static func _eval_container_has(params: Dictionary, ctx: WorldContext) -> bool:
 		var item_type: StringName = &""
 		if item is Dictionary:
 			item_type = StringName(item.get("type", &""))
-			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)))
+			match_count += _count_matches(item_type, ref_or_tag, int(item.get("quantity", 1)), ctx.prop_registry)
 		elif "type" in item:
 			item_type = item.type
-			match_count += _count_matches(item_type, ref_or_tag, 1)
+			match_count += _count_matches(item_type, ref_or_tag, 1, ctx.prop_registry)
 		if match_count >= count_ge:
 			return true
 	return false
@@ -431,14 +431,14 @@ static func _get_container_contents(ctx: WorldContext) -> Array:
 
 
 ## Count how many of an item match a ref or tag.
-static func _count_matches(item_type: StringName, ref_or_tag: StringName, quantity: int) -> int:
+static func _count_matches(item_type: StringName, ref_or_tag: StringName, quantity: int, prop_reg: Node = null) -> int:
 	if item_type == &"":
 		return 0
 	# Direct ref match
 	if item_type == ref_or_tag:
 		return quantity
 	# Tag match: look up PropDef and check tags
-	var def: _PropDef = PropRegistry.get_def(item_type)
+	var def: _PropDef = prop_reg.get_def(item_type) if prop_reg != null else null
 	if def != null and def.has_tag(ref_or_tag):
 		return quantity
 	return 0
