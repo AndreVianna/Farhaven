@@ -41,10 +41,3 @@ layout_mode = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="PropGrid" type="GridContainer" parent="VBox/ScrollContainer"]
-layout_mode = 2
-columns = 6
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 4
-theme_override_constants/v_separation = 4

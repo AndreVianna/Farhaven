@@ -10,7 +10,8 @@ script = ExtResource("2_placeable")
 
 [sub_resource type="Resource" id="container_1"]
 script = ExtResource("3_container")
-capacity_size = 100.0
+grid_width = 15
+grid_height = 15
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("4_catalogable")
