@@ -779,7 +779,9 @@ func test_inventory_panel_rerenders_on_inventory_changed() -> void:
 	panel.set_inventory(inv)
 	panel.open()
 
-	assert_int(panel._slot_nodes.size()).is_equal(12)
+	# Grid canvas should be present and bound to inventory
+	assert_object(panel._grid_canvas).is_not_null()
+	assert_object(panel._grid_canvas._inventory).is_not_null()
 
 	inv.add_item(ID_WOOD, 25)
 

@@ -2,12 +2,14 @@ class_name InventoryPanel
 extends PanelContainer
 
 ## Inventory bottom drawer panel (~45% screen height).
-## Opens/closes on InventoryButton tap. Renders tool slots + prop grid.
+## Opens/closes on InventoryButton tap. Renders tool slots + grid canvas.
 ## Emits panel_opened for mutual exclusion with other panels.
+##
+## Rewritten in delivery-006f (tasks 092+093) from list-based InventorySlotUI
+## layout to a 2D grid canvas that renders item shapes as colored silhouettes.
 
 signal panel_opened()
 
-const InventorySlotUI = preload("res://ui/inventory_slot_ui.gd")
 const ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
 ## Uses preload because tests can be parsed before class_name registration completes.
 const _PropDef = preload("res://scripts/data/prop_def.gd")
@@ -15,14 +17,14 @@ const _PropDef = preload("res://scripts/data/prop_def.gd")
 const TOOL_SLOT_ORDER: Array[StringName] = [&"axe", &"pickaxe", &"weapon", &"scanner"]
 
 var _inventory = null   # Inventory instance (set via set_inventory)
-var _catalog = null     # Catalog instance (set via set_catalog, optional)
-var _slot_nodes: Array = []
+var _catalog = null      # Catalog instance (set via set_catalog, optional)
 var _tool_slot_nodes: Dictionary = {}
 var _pending_use_type: StringName = &""
 var _confirm_dialog: ConfirmationDialog
+var _grid_canvas: Control  # GridCanvas inner class instance
 
 @onready var _tool_slots_row: HBoxContainer = $VBox/ToolSlotsRow
-@onready var _prop_grid: GridContainer = $VBox/ScrollContainer/PropGrid
+@onready var _scroll: ScrollContainer = $VBox/ScrollContainer
 @onready var _close_button: Button = $VBox/Header/CloseButton
 
 
@@ -36,6 +38,11 @@ func _ready() -> void:
 		_tool_slots_row.add_child(ts)
 		ts.setup(slot_name)
 		_tool_slot_nodes[slot_name] = ts
+
+	# Create grid canvas inside the scroll container
+	_grid_canvas = GridCanvas.new()
+	_grid_canvas.item_clicked.connect(_on_grid_item_clicked)
+	_scroll.add_child(_grid_canvas)
 
 	# Toxic warning dialog
 	_confirm_dialog = ConfirmationDialog.new()
@@ -66,7 +73,7 @@ func set_inventory(inv) -> void:
 	if _inventory != null:
 		_inventory.inventory_changed.connect(_on_inventory_changed)
 		_inventory.tool_changed.connect(_on_tool_changed)
-		_rebuild_slots()
+		_grid_canvas.set_inventory(_inventory)
 		_refresh_all()
 
 
@@ -93,37 +100,23 @@ func close() -> void:
 	visible = false
 
 
-# --- Slot management ---
-
-func _rebuild_slots() -> void:
-	for node in _slot_nodes:
-		node.queue_free()
-	_slot_nodes.clear()
-	var count: int = _inventory.get_max_slots() if _inventory != null else 12
-	for i: int in count:
-		var slot := InventorySlotUI.new()
-		slot.slot_tapped.connect(_on_slot_tapped)
-		_prop_grid.add_child(slot)
-		_slot_nodes.append(slot)
-
+# --- Refresh ---
 
 func _refresh_all() -> void:
 	if _inventory == null:
 		return
-	var slots: Array = _inventory.get_slots()
-	if _slot_nodes.size() != slots.size():
-		_rebuild_slots()
-		slots = _inventory.get_slots()
-	for i: int in _slot_nodes.size():
-		if i < slots.size():
-			(_slot_nodes[i] as InventorySlotUI).refresh(slots[i])
+	_grid_canvas.queue_redraw()
 	for slot_name: StringName in TOOL_SLOT_ORDER:
 		var tool_type: StringName = _inventory.get_tool(slot_name)
 		if _tool_slot_nodes.has(slot_name):
 			(_tool_slot_nodes[slot_name] as ToolSlotUI).refresh(tool_type)
 
 
-# --- Consumable tap ---
+# --- Grid click → consumable use ---
+
+func _on_grid_item_clicked(type: StringName) -> void:
+	_on_slot_tapped(type)
+
 
 func _on_slot_tapped(type: StringName) -> void:
 	if _inventory == null:
@@ -160,3 +153,141 @@ func _on_inventory_changed() -> void:
 func _on_tool_changed(slot: StringName, new_tool: StringName, _old_tool: StringName) -> void:
 	if visible and _tool_slot_nodes.has(slot):
 		(_tool_slot_nodes[slot] as ToolSlotUI).refresh(new_tool)
+
+
+# ===========================================================================
+# GridCanvas — inner class that renders the 2D grid via _draw()
+# ===========================================================================
+
+class GridCanvas extends Control:
+	## Custom Control that renders the Tetris-style inventory grid.
+	## Each cell is _cell_size × _cell_size pixels. Items are drawn as
+	## colored silhouettes using their PropDef.placeholder_color.
+
+	signal item_clicked(type: StringName)
+
+	const _InnerPropDef = preload("res://scripts/data/prop_def.gd")
+	const _InnerInventory = preload("res://scripts/inventory/inventory.gd")
+
+	var _cell_size: int = 10
+	var _inventory = null  # Inventory reference
+
+	## Colors
+	var _grid_line_color := Color(0.25, 0.25, 0.35, 0.4)
+	var _grid_bg_color := Color(0.10, 0.10, 0.14, 0.6)
+
+
+	func _init() -> void:
+		mouse_filter = MOUSE_FILTER_STOP
+
+
+	func set_inventory(inv) -> void:
+		_inventory = inv
+		_update_size()
+		queue_redraw()
+
+
+	func _update_size() -> void:
+		if _inventory == null:
+			custom_minimum_size = Vector2.ZERO
+			return
+		custom_minimum_size = Vector2(
+			_inventory.grid_width * _cell_size,
+			_inventory.grid_height * _cell_size
+		)
+
+
+	func _draw() -> void:
+		if _inventory == null:
+			return
+
+		var gw: int = _inventory.grid_width
+		var gh: int = _inventory.grid_height
+		var cs: int = _cell_size
+		var total_w: int = gw * cs
+		var total_h: int = gh * cs
+
+		# 1. Background fill
+		draw_rect(Rect2(0, 0, total_w, total_h), _grid_bg_color)
+
+		# 2. Grid lines
+		for x in gw + 1:
+			draw_line(
+				Vector2(x * cs, 0),
+				Vector2(x * cs, total_h),
+				_grid_line_color
+			)
+		for y in gh + 1:
+			draw_line(
+				Vector2(0, y * cs),
+				Vector2(total_w, y * cs),
+				_grid_line_color
+			)
+
+		# 3. Item shapes as colored silhouettes
+		for item_id: int in _inventory._items:
+			var item: Dictionary = _inventory._items[item_id]
+			var type: StringName = item["type"]
+			var def: _InnerPropDef = PropRegistry.get_def(type)
+			var color: Color = def.placeholder_color if def != null else Color.WHITE
+			var origin: Vector2i = item["origin"]
+			var rotation: int = item["rotation"]
+			var rotated_shape: Array[Vector2i] = _InnerInventory.get_rotated_shape(
+				item["shape"], rotation
+			)
+			for cell: Vector2i in rotated_shape:
+				var px: int = (origin.x + cell.x) * cs
+				var py: int = (origin.y + cell.y) * cs
+				draw_rect(
+					Rect2(px + 1, py + 1, cs - 2, cs - 2),
+					color
+				)
+
+
+	func _gui_input(event: InputEvent) -> void:
+		if _inventory == null:
+			return
+
+		var clicked: bool = false
+		var click_pos: Vector2 = Vector2.ZERO
+
+		if event is InputEventScreenTouch and event.pressed:
+			clicked = true
+			click_pos = event.position
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			clicked = true
+			click_pos = event.position
+
+		if not clicked:
+			return
+
+		# Determine which grid cell was hit
+		var cell_x: int = int(click_pos.x) / _cell_size
+		var cell_y: int = int(click_pos.y) / _cell_size
+
+		if cell_x < 0 or cell_x >= _inventory.grid_width:
+			return
+		if cell_y < 0 or cell_y >= _inventory.grid_height:
+			return
+
+		# Look up which item occupies that cell
+		var idx: int = cell_y * _inventory.grid_width + cell_x
+		if idx < 0 or idx >= _inventory._grid.size():
+			return
+
+		var item_id: int = _inventory._grid[idx]
+		if item_id == 0:
+			return
+
+		# Get the item type
+		if not _inventory._items.has(item_id):
+			return
+
+		var item: Dictionary = _inventory._items[item_id]
+		var type: StringName = item["type"]
+
+		# Only act on consumables
+		var def: _InnerPropDef = PropRegistry.get_def(type)
+		if def != null and def.is_consumable:
+			item_clicked.emit(type)
+			accept_event()
