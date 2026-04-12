@@ -304,8 +304,9 @@ func test_roundtrip_via_load_does_not_crash_with_autoloads() -> void:
 
 func test_save_manager_has_no_declared_signals() -> void:
 	var sm: Node = _make_save_manager()
-	var sig_list: Array = sm.get_signal_list()
-	# Filter out inherited Node signals — SaveManager's own script declares none.
+	# SaveManager's own script declares no signals. We check the script's
+	# signal list directly rather than sm.get_signal_list() because the
+	# latter also includes inherited Node signals which we don't care about.
 	var script_signals: Array = []
 	var script: Script = sm.get_script() as Script
 	if script != null:
