@@ -26,11 +26,11 @@ export class PropDefModel {
     this.tags = [];
 
     // --- Capabilities (null = not enabled) ---
-    /** @type {{ size: number }|null} */
+    /** @type {{ slot_shape: Array<{x:number,y:number}> }|null} */
     this.portable = null;
     /** @type {{ footprint: Array<{x:number,y:number}>, blocks_movement: boolean, rotation_snap: number }|null} */
     this.placeable = null;
-    /** @type {{ capacity_size: number, accepts_filter: string[] }|null} */
+    /** @type {{ grid_width: number, grid_height: number, accepts_filter: string[] }|null} */
     this.container = null;
     /** @type {{ radius: number, color: {r:number,g:number,b:number,a:number}, flicker: boolean }|null} */
     this.light = null;
@@ -176,7 +176,7 @@ export class PropDefModel {
     // --- Capabilities (resolved sub_resource data from file-discovery) ---
     if (d.portable && typeof d.portable === 'object') {
       model.portable = {
-        size: _num(d.portable.size != null ? d.portable.size : 1.0),
+        slot_shape: _vector2iArray(d.portable.slot_shape, [{x:0,y:0}]),
       };
     }
 
@@ -187,7 +187,8 @@ export class PropDefModel {
 
     if (d.container && typeof d.container === 'object') {
       model.container = {
-        capacity_size: _num(d.container.capacity_size),
+        grid_width: _num(d.container.grid_width != null ? d.container.grid_width : 30),
+        grid_height: _num(d.container.grid_height != null ? d.container.grid_height : 40),
         accepts_filter: _strArray(d.container.accepts_filter),
       };
     }
@@ -424,6 +425,26 @@ function _footprintArray(val) {
       return { x: item.value.x, y: item.value.y };
     }
     // Plain { x, y }
+    if (item && typeof item === 'object' && 'x' in item) {
+      return { x: item.x, y: item.y };
+    }
+    return { x: 0, y: 0 };
+  });
+}
+
+/**
+ * Parse a Vector2i array from parsed .tres data, with fallback.
+ * Handles both TresValue objects ({type:'vector2i', value:{x,y}}) and plain {x,y} objects.
+ * @param {*} val - Parsed value (array or undefined/null)
+ * @param {Array<{x:number,y:number}>} fallback - Default if val is not a valid array
+ * @returns {Array<{x:number,y:number}>}
+ */
+function _vector2iArray(val, fallback) {
+  if (!Array.isArray(val) || val.length === 0) return fallback;
+  return val.map(item => {
+    if (item && typeof item === 'object' && item.type === 'vector2i' && item.value) {
+      return { x: item.value.x, y: item.value.y };
+    }
     if (item && typeof item === 'object' && 'x' in item) {
       return { x: item.x, y: item.y };
     }
@@ -858,6 +879,90 @@ function _createCapFootprintEditor(footprint) {
   wrapper.appendChild(addBtn);
 
   return wrapper;
+}
+
+// ============================================================
+// ============================================================
+// Shape Grid Editor (for PORTABLE slot_shape)
+// ============================================================
+
+/**
+ * Create a clickable 10x10 grid for editing a slot_shape.
+ * Clicking a cell toggles it on/off. "On" cells are the shape.
+ * @param {string} fieldId - Identifier for the grid widget
+ * @param {Array<{x:number,y:number}>} shape - Current shape cells
+ * @returns {HTMLElement}
+ */
+function _createShapeEditor(fieldId, shape) {
+  const GRID_SIZE = 10;
+  const CELL_PX = 20;
+
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('prop-full');
+  wrapper.dataset.shapeEditor = fieldId;
+
+  const label = document.createElement('div');
+  label.textContent = 'Slot Shape (click to toggle cells)';
+  label.classList.add('prop-label');
+  wrapper.appendChild(label);
+
+  const countLabel = document.createElement('span');
+  countLabel.style.cssText = 'font-size:11px;color:var(--text-secondary);margin-left:6px;';
+  countLabel.dataset.shapeCount = fieldId;
+  label.appendChild(countLabel);
+
+  // Build a set of active cells for quick lookup
+  const activeSet = new Set(shape.map(c => `${c.x},${c.y}`));
+
+  const grid = document.createElement('div');
+  grid.style.cssText = `display:inline-grid;grid-template-columns:repeat(${GRID_SIZE},${CELL_PX}px);gap:1px;border:1px solid var(--border);border-radius:3px;padding:2px;background:var(--bg-tertiary);`;
+
+  function updateCount() {
+    const on = wrapper.querySelectorAll(`[data-shape-cell][data-active="1"]`);
+    countLabel.textContent = ` (${on.length} cell${on.length !== 1 ? 's' : ''})`;
+  }
+
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const cell = document.createElement('div');
+      const key = `${x},${y}`;
+      const isActive = activeSet.has(key);
+      cell.dataset.shapeCell = key;
+      cell.dataset.active = isActive ? '1' : '0';
+      cell.style.cssText = `width:${CELL_PX}px;height:${CELL_PX}px;border:1px solid var(--border);border-radius:2px;cursor:pointer;transition:background 0.1s;`;
+      cell.style.background = isActive ? 'var(--accent, #4a9eff)' : 'transparent';
+      cell.title = `(${x}, ${y})`;
+      cell.addEventListener('click', () => {
+        const nowActive = cell.dataset.active === '1';
+        cell.dataset.active = nowActive ? '0' : '1';
+        cell.style.background = nowActive ? 'transparent' : 'var(--accent, #4a9eff)';
+        updateCount();
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  wrapper.appendChild(grid);
+  updateCount();
+  return wrapper;
+}
+
+/**
+ * Collect shape data from a shape grid editor.
+ * @param {HTMLFormElement} formElement - The form containing the editor
+ * @param {string} fieldId - Identifier for the grid widget
+ * @returns {Array<{x:number,y:number}>}
+ */
+function _collectShapeData(formElement, fieldId) {
+  const result = [];
+  const wrapper = formElement.querySelector(`[data-shape-editor="${fieldId}"]`);
+  if (!wrapper) return [{ x: 0, y: 0 }];
+  const cells = wrapper.querySelectorAll('[data-shape-cell][data-active="1"]');
+  for (const cell of cells) {
+    const parts = /** @type {HTMLElement} */ (cell).dataset.shapeCell.split(',');
+    result.push({ x: parseInt(parts[0], 10), y: parseInt(parts[1], 10) });
+  }
+  return result.length > 0 ? result : [{ x: 0, y: 0 }];
 }
 
 // ============================================================
@@ -1469,7 +1574,7 @@ export function renderPropEditor(container, options) {
 
     // PORTABLE
     grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
-      _addField(panel, 'Size (slots)', 'cap_portable_size', 'number', model.portable ? model.portable.size : 1.0, { step: 'any', min: '0' });
+      panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
     }));
 
     // PLACEABLE
@@ -1478,7 +1583,8 @@ export function renderPropEditor(container, options) {
 
     // CONTAINER
     grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
-      _addField(panel, 'Capacity Size (slots)', 'cap_container_capacity_size', 'number', model.container ? model.container.capacity_size : 0, { step: 'any', min: '0' });
+      _addField(panel, 'Grid Width', 'cap_container_grid_width', 'number', model.container ? model.container.grid_width : 30, { step: '1', min: '1' });
+      _addField(panel, 'Grid Height', 'cap_container_grid_height', 'number', model.container ? model.container.grid_height : 40, { step: '1', min: '1' });
       panel.appendChild(_createStringArrayEditor('cap_container_accepts_filter', 'Accepts Filter', model.container ? model.container.accepts_filter : []));
     }));
 
@@ -1934,7 +2040,7 @@ export function collectPropFormData(formElement) {
 
   // --- Capabilities ---
   if (isChecked('cap_portable_enabled')) {
-    model.portable = { size: floatVal('cap_portable_size') };
+    model.portable = { slot_shape: _collectShapeData(formElement, 'cap_portable_shape') };
   }
 
   if (isChecked('cap_placeable_enabled')) {
@@ -1943,7 +2049,8 @@ export function collectPropFormData(formElement) {
 
   if (isChecked('cap_container_enabled')) {
     model.container = {
-      capacity_size: floatVal('cap_container_capacity_size'),
+      grid_width: intVal('cap_container_grid_width'),
+      grid_height: intVal('cap_container_grid_height'),
       accepts_filter: _collectStringArrayData(formElement, 'cap_container_accepts_filter'),
     };
   }
@@ -2203,8 +2310,8 @@ export function validatePropForm(model, isNew) {
 
   // --- Capability validations ---
   if (model.portable) {
-    if (model.portable.size < 0) {
-      errors.push('PORTABLE size must be >= 0');
+    if (!model.portable.slot_shape || model.portable.slot_shape.length === 0) {
+      errors.push('PORTABLE slot_shape must have at least one cell');
     }
   }
 
@@ -2307,7 +2414,15 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/portable_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.portable.size !== 1.0) subFields.set('size', { type: 'float', value: model.portable.size });
+    const shapeIsDefault = model.portable.slot_shape.length === 1
+      && model.portable.slot_shape[0].x === 0 && model.portable.slot_shape[0].y === 0;
+    if (!shapeIsDefault) {
+      subFields.set('slot_shape', {
+        type: 'array',
+        elementType: null,
+        value: model.portable.slot_shape.map(c => ({ type: 'vector2i', value: { x: c.x, y: c.y } })),
+      });
+    }
     capEntries.push({ capName: 'portable', subId: 'portable_1', subFields });
     extId++;
   }
@@ -2326,7 +2441,8 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="${eid}"]`);
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
-    if (model.container.capacity_size) subFields.set('capacity_size', { type: 'float', value: model.container.capacity_size });
+    if (model.container.grid_width !== 30) subFields.set('grid_width', { type: 'int', value: model.container.grid_width });
+    if (model.container.grid_height !== 40) subFields.set('grid_height', { type: 'int', value: model.container.grid_height });
     if (model.container.accepts_filter && model.container.accepts_filter.length > 0) {
       subFields.set('accepts_filter', {
         type: 'array', elementType: null,

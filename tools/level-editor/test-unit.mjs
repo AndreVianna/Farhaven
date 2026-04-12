@@ -1431,7 +1431,8 @@ test('TresParser — parse multiple sub_resources', () => {
     '',
     '[sub_resource type="Resource" id="container_1"]',
     'script = ExtResource("3_container")',
-    'capacity_size = 20.0',
+    'grid_width = 20',
+    'grid_height = 15',
     'accepts_filter = [&"BURNABLE"]',
     '',
     '[sub_resource type="Resource" id="light_1"]',
@@ -1502,11 +1503,13 @@ test('PropDefModel — fromEntry reads tags', () => {
 
 test('PropDefModel — fromEntry reads portable capability', () => {
   const entry = _makePropEntry({
-    portable: { size: 2.5 },
+    portable: { slot_shape: [{x:0,y:0},{x:1,y:0}] },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.portable !== null, 'portable should not be null');
-  assert(model.portable.size === 2.5, 'size should be 2.5');
+  assert(model.portable.slot_shape.length === 2, 'slot_shape should have 2 cells');
+  assert(model.portable.slot_shape[0].x === 0 && model.portable.slot_shape[0].y === 0, 'first cell should be (0,0)');
+  assert(model.portable.slot_shape[1].x === 1 && model.portable.slot_shape[1].y === 0, 'second cell should be (1,0)');
 });
 
 test('PropDefModel — fromEntry reads placeable capability', () => {
@@ -1519,11 +1522,12 @@ test('PropDefModel — fromEntry reads placeable capability', () => {
 
 test('PropDefModel — fromEntry reads container capability', () => {
   const entry = _makePropEntry({
-    container: { capacity_size: 50, accepts_filter: ['BURNABLE', 'WOOD'] },
+    container: { grid_width: 15, grid_height: 15, accepts_filter: ['BURNABLE', 'WOOD'] },
   });
   const model = PropDefModel.fromEntry('test.tres', entry);
   assert(model.container !== null, 'container should not be null');
-  assert(model.container.capacity_size === 50, 'capacity_size should be 50');
+  assert(model.container.grid_width === 15, 'grid_width should be 15');
+  assert(model.container.grid_height === 15, 'grid_height should be 15');
   assert(model.container.accepts_filter.length === 2, 'accepts_filter should have 2 items');
   assert(model.container.accepts_filter[0] === 'BURNABLE', 'first filter should be BURNABLE');
 });
@@ -1760,17 +1764,17 @@ test('PropDefModel — fromEntry null capabilities when not present', () => {
 // validatePropForm — capability validation (task-046b)
 // ============================================================
 
-test('validatePropForm — PORTABLE.size >= 0', () => {
-  const model = _makeModel({ portable: { size: -1 } });
+test('validatePropForm — PORTABLE.slot_shape empty is invalid', () => {
+  const model = _makeModel({ portable: { slot_shape: [] } });
   const result = validatePropForm(model, false);
   assert(!result.valid, 'should be invalid');
-  assert(result.errors.some(e => e.includes('PORTABLE size')), 'should mention PORTABLE size');
+  assert(result.errors.some(e => e.includes('PORTABLE slot_shape')), 'should mention PORTABLE slot_shape');
 });
 
-test('validatePropForm — PORTABLE.size = 0 is valid', () => {
-  const model = _makeModel({ portable: { size: 0 } });
+test('validatePropForm — PORTABLE.slot_shape with one cell is valid', () => {
+  const model = _makeModel({ portable: { slot_shape: [{x:0,y:0}] } });
   const result = validatePropForm(model, false);
-  assert(result.valid, 'size 0 should be valid');
+  assert(result.valid, 'single cell shape should be valid');
 });
 
 test('validatePropForm — PLACEABLE marker is always valid', () => {
@@ -1879,18 +1883,23 @@ test('propModelToRaw — serializes tags', () => {
 });
 
 test('propModelToRaw — serializes portable as sub_resource', () => {
-  const model = _makeModel({ portable: { size: 2.0 } });
+  const model = _makeModel({ portable: { slot_shape: [{x:0,y:0},{x:1,y:0}] } });
   const raw = propModelToRaw(model);
   assert(raw.subResources.length === 1, 'should have 1 sub_resource');
   assert(raw.subResources[0].id === 'portable_1', 'sub_resource id should be portable_1');
   const portableRef = raw.resourceFields.get('portable');
   assert(portableRef.type === 'sub_resource', 'portable field should be sub_resource ref');
   assert(portableRef.value === 'portable_1', 'should point to portable_1');
+  // Non-default shape should have slot_shape field
+  const slotShape = raw.subResources[0].fields.get('slot_shape');
+  assert(slotShape !== undefined, 'slot_shape field should be set for non-default shape');
+  assert(slotShape.type === 'array', 'slot_shape should be array type');
+  assert(slotShape.value.length === 2, 'slot_shape should have 2 elements');
 });
 
 test('propModelToRaw — serializes multiple capabilities', () => {
   const model = _makeModel({
-    portable: { size: 1.0 },
+    portable: { slot_shape: [{x:0,y:0}] },
     placeable: {},
     catalogable: { scan_time: 1.0, show_as_anomaly: false, properties: {} },
   });
@@ -1931,9 +1940,9 @@ test('propModelToRaw — serialized output is valid .tres', () => {
 test('PropDefModel — full round-trip with capabilities', () => {
   const original = _makeModel({
     tags: ['SOURCE', 'WOOD', 'BURNABLE.log'],
-    portable: { size: 1.5 },
+    portable: { slot_shape: [{x:0,y:0},{x:1,y:0}] },
     placeable: {},
-    container: { capacity_size: 20, accepts_filter: ['BURNABLE'] },
+    container: { grid_width: 20, grid_height: 15, accepts_filter: ['BURNABLE'] },
     light: { radius: 4, color: { r: 1, g: 0.7, b: 0.3, a: 1 }, flicker: true },
     station: { station_tags: ['fire', 'cook'] },
     catalogable: { scan_time: 2.0, show_as_anomaly: true, properties: {} },
@@ -1970,10 +1979,13 @@ test('PropDefModel — full round-trip with capabilities', () => {
   // Verify capabilities survived
   assert(restored.tags.length === 3, `tags should have 3 items, got ${restored.tags.length}`);
   assert(restored.portable !== null, 'portable should survive');
-  assert(restored.portable.size === 1.5, 'portable size should be 1.5');
+  assert(restored.portable.slot_shape.length === 2, 'portable slot_shape should have 2 cells');
+  assert(restored.portable.slot_shape[0].x === 0 && restored.portable.slot_shape[0].y === 0, 'first cell should be (0,0)');
+  assert(restored.portable.slot_shape[1].x === 1 && restored.portable.slot_shape[1].y === 0, 'second cell should be (1,0)');
   assert(restored.placeable !== null, 'placeable should survive');
   assert(restored.container !== null, 'container should survive');
-  assert(restored.container.capacity_size === 20, 'capacity_size should be 20');
+  assert(restored.container.grid_width === 20, 'grid_width should be 20');
+  assert(restored.container.grid_height === 15, 'grid_height should be 15');
   assert(restored.container.accepts_filter.length === 1, 'accepts_filter should have 1 item');
   assert(restored.light !== null, 'light should survive');
   assert(restored.light.radius === 4, 'light radius should be 4');
