@@ -430,6 +430,8 @@ async function saveTab(tab) {
 document.getElementById('btn-save').addEventListener('click', () => saveAll());
 const btnSaveAs = document.getElementById('btn-save-as');
 if (btnSaveAs) btnSaveAs.addEventListener('click', () => saveMapAs());
+const btnNewMap = document.getElementById('btn-new-map');
+if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
 
 // ============================================================
 // beforeunload protection (task-005)
