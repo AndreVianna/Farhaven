@@ -141,7 +141,12 @@ func register_steps(registry) -> void:
 			# Clear signal logs so the scenario's actual action does not
 			# race the seed. Preserve the added log for non-signal steps
 			# that might still want to inspect it.
-			ctx.set_value("inventory_full_log", [] as Array)
+			# Clear IN PLACE so the signal spy lambdas (which captured the
+			# array by reference at connect time) keep writing into the same
+			# array the Then steps read. Replacing ctx values with new empty
+			# arrays would orphan the spy closures.
+			var full_log: Array = ctx.get_value("inventory_full_log", [] as Array)
+			full_log.clear()
 	)
 
 	registry.given("the real inventory has tool {string} set to {string}",
@@ -149,7 +154,9 @@ func register_steps(registry) -> void:
 			var inv = ctx.get_value("real_inventory", null)
 			if inv != null:
 				inv.set_tool(StringName(slot), StringName(tool_id))
-			ctx.set_value("inventory_tool_log", [] as Array)
+			# Clear in place (see note above for inventory_full_log).
+			var tool_log: Array = ctx.get_value("inventory_tool_log", [] as Array)
+			tool_log.clear()
 	)
 
 	registry.given("the real inventory has {int} base slots",
