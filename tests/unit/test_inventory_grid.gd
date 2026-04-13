@@ -566,10 +566,13 @@ func test_resize_grid_drops_items_that_no_longer_fit() -> void:
 
 func test_resize_grid_emits_inventory_changed() -> void:
 	var inv := _Inventory.new(10, 10)
-	var change_count: int = 0
-	inv.inventory_changed.connect(func(): change_count += 1)
+	# Dictionary used as a mutable counter — GDScript lambdas capture ints
+	# by value, so mutating `var change_count` inside the callback would
+	# only affect the closure's copy. A dict entry sidesteps that.
+	var log := {"count": 0}
+	inv.inventory_changed.connect(func(): log["count"] += 1)
 	inv.resize_grid(5, 5)
-	assert_int(change_count).is_equal(1)
+	assert_int(log["count"]).is_equal(1)
 
 
 func test_resize_grid_rejects_zero_dimension() -> void:
