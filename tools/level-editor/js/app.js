@@ -299,12 +299,13 @@ function newMap() {
     // Persist the fresh empty map immediately so New creates a real file
     // on disk, not just in-memory state.
     try {
-      const json = serializeGridToMapJson(hexGrid);
+      const mapData = serializeGridToMapJson(hexGrid);
+      const json = JSON.stringify(mapData, null, '\t');
       await FileDiscovery.saveFile('data/maps', json, filenameStem);
       ProjectContext.files.maps.set(filenameStem, {
         handle: null,
         dir: 'data/maps',
-        data: JSON.parse(json),
+        data: mapData,
       });
       activeMapFilename = filenameStem;
       dirtyTracker.markAllClean();
