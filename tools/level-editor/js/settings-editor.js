@@ -2,7 +2,7 @@
 // SettingsEditor — singleton GameSettings.tres editor
 // ============================================================
 //
-// GameSettings is a Gear-derived singleton resource (one instance,
+// GameSettings is a plain Resource singleton (one instance,
 // `data/game_settings.tres`) that carries engine-wide startup choices
 // — currently just `starting_map`, which feeds the game/save boot
 // precedence in `SaveManager.get_current_map_or_default(settings)`.

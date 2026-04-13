@@ -15,7 +15,11 @@ const _GAME_SETTINGS_PATH: String = "res://data/game_settings.tres"
 
 func _ready() -> void:
 	_wire_systems()
-	HexGrid.load_map(_resolve_startup_map())
+	var map_path: String = _resolve_startup_map()
+	if map_path != "" and FileAccess.file_exists(map_path):
+		HexGrid.load_map(map_path)
+	else:
+		push_warning("main.gd: startup map '%s' not found — world will be empty." % map_path)
 	# Apply starting loadout for fresh game (no save file yet).
 	# Must run BEFORE save load so save data can override defaults.
 	if not SaveManager.has_save():

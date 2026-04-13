@@ -266,9 +266,8 @@ matching its filename stem (e.g. `B00003.tres` → `id = &"B00003"`).
 |-------|------|---------|-------------|-------|
 | id | StringName | "" | `B00NNN` format | Inherited from Gear; matches filename |
 | display_name | String | "" | Human-readable label | Inherited from Gear; e.g. "Crash Site" |
-| prop_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
-| color | Color | WHITE | Base biome color | Used for terrain rendering |
-| color_variations | Array[Color] | [] | 3 color variants per biome | Hash-selected per tile for visual variety |
+| terrain_textures | Array[Texture2D] | [] | Zero or more terrain textures | Hash-picked per tile for visual variety; UV-rotated ×4 |
+| color | Color | WHITE | Base biome color | Fallback used for terrain rendering when no terrain textures are assigned |
 
 Source: `scripts/hex/biome_data.gd`, `data/biomes/B00*.tres`
 

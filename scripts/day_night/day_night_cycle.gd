@@ -72,6 +72,7 @@ var _hex_material: ShaderMaterial = null
 ## All registered hex materials. HexGridRenderer now owns one material per
 ## (biome, variation) bucket, so this can grow beyond a single entry.
 var _hex_materials: Array[ShaderMaterial] = []
+var _last_player_world_pos: Vector2 = Vector2.ZERO
 var _lighting_tween: Tween = null
 
 
@@ -136,6 +137,13 @@ func register_hex_material(mat: ShaderMaterial) -> void:
 	if not _hex_materials.has(mat):
 		_hex_materials.append(mat)
 	_hex_material = _hex_materials[0]
+	# Newly created materials default to darkness=0 / player_world_pos=(0,0).
+	# Apply the current runtime state so a mid-night mesh rebuild (e.g.
+	# highlight change) doesn't flash the new buckets to full brightness.
+	var darkness_val: float = DARKNESS_VALUES[current_phase]
+	mat.set_shader_parameter("darkness", darkness_val)
+	if _last_player_world_pos != Vector2.ZERO:
+		mat.set_shader_parameter("player_world_pos", _last_player_world_pos)
 
 
 ## Drop every registered hex material. HexGridRenderer calls this before it
@@ -190,9 +198,10 @@ func _set_hex_darkness(value: float) -> void:
 # --- Player tracking (for shader player_world_pos parameter) ---
 
 func _on_tile_entered(coords: Vector2i) -> void:
+	var world_pos: Vector2 = HexMath.axial_to_world(coords)
+	_last_player_world_pos = world_pos
 	if _hex_materials.is_empty():
 		return
-	var world_pos: Vector2 = HexMath.axial_to_world(coords)
 	for m: ShaderMaterial in _hex_materials:
 		m.set_shader_parameter("player_world_pos", world_pos)
 

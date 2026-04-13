@@ -127,9 +127,9 @@ func has_save() -> bool:
 ## (e.g. "ch1.json"). Callers resolve the full path themselves.
 func get_current_map_or_default(settings: GameSettings) -> String:
 	var saved: String = _peek_current_map()
-	if saved != "":
+	if _is_safe_map_filename(saved):
 		return saved
-	if settings != null and settings.starting_map != "":
+	if settings != null and _is_safe_map_filename(settings.starting_map):
 		return settings.starting_map
 	return ""
 
@@ -150,6 +150,19 @@ func _peek_current_map() -> String:
 	if parsed == null or not (parsed is Dictionary):
 		return ""
 	return String((parsed as Dictionary).get("current_map", ""))
+
+
+## Validates that a candidate map filename is safe to concatenate onto
+## `res://data/maps/`. Rejects empty strings, slashes, backslashes,
+## path traversal (`..`), and anything that doesn't end in `.json`.
+static func _is_safe_map_filename(name: String) -> bool:
+	if name.is_empty():
+		return false
+	if name.contains("/") or name.contains("\\") or name.contains(".."):
+		return false
+	if not name.ends_with(".json"):
+		return false
+	return true
 
 
 func delete_save() -> void:
