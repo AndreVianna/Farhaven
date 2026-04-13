@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, 
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { HexInspector, showInlineModal, showErrorListModal } from './panels.js';
+import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -263,24 +263,58 @@ function updateUndoRedoButtons() {
 // ============================================================
 
 /**
- * Clear the grid and start a new map, prompting for chapter ID and map name.
+ * Clear the grid and start a new map, prompting for chapter ID and map
+ * name in a single dialog, then immediately persisting an empty map
+ * file so the user has something on disk right after clicking New.
  * @returns {void}
  */
 function newMap() {
   if (dirtyTracker.hasUnsavedChanges()) {
     if (!confirm('Unsaved changes will be lost. Continue?')) return;
   }
-  showInlineModal('Chapter ID:', 'ch1', (chapterId) => {
-    if (chapterId === null) return;
-    showInlineModal('Map Name:', 'New Map', (mapName) => {
-      if (mapName === null) return;
-      hexGrid.clear();
-      hexGrid.meta = { chapter_id: chapterId.trim() || 'ch1', name: mapName.trim() || 'New Map', spawn: [0, 0] };
-      commandHistory.clear();
+  showInlineFormModal('Create New Map', [
+    { label: 'Chapter ID', defaultValue: 'ch1', placeholder: 'e.g. ch1' },
+    { label: 'Map Name', defaultValue: 'New Map', placeholder: 'Human-readable name' },
+    { label: 'Filename', defaultValue: '', placeholder: 'e.g. ch1_overworld (no .json)' },
+  ], async (values) => {
+    if (values === null) return;
+    const chapterId = (values[0] || '').trim() || 'ch1';
+    const mapName = (values[1] || '').trim() || 'New Map';
+    let filenameStem = (values[2] || '').trim();
+    if (filenameStem === '') {
+      // Derive a filesystem-safe stem from the name when the user
+      // doesn't supply one explicitly.
+      filenameStem = mapName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'new_map';
+    }
+    if (!filenameStem.endsWith('.json')) filenameStem += '.json';
+
+    if (ProjectContext.files.maps.has(filenameStem)) {
+      showError(`A map named "${filenameStem}" already exists. Pick a different filename.`);
+      return;
+    }
+
+    hexGrid.clear();
+    hexGrid.meta = { chapter_id: chapterId, name: mapName, spawn: [0, 0] };
+    commandHistory.clear();
+
+    // Persist the fresh empty map immediately so New creates a real file
+    // on disk, not just in-memory state.
+    try {
+      const json = serializeGridToMapJson(hexGrid);
+      await FileDiscovery.saveFile('data/maps', json, filenameStem);
+      ProjectContext.files.maps.set(filenameStem, {
+        handle: null,
+        dir: 'data/maps',
+        data: JSON.parse(json),
+      });
+      activeMapFilename = filenameStem;
       dirtyTracker.markAllClean();
       if (hexCanvas) hexCanvas.requestRender();
-      setStatus(`New map "${hexGrid.meta.name}" created.`);
-    });
+      _rebuildColorMaps();
+      setStatus(`New map "${mapName}" created (${filenameStem}).`);
+    } catch (err) {
+      showError(`Failed to save new map: ${err.message}`);
+    }
   });
 }
 
