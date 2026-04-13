@@ -22,6 +22,7 @@ import { renderJournalEditor } from './journal-editor.js';
 import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
+import { showGeneratorDialog } from './map-generator.js';
 
 // ============================================================
 // Module-level state
@@ -369,6 +370,51 @@ function saveMapAs() {
 }
 
 // ============================================================
+// Procedural Map Generator
+// ============================================================
+
+function _generateProceduralMap() {
+  if (dirtyTracker.hasUnsavedChanges()) {
+    if (!confirm('Unsaved changes will be lost. Continue?')) return;
+  }
+  showGeneratorDialog(async (mapData, opts) => {
+    const filenameStem = `${opts.chapterId}.json`;
+    if (ProjectContext.files.maps.has(filenameStem)) {
+      if (!confirm(`Map "${filenameStem}" already exists. Overwrite?`)) return;
+    }
+
+    const result = loadMapIntoGrid(hexGrid, mapData);
+    if (!result.success) {
+      showError(`Failed to load generated map: ${result.error}`);
+      return;
+    }
+
+    try {
+      const json = JSON.stringify(mapData, null, '\t');
+      await FileDiscovery.saveFile('data/maps', json, filenameStem);
+      ProjectContext.files.maps.set(filenameStem, {
+        handle: null,
+        dir: 'data/maps',
+        data: mapData,
+      });
+      activeMapFilename = filenameStem;
+      commandHistory.clear();
+      dirtyTracker.markAllClean();
+      if (hexCanvas) {
+        hexCanvas.requestRender();
+        hexCanvas.fitToView();
+      }
+      _rebuildColorMaps();
+      _refreshMapSelector();
+      const tileCount = Object.keys(mapData.tiles).length;
+      setStatus(`Generated "${opts.mapName}" — ${tileCount} tiles (seed ${opts.seed || 'random'}).`);
+    } catch (err) {
+      showError(`Failed to save generated map: ${err.message}`);
+    }
+  });
+}
+
+// ============================================================
 // Save Functions (task-005)
 // ============================================================
 
@@ -467,6 +513,8 @@ const btnSaveAs = document.getElementById('btn-save-as');
 if (btnSaveAs) btnSaveAs.addEventListener('click', () => saveMapAs());
 const btnNewMap = document.getElementById('btn-new-map');
 if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
+const btnGenerateMap = document.getElementById('btn-generate-map');
+if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
 
 // Biome render-mode toggle (Color | Texture). Texture mode mirrors the
 // runtime hash-picked variation + rotation so the editor preview matches
