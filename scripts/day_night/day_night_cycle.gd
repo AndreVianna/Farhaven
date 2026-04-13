@@ -66,7 +66,12 @@ var is_daytime: bool = true
 # --- Lighting ---
 var _env: WorldEnvironment = null
 var _sun: DirectionalLight3D = null
+## First registered material — kept for backwards-compatible reads of uniform values
+## (e.g. tween needs a starting point). Always mirrors the head of `_hex_materials`.
 var _hex_material: ShaderMaterial = null
+## All registered hex materials. HexGridRenderer now owns one material per
+## (biome, variation) bucket, so this can grow beyond a single entry.
+var _hex_materials: Array[ShaderMaterial] = []
 var _lighting_tween: Tween = null
 
 
@@ -122,9 +127,23 @@ func register_lighting(env: WorldEnvironment, sun: DirectionalLight3D) -> void:
 	_apply_lighting_immediate()
 
 
-## Register the hex grid ShaderMaterial for darkness transitions.
+## Register a hex grid ShaderMaterial for darkness transitions.
+## Can be called multiple times — all registered materials receive uniform
+## updates when the day/night phase changes.
 func register_hex_material(mat: ShaderMaterial) -> void:
-	_hex_material = mat
+	if mat == null:
+		return
+	if not _hex_materials.has(mat):
+		_hex_materials.append(mat)
+	_hex_material = _hex_materials[0]
+
+
+## Drop every registered hex material. HexGridRenderer calls this before it
+## rebuilds the mesh bucket map so that stale materials from the previous
+## build don't linger.
+func clear_hex_materials() -> void:
+	_hex_materials.clear()
+	_hex_material = null
 
 
 func _apply_lighting_immediate() -> void:
@@ -137,8 +156,9 @@ func _apply_lighting_immediate() -> void:
 	_env.environment.ambient_light_energy = params["ambient_energy"]
 	_sun.light_color = params["sun_color"]
 	_sun.light_energy = params["sun_energy"]
-	if _hex_material != null:
-		_hex_material.set_shader_parameter("darkness", DARKNESS_VALUES[current_phase])
+	var darkness_val: float = DARKNESS_VALUES[current_phase]
+	for m: ShaderMaterial in _hex_materials:
+		m.set_shader_parameter("darkness", darkness_val)
 
 
 func _start_lighting_tween() -> void:
@@ -158,20 +178,23 @@ func _start_lighting_tween() -> void:
 	_lighting_tween.tween_property(_sun, "light_energy", params["sun_energy"], duration)
 	if _hex_material != null:
 		var target_darkness: float = DARKNESS_VALUES[current_phase]
-		_lighting_tween.tween_method(_set_hex_darkness, _hex_material.get_shader_parameter("darkness"), target_darkness, duration)
+		var start_darkness: float = _hex_material.get_shader_parameter("darkness")
+		_lighting_tween.tween_method(_set_hex_darkness, start_darkness, target_darkness, duration)
 
 
 func _set_hex_darkness(value: float) -> void:
-	if _hex_material != null:
-		_hex_material.set_shader_parameter("darkness", value)
+	for m: ShaderMaterial in _hex_materials:
+		m.set_shader_parameter("darkness", value)
 
 
 # --- Player tracking (for shader player_world_pos parameter) ---
 
 func _on_tile_entered(coords: Vector2i) -> void:
-	if _hex_material != null:
-		var world_pos: Vector2 = HexMath.axial_to_world(coords)
-		_hex_material.set_shader_parameter("player_world_pos", world_pos)
+	if _hex_materials.is_empty():
+		return
+	var world_pos: Vector2 = HexMath.axial_to_world(coords)
+	for m: ShaderMaterial in _hex_materials:
+		m.set_shader_parameter("player_world_pos", world_pos)
 
 
 ## Skip directly to dawn phase. Used for night-death respawn.
@@ -184,8 +207,8 @@ func skip_to_dawn() -> void:
 	phase_changed.emit(old_phase, current_phase)
 	dawn.emit()
 	_apply_lighting_immediate()
-	if _hex_material != null:
-		_hex_material.set_shader_parameter("darkness", 0.0)
+	for m: ShaderMaterial in _hex_materials:
+		m.set_shader_parameter("darkness", 0.0)
 
 
 # --- Helpers ---

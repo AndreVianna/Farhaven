@@ -9,4 +9,3 @@ display_name = "Rocky"
 short_description = "Boulders, exposed ridges, and loose stone."
 long_description = "Hard ground worn by tidal heating and old glacial weather. Stone and ore wait in the cracks of every ridge; movement is slower across the broken terrain, but the high ground sees far. Good place to stop and think."
 color = Color(0.5490196078431373, 0.5019607843137255, 0.45098039215686275, 1.0)
-color_variations = [Color(0.5019607843137255, 0.5019607843137255, 0.5019607843137255, 1.0), Color(0.4392156862745098, 0.5019607843137255, 0.5647058823529412, 1.0), Color(0.25098039215686274, 0.25098039215686274, 0.25098039215686274, 1.0)]

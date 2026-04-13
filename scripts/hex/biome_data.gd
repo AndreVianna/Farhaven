@@ -8,5 +8,13 @@ extends Gear
 ## matching `id = &"B00NNN"` value so biomes stay consistent with the
 ## other Gear subclasses (PropDef P00xxx, Recipe R00xxx, etc.).
 
+## Variations for terrain rendering. When this list is non-empty the hex
+## grid renderer hash-picks one texture per tile, which gives visual
+## variety to a biome without having to tile a single seamless image.
+## When the list is empty the renderer falls back to the solid `color`
+## below so the game still has something to show.
+@export var terrain_textures: Array[Texture2D] = []
+
+## Fallback solid color when `terrain_textures` is empty OR the renderer
+## needs a tint to debug a missing asset.
 @export var color: Color = Color.WHITE
-@export var color_variations: Array[Color] = []

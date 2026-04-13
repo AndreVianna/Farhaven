@@ -9,4 +9,3 @@ display_name = "Crash Site"
 short_description = "The impact furrow where your escape pod came down."
 long_description = "A small clearing torn open by your descent. Scrap from the pod, parachute fabric, ablative ceramic, and a charred furrow of broken branches mark the path you cut through the canopy. The air is still. Whatever lived here moved on when the sky cracked open."
 color = Color(0.7490196078431373, 0.6196078431372549, 0.4196078431372549, 1.0)
-color_variations = [Color(0.5450980392156862, 0.27058823529411763, 0.07450980392156863, 1.0), Color(0.6274509803921569, 0.3215686274509804, 0.17647058823529413, 1.0), Color(0.32941176470588235, 0.20784313725490197, 0.11372549019607843, 1.0)]

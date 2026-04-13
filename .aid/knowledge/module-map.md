@@ -28,7 +28,7 @@
   - `hex_math.gd` -- pure static math: axial/cube conversions, distance, neighbors, ring, range (92 lines)
   - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, props (unified) (26 lines)
   - `map_loader.gd` -- loads JSON maps, creates tiles, validates reachability (193 lines)
-  - `biome_data.gd` -- per-biome config resource (extends Gear): id (B00NNN), display_name, color, prop_table
+  - `biome_data.gd` -- per-biome config resource (extends Gear): id (B00NNN), display_name, color (fallback), terrain_textures (Array[Texture2D] for per-tile variation)
   - `prop.gd` -- per-tile prop instance: type, category, origin, remaining, max_amount, tool_required, respawn_time, sub_hex, rotation, blocks_movement (replaces deprecated prop_node.gd)
 
 ## Data Layer
@@ -129,7 +129,7 @@
   - External: Godot Node3D, MeshInstance3D, MultiMeshInstance3D, ArrayMesh, SurfaceTool, ShaderMaterial, Label3D, StandardMaterial3D, Tween
 - **Test Coverage:** `test_hex_grid_renderer.gd` (197 lines), `test_prop_renderer.gd` (378 lines), `test_prop_renderers.gd` (231 lines), `test_scan_progress_renderer.gd` (171 lines)
 - **Key Files:**
-  - `hex_grid_renderer.gd` -- single ArrayMesh terrain with corner color blending, cliff faces, fog dimming, highlights (342 lines)
+  - `hex_grid_renderer.gd` -- multi-MeshInstance3D terrain (one per (biome, texture variation) bucket + one cliff bucket), per-bucket ShaderMaterial (textured or color-only), corner color blending, cliff faces, fog dimming, highlights, UV coords for texture sampling
   - `prop_renderer.gd` -- MultiMesh pools per PropDef, placeholder meshes, depleted/respawned swaps (473 lines)
   - `prop_label_renderer.gd` -- Label3D markers for unknown/encountered props (240 lines)
   - `scan_progress_renderer.gd` -- shader-based scan progress bar billboard (150 lines)
