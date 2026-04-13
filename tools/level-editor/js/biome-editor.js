@@ -27,6 +27,10 @@ export class BiomeDataModel {
     this.color = { r: 0, g: 0, b: 0, a: 1 };
     /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
     this.color_variations = [];
+    /** @type {string[]} `res://...` paths to terrain texture variations
+     *  (what the runtime hex shader samples). Order matters because the
+     *  per-tile variation index % length selects one. */
+    this.terrain_textures = [];
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -99,6 +103,25 @@ export class BiomeDataModel {
         }
         return { r: 0, g: 0, b: 0, a: 1 };
       });
+    }
+
+    // terrain_textures: array of ext_resource refs we resolve back to
+    // the raw `res://...` path so the editor model is path-based.
+    // Build an id -> path map from the [ext_resource ...] header lines
+    // first, then map each array entry (ExtResource("id")) through it.
+    if (Array.isArray(d.terrain_textures) && entry.raw) {
+      const idToPath = new Map();
+      for (const line of entry.raw.extResources || []) {
+        const idM = /\bid="([^"]+)"/.exec(line);
+        const pathM = /\bpath="([^"]+)"/.exec(line);
+        if (idM && pathM) idToPath.set(idM[1], pathM[1]);
+      }
+      model.terrain_textures = d.terrain_textures.map((tv) => {
+        const ref = (tv && typeof tv === 'object' && tv.type === 'ext_resource') ? tv.value
+                  : (typeof tv === 'string') ? tv : '';
+        const idM = /ExtResource\("([^"]+)"\)/.exec(ref);
+        return idM ? (idToPath.get(idM[1]) || '') : '';
+      }).filter(Boolean);
     }
 
     return model;
@@ -179,6 +202,7 @@ function _modelToPlain(model) {
     long_description: model.long_description,
     color: model.color,
     color_variations: model.color_variations,
+    terrain_textures: model.terrain_textures,
   };
 }
 
@@ -747,9 +771,156 @@ export function renderBiomeEditor(container, options) {
     varFull.appendChild(addVarBtn);
     grid.appendChild(varFull);
 
+    // ── Textures section ──
+    const texSep = document.createElement('div');
+    texSep.className = 'prop-separator';
+    texSep.textContent = 'Terrain Textures';
+    grid.appendChild(texSep);
+
+    const texFull = document.createElement('div');
+    texFull.className = 'prop-full';
+
+    const texHint = document.createElement('div');
+    texHint.style.cssText = 'color:var(--text-secondary);font-size:11px;margin-bottom:6px;';
+    texHint.textContent = 'Hash-picked per tile at runtime. Add 2–4 for good variety; leave empty to fall back to the base color.';
+    texFull.appendChild(texHint);
+
+    const texContainer = document.createElement('div');
+    texContainer.dataset.texturesContainer = 'true';
+    texContainer.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;';
+
+    function addTextureThumb(resPath) {
+      const row = document.createElement('div');
+      row.dataset.texturePath = resPath;
+      row.style.cssText = 'position:relative;width:64px;height:64px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);overflow:hidden;';
+
+      const img = document.createElement('img');
+      img.src = `/api/asset?path=${encodeURIComponent(resPath.replace(/^res:\/\//, ''))}`;
+      img.alt = resPath.split('/').pop() || '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      row.appendChild(img);
+
+      const caption = document.createElement('div');
+      caption.textContent = resPath.split('/').pop() || '';
+      caption.title = resPath;
+      caption.style.cssText = 'position:absolute;bottom:0;left:0;right:0;padding:1px 3px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      row.appendChild(caption);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '×';
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remove';
+      removeBtn.style.cssText = 'position:absolute;top:2px;right:2px;width:18px;height:18px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;cursor:pointer;font-size:12px;line-height:1;';
+      removeBtn.addEventListener('click', () => row.remove());
+      row.appendChild(removeBtn);
+
+      texContainer.appendChild(row);
+    }
+
+    for (const p of model.terrain_textures) addTextureThumb(p);
+
+    const addTexBtn = document.createElement('button');
+    addTexBtn.textContent = '+ Add Texture';
+    addTexBtn.type = 'button';
+    addTexBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+
+    addTexBtn.addEventListener('click', async () => {
+      // Pull the list of PNGs available under assets/textures/biomes/
+      // from the dev server, subtract what's already on this biome, and
+      // prompt the user to pick one.
+      let listed = [];
+      try {
+        const resp = await fetch('/api/list-assets?dir=assets/textures/biomes&ext=.png');
+        if (resp.ok) {
+          const data = await resp.json();
+          listed = Array.isArray(data.files) ? data.files : [];
+        }
+      } catch (err) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = `Failed to list textures: ${err.message}`;
+        return;
+      }
+      if (listed.length === 0) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = 'No PNGs found in assets/textures/biomes/.';
+        return;
+      }
+      const existing = new Set(Array.from(texContainer.querySelectorAll('[data-texture-path]'))
+        .map((n) => /** @type {HTMLElement} */ (n).dataset.texturePath));
+      const remaining = listed
+        .map((name) => `res://assets/textures/biomes/${name}`)
+        .filter((p) => !existing.has(p));
+      if (remaining.length === 0) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = 'All available textures are already assigned.';
+        return;
+      }
+      _openTexturePicker(remaining, (picked) => {
+        if (picked) addTextureThumb(picked);
+      });
+    });
+
+    texFull.appendChild(texContainer);
+    texFull.appendChild(addTexBtn);
+    grid.appendChild(texFull);
+
     wrapper.appendChild(grid);
     return wrapper;
   }
+}
+
+/**
+ * Modal picker for choosing one `res://...` texture path from a list.
+ * Small enough to inline here so the rest of the editor doesn't gain
+ * a new shared component for a biome-editor-only flow.
+ * @param {string[]} paths
+ * @param {(picked: string|null) => void} callback
+ */
+function _openTexturePicker(paths, callback) {
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;padding:12px;min-width:420px;max-width:80vw;max-height:80vh;overflow-y:auto;color:var(--text-primary);';
+
+  const heading = document.createElement('h4');
+  heading.textContent = 'Pick a terrain texture';
+  heading.style.margin = '0 0 8px 0';
+  panel.appendChild(heading);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+  for (const p of paths) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.style.cssText = 'position:relative;width:96px;height:96px;padding:0;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);cursor:pointer;overflow:hidden;';
+    const img = document.createElement('img');
+    img.src = `/api/asset?path=${encodeURIComponent(p.replace(/^res:\/\//, ''))}`;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    item.appendChild(img);
+    const caption = document.createElement('div');
+    caption.textContent = p.split('/').pop() || '';
+    caption.style.cssText = 'position:absolute;bottom:0;left:0;right:0;padding:1px 3px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    item.appendChild(caption);
+    item.addEventListener('click', () => {
+      document.body.removeChild(backdrop);
+      callback(p);
+    });
+    grid.appendChild(item);
+  }
+  panel.appendChild(grid);
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Cancel';
+  cancel.style.cssText = 'margin-top:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  cancel.addEventListener('click', () => {
+    document.body.removeChild(backdrop);
+    callback(null);
+  });
+  panel.appendChild(cancel);
+
+  backdrop.appendChild(panel);
+  document.body.appendChild(backdrop);
 }
 
 // ============================================================
@@ -806,6 +977,16 @@ function _collectBiomeFormData(formElement) {
   const variationInputs = formElement.querySelectorAll('[data-variation-color]');
   for (const input of variationInputs) {
     model.color_variations.push(_hexToColor(/** @type {HTMLInputElement} */ (input).value));
+  }
+
+  // Terrain textures — keep the DOM order (hash-picked variation index
+  // is order-sensitive, so removing from the middle doesn't scramble
+  // the remaining tiles' textures in the game).
+  model.terrain_textures = [];
+  const textureNodes = formElement.querySelectorAll('[data-texture-path]');
+  for (const node of textureNodes) {
+    const p = /** @type {HTMLElement} */ (node).dataset.texturePath;
+    if (p) model.terrain_textures.push(p);
   }
 
   return model;
@@ -866,16 +1047,53 @@ export function biomeModelToRaw(model) {
     raw.scriptClass = 'BiomeData';
     const uid = generateTresUid();
     raw.uid = uid;
-    raw.headerLine = `[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="${uid}"]`;
-    raw.extResources = ['[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]'];
+    raw.extResources = [];
     raw.lineEnding = '\n';
   }
+
+  // Rebuild ext_resources deterministically: Script first, then one
+  // Texture2D line per terrain_textures entry. We preserve existing
+  // uid="..." hints when we can recover them from the previous raw,
+  // so a round-trip without edits stays byte-identical; new entries
+  // omit uid (Godot will backfill on its next save).
+  const prevIdByPath = new Map();
+  if (model._raw && Array.isArray(model._raw.extResources)) {
+    for (const line of model._raw.extResources) {
+      const idM = /\bid="([^"]+)"/.exec(line);
+      const pathM = /\bpath="([^"]+)"/.exec(line);
+      const uidM = /\buid="([^"]+)"/.exec(line);
+      if (idM && pathM) {
+        prevIdByPath.set(pathM[1], { id: idM[1], uid: uidM ? uidM[1] : null });
+      }
+    }
+  }
+
+  const scriptExtId = '1_biome';
+  const newExtResources = [
+    `[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="${scriptExtId}"]`,
+  ];
+  const texIds = []; // parallel to model.terrain_textures
+  let nextTexIdx = 2;
+  for (const resPath of model.terrain_textures) {
+    const prev = prevIdByPath.get(resPath);
+    const texId = (prev && prev.id && prev.id !== scriptExtId) ? prev.id : `${nextTexIdx++}_tex`;
+    texIds.push(texId);
+    const uidAttr = prev && prev.uid ? ` uid="${prev.uid}"` : '';
+    newExtResources.push(`[ext_resource type="Texture2D"${uidAttr} path="${resPath}" id="${texId}"]`);
+  }
+  raw.extResources = newExtResources;
+
+  // Keep the header's load_steps in sync so Godot doesn't warn about
+  // a mismatch between declared count and actual resources.
+  const loadSteps = newExtResources.length + (Array.isArray(raw.subResources) ? raw.subResources.length : 0) + 1;
+  const uidAttr = raw.uid ? ` uid="${raw.uid}"` : '';
+  raw.headerLine = `[gd_resource type="Resource" script_class="BiomeData" load_steps=${loadSteps} format=3${uidAttr}]`;
 
   // Build the resource fields map
   const fields = new Map();
 
   // Script line is always first
-  fields.set('script', { type: 'ext_resource', value: 'ExtResource("1_biome")' });
+  fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
 
   // id: StringName (from Gear)
   fields.set('id', { type: 'stringname', value: model.id });
@@ -904,6 +1122,16 @@ export function biomeModelToRaw(model) {
     value: { r: vc.r, g: vc.g, b: vc.b, a: vc.a },
   }));
   fields.set('color_variations', { type: 'array', value: colorVariationEntries, elementType: null });
+
+  // terrain_textures: Array[Texture2D] referencing the ext_resource ids
+  // we just emitted. Only write the field when the list is non-empty so
+  // biomes without textures stay byte-clean (color-only rendering).
+  if (model.terrain_textures.length > 0) {
+    const texEntries = texIds.map((id) => ({ type: 'ext_resource', value: `ExtResource("${id}")` }));
+    // Untyped array literal (matches the `[ExtResource(...), ...]` format
+    // the existing hand-authored biome .tres files use).
+    fields.set('terrain_textures', { type: 'array', value: texEntries, elementType: null });
+  }
 
   raw.resourceFields = fields;
   return raw;

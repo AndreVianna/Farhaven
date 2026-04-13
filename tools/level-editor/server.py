@@ -112,6 +112,20 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
                 content = f.read()
             self._text_response(200, content)
 
+        elif path == '/api/list-assets':
+            rel_dir = params.get('dir', [''])[0]
+            if not rel_dir or not is_safe_asset_path(rel_dir + '/'):
+                self._json_response(400, {'error': 'Invalid asset directory'})
+                return
+            ext = params.get('ext', ['.png'])[0]
+            full_dir = os.path.join(PROJECT_ROOT, rel_dir)
+            files = []
+            if os.path.isdir(full_dir):
+                for name in sorted(os.listdir(full_dir)):
+                    if name.endswith(ext):
+                        files.append(name)
+            self._json_response(200, {'dir': rel_dir, 'files': files})
+
         elif path == '/api/asset':
             rel_path = params.get('path', [''])[0]
             if not rel_path or not is_safe_asset_path(rel_path):
