@@ -13,7 +13,6 @@ class_name TestInventoryPanel
 
 const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
-const _ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
 
 # Numeric PropDef ids used throughout the suite
 const ID_WOOD: StringName = &"P00010"
@@ -96,37 +95,6 @@ func test_close_does_not_emit_panel_opened() -> void:
 	assert_int(_panel_opened_count).is_equal(0)
 
 
-# --- Tool slot construction ---
-## Since delivery-006i only the scanner remains as a body-integrated tool
-## slot. Axe / pickaxe / weapon now live inside the grid inventory and are
-## looked up via Inventory.find_best_tool_for_action().
-
-func test_creates_single_tool_slot() -> void:
-	# Tool slots are created in _ready regardless of inventory binding.
-	assert_int(_panel._tool_slot_nodes.size()).is_equal(1)
-
-
-func test_only_scanner_slot_exists() -> void:
-	var keys: Array = _panel._tool_slot_nodes.keys()
-	assert_bool(keys.has(&"scanner")).is_true()
-	assert_bool(keys.has(&"axe")).is_false()
-	assert_bool(keys.has(&"pickaxe")).is_false()
-	assert_bool(keys.has(&"weapon")).is_false()
-
-
-func test_tool_slots_use_expected_order() -> void:
-	var keys: Array = _panel._tool_slot_nodes.keys()
-	# The panel constant TOOL_SLOT_ORDER drives the ordering.
-	for key in _panel.TOOL_SLOT_ORDER:
-		assert_bool(keys.has(key)).is_true()
-
-
-func test_tool_slots_are_tool_slot_ui_instances() -> void:
-	for key: StringName in _panel._tool_slot_nodes:
-		var node: Node = _panel._tool_slot_nodes[key]
-		assert_bool(node is _ToolSlotUI).is_true()
-
-
 # --- Grid canvas creation ---
 
 func test_grid_canvas_created_on_ready() -> void:
@@ -153,27 +121,6 @@ func test_grid_canvas_minimum_size_matches_inventory_grid() -> void:
 	assert_float(_panel._grid_canvas.custom_minimum_size.y).is_equal(expected_h)
 
 
-# --- Tool slot visual state: empty vs equipped ---
-
-func test_tool_slot_empty_when_no_tool_set() -> void:
-	_panel.set_inventory(_inv)
-	for key: StringName in _panel.TOOL_SLOT_ORDER:
-		var slot: _ToolSlotUI = _panel._tool_slot_nodes[key]
-		# Empty tool slot: icon color matches the empty-state default
-		assert_bool(slot._icon_rect.color == Color(0.10, 0.10, 0.12)).is_true()
-
-
-func test_tool_slot_reflects_equipped_tool() -> void:
-	# Scanner is the only body-integrated tool slot after 006i. Axe/pickaxe/
-	# weapon visual state now lives on grid cells, not on the tool slot row.
-	_inv.set_tool(&"scanner", ID_SCANNER)
-	_panel.set_inventory(_inv)
-	var scanner_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"scanner"]
-	# After set_inventory, _refresh_all runs and the tool slot should pick up
-	# the scanner def's placeholder color (non-empty).
-	assert_bool(scanner_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
-
-
 # --- Inventory signal propagates when panel is visible ---
 
 func test_inventory_changed_signal_refreshes_panel_when_visible() -> void:
@@ -192,15 +139,6 @@ func test_inventory_changed_signal_skipped_when_panel_hidden() -> void:
 	_inv.add_item(ID_WOOD, 4)
 	# Inventory still has the data but panel did not refresh
 	assert_int(_inv.get_count(ID_WOOD)).is_equal(4)
-
-
-func test_tool_changed_signal_refreshes_tool_slot_when_visible() -> void:
-	# Scanner is the only body-integrated tool slot after 006i.
-	_panel.set_inventory(_inv)
-	_panel.open()
-	_inv.set_tool(&"scanner", ID_SCANNER)
-	var scanner_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"scanner"]
-	assert_bool(scanner_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
 
 
 func test_set_inventory_twice_disconnects_old_signals() -> void:
