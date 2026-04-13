@@ -83,6 +83,16 @@ export class HexCanvas {
     /** @type {Set<string>} biome stems we've already requested. */
     this._biomeTexturesRequested = new Set();
 
+    /**
+     * Drop every cached biome texture so the next render in Texture
+     * mode re-fetches from the loader. Called after biome edits that
+     * may have changed the terrain_textures list.
+     */
+    this.clearBiomeTextureCache = () => {
+      this._biomeTextures.clear();
+      this._biomeTexturesRequested.clear();
+    };
+
     // --- Prop/spawn selection state ---
     /** @type {{ hexQ: number, hexR: number, propIndex: number }|null} */
     this.selectedProp = null;

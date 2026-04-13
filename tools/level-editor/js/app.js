@@ -288,7 +288,7 @@ function newMap() {
     const filenameStem = `${chapterId}.json`;
 
     if (ProjectContext.files.maps.has(filenameStem)) {
-      showError(`A map named "${filenameStem}" already exists. Pick a different filename.`);
+      showError(`A map named "${filenameStem}" already exists. Use a different Chapter ID.`);
       return;
     }
 
@@ -817,8 +817,7 @@ function refreshPalettes() {
   // Texture mode re-fetches.
   clearBiomeTextureCache();
   if (hexCanvas) {
-    hexCanvas._biomeTextures.clear();
-    hexCanvas._biomeTexturesRequested.clear();
+    hexCanvas.clearBiomeTextureCache();
     hexCanvas.requestRender();
   }
   if (hexInspector) hexInspector.updateMapStats();

@@ -90,7 +90,9 @@ function _extractRefId(refStr) {
 /**
  * Returns a Promise resolving to the array of HTMLImageElement
  * variations for a biome (filename stem like 'B00002'), or [] if the
- * biome has no terrain_textures or any image fails to load.
+ * biome has no terrain_textures. Individual images that fail to load
+ * are silently dropped, so the returned array may be shorter than the
+ * biome's texture list on partial failure.
  *
  * Uses a per-biome cache so toggling Color/Texture in the editor only
  * pays the network cost on the first switch.

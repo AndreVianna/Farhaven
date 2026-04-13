@@ -65,11 +65,14 @@ def is_safe_path(rel_path):
 
 
 def is_safe_asset_path(rel_path):
-    """Read-only check for /api/asset binary serving."""
+    """Read-only check for /api/asset and /api/list-assets serving."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
     if '..' in normalized:
         return False
-    return any(normalized.startswith(p) for p in ALLOWED_ASSET_PREFIXES)
+    # Accept both the exact directory ('assets/textures') and paths
+    # under it ('assets/textures/biomes/foo.png') so callers don't
+    # have to worry about trailing slashes.
+    return any(normalized.startswith(p.rstrip('/')) for p in ALLOWED_ASSET_PREFIXES)
 
 
 def discover_files():
@@ -114,10 +117,13 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == '/api/list-assets':
             rel_dir = params.get('dir', [''])[0]
-            if not rel_dir or not is_safe_asset_path(rel_dir + '/'):
+            if not rel_dir or not is_safe_asset_path(rel_dir):
                 self._json_response(400, {'error': 'Invalid asset directory'})
                 return
-            ext = params.get('ext', ['.png'])[0]
+            ext = params.get('ext', ['.png'])[0].lower()
+            if ext not in ASSET_MIME:
+                self._json_response(400, {'error': f'Unsupported extension: {ext}'})
+                return
             full_dir = os.path.join(PROJECT_ROOT, rel_dir)
             files = []
             if os.path.isdir(full_dir):
