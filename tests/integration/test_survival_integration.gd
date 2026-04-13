@@ -375,11 +375,10 @@ func test_shelter_destroy_resets_respawn_tile() -> void:
 # ===========================================================================
 
 func test_death_drops_100_percent_of_stacks() -> void:
-	# Manually set up inventory slots with berries
-	# Use item_used to bypass PropRegistry, but for drop testing
-	# we need actual slots. Directly manipulate _inv._slots.
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
-	_inv._slots[1] = {"type": ID_MEAT, "quantity": 6}
+	# Populate the grid inventory with berries and meat via the public API.
+	# PropRegistry autoload supplies the PropDefs (P00020=berries, P00022=meat).
+	assert_int(_inv.add_item(ID_BERRIES, 10)).is_equal(10)
+	assert_int(_inv.add_item(ID_MEAT, 6)).is_equal(6)
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -398,7 +397,7 @@ func test_death_drops_100_percent_of_stacks() -> void:
 
 
 func test_death_does_not_drop_tools() -> void:
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
+	assert_int(_inv.add_item(ID_BERRIES, 10)).is_equal(10)
 	# Set a tool in a regular slot — shouldn't happen normally, but verify safety
 	_inv.set_tool(&"axe", ID_AXE)
 
@@ -420,7 +419,7 @@ func test_death_does_not_drop_tools() -> void:
 
 
 func test_death_drops_all_items() -> void:
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 7}
+	assert_int(_inv.add_item(ID_BERRIES, 7)).is_equal(7)
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -434,7 +433,7 @@ func test_death_drops_all_items() -> void:
 
 
 func test_death_single_item_drops_one() -> void:
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 1}
+	assert_int(_inv.add_item(ID_BERRIES, 1)).is_equal(1)
 
 	var dropped: Array = []
 	_ss.ground_item_dropped.connect(
@@ -543,7 +542,7 @@ func test_get_all_ground_items() -> void:
 
 
 func test_death_creates_ground_items() -> void:
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 10}
+	assert_int(_inv.add_item(ID_BERRIES, 10)).is_equal(10)
 	_ss.take_damage(100.0)
 	# Items should now exist on the ground at death tile
 	var all_items: Array[Dictionary] = _ss.get_all_ground_items()
@@ -723,8 +722,8 @@ func test_screen_fade_flash_sets_color() -> void:
 
 func test_full_lifecycle_deplete_die_respawn() -> void:
 	# Stock inventory
-	_inv._slots[0] = {"type": ID_BERRIES, "quantity": 20}
-	_inv._slots[1] = {"type": ID_MEAT, "quantity": 10}
+	assert_int(_inv.add_item(ID_BERRIES, 20)).is_equal(20)
+	assert_int(_inv.add_item(ID_MEAT, 10)).is_equal(10)
 
 	# Track all lifecycle events
 	var events: Array = []
