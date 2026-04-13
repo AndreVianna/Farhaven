@@ -69,7 +69,7 @@ let hexInspector = null;
 
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
-  map: 'Map Editor',
+  map: 'Maps',
   mineral: 'Minerals',
   plant: 'Flora',
   animal: 'Fauna',
