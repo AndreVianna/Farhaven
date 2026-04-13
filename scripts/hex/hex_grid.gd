@@ -295,7 +295,13 @@ func get_save_data() -> Dictionary:
 
 func load_map(path: String) -> bool:
 	var loader = load("res://scripts/hex/map_loader.gd").new(self)
-	return loader.load_map(path)
+	var ok: bool = loader.load_map(path)
+	if ok:
+		# Record the active map so SaveManager can persist progression
+		# across sessions. Store just the filename relative to
+		# `res://data/maps/`, matching GameSettings.starting_map.
+		SaveManager.current_map = path.get_file()
+	return ok
 
 
 func load_save_data(data: Dictionary) -> void:

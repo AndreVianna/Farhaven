@@ -9,9 +9,13 @@ var _fly_to_player: Node3D = null
 var _gather_sound: Node = null
 
 
+const _MAPS_DIR: String = "res://data/maps/"
+const _GAME_SETTINGS_PATH: String = "res://data/game_settings.tres"
+
+
 func _ready() -> void:
 	_wire_systems()
-	HexGrid.load_map("res://data/maps/ch1.json")
+	HexGrid.load_map(_resolve_startup_map())
 	# Apply starting loadout for fresh game (no save file yet).
 	# Must run BEFORE save load so save data can override defaults.
 	if not SaveManager.has_save():
@@ -30,6 +34,18 @@ func _ready() -> void:
 	LightingManager.scan_existing_lights.call_deferred()
 	var _player_ref: Node = $World/Player
 	LightingManager.initialize_player_torch.call_deferred(_player_ref)
+
+
+func _resolve_startup_map() -> String:
+	var settings: GameSettings = null
+	if ResourceLoader.exists(_GAME_SETTINGS_PATH):
+		settings = load(_GAME_SETTINGS_PATH) as GameSettings
+	else:
+		push_warning("main.gd: %s missing — falling back to ch1.json." % _GAME_SETTINGS_PATH)
+	var filename: String = SaveManager.get_current_map_or_default(settings)
+	if filename == "":
+		filename = "ch1.json"
+	return _MAPS_DIR + filename
 
 
 func _wire_systems() -> void:

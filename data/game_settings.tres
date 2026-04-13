@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="GameSettings" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/game_settings.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"GAME_SETTINGS"
+display_name = "Game Settings"
+short_description = "Global configuration that governs game startup."
+starting_map = "ch1.json"

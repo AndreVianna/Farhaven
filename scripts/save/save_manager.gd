@@ -26,6 +26,12 @@ const _SYSTEM_KEYS: Array[Dictionary] = [
 
 var _dirty: bool = false
 
+## Filename of the map the player is currently in (e.g. "ch1.json").
+## Tracked on load and persisted in the save so that `main.gd` can
+## resume into the same map after a reload, overriding the starting
+## map from GameSettings once the player has progressed past it.
+var current_map: String = ""
+
 ## True while _distribute_save_data is running. mark_dirty() no-ops when
 ## set so signals emitted during save restoration (e.g. Player's
 ## wearables_changed on load) don't immediately re-flag the state as
@@ -111,6 +117,41 @@ func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
 
+## Resolves the map file the game should open on startup.
+##
+## 1. If a save file exists and records a `current_map`, that filename
+##    wins — progression persists across sessions.
+## 2. Otherwise fall back to the map configured in `GameSettings`.
+##
+## The returned value is a filename relative to `res://data/maps/`
+## (e.g. "ch1.json"). Callers resolve the full path themselves.
+func get_current_map_or_default(settings: GameSettings) -> String:
+	var saved: String = _peek_current_map()
+	if saved != "":
+		return saved
+	if settings != null and settings.starting_map != "":
+		return settings.starting_map
+	return ""
+
+
+## Reads only the `current_map` field from the save file without
+## distributing the rest of the save state. Used at startup so
+## `main.gd` can choose the right map BEFORE the full `load_game()`
+## call (which happens deferred after all systems are wired).
+func _peek_current_map() -> String:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return ""
+	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return ""
+	var text: String = file.get_as_text()
+	file.close()
+	var parsed: Variant = JSON.parse_string(text)
+	if parsed == null or not (parsed is Dictionary):
+		return ""
+	return String((parsed as Dictionary).get("current_map", ""))
+
+
 func delete_save() -> void:
 	_delete_save()
 
@@ -148,6 +189,8 @@ func _on_save_timer() -> void:
 
 func _collect_save_data() -> Dictionary:
 	var data: Dictionary = {"schema_version": SCHEMA_VERSION}
+	if current_map != "":
+		data["current_map"] = current_map
 	for entry: Dictionary in _SYSTEM_KEYS:
 		var key: String = entry["key"]
 		var node: Node = get_node_or_null(entry["path"])
@@ -163,6 +206,7 @@ func _distribute_save_data(data: Dictionary) -> void:
 	var version: int = int(data.get("schema_version", 0))
 	if version > SCHEMA_VERSION:
 		push_warning("SaveManager: save file schema_version %d is newer than supported %d — loading anyway." % [version, SCHEMA_VERSION])
+	current_map = String(data.get("current_map", ""))
 	for entry: Dictionary in _SYSTEM_KEYS:
 		var key: String = entry["key"]
 		if not data.has(key):
