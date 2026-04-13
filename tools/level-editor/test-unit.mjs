@@ -21,7 +21,7 @@ import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
-import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { ToolType, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
 import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
 // Alias HexGrid as HexGridClass to match existing test usage
@@ -831,30 +831,22 @@ test('BiomeBrush — drag creates BatchCommand for single undo', () => {
 // ElevationBrush tests (task-009)
 // ============================================================
 
-test('ElevationBrush — SET mode sets exact value, clamped to [0,9]', () => {
+test('ElevationBrush — applies +delta per painted hex and clamps to 32000', () => {
   const grid = new HexGridClass();
-  grid.setTile(0, 0, createTileData('forest'));
+  const tile = createTileData('forest');
+  tile.elevation = 31999;
+  grid.setTile(0, 0, tile);
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
   tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.SET;
-  tm.elevationValue = 5;
+  tm.activeTool.delta = 1;
 
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).elevation === 5, 'elevation should be 5');
-
-  // Clamping — elevation can go up to 32000 now
-  tm.elevationValue = 40000;
-  tm.setTool('elevation'); // reset tool for fresh paintedHexes
-  tm.elevationMode = ElevationMode.SET;
-  tm.elevationValue = 40000;
-  tm.onMouseDown({ q: 0, r: 0 });
-  tm.onMouseUp({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).elevation === 32000, 'elevation should clamp to 32000');
+  assert(grid.getTile(0, 0).elevation === 32000, 'elevation should be 32000 (clamped from 32001)');
 });
 
-test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
+test('ElevationBrush — left click +1, right click -1', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.elevation = 3;
@@ -862,16 +854,15 @@ test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
   tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.INCREMENT;
-  tm.elevationDelta = 1;
 
+  // Simulate a left-click: delta = +1
+  tm.activeTool.delta = 1;
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
   assert(grid.getTile(0, 0).elevation === 4, 'elevation should be 4 after +1');
 
-  tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.INCREMENT;
-  tm.elevationDelta = -1;
+  // Simulate a right-click: delta = -1
+  tm.activeTool.delta = -1;
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
   assert(grid.getTile(0, 0).elevation === 3, 'elevation should be 3 after -1');

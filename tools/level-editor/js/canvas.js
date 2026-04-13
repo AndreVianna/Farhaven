@@ -1176,7 +1176,22 @@ export class HexCanvas {
     const mx = event.clientX - rect.left;
     const my = event.clientY - rect.top;
 
-    // Middle-click, right-click, or space+left-click: start pan
+    // Right-click on the elevation tool is a dedicated decrement gesture
+    // (left-click = +1, right-click = -1). Intercept before the generic
+    // "right-click = pan" path so the drag batches with the same brush.
+    const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
+    if (event.button === 2 && isElevation && this.toolManager.activeTool) {
+      this.toolManager.activeTool.delta = -1;
+      const hex = this.screenToHex(mx, my);
+      this.selectedHex = { q: hex.q, r: hex.r };
+      this._mouseDown = true;
+      this.toolManager.onMouseDown({ q: hex.q, r: hex.r });
+      event.preventDefault();
+      this.requestRender();
+      return;
+    }
+
+    // Middle-click, right-click (non-elevation), or space+left-click: pan
     if (event.button === 1 || event.button === 2 || (event.button === 0 && this.spaceHeld)) {
       this.isPanning = true;
       this.panStart = { x: event.clientX, y: event.clientY };
@@ -1202,6 +1217,9 @@ export class HexCanvas {
       }
 
       if (this.toolManager) {
+        if (isElevation && this.toolManager.activeTool) {
+          this.toolManager.activeTool.delta = 1;
+        }
         // Pass sub-hex info for placement tools
         const hexWithSub = { q: hex.q, r: hex.r };
         if (this.hoveredSubHex && this._isSubHexTool()) {

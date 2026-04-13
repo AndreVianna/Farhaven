@@ -956,17 +956,10 @@ html, body {
           <!-- Elevation controls -->
           <div id="palette-elevation" class="sidebar-section palette hidden">
             <label class="sidebar-label">Elevation</label>
-            <div class="elevation-row">
-              <button class="elev-mode-btn active" data-mode="set">SET</button>
-              <button class="elev-mode-btn" data-mode="increment">INCREMENT</button>
-            </div>
-            <div id="elev-set-controls" class="elevation-row">
-              <label style="font-size:11px;color:var(--text-secondary);">Value:</label>
-              <input type="number" id="elev-value" min="-32000" max="32000" value="0" style="width:70px;">
-            </div>
-            <div id="elev-inc-controls" class="elevation-row" style="display:none;">
-              <button id="elev-dec">-1</button>
-              <button id="elev-inc">+1</button>
+            <div style="font-size:11px;color:var(--text-secondary);line-height:1.4;">
+              <strong>Left click</strong>: +1<br>
+              <strong>Right click</strong>: −1<br>
+              Drag to paint a streak.
             </div>
           </div>
         </div>

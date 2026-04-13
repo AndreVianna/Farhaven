@@ -46,10 +46,6 @@ export const ToolType = {
   FLOOD_FILL: 'flood_fill',
 };
 
-export const ElevationMode = {
-  SET: 'set',
-  INCREMENT: 'increment',
-};
 
 /**
  * Look up footprint offsets for a prop type from ProjectContext.
@@ -188,19 +184,19 @@ export class BiomeBrush extends DragBrushTool {
 }
 
 export class ElevationBrush extends DragBrushTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    // Signed delta applied per painted hex. Left-click sets +1, right-
+    // click sets -1; the canvas event handler flips this before calling
+    // onMouseDown so both gestures share the same drag pipeline.
+    this.delta = 1;
+  }
+
   /** @param {{ q: number, r: number }} hex */
   _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     const oldElevation = tile ? tile.elevation : 0;
-    let newElevation;
-
-    if (this.toolManager.elevationMode === ElevationMode.SET) {
-      newElevation = this.toolManager.elevationValue;
-    } else {
-      newElevation = oldElevation + this.toolManager.elevationDelta;
-    }
-    newElevation = Math.max(-32000, Math.min(32000, newElevation));
-
+    const newElevation = Math.max(-32000, Math.min(32000, oldElevation + this.delta));
     if (oldElevation === newElevation) return;
 
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
@@ -389,9 +385,6 @@ export class ToolManager {
     this.activeToolType = null;
     /** @type {string|null} */
     this.activeValue = null;
-    this.elevationMode = ElevationMode.SET;
-    this.elevationValue = 0;
-    this.elevationDelta = 1;
     /** @type {string} Active prop category for the Prop tool */
     this.activeCategory = 'plant';
     /** @type {string} Active origin for the Prop tool */

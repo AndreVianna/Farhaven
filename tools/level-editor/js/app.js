@@ -1121,60 +1121,12 @@ function _initPropPalette() {
 }
 
 /**
- * Wire elevation control buttons and input.
+ * Elevation now only has one gesture pattern (left click = +1, right
+ * click = -1) so there's nothing to wire from the sidebar. Kept as a
+ * no-op so existing call sites don't break.
  * @returns {void}
  */
-function _initElevationControls() {
-  // Mode toggle buttons
-  const modeBtns = document.querySelectorAll('.elev-mode-btn');
-  const setControls = document.getElementById('elev-set-controls');
-  const incControls = document.getElementById('elev-inc-controls');
-
-  modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.mode;
-      toolManager.elevationMode = mode;
-
-      modeBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      if (mode === 'set') {
-        if (setControls) setControls.style.display = '';
-        if (incControls) incControls.style.display = 'none';
-      } else {
-        if (setControls) setControls.style.display = 'none';
-        if (incControls) incControls.style.display = '';
-      }
-    });
-  });
-
-  // SET mode value input
-  const elevValue = /** @type {HTMLInputElement|null} */ (document.getElementById('elev-value'));
-  if (elevValue) {
-    elevValue.addEventListener('input', () => {
-      const val = parseInt(elevValue.value, 10);
-      if (!isNaN(val)) {
-        toolManager.elevationValue = Math.max(-32000, Math.min(32000, val));
-      }
-    });
-  }
-
-  // INCREMENT mode buttons
-  const elevDec = document.getElementById('elev-dec');
-  const elevInc = document.getElementById('elev-inc');
-  if (elevDec) {
-    elevDec.addEventListener('click', () => {
-      toolManager.elevationDelta = -1;
-      setStatus('Elevation: decrement by 1');
-    });
-  }
-  if (elevInc) {
-    elevInc.addEventListener('click', () => {
-      toolManager.elevationDelta = 1;
-      setStatus('Elevation: increment by 1');
-    });
-  }
-}
+function _initElevationControls() {}
 
 /**
  * Update the sidebar to reflect current tool state.
