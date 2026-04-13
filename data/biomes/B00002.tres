@@ -6,6 +6,8 @@
 script = ExtResource("1_biome")
 id = &"B00002"
 display_name = "Grassland"
+short_description = "Open plains of tall grass and low brush."
+long_description = "Wide meadows broken by stands of fiber-rich grass. Easy to cross, easy to spot what is around you, easy to be spotted in turn. Small fauna graze here and watch from a careful distance."
 prop_table = []
 color = Color(0.4, 0.7490196078431373, 0.30196078431372547, 1.0)
 color_variations = [Color(0.48627450980392156, 0.7333333333333333, 0.19607843137254902, 1.0), Color(0.4196078431372549, 0.5568627450980392, 0.13725490196078433, 1.0), Color(0.0, 0.792156862745098, 0.3843137254901961, 1.0)]

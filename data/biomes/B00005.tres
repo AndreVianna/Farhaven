@@ -6,6 +6,8 @@
 script = ExtResource("1_biome")
 id = &"B00005"
 display_name = "Water"
+short_description = "Lakes, rivers, and shallow pools."
+long_description = "Drinkable, swimmable, impassable until you build a way across. Algae and fish populate the deeper stretches; the surface mirrors a sky that still feels unfamiliar even days in."
 prop_table = []
 color = Color(0.30196078431372547, 0.5490196078431373, 0.8509803921568627, 1.0)
 color_variations = [Color(0.25098039215686274, 0.5019607843137255, 0.8509803921568627, 1.0), Color(0.2, 0.5490196078431373, 0.8, 1.0), Color(0.30196078431372547, 0.6, 0.9019607843137255, 1.0)]
