@@ -53,6 +53,8 @@ func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
 		var inv = player.get_inventory()
 		if inv != null and hud.has_method("connect_inventory"):
 			hud.connect_inventory(inv)
+		if "equipped_container" in player and hud.has_method("connect_container_def"):
+			hud.connect_container_def(player.equipped_container)
 	if scanner != null and hud.has_method("connect_catalog"):
 		var cat = scanner.get_catalog()
 		if cat != null:

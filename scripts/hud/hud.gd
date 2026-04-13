@@ -97,6 +97,14 @@ func connect_inventory(inv) -> void:
 	inv.inventory_full.connect(_on_inventory_full)
 
 
+## Let the inventory panel render the equipped container's display name and
+## occupancy in its header. Called separately from connect_inventory because
+## the PropDef isn't always known at the same time the inventory is (e.g. in
+## unit tests that inject an Inventory without a registered container).
+func connect_container_def(def) -> void:
+	_status_panel.set_container_def(def)
+
+
 func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 	# Using show_notification instead of FloatingTextManager because the
 	# inventory_full signal carries no world position — the item was rejected

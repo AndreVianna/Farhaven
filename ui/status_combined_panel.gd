@@ -88,6 +88,13 @@ func set_catalog(cat) -> void:
 		_discoveries_section.set_catalog(cat)
 
 
+## Forwarded to the inventory sub-panel so its header can display the
+## equipped container's name + current occupancy percentage.
+func set_container_def(def) -> void:
+	if _inventory_panel != null:
+		_inventory_panel.set_container_def(def)
+
+
 func set_survival_system(survival: Node) -> void:
 	if _stats_section != null:
 		_stats_section.set_survival_system(survival)

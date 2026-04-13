@@ -425,6 +425,21 @@ func expand(additional_rows: int) -> void:
 	inventory_changed.emit()
 
 
+## Replace the grid dimensions wholesale. Used when a different container
+## becomes the active inventory surface (e.g. equipping a new backpack).
+## Existing items that no longer fit are dropped with a warning. Both
+## dimensions must be strictly positive — a zero-sized grid holds nothing
+## and would make the inventory unusable, so those calls are rejected.
+func resize_grid(new_width: int, new_height: int) -> void:
+	if new_width <= 0 or new_height <= 0:
+		push_error("Inventory.resize_grid: dimensions must be positive")
+		return
+	grid_width = new_width
+	grid_height = new_height
+	_rebuild_grid()
+	inventory_changed.emit()
+
+
 ## Rebuild the flat grid array from the items dict (after resize, load, etc.).
 ## Items that no longer fit after a resize are removed with a warning.
 func _rebuild_grid() -> void:

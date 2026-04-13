@@ -14,10 +14,14 @@ const ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
 ## Uses preload because tests can be parsed before class_name registration completes.
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 
-const TOOL_SLOT_ORDER: Array[StringName] = [&"axe", &"pickaxe", &"weapon", &"scanner"]
+## Only the scanner stays body-integrated after delivery-006f. Axe, pickaxe,
+## and weapon now live inside the grid inventory and are located via
+## Inventory.find_best_tool_for_action().
+const TOOL_SLOT_ORDER: Array[StringName] = [&"scanner"]
 
 var _inventory = null   # Inventory instance (set via set_inventory)
 var _catalog = null      # Catalog instance (set via set_catalog, optional)
+var _container_def = null  # PropDef of the active container (for header title)
 var _tool_slot_nodes: Dictionary = {}
 var _pending_use_type: StringName = &""
 var _confirm_dialog: ConfirmationDialog
@@ -27,6 +31,7 @@ var _pending_inventory = null  # set_inventory() called before _ready()
 @onready var _tool_slots_row: HBoxContainer = $VBox/ToolSlotsRow
 @onready var _scroll: ScrollContainer = $VBox/ScrollContainer
 @onready var _close_button: Button = $VBox/Header/CloseButton
+@onready var _title_label: Label = $VBox/Header/TitleLabel
 
 
 func _ready() -> void:
@@ -44,6 +49,9 @@ func _ready() -> void:
 	_grid_canvas = GridCanvas.new()
 	_grid_canvas.item_clicked.connect(_on_grid_item_clicked)
 	_scroll.add_child(_grid_canvas)
+	# Keep cells scaled to the available panel width. The scroll container's
+	# content width is the viewport width minus the vertical scrollbar.
+	_scroll.resized.connect(_on_scroll_resized)
 
 	# Apply any inventory that was set before _ready() ran.
 	if _pending_inventory != null:
@@ -93,6 +101,14 @@ func set_catalog(cat) -> void:
 	_catalog = cat
 
 
+## Sets the PropDef whose display_name becomes the header title. The header
+## also shows the current occupancy as a percentage of total grid cells.
+func set_container_def(def) -> void:
+	_container_def = def
+	if _title_label != null:
+		_refresh_header()
+
+
 func toggle() -> void:
 	if visible:
 		close()
@@ -120,12 +136,50 @@ func _refresh_all() -> void:
 	if _grid_canvas != null:
 		# Recompute custom_minimum_size in case the grid dimensions changed
 		# (e.g. expand(), capacity_size setter, or load_save_data).
+		_grid_canvas._fit_to_width(_available_grid_width())
 		_grid_canvas._update_size()
 		_grid_canvas.queue_redraw()
+	_refresh_header()
 	for slot_name: StringName in TOOL_SLOT_ORDER:
 		var tool_type: StringName = _inventory.get_tool(slot_name)
 		if _tool_slot_nodes.has(slot_name):
 			(_tool_slot_nodes[slot_name] as ToolSlotUI).refresh(tool_type)
+
+
+func _refresh_header() -> void:
+	if _title_label == null:
+		return
+	var name_str: String = "Inventory"
+	if _container_def != null and String(_container_def.display_name) != "":
+		name_str = String(_container_def.display_name)
+	var pct: float = 0.0
+	if _inventory != null:
+		var capacity: float = _inventory.get_capacity_size()
+		if capacity > 0.0:
+			pct = (_inventory.get_current_size() / capacity) * 100.0
+	_title_label.text = "%s [%.1f%%]" % [name_str, pct]
+
+
+# --- Layout / grid sizing ---
+
+func _on_scroll_resized() -> void:
+	if _grid_canvas != null:
+		_grid_canvas._fit_to_width(_available_grid_width())
+		_grid_canvas._update_size()
+		_grid_canvas.queue_redraw()
+
+
+## Width available to the grid canvas — viewport minus the always-on vertical
+## scrollbar. Falls back to the scroll container's full size when the
+## scrollbar node isn't available yet.
+func _available_grid_width() -> int:
+	if _scroll == null:
+		return 0
+	var vbar: VScrollBar = _scroll.get_v_scroll_bar()
+	var bar_w: int = 0
+	if vbar != null:
+		bar_w = int(vbar.size.x)
+	return max(0, int(_scroll.size.x) - bar_w)
 
 
 # --- Grid click → consumable use ---
@@ -185,7 +239,12 @@ class GridCanvas extends Control:
 	const _InnerPropDef = preload("res://scripts/data/prop_def.gd")
 	const _InnerInventory = preload("res://scripts/inventory/inventory.gd")
 
-	var _cell_size: int = 10
+	## Minimum pixel size for each cell so the grid stays tappable even when
+	## the container is very wide.
+	const MIN_CELL_SIZE: int = 24
+	const FALLBACK_CELL_SIZE: int = 24
+
+	var _cell_size: int = FALLBACK_CELL_SIZE
 	var _inventory = null  # Inventory reference
 
 	## Colors
@@ -201,6 +260,24 @@ class GridCanvas extends Control:
 		_inventory = inv
 		_update_size()
 		queue_redraw()
+
+
+	## Pick the largest cell size that fits within the available panel width
+	## (minus the vertical scrollbar). Cells stay square, so the grid's height
+	## scales with the same cell size. If the fitted size would be smaller
+	## than MIN_CELL_SIZE, prefer fitting the full grid over enforcing that
+	## visual minimum — otherwise a wide grid (e.g. 30 cols) would overflow
+	## the panel horizontally, and horizontal scrolling is disabled so the
+	## right edge would be clipped.
+	func _fit_to_width(available_width: int) -> void:
+		if _inventory == null or _inventory.grid_width <= 0 or available_width <= 0:
+			_cell_size = FALLBACK_CELL_SIZE
+			return
+		var computed: int = int(available_width / _inventory.grid_width)
+		if computed >= MIN_CELL_SIZE:
+			_cell_size = computed
+		else:
+			_cell_size = max(1, computed)
 
 
 	func _update_size() -> void:

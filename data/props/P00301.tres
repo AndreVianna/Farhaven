@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/container_cap.gd" id="2_container"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/wearable_cap.gd" id="3_wearable"]
+
+[sub_resource type="Resource" id="container_1"]
+script = ExtResource("2_container")
+grid_width = 30
+grid_height = 40
+
+[sub_resource type="Resource" id="wearable_1"]
+script = ExtResource("3_wearable")
+place = 0
+
+[resource]
+script = ExtResource("1_script")
+id = &"P00301"
+display_name = "Survival Backpack"
+short_description = "Starter backpack. A 30×40 grid of slots on your back."
+tags = [&"WEARABLE", &"CONTAINER.backpack"]
+container = SubResource("container_1")
+wearable = SubResource("wearable_1")
