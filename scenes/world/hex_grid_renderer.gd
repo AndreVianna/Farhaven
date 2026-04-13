@@ -660,13 +660,10 @@ func _bucket_node_name(key: Vector2i) -> String:
 	return "MeshInstance3D_B%d_V%d" % [key.x, key.y]
 
 
-## Elevation-tinted base color for a tile.
-func _pick_color(bd: BiomeData, elevation: int) -> Color:
-	var base: Color = bd.color if bd != null else Color.WHITE
-	var factor: float = 1.0 + float(elevation) * 0.05
-	return Color(
-		minf(base.r * factor, 1.0),
-		minf(base.g * factor, 1.0),
-		minf(base.b * factor, 1.0),
-		base.a
-	)
+## Base color for a tile. The old elevation-tint (factor = 1 + elev*0.05)
+## made sense when elevation was clamped to 0..9 but now saturates to
+## pure white at +20 and collapses to black at -20, which turns cliff
+## tops and pits into colourless blocks. With the shader carrying the
+## rest of the lighting, the right default is just the biome color.
+func _pick_color(bd: BiomeData, _elevation: int) -> Color:
+	return bd.color if bd != null else Color.WHITE
