@@ -3363,9 +3363,6 @@ for (const biomeFile of __biomeFiles) {
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
     assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
-    assert(typeof model.elevation_range.min === 'number', `${biomeFile}: elevation_range.min is number`);
-    assert(typeof model.elevation_range.max === 'number', `${biomeFile}: elevation_range.max is number`);
-    assert(model.elevation_range.min <= model.elevation_range.max, `${biomeFile}: elevation min <= max`);
     assert(Array.isArray(model.prop_table), `${biomeFile}: prop_table is array`);
     assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
     assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
@@ -3395,8 +3392,6 @@ for (const biomeFile of __biomeFiles) {
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
-    assert(model2.elevation_range.min === model.elevation_range.min, `${biomeFile}: elevation min survives`);
-    assert(model2.elevation_range.max === model.elevation_range.max, `${biomeFile}: elevation max survives`);
     assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
     for (let i = 0; i < model.prop_table.length; i++) {
       assert(model2.prop_table[i].type === model.prop_table[i].type, `${biomeFile}: prop_table[${i}].type survives`);

@@ -450,7 +450,7 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 
 ### BiomeData (Gear)
 - **Inherits from Gear** — carries id (B00NNN), display_name, short/long_description
-- **Properties:** elevation_range, prop_table, color, color_variations
+- **Properties:** prop_table, color, color_variations
 - **Source:** `scripts/hex/biome_data.gd`
 
 ### CatalogEntry (Resource)

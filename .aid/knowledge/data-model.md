@@ -266,7 +266,6 @@ matching its filename stem (e.g. `B00003.tres` → `id = &"B00003"`).
 |-------|------|---------|-------------|-------|
 | id | StringName | "" | `B00NNN` format | Inherited from Gear; matches filename |
 | display_name | String | "" | Human-readable label | Inherited from Gear; e.g. "Crash Site" |
-| elevation_range | Vector2i | (0,0) | Min/max elevation | Currently all set to (0,9) |
 | prop_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
 | color | Color | WHITE | Base biome color | Used for terrain rendering |
 | color_variations | Array[Color] | [] | 3 color variants per biome | Hash-selected per tile for visual variety |

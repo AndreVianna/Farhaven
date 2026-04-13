@@ -25,8 +25,8 @@ values into code.
   renderer both key off. As long as a biome keeps its filename stable, its integer id is stable
   across runs and platforms.
 - **Fields default to safe empties.** A freshly created BiomeData with no fields set is valid:
-  empty `prop_table` produces zero default props, empty `color_variations` makes the renderer
-  fall back to `color`, and `elevation_range` defaults to `(0, 0)`.
+  empty `prop_table` produces zero default props and empty `color_variations` makes the
+  renderer fall back to `color`.
 - **`prop_table` is read by MapLoader, not enforced.** Each entry is a `Dictionary` (not a
   typed class) with keys `type`, `max_amount`, and optional `chance`, `min_amount`. MapLoader
   uses `type` and `max_amount` for per-instance defaults when a tile's JSON `props` entry
@@ -68,10 +68,8 @@ values into code.
 
 ## Genre-specific notes
 
-BiomeData is **Farhaven-specific** in three ways:
+BiomeData is **Farhaven-specific** in two ways:
 
-- The `elevation_range` field assumes a hex-grid world with per-tile integer elevation — a
-  concept that transfers to any tile-based game but not to a continuous-terrain RPG.
 - The `prop_table` pattern (biome declares what can spawn there) is survival-genre typical:
   it assumes "biome determines what resources are present," which is how Minecraft, The Long
   Dark, Don't Starve, and most crafting survival games work. A Civ-like strategy game might
@@ -99,6 +97,3 @@ as it re-interprets `prop_table` as "strategic resources on this biome."
   alphabetical file order — renaming a biome file does still shift every subsequent biome's
   runtime index. A later pass could teach MapLoader to key off `id` instead of filename order
   once more than 10 biomes exist.
-- **No elevation enforcement.** `elevation_range` is currently advisory — MapLoader does not
-  check that a tile's elevation actually falls inside its biome's declared range. A validation
-  pass could be added when procedural population lands.

@@ -28,7 +28,7 @@
   - `hex_math.gd` -- pure static math: axial/cube conversions, distance, neighbors, ring, range (92 lines)
   - `hex_tile.gd` -- tile data resource: coords, biome enum, elevation, props (unified) (26 lines)
   - `map_loader.gd` -- loads JSON maps, creates tiles, validates reachability (193 lines)
-  - `biome_data.gd` -- per-biome config resource: color, prop_table, elevation_range (11 lines)
+  - `biome_data.gd` -- per-biome config resource (extends Gear): id (B00NNN), display_name, color, prop_table
   - `prop.gd` -- per-tile prop instance: type, category, origin, remaining, max_amount, tool_required, respawn_time, sub_hex, rotation, blocks_movement (replaces deprecated prop_node.gd)
 
 ## Data Layer

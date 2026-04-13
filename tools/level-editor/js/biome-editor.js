@@ -21,8 +21,6 @@ export class BiomeDataModel {
     this._id = '';
     /** @type {string} Human-readable display name (inherited from Gear). */
     this.display_name = '';
-    /** @type {{ min: number, max: number }} From Vector2i(min, max) */
-    this.elevation_range = { min: -32000, max: 32000 };
     /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
     this.prop_table = [];
     /** @type {{ r: number, g: number, b: number, a: number }} */
@@ -79,14 +77,6 @@ export class BiomeDataModel {
     // display_name is the human-readable label. Accept either the new
     // `display_name` field or legacy `biome_name` for backward compat.
     model.display_name = _str(d.display_name) || _str(d.biome_name);
-
-    // elevation_range: TresParser stores Vector2i value as { x, y }
-    if (d.elevation_range && typeof d.elevation_range === 'object') {
-      model.elevation_range = {
-        min: typeof d.elevation_range.x === 'number' ? d.elevation_range.x : 0,
-        max: typeof d.elevation_range.y === 'number' ? d.elevation_range.y : 9,
-      };
-    }
 
     // prop_table: TresParser stores as TresValue[] (untyped array).
     // Each element is a TresValue { type: 'dict', value: Map<string, TresValue> }.
@@ -242,7 +232,6 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
-    elevation_range: model.elevation_range,
     prop_table: model.prop_table,
     color: model.color,
     color_variations: model.color_variations,
@@ -684,7 +673,7 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.className = 'prop-grid';
 
-    // Note: id/display_name/elevation_min/elevation_max are rendered above
+    // Note: id/display_name are rendered above
     // this tab via _renderBiomeHeader() in _renderDetail.
 
     // Separator — Resource Table
@@ -704,9 +693,8 @@ export function renderBiomeEditor(container, options) {
   }
 
   /**
-   * Render the biome-specific header: ID (read-only) + Display Name on the
-   * first row, Min/Max Elevation on the second row. Sets name= attributes
-   * for _collectBiomeFormData.
+   * Render the biome-specific header: ID (read-only) + Display Name on a
+   * single row. Sets name= attributes for _collectBiomeFormData.
    * @param {HTMLElement} container
    * @param {BiomeDataModel} model
    * @param {boolean} isNew
@@ -720,8 +708,6 @@ export function renderBiomeEditor(container, options) {
     const headerId = `biome-header-${++_biomeHeaderCounter}`;
     const idInputId = `${headerId}-id`;
     const nameInputId = `${headerId}-name`;
-    const minInputId = `${headerId}-min`;
-    const maxInputId = `${headerId}-max`;
 
     // Row 1: ID + Display Name
     const row1 = document.createElement('div');
@@ -749,40 +735,6 @@ export function renderBiomeEditor(container, options) {
     row1.appendChild(idWrap);
     row1.appendChild(nameWrap);
     grid.appendChild(row1);
-
-    // Row 2: Min Elevation + Max Elevation
-    const row2 = document.createElement('div');
-    row2.classList.add('editor-header-grid');
-    row2.style.gridTemplateColumns = '1fr 1fr';
-
-    // Elevation fields do not constrain input via HTML min/max — validation
-    // against the signed-16-bit range (-32000..32000) happens in
-    // _validateBiomeForm when the user tries to save. This matches the
-    // pattern used elsewhere in the editor: the UI accepts anything, the
-    // model rejects invalid values on commit.
-    const minWrap = _makeBiomeFieldWrap('Min Elevation', minInputId);
-    const minInput = document.createElement('input');
-    minInput.type = 'number';
-    minInput.id = minInputId;
-    minInput.name = 'elevation_min';
-    minInput.value = String(model.elevation_range.min);
-    minInput.step = '1';
-    minInput.classList.add('prop-input');
-    minWrap.appendChild(minInput);
-
-    const maxWrap = _makeBiomeFieldWrap('Max Elevation', maxInputId);
-    const maxInput = document.createElement('input');
-    maxInput.type = 'number';
-    maxInput.id = maxInputId;
-    maxInput.name = 'elevation_max';
-    maxInput.value = String(model.elevation_range.max);
-    maxInput.step = '1';
-    maxInput.classList.add('prop-input');
-    maxWrap.appendChild(maxInput);
-
-    row2.appendChild(minWrap);
-    row2.appendChild(maxWrap);
-    grid.appendChild(row2);
 
     container.appendChild(grid);
   }
@@ -1126,12 +1078,6 @@ function _collectBiomeFormData(formElement) {
   // Identity
   model.display_name = val('display_name').trim();
 
-  // Elevation
-  model.elevation_range = {
-    min: intVal('elevation_min'),
-    max: intVal('elevation_max'),
-  };
-
   // Color
   model.color = _hexToColor(val('color'));
 
@@ -1193,17 +1139,6 @@ function _validateBiomeForm(model, isNew) {
     }
   }
 
-  // Elevation range
-  if (model.elevation_range.min < -32000 || model.elevation_range.min > 32000) {
-    errors.push('Elevation Min must be between -32000 and 32000');
-  }
-  if (model.elevation_range.max < -32000 || model.elevation_range.max > 32000) {
-    errors.push('Elevation Max must be between -32000 and 32000');
-  }
-  if (model.elevation_range.min > model.elevation_range.max) {
-    errors.push('Elevation Min must be <= Max');
-  }
-
   // Resource table validation
   for (let i = 0; i < model.prop_table.length; i++) {
     const entry = model.prop_table[i];
@@ -1260,9 +1195,6 @@ export function biomeModelToRaw(model) {
 
   // display_name: string (from Gear)
   fields.set('display_name', { type: 'string', value: model.display_name });
-
-  // elevation_range: Vector2i
-  fields.set('elevation_range', { type: 'vector2i', value: { x: model.elevation_range.min, y: model.elevation_range.max } });
 
   // prop_table: untyped array of dicts
   // Each dict has string keys: "chance", "max_amount", "min_amount", "type"
