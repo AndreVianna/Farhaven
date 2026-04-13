@@ -174,6 +174,16 @@ func _pick_variation_idx(bd: BiomeData, coords: Vector2i) -> int:
 	return absi(hash_val) % bd.terrain_textures.size()
 
 
+## Deterministic per-tile UV rotation in radians (one of 0°, 90°, 180°, 270°).
+## Multiplies effective variation by 4 with no extra texture assets — the
+## same texture rotated four ways looks like four different patches.
+## Different prime constants from `_pick_variation_idx` so rotation and
+## variation aren't perfectly correlated.
+func _pick_rotation_radians(coords: Vector2i) -> float:
+	var hash_val: int = (coords.x * 374761393) ^ (coords.y * 668265263)
+	return float(absi(hash_val) % 4) * (PI / 2.0)
+
+
 ## Rebuild every MeshInstance3D bucket from current _tile_data.
 ## Called on map_generated and on any highlight change.
 func _rebuild_mesh() -> void:
@@ -336,6 +346,12 @@ func _rebuild_mesh() -> void:
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
 		var corner_y: Array[float] = all_corner_y[coords]
 		var edge_y: Array[float] = all_edge_y[coords]
+		# Per-tile UV rotation (0/90/180/270°) — multiplies effective
+		# variation by 4 against the same texture set. Skipped for
+		# untextured biomes since they sample no texture anyway.
+		var uv_rotation: float = 0.0
+		if bd != null and not bd.terrain_textures.is_empty():
+			uv_rotation = _pick_rotation_radians(coords)
 
 		var corner_colors_at: Array[Color] = [
 			center_color, center_color, center_color,
@@ -397,13 +413,16 @@ func _rebuild_mesh() -> void:
 					vy = lerpf(elevation_y, target_y, s)
 				ring_pos.append(Vector3(vx, vy, vz))
 				ring_col.append(center_color.lerp(target_col, t))
-				# UV: hex-local. Centre is (0.5, 0.5); vertex sits at
-				# (0.5 + 0.5*t*cos, 0.5 + 0.5*t*sin) (edge midpoints
-				# ride slightly closer to centre via the r factor).
+				# UV: hex-local, with per-tile rotation about (0.5, 0.5).
+				# Centre stays put; the offset angle gets `uv_rotation`
+				# added so each tile shows the same texture rotated by
+				# 0/90/180/270°. Edge midpoints ride slightly closer to
+				# centre via the r factor.
 				var r_uv: float = r / HexMath.HEX_SIZE  # 0..1
+				var uv_angle: float = angle + uv_rotation
 				ring_uv.append(Vector2(
-					0.5 + 0.5 * r_uv * cos(angle),
-					0.5 + 0.5 * r_uv * sin(angle)
+					0.5 + 0.5 * r_uv * cos(uv_angle),
+					0.5 + 0.5 * r_uv * sin(uv_angle)
 				))
 			rings_pos.append(ring_pos)
 			rings_col.append(ring_col)
