@@ -8,6 +8,5 @@ id = &"B00003"
 display_name = "Forest"
 short_description = "Tall, thin trees that grew taller in the lower gravity."
 long_description = "A canopy that climbs higher than feels right — these trees pushed for height where Earth's would have stalled, helped along by 0.8g and tidal warmth. Wood, sap, and shade all in supply. Visibility drops and sounds carry differently between the trunks."
-prop_table = []
 color = Color(0.14901960784313725, 0.5019607843137255, 0.14901960784313725, 1.0)
 color_variations = [Color(0.13333333333333333, 0.5450980392156862, 0.13333333333333333, 1.0), Color(0.22745098039215686, 0.37254901960784315, 0.23529411764705882, 1.0), Color(0.22745098039215686, 0.37254901960784315, 0.17647058823529413, 1.0)]

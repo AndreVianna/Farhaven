@@ -3363,19 +3363,8 @@ for (const biomeFile of __biomeFiles) {
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
     assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
-    assert(Array.isArray(model.prop_table), `${biomeFile}: prop_table is array`);
     assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
     assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
-
-    // Verify prop_table entries have P-prefixed types (if non-empty)
-    for (let i = 0; i < model.prop_table.length; i++) {
-      const entry = model.prop_table[i];
-      assert(typeof entry.type === 'string', `${biomeFile}: prop_table[${i}].type is string`);
-      assert(entry.type.startsWith('P'), `${biomeFile}: prop_table[${i}].type "${entry.type}" has P prefix`);
-      assert(typeof entry.chance === 'number', `${biomeFile}: prop_table[${i}].chance is number`);
-      assert(typeof entry.min_amount === 'number', `${biomeFile}: prop_table[${i}].min_amount is number`);
-      assert(typeof entry.max_amount === 'number', `${biomeFile}: prop_table[${i}].max_amount is number`);
-    }
 
     // Re-serialize through model and compare
     const raw2 = biomeModelToRaw(model);
@@ -3392,13 +3381,6 @@ for (const biomeFile of __biomeFiles) {
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
-    assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
-    for (let i = 0; i < model.prop_table.length; i++) {
-      assert(model2.prop_table[i].type === model.prop_table[i].type, `${biomeFile}: prop_table[${i}].type survives`);
-      assert(model2.prop_table[i].chance === model.prop_table[i].chance, `${biomeFile}: prop_table[${i}].chance survives`);
-      assert(model2.prop_table[i].min_amount === model.prop_table[i].min_amount, `${biomeFile}: prop_table[${i}].min_amount survives`);
-      assert(model2.prop_table[i].max_amount === model.prop_table[i].max_amount, `${biomeFile}: prop_table[${i}].max_amount survives`);
-    }
     assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
   });
 }

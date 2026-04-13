@@ -23,8 +23,6 @@ export class BiomeDataModel {
     this.short_description = '';
     /** @type {string} Long-form description for detail panels (inherited from Gear). */
     this.long_description = '';
-    /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
-    this.prop_table = [];
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
     /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
@@ -82,29 +80,6 @@ export class BiomeDataModel {
     model.short_description = _str(d.short_description);
     model.long_description = _str(d.long_description);
 
-    // prop_table: TresParser stores as TresValue[] (untyped array).
-    // Each element is a TresValue { type: 'dict', value: Map<string, TresValue> }.
-    if (Array.isArray(d.prop_table)) {
-      model.prop_table = d.prop_table.map(tv => {
-        // Each tv is a TresValue with type 'dict' and value as Map<string, TresValue>
-        if (tv && tv.type === 'dict' && tv.value instanceof Map) {
-          return _dictEntryToResourceRow(tv.value);
-        }
-        // Fallback: plain object (shouldn't happen, but handle gracefully)
-        if (tv && typeof tv === 'object' && 'type' in tv && typeof tv.type === 'string' && tv.type !== 'dict') {
-          // It's a TresValue of another type — skip
-          return { type: '', chance: 0, min_amount: 0, max_amount: 0 };
-        }
-        // Plain object fallback
-        return {
-          type: _str(tv.type),
-          chance: _num(tv.chance),
-          min_amount: _num(tv.min_amount),
-          max_amount: _num(tv.max_amount),
-        };
-      });
-    }
-
     // color: TresParser stores Color value as { r, g, b, a }
     if (d.color && typeof d.color === 'object' && 'r' in d.color) {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
@@ -155,42 +130,6 @@ function _num(val) {
 }
 
 /**
- * Convert a dict Map<string, TresValue> to a prop table row.
- * @param {Map<string, *>} map - Map of key -> TresValue
- * @returns {{ type: string, chance: number, min_amount: number, max_amount: number }}
- */
-function _dictEntryToResourceRow(map) {
-  return {
-    type: _tvStr(map.get('type')),
-    chance: _tvNum(map.get('chance')),
-    min_amount: _tvNum(map.get('min_amount')),
-    max_amount: _tvNum(map.get('max_amount')),
-  };
-}
-
-/**
- * Extract string from a TresValue or plain value.
- * @param {*} tv - TresValue { type, value } or plain value
- * @returns {string}
- */
-function _tvStr(tv) {
-  if (tv == null) return '';
-  if (tv && typeof tv === 'object' && 'value' in tv) return _str(tv.value);
-  return _str(tv);
-}
-
-/**
- * Extract number from a TresValue or plain value.
- * @param {*} tv - TresValue { type, value } or plain value
- * @returns {number}
- */
-function _tvNum(tv) {
-  if (tv == null) return 0;
-  if (tv && typeof tv === 'object' && 'value' in tv) return _num(tv.value);
-  return _num(tv);
-}
-
-/**
  * Convert an {r,g,b,a} color (0-1 floats) to a CSS hex string (#rrggbb).
  * @param {{r: number, g: number, b: number, a: number}} c
  * @returns {string}
@@ -238,7 +177,6 @@ function _modelToPlain(model) {
     display_name: model.display_name,
     short_description: model.short_description,
     long_description: model.long_description,
-    prop_table: model.prop_table,
     color: model.color,
     color_variations: model.color_variations,
   };
@@ -681,163 +619,14 @@ export function renderBiomeEditor(container, options) {
 
     // Note: id/display_name/short_description/long_description are rendered
     // above this tab via the shared renderGearHeader() in _renderDetail.
-
-    // Separator — Resource Table
-    const resSep = document.createElement('div');
-    resSep.className = 'prop-separator';
-    resSep.textContent = 'Resource Table';
-    grid.appendChild(resSep);
-
-    // Resource table — full width
-    const resFullWidth = document.createElement('div');
-    resFullWidth.className = 'prop-full';
-    resFullWidth.appendChild(_buildResourceTable(model, errorArea));
-    grid.appendChild(resFullWidth);
+    // Color/texture editing lives in its own tab. For now this "General"
+    // tab is a placeholder — additional biome-level settings will land
+    // here as they emerge.
 
     wrapper.appendChild(grid);
     return wrapper;
   }
 
-  /**
-   * Build the resource table editor.
-   * @param {BiomeDataModel} model
-   * @param {HTMLElement} errorArea
-   * @returns {HTMLElement}
-   */
-  function _buildResourceTable(model, errorArea) {
-    const tableWrapper = document.createElement('div');
-    tableWrapper.dataset.propTableContainer = 'true';
-
-    // Get known prop types from ProjectContext
-    const knownProps = [];
-    for (const [filename] of ProjectContext.files.props) {
-      knownProps.push(filename.replace('.tres', ''));
-    }
-    knownProps.sort();
-
-    // Column headers
-    const labelsRow = document.createElement('div');
-    labelsRow.style.cssText = 'display:flex;gap:4px;width:100%;font-size:10px;color:var(--text-secondary);margin-bottom:2px;';
-    labelsRow.innerHTML = '<span style="flex:2;min-width:80px">Type</span><span style="flex:1;min-width:60px">Chance</span><span style="flex:1;min-width:50px">Min</span><span style="flex:1;min-width:50px">Max</span><span style="width:26px"></span>';
-    tableWrapper.appendChild(labelsRow);
-
-    /**
-     * Add a prop table row.
-     * @param {{ type: string, chance: number, min_amount: number, max_amount: number }} entry
-     */
-    function addPropRow(entry) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
-      row.dataset.propRow = 'true';
-
-      // Type select
-      const typeSelect = document.createElement('select');
-      typeSelect.dataset.rtType = 'true';
-      typeSelect.className = 'prop-input';
-      typeSelect.style.cssText = 'flex:2;min-width:80px;';
-
-      const isUnknown = entry.type && !knownProps.includes(entry.type);
-
-      for (const resName of knownProps) {
-        const opt = document.createElement('option');
-        opt.value = resName;
-        opt.textContent = resName;
-        if (resName === entry.type) opt.selected = true;
-        typeSelect.appendChild(opt);
-      }
-
-      if (isUnknown && entry.type) {
-        const opt = document.createElement('option');
-        opt.value = entry.type;
-        opt.textContent = entry.type + ' (unknown)';
-        opt.selected = true;
-        opt.style.color = '#ff6666';
-        typeSelect.appendChild(opt);
-        typeSelect.style.color = '#ff6666';
-        typeSelect.addEventListener('change', () => {
-          typeSelect.style.color = knownProps.includes(typeSelect.value) ? '' : '#ff6666';
-        });
-      }
-
-      if (knownProps.length === 0 && !entry.type) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '(no props)';
-        opt.disabled = true;
-        opt.selected = true;
-        typeSelect.appendChild(opt);
-      }
-
-      // Chance
-      const chanceInput = document.createElement('input');
-      chanceInput.type = 'number';
-      chanceInput.dataset.rtChance = 'true';
-      chanceInput.value = String(entry.chance);
-      chanceInput.step = '0.01';
-      chanceInput.min = '0';
-      chanceInput.max = '1';
-      chanceInput.placeholder = 'Chance';
-      chanceInput.title = 'Chance (0.0 - 1.0)';
-      chanceInput.className = 'prop-input';
-      chanceInput.style.cssText = 'flex:1;min-width:60px;';
-
-      // Min amount
-      const minInput = document.createElement('input');
-      minInput.type = 'number';
-      minInput.dataset.rtMin = 'true';
-      minInput.value = String(entry.min_amount);
-      minInput.step = '1';
-      minInput.min = '0';
-      minInput.placeholder = 'Min';
-      minInput.title = 'Min Amount';
-      minInput.className = 'prop-input';
-      minInput.style.cssText = 'flex:1;min-width:50px;';
-
-      // Max amount
-      const maxInput = document.createElement('input');
-      maxInput.type = 'number';
-      maxInput.dataset.rtMax = 'true';
-      maxInput.value = String(entry.max_amount);
-      maxInput.step = '1';
-      maxInput.min = '0';
-      maxInput.placeholder = 'Max';
-      maxInput.title = 'Max Amount';
-      maxInput.className = 'prop-input';
-      maxInput.style.cssText = 'flex:1;min-width:50px;';
-
-      // Remove button
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'X';
-      removeBtn.type = 'button';
-      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
-      removeBtn.addEventListener('click', () => row.remove());
-
-      row.appendChild(typeSelect);
-      row.appendChild(chanceInput);
-      row.appendChild(minInput);
-      row.appendChild(maxInput);
-      row.appendChild(removeBtn);
-      tableWrapper.appendChild(row);
-    }
-
-    // Populate existing entries
-    for (const entry of model.prop_table) {
-      addPropRow(entry);
-    }
-
-    const addRowBtn = document.createElement('button');
-    addRowBtn.textContent = '+ Add Row';
-    addRowBtn.type = 'button';
-    addRowBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-    addRowBtn.addEventListener('click', () => {
-      addPropRow({ type: knownProps[0] || '', chance: 0.5, min_amount: 1, max_amount: 1 });
-    });
-
-    const container2 = document.createElement('div');
-    container2.appendChild(tableWrapper);
-    container2.appendChild(addRowBtn);
-    return container2;
-  }
 
   // ============================================================
   // Colors tab builder
@@ -1004,16 +793,6 @@ function _collectBiomeFormData(formElement) {
     return el ? /** @type {HTMLInputElement} */ (el).value : '';
   }
 
-  /**
-   * Get an int value from a named input.
-   * @param {string} name
-   * @returns {number}
-   */
-  function intVal(name) {
-    const v = parseInt(val(name), 10);
-    return isNaN(v) ? 0 : v;
-  }
-
   // Identity (Gear fields)
   model.display_name = val('display_name').trim();
   model.short_description = val('short_description').trim();
@@ -1027,25 +806,6 @@ function _collectBiomeFormData(formElement) {
   const variationInputs = formElement.querySelectorAll('[data-variation-color]');
   for (const input of variationInputs) {
     model.color_variations.push(_hexToColor(/** @type {HTMLInputElement} */ (input).value));
-  }
-
-  // Resource table
-  model.prop_table = [];
-  const propRows = formElement.querySelectorAll('[data-prop-row]');
-  for (const row of propRows) {
-    const typeSelect = /** @type {HTMLSelectElement|null} */ (row.querySelector('[data-rt-type]'));
-    const chanceInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-chance]'));
-    const minInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-min]'));
-    const maxInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-max]'));
-
-    if (typeSelect && chanceInput && minInput && maxInput) {
-      model.prop_table.push({
-        type: typeSelect.value,
-        chance: parseFloat(chanceInput.value) || 0,
-        min_amount: parseInt(minInput.value, 10) || 0,
-        max_amount: parseInt(maxInput.value, 10) || 0,
-      });
-    }
   }
 
   return model;
@@ -1077,20 +837,6 @@ function _validateBiomeForm(model, isNew) {
         errors.push(`Biome "${model.display_name}" already exists`);
         break;
       }
-    }
-  }
-
-  // Resource table validation
-  for (let i = 0; i < model.prop_table.length; i++) {
-    const entry = model.prop_table[i];
-    if (entry.chance < 0 || entry.chance > 1) {
-      errors.push(`Resource row ${i + 1}: Chance must be between 0.0 and 1.0`);
-    }
-    if (entry.min_amount < 0) {
-      errors.push(`Resource row ${i + 1}: Min Amount must be >= 0`);
-    }
-    if (entry.max_amount < entry.min_amount) {
-      errors.push(`Resource row ${i + 1}: Max Amount must be >= Min Amount`);
     }
   }
 
@@ -1145,19 +891,6 @@ export function biomeModelToRaw(model) {
   if (model.long_description) {
     fields.set('long_description', { type: 'string', value: model.long_description });
   }
-
-  // prop_table: untyped array of dicts
-  // Each dict has string keys: "chance", "max_amount", "min_amount", "type"
-  const propTableEntries = model.prop_table.map(entry => {
-    const dictMap = new Map();
-    // Alphabetical key order to match Godot's output
-    dictMap.set('chance', { type: 'float', value: entry.chance });
-    dictMap.set('max_amount', { type: 'int', value: entry.max_amount });
-    dictMap.set('min_amount', { type: 'int', value: entry.min_amount });
-    dictMap.set('type', { type: 'string', value: entry.type });
-    return { type: 'dict', value: dictMap, keyStyle: 'string', braceSpaces: false };
-  });
-  fields.set('prop_table', { type: 'array', value: propTableEntries, elementType: null });
 
   // color: Color
   fields.set('color', {
