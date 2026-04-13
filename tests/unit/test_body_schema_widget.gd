@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 class_name TestBodySchemaWidget
 
 ## Unit tests for BodySchemaWidget (delivery-006j Phase C).
-## The widget lives on the status panel and renders a fixed-layout
-## humanoid with 22 slot panels. Tests cover construction, initial
-## empty state, set_equipped painting, and unknown-slot resilience.
+## The widget renders front + back silhouettes with slot overlays drawn
+## directly in _draw(). Each slot has an invisible Control that carries
+## the tooltip — tests inspect the tooltip state to verify set_equipped
+## routes correctly.
 
 const _BodySchemaWidget = preload("res://ui/body_schema_widget.gd")
 const _WearableCap = preload("res://scripts/data/capabilities/wearable_cap.gd")
@@ -16,7 +17,7 @@ var _widget: _BodySchemaWidget
 func before_test() -> void:
 	_widget = _BodySchemaWidget.new()
 	add_child(_widget)
-	# Trigger _ready() so slot panels are built.
+	# Trigger _ready() so slot tooltip Controls are built.
 	_widget._ready()
 
 
@@ -26,23 +27,20 @@ func after_test() -> void:
 		_widget = null
 
 
-func test_builds_one_panel_per_slot() -> void:
-	# Every Place must produce a Panel — otherwise the UI silently
-	# drops an equipment slot.
+func test_builds_one_tooltip_area_per_slot() -> void:
+	# Every Place must produce a tooltip carrier — otherwise hovering
+	# that body region would silently show nothing.
 	for i in _WearableCap.PLACE_COUNT:
-		var panel: Panel = _widget.get_slot_panel(i)
-		assert_object(panel).is_not_null()
+		var area: Control = _widget.get_slot_panel(i)
+		assert_object(area).is_not_null()
 
 
-func test_empty_state_panels_use_empty_color_tooltip_shows_slot_name() -> void:
-	# Before set_equipped, tooltip is just the slot name. The fill
-	# check is indirect through the stylebox — we assert the panel
-	# exists and its tooltip is the slot name.
-	var back_panel: Panel = _widget.get_slot_panel(_WearableCap.Place.BACK)
-	assert_str(back_panel.tooltip_text).is_equal("back")
+func test_empty_state_tooltip_shows_slot_name() -> void:
+	var back_area: Control = _widget.get_slot_panel(_WearableCap.Place.BACK)
+	assert_str(back_area.tooltip_text).is_equal("back")
 
 
-func test_set_equipped_updates_panel_tooltip_with_display_name() -> void:
+func test_set_equipped_updates_tooltip_with_display_name() -> void:
 	var def := _PropDef.new()
 	def.id = &"P00TEST"
 	def.display_name = "Test Backpack"
@@ -53,8 +51,8 @@ func test_set_equipped_updates_panel_tooltip_with_display_name() -> void:
 
 	_widget.set_equipped({_WearableCap.Place.BACK: def})
 
-	var back_panel: Panel = _widget.get_slot_panel(_WearableCap.Place.BACK)
-	assert_str(back_panel.tooltip_text).is_equal("back: Test Backpack")
+	var back_area: Control = _widget.get_slot_panel(_WearableCap.Place.BACK)
+	assert_str(back_area.tooltip_text).is_equal("back: Test Backpack")
 
 
 func test_set_equipped_with_unknown_slot_is_ignored() -> void:
@@ -73,5 +71,12 @@ func test_set_equipped_clears_previous_mapping() -> void:
 
 	_widget.set_equipped({})  # fully unequip
 
-	var back_panel: Panel = _widget.get_slot_panel(_WearableCap.Place.BACK)
-	assert_str(back_panel.tooltip_text).is_equal("back")
+	var back_area: Control = _widget.get_slot_panel(_WearableCap.Place.BACK)
+	assert_str(back_area.tooltip_text).is_equal("back")
+
+
+func test_widget_minimum_size_fits_both_silhouettes() -> void:
+	var expected_w: float = float(_BodySchemaWidget.BODY_W * 2 + _BodySchemaWidget.GAP)
+	var expected_h: float = float(_BodySchemaWidget.BODY_H)
+	assert_float(_widget.custom_minimum_size.x).is_equal(expected_w)
+	assert_float(_widget.custom_minimum_size.y).is_equal(expected_h)

@@ -71,11 +71,16 @@ func get_inventory() -> _Inventory:
 	return inventory
 
 
-## Return the PropDef currently equipped in Place.BACK, or null when no
-## container is worn. Convenience used by UI code that only cares about
-## the inventory-driving slot.
+## Return the PropDef currently equipped in Place.BACK *only* when it
+## carries a ContainerCap — i.e. it actually drives the inventory grid.
+## A non-container wearable on the back (e.g. a cape) returns null so
+## the inventory header isn't populated with something that has no
+## grid to describe.
 func get_equipped_container() -> _PropDef:
-	return equipped_wearables.get(_WearableCap.Place.BACK, null)
+	var back_item: _PropDef = equipped_wearables.get(_WearableCap.Place.BACK, null)
+	if back_item != null and back_item.container != null:
+		return back_item
+	return null
 
 
 ## Equip a PropDef on its declared wearable slot. Replaces any prior
