@@ -136,7 +136,24 @@ func _on_map_generated() -> void:
 	_rebuild_mesh()
 	print("[HexGridRenderer] rebuild done: _materials=", _materials.size(),
 			" _bucket_instances=", _bucket_instances.size(),
-			" mesh_null=", _mesh_instance.mesh == null)
+			" mesh_null=", _mesh_instance.mesh == null,
+			" my_pos=", global_position,
+			" visible=", visible)
+	if _mesh_instance.mesh != null:
+		var aabb: AABB = _mesh_instance.mesh.get_aabb()
+		print("[HexGridRenderer] primary mesh aabb=", aabb,
+				" mat_shader=", _mesh_instance.material_override.shader.resource_path
+				if _mesh_instance.material_override and _mesh_instance.material_override.shader
+				else "<none>")
+	for inst: MeshInstance3D in _bucket_instances:
+		var aabb2: AABB = inst.mesh.get_aabb() if inst.mesh else AABB()
+		var shader_path: String = "<none>"
+		if inst.material_override and inst.material_override is ShaderMaterial:
+			var sm: ShaderMaterial = inst.material_override
+			if sm.shader:
+				shader_path = sm.shader.resource_path
+		print("[HexGridRenderer] bucket ", inst.name, " visible=", inst.visible,
+				" aabb=", aabb2, " shader=", shader_path)
 
 
 # --- Public API ---
