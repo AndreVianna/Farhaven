@@ -876,10 +876,14 @@ function _initBiomePalette() {
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
-    // Show display name from .tres if available, otherwise the ID
+    // Show display name from .tres if available, otherwise the ID.
+    // Accepts `display_name` (Gear-based B00NNN format) or the legacy
+    // `biome_name` for any files that haven't been re-saved yet.
     const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
-    const displayName = biomeEntry && biomeEntry.data && biomeEntry.data.biome_name
-      ? String(biomeEntry.data.biome_name) : biomeName;
+    const entryData = biomeEntry && biomeEntry.data;
+    const displayName = (entryData && (entryData.display_name || entryData.biome_name))
+      ? String(entryData.display_name || entryData.biome_name)
+      : biomeName;
     const label = document.createElement('span');
     label.textContent = displayName;
 

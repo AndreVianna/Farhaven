@@ -257,17 +257,21 @@ Tracks an in-progress recipe. Not a Resource file — defined as an inner RefCou
 Source: `scripts/recipes/recipe_runtime.gd`
 
 ### BiomeData (scripts/hex/biome_data.gd)
-Godot Resource defining per-biome configuration.
+Godot Resource (extends Gear) defining per-biome configuration. Inherits
+`id`, `display_name`, `short_description`, `long_description` from Gear.
+Biome files follow the `B00NNN.tres` convention with the resource's `id`
+matching its filename stem (e.g. `B00003.tres` → `id = &"B00003"`).
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
-| biome_name | String | "" | Display name | e.g. "Crash Site", "Forest" |
+| id | StringName | "" | `B00NNN` format | Inherited from Gear; matches filename |
+| display_name | String | "" | Human-readable label | Inherited from Gear; e.g. "Crash Site" |
 | elevation_range | Vector2i | (0,0) | Min/max elevation | Currently all set to (0,9) |
 | prop_table | Array | [] | Array of Dictionaries | Each: {type, chance, min_amount, max_amount, tool_required} |
 | color | Color | WHITE | Base biome color | Used for terrain rendering |
 | color_variations | Array[Color] | [] | 3 color variants per biome | Hash-selected per tile for visual variety |
 
-Source: `scripts/hex/biome_data.gd`, `data/biomes/*.tres`
+Source: `scripts/hex/biome_data.gd`, `data/biomes/B00*.tres`
 
 ### CatalogEntry (scripts/scanner/catalog_entry.gd)
 Godot Resource representing a discoverable entity in the scanner catalog.

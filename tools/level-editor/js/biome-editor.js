@@ -17,8 +17,10 @@ let _biomeHeaderCounter = 0;
  */
 export class BiomeDataModel {
   constructor() {
-    /** @type {string} */
-    this.biome_name = '';
+    /** @type {string} Stable biome id, e.g. "B00001". Matches the filename stem. */
+    this._id = '';
+    /** @type {string} Human-readable display name (inherited from Gear). */
+    this.display_name = '';
     /** @type {{ min: number, max: number }} From Vector2i(min, max) */
     this.elevation_range = { min: -32000, max: 32000 };
     /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
@@ -34,9 +36,17 @@ export class BiomeDataModel {
     this._raw = null;
   }
 
-  /** Filename stem as key (e.g., 'forest') */
+  /**
+   * Stable biome id. Prefers the explicit `id` loaded from the .tres file;
+   * falls back to the filename stem for legacy resources that haven't been
+   * re-saved in the B00NNN format yet.
+   */
   get id() {
-    return this._filename.replace('.tres', '');
+    return this._id || this._filename.replace('.tres', '');
+  }
+
+  set id(value) {
+    this._id = value;
   }
 
   /**
@@ -63,7 +73,12 @@ export class BiomeDataModel {
     model._raw = entry.raw;
     const d = entry.data;
 
-    model.biome_name = _str(d.biome_name);
+    // id from the .tres file (e.g. "B00001"). Legacy files that only have
+    // the old biome_name / filename-stem convention fall back to the stem.
+    model._id = _str(d.id) || filename.replace('.tres', '');
+    // display_name is the human-readable label. Accept either the new
+    // `display_name` field or legacy `biome_name` for backward compat.
+    model.display_name = _str(d.display_name) || _str(d.biome_name);
 
     // elevation_range: TresParser stores Vector2i value as { x, y }
     if (d.elevation_range && typeof d.elevation_range === 'object') {
@@ -225,7 +240,8 @@ function _colorToRgb(c) {
  */
 function _modelToPlain(model) {
   return {
-    biome_name: model.biome_name,
+    id: model.id,
+    display_name: model.display_name,
     elevation_range: model.elevation_range,
     prop_table: model.prop_table,
     color: model.color,
@@ -321,7 +337,7 @@ export function renderBiomeEditor(container, options) {
     for (const [filename, entry] of ProjectContext.files.biomes) {
       biomes.push(BiomeDataModel.fromEntry(filename, entry));
     }
-    biomes.sort((a, b) => a.biome_name.localeCompare(b.biome_name));
+    biomes.sort((a, b) => a.display_name.localeCompare(b.display_name));
     return biomes;
   }
 
@@ -352,7 +368,7 @@ export function renderBiomeEditor(container, options) {
       swatch.style.background = model.colorHex;
 
       const label = document.createElement('span');
-      label.textContent = model.biome_name || model.id;
+      label.textContent = model.display_name || model.id;
 
       item.appendChild(swatch);
       item.appendChild(label);
@@ -486,7 +502,7 @@ export function renderBiomeEditor(container, options) {
     headerSwatch.className = 'swatch';
     headerSwatch.style.cssText = `width:14px;height:14px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
     const headerTitle = document.createElement('span');
-    headerTitle.textContent = isNew ? 'New Biome' : model.biome_name;
+    headerTitle.textContent = isNew ? 'New Biome' : model.display_name;
     h3.appendChild(headerSwatch);
     h3.appendChild(headerTitle);
 
@@ -522,7 +538,7 @@ export function renderBiomeEditor(container, options) {
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
     form.appendChild(errorArea);
 
-    // ── Biome header (id + biome_name + elevation min/max on one row) ──
+    // ── Biome header (id + display_name + elevation min/max on one row) ──
     const biomeHeaderWrap = document.createElement('div');
     biomeHeaderWrap.style.cssText = 'padding:10px 14px 0;';
     _renderBiomeHeader(biomeHeaderWrap, model, isNew);
@@ -556,7 +572,13 @@ export function renderBiomeEditor(container, options) {
     // ── Save handler ──
     saveBtn.addEventListener('click', () => {
       const collected = _collectBiomeFormData(form);
-      collected._filename = isNew ? _biomeNameToFilename(collected.biome_name) : model._filename;
+      if (isNew) {
+        collected._id = _nextBiomeId();
+        collected._filename = collected._id + '.tres';
+      } else {
+        collected._id = model._id;
+        collected._filename = model._filename;
+      }
       collected._raw = model._raw;
 
       const validation = _validateBiomeForm(collected, isNew);
@@ -610,7 +632,7 @@ export function renderBiomeEditor(container, options) {
       if (usages.length > 0) {
         const usageList = usages.map(u => `${u.map} (${u.count} tile${u.count > 1 ? 's' : ''})`).join(', ');
         showInlineModal(
-          `Biome "${model.biome_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
+          `Biome "${model.display_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
           '',
           (val) => {
             if (val === 'DELETE') {
@@ -619,7 +641,7 @@ export function renderBiomeEditor(container, options) {
           }
         );
       } else {
-        if (confirm(`Delete biome "${model.biome_name}"? This cannot be undone without undo.`)) {
+        if (confirm(`Delete biome "${model.display_name}"? This cannot be undone without undo.`)) {
           _performDelete(model);
         }
       }
@@ -662,7 +684,7 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.className = 'prop-grid';
 
-    // Note: id/biome_name/elevation_min/elevation_max are rendered above
+    // Note: id/display_name/elevation_min/elevation_max are rendered above
     // this tab via _renderBiomeHeader() in _renderDetail.
 
     // Separator — Resource Table
@@ -718,8 +740,8 @@ export function renderBiomeEditor(container, options) {
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.id = nameInputId;
-    nameInput.name = 'biome_name';
-    nameInput.value = model.biome_name;
+    nameInput.name = 'display_name';
+    nameInput.value = model.display_name;
     nameInput.classList.add('prop-input');
     if (!isNew) nameInput.disabled = true;
     nameWrap.appendChild(nameInput);
@@ -1054,12 +1076,22 @@ export function renderBiomeEditor(container, options) {
 // ============================================================
 
 /**
- * Convert a biome_name to a filename (lowercased, underscored).
- * @param {string} name
- * @returns {string}
+ * Compute the next available biome id in the B00NNN convention. Scans the
+ * existing biomes in ProjectContext and returns one higher than the highest
+ * valid id found. Returns "B00001" when no biomes exist yet.
+ * @returns {string} e.g. "B00006"
  */
-function _biomeNameToFilename(name) {
-  return name.trim().toLowerCase().replace(/\s+/g, '_') + '.tres';
+function _nextBiomeId() {
+  let maxNum = 0;
+  for (const filename of ProjectContext.files.biomes.keys()) {
+    const stem = filename.replace('.tres', '');
+    const match = stem.match(/^B(\d{5})$/);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  }
+  return 'B' + String(maxNum + 1).padStart(5, '0');
 }
 
 /**
@@ -1091,7 +1123,7 @@ function _collectBiomeFormData(formElement) {
   }
 
   // Identity
-  model.biome_name = val('biome_name').trim();
+  model.display_name = val('display_name').trim();
 
   // Elevation
   model.elevation_range = {
@@ -1145,14 +1177,18 @@ function _validateBiomeForm(model, isNew) {
   /** @type {string[]} */
   const errors = [];
 
-  // Biome name validation
-  if (!model.biome_name) {
-    errors.push('Biome Name is required');
+  // Display name validation
+  if (!model.display_name) {
+    errors.push('Display Name is required');
   } else if (isNew) {
-    // Check uniqueness by filename
-    const filename = _biomeNameToFilename(model.biome_name);
-    if (ProjectContext.files.biomes.has(filename)) {
-      errors.push(`Biome "${model.biome_name}" already exists`);
+    // Check display-name uniqueness across all existing biomes.
+    const lower = model.display_name.toLowerCase();
+    for (const entry of ProjectContext.files.biomes.values()) {
+      const existingName = _str(entry.data && entry.data.display_name || entry.data && entry.data.biome_name);
+      if (existingName.toLowerCase() === lower) {
+        errors.push(`Biome "${model.display_name}" already exists`);
+        break;
+      }
     }
   }
 
@@ -1218,8 +1254,11 @@ export function biomeModelToRaw(model) {
   // Script line is always first
   fields.set('script', { type: 'ext_resource', value: 'ExtResource("1_biome")' });
 
-  // biome_name: string
-  fields.set('biome_name', { type: 'string', value: model.biome_name });
+  // id: StringName (from Gear)
+  fields.set('id', { type: 'stringname', value: model.id });
+
+  // display_name: string (from Gear)
+  fields.set('display_name', { type: 'string', value: model.display_name });
 
   // elevation_range: Vector2i
   fields.set('elevation_range', { type: 'vector2i', value: { x: model.elevation_range.min, y: model.elevation_range.max } });
@@ -1268,7 +1307,10 @@ export class CreateBiomeCommand {
    */
   constructor(model, commandHistory) {
     this._model = model;
-    this._filename = _biomeNameToFilename(model.biome_name);
+    // Model carries its own id (B00NNN); filename is id + .tres.
+    // Fall back to deriving from model._filename when callers set the
+    // filename directly (legacy paths) instead of the id.
+    this._filename = model._filename || (model.id + '.tres');
     this.tab = 'biomes';
     this.type = 'CreateBiome';
   }

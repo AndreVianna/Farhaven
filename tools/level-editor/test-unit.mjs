@@ -3362,7 +3362,7 @@ for (const biomeFile of __biomeFiles) {
     // Parse into model
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
-    assert(typeof model.biome_name === 'string' && model.biome_name.length > 0, `${biomeFile}: biome_name`);
+    assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
     assert(typeof model.elevation_range.min === 'number', `${biomeFile}: elevation_range.min is number`);
     assert(typeof model.elevation_range.max === 'number', `${biomeFile}: elevation_range.max is number`);
     assert(model.elevation_range.min <= model.elevation_range.max, `${biomeFile}: elevation min <= max`);
@@ -3394,7 +3394,7 @@ for (const biomeFile of __biomeFiles) {
 
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
-    assert(model2.biome_name === model.biome_name, `${biomeFile}: biome_name survives`);
+    assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
     assert(model2.elevation_range.min === model.elevation_range.min, `${biomeFile}: elevation min survives`);
     assert(model2.elevation_range.max === model.elevation_range.max, `${biomeFile}: elevation max survives`);
     assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
