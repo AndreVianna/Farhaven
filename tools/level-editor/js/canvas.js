@@ -279,11 +279,10 @@ export class HexCanvas {
     const { screen, size, corners } = this._getHexScreen(q, r);
 
     // Color path is the default and the fallback used while a tile's
-    // textures haven't loaded yet.
-    let color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
-    if (tile.elevation > 0) {
-      color = this._adjustBrightness(color, 1 + tile.elevation * 0.05);
-    }
+    // textures haven't loaded yet. Elevation no longer tints the colour —
+    // with the range now ±32000 there's no sensible brightness curve and
+    // the old `*(1 + elev*0.05)` washed high-elevation tiles to white.
+    const color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
 
     this._traceHexPath(corners);
     ctx.fillStyle = color;
@@ -354,12 +353,15 @@ export class HexCanvas {
    * @returns {void}
    */
   _drawElevationOverlay(q, r, tile) {
-    if (tile.elevation <= 0) return;
+    if (tile.elevation === 0) return;
     const ctx = this.ctx;
     const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(8, 12 * this.camera.zoom);
     ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    // Positive elevations get warm-white, negative get a cool tint so
+    // they're easy to tell apart at a glance without going back to the
+    // elevation-as-colour scheme we just retired.
+    ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(tile.elevation), screen.x, screen.y);
