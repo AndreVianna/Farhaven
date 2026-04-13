@@ -43,7 +43,6 @@ export const ToolType = {
   SPAWN: 'spawn',
   ERASER: 'eraser',
   DELETE_HEX: 'delete_hex',
-  FLOOD_FILL: 'flood_fill',
 };
 
 
@@ -205,54 +204,6 @@ export class ElevationBrush extends DragBrushTool {
   }
 }
 
-export class FloodFillTool extends BaseTool {
-  onMouseDown(hex) {
-    if (!hex) return;
-    const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
-
-    const startBiome = tile.biome;
-    const targetBiome = this.toolManager.activeValue || '';
-    if (startBiome === targetBiome) return;
-
-    const visited = new Set();
-    const queue = [{ q: hex.q, r: hex.r }];
-    let head = 0;
-    const commands = [];
-    const SAFETY_LIMIT = 10000;
-
-    while (head < queue.length && commands.length < SAFETY_LIMIT) {
-      const current = queue[head++];
-      const key = `${current.q},${current.r}`;
-      if (visited.has(key)) continue;
-      visited.add(key);
-
-      const t = this.grid.getTile(current.q, current.r);
-      if (!t || t.biome !== startBiome) continue;
-
-      const cmd = new SetBiomeCommand(this.grid, current.q, current.r, startBiome, targetBiome);
-      commands.push(cmd);
-
-      const neighbors = HexMath.getNeighbors(current.q, current.r);
-      for (const n of neighbors) {
-        const nKey = `${n.q},${n.r}`;
-        if (!visited.has(nKey)) {
-          queue.push(n);
-        }
-      }
-    }
-
-    if (commands.length > 0) {
-      const batch = new BatchCommand(commands);
-      this.commandHistory.execute(batch);
-    }
-
-    if (commands.length >= SAFETY_LIMIT) {
-      console.warn(`FloodFill: safety limit of ${SAFETY_LIMIT} tiles reached. Some tiles may not have been filled.`);
-      this.toolManager.onStatus?.(`Warning: flood fill stopped at ${SAFETY_LIMIT} tile limit.`);
-    }
-  }
-}
 
 export class EraserTool extends DragBrushTool {
   /** @param {{ q: number, r: number, sq?: number, sr?: number }} hex */
@@ -438,9 +389,6 @@ export class ToolManager {
         break;
       case ToolType.DELETE_HEX:
         this.activeTool = new DeleteHexTool(this.grid, this.commandHistory, this);
-        break;
-      case ToolType.FLOOD_FILL:
-        this.activeTool = new FloodFillTool(this.grid, this.commandHistory, this);
         break;
       default:
         this.activeTool = null;

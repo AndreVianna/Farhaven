@@ -21,7 +21,7 @@ import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
-import { ToolType, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { ToolType, ToolManager, BiomeBrush, ElevationBrush, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
 import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
 // Alias HexGrid as HexGridClass to match existing test usage
@@ -767,9 +767,6 @@ test('ToolManager — setTool creates correct tool instances', () => {
   tm.setTool('elevation');
   assert(tm.activeTool instanceof ElevationBrush, 'should be ElevationBrush');
 
-  tm.setTool('flood_fill', 'water');
-  assert(tm.activeTool instanceof FloodFillTool, 'should be FloodFillTool');
-
   tm.setTool('eraser');
   assert(tm.activeTool instanceof EraserTool, 'should be EraserTool');
 
@@ -870,41 +867,6 @@ test('ElevationBrush — left click +1, right click -1', () => {
 
 // ============================================================
 // FloodFill tests (task-009)
-// ============================================================
-
-test('FloodFill — fills contiguous same-biome region', () => {
-  const grid = new HexGridClass();
-  // Create a small cluster of forest hexes
-  grid.setTile(0, 0, createTileData('forest'));
-  grid.setTile(1, 0, createTileData('forest'));
-  grid.setTile(0, 1, createTileData('forest'));
-  grid.setTile(1, -1, createTileData('water')); // blocker
-  const ch = new CommandHistory();
-  const tm = new ToolManager(grid, ch);
-  tm.setTool('flood_fill', 'grassland');
-
-  tm.onMouseDown({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).biome === 'grassland', '0,0 should be grassland');
-  assert(grid.getTile(1, 0).biome === 'grassland', '1,0 should be grassland');
-  assert(grid.getTile(0, 1).biome === 'grassland', '0,1 should be grassland');
-  assert(grid.getTile(1, -1).biome === 'water', '1,-1 should still be water');
-
-  // Single undo should revert all
-  ch.undo();
-  assert(grid.getTile(0, 0).biome === 'forest', '0,0 should be forest after undo');
-  assert(grid.getTile(1, 0).biome === 'forest', '1,0 should be forest after undo');
-});
-
-test('FloodFill — no-op when target biome equals start biome', () => {
-  const grid = new HexGridClass();
-  grid.setTile(0, 0, createTileData('forest'));
-  const ch = new CommandHistory();
-  const tm = new ToolManager(grid, ch);
-  tm.setTool('flood_fill', 'forest');
-  tm.onMouseDown({ q: 0, r: 0 });
-  assert(ch.undoStack.length === 0, 'no command should be created');
-});
-
 // ============================================================
 // Placement tools tests (task-010)
 // ============================================================

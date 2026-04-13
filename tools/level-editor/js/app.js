@@ -206,7 +206,6 @@ keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
-keyboardManager.register('f', mapOnly(() => selectTool('flood_fill')));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
@@ -744,7 +743,6 @@ const TOOL_GROUPS = [
   { group: 'Hex Tools', tools: [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
     { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
-    { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
@@ -1156,12 +1154,6 @@ function updateSidebar() {
     } else {
       el.classList.add('hidden');
     }
-  }
-
-  // Also show biome palette for flood_fill tool (it paints biomes)
-  const biomePalette = document.getElementById('palette-biome');
-  if (biomePalette && activeType === 'flood_fill') {
-    biomePalette.classList.remove('hidden');
   }
 
   // Highlight selected value in palettes
