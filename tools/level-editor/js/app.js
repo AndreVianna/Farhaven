@@ -21,6 +21,7 @@ import { renderEventEditor } from './event-editor.js';
 import { renderJournalEditor } from './journal-editor.js';
 import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
+import { clearBiomeTextureCache } from './biome-textures.js';
 
 // ============================================================
 // Module-level state
@@ -468,6 +469,23 @@ if (btnSaveAs) btnSaveAs.addEventListener('click', () => saveMapAs());
 const btnNewMap = document.getElementById('btn-new-map');
 if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
 
+// Biome render-mode toggle (Color | Texture). Texture mode mirrors the
+// runtime hash-picked variation + rotation so the editor preview matches
+// what the player sees in Godot.
+function _setBiomeRenderMode(mode) {
+  if (!hexCanvas) return;
+  hexCanvas.biomeRenderMode = mode;
+  const colorBtn = document.getElementById('btn-render-color');
+  const textureBtn = document.getElementById('btn-render-texture');
+  if (colorBtn) colorBtn.classList.toggle('active', mode === 'color');
+  if (textureBtn) textureBtn.classList.toggle('active', mode === 'texture');
+  hexCanvas.requestRender();
+}
+const btnRenderColor = document.getElementById('btn-render-color');
+if (btnRenderColor) btnRenderColor.addEventListener('click', () => _setBiomeRenderMode('color'));
+const btnRenderTexture = document.getElementById('btn-render-texture');
+if (btnRenderTexture) btnRenderTexture.addEventListener('click', () => _setBiomeRenderMode('texture'));
+
 // ============================================================
 // beforeunload protection (task-005)
 // ============================================================
@@ -795,7 +813,16 @@ function refreshPalettes() {
   _initBiomePalette();
   _initPropPalette();
   updateSidebar();
-  if (hexCanvas) hexCanvas.requestRender();
+  // Biome texture lists may have changed (the user could have added or
+  // removed entries from terrain_textures in a .tres). Drop both the
+  // shared loader cache and the per-canvas cache so the next render in
+  // Texture mode re-fetches.
+  clearBiomeTextureCache();
+  if (hexCanvas) {
+    hexCanvas._biomeTextures.clear();
+    hexCanvas._biomeTexturesRequested.clear();
+    hexCanvas.requestRender();
+  }
   if (hexInspector) hexInspector.updateMapStats();
 }
 

@@ -312,6 +312,24 @@ html, body {
   background: var(--tab-hover);
 }
 
+.render-mode-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.render-mode-btn.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.render-mode-btn:hover {
+  background: var(--tab-hover);
+}
+
 #map-selector {
   width: 100%;
   padding: 4px 6px;
@@ -895,6 +913,15 @@ html, body {
           <div class="sidebar-section">
             <label class="sidebar-label">Map</label>
             <select id="map-selector"></select>
+          </div>
+
+          <!-- Render mode toggle -->
+          <div class="sidebar-section">
+            <label class="sidebar-label">Biome Preview</label>
+            <div style="display:flex;gap:4px;">
+              <button id="btn-render-color" type="button" class="render-mode-btn active" style="flex:1;font-size:11px;padding:3px 6px;">Color</button>
+              <button id="btn-render-texture" type="button" class="render-mode-btn" style="flex:1;font-size:11px;padding:3px 6px;">Texture</button>
+            </div>
           </div>
 
           <!-- Tool buttons -->
