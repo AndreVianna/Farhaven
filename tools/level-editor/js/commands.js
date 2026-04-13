@@ -127,6 +127,11 @@ export class SetBiomeCommand {
     this.newBiome = newBiome;
     this.tab = 'map';
     this.type = 'SetBiome';
+    // Capture existence state before execute so undo can distinguish
+    // "restore old biome on an existing tile" from "delete the tile
+    // we just created". Without this the old undo set biome to '' and
+    // left a ghost gray tile behind.
+    this._tileExistedBefore = grid.hasTile(q, r);
   }
   execute() {
     let tile = this.grid.getTile(this.q, this.r);
@@ -139,6 +144,10 @@ export class SetBiomeCommand {
     }
   }
   undo() {
+    if (!this._tileExistedBefore) {
+      this.grid.deleteTile(this.q, this.r);
+      return;
+    }
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
       tile.biome = this.oldBiome;

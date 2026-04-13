@@ -312,6 +312,24 @@ html, body {
   background: var(--tab-hover);
 }
 
+.render-mode-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.render-mode-btn.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.render-mode-btn:hover {
+  background: var(--tab-hover);
+}
+
 #map-selector {
   width: 100%;
   padding: 4px 6px;
@@ -324,7 +342,8 @@ html, body {
 
 #tab-mineral, #tab-plant, #tab-animal, #tab-fungi, #tab-ooze, #tab-liquid,
 #tab-stuff, #tab-structure, #tab-equipment, #tab-vehicle, #tab-storage,
-#tab-biomes, #tab-recipes, #tab-events, #tab-journal, #tab-cutscenes {
+#tab-biomes, #tab-recipes, #tab-events, #tab-journal, #tab-cutscenes,
+#tab-settings {
   flex-direction: column;
   gap: 0;
 }
@@ -868,7 +887,8 @@ html, body {
       <button id="help-btn" title="Keyboard Shortcuts (?)">?</button>
     </header>
     <nav id="tabs">
-      <button class="tab-btn active" data-tab="map">Map Editor</button>
+      <button class="tab-btn active" data-tab="map">Maps</button>
+      <button class="tab-btn" data-tab="biomes">Biomes</button>
       <button class="tab-btn" data-tab="mineral">Minerals</button>
       <button class="tab-btn" data-tab="plant">Flora</button>
       <button class="tab-btn" data-tab="animal">Fauna</button>
@@ -880,11 +900,11 @@ html, body {
       <button class="tab-btn" data-tab="equipment">Equipment</button>
       <button class="tab-btn" data-tab="vehicle">Vehicles</button>
       <button class="tab-btn" data-tab="storage">Containers</button>
-      <button class="tab-btn" data-tab="biomes">Biomes</button>
       <button class="tab-btn" data-tab="recipes">Recipes</button>
       <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="journal">Journal</button>
       <button class="tab-btn" data-tab="cutscenes">Cutscenes</button>
+      <button class="tab-btn" data-tab="settings">Game Settings</button>
     </nav>
     <main id="tab-content">
       <div id="tab-map" class="tab-panel active">
@@ -893,6 +913,15 @@ html, body {
           <div class="sidebar-section">
             <label class="sidebar-label">Map</label>
             <select id="map-selector"></select>
+          </div>
+
+          <!-- Render mode toggle -->
+          <div class="sidebar-section">
+            <label class="sidebar-label">Biome Preview</label>
+            <div style="display:flex;gap:4px;">
+              <button id="btn-render-color" type="button" class="render-mode-btn active" style="flex:1;font-size:11px;padding:3px 6px;">Color</button>
+              <button id="btn-render-texture" type="button" class="render-mode-btn" style="flex:1;font-size:11px;padding:3px 6px;">Texture</button>
+            </div>
           </div>
 
           <!-- Tool buttons -->
@@ -927,17 +956,10 @@ html, body {
           <!-- Elevation controls -->
           <div id="palette-elevation" class="sidebar-section palette hidden">
             <label class="sidebar-label">Elevation</label>
-            <div class="elevation-row">
-              <button class="elev-mode-btn active" data-mode="set">SET</button>
-              <button class="elev-mode-btn" data-mode="increment">INCREMENT</button>
-            </div>
-            <div id="elev-set-controls" class="elevation-row">
-              <label style="font-size:11px;color:var(--text-secondary);">Value:</label>
-              <input type="number" id="elev-value" min="-32000" max="32000" value="0" style="width:70px;">
-            </div>
-            <div id="elev-inc-controls" class="elevation-row" style="display:none;">
-              <button id="elev-dec">-1</button>
-              <button id="elev-inc">+1</button>
+            <div style="font-size:11px;color:var(--text-secondary);line-height:1.4;">
+              <strong>Left click</strong>: +1<br>
+              <strong>Right click</strong>: −1<br>
+              Drag to paint a streak.
             </div>
           </div>
         </div>
@@ -947,6 +969,7 @@ html, body {
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
               <label class="sidebar-label" style="margin-bottom:0;">Map Info</label>
               <div style="display:flex;gap:4px;">
+                <button id="btn-new-map" type="button" title="New Map (Ctrl+N)" style="font-size:11px;padding:2px 8px;">New</button>
                 <button id="btn-save" type="button" title="Save All (Ctrl+S)" style="font-size:11px;padding:2px 8px;">Save</button>
                 <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" style="font-size:11px;padding:2px 8px;">Save As</button>
               </div>
@@ -963,6 +986,9 @@ html, body {
           </div>
         </aside>
       </div>
+      <div id="tab-biomes" class="tab-panel">
+        <p style="color: var(--text-secondary);">Biome Editor</p>
+      </div>
       <div id="tab-mineral" class="tab-panel"></div>
       <div id="tab-plant" class="tab-panel"></div>
       <div id="tab-animal" class="tab-panel"></div>
@@ -974,9 +1000,6 @@ html, body {
       <div id="tab-equipment" class="tab-panel"></div>
       <div id="tab-vehicle" class="tab-panel"></div>
       <div id="tab-storage" class="tab-panel"></div>
-      <div id="tab-biomes" class="tab-panel">
-        <p style="color: var(--text-secondary);">Biome Editor</p>
-      </div>
       <div id="tab-recipes" class="tab-panel">
         <p style="color: var(--text-secondary);">Recipe Editor</p>
       </div>
@@ -988,6 +1011,9 @@ html, body {
       </div>
       <div id="tab-cutscenes" class="tab-panel">
         <p style="color: var(--text-secondary);">Cutscene Editor</p>
+      </div>
+      <div id="tab-settings" class="tab-panel">
+        <p style="color: var(--text-secondary);">Game Settings</p>
       </div>
     </main>
     <footer id="status-bar">

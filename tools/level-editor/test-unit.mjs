@@ -21,7 +21,7 @@ import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
-import { ToolType, ElevationMode, ToolManager, BiomeBrush, ElevationBrush, FloodFillTool, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
+import { ToolType, ToolManager, BiomeBrush, ElevationBrush, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
 import { HexCanvas, BIOME_FALLBACK_COLOR } from './js/canvas.js';
 
 // Alias HexGrid as HexGridClass to match existing test usage
@@ -767,9 +767,6 @@ test('ToolManager — setTool creates correct tool instances', () => {
   tm.setTool('elevation');
   assert(tm.activeTool instanceof ElevationBrush, 'should be ElevationBrush');
 
-  tm.setTool('flood_fill', 'water');
-  assert(tm.activeTool instanceof FloodFillTool, 'should be FloodFillTool');
-
   tm.setTool('eraser');
   assert(tm.activeTool instanceof EraserTool, 'should be EraserTool');
 
@@ -831,30 +828,22 @@ test('BiomeBrush — drag creates BatchCommand for single undo', () => {
 // ElevationBrush tests (task-009)
 // ============================================================
 
-test('ElevationBrush — SET mode sets exact value, clamped to [0,9]', () => {
+test('ElevationBrush — applies +delta per painted hex and clamps to 32000', () => {
   const grid = new HexGridClass();
-  grid.setTile(0, 0, createTileData('forest'));
+  const tile = createTileData('forest');
+  tile.elevation = 31999;
+  grid.setTile(0, 0, tile);
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
   tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.SET;
-  tm.elevationValue = 5;
+  tm.activeTool.delta = 1;
 
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).elevation === 5, 'elevation should be 5');
-
-  // Clamping — elevation can go up to 32000 now
-  tm.elevationValue = 40000;
-  tm.setTool('elevation'); // reset tool for fresh paintedHexes
-  tm.elevationMode = ElevationMode.SET;
-  tm.elevationValue = 40000;
-  tm.onMouseDown({ q: 0, r: 0 });
-  tm.onMouseUp({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).elevation === 32000, 'elevation should clamp to 32000');
+  assert(grid.getTile(0, 0).elevation === 32000, 'elevation should be 32000 (clamped from 32001)');
 });
 
-test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
+test('ElevationBrush — left click +1, right click -1', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
   tile.elevation = 3;
@@ -862,16 +851,15 @@ test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
   const ch = new CommandHistory();
   const tm = new ToolManager(grid, ch);
   tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.INCREMENT;
-  tm.elevationDelta = 1;
 
+  // Simulate a left-click: delta = +1
+  tm.activeTool.delta = 1;
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
   assert(grid.getTile(0, 0).elevation === 4, 'elevation should be 4 after +1');
 
-  tm.setTool('elevation');
-  tm.elevationMode = ElevationMode.INCREMENT;
-  tm.elevationDelta = -1;
+  // Simulate a right-click: delta = -1
+  tm.activeTool.delta = -1;
   tm.onMouseDown({ q: 0, r: 0 });
   tm.onMouseUp({ q: 0, r: 0 });
   assert(grid.getTile(0, 0).elevation === 3, 'elevation should be 3 after -1');
@@ -879,41 +867,6 @@ test('ElevationBrush — INCREMENT mode adds/subtracts 1', () => {
 
 // ============================================================
 // FloodFill tests (task-009)
-// ============================================================
-
-test('FloodFill — fills contiguous same-biome region', () => {
-  const grid = new HexGridClass();
-  // Create a small cluster of forest hexes
-  grid.setTile(0, 0, createTileData('forest'));
-  grid.setTile(1, 0, createTileData('forest'));
-  grid.setTile(0, 1, createTileData('forest'));
-  grid.setTile(1, -1, createTileData('water')); // blocker
-  const ch = new CommandHistory();
-  const tm = new ToolManager(grid, ch);
-  tm.setTool('flood_fill', 'grassland');
-
-  tm.onMouseDown({ q: 0, r: 0 });
-  assert(grid.getTile(0, 0).biome === 'grassland', '0,0 should be grassland');
-  assert(grid.getTile(1, 0).biome === 'grassland', '1,0 should be grassland');
-  assert(grid.getTile(0, 1).biome === 'grassland', '0,1 should be grassland');
-  assert(grid.getTile(1, -1).biome === 'water', '1,-1 should still be water');
-
-  // Single undo should revert all
-  ch.undo();
-  assert(grid.getTile(0, 0).biome === 'forest', '0,0 should be forest after undo');
-  assert(grid.getTile(1, 0).biome === 'forest', '1,0 should be forest after undo');
-});
-
-test('FloodFill — no-op when target biome equals start biome', () => {
-  const grid = new HexGridClass();
-  grid.setTile(0, 0, createTileData('forest'));
-  const ch = new CommandHistory();
-  const tm = new ToolManager(grid, ch);
-  tm.setTool('flood_fill', 'forest');
-  tm.onMouseDown({ q: 0, r: 0 });
-  assert(ch.undoStack.length === 0, 'no command should be created');
-});
-
 // ============================================================
 // Placement tools tests (task-010)
 // ============================================================
@@ -3362,23 +3315,9 @@ for (const biomeFile of __biomeFiles) {
     // Parse into model
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
-    assert(typeof model.biome_name === 'string' && model.biome_name.length > 0, `${biomeFile}: biome_name`);
-    assert(typeof model.elevation_range.min === 'number', `${biomeFile}: elevation_range.min is number`);
-    assert(typeof model.elevation_range.max === 'number', `${biomeFile}: elevation_range.max is number`);
-    assert(model.elevation_range.min <= model.elevation_range.max, `${biomeFile}: elevation min <= max`);
-    assert(Array.isArray(model.prop_table), `${biomeFile}: prop_table is array`);
+    assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
     assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
     assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
-
-    // Verify prop_table entries have P-prefixed types (if non-empty)
-    for (let i = 0; i < model.prop_table.length; i++) {
-      const entry = model.prop_table[i];
-      assert(typeof entry.type === 'string', `${biomeFile}: prop_table[${i}].type is string`);
-      assert(entry.type.startsWith('P'), `${biomeFile}: prop_table[${i}].type "${entry.type}" has P prefix`);
-      assert(typeof entry.chance === 'number', `${biomeFile}: prop_table[${i}].chance is number`);
-      assert(typeof entry.min_amount === 'number', `${biomeFile}: prop_table[${i}].min_amount is number`);
-      assert(typeof entry.max_amount === 'number', `${biomeFile}: prop_table[${i}].max_amount is number`);
-    }
 
     // Re-serialize through model and compare
     const raw2 = biomeModelToRaw(model);
@@ -3394,16 +3333,7 @@ for (const biomeFile of __biomeFiles) {
 
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
-    assert(model2.biome_name === model.biome_name, `${biomeFile}: biome_name survives`);
-    assert(model2.elevation_range.min === model.elevation_range.min, `${biomeFile}: elevation min survives`);
-    assert(model2.elevation_range.max === model.elevation_range.max, `${biomeFile}: elevation max survives`);
-    assert(model2.prop_table.length === model.prop_table.length, `${biomeFile}: prop_table count survives`);
-    for (let i = 0; i < model.prop_table.length; i++) {
-      assert(model2.prop_table[i].type === model.prop_table[i].type, `${biomeFile}: prop_table[${i}].type survives`);
-      assert(model2.prop_table[i].chance === model.prop_table[i].chance, `${biomeFile}: prop_table[${i}].chance survives`);
-      assert(model2.prop_table[i].min_amount === model.prop_table[i].min_amount, `${biomeFile}: prop_table[${i}].min_amount survives`);
-      assert(model2.prop_table[i].max_amount === model.prop_table[i].max_amount, `${biomeFile}: prop_table[${i}].max_amount survives`);
-    }
+    assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
     assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
   });
 }

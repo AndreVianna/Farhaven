@@ -5,9 +5,7 @@
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-
-// Counter for generating unique biome header input IDs (for label htmlFor).
-let _biomeHeaderCounter = 0;
+import { renderGearHeader } from './editor-common.js';
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
@@ -17,16 +15,22 @@ let _biomeHeaderCounter = 0;
  */
 export class BiomeDataModel {
   constructor() {
-    /** @type {string} */
-    this.biome_name = '';
-    /** @type {{ min: number, max: number }} From Vector2i(min, max) */
-    this.elevation_range = { min: -32000, max: 32000 };
-    /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
-    this.prop_table = [];
+    /** @type {string} Stable biome id, e.g. "B00001". Matches the filename stem. */
+    this._id = '';
+    /** @type {string} Human-readable display name (inherited from Gear). */
+    this.display_name = '';
+    /** @type {string} One-line summary for tooltips/lists (inherited from Gear). */
+    this.short_description = '';
+    /** @type {string} Long-form description for detail panels (inherited from Gear). */
+    this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
     /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
     this.color_variations = [];
+    /** @type {string[]} `res://...` paths to terrain texture variations
+     *  (what the runtime hex shader samples). Order matters because the
+     *  per-tile variation index % length selects one. */
+    this.terrain_textures = [];
     // Round-trip metadata
     /** @type {string} */
     this._filename = '';
@@ -34,9 +38,17 @@ export class BiomeDataModel {
     this._raw = null;
   }
 
-  /** Filename stem as key (e.g., 'forest') */
+  /**
+   * Stable biome id. Prefers the explicit `id` loaded from the .tres file;
+   * falls back to the filename stem for legacy resources that haven't been
+   * re-saved in the B00NNN format yet.
+   */
   get id() {
-    return this._filename.replace('.tres', '');
+    return this._id || this._filename.replace('.tres', '');
+  }
+
+  set id(value) {
+    this._id = value;
   }
 
   /**
@@ -63,38 +75,14 @@ export class BiomeDataModel {
     model._raw = entry.raw;
     const d = entry.data;
 
-    model.biome_name = _str(d.biome_name);
-
-    // elevation_range: TresParser stores Vector2i value as { x, y }
-    if (d.elevation_range && typeof d.elevation_range === 'object') {
-      model.elevation_range = {
-        min: typeof d.elevation_range.x === 'number' ? d.elevation_range.x : 0,
-        max: typeof d.elevation_range.y === 'number' ? d.elevation_range.y : 9,
-      };
-    }
-
-    // prop_table: TresParser stores as TresValue[] (untyped array).
-    // Each element is a TresValue { type: 'dict', value: Map<string, TresValue> }.
-    if (Array.isArray(d.prop_table)) {
-      model.prop_table = d.prop_table.map(tv => {
-        // Each tv is a TresValue with type 'dict' and value as Map<string, TresValue>
-        if (tv && tv.type === 'dict' && tv.value instanceof Map) {
-          return _dictEntryToResourceRow(tv.value);
-        }
-        // Fallback: plain object (shouldn't happen, but handle gracefully)
-        if (tv && typeof tv === 'object' && 'type' in tv && typeof tv.type === 'string' && tv.type !== 'dict') {
-          // It's a TresValue of another type — skip
-          return { type: '', chance: 0, min_amount: 0, max_amount: 0 };
-        }
-        // Plain object fallback
-        return {
-          type: _str(tv.type),
-          chance: _num(tv.chance),
-          min_amount: _num(tv.min_amount),
-          max_amount: _num(tv.max_amount),
-        };
-      });
-    }
+    // id from the .tres file (e.g. "B00001"). Legacy files that only have
+    // the old biome_name / filename-stem convention fall back to the stem.
+    model._id = _str(d.id) || filename.replace('.tres', '');
+    // display_name is the human-readable label. Accept either the new
+    // `display_name` field or legacy `biome_name` for backward compat.
+    model.display_name = _str(d.display_name) || _str(d.biome_name);
+    model.short_description = _str(d.short_description);
+    model.long_description = _str(d.long_description);
 
     // color: TresParser stores Color value as { r, g, b, a }
     if (d.color && typeof d.color === 'object' && 'r' in d.color) {
@@ -115,6 +103,25 @@ export class BiomeDataModel {
         }
         return { r: 0, g: 0, b: 0, a: 1 };
       });
+    }
+
+    // terrain_textures: array of ext_resource refs we resolve back to
+    // the raw `res://...` path so the editor model is path-based.
+    // Build an id -> path map from the [ext_resource ...] header lines
+    // first, then map each array entry (ExtResource("id")) through it.
+    if (Array.isArray(d.terrain_textures) && entry.raw) {
+      const idToPath = new Map();
+      for (const line of entry.raw.extResources || []) {
+        const idM = /\bid="([^"]+)"/.exec(line);
+        const pathM = /\bpath="([^"]+)"/.exec(line);
+        if (idM && pathM) idToPath.set(idM[1], pathM[1]);
+      }
+      model.terrain_textures = d.terrain_textures.map((tv) => {
+        const ref = (tv && typeof tv === 'object' && tv.type === 'ext_resource') ? tv.value
+                  : (typeof tv === 'string') ? tv : '';
+        const idM = /ExtResource\("([^"]+)"\)/.exec(ref);
+        return idM ? (idToPath.get(idM[1]) || '') : '';
+      }).filter(Boolean);
     }
 
     return model;
@@ -143,42 +150,6 @@ function _str(val) {
 function _num(val) {
   if (typeof val === 'number') return val;
   return 0;
-}
-
-/**
- * Convert a dict Map<string, TresValue> to a prop table row.
- * @param {Map<string, *>} map - Map of key -> TresValue
- * @returns {{ type: string, chance: number, min_amount: number, max_amount: number }}
- */
-function _dictEntryToResourceRow(map) {
-  return {
-    type: _tvStr(map.get('type')),
-    chance: _tvNum(map.get('chance')),
-    min_amount: _tvNum(map.get('min_amount')),
-    max_amount: _tvNum(map.get('max_amount')),
-  };
-}
-
-/**
- * Extract string from a TresValue or plain value.
- * @param {*} tv - TresValue { type, value } or plain value
- * @returns {string}
- */
-function _tvStr(tv) {
-  if (tv == null) return '';
-  if (tv && typeof tv === 'object' && 'value' in tv) return _str(tv.value);
-  return _str(tv);
-}
-
-/**
- * Extract number from a TresValue or plain value.
- * @param {*} tv - TresValue { type, value } or plain value
- * @returns {number}
- */
-function _tvNum(tv) {
-  if (tv == null) return 0;
-  if (tv && typeof tv === 'object' && 'value' in tv) return _num(tv.value);
-  return _num(tv);
 }
 
 /**
@@ -225,11 +196,13 @@ function _colorToRgb(c) {
  */
 function _modelToPlain(model) {
   return {
-    biome_name: model.biome_name,
-    elevation_range: model.elevation_range,
-    prop_table: model.prop_table,
+    id: model.id,
+    display_name: model.display_name,
+    short_description: model.short_description,
+    long_description: model.long_description,
     color: model.color,
     color_variations: model.color_variations,
+    terrain_textures: model.terrain_textures,
   };
 }
 
@@ -321,7 +294,7 @@ export function renderBiomeEditor(container, options) {
     for (const [filename, entry] of ProjectContext.files.biomes) {
       biomes.push(BiomeDataModel.fromEntry(filename, entry));
     }
-    biomes.sort((a, b) => a.biome_name.localeCompare(b.biome_name));
+    biomes.sort((a, b) => a.display_name.localeCompare(b.display_name));
     return biomes;
   }
 
@@ -352,7 +325,7 @@ export function renderBiomeEditor(container, options) {
       swatch.style.background = model.colorHex;
 
       const label = document.createElement('span');
-      label.textContent = model.biome_name || model.id;
+      label.textContent = model.display_name || model.id;
 
       item.appendChild(swatch);
       item.appendChild(label);
@@ -486,7 +459,7 @@ export function renderBiomeEditor(container, options) {
     headerSwatch.className = 'swatch';
     headerSwatch.style.cssText = `width:14px;height:14px;border-radius:2px;border:1px solid var(--border);background:${model.colorHex};`;
     const headerTitle = document.createElement('span');
-    headerTitle.textContent = isNew ? 'New Biome' : model.biome_name;
+    headerTitle.textContent = isNew ? 'New Biome' : model.display_name;
     h3.appendChild(headerSwatch);
     h3.appendChild(headerTitle);
 
@@ -522,10 +495,10 @@ export function renderBiomeEditor(container, options) {
     errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
     form.appendChild(errorArea);
 
-    // ── Biome header (id + biome_name + elevation min/max on one row) ──
+    // ── Biome header (id + display_name + elevation min/max on one row) ──
     const biomeHeaderWrap = document.createElement('div');
     biomeHeaderWrap.style.cssText = 'padding:10px 14px 0;';
-    _renderBiomeHeader(biomeHeaderWrap, model, isNew);
+    renderGearHeader(biomeHeaderWrap, model, { idReadonly: true });
     form.appendChild(biomeHeaderWrap);
 
     // ── Two-column body (left: Resource Table, right: Colors) ──
@@ -556,7 +529,13 @@ export function renderBiomeEditor(container, options) {
     // ── Save handler ──
     saveBtn.addEventListener('click', () => {
       const collected = _collectBiomeFormData(form);
-      collected._filename = isNew ? _biomeNameToFilename(collected.biome_name) : model._filename;
+      if (isNew) {
+        collected._id = _nextBiomeId();
+        collected._filename = collected._id + '.tres';
+      } else {
+        collected._id = model._id;
+        collected._filename = model._filename;
+      }
       collected._raw = model._raw;
 
       const validation = _validateBiomeForm(collected, isNew);
@@ -610,7 +589,7 @@ export function renderBiomeEditor(container, options) {
       if (usages.length > 0) {
         const usageList = usages.map(u => `${u.map} (${u.count} tile${u.count > 1 ? 's' : ''})`).join(', ');
         showInlineModal(
-          `Biome "${model.biome_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
+          `Biome "${model.display_name}" is used in: ${usageList}. Type "DELETE" to confirm deletion:`,
           '',
           (val) => {
             if (val === 'DELETE') {
@@ -619,7 +598,7 @@ export function renderBiomeEditor(container, options) {
           }
         );
       } else {
-        if (confirm(`Delete biome "${model.biome_name}"? This cannot be undone without undo.`)) {
+        if (confirm(`Delete biome "${model.display_name}"? This cannot be undone without undo.`)) {
           _performDelete(model);
         }
       }
@@ -662,268 +641,16 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.className = 'prop-grid';
 
-    // Note: id/biome_name/elevation_min/elevation_max are rendered above
-    // this tab via _renderBiomeHeader() in _renderDetail.
-
-    // Separator — Resource Table
-    const resSep = document.createElement('div');
-    resSep.className = 'prop-separator';
-    resSep.textContent = 'Resource Table';
-    grid.appendChild(resSep);
-
-    // Resource table — full width
-    const resFullWidth = document.createElement('div');
-    resFullWidth.className = 'prop-full';
-    resFullWidth.appendChild(_buildResourceTable(model, errorArea));
-    grid.appendChild(resFullWidth);
+    // Note: id/display_name/short_description/long_description are rendered
+    // above this tab via the shared renderGearHeader() in _renderDetail.
+    // Color/texture editing lives in its own tab. For now this "General"
+    // tab is a placeholder — additional biome-level settings will land
+    // here as they emerge.
 
     wrapper.appendChild(grid);
     return wrapper;
   }
 
-  /**
-   * Render the biome-specific header: ID (read-only) + Display Name on the
-   * first row, Min/Max Elevation on the second row. Sets name= attributes
-   * for _collectBiomeFormData.
-   * @param {HTMLElement} container
-   * @param {BiomeDataModel} model
-   * @param {boolean} isNew
-   * @returns {void}
-   */
-  function _renderBiomeHeader(container, model, isNew) {
-    const grid = document.createElement('div');
-    grid.classList.add('editor-gear-header');
-
-    // Generate unique IDs for label htmlFor association.
-    const headerId = `biome-header-${++_biomeHeaderCounter}`;
-    const idInputId = `${headerId}-id`;
-    const nameInputId = `${headerId}-name`;
-    const minInputId = `${headerId}-min`;
-    const maxInputId = `${headerId}-max`;
-
-    // Row 1: ID + Display Name
-    const row1 = document.createElement('div');
-    row1.classList.add('editor-header-grid');
-
-    const idWrap = _makeBiomeFieldWrap('ID', idInputId);
-    const idInput = document.createElement('input');
-    idInput.type = 'text';
-    idInput.id = idInputId;
-    idInput.value = model.id;
-    idInput.classList.add('prop-input');
-    idInput.disabled = true;
-    idWrap.appendChild(idInput);
-
-    const nameWrap = _makeBiomeFieldWrap('Display Name', nameInputId);
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.id = nameInputId;
-    nameInput.name = 'biome_name';
-    nameInput.value = model.biome_name;
-    nameInput.classList.add('prop-input');
-    if (!isNew) nameInput.disabled = true;
-    nameWrap.appendChild(nameInput);
-
-    row1.appendChild(idWrap);
-    row1.appendChild(nameWrap);
-    grid.appendChild(row1);
-
-    // Row 2: Min Elevation + Max Elevation
-    const row2 = document.createElement('div');
-    row2.classList.add('editor-header-grid');
-    row2.style.gridTemplateColumns = '1fr 1fr';
-
-    const minWrap = _makeBiomeFieldWrap('Min Elevation', minInputId);
-    const minInput = document.createElement('input');
-    minInput.type = 'number';
-    minInput.id = minInputId;
-    minInput.name = 'elevation_min';
-    minInput.value = String(model.elevation_range.min);
-    minInput.min = '0';
-    minInput.max = '9';
-    minInput.step = '1';
-    minInput.classList.add('prop-input');
-    minWrap.appendChild(minInput);
-
-    const maxWrap = _makeBiomeFieldWrap('Max Elevation', maxInputId);
-    const maxInput = document.createElement('input');
-    maxInput.type = 'number';
-    maxInput.id = maxInputId;
-    maxInput.name = 'elevation_max';
-    maxInput.value = String(model.elevation_range.max);
-    maxInput.min = '0';
-    maxInput.max = '9';
-    maxInput.step = '1';
-    maxInput.classList.add('prop-input');
-    maxWrap.appendChild(maxInput);
-
-    row2.appendChild(minWrap);
-    row2.appendChild(maxWrap);
-    grid.appendChild(row2);
-
-    container.appendChild(grid);
-  }
-
-  /**
-   * Build a label-above-input wrapper for the biome header. Associates the
-   * label with the input via htmlFor when an inputId is provided.
-   * @param {string} labelText
-   * @param {string} [inputId]
-   * @returns {HTMLElement}
-   */
-  function _makeBiomeFieldWrap(labelText, inputId) {
-    const wrap = document.createElement('div');
-    wrap.classList.add('editor-field-wrap');
-    const label = document.createElement('label');
-    label.textContent = labelText;
-    label.classList.add('prop-label');
-    if (inputId) {
-      label.htmlFor = inputId;
-    }
-    wrap.appendChild(label);
-    return wrap;
-  }
-
-  /**
-   * Build the resource table editor.
-   * @param {BiomeDataModel} model
-   * @param {HTMLElement} errorArea
-   * @returns {HTMLElement}
-   */
-  function _buildResourceTable(model, errorArea) {
-    const tableWrapper = document.createElement('div');
-    tableWrapper.dataset.propTableContainer = 'true';
-
-    // Get known prop types from ProjectContext
-    const knownProps = [];
-    for (const [filename] of ProjectContext.files.props) {
-      knownProps.push(filename.replace('.tres', ''));
-    }
-    knownProps.sort();
-
-    // Column headers
-    const labelsRow = document.createElement('div');
-    labelsRow.style.cssText = 'display:flex;gap:4px;width:100%;font-size:10px;color:var(--text-secondary);margin-bottom:2px;';
-    labelsRow.innerHTML = '<span style="flex:2;min-width:80px">Type</span><span style="flex:1;min-width:60px">Chance</span><span style="flex:1;min-width:50px">Min</span><span style="flex:1;min-width:50px">Max</span><span style="width:26px"></span>';
-    tableWrapper.appendChild(labelsRow);
-
-    /**
-     * Add a prop table row.
-     * @param {{ type: string, chance: number, min_amount: number, max_amount: number }} entry
-     */
-    function addPropRow(entry) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
-      row.dataset.propRow = 'true';
-
-      // Type select
-      const typeSelect = document.createElement('select');
-      typeSelect.dataset.rtType = 'true';
-      typeSelect.className = 'prop-input';
-      typeSelect.style.cssText = 'flex:2;min-width:80px;';
-
-      const isUnknown = entry.type && !knownProps.includes(entry.type);
-
-      for (const resName of knownProps) {
-        const opt = document.createElement('option');
-        opt.value = resName;
-        opt.textContent = resName;
-        if (resName === entry.type) opt.selected = true;
-        typeSelect.appendChild(opt);
-      }
-
-      if (isUnknown && entry.type) {
-        const opt = document.createElement('option');
-        opt.value = entry.type;
-        opt.textContent = entry.type + ' (unknown)';
-        opt.selected = true;
-        opt.style.color = '#ff6666';
-        typeSelect.appendChild(opt);
-        typeSelect.style.color = '#ff6666';
-        typeSelect.addEventListener('change', () => {
-          typeSelect.style.color = knownProps.includes(typeSelect.value) ? '' : '#ff6666';
-        });
-      }
-
-      if (knownProps.length === 0 && !entry.type) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '(no props)';
-        opt.disabled = true;
-        opt.selected = true;
-        typeSelect.appendChild(opt);
-      }
-
-      // Chance
-      const chanceInput = document.createElement('input');
-      chanceInput.type = 'number';
-      chanceInput.dataset.rtChance = 'true';
-      chanceInput.value = String(entry.chance);
-      chanceInput.step = '0.01';
-      chanceInput.min = '0';
-      chanceInput.max = '1';
-      chanceInput.placeholder = 'Chance';
-      chanceInput.title = 'Chance (0.0 - 1.0)';
-      chanceInput.className = 'prop-input';
-      chanceInput.style.cssText = 'flex:1;min-width:60px;';
-
-      // Min amount
-      const minInput = document.createElement('input');
-      minInput.type = 'number';
-      minInput.dataset.rtMin = 'true';
-      minInput.value = String(entry.min_amount);
-      minInput.step = '1';
-      minInput.min = '0';
-      minInput.placeholder = 'Min';
-      minInput.title = 'Min Amount';
-      minInput.className = 'prop-input';
-      minInput.style.cssText = 'flex:1;min-width:50px;';
-
-      // Max amount
-      const maxInput = document.createElement('input');
-      maxInput.type = 'number';
-      maxInput.dataset.rtMax = 'true';
-      maxInput.value = String(entry.max_amount);
-      maxInput.step = '1';
-      maxInput.min = '0';
-      maxInput.placeholder = 'Max';
-      maxInput.title = 'Max Amount';
-      maxInput.className = 'prop-input';
-      maxInput.style.cssText = 'flex:1;min-width:50px;';
-
-      // Remove button
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'X';
-      removeBtn.type = 'button';
-      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
-      removeBtn.addEventListener('click', () => row.remove());
-
-      row.appendChild(typeSelect);
-      row.appendChild(chanceInput);
-      row.appendChild(minInput);
-      row.appendChild(maxInput);
-      row.appendChild(removeBtn);
-      tableWrapper.appendChild(row);
-    }
-
-    // Populate existing entries
-    for (const entry of model.prop_table) {
-      addPropRow(entry);
-    }
-
-    const addRowBtn = document.createElement('button');
-    addRowBtn.textContent = '+ Add Row';
-    addRowBtn.type = 'button';
-    addRowBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-    addRowBtn.addEventListener('click', () => {
-      addPropRow({ type: knownProps[0] || '', chance: 0.5, min_amount: 1, max_amount: 1 });
-    });
-
-    const container2 = document.createElement('div');
-    container2.appendChild(tableWrapper);
-    container2.appendChild(addRowBtn);
-    return container2;
-  }
 
   // ============================================================
   // Colors tab builder
@@ -1044,9 +771,156 @@ export function renderBiomeEditor(container, options) {
     varFull.appendChild(addVarBtn);
     grid.appendChild(varFull);
 
+    // ── Textures section ──
+    const texSep = document.createElement('div');
+    texSep.className = 'prop-separator';
+    texSep.textContent = 'Terrain Textures';
+    grid.appendChild(texSep);
+
+    const texFull = document.createElement('div');
+    texFull.className = 'prop-full';
+
+    const texHint = document.createElement('div');
+    texHint.style.cssText = 'color:var(--text-secondary);font-size:11px;margin-bottom:6px;';
+    texHint.textContent = 'Hash-picked per tile at runtime. Add 2–4 for good variety; leave empty to fall back to the base color.';
+    texFull.appendChild(texHint);
+
+    const texContainer = document.createElement('div');
+    texContainer.dataset.texturesContainer = 'true';
+    texContainer.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;';
+
+    function addTextureThumb(resPath) {
+      const row = document.createElement('div');
+      row.dataset.texturePath = resPath;
+      row.style.cssText = 'position:relative;width:64px;height:64px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);overflow:hidden;';
+
+      const img = document.createElement('img');
+      img.src = `/api/asset?path=${encodeURIComponent(resPath.replace(/^res:\/\//, ''))}`;
+      img.alt = resPath.split('/').pop() || '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      row.appendChild(img);
+
+      const caption = document.createElement('div');
+      caption.textContent = resPath.split('/').pop() || '';
+      caption.title = resPath;
+      caption.style.cssText = 'position:absolute;bottom:0;left:0;right:0;padding:1px 3px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      row.appendChild(caption);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '×';
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remove';
+      removeBtn.style.cssText = 'position:absolute;top:2px;right:2px;width:18px;height:18px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;cursor:pointer;font-size:12px;line-height:1;';
+      removeBtn.addEventListener('click', () => row.remove());
+      row.appendChild(removeBtn);
+
+      texContainer.appendChild(row);
+    }
+
+    for (const p of model.terrain_textures) addTextureThumb(p);
+
+    const addTexBtn = document.createElement('button');
+    addTexBtn.textContent = '+ Add Texture';
+    addTexBtn.type = 'button';
+    addTexBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+
+    addTexBtn.addEventListener('click', async () => {
+      // Pull the list of PNGs available under assets/textures/biomes/
+      // from the dev server, subtract what's already on this biome, and
+      // prompt the user to pick one.
+      let listed = [];
+      try {
+        const resp = await fetch('/api/list-assets?dir=assets/textures/biomes&ext=.png');
+        if (resp.ok) {
+          const data = await resp.json();
+          listed = Array.isArray(data.files) ? data.files : [];
+        }
+      } catch (err) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = `Failed to list textures: ${err.message}`;
+        return;
+      }
+      if (listed.length === 0) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = 'No PNGs found in assets/textures/biomes/.';
+        return;
+      }
+      const existing = new Set(Array.from(texContainer.querySelectorAll('[data-texture-path]'))
+        .map((n) => /** @type {HTMLElement} */ (n).dataset.texturePath));
+      const remaining = listed
+        .map((name) => `res://assets/textures/biomes/${name}`)
+        .filter((p) => !existing.has(p));
+      if (remaining.length === 0) {
+        errorArea.style.display = 'block';
+        errorArea.textContent = 'All available textures are already assigned.';
+        return;
+      }
+      _openTexturePicker(remaining, (picked) => {
+        if (picked) addTextureThumb(picked);
+      });
+    });
+
+    texFull.appendChild(texContainer);
+    texFull.appendChild(addTexBtn);
+    grid.appendChild(texFull);
+
     wrapper.appendChild(grid);
     return wrapper;
   }
+}
+
+/**
+ * Modal picker for choosing one `res://...` texture path from a list.
+ * Small enough to inline here so the rest of the editor doesn't gain
+ * a new shared component for a biome-editor-only flow.
+ * @param {string[]} paths
+ * @param {(picked: string|null) => void} callback
+ */
+function _openTexturePicker(paths, callback) {
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;padding:12px;min-width:420px;max-width:80vw;max-height:80vh;overflow-y:auto;color:var(--text-primary);';
+
+  const heading = document.createElement('h4');
+  heading.textContent = 'Pick a terrain texture';
+  heading.style.margin = '0 0 8px 0';
+  panel.appendChild(heading);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+  for (const p of paths) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.style.cssText = 'position:relative;width:96px;height:96px;padding:0;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);cursor:pointer;overflow:hidden;';
+    const img = document.createElement('img');
+    img.src = `/api/asset?path=${encodeURIComponent(p.replace(/^res:\/\//, ''))}`;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    item.appendChild(img);
+    const caption = document.createElement('div');
+    caption.textContent = p.split('/').pop() || '';
+    caption.style.cssText = 'position:absolute;bottom:0;left:0;right:0;padding:1px 3px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    item.appendChild(caption);
+    item.addEventListener('click', () => {
+      document.body.removeChild(backdrop);
+      callback(p);
+    });
+    grid.appendChild(item);
+  }
+  panel.appendChild(grid);
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Cancel';
+  cancel.style.cssText = 'margin-top:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  cancel.addEventListener('click', () => {
+    document.body.removeChild(backdrop);
+    callback(null);
+  });
+  panel.appendChild(cancel);
+
+  backdrop.appendChild(panel);
+  document.body.appendChild(backdrop);
 }
 
 // ============================================================
@@ -1054,12 +928,22 @@ export function renderBiomeEditor(container, options) {
 // ============================================================
 
 /**
- * Convert a biome_name to a filename (lowercased, underscored).
- * @param {string} name
- * @returns {string}
+ * Compute the next available biome id in the B00NNN convention. Scans the
+ * existing biomes in ProjectContext and returns one higher than the highest
+ * valid id found. Returns "B00001" when no biomes exist yet.
+ * @returns {string} e.g. "B00006"
  */
-function _biomeNameToFilename(name) {
-  return name.trim().toLowerCase().replace(/\s+/g, '_') + '.tres';
+function _nextBiomeId() {
+  let maxNum = 0;
+  for (const filename of ProjectContext.files.biomes.keys()) {
+    const stem = filename.replace('.tres', '');
+    const match = stem.match(/^B(\d{5})$/);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  }
+  return 'B' + String(maxNum + 1).padStart(5, '0');
 }
 
 /**
@@ -1080,24 +964,10 @@ function _collectBiomeFormData(formElement) {
     return el ? /** @type {HTMLInputElement} */ (el).value : '';
   }
 
-  /**
-   * Get an int value from a named input.
-   * @param {string} name
-   * @returns {number}
-   */
-  function intVal(name) {
-    const v = parseInt(val(name), 10);
-    return isNaN(v) ? 0 : v;
-  }
-
-  // Identity
-  model.biome_name = val('biome_name').trim();
-
-  // Elevation
-  model.elevation_range = {
-    min: intVal('elevation_min'),
-    max: intVal('elevation_max'),
-  };
+  // Identity (Gear fields)
+  model.display_name = val('display_name').trim();
+  model.short_description = val('short_description').trim();
+  model.long_description = val('long_description');
 
   // Color
   model.color = _hexToColor(val('color'));
@@ -1109,23 +979,14 @@ function _collectBiomeFormData(formElement) {
     model.color_variations.push(_hexToColor(/** @type {HTMLInputElement} */ (input).value));
   }
 
-  // Resource table
-  model.prop_table = [];
-  const propRows = formElement.querySelectorAll('[data-prop-row]');
-  for (const row of propRows) {
-    const typeSelect = /** @type {HTMLSelectElement|null} */ (row.querySelector('[data-rt-type]'));
-    const chanceInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-chance]'));
-    const minInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-min]'));
-    const maxInput = /** @type {HTMLInputElement|null} */ (row.querySelector('[data-rt-max]'));
-
-    if (typeSelect && chanceInput && minInput && maxInput) {
-      model.prop_table.push({
-        type: typeSelect.value,
-        chance: parseFloat(chanceInput.value) || 0,
-        min_amount: parseInt(minInput.value, 10) || 0,
-        max_amount: parseInt(maxInput.value, 10) || 0,
-      });
-    }
+  // Terrain textures — keep the DOM order (hash-picked variation index
+  // is order-sensitive, so removing from the middle doesn't scramble
+  // the remaining tiles' textures in the game).
+  model.terrain_textures = [];
+  const textureNodes = formElement.querySelectorAll('[data-texture-path]');
+  for (const node of textureNodes) {
+    const p = /** @type {HTMLElement} */ (node).dataset.texturePath;
+    if (p) model.terrain_textures.push(p);
   }
 
   return model;
@@ -1145,39 +1006,18 @@ function _validateBiomeForm(model, isNew) {
   /** @type {string[]} */
   const errors = [];
 
-  // Biome name validation
-  if (!model.biome_name) {
-    errors.push('Biome Name is required');
+  // Display name validation
+  if (!model.display_name) {
+    errors.push('Display Name is required');
   } else if (isNew) {
-    // Check uniqueness by filename
-    const filename = _biomeNameToFilename(model.biome_name);
-    if (ProjectContext.files.biomes.has(filename)) {
-      errors.push(`Biome "${model.biome_name}" already exists`);
-    }
-  }
-
-  // Elevation range
-  if (model.elevation_range.min < -32000 || model.elevation_range.min > 32000) {
-    errors.push('Elevation Min must be between -32000 and 32000');
-  }
-  if (model.elevation_range.max < -32000 || model.elevation_range.max > 32000) {
-    errors.push('Elevation Max must be between -32000 and 32000');
-  }
-  if (model.elevation_range.min > model.elevation_range.max) {
-    errors.push('Elevation Min must be <= Max');
-  }
-
-  // Resource table validation
-  for (let i = 0; i < model.prop_table.length; i++) {
-    const entry = model.prop_table[i];
-    if (entry.chance < 0 || entry.chance > 1) {
-      errors.push(`Resource row ${i + 1}: Chance must be between 0.0 and 1.0`);
-    }
-    if (entry.min_amount < 0) {
-      errors.push(`Resource row ${i + 1}: Min Amount must be >= 0`);
-    }
-    if (entry.max_amount < entry.min_amount) {
-      errors.push(`Resource row ${i + 1}: Max Amount must be >= Min Amount`);
+    // Check display-name uniqueness across all existing biomes.
+    const lower = model.display_name.toLowerCase();
+    for (const entry of ProjectContext.files.biomes.values()) {
+      const existingName = _str(entry.data && entry.data.display_name || entry.data && entry.data.biome_name);
+      if (existingName.toLowerCase() === lower) {
+        errors.push(`Biome "${model.display_name}" already exists`);
+        break;
+      }
     }
   }
 
@@ -1207,35 +1047,68 @@ export function biomeModelToRaw(model) {
     raw.scriptClass = 'BiomeData';
     const uid = generateTresUid();
     raw.uid = uid;
-    raw.headerLine = `[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="${uid}"]`;
-    raw.extResources = ['[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]'];
+    raw.extResources = [];
     raw.lineEnding = '\n';
   }
+
+  // Rebuild ext_resources deterministically: Script first, then one
+  // Texture2D line per terrain_textures entry. We preserve existing
+  // uid="..." hints when we can recover them from the previous raw,
+  // so a round-trip without edits stays byte-identical; new entries
+  // omit uid (Godot will backfill on its next save).
+  const prevIdByPath = new Map();
+  if (model._raw && Array.isArray(model._raw.extResources)) {
+    for (const line of model._raw.extResources) {
+      const idM = /\bid="([^"]+)"/.exec(line);
+      const pathM = /\bpath="([^"]+)"/.exec(line);
+      const uidM = /\buid="([^"]+)"/.exec(line);
+      if (idM && pathM) {
+        prevIdByPath.set(pathM[1], { id: idM[1], uid: uidM ? uidM[1] : null });
+      }
+    }
+  }
+
+  const scriptExtId = '1_biome';
+  const newExtResources = [
+    `[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="${scriptExtId}"]`,
+  ];
+  const texIds = []; // parallel to model.terrain_textures
+  let nextTexIdx = 2;
+  for (const resPath of model.terrain_textures) {
+    const prev = prevIdByPath.get(resPath);
+    const texId = (prev && prev.id && prev.id !== scriptExtId) ? prev.id : `${nextTexIdx++}_tex`;
+    texIds.push(texId);
+    const uidAttr = prev && prev.uid ? ` uid="${prev.uid}"` : '';
+    newExtResources.push(`[ext_resource type="Texture2D"${uidAttr} path="${resPath}" id="${texId}"]`);
+  }
+  raw.extResources = newExtResources;
+
+  // Keep the header's load_steps in sync so Godot doesn't warn about
+  // a mismatch between declared count and actual resources.
+  const loadSteps = newExtResources.length + (Array.isArray(raw.subResources) ? raw.subResources.length : 0) + 1;
+  const uidAttr = raw.uid ? ` uid="${raw.uid}"` : '';
+  raw.headerLine = `[gd_resource type="Resource" script_class="BiomeData" load_steps=${loadSteps} format=3${uidAttr}]`;
 
   // Build the resource fields map
   const fields = new Map();
 
   // Script line is always first
-  fields.set('script', { type: 'ext_resource', value: 'ExtResource("1_biome")' });
+  fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
 
-  // biome_name: string
-  fields.set('biome_name', { type: 'string', value: model.biome_name });
+  // id: StringName (from Gear)
+  fields.set('id', { type: 'stringname', value: model.id });
 
-  // elevation_range: Vector2i
-  fields.set('elevation_range', { type: 'vector2i', value: { x: model.elevation_range.min, y: model.elevation_range.max } });
+  // display_name: string (from Gear)
+  fields.set('display_name', { type: 'string', value: model.display_name });
 
-  // prop_table: untyped array of dicts
-  // Each dict has string keys: "chance", "max_amount", "min_amount", "type"
-  const propTableEntries = model.prop_table.map(entry => {
-    const dictMap = new Map();
-    // Alphabetical key order to match Godot's output
-    dictMap.set('chance', { type: 'float', value: entry.chance });
-    dictMap.set('max_amount', { type: 'int', value: entry.max_amount });
-    dictMap.set('min_amount', { type: 'int', value: entry.min_amount });
-    dictMap.set('type', { type: 'string', value: entry.type });
-    return { type: 'dict', value: dictMap, keyStyle: 'string', braceSpaces: false };
-  });
-  fields.set('prop_table', { type: 'array', value: propTableEntries, elementType: null });
+  // short_description and long_description: only emitted when non-empty so
+  // freshly-created biomes don't carry empty placeholder lines.
+  if (model.short_description) {
+    fields.set('short_description', { type: 'string', value: model.short_description });
+  }
+  if (model.long_description) {
+    fields.set('long_description', { type: 'string', value: model.long_description });
+  }
 
   // color: Color
   fields.set('color', {
@@ -1249,6 +1122,16 @@ export function biomeModelToRaw(model) {
     value: { r: vc.r, g: vc.g, b: vc.b, a: vc.a },
   }));
   fields.set('color_variations', { type: 'array', value: colorVariationEntries, elementType: null });
+
+  // terrain_textures: Array[Texture2D] referencing the ext_resource ids
+  // we just emitted. Only write the field when the list is non-empty so
+  // biomes without textures stay byte-clean (color-only rendering).
+  if (model.terrain_textures.length > 0) {
+    const texEntries = texIds.map((id) => ({ type: 'ext_resource', value: `ExtResource("${id}")` }));
+    // Untyped array literal (matches the `[ExtResource(...), ...]` format
+    // the existing hand-authored biome .tres files use).
+    fields.set('terrain_textures', { type: 'array', value: texEntries, elementType: null });
+  }
 
   raw.resourceFields = fields;
   return raw;
@@ -1268,7 +1151,10 @@ export class CreateBiomeCommand {
    */
   constructor(model, commandHistory) {
     this._model = model;
-    this._filename = _biomeNameToFilename(model.biome_name);
+    // Model carries its own id (B00NNN); filename is id + .tres.
+    // Fall back to deriving from model._filename when callers set the
+    // filename directly (legacy paths) instead of the id.
+    this._filename = model._filename || (model.id + '.tres');
     this.tab = 'biomes';
     this.type = 'CreateBiome';
   }

@@ -9,7 +9,7 @@ import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, 
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { HexInspector, showInlineModal, showErrorListModal } from './panels.js';
+import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -20,6 +20,8 @@ import { renderRecipeEditor } from './recipe-editor.js';
 import { renderEventEditor } from './event-editor.js';
 import { renderJournalEditor } from './journal-editor.js';
 import { renderCutsceneEditor } from './cutscene-editor.js';
+import { renderSettingsEditor } from './settings-editor.js';
+import { clearBiomeTextureCache } from './biome-textures.js';
 
 // ============================================================
 // Module-level state
@@ -67,7 +69,7 @@ let hexInspector = null;
 
 /** @type {Object<string, string>} Base labels for each tab */
 const TAB_LABELS = {
-  map: 'Map Editor',
+  map: 'Maps',
   mineral: 'Minerals',
   plant: 'Flora',
   animal: 'Fauna',
@@ -84,6 +86,7 @@ const TAB_LABELS = {
   events: 'Events',
   journal: 'Journal',
   cutscenes: 'Cutscenes',
+  settings: 'Game Settings',
 };
 
 /** Tab IDs that show the prop editor (one per category). */
@@ -203,7 +206,6 @@ keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
-keyboardManager.register('f', mapOnly(() => selectTool('flood_fill')));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
@@ -263,24 +265,57 @@ function updateUndoRedoButtons() {
 // ============================================================
 
 /**
- * Clear the grid and start a new map, prompting for chapter ID and map name.
+ * Clear the grid and start a new map, prompting for chapter ID and map
+ * name in a single dialog, then immediately persisting an empty map
+ * file so the user has something on disk right after clicking New.
  * @returns {void}
  */
 function newMap() {
   if (dirtyTracker.hasUnsavedChanges()) {
     if (!confirm('Unsaved changes will be lost. Continue?')) return;
   }
-  showInlineModal('Chapter ID:', 'ch1', (chapterId) => {
-    if (chapterId === null) return;
-    showInlineModal('Map Name:', 'New Map', (mapName) => {
-      if (mapName === null) return;
-      hexGrid.clear();
-      hexGrid.meta = { chapter_id: chapterId.trim() || 'ch1', name: mapName.trim() || 'New Map', spawn: [0, 0] };
-      commandHistory.clear();
+  showInlineFormModal('Create New Map', [
+    { label: 'Chapter ID', defaultValue: 'ch1', placeholder: 'e.g. ch1' },
+    { label: 'Map Name', defaultValue: 'New Map', placeholder: 'Human-readable name' },
+  ], async (values) => {
+    if (values === null) return;
+    const chapterId = (values[0] || '').trim() || 'ch1';
+    const mapName = (values[1] || '').trim() || 'New Map';
+    // Filename is derived from the Chapter ID so the on-disk name
+    // matches how the game references maps (GameSettings.starting_map
+    // and SaveManager.current_map both use short filenames like
+    // "ch1.json").
+    const filenameStem = `${chapterId}.json`;
+
+    if (ProjectContext.files.maps.has(filenameStem)) {
+      showError(`A map named "${filenameStem}" already exists. Use a different Chapter ID.`);
+      return;
+    }
+
+    hexGrid.clear();
+    hexGrid.meta = { chapter_id: chapterId, name: mapName, spawn: [0, 0] };
+    commandHistory.clear();
+
+    // Persist the fresh empty map immediately so New creates a real file
+    // on disk, not just in-memory state.
+    try {
+      const mapData = serializeGridToMapJson(hexGrid);
+      const json = JSON.stringify(mapData, null, '\t');
+      await FileDiscovery.saveFile('data/maps', json, filenameStem);
+      ProjectContext.files.maps.set(filenameStem, {
+        handle: null,
+        dir: 'data/maps',
+        data: mapData,
+      });
+      activeMapFilename = filenameStem;
       dirtyTracker.markAllClean();
       if (hexCanvas) hexCanvas.requestRender();
-      setStatus(`New map "${hexGrid.meta.name}" created.`);
-    });
+      _rebuildColorMaps();
+      _refreshMapSelector();
+      setStatus(`New map "${mapName}" created (${filenameStem}).`);
+    } catch (err) {
+      showError(`Failed to save new map: ${err.message}`);
+    }
   });
 }
 
@@ -430,6 +465,25 @@ async function saveTab(tab) {
 document.getElementById('btn-save').addEventListener('click', () => saveAll());
 const btnSaveAs = document.getElementById('btn-save-as');
 if (btnSaveAs) btnSaveAs.addEventListener('click', () => saveMapAs());
+const btnNewMap = document.getElementById('btn-new-map');
+if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
+
+// Biome render-mode toggle (Color | Texture). Texture mode mirrors the
+// runtime hash-picked variation + rotation so the editor preview matches
+// what the player sees in Godot.
+function _setBiomeRenderMode(mode) {
+  if (!hexCanvas) return;
+  hexCanvas.biomeRenderMode = mode;
+  const colorBtn = document.getElementById('btn-render-color');
+  const textureBtn = document.getElementById('btn-render-texture');
+  if (colorBtn) colorBtn.classList.toggle('active', mode === 'color');
+  if (textureBtn) textureBtn.classList.toggle('active', mode === 'texture');
+  hexCanvas.requestRender();
+}
+const btnRenderColor = document.getElementById('btn-render-color');
+if (btnRenderColor) btnRenderColor.addEventListener('click', () => _setBiomeRenderMode('color'));
+const btnRenderTexture = document.getElementById('btn-render-texture');
+if (btnRenderTexture) btnRenderTexture.addEventListener('click', () => _setBiomeRenderMode('texture'));
 
 // ============================================================
 // beforeunload protection (task-005)
@@ -616,6 +670,15 @@ function initializeAfterLoad() {
     console.log('Cutscene editor rendered.');
   }
 
+  // Render Game Settings editor (singleton form — data/game_settings.tres)
+  const settingsTabEl = document.getElementById('tab-settings');
+  if (settingsTabEl) {
+    renderSettingsEditor(settingsTabEl, {
+      onSave: () => setStatus('Game settings saved.'),
+    }).catch((err) => console.warn(`Settings editor failed to load: ${err.message}`));
+    console.log('Settings editor rendered.');
+  }
+
   // Initialize sidebar palettes and tool buttons (task-012b)
   initSidebar();
   console.log('Sidebar initialized.');
@@ -680,7 +743,6 @@ const TOOL_GROUPS = [
   { group: 'Hex Tools', tools: [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
     { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
-    { type: 'flood_fill', label: 'Flood Fill',  shortcut: 'F' },
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
@@ -749,7 +811,15 @@ function refreshPalettes() {
   _initBiomePalette();
   _initPropPalette();
   updateSidebar();
-  if (hexCanvas) hexCanvas.requestRender();
+  // Biome texture lists may have changed (the user could have added or
+  // removed entries from terrain_textures in a .tres). Drop both the
+  // shared loader cache and the per-canvas cache so the next render in
+  // Texture mode re-fetches.
+  clearBiomeTextureCache();
+  if (hexCanvas) {
+    hexCanvas.clearBiomeTextureCache();
+    hexCanvas.requestRender();
+  }
   if (hexInspector) hexInspector.updateMapStats();
 }
 
@@ -876,10 +946,14 @@ function _initBiomePalette() {
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
-    // Show display name from .tres if available, otherwise the ID
+    // Show display name from .tres if available, otherwise the ID.
+    // Accepts `display_name` (Gear-based B00NNN format) or the legacy
+    // `biome_name` for any files that haven't been re-saved yet.
     const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
-    const displayName = biomeEntry && biomeEntry.data && biomeEntry.data.biome_name
-      ? String(biomeEntry.data.biome_name) : biomeName;
+    const entryData = biomeEntry && biomeEntry.data;
+    const displayName = (entryData && (entryData.display_name || entryData.biome_name))
+      ? String(entryData.display_name || entryData.biome_name)
+      : biomeName;
     const label = document.createElement('span');
     label.textContent = displayName;
 
@@ -1044,60 +1118,12 @@ function _initPropPalette() {
 }
 
 /**
- * Wire elevation control buttons and input.
+ * Elevation now only has one gesture pattern (left click = +1, right
+ * click = -1) so there's nothing to wire from the sidebar. Kept as a
+ * no-op so existing call sites don't break.
  * @returns {void}
  */
-function _initElevationControls() {
-  // Mode toggle buttons
-  const modeBtns = document.querySelectorAll('.elev-mode-btn');
-  const setControls = document.getElementById('elev-set-controls');
-  const incControls = document.getElementById('elev-inc-controls');
-
-  modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.mode;
-      toolManager.elevationMode = mode;
-
-      modeBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      if (mode === 'set') {
-        if (setControls) setControls.style.display = '';
-        if (incControls) incControls.style.display = 'none';
-      } else {
-        if (setControls) setControls.style.display = 'none';
-        if (incControls) incControls.style.display = '';
-      }
-    });
-  });
-
-  // SET mode value input
-  const elevValue = /** @type {HTMLInputElement|null} */ (document.getElementById('elev-value'));
-  if (elevValue) {
-    elevValue.addEventListener('input', () => {
-      const val = parseInt(elevValue.value, 10);
-      if (!isNaN(val)) {
-        toolManager.elevationValue = Math.max(-32000, Math.min(32000, val));
-      }
-    });
-  }
-
-  // INCREMENT mode buttons
-  const elevDec = document.getElementById('elev-dec');
-  const elevInc = document.getElementById('elev-inc');
-  if (elevDec) {
-    elevDec.addEventListener('click', () => {
-      toolManager.elevationDelta = -1;
-      setStatus('Elevation: decrement by 1');
-    });
-  }
-  if (elevInc) {
-    elevInc.addEventListener('click', () => {
-      toolManager.elevationDelta = 1;
-      setStatus('Elevation: increment by 1');
-    });
-  }
-}
+function _initElevationControls() {}
 
 /**
  * Update the sidebar to reflect current tool state.
@@ -1127,12 +1153,6 @@ function updateSidebar() {
     } else {
       el.classList.add('hidden');
     }
-  }
-
-  // Also show biome palette for flood_fill tool (it paints biomes)
-  const biomePalette = document.getElementById('palette-biome');
-  if (biomePalette && activeType === 'flood_fill') {
-    biomePalette.classList.remove('hidden');
   }
 
   // Highlight selected value in palettes

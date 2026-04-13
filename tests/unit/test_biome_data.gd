@@ -2,11 +2,11 @@ extends GdUnitTestSuite
 class_name TestBiomeData
 
 const BIOME_PATHS: Array[String] = [
-	"res://data/biomes/001.tres",
-	"res://data/biomes/002.tres",
-	"res://data/biomes/003.tres",
-	"res://data/biomes/004.tres",
-	"res://data/biomes/005.tres",
+	"res://data/biomes/B00001.tres",
+	"res://data/biomes/B00002.tres",
+	"res://data/biomes/B00003.tres",
+	"res://data/biomes/B00004.tres",
+	"res://data/biomes/B00005.tres",
 ]
 
 func test_all_biomes_load_without_error() -> void:
@@ -14,16 +14,18 @@ func test_all_biomes_load_without_error() -> void:
 		var biome: BiomeData = load(path)
 		assert_object(biome).is_not_null()
 
-func test_all_biomes_have_color_variations() -> void:
+func test_all_biomes_have_fallback_color() -> void:
+	# Even biomes that define terrain_textures must keep a fallback solid
+	# color so the renderer has something to show if a texture fails to load.
 	for path in BIOME_PATHS:
 		var biome: BiomeData = load(path)
-		assert_int(biome.color_variations.size()).is_between(2, 3)
+		assert_float(biome.color.a).is_greater(0.0)
+		assert_bool(biome.color.r == 0.0 and biome.color.g == 0.0 and biome.color.b == 0.0).is_false()
 
-func test_all_color_variations_are_valid() -> void:
+func test_terrain_textures_is_array() -> void:
+	# Either empty (fallback to color) or populated with Texture2D entries.
 	for path in BIOME_PATHS:
 		var biome: BiomeData = load(path)
-		for c in biome.color_variations:
-			# Not fully transparent
-			assert_float(c.a).is_greater(0.0)
-			# Not pure black
-			assert_bool(c.r == 0.0 and c.g == 0.0 and c.b == 0.0).is_false()
+		assert_bool(biome.terrain_textures is Array).is_true()
+		for tex in biome.terrain_textures:
+			assert_object(tex).is_not_null()

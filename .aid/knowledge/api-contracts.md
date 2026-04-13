@@ -448,8 +448,9 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Visual properties:** mesh, depleted_mesh, material, placeholder_* config (unchanged)
 - **Source:** `scripts/data/prop_def.gd`
 
-### BiomeData (Resource)
-- **Properties:** biome_name, elevation_range, prop_table, color, color_variations
+### BiomeData (Gear)
+- **Inherits from Gear** — carries id (B00NNN), display_name, short/long_description
+- **Properties:** terrain_textures (Array[Texture2D]), color (Color fallback)
 - **Source:** `scripts/hex/biome_data.gd`
 
 ### CatalogEntry (Resource)

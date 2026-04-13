@@ -5,6 +5,7 @@
 import { HEX_SIZE, HexMath } from './hex-math.js';
 import { HexGrid, CATEGORY_COLORS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
 import { EditPropCommand, SetSpawnCommand } from './commands.js';
+import { loadBiomeTextures, pickVariationIdx, pickRotationRadians } from './biome-textures.js';
 
 /** @type {string} Fallback color for unknown biomes */
 export const BIOME_FALLBACK_COLOR = '#888888';
@@ -72,6 +73,25 @@ export class HexCanvas {
     this.onHexHover = null;
     this._renderRequested = false;
     this._mouseDown = false;
+    /** @type {'color'|'texture'} How to fill biome hexes. 'texture' uses
+     *  the same hash-picked variation + rotation the runtime renderer
+     *  applies, so the editor preview matches in-game. */
+    this.biomeRenderMode = 'color';
+    /** @type {Map<string, HTMLImageElement[]>} biome stem -> loaded
+     *  textures. Populated lazily as hexes are drawn in texture mode. */
+    this._biomeTextures = new Map();
+    /** @type {Set<string>} biome stems we've already requested. */
+    this._biomeTexturesRequested = new Set();
+
+    /**
+     * Drop every cached biome texture so the next render in Texture
+     * mode re-fetches from the loader. Called after biome edits that
+     * may have changed the terrain_textures list.
+     */
+    this.clearBiomeTextureCache = () => {
+      this._biomeTextures.clear();
+      this._biomeTexturesRequested.clear();
+    };
 
     // --- Prop/spawn selection state ---
     /** @type {{ hexQ: number, hexR: number, propIndex: number }|null} */
@@ -266,24 +286,73 @@ export class HexCanvas {
    */
   _drawHex(q, r, tile) {
     const ctx = this.ctx;
-    const { corners } = this._getHexScreen(q, r);
+    const { screen, size, corners } = this._getHexScreen(q, r);
 
-    // Get biome color
-    let color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
-
-    // Apply elevation brightness
-    if (tile.elevation > 0) {
-      color = this._adjustBrightness(color, 1 + tile.elevation * 0.05);
-    }
+    // Color path is the default and the fallback used while a tile's
+    // textures haven't loaded yet. Elevation no longer tints the colour —
+    // with the range now ±32000 there's no sensible brightness curve and
+    // the old `*(1 + elev*0.05)` washed high-elevation tiles to white.
+    const color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
 
     this._traceHexPath(corners);
     ctx.fillStyle = color;
     ctx.fill();
 
+    if (this.biomeRenderMode === 'texture' && tile.biome) {
+      this._drawHexTexture(q, r, tile, screen, size, corners);
+    }
+
     // Thin border
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.lineWidth = 1;
     ctx.stroke();
+  }
+
+  /**
+   * Sample the biome's textures (lazy-loaded) and paint one onto the
+   * hex with the same hash-picked variation + rotation the runtime
+   * uses. Falls back silently to the color underlay (already drawn)
+   * while textures load.
+   */
+  _drawHexTexture(q, r, tile, screen, size, corners) {
+    const stem = String(tile.biome);
+    let textures = this._biomeTextures.get(stem);
+    if (!textures) {
+      // Kick off a one-shot load. When ready, ask for a re-render so
+      // the new textures appear without the user needing to interact.
+      if (!this._biomeTexturesRequested.has(stem)) {
+        this._biomeTexturesRequested.add(stem);
+        loadBiomeTextures(stem).then((imgs) => {
+          if (imgs && imgs.length > 0) {
+            this._biomeTextures.set(stem, imgs);
+            this.requestRender();
+          } else {
+            // Mark with empty array so we don't re-attempt on every draw.
+            this._biomeTextures.set(stem, []);
+          }
+        });
+      }
+      return;
+    }
+    if (textures.length === 0) return;
+
+    const idx = pickVariationIdx(q, r, textures.length);
+    const img = textures[idx];
+    if (!img) return;
+    const rot = pickRotationRadians(q, r);
+
+    const ctx = this.ctx;
+    ctx.save();
+    // Clip to the hex polygon so the square texture only shows inside.
+    this._traceHexPath(corners);
+    ctx.clip();
+    // Translate to centre, rotate, then draw a square covering the
+    // full hex bbox (each axis -size .. +size). The texture's UV space
+    // is hex-local [0,1] just like the runtime shader.
+    ctx.translate(screen.x, screen.y);
+    ctx.rotate(rot);
+    ctx.drawImage(img, -size, -size, size * 2, size * 2);
+    ctx.restore();
   }
 
   /**
@@ -294,12 +363,15 @@ export class HexCanvas {
    * @returns {void}
    */
   _drawElevationOverlay(q, r, tile) {
-    if (tile.elevation <= 0) return;
+    if (tile.elevation === 0) return;
     const ctx = this.ctx;
     const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(8, 12 * this.camera.zoom);
     ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    // Positive elevations get warm-white, negative get a cool tint so
+    // they're easy to tell apart at a glance without going back to the
+    // elevation-as-colour scheme we just retired.
+    ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(tile.elevation), screen.x, screen.y);
@@ -1116,7 +1188,22 @@ export class HexCanvas {
     const mx = event.clientX - rect.left;
     const my = event.clientY - rect.top;
 
-    // Middle-click, right-click, or space+left-click: start pan
+    // Right-click on the elevation tool is a dedicated decrement gesture
+    // (left-click = +1, right-click = -1). Intercept before the generic
+    // "right-click = pan" path so the drag batches with the same brush.
+    const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
+    if (event.button === 2 && isElevation && this.toolManager.activeTool) {
+      this.toolManager.activeTool.delta = -1;
+      const hex = this.screenToHex(mx, my);
+      this.selectedHex = { q: hex.q, r: hex.r };
+      this._mouseDown = true;
+      this.toolManager.onMouseDown({ q: hex.q, r: hex.r });
+      event.preventDefault();
+      this.requestRender();
+      return;
+    }
+
+    // Middle-click, right-click (non-elevation), or space+left-click: pan
     if (event.button === 1 || event.button === 2 || (event.button === 0 && this.spaceHeld)) {
       this.isPanning = true;
       this.panStart = { x: event.clientX, y: event.clientY };
@@ -1142,6 +1229,9 @@ export class HexCanvas {
       }
 
       if (this.toolManager) {
+        if (isElevation && this.toolManager.activeTool) {
+          this.toolManager.activeTool.delta = 1;
+        }
         // Pass sub-hex info for placement tools
         const hexWithSub = { q: hex.q, r: hex.r };
         if (this.hoveredSubHex && this._isSubHexTool()) {

@@ -164,35 +164,25 @@ func load_map(path: String) -> bool:
 
 
 
-## Get default [remaining, max_amount] for a prop type from biome data.
-func _get_prop_defaults(type: StringName, biome_int: int) -> Array:
-	var remaining: int = 3
+## Get default [remaining, max_amount] for a prop type. biome_int is
+## accepted for compatibility with earlier callers that paired defaults
+## with biome lookups; per-biome overrides were dropped in delivery-006k
+## with the prop_table field. Defaults come from the PropDef itself or a
+## hardcoded fallback.
+func _get_prop_defaults(type: StringName, _biome_int: int) -> Array:
 	var max_amount: int = 3
-	var bd: Resource = _biome_data.get(biome_int, null)
-	if bd != null:
-		for entry_data in bd.prop_table:
-			if StringName(entry_data.get("type", "")) == type:
-				max_amount = int(entry_data.get("max_amount", 3))
-				remaining = max_amount
-				break
-	return [remaining, max_amount]
+	if PropRegistry.has_def(type):
+		var def: Resource = PropRegistry.get_def(type)
+		if "max_stack" in def and int(def.max_stack) > 0:
+			max_amount = int(def.max_stack)
+	return [max_amount, max_amount]
 
 
-func _make_prop(type: StringName, biome_int: int) -> Resource:
+func _make_prop(type: StringName, _biome_int: int) -> Resource:
 	var tool_req: StringName = PropRegistry.get_def(type).tool_required if PropRegistry.has_def(type) else &""
 	var respawn: float = PropRegistry.get_def(type).respawn_time if PropRegistry.has_def(type) else 0.0
-	var remaining: int = 3
-	var max_amount: int = 3
-
-	var bd: Resource = _biome_data.get(biome_int, null)
-	if bd != null:
-		for entry_data in bd.prop_table:
-			if StringName(entry_data.get("type", "")) == type:
-				max_amount = int(entry_data.get("max_amount", 3))
-				remaining = max_amount
-				break
-
-	return _Prop.create_prop(type, remaining, max_amount, tool_req, respawn)
+	var defaults: Array = _get_prop_defaults(type, _biome_int)
+	return _Prop.create_prop(type, int(defaults[0]), int(defaults[1]), tool_req, respawn)
 
 
 func _validate(spawn: Vector2i) -> void:

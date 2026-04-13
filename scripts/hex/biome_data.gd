@@ -1,14 +1,20 @@
 class_name BiomeData
-extends Resource
+extends Gear
 
 ## Per-biome configuration loaded from .tres files.
-## prop_table entries: {type: String, max_amount: int, [chance: float, min_amount: int]}
-## `type` and `max_amount` are used by map_loader.gd for per-instance overrides.
-## `chance` and `min_amount` are reserved for future procedural biome generation
-## (populate biomes at runtime instead of loading fully-specified JSON maps).
+##
+## Inherits `id`, `display_name`, `short_description`, `long_description`
+## from Gear. Biome files follow the `B00NNN.tres` convention with a
+## matching `id = &"B00NNN"` value so biomes stay consistent with the
+## other Gear subclasses (PropDef P00xxx, Recipe R00xxx, etc.).
 
-@export var biome_name: String = ""
-@export var elevation_range: Vector2i = Vector2i(0, 0)
-@export var prop_table: Array = []
+## Variations for terrain rendering. When this list is non-empty the hex
+## grid renderer hash-picks one texture per tile, which gives visual
+## variety to a biome without having to tile a single seamless image.
+## When the list is empty the renderer falls back to the solid `color`
+## below so the game still has something to show.
+@export var terrain_textures: Array[Texture2D] = []
+
+## Fallback solid color when `terrain_textures` is empty OR the renderer
+## needs a tint to debug a missing asset.
 @export var color: Color = Color.WHITE
-@export var color_variations: Array[Color] = []

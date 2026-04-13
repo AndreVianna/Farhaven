@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=6 format=3 uid="uid://cgrassland001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+[ext_resource type="Texture2D" uid="uid://crsw2irl6c12" path="res://assets/textures/biomes/B00002_grassland_1.png" id="2_tex1"]
+[ext_resource type="Texture2D" uid="uid://ctlnlg5posa8c" path="res://assets/textures/biomes/B00002_grassland_2.png" id="3_tex2"]
+[ext_resource type="Texture2D" uid="uid://btcwmue76x6k5" path="res://assets/textures/biomes/B00002_grassland_3.png" id="4_tex3"]
+[ext_resource type="Texture2D" uid="uid://btgm1n62akqyi" path="res://assets/textures/biomes/B00002_grassland_4.png" id="5_tex4"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"B00002"
+display_name = "Grassland"
+short_description = "Open plains of tall grass and low brush."
+long_description = "Wide meadows broken by stands of fiber-rich grass. Easy to cross, easy to spot what is around you, easy to be spotted in turn. Small fauna graze here and watch from a careful distance."
+color = Color(0.4, 0.7490196078431373, 0.30196078431372547, 1.0)
+terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4")]

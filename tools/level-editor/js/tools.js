@@ -43,13 +43,8 @@ export const ToolType = {
   SPAWN: 'spawn',
   ERASER: 'eraser',
   DELETE_HEX: 'delete_hex',
-  FLOOD_FILL: 'flood_fill',
 };
 
-export const ElevationMode = {
-  SET: 'set',
-  INCREMENT: 'increment',
-};
 
 /**
  * Look up footprint offsets for a prop type from ProjectContext.
@@ -188,19 +183,19 @@ export class BiomeBrush extends DragBrushTool {
 }
 
 export class ElevationBrush extends DragBrushTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    // Signed delta applied per painted hex. Left-click sets +1, right-
+    // click sets -1; the canvas event handler flips this before calling
+    // onMouseDown so both gestures share the same drag pipeline.
+    this.delta = 1;
+  }
+
   /** @param {{ q: number, r: number }} hex */
   _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     const oldElevation = tile ? tile.elevation : 0;
-    let newElevation;
-
-    if (this.toolManager.elevationMode === ElevationMode.SET) {
-      newElevation = this.toolManager.elevationValue;
-    } else {
-      newElevation = oldElevation + this.toolManager.elevationDelta;
-    }
-    newElevation = Math.max(-32000, Math.min(32000, newElevation));
-
+    const newElevation = Math.max(-32000, Math.min(32000, oldElevation + this.delta));
     if (oldElevation === newElevation) return;
 
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
@@ -209,54 +204,6 @@ export class ElevationBrush extends DragBrushTool {
   }
 }
 
-export class FloodFillTool extends BaseTool {
-  onMouseDown(hex) {
-    if (!hex) return;
-    const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
-
-    const startBiome = tile.biome;
-    const targetBiome = this.toolManager.activeValue || '';
-    if (startBiome === targetBiome) return;
-
-    const visited = new Set();
-    const queue = [{ q: hex.q, r: hex.r }];
-    let head = 0;
-    const commands = [];
-    const SAFETY_LIMIT = 10000;
-
-    while (head < queue.length && commands.length < SAFETY_LIMIT) {
-      const current = queue[head++];
-      const key = `${current.q},${current.r}`;
-      if (visited.has(key)) continue;
-      visited.add(key);
-
-      const t = this.grid.getTile(current.q, current.r);
-      if (!t || t.biome !== startBiome) continue;
-
-      const cmd = new SetBiomeCommand(this.grid, current.q, current.r, startBiome, targetBiome);
-      commands.push(cmd);
-
-      const neighbors = HexMath.getNeighbors(current.q, current.r);
-      for (const n of neighbors) {
-        const nKey = `${n.q},${n.r}`;
-        if (!visited.has(nKey)) {
-          queue.push(n);
-        }
-      }
-    }
-
-    if (commands.length > 0) {
-      const batch = new BatchCommand(commands);
-      this.commandHistory.execute(batch);
-    }
-
-    if (commands.length >= SAFETY_LIMIT) {
-      console.warn(`FloodFill: safety limit of ${SAFETY_LIMIT} tiles reached. Some tiles may not have been filled.`);
-      this.toolManager.onStatus?.(`Warning: flood fill stopped at ${SAFETY_LIMIT} tile limit.`);
-    }
-  }
-}
 
 export class EraserTool extends DragBrushTool {
   /** @param {{ q: number, r: number, sq?: number, sr?: number }} hex */
@@ -389,9 +336,6 @@ export class ToolManager {
     this.activeToolType = null;
     /** @type {string|null} */
     this.activeValue = null;
-    this.elevationMode = ElevationMode.SET;
-    this.elevationValue = 0;
-    this.elevationDelta = 1;
     /** @type {string} Active prop category for the Prop tool */
     this.activeCategory = 'plant';
     /** @type {string} Active origin for the Prop tool */
@@ -445,9 +389,6 @@ export class ToolManager {
         break;
       case ToolType.DELETE_HEX:
         this.activeTool = new DeleteHexTool(this.grid, this.commandHistory, this);
-        break;
-      case ToolType.FLOOD_FILL:
-        this.activeTool = new FloodFillTool(this.grid, this.commandHistory, this);
         break;
       default:
         this.activeTool = null;

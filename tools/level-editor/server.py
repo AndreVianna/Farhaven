@@ -36,13 +36,43 @@ SCAN_DIRS = {
 # Only allow access to files under these prefixes
 ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/', 'data/recipes/', 'data/events/', 'data/journal/', 'data/cutscenes/']
 
+# Individual files permitted at paths outside ALLOWED_PREFIXES. Kept narrow —
+# each entry is a full relative path, not a prefix.
+ALLOWED_FILES = {'data/game_settings.tres'}
+
+# Read-only binary asset prefixes served via /api/asset (e.g. terrain
+# textures the editor previews). Kept separate from the writable
+# ALLOWED_PREFIXES so a stray POST can never overwrite a PNG.
+ALLOWED_ASSET_PREFIXES = ['assets/textures/']
+
+# Extensions we'll serve through /api/asset, mapped to MIME types.
+ASSET_MIME = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+}
+
 
 def is_safe_path(rel_path):
     """Ensure the path doesn't escape allowed directories."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
     if '..' in normalized:
         return False
+    if normalized in ALLOWED_FILES:
+        return True
     return any(normalized.startswith(prefix) for prefix in ALLOWED_PREFIXES)
+
+
+def is_safe_asset_path(rel_path):
+    """Read-only check for /api/asset and /api/list-assets serving."""
+    normalized = os.path.normpath(rel_path).replace('\\', '/')
+    if '..' in normalized:
+        return False
+    # Accept both the exact directory ('assets/textures') and paths
+    # under it ('assets/textures/biomes/foo.png') so callers don't
+    # have to worry about trailing slashes.
+    return any(normalized.startswith(p.rstrip('/')) for p in ALLOWED_ASSET_PREFIXES)
 
 
 def discover_files():
@@ -84,6 +114,46 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
             with open(full_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             self._text_response(200, content)
+
+        elif path == '/api/list-assets':
+            rel_dir = params.get('dir', [''])[0]
+            if not rel_dir or not is_safe_asset_path(rel_dir):
+                self._json_response(400, {'error': 'Invalid asset directory'})
+                return
+            ext = params.get('ext', ['.png'])[0].lower()
+            if ext not in ASSET_MIME:
+                self._json_response(400, {'error': f'Unsupported extension: {ext}'})
+                return
+            full_dir = os.path.join(PROJECT_ROOT, rel_dir)
+            files = []
+            if os.path.isdir(full_dir):
+                for name in sorted(os.listdir(full_dir)):
+                    if name.endswith(ext):
+                        files.append(name)
+            self._json_response(200, {'dir': rel_dir, 'files': files})
+
+        elif path == '/api/asset':
+            rel_path = params.get('path', [''])[0]
+            if not rel_path or not is_safe_asset_path(rel_path):
+                self._json_response(400, {'error': 'Invalid asset path'})
+                return
+            ext = os.path.splitext(rel_path)[1].lower()
+            mime = ASSET_MIME.get(ext)
+            if mime is None:
+                self._json_response(415, {'error': f'Unsupported asset type: {ext}'})
+                return
+            full_path = os.path.join(PROJECT_ROOT, rel_path)
+            if not os.path.isfile(full_path):
+                self._json_response(404, {'error': f'Asset not found: {rel_path}'})
+                return
+            with open(full_path, 'rb') as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', len(body))
+            self.send_header('Cache-Control', 'public, max-age=300')
+            self.end_headers()
+            self.wfile.write(body)
 
         else:
             super().do_GET()

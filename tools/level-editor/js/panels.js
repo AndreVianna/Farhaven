@@ -66,6 +66,85 @@ export function showInlineModal(label, defaultValue, callback) {
 }
 
 /**
+ * Show an inline modal dialog with multiple text inputs. Callback receives
+ * an Array<string> in the same order as the `fields` argument, or null on
+ * cancel. Each field is { label, defaultValue, placeholder? }.
+ * @param {string} title
+ * @param {Array<{label: string, defaultValue?: string, placeholder?: string}>} fields
+ * @param {function(Array<string>|null):void} callback
+ * @returns {void}
+ */
+export function showInlineFormModal(title, fields, callback) {
+  const existing = document.getElementById('inline-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'inline-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:360px;color:var(--text-primary);';
+
+  if (title) {
+    const titleEl = document.createElement('div');
+    titleEl.textContent = title;
+    titleEl.style.cssText = 'margin-bottom:12px;font-size:16px;font-weight:600;';
+    dialog.appendChild(titleEl);
+  }
+
+  /** @type {HTMLInputElement[]} */
+  const inputs = [];
+  for (const field of fields) {
+    const labelEl = document.createElement('div');
+    labelEl.textContent = field.label;
+    labelEl.style.cssText = 'margin-bottom:4px;font-size:13px;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = field.defaultValue != null ? String(field.defaultValue) : '';
+    if (field.placeholder) input.placeholder = field.placeholder;
+    input.style.cssText = 'width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;margin-bottom:10px;box-sizing:border-box;';
+
+    dialog.appendChild(labelEl);
+    dialog.appendChild(input);
+    inputs.push(input);
+  }
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+
+  const btnOk = document.createElement('button');
+  btnOk.textContent = 'OK';
+  btnOk.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+
+  const cleanup = () => overlay.remove();
+  const confirm = () => { cleanup(); callback(inputs.map(i => i.value)); };
+
+  btnCancel.addEventListener('click', () => { cleanup(); callback(null); });
+  btnOk.addEventListener('click', confirm);
+  for (const input of inputs) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirm();
+      if (e.key === 'Escape') { cleanup(); callback(null); }
+    });
+  }
+
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnOk);
+  dialog.appendChild(btnRow);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  if (inputs.length > 0) {
+    inputs[0].focus();
+    inputs[0].select();
+  }
+}
+
+/**
  * Show a modal dialog listing multiple errors. Each error can have
  * hex coordinates, a field name, and a message. Scrollable if long.
  * @param {string} title
