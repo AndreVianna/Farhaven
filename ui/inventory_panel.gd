@@ -262,15 +262,22 @@ class GridCanvas extends Control:
 		queue_redraw()
 
 
-	## Pick the largest cell size that makes the grid exactly as wide as the
-	## available panel width (minus the vertical scrollbar). Cells stay square,
-	## so the grid's height scales with the same cell size.
+	## Pick the largest cell size that fits within the available panel width
+	## (minus the vertical scrollbar). Cells stay square, so the grid's height
+	## scales with the same cell size. If the fitted size would be smaller
+	## than MIN_CELL_SIZE, prefer fitting the full grid over enforcing that
+	## visual minimum — otherwise a wide grid (e.g. 30 cols) would overflow
+	## the panel horizontally, and horizontal scrolling is disabled so the
+	## right edge would be clipped.
 	func _fit_to_width(available_width: int) -> void:
 		if _inventory == null or _inventory.grid_width <= 0 or available_width <= 0:
 			_cell_size = FALLBACK_CELL_SIZE
 			return
 		var computed: int = int(available_width / _inventory.grid_width)
-		_cell_size = max(MIN_CELL_SIZE, computed)
+		if computed >= MIN_CELL_SIZE:
+			_cell_size = computed
+		else:
+			_cell_size = max(1, computed)
 
 
 	func _update_size() -> void:

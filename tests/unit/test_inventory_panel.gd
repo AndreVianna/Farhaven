@@ -96,11 +96,22 @@ func test_close_does_not_emit_panel_opened() -> void:
 	assert_int(_panel_opened_count).is_equal(0)
 
 
-# --- Tool slot construction (always 4 slots in fixed order) ---
+# --- Tool slot construction ---
+## Since delivery-006i only the scanner remains as a body-integrated tool
+## slot. Axe / pickaxe / weapon now live inside the grid inventory and are
+## looked up via Inventory.find_best_tool_for_action().
 
-func test_creates_four_tool_slots() -> void:
+func test_creates_single_tool_slot() -> void:
 	# Tool slots are created in _ready regardless of inventory binding.
-	assert_int(_panel._tool_slot_nodes.size()).is_equal(4)
+	assert_int(_panel._tool_slot_nodes.size()).is_equal(1)
+
+
+func test_only_scanner_slot_exists() -> void:
+	var keys: Array = _panel._tool_slot_nodes.keys()
+	assert_bool(keys.has(&"scanner")).is_true()
+	assert_bool(keys.has(&"axe")).is_false()
+	assert_bool(keys.has(&"pickaxe")).is_false()
+	assert_bool(keys.has(&"weapon")).is_false()
 
 
 func test_tool_slots_use_expected_order() -> void:
@@ -153,12 +164,14 @@ func test_tool_slot_empty_when_no_tool_set() -> void:
 
 
 func test_tool_slot_reflects_equipped_tool() -> void:
-	_inv.set_tool(&"axe", ID_AXE)
+	# Scanner is the only body-integrated tool slot after 006i. Axe/pickaxe/
+	# weapon visual state now lives on grid cells, not on the tool slot row.
+	_inv.set_tool(&"scanner", ID_SCANNER)
 	_panel.set_inventory(_inv)
-	var axe_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"axe"]
+	var scanner_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"scanner"]
 	# After set_inventory, _refresh_all runs and the tool slot should pick up
-	# the axe def's placeholder color (non-empty)
-	assert_bool(axe_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
+	# the scanner def's placeholder color (non-empty).
+	assert_bool(scanner_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
 
 
 # --- Inventory signal propagates when panel is visible ---
@@ -182,11 +195,12 @@ func test_inventory_changed_signal_skipped_when_panel_hidden() -> void:
 
 
 func test_tool_changed_signal_refreshes_tool_slot_when_visible() -> void:
+	# Scanner is the only body-integrated tool slot after 006i.
 	_panel.set_inventory(_inv)
 	_panel.open()
-	_inv.set_tool(&"pickaxe", ID_PICKAXE)
-	var pickaxe_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"pickaxe"]
-	assert_bool(pickaxe_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
+	_inv.set_tool(&"scanner", ID_SCANNER)
+	var scanner_slot: _ToolSlotUI = _panel._tool_slot_nodes[&"scanner"]
+	assert_bool(scanner_slot._icon_rect.color != Color(0.10, 0.10, 0.12)).is_true()
 
 
 func test_set_inventory_twice_disconnects_old_signals() -> void:

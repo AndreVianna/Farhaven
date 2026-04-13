@@ -529,3 +529,61 @@ func test_expand_adds_rows_to_grid() -> void:
 	inv.expand(3)
 	assert_int(inv.grid_height).is_equal(8)
 	assert_float(inv.get_capacity_size()).is_equal(40.0)  # 5 * 8
+
+
+# ---------------------------------------------------------------------------
+# resize_grid — delivery-006i (wholesale grid swap when equipping a container)
+# ---------------------------------------------------------------------------
+
+func test_resize_grid_updates_dimensions() -> void:
+	var inv := _Inventory.new(10, 10)
+	inv.resize_grid(6, 4)
+	assert_int(inv.grid_width).is_equal(6)
+	assert_int(inv.grid_height).is_equal(4)
+	assert_float(inv.get_capacity_size()).is_equal(24.0)
+
+
+func test_resize_grid_preserves_fitting_items() -> void:
+	var inv := _Inventory.new(10, 10)
+	inv.add_item(ID_BERRY, 3)
+	assert_int(inv.get_count(ID_BERRY)).is_equal(3)
+	inv.resize_grid(8, 8)
+	assert_int(inv.get_count(ID_BERRY)).is_equal(3)
+
+
+func test_resize_grid_drops_items_that_no_longer_fit() -> void:
+	# 30-col-wide 4-cell horizontal piece placed at the far right edge of
+	# a big grid no longer fits after a narrow resize. The grid model
+	# drops it with a warning rather than wedging it partially out.
+	var inv := _Inventory.new(10, 10)
+	inv.place_item_at(ID_STONE, Vector2i(8, 8), 0)   # 2x2 at (8,8)
+	assert_bool(inv.get_all_items().is_empty()).is_false()
+	inv.resize_grid(4, 4)
+	# The 2x2 shape at origin (8,8) now reaches cells (9,9) — outside the
+	# 4x4 grid — so the item is dropped by _rebuild_grid.
+	assert_bool(inv.get_all_items().is_empty()).is_true()
+
+
+func test_resize_grid_emits_inventory_changed() -> void:
+	var inv := _Inventory.new(10, 10)
+	var change_count: int = 0
+	inv.inventory_changed.connect(func(): change_count += 1)
+	inv.resize_grid(5, 5)
+	assert_int(change_count).is_equal(1)
+
+
+func test_resize_grid_rejects_zero_dimension() -> void:
+	var inv := _Inventory.new(10, 10)
+	inv.add_item(ID_BERRY, 2)
+	inv.resize_grid(0, 5)
+	# Rejected: dimensions unchanged, items preserved.
+	assert_int(inv.grid_width).is_equal(10)
+	assert_int(inv.grid_height).is_equal(10)
+	assert_int(inv.get_count(ID_BERRY)).is_equal(2)
+
+
+func test_resize_grid_rejects_negative_dimension() -> void:
+	var inv := _Inventory.new(10, 10)
+	inv.resize_grid(-5, 5)
+	assert_int(inv.grid_width).is_equal(10)
+	assert_int(inv.grid_height).is_equal(10)
