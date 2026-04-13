@@ -130,7 +130,13 @@ func _on_map_generated() -> void:
 	_tile_data.clear()
 	_highlights.clear()
 	_build_tile_data()
+	print("[HexGridRenderer] map_generated: HexGrid._tiles=", HexGrid._tiles.size(),
+			" _biome_data=", _biome_data.size(),
+			" _tile_data=", _tile_data.size())
 	_rebuild_mesh()
+	print("[HexGridRenderer] rebuild done: _materials=", _materials.size(),
+			" _bucket_instances=", _bucket_instances.size(),
+			" mesh_null=", _mesh_instance.mesh == null)
 
 
 # --- Public API ---
