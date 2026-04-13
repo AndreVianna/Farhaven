@@ -127,6 +127,11 @@ func _wire_save_triggers(player: Node, crafting: Node) -> void:
 		var save_inv = player.get_inventory()
 		if save_inv != null and save_inv.has_signal("inventory_changed"):
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
+	# Wearable changes (equip/unequip) are state the save must capture —
+	# otherwise swapping a backpack between fires wouldn't persist until
+	# an unrelated inventory_changed happened to fire.
+	if player.has_signal("wearables_changed"):
+		player.wearables_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
 

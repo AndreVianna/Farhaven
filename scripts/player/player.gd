@@ -468,10 +468,16 @@ func load_save_data(data: Dictionary) -> void:
 	if inventory != null and data.has("inventory"):
 		inventory.load_save_data(data["inventory"])
 	# Restore wearables before the starter fallback so saved state wins.
+	# _equip_starter_backpack_if_needed may call equip(), which emits the
+	# signal on its own. If nothing new is equipped (e.g. the save already
+	# had a backpack in Place.BACK), we still need to notify listeners so
+	# the HUD / BodySchemaWidget refresh from the loaded state instead of
+	# staying pinned to whatever was painted at startup.
 	equipped_wearables.clear()
 	if data.has("equipped_wearables"):
 		_load_wearables_data(data["equipped_wearables"])
 	_equip_starter_backpack_if_needed()
+	wearables_changed.emit()
 
 
 func _load_wearables_data(wearables_data: Dictionary) -> void:
