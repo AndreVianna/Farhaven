@@ -53,8 +53,14 @@ func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
 		var inv = player.get_inventory()
 		if inv != null and hud.has_method("connect_inventory"):
 			hud.connect_inventory(inv)
-		if "equipped_container" in player and hud.has_method("connect_container_def"):
-			hud.connect_container_def(player.equipped_container)
+		if player.has_signal("wearables_changed") and hud.has_method("on_wearables_changed"):
+			player.wearables_changed.connect(func(): hud.on_wearables_changed(player))
+			# Paint the initial equipment state — the signal only fires on
+			# subsequent changes and the starter backpack is auto-equipped
+			# before this signal connection exists.
+			hud.on_wearables_changed(player)
+		elif player.has_method("get_equipped_container") and hud.has_method("connect_container_def"):
+			hud.connect_container_def(player.get_equipped_container())
 	if scanner != null and hud.has_method("connect_catalog"):
 		var cat = scanner.get_catalog()
 		if cat != null:
@@ -121,6 +127,11 @@ func _wire_save_triggers(player: Node, crafting: Node) -> void:
 		var save_inv = player.get_inventory()
 		if save_inv != null and save_inv.has_signal("inventory_changed"):
 			save_inv.inventory_changed.connect(SaveManager.mark_dirty)
+	# Wearable changes (equip/unequip) are state the save must capture —
+	# otherwise swapping a backpack between fires wouldn't persist until
+	# an unrelated inventory_changed happened to fire.
+	if player.has_signal("wearables_changed"):
+		player.wearables_changed.connect(SaveManager.mark_dirty)
 	if crafting != null:
 		crafting.craft_completed.connect(func(_n: StringName) -> void: SaveManager.mark_dirty())
 

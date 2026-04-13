@@ -10,25 +10,17 @@ extends PanelContainer
 
 signal panel_opened()
 
-const ToolSlotUI = preload("res://ui/tool_slot_ui.gd")
 ## Uses preload because tests can be parsed before class_name registration completes.
 const _PropDef = preload("res://scripts/data/prop_def.gd")
-
-## Only the scanner stays body-integrated after delivery-006f. Axe, pickaxe,
-## and weapon now live inside the grid inventory and are located via
-## Inventory.find_best_tool_for_action().
-const TOOL_SLOT_ORDER: Array[StringName] = [&"scanner"]
 
 var _inventory = null   # Inventory instance (set via set_inventory)
 var _catalog = null      # Catalog instance (set via set_catalog, optional)
 var _container_def = null  # PropDef of the active container (for header title)
-var _tool_slot_nodes: Dictionary = {}
 var _pending_use_type: StringName = &""
 var _confirm_dialog: ConfirmationDialog
 var _grid_canvas: Control  # GridCanvas inner class instance
 var _pending_inventory = null  # set_inventory() called before _ready()
 
-@onready var _tool_slots_row: HBoxContainer = $VBox/ToolSlotsRow
 @onready var _scroll: ScrollContainer = $VBox/ScrollContainer
 @onready var _close_button: Button = $VBox/Header/CloseButton
 @onready var _title_label: Label = $VBox/Header/TitleLabel
@@ -37,13 +29,6 @@ var _pending_inventory = null  # set_inventory() called before _ready()
 func _ready() -> void:
 	visible = false
 	_close_button.pressed.connect(close)
-
-	# Create tool slot nodes
-	for slot_name: StringName in TOOL_SLOT_ORDER:
-		var ts := ToolSlotUI.new()
-		_tool_slots_row.add_child(ts)
-		ts.setup(slot_name)
-		_tool_slot_nodes[slot_name] = ts
 
 	# Create grid canvas inside the scroll container
 	_grid_canvas = GridCanvas.new()
@@ -83,11 +68,9 @@ func _ready() -> void:
 func set_inventory(inv) -> void:
 	if _inventory != null:
 		_inventory.inventory_changed.disconnect(_on_inventory_changed)
-		_inventory.tool_changed.disconnect(_on_tool_changed)
 	_inventory = inv
 	if _inventory != null:
 		_inventory.inventory_changed.connect(_on_inventory_changed)
-		_inventory.tool_changed.connect(_on_tool_changed)
 		# Guard against set_inventory() being called before _ready() creates
 		# _grid_canvas. We stash the inventory and apply it in _ready().
 		if _grid_canvas != null:
@@ -140,10 +123,6 @@ func _refresh_all() -> void:
 		_grid_canvas._update_size()
 		_grid_canvas.queue_redraw()
 	_refresh_header()
-	for slot_name: StringName in TOOL_SLOT_ORDER:
-		var tool_type: StringName = _inventory.get_tool(slot_name)
-		if _tool_slot_nodes.has(slot_name):
-			(_tool_slot_nodes[slot_name] as ToolSlotUI).refresh(tool_type)
 
 
 func _refresh_header() -> void:
@@ -218,11 +197,6 @@ func _is_toxic_flora(type: StringName) -> bool:
 func _on_inventory_changed() -> void:
 	if visible:
 		_refresh_all()
-
-
-func _on_tool_changed(slot: StringName, new_tool: StringName, _old_tool: StringName) -> void:
-	if visible and _tool_slot_nodes.has(slot):
-		(_tool_slot_nodes[slot] as ToolSlotUI).refresh(new_tool)
 
 
 # ===========================================================================

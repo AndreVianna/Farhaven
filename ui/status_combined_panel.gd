@@ -7,6 +7,7 @@ const _InventoryPanelScene = preload("res://scenes/ui/inventory_panel.tscn")
 const _StatsSection = preload("res://ui/status_stats_section.gd")
 const _DiscoveriesSection = preload("res://ui/status_discoveries_section.gd")
 const _NavSection = preload("res://ui/status_nav_section.gd")
+const _BodySchemaWidget = preload("res://ui/body_schema_widget.gd")
 
 var _inventory_panel: InventoryPanel = null
 # Sections are typed as Node (duck-typed) on purpose: the concrete classes
@@ -18,6 +19,7 @@ var _inventory_panel: InventoryPanel = null
 var _stats_section: Node = null
 var _discoveries_section: Node = null
 var _nav_section: Node = null
+var _body_schema: Control = null
 
 
 func _init() -> void:
@@ -58,6 +60,16 @@ func _build_left_content(parent: VBoxContainer) -> void:
 	_nav_section.name = "NavSection"
 	vbox.add_child(_nav_section)
 
+	# Body schema — humanoid silhouette showing equipped wearables
+	var body_header := Label.new()
+	body_header.text = "EQUIPPED"
+	body_header.add_theme_font_size_override("font_size", 18)
+	vbox.add_child(body_header)
+
+	_body_schema = _BodySchemaWidget.new()
+	_body_schema.name = "BodySchema"
+	vbox.add_child(_body_schema)
+
 	# Spacer pushes everything up
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -93,6 +105,18 @@ func set_catalog(cat) -> void:
 func set_container_def(def) -> void:
 	if _inventory_panel != null:
 		_inventory_panel.set_container_def(def)
+
+
+## Paint the body schema with the player's current equipped_wearables
+## dictionary (Place → PropDef). Called from HUD.on_wearables_changed
+## whenever the player equips/unequips anything.
+func set_equipped_wearables(equipped: Dictionary) -> void:
+	if _body_schema != null and _body_schema.has_method("set_equipped"):
+		_body_schema.set_equipped(equipped)
+
+
+func get_body_schema() -> Control:
+	return _body_schema
 
 
 func set_survival_system(survival: Node) -> void:

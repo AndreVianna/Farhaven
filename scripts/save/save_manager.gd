@@ -25,6 +25,12 @@ const _SYSTEM_KEYS: Array[Dictionary] = [
 ]
 
 var _dirty: bool = false
+
+## True while _distribute_save_data is running. mark_dirty() no-ops when
+## set so signals emitted during save restoration (e.g. Player's
+## wearables_changed on load) don't immediately re-flag the state as
+## dirty and trigger a spurious auto-save after startup.
+var _loading: bool = false
 var _save_timer: Timer
 
 
@@ -56,6 +62,8 @@ func _notification(what: int) -> void:
 # --- Public API ---
 
 func mark_dirty() -> void:
+	if _loading:
+		return
 	_dirty = true
 
 
@@ -90,7 +98,12 @@ func load_game() -> bool:
 		push_error("SaveManager: corrupt save file detected — deleting.")
 		_delete_save()
 		return false
+	_loading = true
 	_distribute_save_data(parsed as Dictionary)
+	_loading = false
+	# Loaded state is canonical — clear any dirty flag set by signals
+	# that fired during distribution.
+	_dirty = false
 	return true
 
 
