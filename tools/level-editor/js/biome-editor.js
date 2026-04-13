@@ -755,14 +755,17 @@ export function renderBiomeEditor(container, options) {
     row2.classList.add('editor-header-grid');
     row2.style.gridTemplateColumns = '1fr 1fr';
 
+    // Elevation fields accept the full signed-16-bit range. We cap the UI
+    // input at -32000..32000 to match the data-model validator (+/- a small
+    // buffer under the true INT16 limit to keep the constraint memorable).
     const minWrap = _makeBiomeFieldWrap('Min Elevation', minInputId);
     const minInput = document.createElement('input');
     minInput.type = 'number';
     minInput.id = minInputId;
     minInput.name = 'elevation_min';
     minInput.value = String(model.elevation_range.min);
-    minInput.min = '0';
-    minInput.max = '9';
+    minInput.min = '-32000';
+    minInput.max = '32000';
     minInput.step = '1';
     minInput.classList.add('prop-input');
     minWrap.appendChild(minInput);
@@ -773,8 +776,8 @@ export function renderBiomeEditor(container, options) {
     maxInput.id = maxInputId;
     maxInput.name = 'elevation_max';
     maxInput.value = String(model.elevation_range.max);
-    maxInput.min = '0';
-    maxInput.max = '9';
+    maxInput.min = '-32000';
+    maxInput.max = '32000';
     maxInput.step = '1';
     maxInput.classList.add('prop-input');
     maxWrap.appendChild(maxInput);
