@@ -22,13 +22,25 @@ const _GameEvent = preload("res://scripts/core/event.gd")
 const _RecipeEffect = preload("res://scripts/recipes/recipe_effect.gd")
 const _EventRegistry = preload("res://scripts/core/event_registry.gd")
 const _Journal = preload("res://scripts/journal/journal.gd")
-const _DiscoveryWatcher = preload("res://scripts/recipes/discovery_watcher.gd")
+
+# discovery_watcher.gd → predicate_evaluator.gd → hex_tile.gd references the
+# `PropRegistry` autoload as a bare identifier. Under the --script runner,
+# that identifier is not registered when step files parse, so `const`
+# preloads fail with "Identifier not found: PropRegistry". Lazy-load after
+# autoloads bootstrap.
+const _DISCOVERY_WATCHER_PATH: String = "res://scripts/recipes/discovery_watcher.gd"
+static var _DiscoveryWatcher: GDScript = null
 
 
 const SPY_META_EVENT := &"_event_flow_event_spy"
 
 
-static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script: GDScript) -> Node:
+static func _ensure_runtime_preloads() -> void:
+	if _DiscoveryWatcher == null:
+		_DiscoveryWatcher = load(_DISCOVERY_WATCHER_PATH)
+
+
+static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script) -> Node:
 	var existing: Node = tree.root.get_node_or_null(NodePath(autoload_name))
 	if existing != null:
 		return existing
@@ -49,6 +61,7 @@ static func _clear_event_spy(er: Node) -> void:
 static func build_world(ctx) -> void:
 	var tree: SceneTree = ctx.get_tree()
 	assert(tree != null, "event_flow steps require a live SceneTree")
+	_ensure_runtime_preloads()
 
 	var er := _get_or_create_autoload(tree, "EventRegistry", _EventRegistry)
 	var journal := _get_or_create_autoload(tree, "Journal", _Journal)

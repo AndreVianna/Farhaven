@@ -238,11 +238,15 @@ func register_steps(registry) -> void:
 	registry.then("every PlaceableCap is a pure marker with no extra fields", func(ctx):
 		var defs: Array = ctx.get_value("propdefs", [])
 		# Properties inherited from Resource/RefCounted are expected; any @export
-		# beyond those means PlaceableCap is no longer a pure marker.
+		# beyond those means PlaceableCap has gained unexpected fields. Since
+		# delivery-006e, `footprint` is an authored field on PlaceableCap
+		# (replacing the deprecated PropDef.footprint), so it is whitelisted
+		# here — but any NEW field beyond that still fails the test.
 		var baseline_props: Array[String] = [
 			"resource_local_to_scene", "resource_path", "resource_name",
 			"script", "RefCounted", "resource_scene_unique_id",
 		]
+		var allowed_cap_fields: Array[String] = ["footprint"]
 		for def in defs:
 			if def.placeable == null:
 				continue
@@ -252,10 +256,13 @@ func register_steps(registry) -> void:
 				# Skip built-in Resource/meta properties
 				if name in baseline_props or name.begins_with("_") or name == "":
 					continue
+				if name in allowed_cap_fields:
+					continue
 				# USAGE_DEFAULT (bit 1) marks @export properties in Godot 4
 				if p["usage"] & PROPERTY_USAGE_STORAGE:
 					ctx.assert_true(false,
-						"PlaceableCap on '%s' has unexpected field '%s' — should be a pure marker" % [def.id, name])
+						"PlaceableCap on '%s' has unexpected field '%s' — should be a pure marker (except allowed: %s)" %
+						[def.id, name, allowed_cap_fields])
 	)
 
 	# --- Given: Events ---
