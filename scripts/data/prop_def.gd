@@ -17,6 +17,7 @@ class_name PropDef extends Gear
 @export var combat: CombatCap = null
 @export var behavior: BehaviorCap = null
 @export var spawnable: SpawnableCap = null
+@export var wearable: WearableCap = null
 
 # --- Inventory ---
 ## Temporary — kept during transition, will be replaced by PORTABLE.weight in task-049.
@@ -92,6 +93,7 @@ func has_capability(cap_name: StringName) -> bool:
 		&"combat": return combat != null
 		&"behavior": return behavior != null
 		&"spawnable": return spawnable != null
+		&"wearable": return wearable != null
 	return false
 
 

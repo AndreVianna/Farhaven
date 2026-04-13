@@ -6,6 +6,12 @@ extends Node3D
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Inventory = preload("res://scripts/inventory/inventory.gd")
+const _PropDef = preload("res://scripts/data/prop_def.gd")
+
+## Starter equipment: the PropDef id of the backpack the player begins with.
+## Read on _ready() — if no equipped_container is set at that point, the player
+## is equipped with this prop and their inventory is sized from its ContainerCap.
+const STARTER_BACKPACK_ID: StringName = &"P00301"
 
 enum MoveState { IDLE, WALKING, JUMPING }
 
@@ -23,6 +29,11 @@ const JUMP_ARC_HEIGHT: float = 0.5
 var current_tile: Vector2i = Vector2i.ZERO
 var move_state: MoveState = MoveState.IDLE
 var facing_direction: Vector2 = Vector2.ZERO
+
+## The PropDef currently equipped on the player's back. Its ContainerCap
+## dimensions drive the inventory grid. Set on _ready() from
+## STARTER_BACKPACK_ID when no save has assigned one yet.
+var equipped_container: _PropDef = null
 var inventory: _Inventory = _Inventory.new()
 
 var _grid: Node  # HexGrid reference (autoload or test substitute)
@@ -38,6 +49,7 @@ var _was_moving: bool = false
 
 
 func _ready() -> void:
+	_equip_starter_backpack_if_needed()
 	if _grid == null:
 		_grid = HexGrid
 	_grid.map_generated.connect(_on_map_generated)
@@ -52,6 +64,26 @@ func _ready() -> void:
 
 func get_inventory() -> _Inventory:
 	return inventory
+
+
+## Equips the starter backpack and resizes the inventory grid to its
+## ContainerCap dimensions. Idempotent — no-op if equipped_container is
+## already set (e.g. a save restored one first) or if PropRegistry is not
+## available yet (e.g. unit tests without autoloads). The grid is only
+## resized when the inventory is empty; if items were loaded from a save,
+## the serialized grid dimensions are preserved so nothing is dropped.
+func _equip_starter_backpack_if_needed() -> void:
+	if equipped_container != null:
+		return
+	var registry: Node = get_node_or_null("/root/PropRegistry")
+	if registry == null or not registry.has_method("get_def"):
+		return
+	var def: _PropDef = registry.get_def(STARTER_BACKPACK_ID)
+	if def == null or def.container == null:
+		return
+	equipped_container = def
+	if inventory.get_all_items().is_empty():
+		inventory.resize_grid(def.container.grid_width, def.container.grid_height)
 
 
 func _connect_player_input() -> void:
@@ -376,6 +408,7 @@ func get_save_data() -> Dictionary:
 
 
 func load_save_data(data: Dictionary) -> void:
+	_equip_starter_backpack_if_needed()
 	var col: int = data.get("tile_col", 0)
 	var row: int = data.get("tile_row", 0)
 	current_tile = Vector2i(col, row)
