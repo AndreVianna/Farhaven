@@ -170,18 +170,32 @@ func _build_tile_data() -> void:
 func _pick_variation_idx(bd: BiomeData, coords: Vector2i) -> int:
 	if bd == null or bd.terrain_textures.is_empty():
 		return 0
-	var hash_val: int = (coords.x * 73856093) ^ (coords.y * 19349663)
-	return absi(hash_val) % bd.terrain_textures.size()
+	return absi(_hash_coords(coords, 0)) % bd.terrain_textures.size()
 
 
 ## Deterministic per-tile UV rotation in radians (one of 0°, 90°, 180°, 270°).
-## Multiplies effective variation by 4 with no extra texture assets — the
-## same texture rotated four ways looks like four different patches.
-## Different prime constants from `_pick_variation_idx` so rotation and
-## variation aren't perfectly correlated.
+## Multiplies effective variation by 4 with no extra texture assets.
+## Uses a different seed from `_pick_variation_idx` so rotation and
+## variation aren't correlated along any lattice direction.
 func _pick_rotation_radians(coords: Vector2i) -> float:
-	var hash_val: int = (coords.x * 374761393) ^ (coords.y * 668265263)
-	return float(absi(hash_val) % 4) * (PI / 2.0)
+	return float(absi(_hash_coords(coords, 1)) % 4) * (PI / 2.0)
+
+
+## PCG-style integer hash that mixes both axes so the bottom bits of
+## the result don't correlate with the bottom bits of the inputs.
+## The earlier straight `(x * P1) ^ (y * P2)` version produced visible
+## diagonal stripes in both variation and rotation because both primes
+## happened to be 1 and 3 mod 4 — `hash % 4` was `(q + 3r) % 4` for
+## both, making them share the same diagonal pattern.
+##
+## Changing primes alone wouldn't have broken the correlation BETWEEN
+## the two hashes, so `seed` also enters the mix to keep variation
+## and rotation statistically independent.
+func _hash_coords(coords: Vector2i, seed: int) -> int:
+	var h: int = coords.x * 374761393 + coords.y * 668265263 + seed * 2246822519
+	h = (h ^ (h >> 13)) * 1274126177
+	h = h ^ (h >> 16)
+	return h
 
 
 ## Rebuild every MeshInstance3D bucket from current _tile_data.

@@ -11,37 +11,38 @@
 
 import { ProjectContext } from './file-discovery.js';
 
-const VAR_PRIME_X = 73856093n;
-const VAR_PRIME_Y = 19349663n;
-const ROT_PRIME_X = 374761393n;
-const ROT_PRIME_Y = 668265263n;
-
 function _absBigInt(n) { return n < 0n ? -n : n; }
 
 /**
- * Variation index in [0, n). Matches GDScript:
- *   absi((x * 73856093) ^ (y * 19349663)) % n
- * @param {number} q
- * @param {number} r
- * @param {number} n
- * @returns {number}
+ * PCG-style integer hash matching HexGridRenderer._hash_coords in
+ * scenes/world/hex_grid_renderer.gd. GDScript `int` is 64-bit signed
+ * and wraps on overflow; BigInt is unbounded, so every step that
+ * could overflow gets clamped back with BigInt.asIntN(64) to keep
+ * the bit pattern identical to the engine.
  */
-export function pickVariationIdx(q, r, n) {
-  if (n <= 0) return 0;
-  const h = (BigInt(q) * VAR_PRIME_X) ^ (BigInt(r) * VAR_PRIME_Y);
-  return Number(_absBigInt(h) % BigInt(n));
+function _hashCoords(q, r, seed) {
+  const i64 = (x) => BigInt.asIntN(64, x);
+  let h = i64(BigInt(q) * 374761393n + BigInt(r) * 668265263n + BigInt(seed) * 2246822519n);
+  h = i64((h ^ (h >> 13n)) * 1274126177n);
+  h = h ^ (h >> 16n);
+  return h;
 }
 
 /**
- * Rotation in radians (one of 0, π/2, π, 3π/2). Matches GDScript:
- *   (absi((x * 374761393) ^ (y * 668265263)) % 4) * (PI / 2)
- * @param {number} q
- * @param {number} r
- * @returns {number}
+ * Variation index in [0, n). Matches GDScript
+ * `absi(_hash_coords(coords, 0)) % n`.
+ */
+export function pickVariationIdx(q, r, n) {
+  if (n <= 0) return 0;
+  return Number(_absBigInt(_hashCoords(q, r, 0)) % BigInt(n));
+}
+
+/**
+ * Rotation in radians (one of 0, π/2, π, 3π/2). Matches GDScript
+ * `(absi(_hash_coords(coords, 1)) % 4) * (PI / 2)`.
  */
 export function pickRotationRadians(q, r) {
-  const h = (BigInt(q) * ROT_PRIME_X) ^ (BigInt(r) * ROT_PRIME_Y);
-  return Number(_absBigInt(h) % 4n) * (Math.PI / 2);
+  return Number(_absBigInt(_hashCoords(q, r, 1)) % 4n) * (Math.PI / 2);
 }
 
 // ============================================================
