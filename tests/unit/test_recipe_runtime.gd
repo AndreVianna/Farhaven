@@ -148,7 +148,7 @@ func _ensure_prop_def(id: StringName) -> void:
 	def.id = id
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.size = 0.1
+	cap.slot_shape = [Vector2i(0, 0)]
 	def.portable = cap
 	PropRegistry._defs[id] = def
 

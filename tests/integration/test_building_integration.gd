@@ -529,22 +529,29 @@ func _on_placement_exited() -> void:
 func test_storage_chest_increases_capacity_size() -> void:
 	_add_materials(8, 4, 0)
 	var initial_capacity: float = _inventory.capacity_size
-	assert_float(initial_capacity).is_equal(50.0)
 
 	var ok: bool = _do_build(RID_STORAGE_CHEST)
 	assert_bool(ok).override_failure_message("Storage chest build should succeed").is_true()
 
-	assert_float(_inventory.capacity_size).is_equal(100.0)
+	# Capacity increases by at least 50 cells (grid setter rounds up to a
+	# full row of grid_width cells).
+	var delta: float = _inventory.capacity_size - initial_capacity
+	assert_float(delta).is_greater_equal(50.0)
+	assert_float(delta).is_less(50.0 + float(_inventory.grid_width))
 
 
 func test_storage_chest_capacity_is_additive() -> void:
 	_add_materials(16, 8, 0)
 
+	var initial_capacity: float = _inventory.capacity_size
 	_do_build(RID_STORAGE_CHEST, ADJACENT_TILE)
-	assert_float(_inventory.capacity_size).is_equal(100.0)
+	var after_one: float = _inventory.capacity_size
+	assert_float(after_one - initial_capacity).is_greater_equal(50.0)
 
 	_do_build(RID_STORAGE_CHEST, ADJACENT_TILE_2)
-	assert_float(_inventory.capacity_size).is_equal(150.0)
+	var after_two: float = _inventory.capacity_size
+	assert_float(after_two - after_one).is_greater_equal(50.0)
+	assert_float(after_two - initial_capacity).is_greater_equal(100.0)
 
 
 # ===========================================================================
@@ -910,14 +917,15 @@ func test_end_to_end_workbench_build() -> void:
 
 func test_end_to_end_storage_chest_build() -> void:
 	_add_materials(8, 4, 0)
+	var initial_capacity: float = _inventory.capacity_size
 
 	_do_build(RID_STORAGE_CHEST)
 
 	# Structure on tile.
 	assert_bool(_tile_has_prop_type(ADJACENT_TILE, ID_STORAGE_CHEST)).is_true()
 
-	# Capacity increased.
-	assert_float(_inventory.capacity_size).is_equal(100.0)
+	# Capacity increased by at least 50 cells.
+	assert_float(_inventory.capacity_size - initial_capacity).is_greater_equal(50.0)
 
 	# Materials consumed.
 	assert_int(_get_wood_count()).is_equal(0)
