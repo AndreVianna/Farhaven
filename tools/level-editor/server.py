@@ -36,12 +36,18 @@ SCAN_DIRS = {
 # Only allow access to files under these prefixes
 ALLOWED_PREFIXES = ['data/maps/', 'data/props/', 'data/biomes/', 'data/catalog/', 'data/recipes/', 'data/events/', 'data/journal/', 'data/cutscenes/']
 
+# Individual files permitted at paths outside ALLOWED_PREFIXES. Kept narrow —
+# each entry is a full relative path, not a prefix.
+ALLOWED_FILES = {'data/game_settings.tres'}
+
 
 def is_safe_path(rel_path):
     """Ensure the path doesn't escape allowed directories."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
     if '..' in normalized:
         return False
+    if normalized in ALLOWED_FILES:
+        return True
     return any(normalized.startswith(prefix) for prefix in ALLOWED_PREFIXES)
 
 

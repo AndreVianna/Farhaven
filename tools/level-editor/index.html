@@ -324,7 +324,8 @@ html, body {
 
 #tab-mineral, #tab-plant, #tab-animal, #tab-fungi, #tab-ooze, #tab-liquid,
 #tab-stuff, #tab-structure, #tab-equipment, #tab-vehicle, #tab-storage,
-#tab-biomes, #tab-recipes, #tab-events, #tab-journal, #tab-cutscenes {
+#tab-biomes, #tab-recipes, #tab-events, #tab-journal, #tab-cutscenes,
+#tab-settings {
   flex-direction: column;
   gap: 0;
 }
@@ -885,6 +886,7 @@ html, body {
       <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="journal">Journal</button>
       <button class="tab-btn" data-tab="cutscenes">Cutscenes</button>
+      <button class="tab-btn" data-tab="settings">Game Settings</button>
     </nav>
     <main id="tab-content">
       <div id="tab-map" class="tab-panel active">
@@ -989,6 +991,9 @@ html, body {
       </div>
       <div id="tab-cutscenes" class="tab-panel">
         <p style="color: var(--text-secondary);">Cutscene Editor</p>
+      </div>
+      <div id="tab-settings" class="tab-panel">
+        <p style="color: var(--text-secondary);">Game Settings</p>
       </div>
     </main>
     <footer id="status-bar">

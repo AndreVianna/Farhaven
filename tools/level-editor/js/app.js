@@ -20,6 +20,7 @@ import { renderRecipeEditor } from './recipe-editor.js';
 import { renderEventEditor } from './event-editor.js';
 import { renderJournalEditor } from './journal-editor.js';
 import { renderCutsceneEditor } from './cutscene-editor.js';
+import { renderSettingsEditor } from './settings-editor.js';
 
 // ============================================================
 // Module-level state
@@ -84,6 +85,7 @@ const TAB_LABELS = {
   events: 'Events',
   journal: 'Journal',
   cutscenes: 'Cutscenes',
+  settings: 'Game Settings',
 };
 
 /** Tab IDs that show the prop editor (one per category). */
@@ -275,18 +277,15 @@ function newMap() {
   showInlineFormModal('Create New Map', [
     { label: 'Chapter ID', defaultValue: 'ch1', placeholder: 'e.g. ch1' },
     { label: 'Map Name', defaultValue: 'New Map', placeholder: 'Human-readable name' },
-    { label: 'Filename', defaultValue: '', placeholder: 'e.g. ch1_overworld (no .json)' },
   ], async (values) => {
     if (values === null) return;
     const chapterId = (values[0] || '').trim() || 'ch1';
     const mapName = (values[1] || '').trim() || 'New Map';
-    let filenameStem = (values[2] || '').trim();
-    if (filenameStem === '') {
-      // Derive a filesystem-safe stem from the name when the user
-      // doesn't supply one explicitly.
-      filenameStem = mapName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'new_map';
-    }
-    if (!filenameStem.endsWith('.json')) filenameStem += '.json';
+    // Filename is derived from the Chapter ID so the on-disk name
+    // matches how the game references maps (GameSettings.starting_map
+    // and SaveManager.current_map both use short filenames like
+    // "ch1.json").
+    const filenameStem = `${chapterId}.json`;
 
     if (ProjectContext.files.maps.has(filenameStem)) {
       showError(`A map named "${filenameStem}" already exists. Pick a different filename.`);
@@ -311,6 +310,7 @@ function newMap() {
       dirtyTracker.markAllClean();
       if (hexCanvas) hexCanvas.requestRender();
       _rebuildColorMaps();
+      _refreshMapSelector();
       setStatus(`New map "${mapName}" created (${filenameStem}).`);
     } catch (err) {
       showError(`Failed to save new map: ${err.message}`);
@@ -650,6 +650,15 @@ function initializeAfterLoad() {
       onSave: () => { dirtyTracker.markClean('cutscenes'); },
     });
     console.log('Cutscene editor rendered.');
+  }
+
+  // Render Game Settings editor (singleton form — data/game_settings.tres)
+  const settingsTabEl = document.getElementById('tab-settings');
+  if (settingsTabEl) {
+    renderSettingsEditor(settingsTabEl, {
+      onSave: () => setStatus('Game settings saved.'),
+    }).catch((err) => console.warn(`Settings editor failed to load: ${err.message}`));
+    console.log('Settings editor rendered.');
   }
 
   // Initialize sidebar palettes and tool buttons (task-012b)
