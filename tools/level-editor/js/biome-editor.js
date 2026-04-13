@@ -5,9 +5,7 @@
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-
-// Counter for generating unique biome header input IDs (for label htmlFor).
-let _biomeHeaderCounter = 0;
+import { renderGearHeader } from './editor-common.js';
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
@@ -21,6 +19,10 @@ export class BiomeDataModel {
     this._id = '';
     /** @type {string} Human-readable display name (inherited from Gear). */
     this.display_name = '';
+    /** @type {string} One-line summary for tooltips/lists (inherited from Gear). */
+    this.short_description = '';
+    /** @type {string} Long-form description for detail panels (inherited from Gear). */
+    this.long_description = '';
     /** @type {Array<{ type: string, chance: number, min_amount: number, max_amount: number }>} */
     this.prop_table = [];
     /** @type {{ r: number, g: number, b: number, a: number }} */
@@ -77,6 +79,8 @@ export class BiomeDataModel {
     // display_name is the human-readable label. Accept either the new
     // `display_name` field or legacy `biome_name` for backward compat.
     model.display_name = _str(d.display_name) || _str(d.biome_name);
+    model.short_description = _str(d.short_description);
+    model.long_description = _str(d.long_description);
 
     // prop_table: TresParser stores as TresValue[] (untyped array).
     // Each element is a TresValue { type: 'dict', value: Map<string, TresValue> }.
@@ -232,6 +236,8 @@ function _modelToPlain(model) {
   return {
     id: model.id,
     display_name: model.display_name,
+    short_description: model.short_description,
+    long_description: model.long_description,
     prop_table: model.prop_table,
     color: model.color,
     color_variations: model.color_variations,
@@ -530,7 +536,7 @@ export function renderBiomeEditor(container, options) {
     // ── Biome header (id + display_name + elevation min/max on one row) ──
     const biomeHeaderWrap = document.createElement('div');
     biomeHeaderWrap.style.cssText = 'padding:10px 14px 0;';
-    _renderBiomeHeader(biomeHeaderWrap, model, isNew);
+    renderGearHeader(biomeHeaderWrap, model, { idReadonly: true });
     form.appendChild(biomeHeaderWrap);
 
     // ── Two-column body (left: Resource Table, right: Colors) ──
@@ -673,8 +679,8 @@ export function renderBiomeEditor(container, options) {
     const grid = document.createElement('div');
     grid.className = 'prop-grid';
 
-    // Note: id/display_name are rendered above
-    // this tab via _renderBiomeHeader() in _renderDetail.
+    // Note: id/display_name/short_description/long_description are rendered
+    // above this tab via the shared renderGearHeader() in _renderDetail.
 
     // Separator — Resource Table
     const resSep = document.createElement('div');
@@ -690,73 +696,6 @@ export function renderBiomeEditor(container, options) {
 
     wrapper.appendChild(grid);
     return wrapper;
-  }
-
-  /**
-   * Render the biome-specific header: ID (read-only) + Display Name on a
-   * single row. Sets name= attributes for _collectBiomeFormData.
-   * @param {HTMLElement} container
-   * @param {BiomeDataModel} model
-   * @param {boolean} isNew
-   * @returns {void}
-   */
-  function _renderBiomeHeader(container, model, isNew) {
-    const grid = document.createElement('div');
-    grid.classList.add('editor-gear-header');
-
-    // Generate unique IDs for label htmlFor association.
-    const headerId = `biome-header-${++_biomeHeaderCounter}`;
-    const idInputId = `${headerId}-id`;
-    const nameInputId = `${headerId}-name`;
-
-    // Row 1: ID + Display Name
-    const row1 = document.createElement('div');
-    row1.classList.add('editor-header-grid');
-
-    const idWrap = _makeBiomeFieldWrap('ID', idInputId);
-    const idInput = document.createElement('input');
-    idInput.type = 'text';
-    idInput.id = idInputId;
-    idInput.value = model.id;
-    idInput.classList.add('prop-input');
-    idInput.disabled = true;
-    idWrap.appendChild(idInput);
-
-    const nameWrap = _makeBiomeFieldWrap('Display Name', nameInputId);
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.id = nameInputId;
-    nameInput.name = 'display_name';
-    nameInput.value = model.display_name;
-    nameInput.classList.add('prop-input');
-    if (!isNew) nameInput.disabled = true;
-    nameWrap.appendChild(nameInput);
-
-    row1.appendChild(idWrap);
-    row1.appendChild(nameWrap);
-    grid.appendChild(row1);
-
-    container.appendChild(grid);
-  }
-
-  /**
-   * Build a label-above-input wrapper for the biome header. Associates the
-   * label with the input via htmlFor when an inputId is provided.
-   * @param {string} labelText
-   * @param {string} [inputId]
-   * @returns {HTMLElement}
-   */
-  function _makeBiomeFieldWrap(labelText, inputId) {
-    const wrap = document.createElement('div');
-    wrap.classList.add('editor-field-wrap');
-    const label = document.createElement('label');
-    label.textContent = labelText;
-    label.classList.add('prop-label');
-    if (inputId) {
-      label.htmlFor = inputId;
-    }
-    wrap.appendChild(label);
-    return wrap;
   }
 
   /**
@@ -1075,8 +1014,10 @@ function _collectBiomeFormData(formElement) {
     return isNaN(v) ? 0 : v;
   }
 
-  // Identity
+  // Identity (Gear fields)
   model.display_name = val('display_name').trim();
+  model.short_description = val('short_description').trim();
+  model.long_description = val('long_description');
 
   // Color
   model.color = _hexToColor(val('color'));
@@ -1195,6 +1136,15 @@ export function biomeModelToRaw(model) {
 
   // display_name: string (from Gear)
   fields.set('display_name', { type: 'string', value: model.display_name });
+
+  // short_description and long_description: only emitted when non-empty so
+  // freshly-created biomes don't carry empty placeholder lines.
+  if (model.short_description) {
+    fields.set('short_description', { type: 'string', value: model.short_description });
+  }
+  if (model.long_description) {
+    fields.set('long_description', { type: 'string', value: model.long_description });
+  }
 
   // prop_table: untyped array of dicts
   // Each dict has string keys: "chance", "max_amount", "min_amount", "type"
