@@ -1,9 +1,13 @@
 class_name GameSettings
-extends Gear
+extends Resource
 
 ## Game-wide configuration loaded at startup. Singleton resource at
 ## `res://data/game_settings.tres` — there is exactly one instance and
 ## it carries the choices that live above any single map or save.
+##
+## NOT a `Gear`: this is engine-level configuration, not something the
+## player picks up, displays, or interacts with. No id / display_name /
+## descriptions — just the knobs that govern startup.
 ##
 ## Precedence when deciding which map to load on startup:
 ##

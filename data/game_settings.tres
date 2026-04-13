@@ -4,7 +4,4 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"GAME_SETTINGS"
-display_name = "Game Settings"
-short_description = "Global configuration that governs game startup."
 starting_map = "ch1.json"

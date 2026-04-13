@@ -16,25 +16,19 @@
 
 import { TresParser, TresFile } from './tres-parser.js';
 import { FileDiscovery, ProjectContext } from './file-discovery.js';
-import { renderGearHeader } from './editor-common.js';
 
 const FILE_DIR = 'data';
 const FILE_NAME = 'game_settings.tres';
 const FILE_PATH = `${FILE_DIR}/${FILE_NAME}`;
 const SCRIPT_CLASS = 'GameSettings';
 const SCRIPT_PATH = 'res://scripts/data/game_settings.gd';
-const DEFAULT_ID = 'GAME_SETTINGS';
-const DEFAULT_DISPLAY_NAME = 'Game Settings';
 
 /**
- * Editable model for GameSettings.
+ * Editable model for GameSettings. Plain Resource — not a Gear — so no
+ * id / display_name / descriptions; just engine-level knobs.
  */
 export class GameSettingsModel {
   constructor() {
-    this.id = DEFAULT_ID;
-    this.display_name = DEFAULT_DISPLAY_NAME;
-    this.short_description = '';
-    this.long_description = '';
     /** @type {string} Filename relative to data/maps (e.g. "ch1.json"). */
     this.starting_map = 'ch1.json';
     /** @type {TresFile|null} Round-trip handle to preserve unknown fields. */
@@ -48,10 +42,6 @@ export class GameSettingsModel {
     for (const [k, tv] of raw.resourceFields) {
       data[k] = tv.value;
     }
-    if (data.id != null) model.id = String(data.id);
-    if (data.display_name != null) model.display_name = String(data.display_name);
-    if (data.short_description != null) model.short_description = String(data.short_description);
-    if (data.long_description != null) model.long_description = String(data.long_description);
     if (data.starting_map != null) model.starting_map = String(data.starting_map);
     return model;
   }
@@ -78,14 +68,6 @@ function modelToRaw(model) {
 
   const fields = new Map();
   fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
-  fields.set('id', { type: 'stringname', value: model.id || DEFAULT_ID });
-  fields.set('display_name', { type: 'string', value: model.display_name || DEFAULT_DISPLAY_NAME });
-  if (model.short_description) {
-    fields.set('short_description', { type: 'string', value: model.short_description });
-  }
-  if (model.long_description) {
-    fields.set('long_description', { type: 'string', value: model.long_description });
-  }
   fields.set('starting_map', { type: 'string', value: model.starting_map || 'ch1.json' });
 
   // Preserve forward-compat fields (future additions we don't edit here).
@@ -140,11 +122,6 @@ export async function renderSettingsEditor(container, options) {
   info.style.margin = '0 0 12px 0';
   info.textContent = `Editing ${FILE_PATH} (singleton). Changes persist on Save.`;
   container.appendChild(info);
-
-  // Gear fields (id / display_name / short / long)
-  const headerWrap = document.createElement('div');
-  container.appendChild(headerWrap);
-  renderGearHeader(headerWrap, model, { idReadonly: true });
 
   // starting_map dropdown (with text-input fallback)
   const startWrap = document.createElement('div');
