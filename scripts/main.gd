@@ -53,10 +53,14 @@ func _wire_hud(player: Node, scanner: Node, auto_interaction: Node,
 		var inv = player.get_inventory()
 		if inv != null and hud.has_method("connect_inventory"):
 			hud.connect_inventory(inv)
-		if player.has_method("get_equipped_container") and hud.has_method("connect_container_def"):
-			hud.connect_container_def(player.get_equipped_container())
 		if player.has_signal("wearables_changed") and hud.has_method("on_wearables_changed"):
 			player.wearables_changed.connect(func(): hud.on_wearables_changed(player))
+			# Paint the initial equipment state — the signal only fires on
+			# subsequent changes and the starter backpack is auto-equipped
+			# before this signal connection exists.
+			hud.on_wearables_changed(player)
+		elif player.has_method("get_equipped_container") and hud.has_method("connect_container_def"):
+			hud.connect_container_def(player.get_equipped_container())
 	if scanner != null and hud.has_method("connect_catalog"):
 		var cat = scanner.get_catalog()
 		if cat != null:

@@ -105,6 +105,18 @@ func connect_container_def(def) -> void:
 	_status_panel.set_container_def(def)
 
 
+## Refresh both the inventory header (equipped container) and the body
+## schema to mirror the player's current equipped_wearables. Wired up
+## in main.gd to the player's wearables_changed signal.
+func on_wearables_changed(player: Node) -> void:
+	if player == null:
+		return
+	if player.has_method("get_equipped_container"):
+		connect_container_def(player.get_equipped_container())
+	if "equipped_wearables" in player and _status_panel.has_method("set_equipped_wearables"):
+		_status_panel.set_equipped_wearables(player.equipped_wearables)
+
+
 func _on_inventory_full(_type: StringName, _rejected: int) -> void:
 	# Using show_notification instead of FloatingTextManager because the
 	# inventory_full signal carries no world position — the item was rejected
