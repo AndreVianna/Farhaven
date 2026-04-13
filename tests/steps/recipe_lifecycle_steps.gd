@@ -39,9 +39,21 @@ const _RecipeEffect = preload("res://scripts/recipes/recipe_effect.gd")
 const _RecipeCondition = preload("res://scripts/recipes/recipe_condition.gd")
 const _Predicate = preload("res://scripts/recipes/predicate.gd")
 const _Journal = preload("res://scripts/journal/journal.gd")
-const _DiscoveryWatcher = preload("res://scripts/recipes/discovery_watcher.gd")
 const _EventRegistry = preload("res://scripts/core/event_registry.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
+
+# discovery_watcher.gd transitively preloads predicate_evaluator.gd → hex_tile.gd
+# which references the `PropRegistry` autoload as a bare identifier. Under the
+# Gherkin --script runner, that identifier is not yet registered when step
+# files are parsed, so a `const` preload here fails. Load at runtime via
+# `load()` after autoloads are bootstrapped.
+const _DISCOVERY_WATCHER_PATH: String = "res://scripts/recipes/discovery_watcher.gd"
+static var _DiscoveryWatcher: GDScript = null
+
+
+static func _ensure_runtime_preloads() -> void:
+	if _DiscoveryWatcher == null:
+		_DiscoveryWatcher = load(_DISCOVERY_WATCHER_PATH)
 
 # --------------------------------------------------------------------------
 # MiniRuntime — mirrors scripts/recipes/recipe_runtime.gd lines 57-216.
@@ -310,7 +322,7 @@ class MiniRuntime extends RefCounted:
 # --------------------------------------------------------------------------
 
 
-static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script: GDScript) -> Node:
+static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script) -> Node:
 	var existing: Node = tree.root.get_node_or_null(NodePath(autoload_name))
 	if existing != null:
 		return existing
@@ -323,6 +335,7 @@ static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fall
 static func build_world(ctx) -> void:
 	var tree: SceneTree = ctx.get_tree()
 	assert(tree != null, "recipe_lifecycle steps require a live SceneTree")
+	_ensure_runtime_preloads()
 
 	# EventRegistry + Journal + DiscoveryWatcher are created (or reused) under
 	# tree.root. They're the "real" autoload side of the effect dispatch.

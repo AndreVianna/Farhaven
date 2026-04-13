@@ -117,7 +117,7 @@ var _registered_defs: Array[StringName] = []
 
 
 func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
-		placeable: _PlaceableCap = null, size: float = 0.1) -> void:
+		placeable: _PlaceableCap = null, slot_shape: Array[Vector2i] = [Vector2i(0, 0)]) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
@@ -127,7 +127,7 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 	def.placeable = placeable
 	def.max_stack = 99
 	var cap := _PortableCap.new()
-	cap.size = size
+	cap.slot_shape = slot_shape
 	def.portable = cap
 	PropRegistry._defs[id] = def
 	_registered_defs.append(id)
@@ -136,7 +136,7 @@ func _ensure_prop_def(id: StringName, tags: Array[StringName] = [],
 func _ensure_structure_def(id: StringName) -> void:
 	var pcap := _PlaceableCap.new()
 	var tags: Array[StringName] = [&"STRUCTURE"]
-	_ensure_prop_def(id, tags, pcap, 1.0)
+	_ensure_prop_def(id, tags, pcap, [Vector2i(0, 0)])
 
 
 func _make_build_recipe(id: StringName, inputs_spec: Array,
@@ -514,8 +514,11 @@ func test_storage_chest_increases_inventory_capacity() -> void:
 	_building.enter_placement_mode(recipe)
 	_building.try_place_at(Vector2i.ZERO)
 
-	# Capacity should increase by 50.
-	assert_float(_player.inventory.capacity_size).is_equal(initial_capacity + 50.0)
+	# Capacity should increase by at least 50. The setter rounds up to the
+	# next full row (grid_width cells), so the delta can be slightly larger.
+	var delta: float = _player.inventory.capacity_size - initial_capacity
+	assert_float(delta).is_greater_equal(50.0)
+	assert_float(delta).is_less(50.0 + float(_player.inventory.grid_width))
 
 
 func test_non_storage_chest_does_not_change_capacity() -> void:

@@ -108,11 +108,26 @@ func register_steps(registry) -> void:
 	)
 
 	# ---- Inventory capacity tweaks ----
-	registry.given("the real inventory capacity is {float}",
-		func(ctx, cap: float):
-			var inv = ctx.get_value("real_inventory", null)
-			if inv != null:
-				inv.capacity_size = cap
+	registry.given("the real inventory is a {int}x{int} grid",
+		func(ctx, w: int, h: int):
+			# Replace the default 30x40 inventory with a tight grid so small
+			# capacities (like 3 cells) can be exercised. Grid-model capacity
+			# cannot shrink via the capacity_size setter, so we rebuild.
+			var fresh = _Inventory.new(w, h)
+			# Re-wire signal spies on the fresh inventory so Then steps see events.
+			var full_log: Array = ctx.get_value("inventory_full_log", [] as Array)
+			var tool_log: Array = ctx.get_value("inventory_tool_log", [] as Array)
+			var added_log: Array = ctx.get_value("inventory_added_log", [] as Array)
+			fresh.inventory_full.connect(func(type: StringName, rejected: int):
+				full_log.append({"type": type, "rejected": rejected})
+			)
+			fresh.tool_changed.connect(func(slot: StringName, new_tool: StringName, old_tool: StringName):
+				tool_log.append({"slot": slot, "new_tool": new_tool, "old_tool": old_tool})
+			)
+			fresh.item_added.connect(func(type: StringName, amount: int):
+				added_log.append({"type": type, "amount": amount})
+			)
+			ctx.set_value("real_inventory", fresh)
 	)
 
 	registry.given("the real inventory has {int} {string} in regular slots",
@@ -120,18 +135,18 @@ func register_steps(registry) -> void:
 			var inv = ctx.get_value("real_inventory", null)
 			if inv == null:
 				return
-			# We may need more capacity than the default to seed large counts.
-			# Default capacity is 50.0 which fits 50 size-1.0 items — the
-			# scenarios that need more bump the capacity first.
-			if count > int(inv.capacity_size):
-				inv.capacity_size = float(count) + 10.0
 			var added: int = inv.add_item(StringName(prop_id), count)
 			ctx.assert_equal(added, count,
 				"seed add_item should succeed — got %d, expected %d" % [added, count])
 			# Clear signal logs so the scenario's actual action does not
 			# race the seed. Preserve the added log for non-signal steps
 			# that might still want to inspect it.
-			ctx.set_value("inventory_full_log", [] as Array)
+			# Clear IN PLACE so the signal spy lambdas (which captured the
+			# array by reference at connect time) keep writing into the same
+			# array the Then steps read. Replacing ctx values with new empty
+			# arrays would orphan the spy closures.
+			var full_log: Array = ctx.get_value("inventory_full_log", [] as Array)
+			full_log.clear()
 	)
 
 	registry.given("the real inventory has tool {string} set to {string}",
@@ -139,14 +154,16 @@ func register_steps(registry) -> void:
 			var inv = ctx.get_value("real_inventory", null)
 			if inv != null:
 				inv.set_tool(StringName(slot), StringName(tool_id))
-			ctx.set_value("inventory_tool_log", [] as Array)
+			# Clear in place (see note above for inventory_full_log).
+			var tool_log: Array = ctx.get_value("inventory_tool_log", [] as Array)
+			tool_log.clear()
 	)
 
 	registry.given("the real inventory has {int} base slots",
 		func(ctx, count: int):
-			# Informational — the real Inventory always has 12 base slots
-			# per its _init. This step asserts that invariant before the
-			# expansion scenario mutates the slot count.
+			# Informational — historical 12-slot invariant. Grid model default
+			# is grid_width * grid_height cells instead (1200 for 30x40). The
+			# assertion now uses the actual grid size.
 			var inv = ctx.get_value("real_inventory", null)
 			ctx.assert_equal(inv.get_max_slots(), count,
 				"expected %d base slots, got %d" % [count, inv.get_max_slots()])
@@ -186,6 +203,10 @@ func register_steps(registry) -> void:
 		func(ctx, count: int):
 			var inv = ctx.get_value("real_inventory", null)
 			if inv != null:
+				# Remember the pre-expansion size for the "has N more total
+				# slots" assertion.
+				ctx.set_value("pre_expand_slots", inv.get_max_slots())
+				# expand(n) adds n rows of grid_width cells.
 				inv.expand(count)
 	)
 
@@ -261,6 +282,18 @@ func register_steps(registry) -> void:
 			return
 		ctx.assert_equal(inv.get_max_slots(), count,
 			"expected %d total slots, got %d" % [count, inv.get_max_slots()])
+	)
+
+	registry.then("the real inventory has {int} more total slots", func(ctx, delta: int):
+		var inv = ctx.get_value("real_inventory", null)
+		ctx.assert_not_null(inv)
+		if inv == null:
+			return
+		var pre: int = ctx.get_value("pre_expand_slots", 0)
+		var diff: int = inv.get_max_slots() - pre
+		ctx.assert_equal(diff, delta,
+			"expected %d more total slots, got %d (pre=%d now=%d)" %
+			[delta, diff, pre, inv.get_max_slots()])
 	)
 
 	registry.then("the real inventory used slot count is {int}", func(ctx, count: int):

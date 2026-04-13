@@ -288,13 +288,13 @@ func test_scan_lifecycle_proximity_to_complete() -> void:
 	assert_bool(_system.is_scanning()).is_true()
 	assert_str(String(_started_entry_id)).is_equal("P00004")
 
-	# Advance progress (flora = 2.0s)
-	_system._process(1.0)
+	# Advance progress (flora scan_time = 1.0s per PropDef P00004).
+	_system._process(0.5)
 	assert_float(_progress_value).is_greater(0.0)
 	assert_float(_progress_value).is_less(1.0)
 
 	# Complete scan
-	_system._process(1.5)  # total > 2.0s
+	_system._process(0.7)  # total > 1.0s
 
 	assert_bool(_system.is_scanning()).is_false()
 	assert_str(String(_completed_entry_id)).is_equal("P00004")
@@ -356,22 +356,24 @@ func test_one_scan_at_a_time() -> void:
 
 # --- Scan duration per category ---
 
-func test_scan_duration_flora_is_2s() -> void:
+func test_scan_duration_flora_from_prop_def() -> void:
+	# PropDef P00004 (berry bush) has catalogable.scan_time = 1.0.
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BERRY_BUSH)
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
-	assert_float(_system._scan_duration).is_equal(2.0)
+	assert_float(_system._scan_duration).is_equal(1.0)
 
 
-func test_scan_duration_mineral_is_2s() -> void:
+func test_scan_duration_mineral_from_prop_def() -> void:
+	# PropDef P00005 (boulder) has catalogable.scan_time = 1.5.
 	_grid._tiles[Vector2i.ZERO] = _HexTile.new()
 	_grid._tiles[Vector2i(1, 0)] = _make_tile_with_prop(ID_BOULDER)
 	_player.current_tile = Vector2i.ZERO
 
 	_system._process(0.016)
-	assert_float(_system._scan_duration).is_equal(2.0)
+	assert_float(_system._scan_duration).is_equal(1.5)
 
 
 func test_scan_duration_anomaly_is_3s() -> void:

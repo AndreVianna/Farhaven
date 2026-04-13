@@ -38,8 +38,25 @@ const _GameEvent = preload("res://scripts/core/event.gd")
 const _RecipeEffect = preload("res://scripts/recipes/recipe_effect.gd")
 const _EventRegistry = preload("res://scripts/core/event_registry.gd")
 const _Journal = preload("res://scripts/journal/journal.gd")
-const _DiscoveryWatcher = preload("res://scripts/recipes/discovery_watcher.gd")
-const _WorldContext = preload("res://scripts/recipes/world_context.gd")
+# NOTE: discovery_watcher.gd transitively preloads predicate_evaluator.gd,
+# which preloads hex_tile.gd, which references the `PropRegistry` autoload
+# as an identifier. Under the gherkin --script runner, autoload identifiers
+# are not in scope at the time step files are parsed, so `const` preloads
+# here would fail with "Identifier not found: PropRegistry". We defer the
+# load to runtime (inside build_world) via `load()`, after autoloads are
+# registered in the SceneTree.
+# Similar reason for _WorldContext (uses the same chain).
+const _DISCOVERY_WATCHER_PATH: String = "res://scripts/recipes/discovery_watcher.gd"
+const _WORLD_CONTEXT_PATH: String = "res://scripts/recipes/world_context.gd"
+static var _DiscoveryWatcher: GDScript = null
+static var _WorldContext: GDScript = null
+
+
+static func _ensure_runtime_preloads() -> void:
+	if _DiscoveryWatcher == null:
+		_DiscoveryWatcher = load(_DISCOVERY_WATCHER_PATH)
+	if _WorldContext == null:
+		_WorldContext = load(_WORLD_CONTEXT_PATH)
 
 
 ## Minimal scanner stand-in: emits `entry_cataloged` with the same signal
@@ -53,7 +70,7 @@ class FakeScanner extends RefCounted:
 		entry_cataloged.emit(entry_id, 0)
 
 
-static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script: GDScript) -> Node:
+static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fallback_script) -> Node:
 	var existing: Node = tree.root.get_node_or_null(NodePath(autoload_name))
 	if existing != null:
 		return existing
@@ -66,6 +83,7 @@ static func _get_or_create_autoload(tree: SceneTree, autoload_name: String, fall
 static func build_world(ctx) -> void:
 	var tree: SceneTree = ctx.get_tree()
 	assert(tree != null, "discovery_chain steps require a live SceneTree")
+	_ensure_runtime_preloads()
 
 	var er := _get_or_create_autoload(tree, "EventRegistry", _EventRegistry)
 	var journal := _get_or_create_autoload(tree, "Journal", _Journal)
@@ -237,7 +255,7 @@ func register_steps(registry) -> void:
 			# project, but the plain WorldContext resource itself is safe —
 			# still, we use a plain RefCounted with the same duck-typed
 			# fields to keep the preload surface minimal).
-			var minimal_ctx: _WorldContext = _build_minimal_ctx()
+			var minimal_ctx = _build_minimal_ctx()
 			dw.check_unlocks(minimal_ctx)
 	)
 
@@ -260,10 +278,11 @@ func register_steps(registry) -> void:
 	)
 
 
-static func _build_minimal_ctx() -> _WorldContext:
+static func _build_minimal_ctx():
 	# Minimal WorldContext stand-in. DiscoveryWatcher.check_unlocks reads
 	# only `_all_conditions_met(event, ctx)`, which iterates `event.conditions`
 	# — empty for our test events — so the ctx is never actually dereferenced
 	# for field access. But its signature types the parameter to WorldContext,
 	# so we instantiate the real class to satisfy that.
+	_ensure_runtime_preloads()
 	return _WorldContext.new()

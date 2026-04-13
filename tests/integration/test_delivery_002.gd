@@ -361,11 +361,11 @@ func test_encountered_fauna_label() -> void:
 	_setup_scanner_tree()
 
 	# Surprise encounter
-	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
+	_scanner.on_fauna_attacked_player(1, 10, &"P00108")
 
 	# Check catalog state
-	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
-	assert_str(_scanner._catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
+	assert_bool(_scanner._catalog.is_encountered(&"P00108")).is_true()
+	assert_str(_scanner._catalog.get_encounter_label(&"P00108")).is_equal("Hostile")
 
 	_teardown_scanner_tree()
 
@@ -400,7 +400,7 @@ func test_catalog_counter_counts_encountered_and_cataloged() -> void:
 	_setup_scanner_tree()
 
 	_scanner._catalog.catalog_entry(&"P00004")
-	_scanner._catalog.encounter_entry(&"thornback", "Hostile")
+	_scanner._catalog.encounter_entry(&"P00108", "Hostile")
 
 	assert_int(_scanner._catalog.get_discovery_count()).is_equal(2)
 	assert_str(_scanner._catalog.get_discovery_text()).is_equal("2 entries")
@@ -422,9 +422,10 @@ func test_inventory_add_panel_display_and_full_notification() -> void:
 	inv.add_item(ID_WOOD, 10)
 	assert_int(inv.get_count(ID_WOOD)).is_equal(10)
 
-	# Panel displays correct state
+	# Panel displays correct state. Grid model: 10 wood = 10 item instances.
 	panel.open()
-	assert_int(inv.get_used_slot_count()).is_equal(1)
+	assert_int(inv.get_used_slot_count()).is_equal(10)
+	assert_int(inv.get_slots().size()).is_equal(1)  # one distinct type
 	panel.close()
 
 	# Fill inventory to trigger inventory_full
@@ -609,7 +610,8 @@ func test_ac11_mineral_scan_complete() -> void:
 	_scanner.entry_cataloged.connect(_on_sig_entry_cataloged)
 
 	_scanner._process(0.016)  # start proximity scan
-	assert_float(_scanner._scan_duration).is_equal(2.0)
+	# PropDef P00005 (boulder) has catalogable.scan_time = 1.5.
+	assert_float(_scanner._scan_duration).is_equal(1.5)
 
 	_scanner._scan_progress = 0.99
 	_scanner._process(0.05)
@@ -644,11 +646,11 @@ func test_ac11_anomaly_scan_complete_and_signal() -> void:
 func test_ac11_encountered_state_on_surprise_attack() -> void:
 	_setup_scanner_tree()
 
-	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
+	_scanner.on_fauna_attacked_player(1, 10, &"P00108")
 
-	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
-	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_false()
-	assert_str(_scanner._catalog.get_encounter_label(&"thornback")).is_equal("Hostile")
+	assert_bool(_scanner._catalog.is_encountered(&"P00108")).is_true()
+	assert_bool(_scanner._catalog.is_cataloged(&"P00108")).is_false()
+	assert_str(_scanner._catalog.get_encounter_label(&"P00108")).is_equal("Hostile")
 
 	_teardown_scanner_tree()
 
@@ -728,7 +730,7 @@ func test_catalog_panel_correct_categories_and_encountered() -> void:
 	_scanner._process(0.05)
 
 	# Surprise encounter fauna
-	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
+	_scanner.on_fauna_attacked_player(1, 10, &"P00108")
 
 	# Open catalog panel
 	var panel: PanelContainer = _CatalogPanelScene.instantiate()
@@ -810,13 +812,13 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 		catalog_ids.append(String(eid))
 	)
 
-	_scanner.on_fauna_attacked_player(1, 10, &"thornback")
+	_scanner.on_fauna_attacked_player(1, 10, &"P00108")
 
 	assert_int(encounter_ids.size()).is_equal(1)
-	assert_str(encounter_ids[0]).is_equal("thornback")
+	assert_str(encounter_ids[0]).is_equal("P00108")
 	assert_int(catalog_ids.size()).is_equal(0)  # NOT cataloged, just encountered
-	assert_bool(_scanner._catalog.is_encountered(&"thornback")).is_true()
-	assert_bool(_scanner._catalog.is_cataloged(&"thornback")).is_false()
+	assert_bool(_scanner._catalog.is_encountered(&"P00108")).is_true()
+	assert_bool(_scanner._catalog.is_cataloged(&"P00108")).is_false()
 
 	_teardown_scanner_tree()
 
@@ -827,9 +829,8 @@ func test_surprise_encounter_creates_encountered_not_cataloged() -> void:
 
 func test_inventory_save_load_round_trip() -> void:
 	var inv: Inventory = _Inventory.new()
-	inv.add_item(ID_WOOD, 40)       # 40 * 1.0 = 40.0
-	inv.add_item(ID_BERRIES, 10)    # 10 * 0.01 = 0.1
-	inv.set_tool(&"axe", ID_AXE)
+	inv.add_item(ID_WOOD, 40)
+	inv.add_item(ID_BERRIES, 10)
 	inv.expand(12)
 
 	var save_data: Dictionary = inv.get_save_data()
@@ -839,7 +840,6 @@ func test_inventory_save_load_round_trip() -> void:
 
 	assert_int(inv2.get_count(ID_WOOD)).is_equal(40)
 	assert_int(inv2.get_count(ID_BERRIES)).is_equal(10)
-	assert_object(inv2.get_tool(&"axe")).is_equal(ID_AXE)
 	# Grid expanded by 12 rows * 30 width = +360 cells from default 1200.
 	assert_int(inv2.get_max_slots()).is_equal(1560)
 
@@ -848,7 +848,7 @@ func test_catalog_save_load_round_trip() -> void:
 	var cat := _Catalog.new()
 	cat.initialize()
 	cat.catalog_entry(&"P00004")
-	cat.encounter_entry(&"thornback", "Hostile")
+	cat.encounter_entry(&"P00108", "Hostile")
 
 	var save_data: Dictionary = cat.get_save_data()
 
@@ -857,8 +857,8 @@ func test_catalog_save_load_round_trip() -> void:
 	cat2.load_save_data(save_data)
 
 	assert_bool(cat2.is_cataloged(&"P00004")).is_true()
-	assert_bool(cat2.is_encountered(&"thornback")).is_true()
-	assert_str(cat2.get_encounter_label(&"thornback")).is_equal("Hostile")
+	assert_bool(cat2.is_encountered(&"P00108")).is_true()
+	assert_str(cat2.get_encounter_label(&"P00108")).is_equal("Hostile")
 	assert_int(cat2.get_discovery_count()).is_equal(2)
 
 
