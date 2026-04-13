@@ -2,11 +2,11 @@ extends GdUnitTestSuite
 class_name TestBiomeData
 
 const BIOME_PATHS: Array[String] = [
-	"res://data/biomes/001.tres",
-	"res://data/biomes/002.tres",
-	"res://data/biomes/003.tres",
-	"res://data/biomes/004.tres",
-	"res://data/biomes/005.tres",
+	"res://data/biomes/B00001.tres",
+	"res://data/biomes/B00002.tres",
+	"res://data/biomes/B00003.tres",
+	"res://data/biomes/B00004.tres",
+	"res://data/biomes/B00005.tres",
 ]
 
 func test_all_biomes_load_without_error() -> void:

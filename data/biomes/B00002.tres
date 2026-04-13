@@ -4,7 +4,8 @@
 
 [resource]
 script = ExtResource("1_biome")
-biome_name = "Grassland"
+id = &"B00002"
+display_name = "Grassland"
 elevation_range = Vector2i(0, 32000)
 prop_table = [{"chance": 0.5, "max_amount": 4, "min_amount": 1, "type": "P00002"}, {"chance": 0.6, "max_amount": 4, "min_amount": 1, "type": "P00003"}, {"chance": 0.3, "max_amount": 3, "min_amount": 1, "type": "P00001"}]
 color = Color(0.4, 0.7490196078431373, 0.30196078431372547, 1.0)

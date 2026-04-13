@@ -8,6 +8,10 @@
 ## What this system is
 
 BiomeData is a per-biome configuration `Resource` loaded from `.tres` files in `res://data/biomes/`.
+It extends `Gear`, so every biome carries an `id` (stable key), `display_name` (human label)
+and optional descriptions — matching the id convention used by PropDef (`P00xxx`), Recipe
+(`R00xxx`), GameEvent (`E00xxx`), and the other Gear subclasses. Biome files follow the
+`B00NNN.tres` pattern.
 Each biome file describes how tiles of that biome look (colour, colour variations) and what
 natural props populate them (a `prop_table` of prop type plus default stack sizes). BiomeData
 is pure data — it has no methods and no behaviour. It exists so that biome authors can edit
@@ -37,11 +41,12 @@ values into code.
 - **File location.** Every BiomeData `.tres` must live directly under `res://data/biomes/` —
   no sub-folders. MapLoader scans that folder flat and ignores everything that doesn't end
   in `.tres`.
-- **Filename equals biome id.** The basename of the file (without `.tres`) is what the map
-  JSON uses in its per-tile `biome` field. For example `forest.tres` makes `"biome": "forest"`
-  the correct key in map JSON. A typo in the map JSON silently falls back to biome index 0.
-- **`biome_name` is display-only.** The human-readable name in the resource is never used as
-  a lookup key — lookups go through the filename. Leaving it blank will not break loading.
+- **Filename matches `id` field.** Files follow the `B00NNN.tres` convention and the resource's
+  `id` field must match (e.g. `B00003.tres` has `id = &"B00003"`). Map JSON references biomes by
+  filename stem, which in turn is used as lookup key to the sorted biome array at load time.
+- **`display_name` is human-readable.** Inherited from Gear. The human-readable name in the
+  resource is never used as a lookup key — lookups go through filename / id. Leaving it blank
+  will not break loading.
 - **`prop_table` entry shape.** Each entry must be a `Dictionary` literal with at minimum
   `type` (String or StringName) and `max_amount` (int). Adding unknown keys is harmless but
   adding fewer than the two required keys will cause MapLoader to fall back to the hardcoded
@@ -88,9 +93,12 @@ as it re-interprets `prop_table` as "strategic resources on this biome."
 - **No rarity / weight system.** All prop_table entries are equally eligible. A future biome
   might want "rare mineral appears on 5% of tiles" — this would require extending the entry
   dictionary and the (future) procedural populator.
-- **Filename-order-determines-id is fragile.** Renaming a biome file silently re-assigns its
-  integer id and invalidates every existing save and map JSON that referenced the old id.
-  A future pass should move biome identity to an explicit `id` field in the resource itself.
+- **Filename-order-determines-runtime-index.** The sorted filename defines the integer slot
+  that map JSON references by stem. BiomeData now carries its own `id` field (B00NNN) matching
+  the filename, so the data plane is stable; the runtime integer-index mapping still comes from
+  alphabetical file order — renaming a biome file does still shift every subsequent biome's
+  runtime index. A later pass could teach MapLoader to key off `id` instead of filename order
+  once more than 10 biomes exist.
 - **No elevation enforcement.** `elevation_range` is currently advisory — MapLoader does not
   check that a tile's elevation actually falls inside its biome's declared range. A validation
   pass could be added when procedural population lands.
