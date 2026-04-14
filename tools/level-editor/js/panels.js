@@ -338,18 +338,28 @@ export class HexInspector {
       genHeader.textContent = 'Generator params:';
       this.mapStatsEl.appendChild(genHeader);
 
-      const params = [
-        ['Seed', gen.seed],
-        ['Radius', gen.radius],
-        ['Water', `${gen.waterPct}%`],
-        ['Forest', `${gen.forestPct}%`],
-        ['Rocky', `${gen.rockyPct}%`],
-        ['Frequency', gen.frequency],
-        ['Peak height', gen.peakHeight != null ? `${gen.peakHeight} (${(gen.peakHeight * 0.5).toFixed(0)}m)` : '—'],
-        ['Crash radius', gen.crashRadius],
+      // Editable generator param fields — changes write back to grid.meta.generator
+      const editableParams = [
+        ['Seed', 'seed', 'int'],
+        ['Radius', 'radius', 'int'],
+        ['Frequency', 'frequency', 'float'],
+        ['Domain Warp', 'warpStrength', 'float'],
+        ['Peak Height', 'peakHeight', 'int'],
+        ['Redistribution', 'redistPower', 'float'],
+        ['Erosion Drops', 'erosionDrops', 'int'],
+        ['Erosion Steps', 'erosionSteps', 'int'],
+        ['River Sensitivity', 'riverThreshold', 'int'],
+        ['Moisture Falloff', 'moistureFalloff', 'float'],
+        ['Crash Radius', 'crashRadius', 'int'],
       ];
-      for (const [label, value] of params) {
-        this.mapStatsEl.appendChild(this._createStatRow(label, String(value)));
+
+      for (const [label, key, type] of editableParams) {
+        if (gen[key] == null) continue;
+        const display = type === 'float' ? String(gen[key]) : String(Math.round(gen[key]));
+        this.mapStatsEl.appendChild(this._createEditableStatRow(label, display, (value) => {
+          const parsed = type === 'float' ? parseFloat(value) : parseInt(value, 10);
+          if (!isNaN(parsed)) gen[key] = parsed;
+        }));
       }
 
       if (this.onRegenerate) {

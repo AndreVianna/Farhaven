@@ -1,10 +1,12 @@
 // ============================================================
-// map-generator.js — Procedural hex map generation
+// map-generator.js — Procedural hex map generation (5-pass pipeline)
 // ============================================================
 //
-// Generates a hex map using layered Simplex noise + biome rules.
-// Terrain model: central valley surrounded by rising mountains.
-// Produces a map JSON object compatible with loadMapIntoGrid().
+// Pass 1: Elevation (domain-warped Simplex fBm + power redistribution)
+// Pass 2: Hydraulic erosion (particle-based, carves valleys/rivers)
+// Pass 3: Hydrology (Priority-Flood → flow direction → accumulation → rivers/lakes)
+// Pass 4: Moisture (BFS from water bodies with exponential falloff)
+// Pass 5: Biome assignment (Whittaker-style elevation × moisture lookup)
 
 'use strict';
 
@@ -14,141 +16,355 @@ import { ProjectContext } from './file-discovery.js';
 import { showInlineFormModal } from './panels.js';
 
 // ============================================================
-// Hex coordinate iteration
+// Hex coordinate helpers
 // ============================================================
 
-/**
- * All axial (q, r) coordinates within a hex-shaped region of the
- * given radius centered at (0, 0).
- * @param {number} radius
- * @returns {Array<{q: number, r: number}>}
- */
 function hexesInRadius(radius) {
   const coords = [];
   for (let q = -radius; q <= radius; q++) {
     const r1 = Math.max(-radius, -q - radius);
     const r2 = Math.min(radius, -q + radius);
-    for (let r = r1; r <= r2; r++) {
-      coords.push({ q, r });
-    }
+    for (let r = r1; r <= r2; r++) coords.push({ q, r });
   }
   return coords;
 }
 
+function hexKey(q, r) { return `${q},${r}`; }
+
 // ============================================================
-// Generation
+// Default parameters
 // ============================================================
 
-/**
- * @typedef {Object} GenOptions
- * @property {number} radius - Map radius in hexes
- * @property {number} seed - Random seed (0 = pick one)
- * @property {number} waterPct - Percentage of tiles that become water (0-100)
- * @property {number} forestPct - Percentage of land tiles that become forest (0-100)
- * @property {number} rockyPct - Percentage of land tiles that become rocky (0-100)
- * @property {number} frequency - Noise frequency (lower = larger features)
- * @property {number} peakHeight - Max mountain elevation at map edge (in half-metres)
- * @property {number} crashRadius - Radius of crash site around spawn
- * @property {string} chapterId - Chapter ID for the map file
- * @property {string} mapName - Human-readable map name
- */
-
-/** @type {GenOptions} */
 const DEFAULTS = {
   radius: 20,
   seed: 0,
-  waterPct: 15,
-  forestPct: 35,
-  rockyPct: 15,
-  frequency: 0.06,
+  frequency: 0.05,
+  warpStrength: 0.5,
   peakHeight: 200,
+  redistPower: 2.0,
+  erosionDrops: 5000,
+  erosionSteps: 30,
+  riverThreshold: 15,
+  moistureFalloff: 0.85,
   crashRadius: 3,
   chapterId: 'procedural',
   mapName: 'Procedural Map',
 };
 
-/**
- * Generate a procedural map.
- *
- * Terrain model:
- *   rawElev = noise * amplitude + distanceRise
- *
- * - Center (dist=0): elevation ≈ noise only → gentle, can dip below 0
- * - Edges (dist=radius): elevation ≈ peakHeight → mountains
- * - Sea level is set so that exactly waterPct% of tiles fall below it
- * - Tiles below sea level → Water (elevation = 0, water surface)
- * - Tiles above sea level → elevation in game units (each ≈ 0.5 m)
- *
- * @param {Partial<GenOptions>} opts
- * @returns {Object} Map JSON data
- */
-export function generateMap(opts = {}) {
-  const o = { ...DEFAULTS, ...opts };
-  if (o.seed === 0) o.seed = Math.floor(Math.random() * 2147483647);
+// ============================================================
+// Pass 1: Elevation
+// ============================================================
 
-  const elevNoise = createNoise2D(o.seed);
-  const moistNoise = createNoise2D(o.seed + 31337);
-  const ruggedNoise = createNoise2D(o.seed + 71993);
+function passElevation(hexMap, coords, o) {
+  const noise = createNoise2D(o.seed);
 
-  const coords = hexesInRadius(o.radius);
-  const landingZone = o.crashRadius * 2;
-
-  // --- Phase 1: continuous elevation + biome noise layers ---
-  // Elevation is ONE smooth field shared by ALL biomes. No per-biome
-  // elevation formulas — that caused cliff transitions.
-  const samples = coords.map(({ q, r }) => {
+  for (const { q, r } of coords) {
     const px = HexMath.axialToPixel(q, r);
     const nx = px.x * o.frequency / 40;
     const ny = px.y * o.frequency / 40;
 
-    const nElev = elevNoise.fractal2D(nx, ny, 5, 2.0, 0.5);
-    const nMoist = moistNoise.fractal2D(nx * 0.8, ny * 0.8, 4, 2.0, 0.5);
-    const nRugged = ruggedNoise.fractal2D(nx * 1.5, ny * 1.5, 3, 2.0, 0.5);
+    // Domain-warped fBm for organic mountain ranges
+    let e = noise.warpedFbm(nx, ny, 5, o.warpStrength);
 
+    // Remap from [-1,1] to [0,1]
+    e = (e + 1) / 2;
+
+    // Power redistribution: compresses midrange toward valleys,
+    // preserves peaks → more dramatic terrain
+    e = Math.pow(e, o.redistPower);
+
+    // Scale to game units (each ≈ 0.5m)
+    e = e * o.peakHeight;
+
+    // Landing zone dampening near crash site
     const dist = HexMath.distance(0, 0, q, r);
-
-    // Dampen near spawn for walkable landing zone
-    let landingFade = 0;
-    if (dist <= landingZone && landingZone > 0) {
-      landingFade = Math.max(0, 1 - dist / landingZone);
+    if (dist <= o.crashRadius * 2) {
+      const fade = Math.max(0, 1 - dist / (o.crashRadius * 2));
+      e = e * (1 - fade * 0.9); // flatten near spawn
     }
 
-    // Raw continuous elevation: noise × peakHeight
-    // This gives a smooth height field across the entire map.
-    const rawElev = nElev * (1 - landingFade * 0.8) * o.peakHeight;
+    const key = hexKey(q, r);
+    hexMap.set(key, { q, r, elevation: e, dist });
+  }
+}
 
-    return { q, r, rawElev, nMoist, nRugged, dist };
-  });
+// ============================================================
+// Pass 2: Hydraulic erosion (particle-based)
+// ============================================================
 
-  // --- Phase 2: sea level — bottom waterPct% becomes water ---
-  const sortedElevs = samples.map(s => s.rawElev).sort((a, b) => a - b);
-  const seaLevel = sortedElevs[Math.floor(sortedElevs.length * o.waterPct / 100)] ?? 0;
+function passErosion(hexMap, coords, o) {
+  if (o.erosionDrops <= 0) return;
 
-  // Shift so sea level = 0. Land is positive, water is negative.
-  for (const s of samples) {
-    s.elevation = s.rawElev - seaLevel;
-    s.isWater = s.elevation < 0;
+  // Build index for neighbor lookup
+  const keySet = new Set([...hexMap.keys()]);
+
+  // Seeded PRNG for reproducible erosion
+  let rngState = o.seed + 99991;
+  function rng() {
+    rngState ^= rngState << 13;
+    rngState ^= rngState >>> 17;
+    rngState ^= rngState << 5;
+    return (rngState >>> 0) / 4294967296;
   }
 
-  // --- Phase 3: rocky — top rockyPct% of land by ruggedness noise ---
-  const landSamples = samples.filter(s => !s.isWater);
-  const ruggedScores = landSamples.map(s => s.nRugged).sort((a, b) => a - b);
-  const rockyThreshold = ruggedScores.length > 0
-    ? ruggedScores[Math.floor(ruggedScores.length * (100 - o.rockyPct) / 100)] ?? Infinity
-    : Infinity;
-
-  for (const s of samples) {
-    s.isRocky = !s.isWater && s.nRugged >= rockyThreshold;
+  // Pick a random hex from coordinates
+  function randomHex() {
+    const idx = Math.floor(rng() * coords.length);
+    return coords[idx];
   }
 
-  // --- Phase 4: forest — top forestPct% of remaining by moisture ---
-  const remainingSamples = samples.filter(s => !s.isWater && !s.isRocky);
-  const moistScores = remainingSamples.map(s => s.nMoist).sort((a, b) => a - b);
-  const forestThreshold = moistScores.length > 0
-    ? moistScores[Math.floor(moistScores.length * (100 - o.forestPct) / 100)] ?? Infinity
-    : Infinity;
+  // Get the gradient (steepest descent) at a hex
+  function getGradient(q, r) {
+    const center = hexMap.get(hexKey(q, r));
+    if (!center) return null;
 
-  // --- Phase 5: detect available biomes ---
+    let bestDrop = 0;
+    let bestQ = q, bestR = r;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nq = q + dir.q, nr = r + dir.r;
+      const nk = hexKey(nq, nr);
+      const neighbor = hexMap.get(nk);
+      if (!neighbor) continue;
+      const drop = center.elevation - neighbor.elevation;
+      if (drop > bestDrop) {
+        bestDrop = drop;
+        bestQ = nq;
+        bestR = nr;
+      }
+    }
+    return { dq: bestQ - q, dr: bestR - r, drop: bestDrop };
+  }
+
+  const erosionRate = 0.3;
+  const depositionRate = 0.3;
+  const sedimentCapacity = 4.0;
+
+  for (let d = 0; d < o.erosionDrops; d++) {
+    let { q, r } = randomHex();
+    let sediment = 0;
+    let velocity = 1;
+
+    for (let step = 0; step < o.erosionSteps; step++) {
+      const grad = getGradient(q, r);
+      if (!grad || grad.drop <= 0) {
+        // Deposit remaining sediment in depression
+        const cell = hexMap.get(hexKey(q, r));
+        if (cell) cell.elevation += sediment * depositionRate;
+        break;
+      }
+
+      const cell = hexMap.get(hexKey(q, r));
+      if (!cell) break;
+
+      // Capacity depends on velocity and slope
+      const capacity = Math.max(grad.drop * velocity * sedimentCapacity, 0.01);
+
+      if (sediment > capacity) {
+        // Deposit excess
+        const deposit = (sediment - capacity) * depositionRate;
+        cell.elevation += deposit;
+        sediment -= deposit;
+      } else {
+        // Erode
+        const erode = Math.min((capacity - sediment) * erosionRate, grad.drop * 0.5);
+        cell.elevation -= erode;
+        sediment += erode;
+      }
+
+      velocity = Math.sqrt(velocity * velocity + grad.drop * 0.1);
+      velocity *= 0.95; // friction
+
+      // Move downhill
+      q += grad.dq;
+      r += grad.dr;
+    }
+  }
+}
+
+// ============================================================
+// Pass 3: Hydrology (Priority-Flood + flow accumulation)
+// ============================================================
+
+function passHydrology(hexMap, coords, o) {
+  // --- 3a: Priority-Flood depression filling + flow direction ---
+  // Barnes (2014) algorithm adapted for 6-connected hex grid.
+  // Fills depressions so every cell can drain to the map edge.
+  // Simultaneously records flow direction.
+
+  const flowDir = new Map();    // key -> { q, r } of downstream neighbor
+  const filled = new Map();     // key -> filled elevation
+  const visited = new Set();
+
+  // Priority queue (min-heap by elevation) — simple array-based
+  // For 187K hexes this is fast enough; a proper binary heap
+  // would be needed only for millions of cells.
+  const pq = [];
+  function pqPush(item) {
+    pq.push(item);
+    let i = pq.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (pq[parent].elev <= pq[i].elev) break;
+      [pq[parent], pq[i]] = [pq[i], pq[parent]];
+      i = parent;
+    }
+  }
+  function pqPop() {
+    const top = pq[0];
+    const last = pq.pop();
+    if (pq.length > 0) {
+      pq[0] = last;
+      let i = 0;
+      while (true) {
+        let smallest = i;
+        const l = 2 * i + 1, r = 2 * i + 2;
+        if (l < pq.length && pq[l].elev < pq[smallest].elev) smallest = l;
+        if (r < pq.length && pq[r].elev < pq[smallest].elev) smallest = r;
+        if (smallest === i) break;
+        [pq[smallest], pq[i]] = [pq[i], pq[smallest]];
+        i = smallest;
+      }
+    }
+    return top;
+  }
+
+  // Seed PQ with boundary hexes (distance == radius)
+  for (const { q, r } of coords) {
+    const dist = HexMath.distance(0, 0, q, r);
+    if (dist >= o.radius) {
+      const key = hexKey(q, r);
+      const cell = hexMap.get(key);
+      if (!cell) continue;
+      pqPush({ q, r, elev: cell.elevation });
+      visited.add(key);
+      filled.set(key, cell.elevation);
+      flowDir.set(key, null); // boundary drains off-map
+    }
+  }
+
+  // Flood inward
+  while (pq.length > 0) {
+    const { q, r, elev } = pqPop();
+    const key = hexKey(q, r);
+
+    for (const dir of HexMath.DIRECTIONS) {
+      const nq = q + dir.q, nr = r + dir.r;
+      const nk = hexKey(nq, nr);
+      if (visited.has(nk)) continue;
+      const neighbor = hexMap.get(nk);
+      if (!neighbor) continue;
+
+      visited.add(nk);
+      const filledElev = Math.max(neighbor.elevation, elev);
+      filled.set(nk, filledElev);
+      flowDir.set(nk, { q, r }); // drains toward current cell
+      pqPush({ q: nq, r: nr, elev: filledElev });
+    }
+  }
+
+  // --- 3b: Flow accumulation ---
+  // Sort all hexes by filled elevation, highest first.
+  // Each hex passes its accumulated water to its downstream neighbor.
+  const accumulation = new Map();
+  for (const { q, r } of coords) accumulation.set(hexKey(q, r), 1);
+
+  const sorted = coords
+    .map(({ q, r }) => ({ q, r, elev: filled.get(hexKey(q, r)) ?? 0 }))
+    .sort((a, b) => b.elev - a.elev);
+
+  for (const { q, r } of sorted) {
+    const key = hexKey(q, r);
+    const downstream = flowDir.get(key);
+    if (!downstream) continue;
+    const dk = hexKey(downstream.q, downstream.r);
+    accumulation.set(dk, (accumulation.get(dk) || 0) + (accumulation.get(key) || 0));
+  }
+
+  // --- 3c: Identify rivers and lakes ---
+  for (const { q, r } of coords) {
+    const key = hexKey(q, r);
+    const cell = hexMap.get(key);
+    if (!cell) continue;
+
+    const acc = accumulation.get(key) || 0;
+    const filledE = filled.get(key) ?? cell.elevation;
+
+    // Lake: where Priority-Flood raised the elevation (depression was filled)
+    cell.isLake = filledE > cell.elevation + 0.5;
+
+    // River: high flow accumulation AND not a lake
+    cell.isRiver = !cell.isLake && acc >= o.riverThreshold;
+
+    cell.isWater = cell.isLake || cell.isRiver;
+    cell.flowAccumulation = acc;
+
+    // Use filled elevation for final terrain (depressions become lake bottoms)
+    if (cell.isLake) {
+      cell.elevation = filledE; // lake surface
+    }
+  }
+}
+
+// ============================================================
+// Pass 4: Moisture (BFS from water bodies)
+// ============================================================
+
+function passMoisture(hexMap, coords, o) {
+  const moistNoise = createNoise2D(o.seed + 31337);
+
+  // BFS outward from all water cells
+  const moisture = new Map();
+  const queue = [];
+
+  for (const { q, r } of coords) {
+    const key = hexKey(q, r);
+    const cell = hexMap.get(key);
+    if (cell && cell.isWater) {
+      moisture.set(key, 1.0);
+      queue.push({ q, r, m: 1.0 });
+    }
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const { q, r, m } = queue[head++];
+    const nextM = m * o.moistureFalloff;
+    if (nextM < 0.01) continue;
+
+    for (const dir of HexMath.DIRECTIONS) {
+      const nq = q + dir.q, nr = r + dir.r;
+      const nk = hexKey(nq, nr);
+      if (!hexMap.has(nk)) continue;
+      const existing = moisture.get(nk) ?? 0;
+      if (nextM > existing) {
+        moisture.set(nk, nextM);
+        queue.push({ q: nq, r: nr, m: nextM });
+      }
+    }
+  }
+
+  // Blend with base noise for variety
+  for (const { q, r } of coords) {
+    const key = hexKey(q, r);
+    const cell = hexMap.get(key);
+    if (!cell) continue;
+
+    const px = HexMath.axialToPixel(q, r);
+    const nx = px.x * o.frequency * 0.7 / 40;
+    const ny = px.y * o.frequency * 0.7 / 40;
+    const baseNoise = (moistNoise.fractal2D(nx, ny, 3) + 1) / 2; // [0,1]
+
+    const waterMoist = moisture.get(key) ?? 0;
+    // Blend: 60% water proximity, 40% base noise
+    cell.moisture = Math.min(1, waterMoist * 0.6 + baseNoise * 0.4);
+  }
+}
+
+// ============================================================
+// Pass 5: Biome assignment (Whittaker-style)
+// ============================================================
+
+function passBiomes(hexMap, coords, o) {
   const biomeFiles = [...ProjectContext.files.biomes.keys()];
   const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
 
@@ -158,33 +374,81 @@ export function generateMap(opts = {}) {
     return biomeSet.has(id) ? id : (biomeFiles[0] || '').replace('.tres', '');
   };
 
-  // --- Phase 6: assign biomes — elevation is the SAME continuous field ---
-  // Rocky at elevation 15 next to grassland at elevation 12 = gentle slope.
-  // No more per-biome elevation formulas creating artificial cliffs.
-  const tiles = {};
-  for (const s of samples) {
-    const key = `${s.q},${s.r}`;
-    let biome;
-    let elev;
+  // Normalize elevation for biome lookup
+  let maxElev = 0;
+  for (const { q, r } of coords) {
+    const cell = hexMap.get(hexKey(q, r));
+    if (cell && !cell.isWater && cell.elevation > maxElev) maxElev = cell.elevation;
+  }
+  if (maxElev === 0) maxElev = 1;
 
-    if (s.dist <= o.crashRadius) {
-      biome = biomeFor('crash');
-      elev = 0;
-    } else if (s.isWater) {
-      biome = biomeFor('water');
-      elev = 0;
-    } else if (s.isRocky) {
-      biome = biomeFor('rocky');
-      elev = Math.round(s.elevation);
-    } else if (s.nMoist >= forestThreshold) {
-      biome = biomeFor('forest');
-      elev = Math.round(s.elevation);
+  for (const { q, r } of coords) {
+    const key = hexKey(q, r);
+    const cell = hexMap.get(key);
+    if (!cell) continue;
+
+    if (cell.dist <= o.crashRadius) {
+      cell.biome = biomeFor('crash');
+      cell.elevation = 0;
+    } else if (cell.isWater) {
+      cell.biome = biomeFor('water');
+      cell.elevation = 0; // water surface
     } else {
-      biome = biomeFor('grassland');
-      elev = Math.round(s.elevation);
-    }
+      // Whittaker lookup: elevation (normalized) × moisture
+      const eNorm = cell.elevation / maxElev; // 0-1
+      const m = cell.moisture ?? 0;
 
-    tiles[key] = { biome, elevation: elev };
+      if (eNorm > 0.65) {
+        cell.biome = biomeFor('rocky');
+      } else if (eNorm > 0.35) {
+        cell.biome = m > 0.45 ? biomeFor('forest') : biomeFor('grassland');
+      } else {
+        cell.biome = m > 0.6 ? biomeFor('forest') : biomeFor('grassland');
+      }
+
+      cell.elevation = Math.round(cell.elevation);
+    }
+  }
+}
+
+// ============================================================
+// Main generator
+// ============================================================
+
+export function generateMap(opts = {}) {
+  const o = { ...DEFAULTS, ...opts };
+  if (o.seed === 0) o.seed = Math.floor(Math.random() * 2147483647);
+
+  const coords = hexesInRadius(o.radius);
+  const hexMap = new Map();
+
+  // Scale erosion drops with map size (roughly 1 drop per 2-3 hexes)
+  const scaledDrops = o.erosionDrops === DEFAULTS.erosionDrops
+    ? Math.max(1000, Math.round(coords.length * 0.4))
+    : o.erosionDrops;
+  const effectiveOpts = { ...o, erosionDrops: scaledDrops };
+
+  const t0 = performance.now();
+  passElevation(hexMap, coords, effectiveOpts);
+  const t1 = performance.now();
+  passErosion(hexMap, coords, effectiveOpts);
+  const t2 = performance.now();
+  passHydrology(hexMap, coords, effectiveOpts);
+  const t3 = performance.now();
+  passMoisture(hexMap, coords, effectiveOpts);
+  const t4 = performance.now();
+  passBiomes(hexMap, coords, effectiveOpts);
+  const t5 = performance.now();
+
+  console.log(`map-generator passes: elev=${(t1-t0).toFixed(0)}ms erosion=${(t2-t1).toFixed(0)}ms hydro=${(t3-t2).toFixed(0)}ms moisture=${(t4-t3).toFixed(0)}ms biomes=${(t5-t4).toFixed(0)}ms total=${(t5-t0).toFixed(0)}ms`);
+
+  // Build output tiles
+  const tiles = {};
+  for (const [key, cell] of hexMap) {
+    tiles[key] = {
+      biome: cell.biome || 'B00002',
+      elevation: typeof cell.elevation === 'number' ? Math.round(cell.elevation) : 0,
+    };
   }
 
   return {
@@ -194,11 +458,14 @@ export function generateMap(opts = {}) {
     generator: {
       seed: o.seed,
       radius: o.radius,
-      waterPct: o.waterPct,
-      forestPct: o.forestPct,
-      rockyPct: o.rockyPct,
       frequency: o.frequency,
+      warpStrength: o.warpStrength,
       peakHeight: o.peakHeight,
+      redistPower: o.redistPower,
+      erosionDrops: scaledDrops,
+      erosionSteps: o.erosionSteps,
+      riverThreshold: o.riverThreshold,
+      moistureFalloff: o.moistureFalloff,
       crashRadius: o.crashRadius,
     },
     tiles,
@@ -209,21 +476,16 @@ export function generateMap(opts = {}) {
 // Generator dialog
 // ============================================================
 
-/**
- * Show the procedural map generation dialog.
- * @param {function(Object, Object): void} onGenerate
- */
 export function showGeneratorDialog(onGenerate) {
   const fields = [
     { label: 'Chapter ID', defaultValue: 'procedural', placeholder: 'e.g. procedural' },
     { label: 'Map Name', defaultValue: 'Procedural Map', placeholder: 'Human-readable name' },
     { label: 'Radius (hexes)', defaultValue: '20', placeholder: '5-500' },
     { label: 'Seed (0 = random)', defaultValue: '0', placeholder: 'Integer seed' },
-    { label: 'Water %', defaultValue: '15', placeholder: '0-60' },
-    { label: 'Forest %', defaultValue: '35', placeholder: '0-80' },
-    { label: 'Rocky %', defaultValue: '15', placeholder: '0-60' },
-    { label: 'Frequency', defaultValue: '0.06', placeholder: '0.01-0.2 (lower = bigger features)' },
-    { label: 'Peak Height', defaultValue: '200', placeholder: '50-500 (each unit ≈ 0.5 m)' },
+    { label: 'Frequency', defaultValue: '0.05', placeholder: '0.02-0.15 (lower = bigger features)' },
+    { label: 'Domain Warp', defaultValue: '0.5', placeholder: '0-2 (organic deformation)' },
+    { label: 'Peak Height', defaultValue: '200', placeholder: '50-500 (each unit ≈ 0.5m)' },
+    { label: 'River Sensitivity', defaultValue: '15', placeholder: '5-50 (lower = more rivers)' },
     { label: 'Crash Site Radius', defaultValue: '3', placeholder: '0-10' },
   ];
 
@@ -235,12 +497,11 @@ export function showGeneratorDialog(onGenerate) {
       mapName: (values[1] || '').trim() || 'Procedural Map',
       radius: Math.max(1, Math.min(500, parseInt(values[2], 10) || 20)),
       seed: parseInt(values[3], 10) || 0,
-      waterPct: Math.max(0, Math.min(60, parseInt(values[4], 10) || 15)),
-      forestPct: Math.max(0, Math.min(80, parseInt(values[5], 10) || 35)),
-      rockyPct: Math.max(0, Math.min(60, parseInt(values[6], 10) || 15)),
-      frequency: Math.max(0.01, Math.min(0.2, parseFloat(values[7]) || 0.06)),
-      peakHeight: Math.max(50, Math.min(500, parseInt(values[8], 10) || 200)),
-      crashRadius: Math.max(0, Math.min(10, parseInt(values[9], 10) || 3)),
+      frequency: Math.max(0.02, Math.min(0.15, parseFloat(values[4]) || 0.05)),
+      warpStrength: Math.max(0, Math.min(2, parseFloat(values[5]) || 0.5)),
+      peakHeight: Math.max(50, Math.min(500, parseInt(values[6], 10) || 200)),
+      riverThreshold: Math.max(3, Math.min(100, parseInt(values[7], 10) || 15)),
+      crashRadius: Math.max(0, Math.min(10, parseInt(values[8], 10) || 3)),
     };
 
     const t0 = performance.now();

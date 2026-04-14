@@ -447,6 +447,7 @@ function _generateProceduralMap() {
       }
       _rebuildColorMaps();
       _refreshMapSelector();
+      if (hexInspector) hexInspector.updateMapStats();
       const tileCount = Object.keys(mapData.tiles).length;
       setStatus(`Generated "${opts.mapName}" — ${tileCount} tiles (seed ${opts.seed || 'random'}).`);
     } catch (err) {
@@ -497,6 +498,7 @@ async function _regenerateMap() {
       hexCanvas.fitToView();
     }
     _rebuildColorMaps();
+    if (hexInspector) hexInspector.updateMapStats();
     const tileCount = Object.keys(mapData.tiles).length;
     setStatus(`Regenerated — ${tileCount} tiles in ${elapsed}ms (seed ${gen.seed}).`);
   } catch (err) {
