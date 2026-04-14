@@ -339,29 +339,30 @@ export class HexInspector {
       this.mapStatsEl.appendChild(genHeader);
 
       // Editable generator param fields — changes write back to grid.meta.generator
+      // Each field has [label, key, type, min, max] for safe clamping.
       const editableParams = [
-        ['Seed', 'seed', 'int'],
-        ['Radius', 'radius', 'int'],
-        ['Frequency', 'frequency', 'float'],
-        ['Domain Warp', 'warpStrength', 'float'],
-        ['Peak Height', 'peakHeight', 'int'],
-        ['Redistribution', 'redistPower', 'float'],
-        ['Erosion Drops', 'erosionDrops', 'int'],
-        ['Erosion Steps', 'erosionSteps', 'int'],
-        ['River Sensitivity', 'riverThreshold', 'int'],
-        ['Moisture Falloff', 'moistureFalloff', 'float'],
-        ['Crash Radius', 'crashRadius', 'int'],
+        ['Seed', 'seed', 'int', -2147483648, 2147483647],
+        ['Radius', 'radius', 'int', 1, 500],
+        ['Frequency', 'frequency', 'float', 0.02, 0.15],
+        ['Domain Warp', 'warpStrength', 'float', 0, 2],
+        ['Peak Height', 'peakHeight', 'int', 50, 500],
+        ['Redistribution', 'redistPower', 'float', 0.5, 5],
+        ['Erosion Drops', 'erosionDrops', 'int', 0, 500000],
+        ['Erosion Steps', 'erosionSteps', 'int', 1, 100],
+        ['River Sensitivity', 'riverThreshold', 'int', 3, 100],
+        ['Moisture Falloff', 'moistureFalloff', 'float', 0.1, 0.99],
+        ['Crash Radius', 'crashRadius', 'int', 0, 10],
       ];
 
-      for (const [label, key, type] of editableParams) {
+      for (const [label, key, type, lo, hi] of editableParams) {
         if (gen[key] == null) continue;
         const display = type === 'float' ? String(gen[key]) : String(Math.round(gen[key]));
         this.mapStatsEl.appendChild(this._createEditableStatRow(label, display, (value) => {
-          const parsed = type === 'float' ? parseFloat(value) : parseInt(value, 10);
-          if (!isNaN(parsed)) {
-            gen[key] = parsed;
-            if (this.onMapMetaChange) this.onMapMetaChange();
-          }
+          const raw = type === 'float' ? parseFloat(value) : parseInt(value, 10);
+          if (!Number.isFinite(raw)) return;
+          const clamped = Math.min(hi, Math.max(lo, type === 'int' ? Math.round(raw) : raw));
+          gen[key] = clamped;
+          if (this.onMapMetaChange) this.onMapMetaChange();
         }));
       }
 

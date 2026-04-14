@@ -420,24 +420,23 @@ function passBiomes(hexMap, coords, o) {
 function passAccessibility(hexMap, coords, o) {
   const MAX_STEP = 4;
 
-  // Helper: check if a tile can be reached from at least one neighbor
+  // Detect biome IDs for water and rocky
+  const biomeFiles = [...ProjectContext.files.biomes.keys()];
+  const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
+  const waterBiome = biomeSet.has('B00005') ? 'B00005' : null;
+  const rockyBiome = biomeSet.has('B00004') ? 'B00004' : null;
+
   // Helper: get highest non-water, non-rocky neighbor elevation
   function highestLandNeighborElev(q, r) {
     let best = 0;
     for (const dir of HexMath.DIRECTIONS) {
       const nk = hexKey(q + dir.q, r + dir.r);
       const neighbor = hexMap.get(nk);
-      if (!neighbor || neighbor.isWater || neighbor.biome === 'B00004') continue;
+      if (!neighbor || neighbor.isWater || neighbor.biome === rockyBiome) continue;
       if (neighbor.elevation > best) best = neighbor.elevation;
     }
     return best;
   }
-
-  // Detect biome IDs for water and rocky
-  const biomeFiles = [...ProjectContext.files.biomes.keys()];
-  const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
-  const waterBiome = biomeSet.has('B00005') ? 'B00005' : null;
-  const rockyBiome = biomeSet.has('B00004') ? 'B00004' : null;
 
   function isSkippable(cell) {
     return !cell || cell.isWater || cell.biome === waterBiome;

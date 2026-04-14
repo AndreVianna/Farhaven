@@ -450,7 +450,7 @@ function _generateProceduralMap() {
       _refreshMapSelector();
       if (hexInspector) hexInspector.updateMapStats();
       const tileCount = Object.keys(mapData.tiles).length;
-      setStatus(`Generated "${opts.mapName}" — ${tileCount} tiles (seed ${opts.seed || 'random'}).`);
+      setStatus(`Generated "${opts.mapName}" — ${tileCount} tiles (seed ${mapData.generator.seed}).`);
     } catch (err) {
       showError(`Failed to save generated map: ${err.message}`);
     }
@@ -467,8 +467,20 @@ async function _regenerateMap() {
 
   if (!confirm('Regenerate this map? All manual edits will be lost.')) return;
 
+  // Clamp params to safe bounds (same as showGeneratorDialog)
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const opts = {
     ...gen,
+    radius: clamp(gen.radius || 20, 1, 500),
+    frequency: clamp(gen.frequency || 0.05, 0.02, 0.15),
+    warpStrength: clamp(gen.warpStrength || 0.5, 0, 2),
+    peakHeight: clamp(gen.peakHeight || 200, 50, 500),
+    redistPower: clamp(gen.redistPower || 2, 0.5, 5),
+    erosionDrops: clamp(gen.erosionDrops || 5000, 0, 500000),
+    erosionSteps: clamp(gen.erosionSteps || 30, 1, 100),
+    riverThreshold: clamp(gen.riverThreshold || 15, 3, 100),
+    moistureFalloff: clamp(gen.moistureFalloff || 0.85, 0.1, 0.99),
+    crashRadius: clamp(gen.crashRadius || 3, 0, 10),
     chapterId: hexGrid.meta.chapter_id,
     mapName: hexGrid.meta.name,
   };
