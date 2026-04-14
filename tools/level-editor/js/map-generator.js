@@ -487,17 +487,16 @@ function passAccessibility(hexMap, coords, o) {
   }
 
   // Step 2: Smooth unreachable non-water tiles — clamp to nearest neighbor ± MAX_DIFF
-  // Iterate until no more changes (cascading smoothing).
+  // Iterate with a safety limit to avoid infinite loops on isolated clusters.
   let totalSmoothed = 0;
-  let changed = true;
-  while (changed) {
-    changed = false;
+  const MAX_PASSES = 20;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let changed = false;
     for (const { q, r } of coords) {
       const cell = hexMap.get(hexKey(q, r));
       if (isWaterTile(cell)) continue;
       if (!isReachable(q, r)) {
         const target = closestNeighborElev(q, r);
-        // Move toward the closest neighbor, capped at MAX_DIFF away
         if (cell.elevation > target) {
           cell.elevation = target + MAX_DIFF;
         } else {
@@ -507,6 +506,7 @@ function passAccessibility(hexMap, coords, o) {
         changed = true;
       }
     }
+    if (!changed) break;
   }
 
   if (totalPromoted > 0 || totalSmoothed > 0) {

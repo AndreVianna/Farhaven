@@ -6,8 +6,6 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const TILE_COUNT_MIN: int = 1
-const TILE_COUNT_MAX: int = 200000
 
 var _grid: Node
 var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData
@@ -186,49 +184,12 @@ func _make_prop(type: StringName, _biome_int: int) -> Resource:
 
 
 func _validate(spawn: Vector2i) -> void:
-	var count: int = _grid.get_tile_count()
-	if count < TILE_COUNT_MIN or count > TILE_COUNT_MAX:
-		push_warning("MapLoader: tile count %d not in [%d,%d]" % [count, TILE_COUNT_MIN, TILE_COUNT_MAX])
-
 	var spawn_tile: Resource = _grid.get_tile(spawn)
 	if spawn_tile == null:
 		push_warning("MapLoader: spawn tile %s does not exist" % str(spawn))
-	var biomes: Dictionary = {}
-	var has_anomaly: bool = false
+
 	var all_tiles: Dictionary = _grid.get_all_tiles()
 	for c in all_tiles:
 		var t: Resource = all_tiles[c]
-		biomes[t.biome] = true
-		for p in t.props:
-			if p.is_anomaly():
-				has_anomaly = true
-				break
 		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
-
-	_validate_reachability(spawn)
-
-
-func _validate_reachability(spawn: Vector2i) -> void:
-	if not _grid.has_tile(spawn):
-		return
-
-	var reachable: Dictionary = {spawn: true}
-	var queue: Array[Vector2i] = [spawn]
-	while queue.size() > 0:
-		var cur: Vector2i = queue.pop_front()
-		for n in _HexMath.get_neighbors(cur):
-			if reachable.has(n) or not _grid.has_tile(n):
-				continue
-			if _grid.is_passable(cur, n):
-				reachable[n] = true
-				queue.append(n)
-
-	var all_tiles: Dictionary = _grid.get_all_tiles()
-	for c in all_tiles:
-		var coords: Vector2i = c
-		var t: Resource = all_tiles[coords]
-		if t.biome != _HexTile.Biome.WATER and not reachable.has(coords):
-			push_warning("MapLoader: tile %s (biome=%d elev=%d) unreachable from spawn" % [
-				str(coords), t.biome, t.elevation
-			])

@@ -82,6 +82,8 @@ export class HexCanvas {
     this._biomeTextures = new Map();
     /** @type {Set<string>} biome stems we've already requested. */
     this._biomeTexturesRequested = new Set();
+    /** @type {Set<string>|null} Hex keys unreachable from spawn. Null = not computed. */
+    this._unreachableSet = null;
 
     /**
      * Drop every cached biome texture so the next render in Texture
@@ -92,6 +94,9 @@ export class HexCanvas {
       this._biomeTextures.clear();
       this._biomeTexturesRequested.clear();
     };
+
+    /** Invalidate the reachability cache (call after map load or tile edits). */
+    this.invalidateReachability = () => { this._unreachableSet = null; };
 
     // --- Prop/spawn selection state ---
     /** @type {{ hexQ: number, hexR: number, propIndex: number }|null} */
@@ -134,7 +139,10 @@ export class HexCanvas {
     document.addEventListener('keydown', this._onKeyDown);
     document.addEventListener('keyup', this._onKeyUp);
 
-    this.grid.onChange = () => this.requestRender();
+    this.grid.onChange = () => {
+      this._unreachableSet = null; // invalidate on tile change
+      this.requestRender();
+    };
 
     this._onResize();
     this.requestRender();
@@ -221,11 +229,18 @@ export class HexCanvas {
     }
 
     // --- Phase 3: Real hex backgrounds + overlays ---
+    // Compute reachability (cached, invalidated on map load/edit)
+    if (this._unreachableSet === null) {
+      this._unreachableSet = this._computeUnreachable();
+    }
     for (const [key, tile] of this.grid.getAllTiles()) {
       const { q, r } = HexGrid.parseKey(key);
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
+      if (this._unreachableSet.has(key)) {
+        this._drawUnreachableOverlay(q, r);
+      }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
       }
@@ -375,6 +390,68 @@ export class HexCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(tile.elevation), screen.x, screen.y);
+  }
+
+  /**
+   * Compute reachability from spawn via BFS. Matches engine rules:
+   * traversal blocked by water and abs(elevation diff) > 4.
+   * @returns {Set<string>} Set of unreachable hex keys
+   */
+  _computeUnreachable() {
+    const spawn = this.grid.meta.spawn;
+    if (!spawn || !this.grid.hasTile(spawn[0], spawn[1])) return new Set();
+
+    const JUMP_MAX = 4;
+    const spawnKey = `${spawn[0]},${spawn[1]}`;
+    const reachable = new Set([spawnKey]);
+    const queue = [{ q: spawn[0], r: spawn[1] }];
+    let head = 0;
+
+    while (head < queue.length) {
+      const { q, r } = queue[head++];
+      const tile = this.grid.getTile(q, r);
+      if (!tile) continue;
+      for (const dir of HexMath.DIRECTIONS) {
+        const nq = q + dir.q, nr = r + dir.r;
+        const nk = `${nq},${nr}`;
+        if (reachable.has(nk)) continue;
+        const neighbor = this.grid.getTile(nq, nr);
+        if (!neighbor) continue;
+        // Water blocks traversal
+        if (neighbor.biome && neighbor.biome.startsWith('B00005')) continue;
+        // Elevation diff > JUMP_MAX blocks
+        if (Math.abs(tile.elevation - neighbor.elevation) > JUMP_MAX) continue;
+        reachable.add(nk);
+        queue.push({ q: nq, r: nr });
+      }
+    }
+
+    // Unreachable = all non-water tiles not in reachable set
+    const unreachable = new Set();
+    for (const [key, tile] of this.grid.getAllTiles()) {
+      if (tile.biome && tile.biome.startsWith('B00005')) continue; // skip water
+      if (!reachable.has(key)) unreachable.add(key);
+    }
+    return unreachable;
+  }
+
+  /**
+   * Draw a red X overlay on an unreachable hex.
+   * @param {number} q
+   * @param {number} r
+   */
+  _drawUnreachableOverlay(q, r) {
+    const ctx = this.ctx;
+    const { screen } = this._getHexScreen(q, r);
+    const size = HEX_SIZE * this.camera.zoom * 0.35;
+    ctx.strokeStyle = 'rgba(255,60,60,0.7)';
+    ctx.lineWidth = Math.max(1.5, 2.5 * this.camera.zoom);
+    ctx.beginPath();
+    ctx.moveTo(screen.x - size, screen.y - size);
+    ctx.lineTo(screen.x + size, screen.y + size);
+    ctx.moveTo(screen.x + size, screen.y - size);
+    ctx.lineTo(screen.x - size, screen.y + size);
+    ctx.stroke();
   }
 
   /**
