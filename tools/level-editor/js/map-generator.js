@@ -92,7 +92,11 @@ export function generateMap(opts = {}) {
 
   const coords = hexesInRadius(o.radius);
 
-  // --- Phase 1: sample three noise layers for every hex ---
+  // Landing zone: within 2× crashRadius, dampen noise to keep area walkable
+  const landingZone = o.crashRadius * 2;
+
+  // --- Phase 1: sample three independent noise layers ---
+  // NO distance-based bias — biome placement is 100% noise-driven.
   const samples = coords.map(({ q, r }) => {
     const px = HexMath.axialToPixel(q, r);
     const nx = px.x * o.frequency / 40;
@@ -100,42 +104,43 @@ export function generateMap(opts = {}) {
 
     const nElev = elevNoise.fractal2D(nx, ny, 5, 2.0, 0.5);
     const nMoist = moistNoise.fractal2D(nx * 0.8, ny * 0.8, 4, 2.0, 0.5);
-    // Ruggedness at higher frequency — creates smaller rocky patches
     const nRugged = ruggedNoise.fractal2D(nx * 1.5, ny * 1.5, 3, 2.0, 0.5);
 
     const dist = HexMath.distance(0, 0, q, r);
-    const distRatio = dist / Math.max(1, o.radius);
 
-    // Water candidacy: noise biased toward center (center dips, edges rise)
-    // Uses dist^4 so the center is very flat and edges rise steeply
-    const waterScore = nElev - Math.pow(distRatio, 4) * 3;
+    // Landing zone fade: 1.0 at crashRadius, 0.0 at 2×crashRadius
+    // Dampens noise near spawn so the crash site area stays gentle
+    let landingFade = 0;
+    if (dist <= landingZone && landingZone > 0) {
+      landingFade = Math.max(0, 1 - dist / landingZone);
+    }
 
-    // Rugged score: blends distance (edges more rocky) with noise (patches anywhere)
-    const ruggedScore = 0.4 * distRatio + 0.6 * ((nRugged + 1) / 2);
+    // Dampen elevation noise near spawn — push it toward 0 (flat)
+    const dampedElev = nElev * (1 - landingFade * 0.8);
 
-    return { q, r, nElev, nMoist, waterScore, ruggedScore, dist, distRatio };
+    return { q, r, nElev: dampedElev, nMoist, nRugged, dist };
   });
 
-  // --- Phase 2: water — bottom waterPct% by waterScore → water ---
-  const waterScores = samples.map(s => s.waterScore).sort((a, b) => a - b);
-  const waterThreshold = waterScores[Math.floor(waterScores.length * o.waterPct / 100)] ?? -Infinity;
+  // --- Phase 2: water — bottom waterPct% by elevation noise ---
+  const elevScores = samples.map(s => s.nElev).sort((a, b) => a - b);
+  const waterThreshold = elevScores[Math.floor(elevScores.length * o.waterPct / 100)] ?? -Infinity;
 
   for (const s of samples) {
-    s.isWater = s.waterScore <= waterThreshold;
+    s.isWater = s.nElev <= waterThreshold;
   }
 
-  // --- Phase 3: rocky — top rockyPct% of non-water by ruggedScore ---
+  // --- Phase 3: rocky — top rockyPct% of non-water by ruggedness noise ---
   const landSamples = samples.filter(s => !s.isWater);
-  const ruggedScores = landSamples.map(s => s.ruggedScore).sort((a, b) => a - b);
+  const ruggedScores = landSamples.map(s => s.nRugged).sort((a, b) => a - b);
   const rockyThreshold = ruggedScores.length > 0
     ? ruggedScores[Math.floor(ruggedScores.length * (100 - o.rockyPct) / 100)] ?? Infinity
     : Infinity;
 
   for (const s of samples) {
-    s.isRocky = !s.isWater && s.ruggedScore >= rockyThreshold;
+    s.isRocky = !s.isWater && s.nRugged >= rockyThreshold;
   }
 
-  // --- Phase 4: forest — top forestPct% of remaining land by moisture ---
+  // --- Phase 4: forest — top forestPct% of remaining by moisture noise ---
   const remainingSamples = samples.filter(s => !s.isWater && !s.isRocky);
   const moistScores = remainingSamples.map(s => s.nMoist).sort((a, b) => a - b);
   const forestThreshold = moistScores.length > 0
@@ -153,6 +158,7 @@ export function generateMap(opts = {}) {
   };
 
   // --- Phase 6: assign biomes + biome-appropriate elevation ---
+  // Elevation is gentle for habitable biomes, steep only for rocky.
   const tiles = {};
   for (const s of samples) {
     const key = `${s.q},${s.r}`;
@@ -167,17 +173,13 @@ export function generateMap(opts = {}) {
       elev = 0;
     } else if (s.isRocky) {
       biome = biomeFor('rocky');
-      // Rocky gets real elevation: distance-based rise + noise roughness
-      const baseHeight = Math.pow(s.distRatio, 2) * o.peakHeight;
-      const roughness = Math.abs(s.nElev) * o.peakHeight * 0.2;
-      elev = Math.max(3, Math.round(baseHeight + roughness));
+      // Rocky elevation driven by ruggedness noise intensity
+      elev = Math.max(3, Math.round(((s.nRugged + 1) / 2) * o.peakHeight * 0.5));
     } else if (s.nMoist >= forestThreshold) {
       biome = biomeFor('forest');
-      // Forest: gentle rolling terrain (0-8)
       elev = Math.round(Math.abs(s.nElev) * 8);
     } else {
       biome = biomeFor('grassland');
-      // Grassland: very gentle (0-5)
       elev = Math.round(Math.abs(s.nElev) * 5);
     }
 
