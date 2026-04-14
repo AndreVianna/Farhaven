@@ -6,8 +6,8 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const TILE_COUNT_MIN: int = 200
-const TILE_COUNT_MAX: int = 300
+const TILE_COUNT_MIN: int = 1
+const TILE_COUNT_MAX: int = 200000
 
 var _grid: Node
 var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData
