@@ -1434,9 +1434,9 @@ export class HexCanvas {
     // Record world point under cursor before zoom
     const worldBefore = this.screenToWorld(mx, my);
 
-    // Adjust zoom
-    const delta = event.deltaY * -0.001;
-    this.camera.zoom = Math.max(0.05, Math.min(6.0, this.camera.zoom + delta));
+    // Multiplicative zoom: 10% per scroll step, feels natural at any level
+    const factor = event.deltaY > 0 ? 0.9 : 1.1;
+    this.camera.zoom = Math.max(0.03, Math.min(6.0, this.camera.zoom * factor));
 
     // Adjust offsets so world point stays under cursor
     this.camera.offsetX = mx - worldBefore.x * this.camera.zoom;
@@ -1555,7 +1555,7 @@ export class HexCanvas {
     const scaleX = (canvasW - padding * 2) / worldW;
     const scaleY = (canvasH - padding * 2) / worldH;
     this.camera.zoom = Math.min(scaleX, scaleY, 6.0);
-    this.camera.zoom = Math.max(this.camera.zoom, 0.05);
+    this.camera.zoom = Math.max(this.camera.zoom, 0.03);
 
     // Center the map
     const worldCenterX = (minX + maxX) / 2;
