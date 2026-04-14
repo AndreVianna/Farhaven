@@ -296,15 +296,17 @@ func _rebuild_mesh() -> void:
 
 		var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
 		for d: int in range(6):
+			# If this edge has a wall, keep own elevation (cliff face).
+			if tile.walls[d]:
+				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
-			var diff: int = absi(tile.elevation - n_tile.elevation)
-			if diff <= 2:
-				ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+			# No wall → slope: average the two elevations
+			ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
 		var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
@@ -313,15 +315,17 @@ func _rebuild_mesh() -> void:
 			var cnt: int = 1
 			var dir_pair: Array = corner_neighbor_dirs[ci]
 			for d: int in dir_pair:
+				# Skip neighbors across a wall edge
+				if tile.walls[d]:
+					continue
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 				if n_tile == null:
 					continue
 				if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 					continue
-				if absi(tile.elevation - n_tile.elevation) <= 2:
-					sum_e += float(n_tile.elevation)
-					cnt += 1
+				sum_e += float(n_tile.elevation)
+				cnt += 1
 			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 		all_corner_y[coords] = cy
 
@@ -509,10 +513,11 @@ func _rebuild_mesh() -> void:
 		var cz: float = world_2d.y
 
 		for d: int in range(6):
+			# Use the tile's walls array to decide whether to draw a cliff face.
+			if not tile.walls[d]:
+				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
-				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
 			var ec: Array = edge_corners[d]

@@ -97,6 +97,14 @@ func load_map(path: String) -> bool:
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
 
+		# Walls: 6-boolean array [E,NE,NW,W,SW,SE]. If absent, will be
+		# computed from elevation diffs after all tiles are loaded.
+		if td.has("walls") and td["walls"] is Array and td["walls"].size() == 6:
+			var w: Array[bool] = []
+			for v in td["walls"]:
+				w.append(bool(v))
+			tile.walls = w
+
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):
 			# New format: props array with full Prop data
@@ -146,6 +154,20 @@ func load_map(path: String) -> bool:
 				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
 
 		_grid._tiles[coords] = tile
+
+	# Step 3b: Compute default walls for tiles that lack them (legacy maps).
+	for c: Variant in _grid._tiles:
+		var t: Resource = _grid._tiles[c]
+		if t.walls.any(func(w: bool) -> bool: return w):
+			continue  # already has walls from JSON
+		var crd: Vector2i = c as Vector2i
+		for d: int in range(6):
+			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_t: Resource = _grid._tiles.get(n_crd, null)
+			if n_t != null:
+				t.walls[d] = absi(t.elevation - n_t.elevation) >= 2
+			else:
+				t.walls[d] = false
 
 	# Step 4: Store spawn position and starting loadout on the grid.
 	_grid.spawn_tile = spawn
