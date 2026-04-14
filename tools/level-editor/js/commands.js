@@ -2,7 +2,7 @@
 // CommandHistory (task-004)
 // ============================================================
 
-import { createTileData } from './hex-grid.js';
+import { createTileData, recomputeWallsAround } from './hex-grid.js';
 
 export class CommandHistory {
   constructor() {
@@ -182,6 +182,7 @@ export class SetElevationCommand {
     }
     tile.elevation = this.newElevation;
     this.grid.setTile(this.q, this.r, tile);
+    recomputeWallsAround(this.grid, this.q, this.r);
   }
   undo() {
     if (this._created) {
@@ -193,6 +194,52 @@ export class SetElevationCommand {
         this.grid.setTile(this.q, this.r, tile);
       }
     }
+    recomputeWallsAround(this.grid, this.q, this.r);
+  }
+}
+
+/**
+ * Toggle a wall on a hex edge (and the opposite edge on the neighbor).
+ */
+export class ToggleWallCommand {
+  /**
+   * @param {import('./hex-grid.js').HexGrid} grid
+   * @param {number} q - Hex q coordinate
+   * @param {number} r - Hex r coordinate
+   * @param {number} edgeIdx - Edge index (0-5)
+   */
+  constructor(grid, q, r, edgeIdx) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.edgeIdx = edgeIdx;
+    this.tab = 'map';
+    this.type = 'ToggleWall';
+  }
+  execute() {
+    this._toggle();
+  }
+  undo() {
+    this._toggle(); // toggle is its own inverse
+  }
+  _toggle() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile || !tile.walls) return;
+    tile.walls[this.edgeIdx] = !tile.walls[this.edgeIdx];
+    // Also toggle the opposite edge on the neighbor
+    const dirs = [
+      { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+      { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+    ];
+    const dir = dirs[this.edgeIdx];
+    const nq = this.q + dir.q, nr = this.r + dir.r;
+    const neighbor = this.grid.getTile(nq, nr);
+    if (neighbor && neighbor.walls) {
+      const oppositeIdx = (this.edgeIdx + 3) % 6;
+      neighbor.walls[oppositeIdx] = tile.walls[this.edgeIdx];
+    }
+    // Trigger render
+    this.grid.setTile(this.q, this.r, tile);
   }
 }
 

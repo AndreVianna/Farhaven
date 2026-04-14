@@ -85,13 +85,56 @@ export const CATEGORY_COLORS = {
   storage:   { fill: 'rgba(200,140,100,0.3)', badge: '#c88c64', label: 'tan' },
 };
 
+/** Default walls array — all false (no walls). */
+export const DEFAULT_WALLS = [false, false, false, false, false, false];
+
 /**
  * Creates a default TileData object.
  * @param {string} [biome='']
- * @returns {{ biome: string, elevation: number, props: Array<Object> }}
+ * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[] }}
  */
 export function createTileData(biome = '') {
-  return { biome, elevation: 0, props: [] };
+  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS] };
+}
+
+/**
+ * Compute default wall values for a tile based on elevation diffs
+ * with its 6 neighbors. Wall = true when abs(diff) >= 2.
+ * @param {HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ * @returns {boolean[]} 6-element array matching HexMath.DIRECTIONS
+ */
+export function computeDefaultWalls(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return [...DEFAULT_WALLS];
+  const walls = [];
+  for (const dir of HexMath.DIRECTIONS) {
+    const neighbor = grid.getTile(q + dir.q, r + dir.r);
+    if (!neighbor) {
+      walls.push(false);
+    } else {
+      walls.push(Math.abs(tile.elevation - neighbor.elevation) >= 2);
+    }
+  }
+  return walls;
+}
+
+/**
+ * Recompute walls for a tile AND all its neighbors (since changing
+ * one tile's elevation affects walls on both sides of each edge).
+ * @param {HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ */
+export function recomputeWallsAround(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (tile) tile.walls = computeDefaultWalls(grid, q, r);
+  for (const dir of HexMath.DIRECTIONS) {
+    const nq = q + dir.q, nr = r + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (neighbor) neighbor.walls = computeDefaultWalls(grid, nq, nr);
+  }
 }
 
 /**
@@ -330,6 +373,10 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       const { q, r } = HexGrid.parseKey(key);
       const tile = createTileData(tileJson.biome || '');
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
+      if (Array.isArray(tileJson.walls) && tileJson.walls.length === 6) {
+        tile.walls = tileJson.walls.map(v => !!v);
+      }
+      // walls will be recomputed after all tiles are loaded if not in JSON
 
       // New format: props array present
       if (Array.isArray(tileJson.props)) {
@@ -363,6 +410,15 @@ export function loadMapIntoGrid(hexGrid, mapData) {
     }
   }
 
+  // Compute default walls for tiles that didn't have them in JSON
+  for (const [key, tile] of hexGrid.tiles) {
+    const hasWalls = Array.isArray(tile.walls) && tile.walls.length === 6 && tile.walls.some(v => v);
+    if (!hasWalls) {
+      const { q, r } = HexGrid.parseKey(key);
+      tile.walls = computeDefaultWalls(hexGrid, q, r);
+    }
+  }
+
   return { success: true };
 }
 
@@ -377,6 +433,7 @@ export function serializeGridToMapJson(hexGrid) {
     const entry = {
       biome: tile.biome,
       elevation: tile.elevation,
+      walls: tile.walls || [...DEFAULT_WALLS],
     };
     if (tile.props && tile.props.length > 0) {
       entry.props = tile.props.map(p => {

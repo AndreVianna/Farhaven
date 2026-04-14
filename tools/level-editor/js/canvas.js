@@ -85,6 +85,8 @@ export class HexCanvas {
     this._biomeTexturesRequested = new Set();
     /** @type {Set<string>|null} Hex keys unreachable from spawn. Null = not computed. */
     this._unreachableSet = null;
+    /** @type {{ q: number, r: number, edgeIdx: number }|null} Hovered edge for wall tool */
+    this.hoveredEdge = null;
 
     /**
      * Drop every cached biome texture so the next render in Texture
@@ -287,6 +289,15 @@ export class HexCanvas {
       }
     }
 
+    // --- Phase 6b: Wall tool edge highlight ---
+    if (this.hoveredEdge && this.toolManager && this.toolManager.activeToolType === 'wall') {
+      const { q, r, edgeIdx } = this.hoveredEdge;
+      const tile = this.grid.getTile(q, r);
+      if (tile && tile.walls) {
+        this._drawWallHighlight(q, r, edgeIdx, tile.walls[edgeIdx]);
+      }
+    }
+
     // --- Phase 7: Selection highlight ---
     if (this.selectedHex && this.grid.hasTile(this.selectedHex.q, this.selectedHex.r)) {
       this._drawSelection(this.selectedHex.q, this.selectedHex.r);
@@ -456,34 +467,78 @@ export class HexCanvas {
   }
 
   /**
-   * Draw cliff edges where elevation diff >= 2.
+   * Draw cliff edges based on the tile's walls array.
    * @param {number} q
    * @param {number} r
    * @param {Object} tile
    * @returns {void}
    */
   _drawCliffEdges(q, r, tile) {
+    if (!tile.walls) return;
     const ctx = this.ctx;
-    const neighbors = HexMath.getNeighbors(q, r);
     const { corners } = this._getHexScreen(q, r);
 
-    // For flat-top hexes (corners at 0°,60°,…,300° clockwise in screen space):
-    // Edge i→(i+1) midpoint points at angle (30+60*i)°, which aligns with
-    // DIRECTIONS at index (6-i)%6. Lookup avoids modular arithmetic errors.
-    const EDGE_TO_NEIGHBOR = [0, 5, 4, 3, 2, 1];
-    for (let i = 0; i < 6; i++) {
-      const n = neighbors[EDGE_TO_NEIGHBOR[i]];
-      const neighbor = this.grid.getTile(n.q, n.r);
-      if (!neighbor) continue;
-      if (Math.abs(tile.elevation - neighbor.elevation) >= 2) {
-        ctx.beginPath();
-        ctx.moveTo(corners[i].x, corners[i].y);
-        ctx.lineTo(corners[(i + 1) % 6].x, corners[(i + 1) % 6].y);
-        ctx.strokeStyle = CLIFF_COLOR;
-        ctx.lineWidth = 3 * this.camera.zoom;
-        ctx.stroke();
-      }
+    // Map direction index (0-5 from DIRECTIONS) to corner edge index.
+    // DIRECTIONS: E(0), NE(1), NW(2), W(3), SW(4), SE(5)
+    // Corner edges (flat-top): edge i→(i+1) aligns with DIRECTIONS at (6-i)%6.
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    for (let dirIdx = 0; dirIdx < 6; dirIdx++) {
+      if (!tile.walls[dirIdx]) continue;
+      const edgeCorner = DIR_TO_EDGE[dirIdx];
+      ctx.beginPath();
+      ctx.moveTo(corners[edgeCorner].x, corners[edgeCorner].y);
+      ctx.lineTo(corners[(edgeCorner + 1) % 6].x, corners[(edgeCorner + 1) % 6].y);
+      ctx.strokeStyle = CLIFF_COLOR;
+      ctx.lineWidth = 3 * this.camera.zoom;
+      ctx.stroke();
     }
+  }
+
+  /**
+   * Draw a highlighted edge for the wall tool hover.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} edgeIdx - Direction index (0-5)
+   * @param {boolean} hasWall - Whether this edge currently has a wall
+   */
+  /**
+   * Find the closest hex edge (direction index 0-5) to a world-space point
+   * within a hex at (q, r). Returns the direction index or -1 if too far.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} worldX
+   * @param {number} worldY
+   * @returns {number} Direction index (0-5) or -1
+   */
+  _closestEdge(q, r, worldX, worldY) {
+    const center = HexMath.axialToPixel(q, r);
+    const dx = worldX - center.x;
+    const dy = worldY - center.y;
+    // Angle from center to mouse (in screen space, y-down)
+    const angle = Math.atan2(dy, dx);
+    // Map angle to direction index. Flat-top hex: DIRECTIONS[0]=E at 0°,
+    // each direction spans 60°. Offset by 30° so boundaries fall between edges.
+    const sector = Math.round(((angle + Math.PI) / (Math.PI / 3)) - 0.5) % 6;
+    // DIRECTIONS: E=0, NE=1, NW=2, W=3, SW=4, SE=5
+    // Angle sectors (CCW from +x): 0°=E, 60°=NE... but atan2 y-down inverts.
+    // Direct mapping: sector 0→E(0), 5→SE(5), 4→SW(4), 3→W(3), 2→NW(2), 1→NE(1)
+    const DIR_MAP = [0, 5, 4, 3, 2, 1];
+    const normalizedSector = ((Math.round(angle / (Math.PI / 3)) % 6) + 6) % 6;
+    return DIR_MAP[normalizedSector];
+  }
+
+  _drawWallHighlight(q, r, edgeIdx, hasWall) {
+    const ctx = this.ctx;
+    const { corners } = this._getHexScreen(q, r);
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const edgeCorner = DIR_TO_EDGE[edgeIdx];
+    ctx.beginPath();
+    ctx.moveTo(corners[edgeCorner].x, corners[edgeCorner].y);
+    ctx.lineTo(corners[(edgeCorner + 1) % 6].x, corners[(edgeCorner + 1) % 6].y);
+    // Green = will add wall, Red = will remove wall
+    ctx.strokeStyle = hasWall ? 'rgba(255,100,100,0.9)' : 'rgba(100,255,100,0.9)';
+    ctx.lineWidth = Math.max(3, 5 * this.camera.zoom);
+    ctx.stroke();
   }
 
   /**
@@ -1310,14 +1365,17 @@ export class HexCanvas {
         if (isElevation && this.toolManager.activeTool) {
           this.toolManager.activeTool.delta = 1;
         }
-        // Pass sub-hex info for placement tools
-        const hexWithSub = { q: hex.q, r: hex.r };
+        // Pass sub-hex or edge info depending on tool
+        const hexWithExtra = { q: hex.q, r: hex.r };
         if (this.hoveredSubHex && this._isSubHexTool()) {
-          hexWithSub.sq = this.hoveredSubHex.q;
-          hexWithSub.sr = this.hoveredSubHex.r;
+          hexWithExtra.sq = this.hoveredSubHex.q;
+          hexWithExtra.sr = this.hoveredSubHex.r;
+        }
+        if (this.hoveredEdge && this.toolManager.activeToolType === 'wall') {
+          hexWithExtra.edgeIdx = this.hoveredEdge.edgeIdx;
         }
         this.toolManager.ctrlHeld = this.ctrlHeld;
-        this.toolManager.onMouseDown(hexWithSub);
+        this.toolManager.onMouseDown(hexWithExtra);
       }
       this.requestRender();
     }
@@ -1364,6 +1422,19 @@ export class HexCanvas {
         this.hoveredSubHex = null;
         this.requestRender();
       }
+    }
+
+    // Compute hovered edge for wall tool
+    if (this.toolManager && this.toolManager.activeToolType === 'wall' && this.grid.hasTile(hex.q, hex.r)) {
+      const mouseWorld = this.screenToWorld(mx, my);
+      const edgeIdx = this._closestEdge(hex.q, hex.r, mouseWorld.x, mouseWorld.y);
+      if (!this.hoveredEdge || this.hoveredEdge.q !== hex.q || this.hoveredEdge.r !== hex.r || this.hoveredEdge.edgeIdx !== edgeIdx) {
+        this.hoveredEdge = { q: hex.q, r: hex.r, edgeIdx };
+        this.requestRender();
+      }
+    } else if (this.hoveredEdge) {
+      this.hoveredEdge = null;
+      this.requestRender();
     }
 
     // Notify hex inspector of hovered hex/sub-hex

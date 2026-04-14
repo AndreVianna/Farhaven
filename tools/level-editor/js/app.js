@@ -5,7 +5,7 @@
 // ============================================================
 
 import { TresParser } from './tres-parser.js';
-import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
+import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin, recomputeWallsAround } from './hex-grid.js';
 import { CommandHistory } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
@@ -630,6 +630,16 @@ const btnGenerateMap = document.getElementById('btn-generate-map');
 if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
 const btnDeleteMap = document.getElementById('btn-delete-map');
 if (btnDeleteMap) btnDeleteMap.addEventListener('click', () => _deleteCurrentMap());
+const btnRecomputeWalls = document.getElementById('btn-recompute-walls');
+if (btnRecomputeWalls) btnRecomputeWalls.addEventListener('click', () => {
+  for (const [key] of hexGrid.getAllTiles()) {
+    const { q, r } = HexGrid.parseKey(key);
+    recomputeWallsAround(hexGrid, q, r);
+  }
+  dirtyTracker.markDirty('map');
+  if (hexCanvas) hexCanvas.requestRender();
+  setStatus('Walls recomputed from elevation data.');
+});
 
 // Biome render-mode toggle (Color | Texture). Texture mode mirrors the
 // runtime hash-picked variation + rotation so the editor preview matches
@@ -907,6 +917,7 @@ const TOOL_GROUPS = [
   { group: 'Hex Tools', tools: [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
     { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
+    { type: 'wall',       label: 'Wall',        shortcut: 'W' },
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [

@@ -12,6 +12,7 @@ import {
   SetSpawnCommand,
   EraseContentCommand,
   DeleteHexCommand,
+  ToggleWallCommand,
   BatchCommand,
 } from './commands.js';
 import { ProjectContext } from './file-discovery.js';
@@ -43,6 +44,7 @@ export const ToolType = {
   SPAWN: 'spawn',
   ERASER: 'eraser',
   DELETE_HEX: 'delete_hex',
+  WALL: 'wall',
 };
 
 
@@ -387,6 +389,15 @@ export class DeleteHexTool extends BaseTool {
   }
 }
 
+export class WallTool extends BaseTool {
+  onMouseDown(hex) {
+    if (!hex || typeof hex.edgeIdx !== 'number') return;
+    if (!this.grid.hasTile(hex.q, hex.r)) return;
+    const cmd = new ToggleWallCommand(this.grid, hex.q, hex.r, hex.edgeIdx);
+    this.commandHistory.execute(cmd);
+  }
+}
+
 // ============================================================
 // ToolManager (task-009)
 // ============================================================
@@ -458,6 +469,9 @@ export class ToolManager {
         break;
       case ToolType.DELETE_HEX:
         this.activeTool = new DeleteHexTool(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.WALL:
+        this.activeTool = new WallTool(this.grid, this.commandHistory, this);
         break;
       default:
         this.activeTool = null;
