@@ -241,6 +241,8 @@ export class HexInspector {
     this.mapStatsEl = container.querySelector('#map-stats-content');
     this.hexInfoEl = container.querySelector('#hex-info-content');
     this.propEditorEl = container.querySelector('#prop-editor-content');
+    /** @type {function():void|null} Callback for Regenerate button */
+    this.onRegenerate = null;
     /** @type {{ q: number, r: number }|null} */
     this.currentHex = null;
   }
@@ -326,6 +328,51 @@ export class HexInspector {
       row.appendChild(label);
 
       this.mapStatsEl.appendChild(row);
+    }
+
+    // Generator params (if this map was procedurally generated)
+    const gen = this.grid.meta.generator;
+    if (gen) {
+      const genHeader = document.createElement('div');
+      genHeader.style.cssText = 'margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text-secondary);border-top:1px solid var(--border);padding-top:6px;';
+      genHeader.textContent = 'Generator params:';
+      this.mapStatsEl.appendChild(genHeader);
+
+      // Editable generator param fields — changes write back to grid.meta.generator
+      // Each field has [label, key, type, min, max] for safe clamping.
+      const editableParams = [
+        ['Seed', 'seed', 'int', -2147483648, 2147483647],
+        ['Radius', 'radius', 'int', 1, 500],
+        ['Frequency', 'frequency', 'float', 0.02, 0.15],
+        ['Domain Warp', 'warpStrength', 'float', 0, 2],
+        ['Peak Height', 'peakHeight', 'int', 50, 500],
+        ['Redistribution', 'redistPower', 'float', 0.5, 5],
+        ['Erosion Drops', 'erosionDrops', 'int', 0, 500000],
+        ['Erosion Steps', 'erosionSteps', 'int', 1, 100],
+        ['River Sensitivity', 'riverThreshold', 'int', 3, 100],
+        ['Moisture Falloff', 'moistureFalloff', 'float', 0.1, 0.99],
+        ['Crash Radius', 'crashRadius', 'int', 0, 10],
+      ];
+
+      for (const [label, key, type, lo, hi] of editableParams) {
+        if (gen[key] == null) continue;
+        const display = type === 'float' ? String(gen[key]) : String(Math.round(gen[key]));
+        this.mapStatsEl.appendChild(this._createEditableStatRow(label, display, (value) => {
+          const raw = type === 'float' ? parseFloat(value) : parseInt(value, 10);
+          if (!Number.isFinite(raw)) return;
+          const clamped = Math.min(hi, Math.max(lo, type === 'int' ? Math.round(raw) : raw));
+          gen[key] = clamped;
+          if (this.onMapMetaChange) this.onMapMetaChange();
+        }));
+      }
+
+      if (this.onRegenerate) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Regenerate';
+        btn.style.cssText = 'margin-top:6px;width:100%;padding:4px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;';
+        btn.addEventListener('click', () => this.onRegenerate());
+        this.mapStatsEl.appendChild(btn);
+      }
     }
   }
 

@@ -887,6 +887,7 @@ html, body {
       <button id="help-btn" title="Keyboard Shortcuts (?)">?</button>
     </header>
     <nav id="tabs">
+      <button class="tab-btn" data-tab="settings">Settings</button>
       <button class="tab-btn active" data-tab="map">Maps</button>
       <button class="tab-btn" data-tab="biomes">Biomes</button>
       <button class="tab-btn" data-tab="mineral">Minerals</button>
@@ -904,7 +905,6 @@ html, body {
       <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="journal">Journal</button>
       <button class="tab-btn" data-tab="cutscenes">Cutscenes</button>
-      <button class="tab-btn" data-tab="settings">Game Settings</button>
     </nav>
     <main id="tab-content">
       <div id="tab-map" class="tab-panel active">
@@ -970,8 +970,10 @@ html, body {
               <label class="sidebar-label" style="margin-bottom:0;">Map Info</label>
               <div style="display:flex;gap:4px;">
                 <button id="btn-new-map" type="button" title="New Map (Ctrl+N)" style="font-size:11px;padding:2px 8px;">New</button>
+                <button id="btn-generate-map" type="button" title="Generate Procedural Map" style="font-size:11px;padding:2px 8px;">Generate</button>
                 <button id="btn-save" type="button" title="Save All (Ctrl+S)" style="font-size:11px;padding:2px 8px;">Save</button>
                 <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" style="font-size:11px;padding:2px 8px;">Save As</button>
+                <button id="btn-delete-map" type="button" title="Delete current map" style="font-size:11px;padding:2px 8px;color:#ff9999;border-color:#7a3030;">Del</button>
               </div>
             </div>
             <div id="map-stats-content"></div>
