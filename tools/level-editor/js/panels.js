@@ -345,6 +345,7 @@ export class HexInspector {
         ['Forest', `${gen.forestPct}%`],
         ['Rocky', `${gen.rockyPct}%`],
         ['Frequency', gen.frequency],
+        ['Peak height', gen.peakHeight != null ? `${gen.peakHeight} (${(gen.peakHeight * 0.5).toFixed(0)}m)` : '—'],
         ['Crash radius', gen.crashRadius],
       ];
       for (const [label, value] of params) {

@@ -3,6 +3,7 @@
 // ============================================================
 //
 // Generates a hex map using layered Simplex noise + biome rules.
+// Terrain model: central valley surrounded by rising mountains.
 // Produces a map JSON object compatible with loadMapIntoGrid().
 
 'use strict';
@@ -17,8 +18,8 @@ import { showInlineFormModal } from './panels.js';
 // ============================================================
 
 /**
- * Yield all axial (q, r) coordinates within a hex-shaped region
- * of the given radius centered at (0, 0).
+ * All axial (q, r) coordinates within a hex-shaped region of the
+ * given radius centered at (0, 0).
  * @param {number} radius
  * @returns {Array<{q: number, r: number}>}
  */
@@ -35,19 +36,20 @@ function hexesInRadius(radius) {
 }
 
 // ============================================================
-// Biome assignment
+// Generation
 // ============================================================
 
 /**
  * @typedef {Object} GenOptions
  * @property {number} radius - Map radius in hexes
- * @property {number} seed - Random seed
+ * @property {number} seed - Random seed (0 = pick one)
  * @property {number} waterPct - Percentage of tiles that become water (0-100)
  * @property {number} forestPct - Percentage of land tiles that become forest (0-100)
  * @property {number} rockyPct - Percentage of land tiles that become rocky (0-100)
  * @property {number} frequency - Noise frequency (lower = larger features)
+ * @property {number} peakHeight - Max mountain elevation at map edge (in half-metres)
  * @property {number} crashRadius - Radius of crash site around spawn
- * @property {string} chapterId - Chapter ID for the map
+ * @property {string} chapterId - Chapter ID for the map file
  * @property {string} mapName - Human-readable map name
  */
 
@@ -55,10 +57,11 @@ function hexesInRadius(radius) {
 const DEFAULTS = {
   radius: 20,
   seed: 0,
-  waterPct: 25,
+  waterPct: 15,
   forestPct: 35,
   rockyPct: 15,
   frequency: 0.06,
+  peakHeight: 200,
   crashRadius: 3,
   chapterId: 'procedural',
   mapName: 'Procedural Map',
@@ -66,8 +69,18 @@ const DEFAULTS = {
 
 /**
  * Generate a procedural map.
+ *
+ * Terrain model:
+ *   rawElev = noise * amplitude + distanceRise
+ *
+ * - Center (dist=0): elevation ≈ noise only → gentle, can dip below 0
+ * - Edges (dist=radius): elevation ≈ peakHeight → mountains
+ * - Sea level is set so that exactly waterPct% of tiles fall below it
+ * - Tiles below sea level → Water (elevation = 0, water surface)
+ * - Tiles above sea level → elevation in game units (each ≈ 0.5 m)
+ *
  * @param {Partial<GenOptions>} opts
- * @returns {{ spawn: number[], chapter_id: string, name: string, tiles: Object }}
+ * @returns {Object} Map JSON data
  */
 export function generateMap(opts = {}) {
   const o = { ...DEFAULTS, ...opts };
@@ -78,87 +91,96 @@ export function generateMap(opts = {}) {
 
   const coords = hexesInRadius(o.radius);
 
-  // --- Phase 1: sample noise for every hex ---
+  // Noise amplitude — controls how much the terrain undulates.
+  // Scaled relative to peakHeight so the center valley has meaningful
+  // variation without overpowering the distance-based mountain rise.
+  const noiseAmp = o.peakHeight * 0.25;
+
+  // --- Phase 1: raw elevation + moisture for every hex ---
   const samples = coords.map(({ q, r }) => {
-    // Convert axial to world-space for noise sampling
     const px = HexMath.axialToPixel(q, r);
-    const nx = px.x * o.frequency / 40; // normalize by HEX_SIZE
+    const nx = px.x * o.frequency / 40;
     const ny = px.y * o.frequency / 40;
 
-    const elevation = elevNoise.fractal2D(nx, ny, 5, 2.0, 0.5);
-    const moisture = moistNoise.fractal2D(nx * 0.8, ny * 0.8, 4, 2.0, 0.5);
+    // Fractal noise in roughly [-1, 1]
+    const nElev = elevNoise.fractal2D(nx, ny, 5, 2.0, 0.5);
+    const nMoist = moistNoise.fractal2D(nx * 0.8, ny * 0.8, 4, 2.0, 0.5);
 
-    // Distance from center for island falloff
+    // Distance-based mountain rise: center = 0, edge = peakHeight
     const dist = HexMath.distance(0, 0, q, r);
-    const falloff = Math.max(0, 1 - (dist / o.radius) ** 1.5);
+    const distRatio = dist / Math.max(1, o.radius);
+    const heightRise = Math.pow(distRatio, 2.5) * o.peakHeight;
 
-    return { q, r, elevation: elevation * falloff, moisture, dist };
+    // Combined raw elevation
+    const rawElev = nElev * noiseAmp + heightRise;
+
+    return { q, r, rawElev, moisture: nMoist, dist };
   });
 
-  // --- Phase 2: compute percentile thresholds ---
-  const elevations = samples.map(s => s.elevation).sort((a, b) => a - b);
-  const waterThreshold = elevations[Math.floor(elevations.length * o.waterPct / 100)] ?? -Infinity;
+  // --- Phase 2: set sea level via percentile so waterPct% of tiles are submerged ---
+  const sortedElevs = samples.map(s => s.rawElev).sort((a, b) => a - b);
+  const seaLevel = sortedElevs[Math.floor(sortedElevs.length * o.waterPct / 100)] ?? 0;
 
-  // For forest/rocky: compute thresholds among land tiles only
-  const landSamples = samples.filter(s => s.elevation > waterThreshold);
-  const landElevations = landSamples.map(s => s.elevation).sort((a, b) => a - b);
-  const rockyThreshold = landElevations.length > 0
-    ? landElevations[Math.floor(landElevations.length * (100 - o.rockyPct) / 100)] ?? Infinity
+  // Shift all elevations so sea level = 0
+  for (const s of samples) {
+    s.elevation = s.rawElev - seaLevel;
+  }
+
+  // --- Phase 3: biome thresholds among land tiles ---
+  const landSamples = samples.filter(s => s.elevation >= 0);
+
+  // Rocky threshold: top rockyPct% of land by elevation
+  const landElevsSorted = landSamples.map(s => s.elevation).sort((a, b) => a - b);
+  const rockyThreshold = landElevsSorted.length > 0
+    ? landElevsSorted[Math.floor(landElevsSorted.length * (100 - o.rockyPct) / 100)] ?? Infinity
     : Infinity;
 
-  const landMoistures = landSamples.map(s => s.moisture).sort((a, b) => a - b);
-  const forestMoistureThreshold = landMoistures.length > 0
-    ? landMoistures[Math.floor(landMoistures.length * (100 - o.forestPct) / 100)] ?? Infinity
+  // Forest threshold: top forestPct% of land by moisture
+  const landMoistSorted = landSamples.map(s => s.moisture).sort((a, b) => a - b);
+  const forestMoistThreshold = landMoistSorted.length > 0
+    ? landMoistSorted[Math.floor(landMoistSorted.length * (100 - o.forestPct) / 100)] ?? Infinity
     : Infinity;
 
-  // --- Phase 3: detect available biomes ---
+  // --- Phase 4: detect available biomes ---
   const biomeFiles = [...ProjectContext.files.biomes.keys()];
   const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
 
-  // Map role -> biome ID. Use project biomes if available, fallback to B000XX.
   const biomeFor = (role) => {
-    const map = {
-      crash: 'B00001',
-      grassland: 'B00002',
-      forest: 'B00003',
-      rocky: 'B00004',
-      water: 'B00005',
-    };
-    const id = map[role];
+    const ids = { crash: 'B00001', grassland: 'B00002', forest: 'B00003', rocky: 'B00004', water: 'B00005' };
+    const id = ids[role];
     return biomeSet.has(id) ? id : (biomeFiles[0] || '').replace('.tres', '');
   };
 
-  // --- Phase 4: assign biomes ---
+  // --- Phase 5: assign biomes + final elevation ---
   const tiles = {};
   for (const s of samples) {
     const key = `${s.q},${s.r}`;
     let biome;
-    let elevation = 0;
+    let elev;
 
     if (s.dist <= o.crashRadius) {
+      // Crash site: flat area at center
       biome = biomeFor('crash');
-      elevation = 0;
-    } else if (s.elevation <= waterThreshold) {
+      elev = 0;
+    } else if (s.elevation < 0) {
+      // Below sea level → water, surface at 0
       biome = biomeFor('water');
-      // Deeper water = more negative elevation
-      const depthRatio = waterThreshold === 0 ? 0
-        : (waterThreshold - s.elevation) / Math.max(0.001, waterThreshold - elevations[0]);
-      elevation = -Math.max(1, Math.round(depthRatio * 5));
+      elev = 0;
     } else if (s.elevation >= rockyThreshold) {
+      // High elevation → rocky
       biome = biomeFor('rocky');
-      const heightRatio = landElevations.length > 0
-        ? (s.elevation - rockyThreshold) / Math.max(0.001, landElevations[landElevations.length - 1] - rockyThreshold)
-        : 0;
-      elevation = Math.max(1, Math.round(heightRatio * 8 + 2));
-    } else if (s.moisture >= forestMoistureThreshold) {
+      elev = Math.round(s.elevation);
+    } else if (s.moisture >= forestMoistThreshold) {
+      // High moisture land → forest
       biome = biomeFor('forest');
-      elevation = Math.max(0, Math.round((s.elevation - waterThreshold) / Math.max(0.001, rockyThreshold - waterThreshold) * 3));
+      elev = Math.round(s.elevation);
     } else {
+      // Default → grassland
       biome = biomeFor('grassland');
-      elevation = Math.max(0, Math.round((s.elevation - waterThreshold) / Math.max(0.001, rockyThreshold - waterThreshold) * 3));
+      elev = Math.round(s.elevation);
     }
 
-    tiles[key] = { biome, elevation };
+    tiles[key] = { biome, elevation: elev };
   }
 
   return {
@@ -172,6 +194,7 @@ export function generateMap(opts = {}) {
       forestPct: o.forestPct,
       rockyPct: o.rockyPct,
       frequency: o.frequency,
+      peakHeight: o.peakHeight,
       crashRadius: o.crashRadius,
     },
     tiles,
@@ -184,7 +207,7 @@ export function generateMap(opts = {}) {
 
 /**
  * Show the procedural map generation dialog.
- * @param {function(Object): void} onGenerate - Called with the generated map data
+ * @param {function(Object, Object): void} onGenerate
  */
 export function showGeneratorDialog(onGenerate) {
   const fields = [
@@ -192,10 +215,11 @@ export function showGeneratorDialog(onGenerate) {
     { label: 'Map Name', defaultValue: 'Procedural Map', placeholder: 'Human-readable name' },
     { label: 'Radius (hexes)', defaultValue: '20', placeholder: '5-500' },
     { label: 'Seed (0 = random)', defaultValue: '0', placeholder: 'Integer seed' },
-    { label: 'Water %', defaultValue: '25', placeholder: '0-80' },
+    { label: 'Water %', defaultValue: '15', placeholder: '0-60' },
     { label: 'Forest %', defaultValue: '35', placeholder: '0-80' },
     { label: 'Rocky %', defaultValue: '15', placeholder: '0-60' },
-    { label: 'Frequency', defaultValue: '0.06', placeholder: '0.01-0.2' },
+    { label: 'Frequency', defaultValue: '0.06', placeholder: '0.01-0.2 (lower = bigger features)' },
+    { label: 'Peak Height', defaultValue: '200', placeholder: '50-500 (each unit ≈ 0.5 m)' },
     { label: 'Crash Site Radius', defaultValue: '3', placeholder: '0-10' },
   ];
 
@@ -207,11 +231,12 @@ export function showGeneratorDialog(onGenerate) {
       mapName: (values[1] || '').trim() || 'Procedural Map',
       radius: Math.max(1, Math.min(500, parseInt(values[2], 10) || 20)),
       seed: parseInt(values[3], 10) || 0,
-      waterPct: Math.max(0, Math.min(80, parseInt(values[4], 10) || 25)),
+      waterPct: Math.max(0, Math.min(60, parseInt(values[4], 10) || 15)),
       forestPct: Math.max(0, Math.min(80, parseInt(values[5], 10) || 35)),
       rockyPct: Math.max(0, Math.min(60, parseInt(values[6], 10) || 15)),
       frequency: Math.max(0.01, Math.min(0.2, parseFloat(values[7]) || 0.06)),
-      crashRadius: Math.max(0, Math.min(10, parseInt(values[8], 10) || 3)),
+      peakHeight: Math.max(50, Math.min(500, parseInt(values[8], 10) || 200)),
+      crashRadius: Math.max(0, Math.min(10, parseInt(values[9], 10) || 3)),
     };
 
     const t0 = performance.now();
