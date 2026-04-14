@@ -189,10 +189,22 @@ export class ElevationBrush extends DragBrushTool {
     // click sets -1; the canvas event handler flips this before calling
     // onMouseDown so both gestures share the same drag pipeline.
     this.delta = 1;
+    // Per-hex fractional accumulators for pinch mode (ring falloff).
+    // Key = "q,r", value = fractional elevation accumulated.
+    /** @type {Map<string, number>} */
+    this._pinchAccum = new Map();
   }
 
   /** @param {{ q: number, r: number }} hex */
   _applyToHex(hex) {
+    if (this.toolManager.ctrlHeld) {
+      this._applyPinch(hex);
+    } else {
+      this._applySingle(hex);
+    }
+  }
+
+  _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     const oldElevation = tile ? tile.elevation : 0;
     const newElevation = Math.max(-32000, Math.min(32000, oldElevation + this.delta));
@@ -201,6 +213,63 @@ export class ElevationBrush extends DragBrushTool {
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
     this.commandHistory.execute(cmd);
     this._dragCommands.push(cmd);
+  }
+
+  /**
+   * Pinch mode: center hex gets full delta, each ring n gets delta / 2^n.
+   * Fractional amounts accumulate between clicks.
+   */
+  _applyPinch(hex) {
+    // Find max ring where effect >= 0.01
+    const maxRing = Math.floor(Math.log2(Math.abs(this.delta) / 0.01));
+
+    // Collect all affected hexes with their fractional deltas
+    for (let ring = 0; ring <= maxRing; ring++) {
+      const ringDelta = this.delta / Math.pow(2, ring);
+      const hexes = ring === 0 ? [{ q: hex.q, r: hex.r }] : this._hexRing(hex.q, hex.r, ring);
+
+      for (const rh of hexes) {
+        if (!this.grid.hasTile(rh.q, rh.r)) continue;
+        const key = `${rh.q},${rh.r}`;
+        const accum = (this._pinchAccum.get(key) || 0) + ringDelta;
+        const intDelta = Math.trunc(accum);
+        this._pinchAccum.set(key, accum - intDelta);
+
+        if (intDelta === 0) continue;
+
+        const tile = this.grid.getTile(rh.q, rh.r);
+        const oldElev = tile ? tile.elevation : 0;
+        const newElev = Math.max(-32000, Math.min(32000, oldElev + intDelta));
+        if (oldElev === newElev) continue;
+
+        const cmd = new SetElevationCommand(this.grid, rh.q, rh.r, oldElev, newElev);
+        this.commandHistory.execute(cmd);
+        this._dragCommands.push(cmd);
+      }
+    }
+  }
+
+  /**
+   * Get all hexes at exactly `ring` distance from (cq, cr).
+   * @param {number} cq
+   * @param {number} cr
+   * @param {number} ring
+   * @returns {Array<{q: number, r: number}>}
+   */
+  _hexRing(cq, cr, ring) {
+    if (ring === 0) return [{ q: cq, r: cr }];
+    const results = [];
+    // Start at the hex ring-steps in the "SW" direction, then walk around
+    let q = cq - ring;
+    let r = cr + ring;
+    for (let dir = 0; dir < 6; dir++) {
+      for (let step = 0; step < ring; step++) {
+        results.push({ q, r });
+        q += HexMath.DIRECTIONS[dir].q;
+        r += HexMath.DIRECTIONS[dir].r;
+      }
+    }
+    return results;
   }
 }
 

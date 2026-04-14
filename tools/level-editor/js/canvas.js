@@ -68,6 +68,7 @@ export class HexCanvas {
     this.isPanning = false;
     this.panStart = null;
     this.spaceHeld = false;
+    this.ctrlHeld = false;
     this.toolManager = null;
     /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
     this.onHexHover = null;
@@ -1315,6 +1316,7 @@ export class HexCanvas {
           hexWithSub.sq = this.hoveredSubHex.q;
           hexWithSub.sr = this.hoveredSubHex.r;
         }
+        this.toolManager.ctrlHeld = this.ctrlHeld;
         this.toolManager.onMouseDown(hexWithSub);
       }
       this.requestRender();
@@ -1373,6 +1375,20 @@ export class HexCanvas {
     if (this._mouseDown && this._dragMode !== 'none' && this.toolManager &&
         this.toolManager.activeToolType === 'select') {
       this._handleSelectToolMouseMove(mx, my);
+    }
+
+    // Ctrl+hover paint: apply biome/delete on hover without clicking
+    if (this.ctrlHeld && this.toolManager && !this._mouseDown) {
+      const tt = this.toolManager.activeToolType;
+      if (tt === 'biome' || tt === 'delete_hex') {
+        // Start a micro-drag so the tool's dedup + batch logic works
+        if (!this.toolManager.activeTool._isDragging) {
+          this.toolManager.activeTool._isDragging = true;
+          this.toolManager.activeTool._visited.clear();
+          this.toolManager.activeTool._dragCommands = [];
+        }
+        this.toolManager.onMouseMove(hex);
+      }
     }
 
     // Forward to tool during drag
@@ -1447,15 +1463,19 @@ export class HexCanvas {
 
   /** @param {KeyboardEvent} event */
   _onKeyDown(event) {
-    if (event.key === ' ') {
-      this.spaceHeld = true;
-    }
+    if (event.key === ' ') this.spaceHeld = true;
+    if (event.key === 'Control') this.ctrlHeld = true;
   }
 
   /** @param {KeyboardEvent} event */
   _onKeyUp(event) {
-    if (event.key === ' ') {
-      this.spaceHeld = false;
+    if (event.key === ' ') this.spaceHeld = false;
+    if (event.key === 'Control') {
+      this.ctrlHeld = false;
+      // Commit any Ctrl+hover paint batch
+      if (this.toolManager && this.toolManager.activeTool && this.toolManager.activeTool._isDragging) {
+        this.toolManager.onMouseUp(null);
+      }
     }
   }
 
