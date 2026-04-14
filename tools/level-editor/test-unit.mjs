@@ -18,6 +18,8 @@ import { EventModel, eventModelToRaw, validateEventForm } from './js/event-edito
 import { JournalModel, journalModelToRaw, validateJournalForm, collectJournalFormData, JOURNAL_CATEGORIES } from './js/journal-editor.js';
 import { CutsceneModel, cutsceneModelToRaw, validateCutsceneForm } from './js/cutscene-editor.js';
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
+import { generateMap } from './js/map-generator.js';
+import { createNoise2D } from './js/simplex-noise.js';
 import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
@@ -4133,6 +4135,136 @@ for (const csFile of __cutsceneFiles) {
     assert(model2.trigger_event === model.trigger_event, `${csFile}: trigger_event survives`);
     assert(model2.duration_seconds === model.duration_seconds, `${csFile}: duration_seconds survives`);
   });
+}
+
+// ============================================================
+// Simplex Noise Tests
+// ============================================================
+
+{
+  console.log('\n--- Simplex Noise ---');
+
+  // Deterministic: same seed, same coords → same output
+  const n1 = createNoise2D(42);
+  const n2 = createNoise2D(42);
+  assert(n1.noise2D(1.5, 2.3) === n2.noise2D(1.5, 2.3), 'same seed produces same noise2D');
+  assert(n1.fractal2D(1.5, 2.3, 4) === n2.fractal2D(1.5, 2.3, 4), 'same seed produces same fractal2D');
+  assert(n1.warpedFbm(1.5, 2.3, 4, 0.5) === n2.warpedFbm(1.5, 2.3, 4, 0.5), 'same seed produces same warpedFbm');
+
+  // Different seeds → different output
+  const n3 = createNoise2D(99);
+  assert(n1.noise2D(1.5, 2.3) !== n3.noise2D(1.5, 2.3), 'different seed produces different noise');
+
+  // Output range: noise2D should be roughly [-1, 1]
+  let minVal = Infinity, maxVal = -Infinity;
+  const n = createNoise2D(7);
+  for (let x = -10; x <= 10; x += 0.3) {
+    for (let y = -10; y <= 10; y += 0.3) {
+      const v = n.noise2D(x, y);
+      if (v < minVal) minVal = v;
+      if (v > maxVal) maxVal = v;
+    }
+  }
+  assert(minVal >= -1.1 && minVal < 0, `noise2D min in range: ${minVal.toFixed(3)}`);
+  assert(maxVal <= 1.1 && maxVal > 0, `noise2D max in range: ${maxVal.toFixed(3)}`);
+}
+
+// ============================================================
+// Map Generator Tests
+// ============================================================
+
+{
+  console.log('\n--- Map Generator ---');
+
+  // Stub ProjectContext.files.biomes for generator
+  ProjectContext.files.biomes = new Map([
+    ['B00001.tres', { data: {}, raw: { resourceFields: new Map() } }],
+    ['B00002.tres', { data: {}, raw: { resourceFields: new Map() } }],
+    ['B00003.tres', { data: {}, raw: { resourceFields: new Map() } }],
+    ['B00004.tres', { data: {}, raw: { resourceFields: new Map() } }],
+    ['B00005.tres', { data: {}, raw: { resourceFields: new Map() } }],
+  ]);
+
+  // Basic generation with small radius
+  const map1 = generateMap({ radius: 5, seed: 12345 });
+  const tileCount1 = Object.keys(map1.tiles).length;
+
+  // Hex count for radius 5: sum of (2r+1) for r=0..5, times 6 sectors... actually:
+  // Total hexes in radius R = 3R² + 3R + 1
+  const expectedCount = 3 * 25 + 3 * 5 + 1; // = 91
+  assert(tileCount1 === expectedCount, `radius 5 produces ${expectedCount} tiles (got ${tileCount1})`);
+
+  // Spawn exists at 0,0
+  assert(map1.tiles['0,0'] !== undefined, 'tile at spawn (0,0) exists');
+  assert(map1.spawn[0] === 0 && map1.spawn[1] === 0, 'spawn is [0,0]');
+
+  // Generator metadata present
+  assert(map1.generator !== undefined, 'generator metadata present');
+  assert(map1.generator.seed === 12345, 'seed preserved in metadata');
+  assert(map1.generator.radius === 5, 'radius preserved in metadata');
+
+  // Chapter ID and name
+  assert(map1.chapter_id === 'procedural', 'default chapter_id');
+  assert(map1.name === 'Procedural Map', 'default map name');
+
+  // Determinism: same seed → same tiles
+  const map2 = generateMap({ radius: 5, seed: 12345 });
+  let tilesMatch = true;
+  for (const key of Object.keys(map1.tiles)) {
+    if (map1.tiles[key].biome !== map2.tiles[key].biome ||
+        map1.tiles[key].elevation !== map2.tiles[key].elevation) {
+      tilesMatch = false;
+      break;
+    }
+  }
+  assert(tilesMatch, 'same seed produces identical tiles');
+
+  // Different seed → different tiles
+  const map3 = generateMap({ radius: 5, seed: 99999 });
+  let allSame = true;
+  for (const key of Object.keys(map1.tiles)) {
+    if (map1.tiles[key].biome !== map3.tiles[key].biome ||
+        map1.tiles[key].elevation !== map3.tiles[key].elevation) {
+      allSame = false;
+      break;
+    }
+  }
+  assert(!allSame, 'different seed produces different tiles');
+
+  // All tiles have valid biome IDs
+  const validBiomes = new Set(['B00001', 'B00002', 'B00003', 'B00004', 'B00005']);
+  let allValidBiomes = true;
+  for (const tile of Object.values(map1.tiles)) {
+    if (!validBiomes.has(tile.biome)) { allValidBiomes = false; break; }
+  }
+  assert(allValidBiomes, 'all tiles have valid biome IDs');
+
+  // All elevations are integers
+  let allInts = true;
+  for (const tile of Object.values(map1.tiles)) {
+    if (!Number.isInteger(tile.elevation)) { allInts = false; break; }
+  }
+  assert(allInts, 'all elevations are integers');
+
+  // Water tiles have elevation 0
+  let waterElevOk = true;
+  for (const tile of Object.values(map1.tiles)) {
+    if (tile.biome === 'B00005' && tile.elevation !== 0) { waterElevOk = false; break; }
+  }
+  assert(waterElevOk, 'all water tiles have elevation 0');
+
+  // Crash site tiles have elevation 0
+  let crashElevOk = true;
+  for (const tile of Object.values(map1.tiles)) {
+    if (tile.biome === 'B00001' && tile.elevation !== 0) { crashElevOk = false; break; }
+  }
+  assert(crashElevOk, 'all crash site tiles have elevation 0');
+
+  // Custom params
+  const map4 = generateMap({ radius: 3, seed: 42, chapterId: 'test', mapName: 'Test Map' });
+  assert(map4.chapter_id === 'test', 'custom chapter_id');
+  assert(map4.name === 'Test Map', 'custom map name');
+  assert(Object.keys(map4.tiles).length === 3 * 9 + 3 * 3 + 1, 'radius 3 tile count');
 }
 
 // ============================================================

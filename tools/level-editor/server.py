@@ -64,6 +64,14 @@ def is_safe_path(rel_path):
     return any(normalized.startswith(prefix) for prefix in ALLOWED_PREFIXES)
 
 
+def is_safe_delete_path(rel_path):
+    """DELETE is restricted to map files only to reduce accidental damage."""
+    normalized = os.path.normpath(rel_path).replace('\\', '/')
+    if '..' in normalized:
+        return False
+    return normalized.startswith('data/maps/')
+
+
 def is_safe_asset_path(rel_path):
     """Read-only check for /api/asset and /api/list-assets serving."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
@@ -188,14 +196,18 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == '/api/file':
             rel_path = params.get('path', [''])[0]
-            if not rel_path or not is_safe_path(rel_path):
+            if not rel_path or not is_safe_delete_path(rel_path):
                 self._json_response(400, {'error': 'Invalid path'})
                 return
             full_path = os.path.join(PROJECT_ROOT, rel_path)
             if not os.path.isfile(full_path):
                 self._json_response(404, {'error': f'File not found: {rel_path}'})
                 return
-            os.remove(full_path)
+            try:
+                os.remove(full_path)
+            except OSError as e:
+                self._json_response(500, {'error': f'Failed to delete file: {e}'})
+                return
             self._json_response(200, {'ok': True})
         else:
             self._json_response(404, {'error': 'Not found'})

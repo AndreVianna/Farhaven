@@ -404,6 +404,7 @@ async function _deleteCurrentMap() {
     }
     _rebuildColorMaps();
     _refreshMapSelector();
+    if (hexInspector) hexInspector.updateMapStats();
     setStatus(activeMapFilename ? `Deleted. Switched to "${activeMapFilename}".` : 'Map deleted. No maps remaining.');
   } catch (err) {
     showError(`Failed to delete map: ${err.message}`);

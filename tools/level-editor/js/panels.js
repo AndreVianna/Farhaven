@@ -358,7 +358,10 @@ export class HexInspector {
         const display = type === 'float' ? String(gen[key]) : String(Math.round(gen[key]));
         this.mapStatsEl.appendChild(this._createEditableStatRow(label, display, (value) => {
           const parsed = type === 'float' ? parseFloat(value) : parseInt(value, 10);
-          if (!isNaN(parsed)) gen[key] = parsed;
+          if (!isNaN(parsed)) {
+            gen[key] = parsed;
+            if (this.onMapMetaChange) this.onMapMetaChange();
+          }
         }));
       }
 

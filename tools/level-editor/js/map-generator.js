@@ -1,5 +1,5 @@
 // ============================================================
-// map-generator.js — Procedural hex map generation (5-pass pipeline)
+// map-generator.js — Procedural hex map generation (6-pass pipeline)
 // ============================================================
 //
 // Pass 1: Elevation (domain-warped Simplex fBm + power redistribution)
@@ -7,6 +7,7 @@
 // Pass 3: Hydrology (Priority-Flood → flow direction → accumulation → rivers/lakes)
 // Pass 4: Moisture (BFS from water bodies with exponential falloff)
 // Pass 5: Biome assignment (Whittaker-style elevation × moisture lookup)
+// Pass 6: Accessibility smoothing (promote inaccessible peaks to rocky, clamp others)
 
 'use strict';
 
@@ -94,9 +95,6 @@ function passElevation(hexMap, coords, o) {
 
 function passErosion(hexMap, coords, o) {
   if (o.erosionDrops <= 0) return;
-
-  // Build index for neighbor lookup
-  const keySet = new Set([...hexMap.keys()]);
 
   // Seeded PRNG for reproducible erosion
   let rngState = o.seed + 99991;
@@ -423,20 +421,6 @@ function passAccessibility(hexMap, coords, o) {
   const MAX_STEP = 4;
 
   // Helper: check if a tile can be reached from at least one neighbor
-  function isAccessible(q, r) {
-    const key = hexKey(q, r);
-    const cell = hexMap.get(key);
-    if (!cell) return true;
-    const elev = cell.elevation;
-    for (const dir of HexMath.DIRECTIONS) {
-      const nk = hexKey(q + dir.q, r + dir.r);
-      const neighbor = hexMap.get(nk);
-      if (!neighbor || neighbor.isWater) continue;
-      if (elev - neighbor.elevation <= MAX_STEP) return true;
-    }
-    return false;
-  }
-
   // Helper: get highest non-water, non-rocky neighbor elevation
   function highestLandNeighborElev(q, r) {
     let best = 0;
