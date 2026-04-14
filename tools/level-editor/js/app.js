@@ -87,7 +87,7 @@ const TAB_LABELS = {
   events: 'Events',
   journal: 'Journal',
   cutscenes: 'Cutscenes',
-  settings: 'Game Settings',
+  settings: 'Settings',
 };
 
 /** Tab IDs that show the prop editor (one per category). */
@@ -387,9 +387,17 @@ async function _deleteCurrentMap() {
     // Switch to another map or clear the grid
     const remaining = [...ProjectContext.files.maps.keys()];
     if (remaining.length > 0) {
-      activeMapFilename = remaining[0];
-      const entry = ProjectContext.files.maps.get(activeMapFilename);
-      loadMapIntoGrid(hexGrid, entry.data);
+      const nextMapFilename = remaining[0];
+      const entry = ProjectContext.files.maps.get(nextMapFilename);
+      const loadResult = loadMapIntoGrid(hexGrid, entry.data);
+      if (!loadResult.success) {
+        showError(`Deleted map, but failed to load "${nextMapFilename}": ${loadResult.error}`);
+        activeMapFilename = null;
+        hexGrid.clear();
+        hexGrid.meta = { chapter_id: '', name: '', spawn: [0, 0], generator: null };
+      } else {
+        activeMapFilename = nextMapFilename;
+      }
     } else {
       activeMapFilename = null;
       hexGrid.clear();

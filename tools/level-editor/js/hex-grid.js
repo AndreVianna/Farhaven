@@ -139,7 +139,7 @@ export function createProp(type, sq = 0, sr = 0, category = 'plant', options = {
  */
 export class HexGrid {
   constructor() {
-    /** @type {{ chapter_id: string, name: string, spawn: number[], generator: Object|null }} */
+    /** @type {{ chapter_id: string, name: string, spawn: number[], generator?: Object|null }} */
     this.meta = { chapter_id: '', name: '', spawn: [0, 0], generator: null };
     /** @type {Map<string, Object>} */
     this.tiles = new Map();

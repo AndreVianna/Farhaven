@@ -12,7 +12,7 @@
 'use strict';
 
 import { createNoise2D } from './simplex-noise.js';
-import { HexMath } from './hex-math.js';
+import { HEX_SIZE, HexMath } from './hex-math.js';
 import { ProjectContext } from './file-discovery.js';
 import { showInlineFormModal } from './panels.js';
 
@@ -61,8 +61,8 @@ function passElevation(hexMap, coords, o) {
 
   for (const { q, r } of coords) {
     const px = HexMath.axialToPixel(q, r);
-    const nx = px.x * o.frequency / 40;
-    const ny = px.y * o.frequency / 40;
+    const nx = px.x * o.frequency / HEX_SIZE;
+    const ny = px.y * o.frequency / HEX_SIZE;
 
     // Domain-warped fBm for organic mountain ranges
     let e = noise.warpedFbm(nx, ny, 5, o.warpStrength);
