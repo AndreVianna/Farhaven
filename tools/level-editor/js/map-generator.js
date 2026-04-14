@@ -431,18 +431,20 @@ function passAccessibility(hexMap, coords, o) {
     return !cell || cell.isWater || cell.biome === waterBiome;
   }
 
-  // Matching engine get_traversal: passable if non-water neighbor
-  // with abs(elevation diff) <= MAX_DIFF.
+  // Accessible from below: at least one non-water neighbor with
+  // elevation between (tile - MAX_DIFF) and tile. Only uphill access
+  // counts — neighbors above the tile don't provide access.
   function isReachable(q, r) {
     const cell = hexMap.get(hexKey(q, r));
     if (!cell) return true;
-    if (isWaterTile(cell)) return true; // water tiles don't need to be reachable
+    if (isWaterTile(cell)) return true;
     const elev = cell.elevation;
     for (const dir of HexMath.DIRECTIONS) {
       const nk = hexKey(q + dir.q, r + dir.r);
       const neighbor = hexMap.get(nk);
       if (!neighbor || isWaterTile(neighbor)) continue;
-      if (Math.abs(elev - neighbor.elevation) <= MAX_DIFF) return true;
+      const diff = elev - neighbor.elevation;
+      if (diff >= 0 && diff <= MAX_DIFF) return true;
     }
     return false;
   }
