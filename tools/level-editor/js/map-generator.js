@@ -88,60 +88,61 @@ export function generateMap(opts = {}) {
 
   const elevNoise = createNoise2D(o.seed);
   const moistNoise = createNoise2D(o.seed + 31337);
+  const ruggedNoise = createNoise2D(o.seed + 71993);
 
   const coords = hexesInRadius(o.radius);
 
-  // Noise amplitude — controls how much the terrain undulates.
-  // Scaled relative to peakHeight so the center valley has meaningful
-  // variation without overpowering the distance-based mountain rise.
-  const noiseAmp = o.peakHeight * 0.25;
-
-  // --- Phase 1: raw elevation + moisture for every hex ---
+  // --- Phase 1: sample three noise layers for every hex ---
   const samples = coords.map(({ q, r }) => {
     const px = HexMath.axialToPixel(q, r);
     const nx = px.x * o.frequency / 40;
     const ny = px.y * o.frequency / 40;
 
-    // Fractal noise in roughly [-1, 1]
     const nElev = elevNoise.fractal2D(nx, ny, 5, 2.0, 0.5);
     const nMoist = moistNoise.fractal2D(nx * 0.8, ny * 0.8, 4, 2.0, 0.5);
+    // Ruggedness at higher frequency — creates smaller rocky patches
+    const nRugged = ruggedNoise.fractal2D(nx * 1.5, ny * 1.5, 3, 2.0, 0.5);
 
-    // Distance-based mountain rise: center = 0, edge = peakHeight
     const dist = HexMath.distance(0, 0, q, r);
     const distRatio = dist / Math.max(1, o.radius);
-    const heightRise = Math.pow(distRatio, 2.5) * o.peakHeight;
 
-    // Combined raw elevation
-    const rawElev = nElev * noiseAmp + heightRise;
+    // Water candidacy: noise biased toward center (center dips, edges rise)
+    // Uses dist^4 so the center is very flat and edges rise steeply
+    const waterScore = nElev - Math.pow(distRatio, 4) * 3;
 
-    return { q, r, rawElev, moisture: nMoist, dist };
+    // Rugged score: blends distance (edges more rocky) with noise (patches anywhere)
+    const ruggedScore = 0.4 * distRatio + 0.6 * ((nRugged + 1) / 2);
+
+    return { q, r, nElev, nMoist, waterScore, ruggedScore, dist, distRatio };
   });
 
-  // --- Phase 2: set sea level via percentile so waterPct% of tiles are submerged ---
-  const sortedElevs = samples.map(s => s.rawElev).sort((a, b) => a - b);
-  const seaLevel = sortedElevs[Math.floor(sortedElevs.length * o.waterPct / 100)] ?? 0;
+  // --- Phase 2: water — bottom waterPct% by waterScore → water ---
+  const waterScores = samples.map(s => s.waterScore).sort((a, b) => a - b);
+  const waterThreshold = waterScores[Math.floor(waterScores.length * o.waterPct / 100)] ?? -Infinity;
 
-  // Shift all elevations so sea level = 0
   for (const s of samples) {
-    s.elevation = s.rawElev - seaLevel;
+    s.isWater = s.waterScore <= waterThreshold;
   }
 
-  // --- Phase 3: biome thresholds among land tiles ---
-  const landSamples = samples.filter(s => s.elevation >= 0);
-
-  // Rocky threshold: top rockyPct% of land by elevation
-  const landElevsSorted = landSamples.map(s => s.elevation).sort((a, b) => a - b);
-  const rockyThreshold = landElevsSorted.length > 0
-    ? landElevsSorted[Math.floor(landElevsSorted.length * (100 - o.rockyPct) / 100)] ?? Infinity
+  // --- Phase 3: rocky — top rockyPct% of non-water by ruggedScore ---
+  const landSamples = samples.filter(s => !s.isWater);
+  const ruggedScores = landSamples.map(s => s.ruggedScore).sort((a, b) => a - b);
+  const rockyThreshold = ruggedScores.length > 0
+    ? ruggedScores[Math.floor(ruggedScores.length * (100 - o.rockyPct) / 100)] ?? Infinity
     : Infinity;
 
-  // Forest threshold: top forestPct% of land by moisture
-  const landMoistSorted = landSamples.map(s => s.moisture).sort((a, b) => a - b);
-  const forestMoistThreshold = landMoistSorted.length > 0
-    ? landMoistSorted[Math.floor(landMoistSorted.length * (100 - o.forestPct) / 100)] ?? Infinity
+  for (const s of samples) {
+    s.isRocky = !s.isWater && s.ruggedScore >= rockyThreshold;
+  }
+
+  // --- Phase 4: forest — top forestPct% of remaining land by moisture ---
+  const remainingSamples = samples.filter(s => !s.isWater && !s.isRocky);
+  const moistScores = remainingSamples.map(s => s.nMoist).sort((a, b) => a - b);
+  const forestThreshold = moistScores.length > 0
+    ? moistScores[Math.floor(moistScores.length * (100 - o.forestPct) / 100)] ?? Infinity
     : Infinity;
 
-  // --- Phase 4: detect available biomes ---
+  // --- Phase 5: detect available biomes ---
   const biomeFiles = [...ProjectContext.files.biomes.keys()];
   const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
 
@@ -151,7 +152,7 @@ export function generateMap(opts = {}) {
     return biomeSet.has(id) ? id : (biomeFiles[0] || '').replace('.tres', '');
   };
 
-  // --- Phase 5: assign biomes + final elevation ---
+  // --- Phase 6: assign biomes + biome-appropriate elevation ---
   const tiles = {};
   for (const s of samples) {
     const key = `${s.q},${s.r}`;
@@ -159,25 +160,25 @@ export function generateMap(opts = {}) {
     let elev;
 
     if (s.dist <= o.crashRadius) {
-      // Crash site: flat area at center
       biome = biomeFor('crash');
       elev = 0;
-    } else if (s.elevation < 0) {
-      // Below sea level → water, surface at 0
+    } else if (s.isWater) {
       biome = biomeFor('water');
       elev = 0;
-    } else if (s.elevation >= rockyThreshold) {
-      // High elevation → rocky
+    } else if (s.isRocky) {
       biome = biomeFor('rocky');
-      elev = Math.round(s.elevation);
-    } else if (s.moisture >= forestMoistThreshold) {
-      // High moisture land → forest
+      // Rocky gets real elevation: distance-based rise + noise roughness
+      const baseHeight = Math.pow(s.distRatio, 2) * o.peakHeight;
+      const roughness = Math.abs(s.nElev) * o.peakHeight * 0.2;
+      elev = Math.max(3, Math.round(baseHeight + roughness));
+    } else if (s.nMoist >= forestThreshold) {
       biome = biomeFor('forest');
-      elev = Math.round(s.elevation);
+      // Forest: gentle rolling terrain (0-8)
+      elev = Math.round(Math.abs(s.nElev) * 8);
     } else {
-      // Default → grassland
       biome = biomeFor('grassland');
-      elev = Math.round(s.elevation);
+      // Grassland: very gentle (0-5)
+      elev = Math.round(Math.abs(s.nElev) * 5);
     }
 
     tiles[key] = { biome, elevation: elev };
