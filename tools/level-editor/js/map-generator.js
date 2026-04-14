@@ -595,7 +595,7 @@ export function showGeneratorDialog(onGenerate) {
     const elapsed = (performance.now() - t0).toFixed(0);
     const tileCount = Object.keys(mapData.tiles).length;
 
-    console.log(`map-generator: ${tileCount} tiles in ${elapsed}ms (seed=${opts.seed === 0 ? 'random' : opts.seed})`);
+    console.log(`map-generator: ${tileCount} tiles in ${elapsed}ms (seed=${mapData.generator.seed})`);
     onGenerate(mapData, opts);
   });
 }

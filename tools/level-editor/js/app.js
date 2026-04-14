@@ -513,7 +513,7 @@ async function _regenerateMap() {
     _rebuildColorMaps();
     if (hexInspector) hexInspector.updateMapStats();
     const tileCount = Object.keys(mapData.tiles).length;
-    setStatus(`Regenerated — ${tileCount} tiles in ${elapsed}ms (seed ${gen.seed}).`);
+    setStatus(`Regenerated — ${tileCount} tiles in ${elapsed}ms (seed ${mapData.generator.seed}).`);
   } catch (err) {
     showError(`Failed to save regenerated map: ${err.message}`);
   }

@@ -65,11 +65,13 @@ def is_safe_path(rel_path):
 
 
 def is_safe_delete_path(rel_path):
-    """DELETE is restricted to map files only to reduce accidental damage."""
+    """DELETE is restricted to map JSON files only to reduce accidental damage."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
-    if '..' in normalized:
+    if any(part == '..' for part in normalized.split('/')):
         return False
-    return normalized.startswith('data/maps/')
+    maps_dir, maps_ext = SCAN_DIRS['maps']
+    maps_prefix = maps_dir.rstrip('/') + '/'
+    return normalized.startswith(maps_prefix) and normalized.endswith(maps_ext)
 
 
 def is_safe_asset_path(rel_path):
