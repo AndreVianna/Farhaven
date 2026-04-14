@@ -459,15 +459,20 @@ function passAccessibility(hexMap, coords, o) {
     return !cell || cell.isWater || cell.biome === waterBiome;
   }
 
-  // Accessible = at least one non-water, non-rocky neighbor with diff ≤ MAX_STEP
+  // Accessible from below = at least one non-water, non-rocky neighbor
+  // with elevation between (tile - MAX_STEP) and tile (inclusive).
+  // Neighbors above the tile don't count (not "coming from below").
+  // Neighbors more than MAX_STEP below don't count (too steep).
   function isAccessibleFromLand(q, r) {
     const cell = hexMap.get(hexKey(q, r));
     if (!cell) return true;
+    const elev = cell.elevation;
     for (const dir of HexMath.DIRECTIONS) {
       const nk = hexKey(q + dir.q, r + dir.r);
       const neighbor = hexMap.get(nk);
       if (!neighbor || neighbor.isWater || neighbor.biome === waterBiome || neighbor.biome === rockyBiome) continue;
-      if (cell.elevation - neighbor.elevation <= MAX_STEP) return true;
+      const diff = elev - neighbor.elevation;
+      if (diff >= 0 && diff <= MAX_STEP) return true;
     }
     return false;
   }
