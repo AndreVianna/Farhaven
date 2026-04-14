@@ -437,13 +437,13 @@ function passAccessibility(hexMap, coords, o) {
     return false;
   }
 
-  // Helper: get highest non-water neighbor elevation
-  function highestNeighborElev(q, r) {
+  // Helper: get highest non-water, non-rocky neighbor elevation
+  function highestLandNeighborElev(q, r) {
     let best = 0;
     for (const dir of HexMath.DIRECTIONS) {
       const nk = hexKey(q + dir.q, r + dir.r);
       const neighbor = hexMap.get(nk);
-      if (!neighbor || neighbor.isWater) continue;
+      if (!neighbor || neighbor.isWater || neighbor.biome === 'B00004') continue;
       if (neighbor.elevation > best) best = neighbor.elevation;
     }
     return best;
@@ -455,33 +455,55 @@ function passAccessibility(hexMap, coords, o) {
   const waterBiome = biomeSet.has('B00005') ? 'B00005' : null;
   const rockyBiome = biomeSet.has('B00004') ? 'B00004' : null;
 
-  // Step 1: Promote inaccessible high tiles (≥10) to Rocky
-  let promoted = 0;
+  function isSkippable(cell) {
+    return !cell || cell.isWater || cell.biome === waterBiome;
+  }
+
+  // Accessible = at least one non-water, non-rocky neighbor with diff ≤ MAX_STEP
+  function isAccessibleFromLand(q, r) {
+    const cell = hexMap.get(hexKey(q, r));
+    if (!cell) return true;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(q + dir.q, r + dir.r);
+      const neighbor = hexMap.get(nk);
+      if (!neighbor || neighbor.isWater || neighbor.biome === waterBiome || neighbor.biome === rockyBiome) continue;
+      if (cell.elevation - neighbor.elevation <= MAX_STEP) return true;
+    }
+    return false;
+  }
+
+  // Step 1: Promote inaccessible high tiles (≥10) to Rocky — repeat until stable
+  let totalPromoted = 0;
   if (rockyBiome) {
-    for (const { q, r } of coords) {
-      const cell = hexMap.get(hexKey(q, r));
-      if (!cell || cell.isWater || cell.biome === waterBiome || cell.biome === rockyBiome) continue;
-      if (cell.elevation >= 10 && !isAccessible(q, r)) {
-        cell.biome = rockyBiome;
-        promoted++;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const { q, r } of coords) {
+        const cell = hexMap.get(hexKey(q, r));
+        if (isSkippable(cell) || cell.biome === rockyBiome) continue;
+        if (cell.elevation >= 10 && !isAccessibleFromLand(q, r)) {
+          cell.biome = rockyBiome;
+          totalPromoted++;
+          changed = true;
+        }
       }
     }
   }
 
-  // Step 2: Clamp inaccessible non-water, non-rocky tiles to highest neighbor + MAX_STEP
+  // Step 2: Clamp inaccessible non-water, non-rocky tiles to highest non-rocky neighbor + MAX_STEP
   let smoothed = 0;
   for (const { q, r } of coords) {
     const cell = hexMap.get(hexKey(q, r));
-    if (!cell || cell.isWater || cell.biome === waterBiome || cell.biome === rockyBiome) continue;
-    if (!isAccessible(q, r)) {
-      const target = highestNeighborElev(q, r) + MAX_STEP;
+    if (isSkippable(cell) || cell.biome === rockyBiome) continue;
+    if (!isAccessibleFromLand(q, r)) {
+      const target = highestLandNeighborElev(q, r) + MAX_STEP;
       cell.elevation = target;
       smoothed++;
     }
   }
 
-  if (promoted > 0 || smoothed > 0) {
-    console.log(`passAccessibility: ${promoted} tiles promoted to rocky, ${smoothed} tiles elevation-smoothed`);
+  if (totalPromoted > 0 || smoothed > 0) {
+    console.log(`passAccessibility: ${totalPromoted} tiles promoted to rocky, ${smoothed} tiles elevation-smoothed`);
   }
 }
 
