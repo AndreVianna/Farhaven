@@ -1472,9 +1472,16 @@ export class HexCanvas {
     if (event.key === ' ') this.spaceHeld = false;
     if (event.key === 'Control') {
       this.ctrlHeld = false;
-      // Commit any Ctrl+hover paint batch
-      if (this.toolManager && this.toolManager.activeTool && this.toolManager.activeTool._isDragging) {
-        this.toolManager.onMouseUp(null);
+      if (this.toolManager) {
+        this.toolManager.ctrlHeld = false;
+        // Commit any Ctrl+hover paint batch
+        if (this.toolManager.activeTool && this.toolManager.activeTool._isDragging) {
+          this.toolManager.onMouseUp(null);
+        }
+        // Clear pinch accumulators on Ctrl release
+        if (this.toolManager.activeTool && this.toolManager.activeTool._pinchAccum) {
+          this.toolManager.activeTool._pinchAccum.clear();
+        }
       }
     }
   }
