@@ -22,7 +22,7 @@ import { renderJournalEditor } from './journal-editor.js';
 import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
-import { showGeneratorDialog } from './map-generator.js';
+import { showGeneratorDialog, generateMap } from './map-generator.js';
 
 // ============================================================
 // Module-level state
@@ -370,6 +370,47 @@ function saveMapAs() {
 }
 
 // ============================================================
+// Delete Map
+// ============================================================
+
+async function _deleteCurrentMap() {
+  if (!activeMapFilename) {
+    showError('No map is currently loaded.');
+    return;
+  }
+  if (!confirm(`Delete "${activeMapFilename}" permanently? This cannot be undone.`)) return;
+
+  try {
+    await FileDiscovery.deleteFile('data/maps', activeMapFilename);
+    ProjectContext.files.maps.delete(activeMapFilename);
+
+    // Switch to another map or clear the grid
+    const remaining = [...ProjectContext.files.maps.keys()];
+    if (remaining.length > 0) {
+      activeMapFilename = remaining[0];
+      const entry = ProjectContext.files.maps.get(activeMapFilename);
+      loadMapIntoGrid(hexGrid, entry.data);
+    } else {
+      activeMapFilename = null;
+      hexGrid.clear();
+      hexGrid.meta = { chapter_id: '', name: '', spawn: [0, 0], generator: null };
+    }
+
+    commandHistory.clear();
+    dirtyTracker.markAllClean();
+    if (hexCanvas) {
+      hexCanvas.requestRender();
+      hexCanvas.fitToView();
+    }
+    _rebuildColorMaps();
+    _refreshMapSelector();
+    setStatus(activeMapFilename ? `Deleted. Switched to "${activeMapFilename}".` : 'Map deleted. No maps remaining.');
+  } catch (err) {
+    showError(`Failed to delete map: ${err.message}`);
+  }
+}
+
+// ============================================================
 // Procedural Map Generator
 // ============================================================
 
@@ -412,6 +453,55 @@ function _generateProceduralMap() {
       showError(`Failed to save generated map: ${err.message}`);
     }
   });
+}
+
+/**
+ * Regenerate the current map using its stored generator params.
+ * Called from the Map Info panel's Regenerate button.
+ */
+async function _regenerateMap() {
+  const gen = hexGrid.meta.generator;
+  if (!gen) return;
+
+  if (!confirm('Regenerate this map? All manual edits will be lost.')) return;
+
+  const opts = {
+    ...gen,
+    chapterId: hexGrid.meta.chapter_id,
+    mapName: hexGrid.meta.name,
+  };
+
+  const t0 = performance.now();
+  const mapData = generateMap(opts);
+  const elapsed = (performance.now() - t0).toFixed(0);
+
+  const result = loadMapIntoGrid(hexGrid, mapData);
+  if (!result.success) {
+    showError(`Regeneration failed: ${result.error}`);
+    return;
+  }
+
+  try {
+    const filenameStem = activeMapFilename || `${opts.chapterId}.json`;
+    const json = JSON.stringify(mapData, null, '\t');
+    await FileDiscovery.saveFile('data/maps', json, filenameStem);
+    ProjectContext.files.maps.set(filenameStem, {
+      handle: null,
+      dir: 'data/maps',
+      data: mapData,
+    });
+    commandHistory.clear();
+    dirtyTracker.markAllClean();
+    if (hexCanvas) {
+      hexCanvas.requestRender();
+      hexCanvas.fitToView();
+    }
+    _rebuildColorMaps();
+    const tileCount = Object.keys(mapData.tiles).length;
+    setStatus(`Regenerated — ${tileCount} tiles in ${elapsed}ms (seed ${gen.seed}).`);
+  } catch (err) {
+    showError(`Failed to save regenerated map: ${err.message}`);
+  }
 }
 
 // ============================================================
@@ -515,6 +605,8 @@ const btnNewMap = document.getElementById('btn-new-map');
 if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
 const btnGenerateMap = document.getElementById('btn-generate-map');
 if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
+const btnDeleteMap = document.getElementById('btn-delete-map');
+if (btnDeleteMap) btnDeleteMap.addEventListener('click', () => _deleteCurrentMap());
 
 // Biome render-mode toggle (Color | Texture). Texture mode mirrors the
 // runtime hash-picked variation + rotation so the editor preview matches
@@ -763,6 +855,7 @@ function initializeAfterLoad() {
     hexInspector.onMapMetaChange = () => {
       dirtyTracker.markDirty('map');
     };
+    hexInspector.onRegenerate = () => _regenerateMap();
   }
 
   // Wire canvas hover to hex inspector

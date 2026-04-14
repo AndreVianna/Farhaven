@@ -139,8 +139,8 @@ export function createProp(type, sq = 0, sr = 0, category = 'plant', options = {
  */
 export class HexGrid {
   constructor() {
-    /** @type {{ chapter_id: string, name: string, spawn: number[] }} */
-    this.meta = { chapter_id: '', name: '', spawn: [0, 0] };
+    /** @type {{ chapter_id: string, name: string, spawn: number[], generator: Object|null }} */
+    this.meta = { chapter_id: '', name: '', spawn: [0, 0], generator: null };
     /** @type {Map<string, Object>} */
     this.tiles = new Map();
     /**
@@ -311,6 +311,7 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   hexGrid.clear();
   hexGrid.meta.chapter_id = mapData.chapter_id || '';
   hexGrid.meta.name = mapData.name || '';
+  hexGrid.meta.generator = mapData.generator || null;
   if (Array.isArray(mapData.spawn)) {
     const s = mapData.spawn;
     if (s.length >= 5) {
@@ -420,5 +421,6 @@ export function serializeGridToMapJson(hexGrid) {
   // Include optional metadata if present
   if (hexGrid.meta.chapter_id) result.chapter_id = hexGrid.meta.chapter_id;
   if (hexGrid.meta.name) result.name = hexGrid.meta.name;
+  if (hexGrid.meta.generator) result.generator = hexGrid.meta.generator;
   return result;
 }

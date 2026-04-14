@@ -181,6 +181,25 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self._json_response(404, {'error': 'Not found'})
 
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        params = urllib.parse.parse_qs(parsed.query)
+
+        if path == '/api/file':
+            rel_path = params.get('path', [''])[0]
+            if not rel_path or not is_safe_path(rel_path):
+                self._json_response(400, {'error': 'Invalid path'})
+                return
+            full_path = os.path.join(PROJECT_ROOT, rel_path)
+            if not os.path.isfile(full_path):
+                self._json_response(404, {'error': f'File not found: {rel_path}'})
+                return
+            os.remove(full_path)
+            self._json_response(200, {'ok': True})
+        else:
+            self._json_response(404, {'error': 'Not found'})
+
     def _json_response(self, status, data):
         body = json.dumps(data).encode('utf-8')
         self.send_response(status)

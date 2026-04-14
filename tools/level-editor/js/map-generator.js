@@ -165,6 +165,15 @@ export function generateMap(opts = {}) {
     spawn: [0, 0],
     chapter_id: o.chapterId,
     name: o.mapName,
+    generator: {
+      seed: o.seed,
+      radius: o.radius,
+      waterPct: o.waterPct,
+      forestPct: o.forestPct,
+      rockyPct: o.rockyPct,
+      frequency: o.frequency,
+      crashRadius: o.crashRadius,
+    },
     tiles,
   };
 }

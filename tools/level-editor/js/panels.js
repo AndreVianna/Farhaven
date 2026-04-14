@@ -241,6 +241,8 @@ export class HexInspector {
     this.mapStatsEl = container.querySelector('#map-stats-content');
     this.hexInfoEl = container.querySelector('#hex-info-content');
     this.propEditorEl = container.querySelector('#prop-editor-content');
+    /** @type {function():void|null} Callback for Regenerate button */
+    this.onRegenerate = null;
     /** @type {{ q: number, r: number }|null} */
     this.currentHex = null;
   }
@@ -326,6 +328,36 @@ export class HexInspector {
       row.appendChild(label);
 
       this.mapStatsEl.appendChild(row);
+    }
+
+    // Generator params (if this map was procedurally generated)
+    const gen = this.grid.meta.generator;
+    if (gen) {
+      const genHeader = document.createElement('div');
+      genHeader.style.cssText = 'margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text-secondary);border-top:1px solid var(--border);padding-top:6px;';
+      genHeader.textContent = 'Generator params:';
+      this.mapStatsEl.appendChild(genHeader);
+
+      const params = [
+        ['Seed', gen.seed],
+        ['Radius', gen.radius],
+        ['Water', `${gen.waterPct}%`],
+        ['Forest', `${gen.forestPct}%`],
+        ['Rocky', `${gen.rockyPct}%`],
+        ['Frequency', gen.frequency],
+        ['Crash radius', gen.crashRadius],
+      ];
+      for (const [label, value] of params) {
+        this.mapStatsEl.appendChild(this._createStatRow(label, String(value)));
+      }
+
+      if (this.onRegenerate) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Regenerate';
+        btn.style.cssText = 'margin-top:6px;width:100%;padding:4px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;';
+        btn.addEventListener('click', () => this.onRegenerate());
+        this.mapStatsEl.appendChild(btn);
+      }
     }
   }
 

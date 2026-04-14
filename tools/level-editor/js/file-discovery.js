@@ -388,6 +388,22 @@ export class FileDiscovery {
   }
 
   /**
+   * Delete a project file via the dev server API.
+   * @param {string} dir - Directory relative to project root (e.g. 'data/maps')
+   * @param {string} filename - Filename to delete
+   * @returns {Promise<void>}
+   */
+  static async deleteFile(dir, filename) {
+    const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + filename)}`, {
+      method: 'DELETE',
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || `Delete failed: ${resp.status}`);
+    }
+  }
+
+  /**
    * Auto-discover and load project files via the dev server API.
    * @returns {Promise<{success: boolean, error?: string}>}
    */
