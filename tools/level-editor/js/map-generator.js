@@ -91,12 +91,11 @@ export function generateMap(opts = {}) {
   const ruggedNoise = createNoise2D(o.seed + 71993);
 
   const coords = hexesInRadius(o.radius);
-
-  // Landing zone: within 2× crashRadius, dampen noise to keep area walkable
   const landingZone = o.crashRadius * 2;
 
-  // --- Phase 1: sample three independent noise layers ---
-  // NO distance-based bias — biome placement is 100% noise-driven.
+  // --- Phase 1: continuous elevation + biome noise layers ---
+  // Elevation is ONE smooth field shared by ALL biomes. No per-biome
+  // elevation formulas — that caused cliff transitions.
   const samples = coords.map(({ q, r }) => {
     const px = HexMath.axialToPixel(q, r);
     const nx = px.x * o.frequency / 40;
@@ -108,28 +107,30 @@ export function generateMap(opts = {}) {
 
     const dist = HexMath.distance(0, 0, q, r);
 
-    // Landing zone fade: 1.0 at crashRadius, 0.0 at 2×crashRadius
-    // Dampens noise near spawn so the crash site area stays gentle
+    // Dampen near spawn for walkable landing zone
     let landingFade = 0;
     if (dist <= landingZone && landingZone > 0) {
       landingFade = Math.max(0, 1 - dist / landingZone);
     }
 
-    // Dampen elevation noise near spawn — push it toward 0 (flat)
-    const dampedElev = nElev * (1 - landingFade * 0.8);
+    // Raw continuous elevation: noise × peakHeight
+    // This gives a smooth height field across the entire map.
+    const rawElev = nElev * (1 - landingFade * 0.8) * o.peakHeight;
 
-    return { q, r, nElev: dampedElev, nMoist, nRugged, dist };
+    return { q, r, rawElev, nMoist, nRugged, dist };
   });
 
-  // --- Phase 2: water — bottom waterPct% by elevation noise ---
-  const elevScores = samples.map(s => s.nElev).sort((a, b) => a - b);
-  const waterThreshold = elevScores[Math.floor(elevScores.length * o.waterPct / 100)] ?? -Infinity;
+  // --- Phase 2: sea level — bottom waterPct% becomes water ---
+  const sortedElevs = samples.map(s => s.rawElev).sort((a, b) => a - b);
+  const seaLevel = sortedElevs[Math.floor(sortedElevs.length * o.waterPct / 100)] ?? 0;
 
+  // Shift so sea level = 0. Land is positive, water is negative.
   for (const s of samples) {
-    s.isWater = s.nElev <= waterThreshold;
+    s.elevation = s.rawElev - seaLevel;
+    s.isWater = s.elevation < 0;
   }
 
-  // --- Phase 3: rocky — top rockyPct% of non-water by ruggedness noise ---
+  // --- Phase 3: rocky — top rockyPct% of land by ruggedness noise ---
   const landSamples = samples.filter(s => !s.isWater);
   const ruggedScores = landSamples.map(s => s.nRugged).sort((a, b) => a - b);
   const rockyThreshold = ruggedScores.length > 0
@@ -140,7 +141,7 @@ export function generateMap(opts = {}) {
     s.isRocky = !s.isWater && s.nRugged >= rockyThreshold;
   }
 
-  // --- Phase 4: forest — top forestPct% of remaining by moisture noise ---
+  // --- Phase 4: forest — top forestPct% of remaining by moisture ---
   const remainingSamples = samples.filter(s => !s.isWater && !s.isRocky);
   const moistScores = remainingSamples.map(s => s.nMoist).sort((a, b) => a - b);
   const forestThreshold = moistScores.length > 0
@@ -157,8 +158,9 @@ export function generateMap(opts = {}) {
     return biomeSet.has(id) ? id : (biomeFiles[0] || '').replace('.tres', '');
   };
 
-  // --- Phase 6: assign biomes + biome-appropriate elevation ---
-  // Elevation is gentle for habitable biomes, steep only for rocky.
+  // --- Phase 6: assign biomes — elevation is the SAME continuous field ---
+  // Rocky at elevation 15 next to grassland at elevation 12 = gentle slope.
+  // No more per-biome elevation formulas creating artificial cliffs.
   const tiles = {};
   for (const s of samples) {
     const key = `${s.q},${s.r}`;
@@ -173,14 +175,13 @@ export function generateMap(opts = {}) {
       elev = 0;
     } else if (s.isRocky) {
       biome = biomeFor('rocky');
-      // Rocky elevation driven by ruggedness noise intensity
-      elev = Math.max(3, Math.round(((s.nRugged + 1) / 2) * o.peakHeight * 0.5));
+      elev = Math.round(s.elevation);
     } else if (s.nMoist >= forestThreshold) {
       biome = biomeFor('forest');
-      elev = Math.round(Math.abs(s.nElev) * 8);
+      elev = Math.round(s.elevation);
     } else {
       biome = biomeFor('grassland');
-      elev = Math.round(Math.abs(s.nElev) * 5);
+      elev = Math.round(s.elevation);
     }
 
     tiles[key] = { biome, elevation: elev };
