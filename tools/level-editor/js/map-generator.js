@@ -412,6 +412,80 @@ function passBiomes(hexMap, coords, o) {
 }
 
 // ============================================================
+// Pass 6: Accessibility smoothing
+// ============================================================
+//
+// Post-processing to eliminate inaccessible "tower" tiles.
+// A tile is accessible if at least one non-water neighbor has
+// an elevation diff ≤ 4 (the max step-up height in-game).
+
+function passAccessibility(hexMap, coords, o) {
+  const MAX_STEP = 4;
+
+  // Helper: check if a tile can be reached from at least one neighbor
+  function isAccessible(q, r) {
+    const key = hexKey(q, r);
+    const cell = hexMap.get(key);
+    if (!cell) return true;
+    const elev = cell.elevation;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(q + dir.q, r + dir.r);
+      const neighbor = hexMap.get(nk);
+      if (!neighbor || neighbor.isWater) continue;
+      if (elev - neighbor.elevation <= MAX_STEP) return true;
+    }
+    return false;
+  }
+
+  // Helper: get highest non-water neighbor elevation
+  function highestNeighborElev(q, r) {
+    let best = 0;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(q + dir.q, r + dir.r);
+      const neighbor = hexMap.get(nk);
+      if (!neighbor || neighbor.isWater) continue;
+      if (neighbor.elevation > best) best = neighbor.elevation;
+    }
+    return best;
+  }
+
+  // Detect biome IDs for water and rocky
+  const biomeFiles = [...ProjectContext.files.biomes.keys()];
+  const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
+  const waterBiome = biomeSet.has('B00005') ? 'B00005' : null;
+  const rockyBiome = biomeSet.has('B00004') ? 'B00004' : null;
+
+  // Step 1: Promote inaccessible high tiles (≥10) to Rocky
+  let promoted = 0;
+  if (rockyBiome) {
+    for (const { q, r } of coords) {
+      const cell = hexMap.get(hexKey(q, r));
+      if (!cell || cell.isWater || cell.biome === waterBiome || cell.biome === rockyBiome) continue;
+      if (cell.elevation >= 10 && !isAccessible(q, r)) {
+        cell.biome = rockyBiome;
+        promoted++;
+      }
+    }
+  }
+
+  // Step 2: Clamp inaccessible non-water, non-rocky tiles to highest neighbor + MAX_STEP
+  let smoothed = 0;
+  for (const { q, r } of coords) {
+    const cell = hexMap.get(hexKey(q, r));
+    if (!cell || cell.isWater || cell.biome === waterBiome || cell.biome === rockyBiome) continue;
+    if (!isAccessible(q, r)) {
+      const target = highestNeighborElev(q, r) + MAX_STEP;
+      cell.elevation = target;
+      smoothed++;
+    }
+  }
+
+  if (promoted > 0 || smoothed > 0) {
+    console.log(`passAccessibility: ${promoted} tiles promoted to rocky, ${smoothed} tiles elevation-smoothed`);
+  }
+}
+
+// ============================================================
 // Main generator
 // ============================================================
 
@@ -439,8 +513,10 @@ export function generateMap(opts = {}) {
   const t4 = performance.now();
   passBiomes(hexMap, coords, effectiveOpts);
   const t5 = performance.now();
+  passAccessibility(hexMap, coords, effectiveOpts);
+  const t6 = performance.now();
 
-  console.log(`map-generator passes: elev=${(t1-t0).toFixed(0)}ms erosion=${(t2-t1).toFixed(0)}ms hydro=${(t3-t2).toFixed(0)}ms moisture=${(t4-t3).toFixed(0)}ms biomes=${(t5-t4).toFixed(0)}ms total=${(t5-t0).toFixed(0)}ms`);
+  console.log(`map-generator passes: elev=${(t1-t0).toFixed(0)}ms erosion=${(t2-t1).toFixed(0)}ms hydro=${(t3-t2).toFixed(0)}ms moisture=${(t4-t3).toFixed(0)}ms biomes=${(t5-t4).toFixed(0)}ms access=${(t6-t5).toFixed(0)}ms total=${(t6-t0).toFixed(0)}ms`);
 
   // Build output tiles
   const tiles = {};
