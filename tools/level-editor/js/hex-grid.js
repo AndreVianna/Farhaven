@@ -410,6 +410,20 @@ export function loadMapIntoGrid(hexGrid, mapData) {
   }
 
   // Walls default to all-false. Placement is manual via wall tool.
+  // Exception: water↔land edges always get walls (shoreline).
+  for (const [key, tile] of hexGrid.tiles) {
+    const { q, r } = HexGrid.parseKey(key);
+    const tileIsWater = tile.biome === 'B00005';
+    for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+      const dir = HexMath.DIRECTIONS[d];
+      const neighbor = hexGrid.getTile(q + dir.q, r + dir.r);
+      if (!neighbor) continue;
+      const neighborIsWater = neighbor.biome === 'B00005';
+      if (tileIsWater !== neighborIsWater) {
+        tile.walls[d] = true;
+      }
+    }
+  }
 
   return { success: true };
 }

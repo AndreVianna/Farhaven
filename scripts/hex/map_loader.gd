@@ -156,6 +156,18 @@ func load_map(path: String) -> bool:
 		_grid._tiles[coords] = tile
 
 	# Walls default to all-false (no walls). Placement is manual via editor.
+	# Exception: water↔land edges always get walls (shoreline).
+	for c: Variant in _grid._tiles:
+		var t: Resource = _grid._tiles[c]
+		var crd: Vector2i = c as Vector2i
+		var t_water: bool = t.biome == _HexTile.Biome.WATER
+		for d: int in range(6):
+			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_t: Resource = _grid._tiles.get(n_crd, null)
+			if n_t == null:
+				continue
+			if t_water != (n_t.biome == _HexTile.Biome.WATER):
+				t.walls[d] = true
 
 	# Step 4: Store spawn position and starting loadout on the grid.
 	_grid.spawn_tile = spawn
