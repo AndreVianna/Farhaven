@@ -444,7 +444,7 @@ export function loadMapIntoGrid(hexGrid, mapData) {
     const { q, r } = HexGrid.parseKey(key);
     tile.waterLevel = computeWaterLevel(hexGrid, q, r);
   }
-  // Exception: water↔land edges always get walls (shoreline).
+  // Exception: water↔land shoreline gets wall only when elevation differs.
   for (const [key, tile] of hexGrid.tiles) {
     const { q, r } = HexGrid.parseKey(key);
     const tileIsWater = tile.biome === 'B00005';
@@ -454,7 +454,12 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       if (!neighbor) continue;
       const neighborIsWater = neighbor.biome === 'B00005';
       if (tileIsWater !== neighborIsWater) {
-        tile.walls[d] = true;
+        const waterTile = tileIsWater ? tile : neighbor;
+        const landTile = tileIsWater ? neighbor : tile;
+        const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
+        if (wl !== landTile.elevation) {
+          tile.walls[d] = true;
+        }
       }
     }
   }
