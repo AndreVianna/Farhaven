@@ -214,6 +214,7 @@ keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('w', mapOnly(() => selectTool('wall')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
+keyboardManager.register('h', mapOnly(() => { if (hexCanvas) hexCanvas.centerOnSpawn(); }));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
@@ -916,6 +917,7 @@ let activeMapFilename = null;
 const TOOL_GROUPS = [
   { group: 'General', tools: [
     { type: 'select',     label: 'Select',     shortcut: 'V' },
+    { type: 'home',       label: 'Home',       shortcut: 'H', action: true },
   ]},
   { group: 'Hex Tools', tools: [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
@@ -1030,13 +1032,20 @@ function _initToolButtons() {
       btn.dataset.tool = def.type;
       btn.textContent = `${def.label} [${def.shortcut}]`;
       btn.title = `${def.label} — shortcut: ${def.shortcut}`;
-      btn.addEventListener('click', () => {
-        if (toolManager.activeToolType === def.type && def.type !== 'select') {
-          selectTool('select');
-        } else {
-          selectTool(def.type);
-        }
-      });
+      if (def.action) {
+        // One-shot action button (not a toggle tool)
+        btn.addEventListener('click', () => {
+          if (def.type === 'home' && hexCanvas) hexCanvas.centerOnSpawn();
+        });
+      } else {
+        btn.addEventListener('click', () => {
+          if (toolManager.activeToolType === def.type && def.type !== 'select') {
+            selectTool('select');
+          } else {
+            selectTool(def.type);
+          }
+        });
+      }
       grid.appendChild(btn);
     }
     container.appendChild(grid);
