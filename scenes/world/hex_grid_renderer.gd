@@ -513,15 +513,11 @@ func _rebuild_mesh() -> void:
 		var cz: float = world_2d.y
 
 		for d: int in range(6):
-			# Use the tile's walls array to decide whether to draw a cliff face.
+			# walls[d] == true → always draw the wall face from this tile's side.
 			if not tile.walls[d]:
 				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			# Only the higher tile draws the wall face to avoid double-drawing.
-			# If neighbor is non-water and at same or higher elevation, skip.
-			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
-				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
 			var ec: Array = edge_corners[d]
