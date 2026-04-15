@@ -2,7 +2,50 @@
 // CommandHistory (task-004)
 // ============================================================
 
-import { createTileData } from './hex-grid.js';
+import { createTileData, computeWaterLevel } from './hex-grid.js';
+import { HexMath } from './hex-math.js';
+
+/**
+ * After changing a tile's elevation, update neighboring water tiles'
+ * waterLevel and shoreline walls on the shared edges.
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ */
+function _updateWaterNeighbors(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return;
+  const tileIsWater = tile.biome === 'B00005';
+
+  for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+    const dir = HexMath.DIRECTIONS[d];
+    const nq = q + dir.q, nr = r + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (!neighbor) continue;
+    const neighborIsWater = neighbor.biome === 'B00005';
+
+    // Recompute waterLevel for water neighbors of a changed land tile
+    if (neighborIsWater && !tileIsWater) {
+      neighbor.waterLevel = computeWaterLevel(grid, nq, nr);
+    }
+    // Recompute waterLevel for this tile if it's water
+    if (tileIsWater && !neighborIsWater) {
+      tile.waterLevel = computeWaterLevel(grid, q, r);
+    }
+
+    // Update shoreline wall: wall only when waterLevel != land elevation
+    if (tileIsWater !== neighborIsWater) {
+      const waterTile = tileIsWater ? tile : neighbor;
+      const landTile = tileIsWater ? neighbor : tile;
+      const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
+      const shouldWall = wl !== landTile.elevation;
+      tile.walls[d] = shouldWall;
+      // Also update the neighbor's opposite edge
+      const opposite = (d + 3) % 6;
+      neighbor.walls[opposite] = shouldWall;
+    }
+  }
+}
 
 export class CommandHistory {
   constructor() {
@@ -182,6 +225,7 @@ export class SetElevationCommand {
     }
     tile.elevation = this.newElevation;
     this.grid.setTile(this.q, this.r, tile);
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
   undo() {
     if (this._created) {
@@ -193,6 +237,7 @@ export class SetElevationCommand {
         this.grid.setTile(this.q, this.r, tile);
       }
     }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
 }
 
