@@ -193,9 +193,11 @@ export class SetBiomeCommand {
     this.tab = 'map';
     this.type = 'SetBiome';
     this._tileExistedBefore = grid.hasTile(q, r);
-    // Save old waterType for undo
+    // Save old state for undo
     const existingTile = grid.getTile(q, r);
     this._oldWaterType = existingTile ? existingTile.waterType : null;
+    this._oldElevation = existingTile ? existingTile.elevation : 0;
+    this._oldWaterLevel = existingTile ? existingTile.waterLevel : null;
   }
   execute() {
     let tile = this.grid.getTile(this.q, this.r);
@@ -207,9 +209,23 @@ export class SetBiomeCommand {
       this.grid.setTile(this.q, this.r, tile);
     }
     tile.waterType = this.waterType;
-    // Compute waterLevel for new water tiles
     if (this.newBiome === 'B00005') {
+      // Convert to water: compute waterLevel, set depth below surface
       tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+      // Depth should be at or below waterLevel (default: waterLevel for shallow)
+      if (tile.waterLevel != null && tile.elevation > tile.waterLevel) {
+        tile.elevation = tile.waterLevel;
+      }
+      // Remove walls between this water tile and adjacent water tiles
+      for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+        const dir = HexMath.DIRECTIONS[d];
+        const neighbor = this.grid.getTile(this.q + dir.q, this.r + dir.r);
+        if (neighbor && neighbor.biome === 'B00005') {
+          tile.walls[d] = false;
+          const opposite = (d + 3) % 6;
+          neighbor.walls[opposite] = false;
+        }
+      }
     } else {
       tile.waterLevel = null;
       tile.waterType = null;
@@ -225,13 +241,9 @@ export class SetBiomeCommand {
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
       tile.biome = this.oldBiome;
+      tile.elevation = this._oldElevation;
       tile.waterType = this._oldWaterType;
-      if (this.oldBiome === 'B00005') {
-        tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
-      } else {
-        tile.waterLevel = null;
-        tile.waterType = null;
-      }
+      tile.waterLevel = this._oldWaterLevel;
       this.grid.setTile(this.q, this.r, tile);
     }
     _updateWaterNeighbors(this.grid, this.q, this.r);
