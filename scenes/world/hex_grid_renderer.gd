@@ -517,11 +517,14 @@ func _rebuild_mesh() -> void:
 		var cz: float = world_2d.y
 
 		for d: int in range(6):
-			# walls[d] == true → always draw the wall face from this tile's side.
 			if not tile.walls[d]:
 				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+			# Water tiles don't draw wall faces — the land tile draws the
+			# shoreline cliff from its side. Water surface is flat at waterLevel.
+			if tile.biome == _HexTile.Biome.WATER:
+				continue
 
 			var cliff_color: Color = tile_colors[coords] * 0.6
 			var ec: Array = edge_corners[d]

@@ -300057,7 +300057,7 @@
 			"elevation": 5,
 			"walls": [
 				true,
-				true,
+				false,
 				true,
 				true,
 				true,
@@ -303309,10 +303309,10 @@
 			"elevation": 3,
 			"walls": [
 				true,
-				true,
-				true,
 				false,
 				true,
+				false,
+				false,
 				true
 			],
 			"waterLevel": 3,
@@ -306568,7 +306568,7 @@
 				false,
 				false,
 				true,
-				true,
+				false,
 				false
 			],
 			"waterLevel": 1,
@@ -364054,7 +364054,7 @@
 				false,
 				false,
 				true,
-				true
+				false
 			],
 			"waterLevel": 4,
 			"waterType": "flowing"
@@ -364065,10 +364065,10 @@
 			"walls": [
 				false,
 				true,
-				true,
+				false,
 				true,
 				false,
-				true
+				false
 			],
 			"waterLevel": 2,
 			"waterType": "flowing"
@@ -364079,7 +364079,7 @@
 			"walls": [
 				false,
 				true,
-				true,
+				false,
 				true,
 				false,
 				false
@@ -406576,11 +406576,11 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				true,
+				false,
 				true,
 				false,
 				true,
-				true
+				false
 			],
 			"waterLevel": 1,
 			"waterType": "flowing"
@@ -406591,7 +406591,7 @@
 			"walls": [
 				true,
 				true,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -410221,7 +410221,7 @@
 				true,
 				false,
 				false,
-				true,
+				false,
 				true
 			],
 			"waterLevel": 0,
