@@ -12,10 +12,37 @@ import { HexMath } from './hex-math.js';
  * @param {number} q
  * @param {number} r
  */
+/**
+ * Update shoreline walls for ALL edges of a water tile.
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {number} wq - water tile q
+ * @param {number} wr - water tile r
+ */
+function _updateShorelineWalls(grid, wq, wr) {
+  const waterTile = grid.getTile(wq, wr);
+  if (!waterTile || waterTile.biome !== 'B00005') return;
+  const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
+
+  for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+    const dir = HexMath.DIRECTIONS[d];
+    const nq = wq + dir.q, nr = wr + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (!neighbor) continue;
+    if (neighbor.biome === 'B00005') continue; // water↔water, skip
+    const shouldWall = wl !== neighbor.elevation;
+    waterTile.walls[d] = shouldWall;
+    const opposite = (d + 3) % 6;
+    neighbor.walls[opposite] = shouldWall;
+  }
+}
+
 function _updateWaterNeighbors(grid, q, r) {
   const tile = grid.getTile(q, r);
   if (!tile) return;
   const tileIsWater = tile.biome === 'B00005';
+
+  // Collect water tiles that need full shoreline wall update
+  const waterTilesToUpdate = new Set();
 
   for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
     const dir = HexMath.DIRECTIONS[d];
@@ -24,26 +51,20 @@ function _updateWaterNeighbors(grid, q, r) {
     if (!neighbor) continue;
     const neighborIsWater = neighbor.biome === 'B00005';
 
-    // Recompute waterLevel for water neighbors of a changed land tile
     if (neighborIsWater && !tileIsWater) {
       neighbor.waterLevel = computeWaterLevel(grid, nq, nr);
+      waterTilesToUpdate.add(`${nq},${nr}`);
     }
-    // Recompute waterLevel for this tile if it's water
     if (tileIsWater && !neighborIsWater) {
       tile.waterLevel = computeWaterLevel(grid, q, r);
+      waterTilesToUpdate.add(`${q},${r}`);
     }
+  }
 
-    // Update shoreline wall: wall only when waterLevel != land elevation
-    if (tileIsWater !== neighborIsWater) {
-      const waterTile = tileIsWater ? tile : neighbor;
-      const landTile = tileIsWater ? neighbor : tile;
-      const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
-      const shouldWall = wl !== landTile.elevation;
-      tile.walls[d] = shouldWall;
-      // Also update the neighbor's opposite edge
-      const opposite = (d + 3) % 6;
-      neighbor.walls[opposite] = shouldWall;
-    }
+  // Update ALL shoreline walls for each affected water tile
+  for (const key of waterTilesToUpdate) {
+    const [wq, wr] = key.split(',').map(Number);
+    _updateShorelineWalls(grid, wq, wr);
   }
 }
 
