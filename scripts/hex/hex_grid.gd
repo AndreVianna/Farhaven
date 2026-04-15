@@ -35,6 +35,9 @@ enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
+## Snapshot of original prop state from the map JSON, taken after load_map().
+## Key = Vector2i, Value = serialized props string for comparison.
+var _original_props: Dictionary = {}  # Vector2i -> String
 
 ## Spawn point (col, row) — tile where the player starts on new game.
 var spawn_tile: Vector2i = Vector2i.ZERO
@@ -265,10 +268,19 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 
 # --- Serialization ---
 
+## Save only tiles whose props changed since map load (delta save).
+## The map JSON already stores the base terrain (biome, elevation, walls).
+## The save file only needs to record runtime prop changes (harvesting,
+## building, item drops) to avoid duplicating 67K+ tile data.
 func get_save_data() -> Dictionary:
 	var tiles_data: Array = []
-	for coords in _tiles:
+	for coords: Variant in _tiles:
 		var tile: Resource = _tiles[coords]
+		var current_serial: String = _serialize_tile_props(tile)
+		var original_serial: String = _original_props.get(coords, "")
+		# Skip tiles whose props haven't changed
+		if current_serial == original_serial:
+			continue
 		var props_data: Array = []
 		for prop in tile.props:
 			props_data.append({
@@ -285,8 +297,6 @@ func get_save_data() -> Dictionary:
 		tiles_data.append({
 			"tile_col": coords.x,
 			"tile_row": coords.y,
-			"biome": tile.biome,
-			"elevation": tile.elevation,
 			"props": props_data,
 		})
 	return {
@@ -299,34 +309,52 @@ func load_map(path: String) -> bool:
 	var loader = load("res://scripts/hex/map_loader.gd").new(self)
 	var ok: bool = loader.load_map(path)
 	if ok:
-		# Record the active map so SaveManager can persist progression
-		# across sessions. Store just the filename relative to
-		# `res://data/maps/`, matching GameSettings.starting_map.
 		SaveManager.current_map = path.get_file()
+		_snapshot_original_props()
 	return ok
 
 
+## Snapshot the props state of all tiles right after map load.
+## Used to detect which tiles have changed at save time (delta save).
+func _snapshot_original_props() -> void:
+	_original_props.clear()
+	for coords: Variant in _tiles:
+		_original_props[coords] = _serialize_tile_props(_tiles[coords])
+
+
+## Serialize a tile's props into a comparable string.
+func _serialize_tile_props(tile: Resource) -> String:
+	if tile.props.size() == 0:
+		return ""
+	var parts: Array = []
+	for p in tile.props:
+		parts.append("%s:%d:%d:%d" % [p.type, p.origin, p.remaining, p.max_amount])
+	return "|".join(parts)
+
+
+## Load save data as a DELTA overlay on the already-loaded map.
+## The map must be loaded first (via load_map). This only applies
+## prop changes recorded by get_save_data — terrain (biome, elevation,
+## walls) comes from the map JSON and is not repeated in the save.
 func load_save_data(data: Dictionary) -> void:
-	_tiles.clear()
 	_seed = int(data.get("seed", 0))
 	var tiles_array: Array = data.get("tiles", [])
 	for td in tiles_array:
 		if not td.has("tile_col") or not td.has("tile_row"):
 			push_warning("HexGrid.load_save_data: tile entry missing coords, skipped")
 			continue
-		var tile: Resource = _HexTile.new()
 		var coords := Vector2i(int(td["tile_col"]), int(td["tile_row"]))
-		tile.coords = coords
-		tile.biome = int(td.get("biome", _HexTile.Biome.GRASSLAND))
-		tile.elevation = int(td.get("elevation", 0))
-		# Legacy "fog" key from old saves is silently ignored.
+		var tile: Resource = _tiles.get(coords, null)
+		if tile == null:
+			push_warning("HexGrid.load_save_data: tile %s not in map, skipped" % str(coords))
+			continue
 
+		# Replace props on this tile with saved state
+		tile.props.clear()
 		if td.has("props"):
-			# New save format: unified props array
 			for pd in td["props"]:
 				var prop_type: StringName = StringName(pd.get("type", ""))
 				if prop_type == &"":
-					push_warning("HexGrid.load_save_data: prop entry missing type at %s, skipped" % coords)
 					continue
 				var prop: Resource = _Prop.new()
 				prop.type = prop_type
@@ -338,30 +366,6 @@ func load_save_data(data: Dictionary) -> void:
 				prop.respawn_time = float(pd.get("respawn_time", 0.0))
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
 				tile.props.append(prop)
-		else:
-			# Legacy save format: "resources" + "structure" + "anomaly"
-			for rd in td.get("resources", []):
-				var legacy_type: StringName = StringName(rd.get("type", ""))
-				if legacy_type == &"":
-					continue
-				tile.props.append(_Prop.create_prop(
-					legacy_type,
-					int(rd.get("remaining", 0)),
-					int(rd.get("max", 0)),
-					StringName(rd.get("tool", "")),
-				))
-
-			var structure_str: String = td.get("structure", "")
-			if structure_str != "":
-				tile.props.append(_Prop.create_structure(
-					StringName(structure_str),
-				))
-
-			var anomaly_str: String = td.get("anomaly", "")
-			if anomaly_str != "":
-				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
-
-		_tiles[coords] = tile
 
 
 
