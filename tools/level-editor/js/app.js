@@ -185,6 +185,12 @@ function selectTool(toolName) {
   toolManager.setTool(toolName, value);
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
+    // Clear hex selection for wall tool — the selection highlight
+    // blocks the wall edge highlight.
+    if (toolName === 'wall') {
+      hexCanvas.selectedHex = null;
+      hexCanvas.requestRender();
+    }
   }
   // Update tool indicator in toolbar
   const indicator = document.getElementById('tool-indicator');
@@ -206,6 +212,7 @@ keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
 keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
+keyboardManager.register('w', mapOnly(() => selectTool('wall')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 

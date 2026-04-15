@@ -502,29 +502,36 @@ export class HexCanvas {
    * @param {boolean} hasWall - Whether this edge currently has a wall
    */
   /**
-   * Find the closest hex edge (direction index 0-5) to a world-space point
-   * within a hex at (q, r). Returns the direction index or -1 if too far.
+   * Find the closest hex edge (direction index 0-5) to a world-space point.
+   * Computes distance from the mouse to each of the 6 edge midpoints and
+   * returns the direction index of the nearest one.
    * @param {number} q
    * @param {number} r
    * @param {number} worldX
    * @param {number} worldY
-   * @returns {number} Direction index (0-5) or -1
+   * @returns {number} Direction index (0-5)
    */
   _closestEdge(q, r, worldX, worldY) {
     const center = HexMath.axialToPixel(q, r);
-    const dx = worldX - center.x;
-    const dy = worldY - center.y;
-    // Angle from center to mouse (in screen space, y-down)
-    const angle = Math.atan2(dy, dx);
-    // Map angle to direction index. Flat-top hex: DIRECTIONS[0]=E at 0°,
-    // each direction spans 60°. Offset by 30° so boundaries fall between edges.
-    const sector = Math.round(((angle + Math.PI) / (Math.PI / 3)) - 0.5) % 6;
-    // DIRECTIONS: E=0, NE=1, NW=2, W=3, SW=4, SE=5
-    // Angle sectors (CCW from +x): 0°=E, 60°=NE... but atan2 y-down inverts.
-    // Direct mapping: sector 0→E(0), 5→SE(5), 4→SW(4), 3→W(3), 2→NW(2), 1→NE(1)
-    const DIR_MAP = [0, 5, 4, 3, 2, 1];
-    const normalizedSector = ((Math.round(angle / (Math.PI / 3)) % 6) + 6) % 6;
-    return DIR_MAP[normalizedSector];
+    // Edge midpoints are at the apothem distance in each direction.
+    // For flat-top hex: edge d midpoint angle = 30° + 60° * edgeCornerIdx
+    // DIRECTIONS → corner edge mapping: dir 0→edge(0,1), 1→edge(5,0), etc.
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const apothem = HEX_SIZE * Math.cos(Math.PI / 6);
+    let bestDir = 0;
+    let bestDist = Infinity;
+    for (let dirIdx = 0; dirIdx < 6; dirIdx++) {
+      const edgeCorner = DIR_TO_EDGE[dirIdx];
+      const midAngle = (edgeCorner * 60 + 30) * Math.PI / 180;
+      const mx = center.x + Math.cos(midAngle) * apothem;
+      const my = center.y + Math.sin(midAngle) * apothem;
+      const dist = Math.hypot(worldX - mx, worldY - my);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestDir = dirIdx;
+      }
+    }
+    return bestDir;
   }
 
   _drawWallHighlight(q, r, edgeIdx, hasWall) {
@@ -1348,7 +1355,10 @@ export class HexCanvas {
     if (event.button === 0) {
       this._mouseDown = true;
       const hex = this.screenToHex(mx, my);
-      this.selectedHex = { q: hex.q, r: hex.r };
+      // Wall tool: don't update selection (it blocks the wall highlight)
+      if (!this.toolManager || this.toolManager.activeToolType !== 'wall') {
+        this.selectedHex = { q: hex.q, r: hex.r };
+      }
 
       // --- Select tool: prop/spawn interaction ---
       if (this.toolManager && this.toolManager.activeToolType === 'select') {
