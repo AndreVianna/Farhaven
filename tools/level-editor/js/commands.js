@@ -6,13 +6,6 @@ import { createTileData, computeWaterLevel } from './hex-grid.js';
 import { HexMath } from './hex-math.js';
 
 /**
- * After changing a tile's elevation, update neighboring water tiles'
- * waterLevel and shoreline walls on the shared edges.
- * @param {import('./hex-grid.js').HexGrid} grid
- * @param {number} q
- * @param {number} r
- */
-/**
  * Update shoreline walls for ALL edges of a water tile.
  * @param {import('./hex-grid.js').HexGrid} grid
  * @param {number} wq - water tile q

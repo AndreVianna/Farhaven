@@ -80,6 +80,7 @@ func load_map(path: String) -> bool:
 	# Step 2 & 3: Create HexTile objects and register in HexGrid._tiles
 	_grid._tiles.clear()
 	var tiles_dict: Dictionary = root["tiles"]
+	var _water_tiles_with_level: Dictionary = {}  # coords → true if waterLevel from JSON
 
 	for key in tiles_dict:
 		var parts := str(key).split(",")
@@ -105,7 +106,8 @@ func load_map(path: String) -> bool:
 				w.append(bool(v))
 			tile.walls = w
 		if td.has("waterLevel"):
-			tile.water_level = int(td["waterLevel"])
+			tile.water_level = clampi(int(td["waterLevel"]), -32000, 32000)
+			_water_tiles_with_level[coords] = true
 		if td.has("waterType"):
 			tile.water_type = String(td["waterType"])
 
@@ -161,11 +163,11 @@ func load_map(path: String) -> bool:
 
 	# Compute water_level for water tiles that don't have it in JSON.
 	for c: Variant in _grid._tiles:
+		if _water_tiles_with_level.has(c):
+			continue
 		var t: Resource = _grid._tiles[c]
 		if t.biome != _HexTile.Biome.WATER:
 			continue
-		if t.water_level != 0:
-			continue  # already set from JSON
 		# Compute: min elevation of adjacent dry tiles
 		var crd: Vector2i = c as Vector2i
 		var min_dry: int = 32000

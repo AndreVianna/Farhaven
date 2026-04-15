@@ -1470,17 +1470,21 @@ export class HexCanvas {
       this._handleSelectToolMouseMove(mx, my);
     }
 
-    // Ctrl+hover paint: apply biome/delete on hover without clicking
+    // Ctrl+hover paint: apply tool on hover without clicking.
+    // Only for DragBrushTool-based tools (biome) that have drag state.
+    // DeleteHexTool uses simple onMouseDown per hex.
     if (this.ctrlHeld && this.toolManager && !this._mouseDown) {
       const tt = this.toolManager.activeToolType;
-      if (tt === 'biome' || tt === 'delete_hex') {
-        // Start a micro-drag so the tool's dedup + batch logic works
-        if (!this.toolManager.activeTool._isDragging) {
-          this.toolManager.activeTool._isDragging = true;
-          this.toolManager.activeTool._visited.clear();
-          this.toolManager.activeTool._dragCommands = [];
+      const tool = this.toolManager.activeTool;
+      if (tt === 'biome' && tool && typeof tool._isDragging !== 'undefined') {
+        if (!tool._isDragging) {
+          tool._isDragging = true;
+          tool._visited.clear();
+          tool._dragCommands = [];
         }
         this.toolManager.onMouseMove(hex);
+      } else if (tt === 'delete_hex' && tool) {
+        tool.onMouseDown(hex);
       }
     }
 

@@ -114,7 +114,7 @@ export const DEFAULT_WALLS = [false, false, false, false, false, false];
 /**
  * Creates a default TileData object.
  * @param {string} [biome='']
- * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[] }}
+ * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[], waterLevel: number|null, waterType: string|null }}
  */
 export function createTileData(biome = '') {
   return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null, waterType: null };

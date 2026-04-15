@@ -363,9 +363,9 @@ func _rebuild_mesh() -> void:
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
-		var elevation_y: float = float(tile.elevation) * ELEVATION_STEP
-		var center_color: Color = tile_colors[coords]
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var elevation_y: float = (float(tile.water_level) if is_water else float(tile.elevation)) * ELEVATION_STEP
+		var center_color: Color = tile_colors[coords]
 		var corner_y: Array[float] = all_corner_y[coords]
 		var edge_y: Array[float] = all_edge_y[coords]
 		# Per-tile UV rotation (0/90/180/270°) — multiplies effective
@@ -569,15 +569,15 @@ func _rebuild_mesh() -> void:
 					l_mid_y = n_ey[rev_d]
 					l_ca_y = n_cy[rev_ec[1]]
 				else:
-					var low_y: float = float(n_tile.elevation) * ELEVATION_STEP
-					l_ca_y = low_y
-					l_mid_y = low_y
-					l_cb_y = low_y
+					var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+					l_ca_y = n_surface
+					l_mid_y = n_surface
+					l_cb_y = n_surface
 			elif n_tile != null:
-				var low_y: float = float(n_tile.elevation) * ELEVATION_STEP
-				l_ca_y = low_y
-				l_mid_y = low_y
-				l_cb_y = low_y
+				var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+				l_ca_y = n_surface
+				l_mid_y = n_surface
+				l_cb_y = n_surface
 			else:
 				l_ca_y = 0.0
 				l_mid_y = 0.0
