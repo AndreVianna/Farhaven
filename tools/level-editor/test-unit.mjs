@@ -4246,12 +4246,12 @@ for (const csFile of __cutsceneFiles) {
   }
   assert(allInts, 'all elevations are integers');
 
-  // Water tiles have elevation 0
-  let waterElevOk = true;
+  // Water tiles have waterLevel set
+  let waterLevelOk = true;
   for (const tile of Object.values(map1.tiles)) {
-    if (tile.biome === 'B00005' && tile.elevation !== 0) { waterElevOk = false; break; }
+    if (tile.biome === 'B00005' && tile.waterLevel == null) { waterLevelOk = false; break; }
   }
-  assert(waterElevOk, 'all water tiles have elevation 0');
+  assert(waterLevelOk, 'all water tiles have waterLevel set');
 
   // Crash site tiles have elevation 0
   let crashElevOk = true;

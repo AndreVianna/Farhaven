@@ -164,15 +164,16 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	if tile == null:
 		return 0.0
 
-	var elev: float = float(tile.elevation)
+	var is_water: bool = tile.biome == _HexTile.Biome.WATER
+	# Water tiles use water_level (surface) for rendering, not elevation (depth).
+	var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 	var center_y: float = elev * ELEVATION_STEP
 
-	# Water stays flat.
-	if tile.biome == _HexTile.Biome.WATER:
+	# Water stays flat at water_level.
+	if is_water:
 		return center_y
 
 	# Compute edge_y (6 values) — uses walls array to decide cliff vs slope.
-	var is_water: bool = tile.biome == _HexTile.Biome.WATER
 	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for d: int in range(6):
 		if tile.walls[d]:

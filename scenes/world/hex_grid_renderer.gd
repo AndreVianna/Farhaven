@@ -290,9 +290,10 @@ func _rebuild_mesh() -> void:
 
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		var elev: float = float(tile.elevation)
-		var elev_y: float = elev * ELEVATION_STEP
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		# Water tiles render at water_level (surface), not elevation (depth).
+		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
+		var elev_y: float = elev * ELEVATION_STEP
 
 		var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
 		for d: int in range(6):
@@ -547,7 +548,7 @@ func _rebuild_mesh() -> void:
 			var l_mid_y: float
 			var l_cb_y: float
 			if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
-				var water_y: float = float(n_tile.elevation) * ELEVATION_STEP
+				var water_y: float = float(n_tile.water_level) * ELEVATION_STEP
 				l_ca_y = water_y
 				l_mid_y = water_y
 				l_cb_y = water_y

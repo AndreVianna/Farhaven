@@ -104,6 +104,8 @@ func load_map(path: String) -> bool:
 			for v in td["walls"]:
 				w.append(bool(v))
 			tile.walls = w
+		if td.has("waterLevel"):
+			tile.water_level = int(td["waterLevel"])
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):

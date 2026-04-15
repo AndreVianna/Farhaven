@@ -390,7 +390,9 @@ function passBiomes(hexMap, coords, o) {
       cell.elevation = 0;
     } else if (cell.isWater) {
       cell.biome = biomeFor('water');
-      cell.elevation = 0; // water surface
+      // Keep elevation as depth (bottom of water body).
+      // waterLevel computed in a post-pass after all biomes assigned.
+      cell.elevation = Math.round(cell.elevation);
     } else {
       // Whittaker lookup: elevation (normalized) × moisture
       const eNorm = cell.elevation / maxElev; // 0-1
@@ -547,13 +549,35 @@ export function generateMap(opts = {}) {
 
   console.log(`map-generator passes: elev=${(t1-t0).toFixed(0)}ms erosion=${(t2-t1).toFixed(0)}ms hydro=${(t3-t2).toFixed(0)}ms moisture=${(t4-t3).toFixed(0)}ms biomes=${(t5-t4).toFixed(0)}ms access=${(t6-t5).toFixed(0)}ms total=${(t6-t0).toFixed(0)}ms`);
 
+  // Compute waterLevel for water tiles (min elevation of adjacent dry neighbors)
+  const waterBiomeId = (() => {
+    const bf = [...ProjectContext.files.biomes.keys()];
+    return new Set(bf.map(f => f.replace('.tres', ''))).has('B00005') ? 'B00005' : null;
+  })();
+
+  for (const [key, cell] of hexMap) {
+    if (cell.biome !== waterBiomeId) continue;
+    let minDry = Infinity;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(cell.q + dir.q, cell.r + dir.r);
+      const n = hexMap.get(nk);
+      if (!n || n.biome === waterBiomeId) continue;
+      if (n.elevation < minDry) minDry = n.elevation;
+    }
+    cell.waterLevel = minDry === Infinity ? Math.round(cell.elevation) : Math.max(Math.round(cell.elevation), Math.round(minDry));
+  }
+
   // Build output tiles
   const tiles = {};
   for (const [key, cell] of hexMap) {
-    tiles[key] = {
+    const t = {
       biome: cell.biome || 'B00002',
       elevation: typeof cell.elevation === 'number' ? Math.round(cell.elevation) : 0,
     };
+    if (cell.waterLevel != null) {
+      t.waterLevel = Math.round(cell.waterLevel);
+    }
+    tiles[key] = t;
   }
 
   return {

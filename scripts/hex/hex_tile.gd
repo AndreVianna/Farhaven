@@ -18,6 +18,9 @@ enum Biome {
 ## Per-edge wall flags matching HexMath.DIRECTIONS order [E,NE,NW,W,SW,SE].
 ## true = draw cliff wall face on this edge; false = merge smoothly.
 @export var walls: Array[bool] = [false, false, false, false, false, false]
+## Water surface elevation. Only meaningful for WATER biome tiles.
+## elevation = bottom depth, water_level = surface height.
+@export var water_level: int = 0
 
 
 ## Returns all natural-origin props (non-structure, non-anomaly).

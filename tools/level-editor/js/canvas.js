@@ -390,18 +390,25 @@ export class HexCanvas {
    * @returns {void}
    */
   _drawElevationOverlay(q, r, tile) {
-    if (tile.elevation === 0) return;
     const ctx = this.ctx;
     const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(8, 12 * this.camera.zoom);
     ctx.font = `bold ${fontSize}px sans-serif`;
-    // Positive elevations get warm-white, negative get a cool tint so
-    // they're easy to tell apart at a glance without going back to the
-    // elevation-as-colour scheme we just retired.
-    ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(tile.elevation), screen.x, screen.y);
+
+    if (tile.biome === 'B00005' && tile.waterLevel != null) {
+      // Water tiles: show waterLevel (surface) on top, elevation (depth) below
+      const smallFont = Math.max(6, 9 * this.camera.zoom);
+      ctx.fillStyle = 'rgba(200,230,255,0.9)';
+      ctx.fillText(String(tile.waterLevel), screen.x, screen.y - fontSize * 0.4);
+      ctx.font = `${smallFont}px sans-serif`;
+      ctx.fillStyle = 'rgba(160,200,255,0.6)';
+      ctx.fillText(`d:${tile.elevation}`, screen.x, screen.y + fontSize * 0.5);
+    } else if (tile.elevation !== 0) {
+      ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
+      ctx.fillText(String(tile.elevation), screen.x, screen.y);
+    }
   }
 
   /**
