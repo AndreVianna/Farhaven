@@ -510,8 +510,6 @@ func _rebuild_mesh() -> void:
 	# Step 6: Wall faces — color-only bucket.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		if tile.biome == _HexTile.Biome.WATER:
-			continue
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
