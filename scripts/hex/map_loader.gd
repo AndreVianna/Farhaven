@@ -98,8 +98,8 @@ func load_map(path: String) -> bool:
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
 
-		# Walls: 6-boolean array [E,NE,NW,W,SW,SE]. If absent, will be
-		# computed from elevation diffs after all tiles are loaded.
+		# Walls: 6-boolean array [E,NE,NW,W,SW,SE]. Defaults to all-false.
+		# Only shoreline walls (water↔land with diff) are auto-computed.
 		if td.has("walls") and td["walls"] is Array and td["walls"].size() == 6:
 			var w: Array[bool] = []
 			for v in td["walls"]:
@@ -180,6 +180,9 @@ func load_map(path: String) -> bool:
 				min_dry = n_t.elevation
 		if min_dry < 32000:
 			t.water_level = maxi(t.elevation, min_dry)
+		else:
+			# Open water (no dry neighbors) — surface at own elevation
+			t.water_level = t.elevation
 
 	# Walls default to all-false (no walls). Placement is manual via editor.
 	# Exception: water↔land shoreline gets wall only when elevation differs.

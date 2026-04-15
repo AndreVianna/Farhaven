@@ -421,9 +421,15 @@ export class HexCanvas {
     const spawn = this.grid.meta.spawn;
     if (!spawn || !this.grid.hasTile(spawn[0], spawn[1])) return new Set();
 
-    // If spawn is on water, nothing is reachable from it
+    // If spawn is on water, all non-water tiles are unreachable
     const spawnTile = this.grid.getTile(spawn[0], spawn[1]);
-    if (spawnTile && spawnTile.biome === 'B00005') return new Set();
+    if (spawnTile && spawnTile.biome === 'B00005') {
+      const allUnreachable = new Set();
+      for (const [key, tile] of this.grid.getAllTiles()) {
+        if (tile.biome !== 'B00005') allUnreachable.add(key);
+      }
+      return allUnreachable;
+    }
 
     const JUMP_MAX = 4;
     const spawnKey = `${spawn[0]},${spawn[1]}`;
@@ -507,13 +513,6 @@ export class HexCanvas {
   }
 
   /**
-   * Draw a highlighted edge for the wall tool hover.
-   * @param {number} q
-   * @param {number} r
-   * @param {number} edgeIdx - Direction index (0-5)
-   * @param {boolean} hasWall - Whether this edge currently has a wall
-   */
-  /**
    * Find the closest hex edge (direction index 0-5) to a world-space point.
    * Computes distance from the mouse to each of the 6 edge midpoints and
    * returns the direction index of the nearest one.
@@ -546,6 +545,13 @@ export class HexCanvas {
     return bestDir;
   }
 
+  /**
+   * Draw a highlighted edge for the wall tool hover.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} edgeIdx - Direction index (0-5)
+   * @param {boolean} hasWall - Whether this edge currently has a wall
+   */
   _drawWallHighlight(q, r, edgeIdx, hasWall) {
     const ctx = this.ctx;
     const { corners } = this._getHexScreen(q, r);

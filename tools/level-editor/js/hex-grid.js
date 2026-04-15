@@ -87,11 +87,11 @@ export const CATEGORY_COLORS = {
 
 /**
  * Compute waterLevel for a water tile: min elevation of adjacent dry tiles.
- * Returns null if no dry neighbor exists.
+ * Returns tile.elevation if no dry neighbor exists (open water).
  * @param {HexGrid} grid
  * @param {number} q
  * @param {number} r
- * @returns {number|null}
+ * @returns {number}
  */
 export function computeWaterLevel(grid, q, r) {
   let minDryElev = Infinity;
