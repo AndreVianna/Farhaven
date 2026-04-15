@@ -1028,7 +1028,7 @@ function _initToolButtons() {
       const btn = document.createElement('button');
       btn.className = 'tool-btn';
       btn.dataset.tool = def.type;
-      btn.textContent = `${def.label} (${def.shortcut})`;
+      btn.textContent = `${def.label} [${def.shortcut}]`;
       btn.title = `${def.label} — shortcut: ${def.shortcut}`;
       btn.addEventListener('click', () => {
         if (toolManager.activeToolType === def.type && def.type !== 'select') {
