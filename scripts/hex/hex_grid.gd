@@ -35,9 +35,6 @@ enum TraversalType { WALK, JUMP, DROP, BLOCKED }
 
 var _tiles: Dictionary = {}  # Vector2i -> HexTile
 var _seed: int = 0
-## Snapshot of original prop state from the map JSON, taken after load_map().
-## Key = Vector2i, Value = serialized props string for comparison.
-var _original_props: Dictionary = {}  # Vector2i -> String
 
 ## Spawn point (col, row) — tile where the player starts on new game.
 var spawn_tile: Vector2i = Vector2i.ZERO
@@ -268,41 +265,10 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 
 # --- Serialization ---
 
-## Save only tiles whose props changed since map load (delta save).
-## The map JSON already stores the base terrain (biome, elevation, walls).
-## The save file only needs to record runtime prop changes (harvesting,
-## building, item drops) to avoid duplicating 67K+ tile data.
+## HexGrid has no runtime state to save — terrain lives in the map JSON,
+## and prop deltas will be handled separately when needed.
 func get_save_data() -> Dictionary:
-	var tiles_data: Array = []
-	for coords: Variant in _tiles:
-		var tile: Resource = _tiles[coords]
-		var current_serial: String = _serialize_tile_props(tile)
-		var original_serial: String = _original_props.get(coords, "")
-		# Skip tiles whose props haven't changed
-		if current_serial == original_serial:
-			continue
-		var props_data: Array = []
-		for prop in tile.props:
-			props_data.append({
-				"type": String(prop.type),
-				"origin": prop.origin,
-				"sub_hex_q": prop.sub_hex.x,
-				"sub_hex_r": prop.sub_hex.y,
-				"remaining": prop.remaining,
-				"max_amount": prop.max_amount,
-				"tool_required": String(prop.tool_required),
-				"respawn_time": prop.respawn_time,
-				"rotation": prop.rotation_deg,
-			})
-		tiles_data.append({
-			"tile_col": coords.x,
-			"tile_row": coords.y,
-			"props": props_data,
-		})
-	return {
-		"seed": _seed,
-		"tiles": tiles_data,
-	}
+	return {}
 
 
 func load_map(path: String) -> bool:
@@ -310,62 +276,12 @@ func load_map(path: String) -> bool:
 	var ok: bool = loader.load_map(path)
 	if ok:
 		SaveManager.current_map = path.get_file()
-		_snapshot_original_props()
 	return ok
 
 
-## Snapshot the props state of all tiles right after map load.
-## Used to detect which tiles have changed at save time (delta save).
-func _snapshot_original_props() -> void:
-	_original_props.clear()
-	for coords: Variant in _tiles:
-		_original_props[coords] = _serialize_tile_props(_tiles[coords])
-
-
-## Serialize a tile's props into a comparable string.
-func _serialize_tile_props(tile: Resource) -> String:
-	if tile.props.size() == 0:
-		return ""
-	var parts: Array = []
-	for p in tile.props:
-		parts.append("%s:%d:%d:%d" % [p.type, p.origin, p.remaining, p.max_amount])
-	return "|".join(parts)
-
-
-## Load save data as a DELTA overlay on the already-loaded map.
-## The map must be loaded first (via load_map). This only applies
-## prop changes recorded by get_save_data — terrain (biome, elevation,
-## walls) comes from the map JSON and is not repeated in the save.
-func load_save_data(data: Dictionary) -> void:
-	_seed = int(data.get("seed", 0))
-	var tiles_array: Array = data.get("tiles", [])
-	for td in tiles_array:
-		if not td.has("tile_col") or not td.has("tile_row"):
-			push_warning("HexGrid.load_save_data: tile entry missing coords, skipped")
-			continue
-		var coords := Vector2i(int(td["tile_col"]), int(td["tile_row"]))
-		var tile: Resource = _tiles.get(coords, null)
-		if tile == null:
-			push_warning("HexGrid.load_save_data: tile %s not in map, skipped" % str(coords))
-			continue
-
-		# Replace props on this tile with saved state
-		tile.props.clear()
-		if td.has("props"):
-			for pd in td["props"]:
-				var prop_type: StringName = StringName(pd.get("type", ""))
-				if prop_type == &"":
-					continue
-				var prop: Resource = _Prop.new()
-				prop.type = prop_type
-				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
-				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
-				prop.remaining = int(pd.get("remaining", 0))
-				prop.max_amount = int(pd.get("max_amount", 0))
-				prop.tool_required = StringName(pd.get("tool_required", ""))
-				prop.respawn_time = float(pd.get("respawn_time", 0.0))
-				prop.rotation_deg = float(pd.get("rotation", 0.0))
-				tile.props.append(prop)
+## No-op — HexGrid state comes from the map JSON via load_map().
+func load_save_data(_data: Dictionary) -> void:
+	pass
 
 
 
