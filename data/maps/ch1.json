@@ -238044,7 +238044,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-52,58": {
 			"biome": "B00003",
@@ -241054,7 +241054,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-51,58": {
 			"biome": "B00003",
@@ -244066,7 +244066,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-50,57": {
 			"biome": "B00003",
@@ -244077,7 +244077,7 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-50,58": {
@@ -244086,7 +244086,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -247112,7 +247112,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-49,57": {
 			"biome": "B00003",
@@ -250174,7 +250174,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-48,57": {
 			"biome": "B00003",
@@ -253230,7 +253230,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-47,57": {
 			"biome": "B00005",
@@ -253244,7 +253244,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-47,58": {
 			"biome": "B00003",
@@ -256318,7 +256318,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-46,58": {
 			"biome": "B00003",
@@ -258717,7 +258717,7 @@
 			]
 		},
 		"-45,1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -258729,7 +258729,7 @@
 			]
 		},
 		"-45,2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -259373,7 +259373,7 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-45,56": {
@@ -259382,7 +259382,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -259400,7 +259400,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-45,58": {
 			"biome": "B00003",
@@ -261817,7 +261817,7 @@
 			]
 		},
 		"-44,1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -261841,7 +261841,7 @@
 			]
 		},
 		"-44,3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -262502,7 +262502,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-44,58": {
 			"biome": "B00003",
@@ -264879,7 +264879,7 @@
 			]
 		},
 		"-43,-3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -264891,7 +264891,7 @@
 			]
 		},
 		"-43,-2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -264915,7 +264915,7 @@
 			]
 		},
 		"-43,0": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -264963,7 +264963,7 @@
 			]
 		},
 		"-43,4": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -265610,7 +265610,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-43,58": {
 			"biome": "B00003",
@@ -267999,7 +267999,7 @@
 			]
 		},
 		"-42,-3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -268023,7 +268023,7 @@
 			]
 		},
 		"-42,-1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -268035,7 +268035,7 @@
 			]
 		},
 		"-42,0": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -268047,7 +268047,7 @@
 			]
 		},
 		"-42,1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -268071,7 +268071,7 @@
 			]
 		},
 		"-42,3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -268083,7 +268083,7 @@
 			]
 		},
 		"-42,4": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -268718,18 +268718,18 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-42,57": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
+				true,
+				true,
+				true,
 				false,
-				true,
-				true,
-				true,
-				false,
-				false
+				true
 			]
 		},
 		"-42,58": {
@@ -268738,7 +268738,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -271141,7 +271141,7 @@
 			]
 		},
 		"-41,-4": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -271153,7 +271153,7 @@
 			]
 		},
 		"-41,-3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -271165,7 +271165,7 @@
 			]
 		},
 		"-41,-2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -271177,7 +271177,7 @@
 			]
 		},
 		"-41,-1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -271189,7 +271189,7 @@
 			]
 		},
 		"-41,0": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -271201,7 +271201,7 @@
 			]
 		},
 		"-41,1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -271213,7 +271213,7 @@
 			]
 		},
 		"-41,2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -271225,7 +271225,7 @@
 			]
 		},
 		"-41,3": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -271237,7 +271237,7 @@
 			]
 		},
 		"-41,4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -271874,7 +271874,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-41,57": {
 			"biome": "B00003",
@@ -271883,7 +271883,7 @@
 				false,
 				false,
 				true,
-				false,
+				true,
 				false,
 				false
 			]
@@ -274309,7 +274309,7 @@
 			]
 		},
 		"-40,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -274321,7 +274321,7 @@
 			]
 		},
 		"-40,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -274333,7 +274333,7 @@
 			]
 		},
 		"-40,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -274345,7 +274345,7 @@
 			]
 		},
 		"-40,-2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -274357,7 +274357,7 @@
 			]
 		},
 		"-40,-1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -274369,7 +274369,7 @@
 			]
 		},
 		"-40,0": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -274393,7 +274393,7 @@
 			]
 		},
 		"-40,2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -274405,7 +274405,7 @@
 			]
 		},
 		"-40,3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -275040,7 +275040,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-40,56": {
 			"biome": "B00003",
@@ -277453,7 +277453,7 @@
 			]
 		},
 		"-39,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -277465,7 +277465,7 @@
 			]
 		},
 		"-39,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -277477,7 +277477,7 @@
 			]
 		},
 		"-39,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -277489,7 +277489,7 @@
 			]
 		},
 		"-39,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -277501,7 +277501,7 @@
 			]
 		},
 		"-39,-2": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -277513,7 +277513,7 @@
 			]
 		},
 		"-39,-1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -277549,7 +277549,7 @@
 			]
 		},
 		"-39,2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -277561,7 +277561,7 @@
 			]
 		},
 		"-39,3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -278184,7 +278184,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-39,55": {
 			"biome": "B00003",
@@ -280627,7 +280627,7 @@
 			]
 		},
 		"-38,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -280639,7 +280639,7 @@
 			]
 		},
 		"-38,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -280651,7 +280651,7 @@
 			]
 		},
 		"-38,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -280663,7 +280663,7 @@
 			]
 		},
 		"-38,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 9,
 			"walls": [
 				false,
@@ -280675,7 +280675,7 @@
 			]
 		},
 		"-38,-2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -280687,7 +280687,7 @@
 			]
 		},
 		"-38,-1": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -280711,7 +280711,7 @@
 			]
 		},
 		"-38,1": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -280723,7 +280723,7 @@
 			]
 		},
 		"-38,2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -281358,7 +281358,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-38,55": {
 			"biome": "B00003",
@@ -283807,7 +283807,7 @@
 			]
 		},
 		"-37,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -283819,7 +283819,7 @@
 			]
 		},
 		"-37,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -283831,7 +283831,7 @@
 			]
 		},
 		"-37,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 16,
 			"walls": [
 				false,
@@ -283843,7 +283843,7 @@
 			]
 		},
 		"-37,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 13,
 			"walls": [
 				false,
@@ -283855,7 +283855,7 @@
 			]
 		},
 		"-37,-2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -283867,7 +283867,7 @@
 			]
 		},
 		"-37,-1": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -283879,7 +283879,7 @@
 			]
 		},
 		"-37,0": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -283891,7 +283891,7 @@
 			]
 		},
 		"-37,1": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -283904,7 +283904,7 @@
 		},
 		"-37,2": {
 			"biome": "B00002",
-			"elevation": 2,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -283916,7 +283916,7 @@
 		},
 		"-37,3": {
 			"biome": "B00002",
-			"elevation": 3,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -283928,7 +283928,7 @@
 		},
 		"-37,4": {
 			"biome": "B00002",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -284526,7 +284526,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-37,54": {
 			"biome": "B00003",
@@ -287005,7 +287005,7 @@
 			]
 		},
 		"-36,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -287017,7 +287017,7 @@
 			]
 		},
 		"-36,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -287029,7 +287029,7 @@
 			]
 		},
 		"-36,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -287041,7 +287041,7 @@
 			]
 		},
 		"-36,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -287053,7 +287053,7 @@
 			]
 		},
 		"-36,-2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -287065,7 +287065,7 @@
 			]
 		},
 		"-36,-1": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -287090,7 +287090,7 @@
 		},
 		"-36,1": {
 			"biome": "B00002",
-			"elevation": 6,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -287102,7 +287102,7 @@
 		},
 		"-36,2": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -287114,7 +287114,7 @@
 		},
 		"-36,3": {
 			"biome": "B00002",
-			"elevation": 8,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -287126,7 +287126,7 @@
 		},
 		"-36,4": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -287245,7 +287245,7 @@
 			]
 		},
 		"-36,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -287257,7 +287257,7 @@
 			]
 		},
 		"-36,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -287269,7 +287269,7 @@
 			]
 		},
 		"-36,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -287281,7 +287281,7 @@
 			]
 		},
 		"-36,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -287688,7 +287688,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-36,51": {
 			"biome": "B00005",
@@ -287702,7 +287702,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-36,52": {
 			"biome": "B00005",
@@ -287716,7 +287716,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-36,53": {
 			"biome": "B00003",
@@ -290227,7 +290227,7 @@
 			]
 		},
 		"-35,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290239,7 +290239,7 @@
 			]
 		},
 		"-35,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -290251,7 +290251,7 @@
 			]
 		},
 		"-35,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290263,7 +290263,7 @@
 			]
 		},
 		"-35,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290275,7 +290275,7 @@
 			]
 		},
 		"-35,-2": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -290300,7 +290300,7 @@
 		},
 		"-35,0": {
 			"biome": "B00002",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -290312,7 +290312,7 @@
 		},
 		"-35,1": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -290324,7 +290324,7 @@
 		},
 		"-35,2": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -290336,7 +290336,7 @@
 		},
 		"-35,3": {
 			"biome": "B00002",
-			"elevation": 6,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -290455,7 +290455,7 @@
 			]
 		},
 		"-35,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -290467,7 +290467,7 @@
 			]
 		},
 		"-35,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 12,
 			"walls": [
 				false,
@@ -290479,7 +290479,7 @@
 			]
 		},
 		"-35,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290491,7 +290491,7 @@
 			]
 		},
 		"-35,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290503,7 +290503,7 @@
 			]
 		},
 		"-35,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -290515,7 +290515,7 @@
 			]
 		},
 		"-35,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -290934,7 +290934,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-35,53": {
 			"biome": "B00003",
@@ -293455,7 +293455,7 @@
 			]
 		},
 		"-34,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -293467,7 +293467,7 @@
 			]
 		},
 		"-34,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -293479,7 +293479,7 @@
 			]
 		},
 		"-34,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -293491,7 +293491,7 @@
 			]
 		},
 		"-34,-3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -293528,7 +293528,7 @@
 		},
 		"-34,0": {
 			"biome": "B00002",
-			"elevation": 6,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -293540,7 +293540,7 @@
 		},
 		"-34,1": {
 			"biome": "B00002",
-			"elevation": 10,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -293552,7 +293552,7 @@
 		},
 		"-34,2": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -293564,7 +293564,7 @@
 		},
 		"-34,3": {
 			"biome": "B00002",
-			"elevation": 7,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -293659,7 +293659,7 @@
 			]
 		},
 		"-34,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -293671,7 +293671,7 @@
 			]
 		},
 		"-34,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -293683,7 +293683,7 @@
 			]
 		},
 		"-34,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -293695,7 +293695,7 @@
 			]
 		},
 		"-34,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -293707,7 +293707,7 @@
 			]
 		},
 		"-34,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -293719,7 +293719,7 @@
 			]
 		},
 		"-34,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -293731,7 +293731,7 @@
 			]
 		},
 		"-34,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -293743,7 +293743,7 @@
 			]
 		},
 		"-34,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -294150,7 +294150,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-34,52": {
 			"biome": "B00003",
@@ -296689,7 +296689,7 @@
 			]
 		},
 		"-33,-6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -296701,7 +296701,7 @@
 			]
 		},
 		"-33,-5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -296713,7 +296713,7 @@
 			]
 		},
 		"-33,-4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296812,7 +296812,7 @@
 			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -296825,7 +296825,7 @@
 			"elevation": 9,
 			"walls": [
 				true,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -296869,7 +296869,7 @@
 			]
 		},
 		"-33,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -296881,7 +296881,7 @@
 			]
 		},
 		"-33,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296893,7 +296893,7 @@
 			]
 		},
 		"-33,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296905,7 +296905,7 @@
 			]
 		},
 		"-33,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -296917,7 +296917,7 @@
 			]
 		},
 		"-33,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -296929,7 +296929,7 @@
 			]
 		},
 		"-33,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296941,7 +296941,7 @@
 			]
 		},
 		"-33,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296953,7 +296953,7 @@
 			]
 		},
 		"-33,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -296965,7 +296965,7 @@
 			]
 		},
 		"-33,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -296977,7 +296977,7 @@
 			]
 		},
 		"-33,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -297384,7 +297384,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-33,52": {
 			"biome": "B00003",
@@ -300049,20 +300049,22 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-32,4": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 5,
 			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 5,
+			"waterType": "flowing"
 		},
 		"-32,5": {
 			"biome": "B00005",
@@ -300079,7 +300081,7 @@
 			"waterType": "leveled"
 		},
 		"-32,6": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 20,
 			"walls": [
 				false,
@@ -300115,7 +300117,7 @@
 			]
 		},
 		"-32,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -300127,7 +300129,7 @@
 			]
 		},
 		"-32,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -300139,7 +300141,7 @@
 			]
 		},
 		"-32,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -300151,7 +300153,7 @@
 			]
 		},
 		"-32,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -300163,7 +300165,7 @@
 			]
 		},
 		"-32,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -300175,7 +300177,7 @@
 			]
 		},
 		"-32,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -300187,7 +300189,7 @@
 			]
 		},
 		"-32,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -300199,7 +300201,7 @@
 			]
 		},
 		"-32,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -300211,7 +300213,7 @@
 			]
 		},
 		"-32,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -300223,7 +300225,7 @@
 			]
 		},
 		"-32,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -300259,7 +300261,7 @@
 			]
 		},
 		"-32,21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -300271,7 +300273,7 @@
 			]
 		},
 		"-32,22": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -300630,7 +300632,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-32,52": {
 			"biome": "B00003",
@@ -303294,25 +303296,27 @@
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"-31,3": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 3,
 			"walls": [
+				true,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 3,
+			"waterType": "flowing"
 		},
 		"-31,4": {
 			"biome": "B00004",
@@ -303320,14 +303324,14 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				true,
 				false
 			]
 		},
 		"-31,5": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 24,
 			"walls": [
 				false,
@@ -303339,7 +303343,7 @@
 			]
 		},
 		"-31,6": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 12,
 			"walls": [
 				false,
@@ -303363,7 +303367,7 @@
 			]
 		},
 		"-31,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -303375,7 +303379,7 @@
 			]
 		},
 		"-31,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -303387,7 +303391,7 @@
 			]
 		},
 		"-31,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -303399,7 +303403,7 @@
 			]
 		},
 		"-31,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -303411,7 +303415,7 @@
 			]
 		},
 		"-31,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -303423,7 +303427,7 @@
 			]
 		},
 		"-31,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 12,
 			"walls": [
 				false,
@@ -303435,7 +303439,7 @@
 			]
 		},
 		"-31,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -303447,7 +303451,7 @@
 			]
 		},
 		"-31,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -303459,7 +303463,7 @@
 			]
 		},
 		"-31,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -303471,7 +303475,7 @@
 			]
 		},
 		"-31,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -303483,7 +303487,7 @@
 			]
 		},
 		"-31,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -303495,7 +303499,7 @@
 			]
 		},
 		"-31,19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -303507,7 +303511,7 @@
 			]
 		},
 		"-31,20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -303519,7 +303523,7 @@
 			]
 		},
 		"-31,21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -303531,7 +303535,7 @@
 			]
 		},
 		"-31,22": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -303890,7 +303894,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-31,52": {
 			"biome": "B00003",
@@ -303928,7 +303932,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-31,55": {
 			"biome": "B00003",
@@ -306425,8 +306429,8 @@
 			]
 		},
 		"-30,-9": {
-			"biome": "B00004",
-			"elevation": 10,
+			"biome": "B00002",
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -306449,8 +306453,8 @@
 			]
 		},
 		"-30,-7": {
-			"biome": "B00004",
-			"elevation": 20,
+			"biome": "B00002",
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -306557,16 +306561,18 @@
 			]
 		},
 		"-30,2": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-30,3": {
 			"biome": "B00003",
@@ -306575,13 +306581,13 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
 		},
 		"-30,4": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 28,
 			"walls": [
 				false,
@@ -306593,8 +306599,8 @@
 			]
 		},
 		"-30,5": {
-			"biome": "B00003",
-			"elevation": 15,
+			"biome": "B00004",
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -306605,7 +306611,7 @@
 			]
 		},
 		"-30,6": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 12,
 			"walls": [
 				false,
@@ -306617,7 +306623,7 @@
 			]
 		},
 		"-30,7": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -306629,7 +306635,7 @@
 			]
 		},
 		"-30,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -306641,7 +306647,7 @@
 			]
 		},
 		"-30,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -306653,7 +306659,7 @@
 			]
 		},
 		"-30,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -306665,7 +306671,7 @@
 			]
 		},
 		"-30,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -306677,7 +306683,7 @@
 			]
 		},
 		"-30,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 12,
 			"walls": [
 				false,
@@ -306689,7 +306695,7 @@
 			]
 		},
 		"-30,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -306701,7 +306707,7 @@
 			]
 		},
 		"-30,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -306713,7 +306719,7 @@
 			]
 		},
 		"-30,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -306725,7 +306731,7 @@
 			]
 		},
 		"-30,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -306737,7 +306743,7 @@
 			]
 		},
 		"-30,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -306749,7 +306755,7 @@
 			]
 		},
 		"-30,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -306761,7 +306767,7 @@
 			]
 		},
 		"-30,19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -306773,7 +306779,7 @@
 			]
 		},
 		"-30,20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -306785,7 +306791,7 @@
 			]
 		},
 		"-30,21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -307156,7 +307162,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-30,52": {
 			"biome": "B00005",
@@ -307170,7 +307176,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-30,53": {
 			"biome": "B00005",
@@ -307184,7 +307190,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-30,54": {
 			"biome": "B00003",
@@ -309833,7 +309839,7 @@
 			]
 		},
 		"-29,1": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -309842,7 +309848,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-29,2": {
 			"biome": "B00003",
@@ -309882,7 +309890,7 @@
 		},
 		"-29,5": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -309893,7 +309901,7 @@
 			]
 		},
 		"-29,6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309905,7 +309913,7 @@
 			]
 		},
 		"-29,7": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309917,7 +309925,7 @@
 			]
 		},
 		"-29,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309929,7 +309937,7 @@
 			]
 		},
 		"-29,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309941,7 +309949,7 @@
 			]
 		},
 		"-29,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309953,7 +309961,7 @@
 			]
 		},
 		"-29,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -309965,7 +309973,7 @@
 			]
 		},
 		"-29,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309977,7 +309985,7 @@
 			]
 		},
 		"-29,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -309989,7 +309997,7 @@
 			]
 		},
 		"-29,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -310001,7 +310009,7 @@
 			]
 		},
 		"-29,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -310013,7 +310021,7 @@
 			]
 		},
 		"-29,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -310025,7 +310033,7 @@
 			]
 		},
 		"-29,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -310037,7 +310045,7 @@
 			]
 		},
 		"-29,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -310049,7 +310057,7 @@
 			]
 		},
 		"-29,19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -310061,7 +310069,7 @@
 			]
 		},
 		"-29,20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -310457,7 +310465,7 @@
 			]
 		},
 		"-29,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -310466,7 +310474,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-29,54": {
 			"biome": "B00003",
@@ -313010,7 +313020,7 @@
 		},
 		"-28,-8": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -313046,7 +313056,7 @@
 		},
 		"-28,-5": {
 			"biome": "B00002",
-			"elevation": 3,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -313058,7 +313068,7 @@
 		},
 		"-28,-4": {
 			"biome": "B00002",
-			"elevation": 3,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -313128,7 +313138,7 @@
 				true
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-28,2": {
 			"biome": "B00003",
@@ -313167,7 +313177,7 @@
 			]
 		},
 		"-28,5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -313179,7 +313189,7 @@
 			]
 		},
 		"-28,6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313191,7 +313201,7 @@
 			]
 		},
 		"-28,7": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -313203,7 +313213,7 @@
 			]
 		},
 		"-28,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -313215,7 +313225,7 @@
 			]
 		},
 		"-28,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -313227,7 +313237,7 @@
 			]
 		},
 		"-28,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -313239,7 +313249,7 @@
 			]
 		},
 		"-28,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -313251,7 +313261,7 @@
 			]
 		},
 		"-28,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -313263,7 +313273,7 @@
 			]
 		},
 		"-28,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -313275,7 +313285,7 @@
 			]
 		},
 		"-28,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -313287,7 +313297,7 @@
 			]
 		},
 		"-28,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313299,7 +313309,7 @@
 			]
 		},
 		"-28,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313311,7 +313321,7 @@
 			]
 		},
 		"-28,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313323,7 +313333,7 @@
 			]
 		},
 		"-28,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313335,7 +313345,7 @@
 			]
 		},
 		"-28,19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313347,7 +313357,7 @@
 			]
 		},
 		"-28,20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -313743,7 +313753,7 @@
 			]
 		},
 		"-28,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -313752,7 +313762,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-28,54": {
 			"biome": "B00003",
@@ -316310,7 +316322,7 @@
 		},
 		"-27,-8": {
 			"biome": "B00002",
-			"elevation": 5,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -316428,13 +316440,13 @@
 				true
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-27,2": {
 			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
-				false,
+				true,
 				true,
 				true,
 				false,
@@ -316447,7 +316459,7 @@
 			"elevation": 2,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -316467,7 +316479,7 @@
 			]
 		},
 		"-27,5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -316527,7 +316539,7 @@
 			]
 		},
 		"-27,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -316539,7 +316551,7 @@
 			]
 		},
 		"-27,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -316551,7 +316563,7 @@
 			]
 		},
 		"-27,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -316563,7 +316575,7 @@
 			]
 		},
 		"-27,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -316575,7 +316587,7 @@
 			]
 		},
 		"-27,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -316587,7 +316599,7 @@
 			]
 		},
 		"-27,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -316599,7 +316611,7 @@
 			]
 		},
 		"-27,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -316611,7 +316623,7 @@
 			]
 		},
 		"-27,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -316623,7 +316635,7 @@
 			]
 		},
 		"-27,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -316635,7 +316647,7 @@
 			]
 		},
 		"-27,19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -316647,7 +316659,7 @@
 			]
 		},
 		"-27,20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -317043,7 +317055,7 @@
 			]
 		},
 		"-27,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -317052,7 +317064,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-27,54": {
 			"biome": "B00003",
@@ -319610,7 +319624,7 @@
 		},
 		"-26,-9": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -319622,7 +319636,7 @@
 		},
 		"-26,-8": {
 			"biome": "B00002",
-			"elevation": 12,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -319634,7 +319648,7 @@
 		},
 		"-26,-7": {
 			"biome": "B00002",
-			"elevation": 9,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -319743,16 +319757,18 @@
 			"waterType": "leveled"
 		},
 		"-26,2": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-26,3": {
 			"biome": "B00003",
@@ -319839,7 +319855,7 @@
 			]
 		},
 		"-26,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -319851,7 +319867,7 @@
 			]
 		},
 		"-26,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -319863,7 +319879,7 @@
 			]
 		},
 		"-26,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319875,7 +319891,7 @@
 			]
 		},
 		"-26,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319887,7 +319903,7 @@
 			]
 		},
 		"-26,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319899,7 +319915,7 @@
 			]
 		},
 		"-26,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319911,7 +319927,7 @@
 			]
 		},
 		"-26,16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319923,7 +319939,7 @@
 			]
 		},
 		"-26,17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -319935,7 +319951,7 @@
 			]
 		},
 		"-26,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -320355,7 +320371,7 @@
 			]
 		},
 		"-26,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -320364,7 +320380,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-26,54": {
 			"biome": "B00003",
@@ -322895,7 +322913,7 @@
 			]
 		},
 		"-25,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -322956,7 +322974,7 @@
 		},
 		"-25,-7": {
 			"biome": "B00002",
-			"elevation": 8,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -323065,8 +323083,8 @@
 			"waterType": "leveled"
 		},
 		"-25,2": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -323074,7 +323092,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-25,3": {
 			"biome": "B00003",
@@ -323163,7 +323183,7 @@
 			]
 		},
 		"-25,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -323175,7 +323195,7 @@
 			]
 		},
 		"-25,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -323187,7 +323207,7 @@
 			]
 		},
 		"-25,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -323199,7 +323219,7 @@
 			]
 		},
 		"-25,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -323211,7 +323231,7 @@
 			]
 		},
 		"-25,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -323223,7 +323243,7 @@
 			]
 		},
 		"-25,15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -323259,7 +323279,7 @@
 			]
 		},
 		"-25,18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -323679,7 +323699,7 @@
 			]
 		},
 		"-25,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -323688,7 +323708,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-25,54": {
 			"biome": "B00003",
@@ -326098,7 +326120,7 @@
 		},
 		"-24,-24": {
 			"biome": "B00002",
-			"elevation": 0,
+			"elevation": -1,
 			"walls": [
 				false,
 				false,
@@ -326229,7 +326251,7 @@
 			]
 		},
 		"-24,-13": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 15,
 			"walls": [
 				false,
@@ -326241,7 +326263,7 @@
 			]
 		},
 		"-24,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -326289,7 +326311,7 @@
 			]
 		},
 		"-24,-8": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -326301,8 +326323,8 @@
 			]
 		},
 		"-24,-7": {
-			"biome": "B00002",
-			"elevation": 9,
+			"biome": "B00004",
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -326314,7 +326336,7 @@
 		},
 		"-24,-6": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -326411,8 +326433,8 @@
 			"waterType": "leveled"
 		},
 		"-24,2": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -326420,11 +326442,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-24,3": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -326432,11 +326456,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-24,4": {
-			"biome": "B00003",
-			"elevation": 4,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -326444,11 +326470,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-24,5": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -326456,11 +326484,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-24,6": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -326468,7 +326498,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-24,7": {
 			"biome": "B00005",
@@ -326521,7 +326553,7 @@
 			]
 		},
 		"-24,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -326533,7 +326565,7 @@
 			]
 		},
 		"-24,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -326545,7 +326577,7 @@
 			]
 		},
 		"-24,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -326557,7 +326589,7 @@
 			]
 		},
 		"-24,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -327025,7 +327057,7 @@
 			]
 		},
 		"-24,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -327034,7 +327066,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-24,54": {
 			"biome": "B00003",
@@ -329448,7 +329482,7 @@
 		},
 		"-23,-24": {
 			"biome": "B00002",
-			"elevation": 0,
+			"elevation": -1,
 			"walls": [
 				false,
 				false,
@@ -329567,7 +329601,7 @@
 			]
 		},
 		"-23,-14": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -329627,7 +329661,7 @@
 			]
 		},
 		"-23,-9": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
 				false,
@@ -329639,7 +329673,7 @@
 			]
 		},
 		"-23,-8": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -329651,8 +329685,8 @@
 			]
 		},
 		"-23,-7": {
-			"biome": "B00002",
-			"elevation": 8,
+			"biome": "B00004",
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -329675,8 +329709,8 @@
 			]
 		},
 		"-23,-5": {
-			"biome": "B00004",
-			"elevation": 10,
+			"biome": "B00002",
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -329755,26 +329789,28 @@
 				false,
 				false,
 				false,
-				true
+				false
 			],
 			"waterLevel": 1,
 			"waterType": "leveled"
 		},
 		"-23,2": {
-			"biome": "B00003",
-			"elevation": 2,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
-				true,
-				true,
+				false,
+				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 2,
+			"waterType": "leveled"
 		},
 		"-23,3": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -329782,11 +329818,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-23,4": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -329794,11 +329832,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-23,5": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -329806,19 +329846,23 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-23,6": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
 				false,
-				true
-			]
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-23,7": {
 			"biome": "B00005",
@@ -329826,7 +329870,7 @@
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				true,
 				true
@@ -329871,7 +329915,7 @@
 			]
 		},
 		"-23,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -329883,7 +329927,7 @@
 			]
 		},
 		"-23,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -329895,7 +329939,7 @@
 			]
 		},
 		"-23,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -329907,7 +329951,7 @@
 			]
 		},
 		"-23,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -330050,7 +330094,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-23,26": {
 			"biome": "B00003",
@@ -330377,7 +330421,7 @@
 			]
 		},
 		"-23,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -330386,7 +330430,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-23,54": {
 			"biome": "B00003",
@@ -332802,7 +332848,7 @@
 		},
 		"-22,-25": {
 			"biome": "B00002",
-			"elevation": 1,
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -332933,7 +332979,7 @@
 			]
 		},
 		"-22,-14": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -332957,7 +333003,7 @@
 			]
 		},
 		"-22,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 13,
 			"walls": [
 				false,
@@ -332993,7 +333039,7 @@
 			]
 		},
 		"-22,-9": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 17,
 			"walls": [
 				false,
@@ -333005,8 +333051,8 @@
 			]
 		},
 		"-22,-8": {
-			"biome": "B00002",
-			"elevation": 10,
+			"biome": "B00004",
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -333120,14 +333166,14 @@
 				true,
 				true,
 				false,
-				true,
+				false,
 				false
 			],
 			"waterLevel": 0,
 			"waterType": "leveled"
 		},
 		"-22,2": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333136,10 +333182,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-22,3": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333148,34 +333196,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-22,4": {
-			"biome": "B00002",
-			"elevation": 1,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
-		},
-		"-22,5": {
-			"biome": "B00003",
-			"elevation": 1,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
-		},
-		"-22,6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333184,7 +333210,37 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
+		},
+		"-22,5": {
+			"biome": "B00005",
+			"elevation": 0,
+			"walls": [
+				false,
+				false,
+				false,
+				false,
+				false,
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
+		},
+		"-22,6": {
+			"biome": "B00005",
+			"elevation": 0,
+			"walls": [
+				false,
+				false,
+				false,
+				false,
+				false,
+				false
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-22,7": {
 			"biome": "B00005",
@@ -333239,7 +333295,7 @@
 			]
 		},
 		"-22,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -333251,7 +333307,7 @@
 			]
 		},
 		"-22,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333263,7 +333319,7 @@
 			]
 		},
 		"-22,13": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333275,7 +333331,7 @@
 			]
 		},
 		"-22,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333406,7 +333462,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-22,25": {
 			"biome": "B00003",
@@ -333612,7 +333668,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-22,42": {
 			"biome": "B00003",
@@ -333675,7 +333731,7 @@
 			]
 		},
 		"-22,47": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333684,10 +333740,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-22,48": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333696,10 +333754,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-22,49": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333708,10 +333768,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-22,50": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333720,7 +333782,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-22,51": {
 			"biome": "B00003",
@@ -333747,7 +333811,7 @@
 			]
 		},
 		"-22,53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -333756,7 +333820,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-22,54": {
 			"biome": "B00003",
@@ -336329,7 +336395,7 @@
 			]
 		},
 		"-21,-13": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 9,
 			"walls": [
 				false,
@@ -336341,7 +336407,7 @@
 			]
 		},
 		"-21,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -336353,7 +336419,7 @@
 			]
 		},
 		"-21,-11": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
 				false,
@@ -336365,7 +336431,7 @@
 			]
 		},
 		"-21,-10": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
 				false,
@@ -336377,7 +336443,7 @@
 			]
 		},
 		"-21,-9": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 15,
 			"walls": [
 				false,
@@ -336500,31 +336566,33 @@
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				false,
+				false,
 				true,
 				false,
-				true,
 				false,
-				false,
-				true
+				false
 			],
 			"waterLevel": 0,
 			"waterType": "leveled"
 		},
 		"-21,2": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-21,3": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -336532,11 +336600,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-21,4": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -336544,11 +336614,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-21,5": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -336556,10 +336628,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-21,6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -336568,10 +336642,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-21,7": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -336580,7 +336656,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-21,8": {
 			"biome": "B00005",
@@ -336621,7 +336699,7 @@
 			]
 		},
 		"-21,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -336788,7 +336866,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,25": {
 			"biome": "B00005",
@@ -336802,7 +336880,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,26": {
 			"biome": "B00003",
@@ -336996,7 +337074,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,42": {
 			"biome": "B00005",
@@ -337010,7 +337088,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,43": {
 			"biome": "B00003",
@@ -337060,7 +337138,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,47": {
 			"biome": "B00003",
@@ -337099,7 +337177,7 @@
 			]
 		},
 		"-21,50": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -337108,7 +337186,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-21,51": {
 			"biome": "B00003",
@@ -337146,7 +337226,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-21,54": {
 			"biome": "B00003",
@@ -339741,7 +339821,7 @@
 			]
 		},
 		"-20,-13": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 23,
 			"walls": [
 				false,
@@ -339753,7 +339833,7 @@
 			]
 		},
 		"-20,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 20,
 			"walls": [
 				false,
@@ -339765,7 +339845,7 @@
 			]
 		},
 		"-20,-11": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
 				false,
@@ -339900,7 +339980,7 @@
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -339911,19 +339991,21 @@
 			"waterType": "leveled"
 		},
 		"-20,1": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-20,2": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -339932,10 +340014,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-20,3": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -339944,11 +340028,13 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-20,4": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -339956,10 +340042,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-20,5": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -339968,10 +340056,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-20,6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -339980,10 +340070,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-20,7": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -339992,7 +340084,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-20,8": {
 			"biome": "B00005",
@@ -340177,16 +340271,18 @@
 			]
 		},
 		"-20,23": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-20,24": {
 			"biome": "B00003",
@@ -340212,7 +340308,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,26": {
 			"biome": "B00005",
@@ -340226,7 +340322,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,27": {
 			"biome": "B00003",
@@ -340420,7 +340516,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,43": {
 			"biome": "B00005",
@@ -340434,7 +340530,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,44": {
 			"biome": "B00005",
@@ -340448,7 +340544,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,45": {
 			"biome": "B00005",
@@ -340462,7 +340558,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,46": {
 			"biome": "B00003",
@@ -340524,7 +340620,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,51": {
 			"biome": "B00003",
@@ -340562,7 +340658,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-20,54": {
 			"biome": "B00003",
@@ -343169,7 +343265,7 @@
 			]
 		},
 		"-19,-13": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 27,
 			"walls": [
 				false,
@@ -343181,7 +343277,7 @@
 			]
 		},
 		"-19,-12": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 16,
 			"walls": [
 				false,
@@ -343193,7 +343289,7 @@
 			]
 		},
 		"-19,-11": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				false,
@@ -343205,7 +343301,7 @@
 			]
 		},
 		"-19,-10": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 13,
 			"walls": [
 				false,
@@ -343321,37 +343417,41 @@
 				false,
 				false,
 				false,
-				true
+				false
 			],
 			"waterLevel": 1,
 			"waterType": "leveled"
 		},
 		"-19,0": {
-			"biome": "B00003",
-			"elevation": 5,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
-				true,
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
+				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 5,
+			"waterType": "leveled"
 		},
 		"-19,1": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
-				true,
+				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-19,2": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343360,10 +343460,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,3": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343372,10 +343474,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,4": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343384,10 +343488,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,5": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343396,10 +343502,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343408,7 +343516,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,7": {
 			"biome": "B00005",
@@ -343425,7 +343535,7 @@
 			"waterType": "leveled"
 		},
 		"-19,8": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343434,7 +343544,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-19,9": {
 			"biome": "B00003",
@@ -343473,7 +343585,7 @@
 			]
 		},
 		"-19,12": {
-			"biome": "B00005",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -343482,9 +343594,7 @@
 				false,
 				false,
 				false
-			],
-			"waterLevel": 0,
-			"waterType": "leveled"
+			]
 		},
 		"-19,13": {
 			"biome": "B00003",
@@ -343591,29 +343701,31 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-19,22": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-19,23": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false,
 				false
 			]
@@ -343654,7 +343766,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,27": {
 			"biome": "B00005",
@@ -343668,7 +343780,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,28": {
 			"biome": "B00003",
@@ -343854,25 +343966,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				true,
 				true,
-				false
+				true
 			]
 		},
 		"-19,44": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-19,45": {
 			"biome": "B00003",
@@ -343946,7 +344060,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,51": {
 			"biome": "B00005",
@@ -343960,7 +344074,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,52": {
 			"biome": "B00005",
@@ -343974,7 +344088,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,53": {
 			"biome": "B00005",
@@ -343988,7 +344102,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,54": {
 			"biome": "B00005",
@@ -344002,7 +344116,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,55": {
 			"biome": "B00003",
@@ -344161,16 +344275,18 @@
 			]
 		},
 		"-19,68": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-19,69": {
 			"biome": "B00005",
@@ -344184,7 +344300,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,70": {
 			"biome": "B00005",
@@ -344198,7 +344314,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,71": {
 			"biome": "B00003",
@@ -344248,7 +344364,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-19,75": {
 			"biome": "B00003",
@@ -346649,7 +346765,7 @@
 			]
 		},
 		"-18,-11": {
-			"biome": "B00002",
+			"biome": "B00004",
 			"elevation": 17,
 			"walls": [
 				false,
@@ -346776,7 +346892,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false
 			],
 			"waterLevel": 1,
@@ -346789,15 +346905,15 @@
 				false,
 				true,
 				false,
-				true,
-				true,
+				false,
+				false,
 				false
 			],
 			"waterLevel": 0,
 			"waterType": "leveled"
 		},
 		"-18,1": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -346806,11 +346922,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterType": "leveled"
 		},
 		"-18,2": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -346818,22 +346935,26 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-18,3": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-18,4": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -346842,10 +346963,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-18,5": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -346854,10 +346977,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-18,6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -346866,7 +346991,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-18,7": {
 			"biome": "B00005",
@@ -346908,7 +347035,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,10": {
 			"biome": "B00005",
@@ -346922,7 +347049,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,11": {
 			"biome": "B00005",
@@ -346936,34 +347063,38 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,12": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-18,13": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-18,14": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -347050,25 +347181,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
-				false,
-				false,
-				false
+				true,
+				true
 			]
 		},
 		"-18,22": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
+				true,
 				false,
-				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-18,23": {
 			"biome": "B00003",
@@ -347130,7 +347263,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,28": {
 			"biome": "B00003",
@@ -347313,16 +347446,18 @@
 			]
 		},
 		"-18,43": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-18,44": {
 			"biome": "B00003",
@@ -347456,7 +347591,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,55": {
 			"biome": "B00005",
@@ -347470,7 +347605,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,56": {
 			"biome": "B00005",
@@ -347484,7 +347619,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,57": {
 			"biome": "B00005",
@@ -347498,7 +347633,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,58": {
 			"biome": "B00005",
@@ -347512,7 +347647,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,59": {
 			"biome": "B00005",
@@ -347526,7 +347661,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,60": {
 			"biome": "B00005",
@@ -347540,7 +347675,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,61": {
 			"biome": "B00005",
@@ -347554,7 +347689,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,62": {
 			"biome": "B00003",
@@ -347617,7 +347752,7 @@
 			]
 		},
 		"-18,67": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -347625,8 +347760,10 @@
 				false,
 				false,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-18,68": {
 			"biome": "B00003",
@@ -347634,8 +347771,8 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				true,
 				false
 			]
@@ -347664,7 +347801,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,71": {
 			"biome": "B00005",
@@ -347678,7 +347815,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,72": {
 			"biome": "B00005",
@@ -347692,7 +347829,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,73": {
 			"biome": "B00005",
@@ -347706,7 +347843,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-18,74": {
 			"biome": "B00003",
@@ -349979,7 +350116,7 @@
 			]
 		},
 		"-17,-23": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 9,
 			"walls": [
 				false,
@@ -349991,7 +350128,7 @@
 			]
 		},
 		"-17,-22": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -350263,34 +350400,38 @@
 				true,
 				false,
 				false,
-				true
+				false
 			],
 			"waterLevel": 0,
 			"waterType": "leveled"
 		},
 		"-17,1": {
-			"biome": "B00003",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"-17,2": {
-			"biome": "B00003",
-			"elevation": 5,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
-				true,
-				true,
 				false,
 				false,
 				false,
-				true
-			]
+				false,
+				false,
+				false
+			],
+			"waterLevel": 5,
+			"waterType": "leveled"
 		},
 		"-17,3": {
 			"biome": "B00005",
@@ -350298,8 +350439,8 @@
 			"walls": [
 				false,
 				false,
-				true,
-				true,
+				false,
+				false,
 				false,
 				false
 			],
@@ -350399,32 +350540,34 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-17,12": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
+				true,
+				true,
+				true,
+				true,
+				true,
+				true
 			]
 		},
 		"-17,13": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-17,14": {
 			"biome": "B00003",
@@ -350502,25 +350645,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"-17,21": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-17,22": {
 			"biome": "B00003",
@@ -350594,7 +350739,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-17,28": {
 			"biome": "B00003",
@@ -350753,7 +350898,7 @@
 			]
 		},
 		"-17,41": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -350762,19 +350907,23 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-17,42": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-17,43": {
 			"biome": "B00003",
@@ -351004,7 +351153,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-17,62": {
 			"biome": "B00003",
@@ -351066,7 +351215,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-17,67": {
 			"biome": "B00003",
@@ -353421,7 +353570,7 @@
 			]
 		},
 		"-16,-24": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -353433,7 +353582,7 @@
 			]
 		},
 		"-16,-23": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -353457,7 +353606,7 @@
 			]
 		},
 		"-16,-21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -353676,8 +353825,8 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
@@ -353700,7 +353849,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				true,
 				false,
 				false,
@@ -353716,7 +353865,7 @@
 				false,
 				true,
 				false,
-				true,
+				false,
 				false
 			],
 			"waterLevel": 0,
@@ -353729,8 +353878,8 @@
 				false,
 				false,
 				false,
-				true,
-				true,
+				false,
+				false,
 				false
 			],
 			"waterLevel": 0,
@@ -353743,7 +353892,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			],
@@ -353775,7 +353924,7 @@
 			]
 		},
 		"-16,5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353787,7 +353936,7 @@
 			]
 		},
 		"-16,6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353799,7 +353948,7 @@
 			]
 		},
 		"-16,7": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353811,7 +353960,7 @@
 			]
 		},
 		"-16,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353854,24 +354003,24 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
 			]
 		},
 		"-16,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
 		},
 		"-16,13": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353880,10 +354029,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-16,14": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -353892,7 +354043,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-16,15": {
 			"biome": "B00005",
@@ -353906,7 +354059,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,16": {
 			"biome": "B00005",
@@ -353920,7 +354073,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,17": {
 			"biome": "B00005",
@@ -353934,7 +354087,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,18": {
 			"biome": "B00003",
@@ -353961,16 +354114,18 @@
 			]
 		},
 		"-16,20": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-16,21": {
 			"biome": "B00003",
@@ -354056,7 +354211,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,28": {
 			"biome": "B00005",
@@ -354070,7 +354225,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,29": {
 			"biome": "B00005",
@@ -354084,7 +354239,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,30": {
 			"biome": "B00005",
@@ -354098,7 +354253,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,31": {
 			"biome": "B00005",
@@ -354112,7 +354267,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,32": {
 			"biome": "B00005",
@@ -354126,7 +354281,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,33": {
 			"biome": "B00003",
@@ -354225,7 +354380,7 @@
 			]
 		},
 		"-16,41": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -354233,8 +354388,10 @@
 				false,
 				false,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-16,42": {
 			"biome": "B00003",
@@ -354242,8 +354399,8 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
 			]
@@ -354476,7 +354633,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,62": {
 			"biome": "B00005",
@@ -354490,7 +354647,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,63": {
 			"biome": "B00005",
@@ -354504,7 +354661,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,64": {
 			"biome": "B00005",
@@ -354518,7 +354675,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,65": {
 			"biome": "B00005",
@@ -354532,7 +354689,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-16,66": {
 			"biome": "B00003",
@@ -356924,7 +357081,7 @@
 		},
 		"-15,-23": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -356947,7 +357104,7 @@
 			]
 		},
 		"-15,-21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -357106,7 +357263,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -357139,7 +357296,7 @@
 			]
 		},
 		"-15,-5": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357148,31 +357305,37 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-15,-4": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-15,-3": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-15,-2": {
 			"biome": "B00005",
@@ -357186,19 +357349,21 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-15,-1": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-15,0": {
 			"biome": "B00003",
@@ -357237,7 +357402,7 @@
 			]
 		},
 		"-15,3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357249,7 +357414,7 @@
 			]
 		},
 		"-15,4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357261,7 +357426,7 @@
 			]
 		},
 		"-15,5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357273,7 +357438,7 @@
 			]
 		},
 		"-15,6": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357285,7 +357450,7 @@
 			]
 		},
 		"-15,7": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357297,7 +357462,7 @@
 			]
 		},
 		"-15,8": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357309,7 +357474,7 @@
 			]
 		},
 		"-15,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357321,7 +357486,7 @@
 			]
 		},
 		"-15,10": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357333,7 +357498,7 @@
 			]
 		},
 		"-15,11": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357345,7 +357510,7 @@
 			]
 		},
 		"-15,12": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357416,7 +357581,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-15,18": {
 			"biome": "B00003",
@@ -357454,7 +357619,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-15,21": {
 			"biome": "B00003",
@@ -357600,7 +357765,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-15,33": {
 			"biome": "B00003",
@@ -357687,7 +357852,7 @@
 			]
 		},
 		"-15,40": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -357696,7 +357861,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-15,41": {
 			"biome": "B00003",
@@ -360364,7 +360531,7 @@
 		},
 		"-14,-26": {
 			"biome": "B00003",
-			"elevation": 10,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -360400,10 +360567,10 @@
 		},
 		"-14,-23": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
@@ -360414,7 +360581,7 @@
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -360570,25 +360737,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"-14,-8": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-14,-7": {
 			"biome": "B00005",
@@ -360602,19 +360771,21 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-14,-6": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-14,-5": {
 			"biome": "B00003",
@@ -360671,7 +360842,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -360713,7 +360884,7 @@
 			]
 		},
 		"-14,3": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -360725,7 +360896,7 @@
 			]
 		},
 		"-14,4": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -360737,7 +360908,7 @@
 			]
 		},
 		"-14,5": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -360785,7 +360956,7 @@
 			]
 		},
 		"-14,9": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -360892,7 +361063,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-14,18": {
 			"biome": "B00005",
@@ -360906,7 +361077,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-14,19": {
 			"biome": "B00005",
@@ -360920,7 +361091,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-14,20": {
 			"biome": "B00003",
@@ -361078,7 +361249,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-14,33": {
 			"biome": "B00003",
@@ -361153,7 +361324,7 @@
 			]
 		},
 		"-14,39": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -361162,7 +361333,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-14,40": {
 			"biome": "B00003",
@@ -363835,7 +364008,7 @@
 			]
 		},
 		"-13,-27": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
 				false,
@@ -363847,7 +364020,7 @@
 			]
 		},
 		"-13,-26": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 18,
 			"walls": [
 				false,
@@ -363873,40 +364046,46 @@
 			"waterType": "leveled"
 		},
 		"-13,-24": {
-			"biome": "B00003",
-			"elevation": 4,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
-		},
-		"-13,-23": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 3,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
+				true,
+				true
+			],
+			"waterLevel": 4,
+			"waterType": "flowing"
+		},
+		"-13,-23": {
+			"biome": "B00005",
+			"elevation": 2,
+			"walls": [
 				false,
+				true,
+				true,
+				true,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"-13,-22": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-13,-21": {
 			"biome": "B00003",
@@ -363925,7 +364104,7 @@
 			"elevation": 3,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -364032,7 +364211,7 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -364053,16 +364232,18 @@
 			]
 		},
 		"-13,-9": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-13,-8": {
 			"biome": "B00003",
@@ -364084,7 +364265,7 @@
 				false,
 				false,
 				true,
-				false,
+				true,
 				false
 			]
 		},
@@ -364095,7 +364276,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -364556,7 +364737,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-13,33": {
 			"biome": "B00003",
@@ -364631,7 +364812,7 @@
 			]
 		},
 		"-13,39": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -364640,7 +364821,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-13,40": {
 			"biome": "B00003",
@@ -367368,13 +367551,13 @@
 		},
 		"-12,-24": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -367386,41 +367569,45 @@
 				false,
 				false,
 				false,
-				false,
-				false
+				true,
+				true
 			]
 		},
 		"-12,-22": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-12,-21": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-12,-20": {
 			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false
@@ -367514,37 +367701,41 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"-12,-11": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-12,-10": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-12,-9": {
 			"biome": "B00003",
@@ -368050,7 +368241,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-12,33": {
 			"biome": "B00005",
@@ -368064,7 +368255,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-12,34": {
 			"biome": "B00003",
@@ -368115,7 +368306,7 @@
 			]
 		},
 		"-12,38": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -368124,7 +368315,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-12,39": {
 			"biome": "B00003",
@@ -370834,7 +371027,7 @@
 		},
 		"-11,-26": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -370893,24 +371086,26 @@
 			]
 		},
 		"-11,-21": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-11,-20": {
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				true,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false
@@ -370997,30 +371192,32 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-11,-12": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-11,-11": {
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
+				true,
 				false
 			]
 		},
@@ -371552,7 +371749,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-11,34": {
 			"biome": "B00005",
@@ -371566,7 +371763,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-11,35": {
 			"biome": "B00005",
@@ -371580,7 +371777,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-11,36": {
 			"biome": "B00005",
@@ -371594,7 +371791,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-11,37": {
 			"biome": "B00005",
@@ -371608,10 +371805,10 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-11,38": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -371620,7 +371817,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-11,39": {
 			"biome": "B00003",
@@ -374363,7 +374562,7 @@
 			]
 		},
 		"-10,-24": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -374399,16 +374598,18 @@
 			]
 		},
 		"-10,-21": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-10,-20": {
 			"biome": "B00005",
@@ -374422,7 +374623,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-10,-19": {
 			"biome": "B00003",
@@ -374500,25 +374701,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
-				false,
-				false,
-				false
+				true,
+				true
 			]
 		},
 		"-10,-12": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-10,-11": {
 			"biome": "B00002",
@@ -374526,7 +374729,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -375111,7 +375314,7 @@
 			"waterType": "leveled"
 		},
 		"-10,38": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -375120,7 +375323,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-10,39": {
 			"biome": "B00003",
@@ -377826,7 +378031,7 @@
 		},
 		"-9,-28": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -377874,7 +378079,7 @@
 		},
 		"-9,-24": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -377915,7 +378120,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				true,
 				true
 			]
@@ -377932,7 +378137,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-9,-19": {
 			"biome": "B00005",
@@ -377946,7 +378151,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-9,-18": {
 			"biome": "B00005",
@@ -377960,7 +378165,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-9,-17": {
 			"biome": "B00005",
@@ -377974,7 +378179,7 @@
 				true
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-9,-16": {
 			"biome": "B00003",
@@ -378009,20 +378214,22 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-9,-13": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-9,-12": {
 			"biome": "B00003",
@@ -378030,8 +378237,8 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
 			]
@@ -378615,7 +378822,7 @@
 			"waterType": "leveled"
 		},
 		"-9,37": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -378624,7 +378831,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"-9,38": {
 			"biome": "B00005",
@@ -381496,7 +381705,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-8,-16": {
 			"biome": "B00005",
@@ -381510,7 +381719,7 @@
 				false
 			],
 			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-8,-15": {
 			"biome": "B00003",
@@ -381536,7 +381745,7 @@
 				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-8,-13": {
 			"biome": "B00003",
@@ -381545,7 +381754,7 @@
 				false,
 				false,
 				true,
-				false,
+				true,
 				false,
 				false
 			]
@@ -384994,7 +385203,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -385007,7 +385216,7 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -385018,8 +385227,8 @@
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				true,
@@ -385030,7 +385239,7 @@
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				true,
@@ -385050,7 +385259,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-7,-15": {
 			"biome": "B00005",
@@ -385064,7 +385273,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-7,-14": {
 			"biome": "B00003",
@@ -388364,7 +388573,7 @@
 		},
 		"-6,-35": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -388539,59 +388748,67 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-6,-20": {
-			"biome": "B00003",
-			"elevation": 4,
+			"biome": "B00005",
+			"elevation": 3,
 			"walls": [
+				true,
 				false,
-				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 3,
+			"waterType": "flowing"
 		},
 		"-6,-19": {
-			"biome": "B00003",
-			"elevation": 2,
+			"biome": "B00005",
+			"elevation": 1,
 			"walls": [
+				true,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-6,-18": {
-			"biome": "B00003",
-			"elevation": 0,
+			"biome": "B00005",
+			"elevation": 1,
 			"walls": [
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"-6,-17": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-6,-16": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -388599,16 +388816,18 @@
 				false,
 				false,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-6,-15": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
-				false,
+				true,
+				true,
 				true,
 				false,
 				false
@@ -391904,7 +392123,7 @@
 		},
 		"-5,-36": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -391925,12 +392144,12 @@
 				true,
 				false
 			],
-			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"-5,-34": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -392105,20 +392324,20 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
 		"-5,-19": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -392129,8 +392348,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -392147,16 +392366,18 @@
 			]
 		},
 		"-5,-16": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-5,-15": {
 			"biome": "B00003",
@@ -392164,7 +392385,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -395476,9 +395697,9 @@
 		},
 		"-4,-36": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -395497,12 +395718,12 @@
 				false,
 				false
 			],
-			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"-4,-34": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -395588,7 +395809,7 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -395624,7 +395845,7 @@
 			"biome": "B00002",
 			"elevation": 0,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -395637,7 +395858,7 @@
 			"elevation": 7,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -395705,7 +395926,7 @@
 			]
 		},
 		"-4,-17": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -395714,7 +395935,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-4,-16": {
 			"biome": "B00002",
@@ -399016,7 +399239,7 @@
 		},
 		"-3,-40": {
 			"biome": "B00003",
-			"elevation": 2,
+			"elevation": 1,
 			"walls": [
 				false,
 				false,
@@ -399059,7 +399282,7 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-3,-36": {
@@ -399068,21 +399291,21 @@
 			"walls": [
 				false,
 				false,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false
+				true
 			],
-			"waterLevel": 1,
-			"waterType": "leveled"
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-3,-35": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -399175,31 +399398,35 @@
 			]
 		},
 		"-3,-27": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-3,-26": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-3,-25": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -399207,18 +399434,20 @@
 				false,
 				false,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-3,-24": {
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
+				true,
+				true,
 				false
 			]
 		},
@@ -399226,8 +399455,8 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
@@ -399238,8 +399467,8 @@
 			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
@@ -399262,7 +399491,7 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -399274,25 +399503,27 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
+				true,
+				true,
 				false,
 				false,
 				false,
-				false,
-				false,
-				false
+				true
 			]
 		},
 		"-3,-18": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-3,-17": {
 			"biome": "B00002",
@@ -402570,7 +402801,7 @@
 		},
 		"-2,-44": {
 			"biome": "B00002",
-			"elevation": 15,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -402582,7 +402813,7 @@
 		},
 		"-2,-43": {
 			"biome": "B00002",
-			"elevation": 4,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -402661,18 +402892,18 @@
 				false,
 				true,
 				false,
-				true
+				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-2,-36": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -402682,7 +402913,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -402695,7 +402926,7 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -402731,7 +402962,7 @@
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -402763,16 +402994,18 @@
 			]
 		},
 		"-2,-28": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-2,-27": {
 			"biome": "B00002",
@@ -402780,9 +403013,9 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false
 			]
 		},
@@ -402799,56 +403032,64 @@
 			]
 		},
 		"-2,-25": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-2,-24": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-2,-23": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-2,-22": {
-			"biome": "B00002",
-			"elevation": 4,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
+				true,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-2,-21": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -402856,31 +403097,37 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-2,-20": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-2,-19": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-2,-18": {
 			"biome": "B00002",
@@ -406262,7 +406509,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"-1,-37": {
 			"biome": "B00003",
@@ -406280,12 +406527,12 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"-1,-35": {
@@ -406294,19 +406541,19 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
-				false,
-				false
+				true,
+				true,
+				true,
+				true
 			]
 		},
 		"-1,-34": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false,
 				false,
 				false
@@ -406321,56 +406568,64 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"-1,-32": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"-1,-31": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-1,-30": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-1,-29": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
+				true,
 				false,
 				false,
 				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"-1,-28": {
 			"biome": "B00002",
@@ -406378,8 +406633,8 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
 			]
@@ -406404,7 +406659,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
 			]
 		},
@@ -406415,8 +406670,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -406427,7 +406682,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -406439,8 +406694,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -406464,7 +406719,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
 			]
 		},
@@ -409879,6 +410134,18 @@
 			]
 		},
 		"0,-39": {
+			"biome": "B00003",
+			"elevation": 0,
+			"walls": [
+				false,
+				false,
+				false,
+				false,
+				false,
+				false
+			]
+		},
+		"0,-38": {
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
@@ -409887,82 +410154,78 @@
 				false,
 				false,
 				false,
-				false
+				true
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
-		},
-		"0,-38": {
-			"biome": "B00003",
-			"elevation": 0,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
+			"waterType": "flowing"
 		},
 		"0,-37": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
+				true,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
-				false
+				true
 			]
 		},
 		"0,-36": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"0,-35": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"0,-34": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"0,-33": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"0,-32": {
 			"biome": "B00003",
@@ -409970,9 +410233,9 @@
 			"walls": [
 				false,
 				false,
+				true,
 				false,
-				false,
-				false,
+				true,
 				false
 			]
 		},
@@ -409983,8 +410246,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -409995,8 +410258,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -410007,7 +410270,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -413489,7 +413752,7 @@
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -413508,10 +413771,10 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"1,-39": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -413520,31 +413783,37 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"1,-38": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"1,-37": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"1,-36": {
 			"biome": "B00003",
@@ -413577,8 +413846,8 @@
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
 			]
 		},
@@ -417094,7 +417363,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -417107,10 +417376,10 @@
 			"elevation": 1,
 			"walls": [
 				true,
+				false,
+				false,
+				false,
 				true,
-				false,
-				false,
-				false,
 				true
 			]
 		},
@@ -417126,7 +417395,7 @@
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"2,-40": {
 			"biome": "B00003",
@@ -420687,7 +420956,7 @@
 				false,
 				false,
 				false,
-				true
+				false
 			]
 		},
 		"3,-43": {
@@ -420696,27 +420965,27 @@
 			"walls": [
 				false,
 				false,
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				false
 			],
-			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"3,-42": {
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				false,
-				false,
+				true,
+				true,
 				false,
 				true,
 				false,
 				false
 			],
 			"waterLevel": 0,
-			"waterType": "leveled"
+			"waterType": "flowing"
 		},
 		"3,-41": {
 			"biome": "B00003",
@@ -424266,7 +424535,7 @@
 		},
 		"4,-45": {
 			"biome": "B00003",
-			"elevation": 0,
+			"elevation": 1,
 			"walls": [
 				false,
 				false,
@@ -424277,7 +424546,7 @@
 			]
 		},
 		"4,-44": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -424286,28 +424555,30 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"4,-43": {
 			"biome": "B00003",
-			"elevation": 0,
+			"elevation": 1,
 			"walls": [
 				false,
+				true,
 				false,
 				false,
-				false,
-				false,
+				true,
 				false
 			]
 		},
 		"4,-42": {
 			"biome": "B00003",
-			"elevation": 0,
+			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -424350,7 +424621,7 @@
 		},
 		"4,-38": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -427838,7 +428109,7 @@
 		},
 		"5,-46": {
 			"biome": "B00003",
-			"elevation": 0,
+			"elevation": 1,
 			"walls": [
 				false,
 				false,
@@ -427850,27 +428121,29 @@
 		},
 		"5,-45": {
 			"biome": "B00003",
-			"elevation": 0,
+			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"5,-44": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
+				true,
 				false,
+				true,
 				false,
-				false,
-				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "flowing"
 		},
 		"5,-43": {
 			"biome": "B00003",
@@ -431370,7 +431643,7 @@
 		},
 		"6,-50": {
 			"biome": "B00002",
-			"elevation": 1,
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -431417,39 +431690,41 @@
 			]
 		},
 		"6,-46": {
+			"biome": "B00005",
+			"elevation": 1,
+			"walls": [
+				true,
+				false,
+				false,
+				false,
+				false,
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
+		},
+		"6,-45": {
+			"biome": "B00005",
+			"elevation": 0,
+			"walls": [
+				false,
+				true,
+				false,
+				false,
+				false,
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
+		},
+		"6,-44": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
-				true
-			]
-		},
-		"6,-45": {
-			"biome": "B00005",
-			"elevation": 0,
-			"walls": [
 				true,
-				true,
-				true,
-				false,
-				false,
-				false
-			],
-			"waterLevel": 0,
-			"waterType": "leveled"
-		},
-		"6,-44": {
-			"biome": "B00003",
-			"elevation": 0,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
 				false,
 				false
 			]
@@ -434854,7 +435129,7 @@
 		},
 		"7,-56": {
 			"biome": "B00002",
-			"elevation": 0,
+			"elevation": -1,
 			"walls": [
 				false,
 				false,
@@ -434961,27 +435236,29 @@
 			]
 		},
 		"7,-47": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"7,-46": {
 			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
-				false,
-				false,
-				false,
-				false,
 				true,
-				false
+				true,
+				true,
+				true,
+				true,
+				true
 			]
 		},
 		"7,-45": {
@@ -434990,8 +435267,8 @@
 			"walls": [
 				false,
 				false,
-				false,
 				true,
+				false,
 				false,
 				false
 			]
@@ -438464,7 +438741,7 @@
 			"biome": "B00002",
 			"elevation": 2,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -438485,7 +438762,7 @@
 			]
 		},
 		"8,-48": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -438493,19 +438770,21 @@
 				false,
 				false,
 				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"8,-47": {
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
-				false,
-				false,
-				false,
-				false,
-				false
+				true,
+				true,
+				true,
+				true,
+				true
 			]
 		},
 		"8,-46": {
@@ -438514,8 +438793,8 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
 			]
@@ -441872,7 +442151,7 @@
 		},
 		"9,-60": {
 			"biome": "B00002",
-			"elevation": 0,
+			"elevation": -1,
 			"walls": [
 				false,
 				false,
@@ -441884,7 +442163,7 @@
 		},
 		"9,-59": {
 			"biome": "B00002",
-			"elevation": 1,
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
@@ -441982,48 +442261,52 @@
 			"biome": "B00004",
 			"elevation": 14,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"9,-50": {
-			"biome": "B00003",
-			"elevation": 3,
-			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
-			]
-		},
-		"9,-49": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
+				true,
+				true,
 				false,
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
+		},
+		"9,-49": {
+			"biome": "B00005",
+			"elevation": 1,
+			"walls": [
+				true,
+				true,
 				false,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "flowing"
 		},
 		"9,-48": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
-				false
+				true,
+				true
 			]
 		},
 		"9,-47": {
@@ -442032,7 +442315,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				false
@@ -445491,27 +445774,29 @@
 			]
 		},
 		"10,-51": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 2,
 			"walls": [
+				true,
 				false,
 				false,
+				true,
 				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"10,-50": {
 			"biome": "B00004",
 			"elevation": 20,
 			"walls": [
-				false,
-				false,
-				false,
-				false,
-				false,
-				false
+				true,
+				true,
+				true,
+				true,
+				true,
+				true
 			]
 		},
 		"10,-49": {
@@ -445520,9 +445805,9 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false
 			]
 		},
@@ -445533,7 +445818,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -448970,25 +449255,27 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
+				true,
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"11,-52": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 2,
 			"walls": [
+				true,
+				false,
+				true,
 				false,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"11,-51": {
 			"biome": "B00003",
@@ -448996,9 +449283,9 @@
 			"walls": [
 				false,
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false
 			]
 		},
@@ -449009,7 +449296,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false,
 				false
 			]
@@ -452449,35 +452736,37 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"12,-53": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 2,
 			"walls": [
 				false,
+				true,
+				true,
+				true,
 				false,
-				false,
-				false,
-				false,
-				false
-			]
+				true
+			],
+			"waterLevel": 2,
+			"waterType": "flowing"
 		},
 		"12,-52": {
 			"biome": "B00003",
-			"elevation": 2,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false
 			]
 		},
 		"12,-51": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 13,
 			"walls": [
 				false,
@@ -452873,7 +453162,7 @@
 			]
 		},
 		"12,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -452885,7 +453174,7 @@
 			]
 		},
 		"12,-17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 7,
 			"walls": [
 				false,
@@ -455914,19 +456203,19 @@
 		},
 		"13,-54": {
 			"biome": "B00003",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
+				false,
+				false,
+				false,
+				false,
 				true,
-				false,
-				false,
-				false,
-				false,
 				false
 			]
 		},
 		"13,-53": {
-			"biome": "B00003",
-			"elevation": 2,
+			"biome": "B00005",
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -455934,7 +456223,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 4,
+			"waterType": "flowing"
 		},
 		"13,-52": {
 			"biome": "B00005",
@@ -455947,11 +456238,11 @@
 				true,
 				true
 			],
-			"waterLevel": 2,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"13,-51": {
-			"biome": "B00003",
+			"biome": "B00004",
 			"elevation": 11,
 			"walls": [
 				true,
@@ -455966,7 +456257,7 @@
 			"biome": "B00004",
 			"elevation": 16,
 			"walls": [
-				false,
+				true,
 				true,
 				false,
 				false,
@@ -455999,7 +456290,7 @@
 				true,
 				false
 			],
-			"waterLevel": 5,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"13,-47": {
@@ -456013,7 +456304,7 @@
 				true,
 				true
 			],
-			"waterLevel": 5,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"13,-46": {
@@ -456341,7 +456632,7 @@
 			]
 		},
 		"13,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -456353,7 +456644,7 @@
 			]
 		},
 		"13,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 8,
 			"walls": [
 				false,
@@ -456365,7 +456656,7 @@
 			]
 		},
 		"13,-17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -456377,7 +456668,7 @@
 			]
 		},
 		"13,-16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -456389,7 +456680,7 @@
 			]
 		},
 		"13,-15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -459380,28 +459671,28 @@
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				true,
+				false,
 				false,
 				true,
-				true,
+				false,
 				false,
 				false
 			],
-			"waterLevel": 2,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"14,-53": {
 			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
-				true,
-				true,
+				false,
+				false,
 				false,
 				false,
 				false,
 				false
 			],
-			"waterLevel": 2,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"14,-52": {
@@ -459415,7 +459706,7 @@
 				true,
 				false
 			],
-			"waterLevel": 3,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"14,-51": {
@@ -459429,20 +459720,22 @@
 				true,
 				false
 			],
-			"waterLevel": 5,
+			"waterLevel": 11,
 			"waterType": "leveled"
 		},
 		"14,-50": {
-			"biome": "B00003",
-			"elevation": 5,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
+				false,
+				false,
 				false,
 				true,
 				false,
-				false,
-				false,
-				true
-			]
+				false
+			],
+			"waterLevel": 4,
+			"waterType": "leveled"
 		},
 		"14,-49": {
 			"biome": "B00005",
@@ -459450,21 +459743,21 @@
 			"walls": [
 				false,
 				false,
-				true,
 				false,
 				false,
-				true
+				false,
+				false
 			],
 			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"14,-48": {
 			"biome": "B00003",
-			"elevation": 5,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -459795,7 +460088,7 @@
 			]
 		},
 		"14,-20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -459807,7 +460100,7 @@
 			]
 		},
 		"14,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 13,
 			"walls": [
 				false,
@@ -459819,7 +460112,7 @@
 			]
 		},
 		"14,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -459831,7 +460124,7 @@
 			]
 		},
 		"14,-17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -459843,7 +460136,7 @@
 			]
 		},
 		"14,-16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -459855,7 +460148,7 @@
 			]
 		},
 		"14,-15": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -462826,7 +463119,7 @@
 		},
 		"15,-55": {
 			"biome": "B00003",
-			"elevation": 2,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -462838,24 +463131,24 @@
 		},
 		"15,-54": {
 			"biome": "B00003",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
 				false,
-				true,
-				true,
+				false,
+				false,
 				false
 			]
 		},
 		"15,-53": {
 			"biome": "B00003",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -462871,7 +463164,7 @@
 				false,
 				false
 			],
-			"waterLevel": 3,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"15,-51": {
@@ -462882,7 +463175,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false
 			],
 			"waterLevel": 4,
@@ -463249,7 +463542,7 @@
 			]
 		},
 		"15,-20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -463261,7 +463554,7 @@
 			]
 		},
 		"15,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -463273,7 +463566,7 @@
 			]
 		},
 		"15,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -463285,7 +463578,7 @@
 			]
 		},
 		"15,-17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -463297,7 +463590,7 @@
 			]
 		},
 		"15,-16": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -466300,7 +466593,7 @@
 		},
 		"16,-53": {
 			"biome": "B00004",
-			"elevation": 35,
+			"elevation": 34,
 			"walls": [
 				false,
 				false,
@@ -466319,9 +466612,9 @@
 				true,
 				false,
 				false,
-				true
+				false
 			],
-			"waterLevel": 3,
+			"waterLevel": 4,
 			"waterType": "leveled"
 		},
 		"16,-51": {
@@ -466330,7 +466623,7 @@
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -466697,7 +466990,7 @@
 			]
 		},
 		"16,-20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -466709,7 +467002,7 @@
 			]
 		},
 		"16,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -466721,7 +467014,7 @@
 			]
 		},
 		"16,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -466733,7 +467026,7 @@
 			]
 		},
 		"16,-17": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -469740,7 +470033,7 @@
 		},
 		"17,-53": {
 			"biome": "B00003",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -469752,7 +470045,7 @@
 		},
 		"17,-52": {
 			"biome": "B00003",
-			"elevation": 3,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -470123,7 +470416,7 @@
 			]
 		},
 		"17,-21": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -470135,7 +470428,7 @@
 			]
 		},
 		"17,-20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -470147,7 +470440,7 @@
 			]
 		},
 		"17,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -470159,7 +470452,7 @@
 			]
 		},
 		"17,-18": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -470174,7 +470467,7 @@
 			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -470184,14 +470477,14 @@
 		},
 		"17,-16": {
 			"biome": "B00003",
-			"elevation": 1,
+			"elevation": 2,
 			"walls": [
+				false,
 				true,
 				false,
 				false,
 				false,
-				false,
-				false
+				true
 			]
 		},
 		"17,-15": {
@@ -470200,7 +470493,7 @@
 			"walls": [
 				false,
 				false,
-				false,
+				true,
 				false,
 				false,
 				true
@@ -470213,7 +470506,7 @@
 			"elevation": 2,
 			"walls": [
 				false,
-				false,
+				true,
 				true,
 				true,
 				false,
@@ -473555,7 +473848,7 @@
 			]
 		},
 		"18,-20": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
@@ -473567,7 +473860,7 @@
 			]
 		},
 		"18,-19": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -473582,7 +473875,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -473591,16 +473884,18 @@
 			]
 		},
 		"18,-17": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
-				false,
-				false,
+				true,
+				true,
 				false
-			]
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"18,-16": {
 			"biome": "B00005",
@@ -473609,31 +473904,33 @@
 				false,
 				false,
 				false,
-				true,
-				false,
-				true
-			],
-			"waterLevel": 0,
-			"waterType": "leveled"
-		},
-		"18,-15": {
-			"biome": "B00003",
-			"elevation": 1,
-			"walls": [
-				false,
-				false,
-				true,
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 2,
+			"waterType": "leveled"
+		},
+		"18,-15": {
+			"biome": "B00005",
+			"elevation": 0,
+			"walls": [
+				false,
+				false,
+				false,
+				false,
+				true,
+				false
+			],
+			"waterLevel": 1,
+			"waterType": "leveled"
 		},
 		"18,-14": {
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -476983,20 +477280,22 @@
 				false,
 				false,
 				false,
-				false
+				true
 			]
 		},
 		"19,-18": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
-				false,
-				false,
+				true,
+				true,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"19,-17": {
 			"biome": "B00005",
@@ -477013,7 +477312,7 @@
 			"waterType": "leveled"
 		},
 		"19,-16": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -477022,27 +477321,31 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"19,-15": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
-				false
-			]
+				true,
+				true
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"19,-14": {
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
-				false,
+				true,
+				true,
 				false,
 				false,
 				false
@@ -480372,7 +480675,7 @@
 				true,
 				false,
 				false,
-				false,
+				true,
 				true
 			]
 		},
@@ -480391,7 +480694,7 @@
 			"waterType": "leveled"
 		},
 		"20,-17": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -480400,10 +480703,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"20,-16": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -480412,19 +480717,23 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"20,-15": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00005",
+			"elevation": 0,
 			"walls": [
 				false,
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"20,-14": {
 			"biome": "B00002",
@@ -483736,7 +484045,7 @@
 			"biome": "B00003",
 			"elevation": 1,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -483773,7 +484082,7 @@
 			"waterType": "leveled"
 		},
 		"21,-18": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -483782,10 +484091,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"21,-17": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -483794,10 +484105,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"21,-16": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -483806,10 +484119,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"21,-15": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -483818,7 +484133,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"21,-14": {
 			"biome": "B00002",
@@ -487117,19 +487434,21 @@
 			]
 		},
 		"22,-21": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
+				true,
 				false,
-				false,
-				false,
+				true,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-20": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -487138,10 +487457,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-19": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -487150,10 +487471,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-18": {
-			"biome": "B00003",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -487162,10 +487485,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-17": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -487174,10 +487499,12 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-16": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -487186,7 +487513,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"22,-15": {
 			"biome": "B00002",
@@ -490484,7 +490813,7 @@
 				false,
 				false,
 				false,
-				false,
+				true,
 				false
 			]
 		},
@@ -490525,7 +490854,7 @@
 			]
 		},
 		"23,-18": {
-			"biome": "B00002",
+			"biome": "B00005",
 			"elevation": 0,
 			"walls": [
 				false,
@@ -490534,7 +490863,9 @@
 				false,
 				false,
 				false
-			]
+			],
+			"waterLevel": 0,
+			"waterType": "leveled"
 		},
 		"23,-17": {
 			"biome": "B00002",
@@ -503829,7 +504160,7 @@
 			]
 		},
 		"27,-24": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -503841,7 +504172,7 @@
 			]
 		},
 		"27,-23": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -503853,8 +504184,8 @@
 			]
 		},
 		"27,-22": {
-			"biome": "B00002",
-			"elevation": 2,
+			"biome": "B00003",
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -507129,7 +507460,7 @@
 			]
 		},
 		"28,-25": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -507141,7 +507472,7 @@
 			]
 		},
 		"28,-24": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 2,
 			"walls": [
 				false,
@@ -507153,7 +507484,7 @@
 			]
 		},
 		"28,-23": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 5,
 			"walls": [
 				false,
@@ -507165,7 +507496,7 @@
 			]
 		},
 		"28,-22": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -507177,8 +507508,8 @@
 			]
 		},
 		"28,-21": {
-			"biome": "B00002",
-			"elevation": 2,
+			"biome": "B00003",
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -510421,7 +510752,7 @@
 			]
 		},
 		"29,-26": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -510433,7 +510764,7 @@
 			]
 		},
 		"29,-25": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 6,
 			"walls": [
 				false,
@@ -510458,7 +510789,7 @@
 		},
 		"29,-23": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -510470,7 +510801,7 @@
 		},
 		"29,-22": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -510481,8 +510812,8 @@
 			]
 		},
 		"29,-21": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00003",
+			"elevation": 2,
 			"walls": [
 				false,
 				false,
@@ -513737,7 +514068,7 @@
 			]
 		},
 		"30,-26": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 3,
 			"walls": [
 				false,
@@ -513749,7 +514080,7 @@
 			]
 		},
 		"30,-25": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 10,
 			"walls": [
 				false,
@@ -513773,8 +514104,8 @@
 			]
 		},
 		"30,-23": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00003",
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -513785,8 +514116,8 @@
 			]
 		},
 		"30,-22": {
-			"biome": "B00002",
-			"elevation": 5,
+			"biome": "B00003",
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -517025,7 +517356,7 @@
 			]
 		},
 		"31,-25": {
-			"biome": "B00002",
+			"biome": "B00003",
 			"elevation": 4,
 			"walls": [
 				false,
@@ -517037,8 +517368,8 @@
 			]
 		},
 		"31,-24": {
-			"biome": "B00002",
-			"elevation": 1,
+			"biome": "B00003",
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
