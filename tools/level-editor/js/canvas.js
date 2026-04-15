@@ -1632,6 +1632,20 @@ export class HexCanvas {
    * @param {number} [padding=40] - Pixels of padding around the map
    * @returns {void}
    */
+  /**
+   * Center camera on spawn point at 100% zoom.
+   */
+  centerOnSpawn() {
+    const spawn = this.grid.meta.spawn;
+    const sq = spawn ? spawn[0] : 0;
+    const sr = spawn ? spawn[1] : 0;
+    const world = HexMath.axialToPixel(sq, sr);
+    this.camera.zoom = 1.0;
+    this.camera.offsetX = this.canvas.width / 2 - world.x * this.camera.zoom;
+    this.camera.offsetY = this.canvas.height / 2 - world.y * this.camera.zoom;
+    this.requestRender();
+  }
+
   fitToView(padding = 40) {
     if (this.grid.tiles.size === 0) return;
 

@@ -415,7 +415,7 @@ async function _deleteCurrentMap() {
     dirtyTracker.markAllClean();
     if (hexCanvas) {
       hexCanvas.requestRender();
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
     }
     _rebuildColorMaps();
     _refreshMapSelector();
@@ -459,7 +459,7 @@ function _generateProceduralMap() {
       dirtyTracker.markAllClean();
       if (hexCanvas) {
         hexCanvas.requestRender();
-        hexCanvas.fitToView();
+        hexCanvas.centerOnSpawn();
       }
       _rebuildColorMaps();
       _refreshMapSelector();
@@ -523,7 +523,7 @@ async function _regenerateMap() {
     dirtyTracker.markAllClean();
     if (hexCanvas) {
       hexCanvas.requestRender();
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
     }
     _rebuildColorMaps();
     if (hexInspector) hexInspector.updateMapStats();
@@ -773,7 +773,7 @@ function initializeAfterLoad() {
   // so the canvas gets correct dimensions from its parent.
   if (hexCanvas) {
     hexCanvas._onResize();
-    hexCanvas.fitToView();
+    hexCanvas.centerOnSpawn();
     console.log('Canvas resized and map centered.');
   } else {
     console.warn('hexCanvas is null — canvas not initialized.');
@@ -1100,7 +1100,7 @@ function _initMapSelector() {
     commandHistory.clear();
     dirtyTracker.markAllClean();
     if (hexCanvas) {
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
       hexCanvas.requestRender();
     }
     if (hexInspector) {
