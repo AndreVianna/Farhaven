@@ -169,10 +169,6 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 	var center_y: float = elev * ELEVATION_STEP
 
-	# Water stays flat at water_level.
-	if is_water:
-		return center_y
-
 	# Compute edge_y (6 values) — uses walls array to decide cliff vs slope.
 	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for d: int in range(6):
