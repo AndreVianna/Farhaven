@@ -15,7 +15,6 @@ const SCHEMA_VERSION: int = 1
 ## Inventory is saved via Player (RefCounted, not a Node).
 ## Catalog is saved via ScannerSystem (RefCounted, not a Node).
 const _SYSTEM_KEYS: Array[Dictionary] = [
-	{"key": "hex_grid", "path": "/root/HexGrid"},
 	{"key": "day_night", "path": "/root/DayNightCycle"},
 	{"key": "player", "path": "/root/Main/World/Player"},
 	{"key": "camera", "path": "/root/Main/World/Camera3D"},

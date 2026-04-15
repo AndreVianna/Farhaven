@@ -185,6 +185,12 @@ function selectTool(toolName) {
   toolManager.setTool(toolName, value);
   if (hexCanvas) {
     hexCanvas.toolManager = toolManager;
+    // Clear hex selection for wall tool — the selection highlight
+    // blocks the wall edge highlight.
+    if (toolName === 'wall') {
+      hexCanvas.selectedHex = null;
+      hexCanvas.requestRender();
+    }
   }
   // Update tool indicator in toolbar
   const indicator = document.getElementById('tool-indicator');
@@ -206,6 +212,7 @@ keyboardManager.register('e', mapOnly(() => selectTool('elevation')));
 keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
+keyboardManager.register('w', mapOnly(() => selectTool('wall')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
@@ -408,7 +415,7 @@ async function _deleteCurrentMap() {
     dirtyTracker.markAllClean();
     if (hexCanvas) {
       hexCanvas.requestRender();
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
     }
     _rebuildColorMaps();
     _refreshMapSelector();
@@ -452,7 +459,7 @@ function _generateProceduralMap() {
       dirtyTracker.markAllClean();
       if (hexCanvas) {
         hexCanvas.requestRender();
-        hexCanvas.fitToView();
+        hexCanvas.centerOnSpawn();
       }
       _rebuildColorMaps();
       _refreshMapSelector();
@@ -516,7 +523,7 @@ async function _regenerateMap() {
     dirtyTracker.markAllClean();
     if (hexCanvas) {
       hexCanvas.requestRender();
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
     }
     _rebuildColorMaps();
     if (hexInspector) hexInspector.updateMapStats();
@@ -715,6 +722,12 @@ function initializeAfterLoad() {
       console.warn(`  Biome "${filename}" has no valid color field.`);
     }
   }
+  // Virtual water type entries — keep B00005 as alias for leveled
+  if (biomeColorMap.has('B00005')) {
+    biomeColorMap.set('B00005', 'rgb(30,80,160)');       // base = leveled color
+    biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
+    biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
+  }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
   // Build prop color map from loaded .tres data (stored in files.props)
@@ -756,7 +769,7 @@ function initializeAfterLoad() {
   // so the canvas gets correct dimensions from its parent.
   if (hexCanvas) {
     hexCanvas._onResize();
-    hexCanvas.fitToView();
+    hexCanvas.centerOnSpawn();
     console.log('Canvas resized and map centered.');
   } else {
     console.warn('hexCanvas is null — canvas not initialized.');
@@ -907,6 +920,7 @@ const TOOL_GROUPS = [
   { group: 'Hex Tools', tools: [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
     { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
+    { type: 'wall',       label: 'Wall',        shortcut: 'W' },
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
@@ -951,6 +965,13 @@ function _rebuildColorMaps() {
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
     }
   }
+  // Virtual water type entries — keep B00005 as alias for leveled
+  if (biomeColorMap.has('B00005')) {
+    biomeColorMap.set('B00005', 'rgb(30,80,160)');
+    biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
+    biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
+  }
+
   propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
@@ -1007,7 +1028,7 @@ function _initToolButtons() {
       const btn = document.createElement('button');
       btn.className = 'tool-btn';
       btn.dataset.tool = def.type;
-      btn.textContent = `${def.label} (${def.shortcut})`;
+      btn.textContent = `${def.label} [${def.shortcut}]`;
       btn.title = `${def.label} — shortcut: ${def.shortcut}`;
       btn.addEventListener('click', () => {
         if (toolManager.activeToolType === def.type && def.type !== 'select') {
@@ -1082,7 +1103,7 @@ function _initMapSelector() {
     commandHistory.clear();
     dirtyTracker.markAllClean();
     if (hexCanvas) {
-      hexCanvas.fitToView();
+      hexCanvas.centerOnSpawn();
       hexCanvas.requestRender();
     }
     if (hexInspector) {
@@ -1101,23 +1122,27 @@ function _initBiomePalette() {
   if (!container) return;
   container.innerHTML = '';
 
-  for (const [biomeName, color] of biomeColorMap) {
+  for (const [paletteKey, color] of biomeColorMap) {
     const item = document.createElement('div');
     item.className = 'palette-item';
-    item.dataset.value = biomeName;
+    item.dataset.value = paletteKey;
 
     const swatch = document.createElement('span');
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
-    // Show display name from .tres if available, otherwise the ID.
-    // Accepts `display_name` (Gear-based B00NNN format) or the legacy
-    // `biome_name` for any files that haven't been re-saved yet.
-    const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
+    // Parse compound key: 'B00005:leveled' → biomeId='B00005', waterType='leveled'
+    const [biomeId, waterType] = paletteKey.includes(':') ? paletteKey.split(':') : [paletteKey, null];
+
+    // Show display name from .tres if available
+    const biomeEntry = ProjectContext.files.biomes.get(biomeId + '.tres');
     const entryData = biomeEntry && biomeEntry.data;
-    const displayName = (entryData && (entryData.display_name || entryData.biome_name))
+    let displayName = (entryData && (entryData.display_name || entryData.biome_name))
       ? String(entryData.display_name || entryData.biome_name)
-      : biomeName;
+      : biomeId;
+    if (waterType) {
+      displayName += waterType === 'leveled' ? ' (Leveled)' : ' (Flowing)';
+    }
     const label = document.createElement('span');
     label.textContent = displayName;
 
@@ -1125,10 +1150,10 @@ function _initBiomePalette() {
     item.appendChild(label);
 
     item.addEventListener('click', () => {
-      toolManager.setTool('biome', biomeName);
+      toolManager.setTool('biome', paletteKey);
       if (hexCanvas) hexCanvas.toolManager = toolManager;
       updateSidebar();
-      setStatus(`Tool: biome — ${biomeName}`);
+      setStatus(`Tool: biome — ${displayName}`);
     });
 
     container.appendChild(item);

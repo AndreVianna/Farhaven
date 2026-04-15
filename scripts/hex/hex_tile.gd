@@ -15,6 +15,14 @@ enum Biome {
 @export var biome: Biome = Biome.GRASSLAND
 @export var elevation: int = 0
 @export var props: Array = []  # Array of Prop
+## Per-edge wall flags matching HexMath.DIRECTIONS order [E,NE,NW,W,SW,SE].
+## true = draw cliff wall face on this edge; false = merge smoothly.
+@export var walls: Array[bool] = [false, false, false, false, false, false]
+## Water surface elevation. Only meaningful for WATER biome tiles.
+## elevation = bottom depth, water_level = surface height.
+@export var water_level: int = 0
+## Water behavior type: 'leveled' (lakes) or 'flowing' (rivers).
+@export var water_type: String = ""
 
 
 ## Returns all natural-origin props (non-structure, non-anomaly).

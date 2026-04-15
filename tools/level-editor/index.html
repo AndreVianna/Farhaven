@@ -200,9 +200,25 @@ html, body {
 }
 
 .tool-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+
+.map-action-btn {
+  padding: 3px 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.map-action-btn:hover {
+  background: var(--tab-hover);
 }
 
 .tool-btn {
@@ -966,15 +982,13 @@ html, body {
         <canvas id="hex-canvas"></canvas>
         <aside id="sidebar">
           <div class="sidebar-section" id="map-stats">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
-              <label class="sidebar-label" style="margin-bottom:0;">Map Info</label>
-              <div style="display:flex;gap:4px;">
-                <button id="btn-new-map" type="button" title="New Map (Ctrl+N)" style="font-size:11px;padding:2px 8px;">New</button>
-                <button id="btn-generate-map" type="button" title="Generate Procedural Map" style="font-size:11px;padding:2px 8px;">Generate</button>
-                <button id="btn-save" type="button" title="Save All (Ctrl+S)" style="font-size:11px;padding:2px 8px;">Save</button>
-                <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" style="font-size:11px;padding:2px 8px;">Save As</button>
-                <button id="btn-delete-map" type="button" title="Delete current map" style="font-size:11px;padding:2px 8px;color:#ff9999;border-color:#7a3030;">Del</button>
-              </div>
+            <label class="sidebar-label">Map</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:6px;">
+              <button id="btn-new-map" type="button" title="New Map (Ctrl+N)" class="map-action-btn">New</button>
+              <button id="btn-generate-map" type="button" title="Generate Procedural Map" class="map-action-btn">Gen</button>
+              <button id="btn-save" type="button" title="Save All (Ctrl+S)" class="map-action-btn">Save</button>
+              <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" class="map-action-btn">Save As</button>
+              <button id="btn-delete-map" type="button" title="Delete current map" class="map-action-btn" style="color:#ff9999;border-color:#7a3030;">Del</button>
             </div>
             <div id="map-stats-content"></div>
           </div>

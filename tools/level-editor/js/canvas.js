@@ -68,6 +68,7 @@ export class HexCanvas {
     this.isPanning = false;
     this.panStart = null;
     this.spaceHeld = false;
+    this.ctrlHeld = false;
     this.toolManager = null;
     /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
     this.onHexHover = null;
@@ -82,6 +83,10 @@ export class HexCanvas {
     this._biomeTextures = new Map();
     /** @type {Set<string>} biome stems we've already requested. */
     this._biomeTexturesRequested = new Set();
+    /** @type {Set<string>|null} Hex keys unreachable from spawn. Null = not computed. */
+    this._unreachableSet = null;
+    /** @type {{ q: number, r: number, edgeIdx: number }|null} Hovered edge for wall tool */
+    this.hoveredEdge = null;
 
     /**
      * Drop every cached biome texture so the next render in Texture
@@ -92,6 +97,9 @@ export class HexCanvas {
       this._biomeTextures.clear();
       this._biomeTexturesRequested.clear();
     };
+
+    /** Invalidate the reachability cache (call after map load or tile edits). */
+    this.invalidateReachability = () => { this._unreachableSet = null; };
 
     // --- Prop/spawn selection state ---
     /** @type {{ hexQ: number, hexR: number, propIndex: number }|null} */
@@ -134,7 +142,10 @@ export class HexCanvas {
     document.addEventListener('keydown', this._onKeyDown);
     document.addEventListener('keyup', this._onKeyUp);
 
-    this.grid.onChange = () => this.requestRender();
+    this.grid.onChange = () => {
+      this._unreachableSet = null; // invalidate on tile change
+      this.requestRender();
+    };
 
     this._onResize();
     this.requestRender();
@@ -221,11 +232,18 @@ export class HexCanvas {
     }
 
     // --- Phase 3: Real hex backgrounds + overlays ---
+    // Compute reachability (cached, invalidated on map load/edit)
+    if (this._unreachableSet === null) {
+      this._unreachableSet = this._computeUnreachable();
+    }
     for (const [key, tile] of this.grid.getAllTiles()) {
       const { q, r } = HexGrid.parseKey(key);
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
+      if (this._unreachableSet.has(key)) {
+        this._drawUnreachableOverlay(q, r);
+      }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
       }
@@ -271,6 +289,15 @@ export class HexCanvas {
       }
     }
 
+    // --- Phase 6b: Wall tool edge highlight ---
+    if (this.hoveredEdge && this.toolManager && this.toolManager.activeToolType === 'wall') {
+      const { q, r, edgeIdx } = this.hoveredEdge;
+      const tile = this.grid.getTile(q, r);
+      if (tile && tile.walls) {
+        this._drawWallHighlight(q, r, edgeIdx, tile.walls[edgeIdx]);
+      }
+    }
+
     // --- Phase 7: Selection highlight ---
     if (this.selectedHex && this.grid.hasTile(this.selectedHex.q, this.selectedHex.r)) {
       this._drawSelection(this.selectedHex.q, this.selectedHex.r);
@@ -292,7 +319,10 @@ export class HexCanvas {
     // textures haven't loaded yet. Elevation no longer tints the colour —
     // with the range now ±32000 there's no sensible brightness curve and
     // the old `*(1 + elev*0.05)` washed high-elevation tiles to white.
-    const color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
+    // Water tiles use compound key for color lookup (B00005:leveled or B00005:flowing)
+    const colorKey = tile.biome === 'B00005' && tile.waterType
+      ? `${tile.biome}:${tile.waterType}` : tile.biome;
+    const color = this.biomeColorMap.get(colorKey) || BIOME_FALLBACK_COLOR;
 
     this._traceHexPath(corners);
     ctx.fillStyle = color;
@@ -363,49 +393,177 @@ export class HexCanvas {
    * @returns {void}
    */
   _drawElevationOverlay(q, r, tile) {
-    if (tile.elevation === 0) return;
     const ctx = this.ctx;
     const { screen } = this._getHexScreen(q, r);
     const fontSize = Math.max(8, 12 * this.camera.zoom);
     ctx.font = `bold ${fontSize}px sans-serif`;
-    // Positive elevations get warm-white, negative get a cool tint so
-    // they're easy to tell apart at a glance without going back to the
-    // elevation-as-colour scheme we just retired.
-    ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(tile.elevation), screen.x, screen.y);
+
+    if (tile.biome === 'B00005') {
+      // Water tiles: show only depth (elevation)
+      if (tile.elevation !== 0) {
+        ctx.fillStyle = 'rgba(160,200,255,0.7)';
+        ctx.fillText(String(tile.elevation), screen.x, screen.y);
+      }
+    } else if (tile.elevation !== 0) {
+      ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
+      ctx.fillText(String(tile.elevation), screen.x, screen.y);
+    }
   }
 
   /**
-   * Draw cliff edges where elevation diff >= 2.
+   * Compute reachability from spawn via BFS. Matches engine rules:
+   * traversal blocked by water and abs(elevation diff) > 4.
+   * @returns {Set<string>} Set of unreachable hex keys
+   */
+  _computeUnreachable() {
+    const spawn = this.grid.meta.spawn;
+    if (!spawn || !this.grid.hasTile(spawn[0], spawn[1])) return new Set();
+
+    // If spawn is on water, all non-water tiles are unreachable
+    const spawnTile = this.grid.getTile(spawn[0], spawn[1]);
+    if (spawnTile && spawnTile.biome === 'B00005') {
+      const allUnreachable = new Set();
+      for (const [key, tile] of this.grid.getAllTiles()) {
+        if (tile.biome !== 'B00005') allUnreachable.add(key);
+      }
+      return allUnreachable;
+    }
+
+    const JUMP_MAX = 4;
+    const spawnKey = `${spawn[0]},${spawn[1]}`;
+    const reachable = new Set([spawnKey]);
+    const queue = [{ q: spawn[0], r: spawn[1] }];
+    let head = 0;
+
+    while (head < queue.length) {
+      const { q, r } = queue[head++];
+      const tile = this.grid.getTile(q, r);
+      if (!tile) continue;
+      for (const dir of HexMath.DIRECTIONS) {
+        const nq = q + dir.q, nr = r + dir.r;
+        const nk = `${nq},${nr}`;
+        if (reachable.has(nk)) continue;
+        const neighbor = this.grid.getTile(nq, nr);
+        if (!neighbor) continue;
+        // Water blocks traversal
+        if (neighbor.biome && neighbor.biome.startsWith('B00005')) continue;
+        // Elevation diff > JUMP_MAX blocks
+        if (Math.abs(tile.elevation - neighbor.elevation) > JUMP_MAX) continue;
+        reachable.add(nk);
+        queue.push({ q: nq, r: nr });
+      }
+    }
+
+    // Unreachable = all non-water tiles not in reachable set
+    const unreachable = new Set();
+    for (const [key, tile] of this.grid.getAllTiles()) {
+      if (tile.biome && tile.biome.startsWith('B00005')) continue; // skip water
+      if (!reachable.has(key)) unreachable.add(key);
+    }
+    return unreachable;
+  }
+
+  /**
+   * Draw a red X overlay on an unreachable hex.
+   * @param {number} q
+   * @param {number} r
+   */
+  _drawUnreachableOverlay(q, r) {
+    const ctx = this.ctx;
+    const { screen } = this._getHexScreen(q, r);
+    const size = HEX_SIZE * this.camera.zoom * 0.35;
+    ctx.strokeStyle = 'rgba(255,60,60,0.7)';
+    ctx.lineWidth = Math.max(1.5, 2.5 * this.camera.zoom);
+    ctx.beginPath();
+    ctx.moveTo(screen.x - size, screen.y - size);
+    ctx.lineTo(screen.x + size, screen.y + size);
+    ctx.moveTo(screen.x + size, screen.y - size);
+    ctx.lineTo(screen.x - size, screen.y + size);
+    ctx.stroke();
+  }
+
+  /**
+   * Draw cliff edges based on the tile's walls array.
    * @param {number} q
    * @param {number} r
    * @param {Object} tile
    * @returns {void}
    */
   _drawCliffEdges(q, r, tile) {
+    if (!tile.walls) return;
     const ctx = this.ctx;
-    const neighbors = HexMath.getNeighbors(q, r);
     const { corners } = this._getHexScreen(q, r);
 
-    // For flat-top hexes (corners at 0°,60°,…,300° clockwise in screen space):
-    // Edge i→(i+1) midpoint points at angle (30+60*i)°, which aligns with
-    // DIRECTIONS at index (6-i)%6. Lookup avoids modular arithmetic errors.
-    const EDGE_TO_NEIGHBOR = [0, 5, 4, 3, 2, 1];
-    for (let i = 0; i < 6; i++) {
-      const n = neighbors[EDGE_TO_NEIGHBOR[i]];
-      const neighbor = this.grid.getTile(n.q, n.r);
-      if (!neighbor) continue;
-      if (Math.abs(tile.elevation - neighbor.elevation) >= 2) {
-        ctx.beginPath();
-        ctx.moveTo(corners[i].x, corners[i].y);
-        ctx.lineTo(corners[(i + 1) % 6].x, corners[(i + 1) % 6].y);
-        ctx.strokeStyle = CLIFF_COLOR;
-        ctx.lineWidth = 3 * this.camera.zoom;
-        ctx.stroke();
+    // Map direction index (0-5 from DIRECTIONS) to corner edge index.
+    // DIRECTIONS: E(0), NE(1), NW(2), W(3), SW(4), SE(5)
+    // Corner edges (flat-top): edge i→(i+1) aligns with DIRECTIONS at (6-i)%6.
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    for (let dirIdx = 0; dirIdx < 6; dirIdx++) {
+      if (!tile.walls[dirIdx]) continue;
+      const edgeCorner = DIR_TO_EDGE[dirIdx];
+      ctx.beginPath();
+      ctx.moveTo(corners[edgeCorner].x, corners[edgeCorner].y);
+      ctx.lineTo(corners[(edgeCorner + 1) % 6].x, corners[(edgeCorner + 1) % 6].y);
+      ctx.strokeStyle = CLIFF_COLOR;
+      ctx.lineWidth = 3 * this.camera.zoom;
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Find the closest hex edge (direction index 0-5) to a world-space point.
+   * Computes distance from the mouse to each of the 6 edge midpoints and
+   * returns the direction index of the nearest one.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} worldX
+   * @param {number} worldY
+   * @returns {number} Direction index (0-5)
+   */
+  _closestEdge(q, r, worldX, worldY) {
+    const center = HexMath.axialToPixel(q, r);
+    // Edge midpoints are at the apothem distance in each direction.
+    // For flat-top hex: edge d midpoint angle = 30° + 60° * edgeCornerIdx
+    // DIRECTIONS → corner edge mapping: dir 0→edge(0,1), 1→edge(5,0), etc.
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const apothem = HEX_SIZE * Math.cos(Math.PI / 6);
+    let bestDir = 0;
+    let bestDist = Infinity;
+    for (let dirIdx = 0; dirIdx < 6; dirIdx++) {
+      const edgeCorner = DIR_TO_EDGE[dirIdx];
+      const midAngle = (edgeCorner * 60 + 30) * Math.PI / 180;
+      const mx = center.x + Math.cos(midAngle) * apothem;
+      const my = center.y + Math.sin(midAngle) * apothem;
+      const dist = Math.hypot(worldX - mx, worldY - my);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestDir = dirIdx;
       }
     }
+    return bestDir;
+  }
+
+  /**
+   * Draw a highlighted edge for the wall tool hover.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} edgeIdx - Direction index (0-5)
+   * @param {boolean} hasWall - Whether this edge currently has a wall
+   */
+  _drawWallHighlight(q, r, edgeIdx, hasWall) {
+    const ctx = this.ctx;
+    const { corners } = this._getHexScreen(q, r);
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const edgeCorner = DIR_TO_EDGE[edgeIdx];
+    ctx.beginPath();
+    ctx.moveTo(corners[edgeCorner].x, corners[edgeCorner].y);
+    ctx.lineTo(corners[(edgeCorner + 1) % 6].x, corners[(edgeCorner + 1) % 6].y);
+    // Green = will add wall, Red = will remove wall
+    ctx.strokeStyle = hasWall ? 'rgba(255,100,100,0.9)' : 'rgba(100,255,100,0.9)';
+    ctx.lineWidth = Math.max(3, 5 * this.camera.zoom);
+    ctx.stroke();
   }
 
   /**
@@ -1215,7 +1373,10 @@ export class HexCanvas {
     if (event.button === 0) {
       this._mouseDown = true;
       const hex = this.screenToHex(mx, my);
-      this.selectedHex = { q: hex.q, r: hex.r };
+      // Wall tool: don't update selection (it blocks the wall highlight)
+      if (!this.toolManager || this.toolManager.activeToolType !== 'wall') {
+        this.selectedHex = { q: hex.q, r: hex.r };
+      }
 
       // --- Select tool: prop/spawn interaction ---
       if (this.toolManager && this.toolManager.activeToolType === 'select') {
@@ -1232,13 +1393,17 @@ export class HexCanvas {
         if (isElevation && this.toolManager.activeTool) {
           this.toolManager.activeTool.delta = 1;
         }
-        // Pass sub-hex info for placement tools
-        const hexWithSub = { q: hex.q, r: hex.r };
+        // Pass sub-hex or edge info depending on tool
+        const hexWithExtra = { q: hex.q, r: hex.r };
         if (this.hoveredSubHex && this._isSubHexTool()) {
-          hexWithSub.sq = this.hoveredSubHex.q;
-          hexWithSub.sr = this.hoveredSubHex.r;
+          hexWithExtra.sq = this.hoveredSubHex.q;
+          hexWithExtra.sr = this.hoveredSubHex.r;
         }
-        this.toolManager.onMouseDown(hexWithSub);
+        if (this.hoveredEdge && this.toolManager.activeToolType === 'wall') {
+          hexWithExtra.edgeIdx = this.hoveredEdge.edgeIdx;
+        }
+        this.toolManager.ctrlHeld = this.ctrlHeld;
+        this.toolManager.onMouseDown(hexWithExtra);
       }
       this.requestRender();
     }
@@ -1287,6 +1452,19 @@ export class HexCanvas {
       }
     }
 
+    // Compute hovered edge for wall tool
+    if (this.toolManager && this.toolManager.activeToolType === 'wall' && this.grid.hasTile(hex.q, hex.r)) {
+      const mouseWorld = this.screenToWorld(mx, my);
+      const edgeIdx = this._closestEdge(hex.q, hex.r, mouseWorld.x, mouseWorld.y);
+      if (!this.hoveredEdge || this.hoveredEdge.q !== hex.q || this.hoveredEdge.r !== hex.r || this.hoveredEdge.edgeIdx !== edgeIdx) {
+        this.hoveredEdge = { q: hex.q, r: hex.r, edgeIdx };
+        this.requestRender();
+      }
+    } else if (this.hoveredEdge) {
+      this.hoveredEdge = null;
+      this.requestRender();
+    }
+
     // Notify hex inspector of hovered hex/sub-hex
     if (this.onHexHover) {
       this.onHexHover(this.hoveredHex, this.hoveredSubHex);
@@ -1296,6 +1474,24 @@ export class HexCanvas {
     if (this._mouseDown && this._dragMode !== 'none' && this.toolManager &&
         this.toolManager.activeToolType === 'select') {
       this._handleSelectToolMouseMove(mx, my);
+    }
+
+    // Ctrl+hover paint: apply tool on hover without clicking.
+    // Only for DragBrushTool-based tools (biome) that have drag state.
+    // DeleteHexTool uses simple onMouseDown per hex.
+    if (this.ctrlHeld && this.toolManager && !this._mouseDown) {
+      const tt = this.toolManager.activeToolType;
+      const tool = this.toolManager.activeTool;
+      if (tt === 'biome' && tool && typeof tool._isDragging !== 'undefined') {
+        if (!tool._isDragging) {
+          tool._isDragging = true;
+          tool._visited.clear();
+          tool._dragCommands = [];
+        }
+        this.toolManager.onMouseMove(hex);
+      } else if (tt === 'delete_hex' && tool) {
+        tool.onMouseDown(hex);
+      }
     }
 
     // Forward to tool during drag
@@ -1357,9 +1553,9 @@ export class HexCanvas {
     // Record world point under cursor before zoom
     const worldBefore = this.screenToWorld(mx, my);
 
-    // Adjust zoom
-    const delta = event.deltaY * -0.001;
-    this.camera.zoom = Math.max(0.05, Math.min(6.0, this.camera.zoom + delta));
+    // Multiplicative zoom: 10% per scroll step, feels natural at any level
+    const factor = event.deltaY > 0 ? 0.9 : 1.1;
+    this.camera.zoom = Math.max(0.03, Math.min(6.0, this.camera.zoom * factor));
 
     // Adjust offsets so world point stays under cursor
     this.camera.offsetX = mx - worldBefore.x * this.camera.zoom;
@@ -1370,15 +1566,26 @@ export class HexCanvas {
 
   /** @param {KeyboardEvent} event */
   _onKeyDown(event) {
-    if (event.key === ' ') {
-      this.spaceHeld = true;
-    }
+    if (event.key === ' ') this.spaceHeld = true;
+    if (event.key === 'Control') this.ctrlHeld = true;
   }
 
   /** @param {KeyboardEvent} event */
   _onKeyUp(event) {
-    if (event.key === ' ') {
-      this.spaceHeld = false;
+    if (event.key === ' ') this.spaceHeld = false;
+    if (event.key === 'Control') {
+      this.ctrlHeld = false;
+      if (this.toolManager) {
+        this.toolManager.ctrlHeld = false;
+        // Commit any Ctrl+hover paint batch
+        if (this.toolManager.activeTool && this.toolManager.activeTool._isDragging) {
+          this.toolManager.onMouseUp(null);
+        }
+        // Clear pinch accumulators on Ctrl release
+        if (this.toolManager.activeTool && this.toolManager.activeTool._pinchAccum) {
+          this.toolManager.activeTool._pinchAccum.clear();
+        }
+      }
     }
   }
 
@@ -1447,6 +1654,24 @@ export class HexCanvas {
    * @param {number} [padding=40] - Pixels of padding around the map
    * @returns {void}
    */
+  /**
+   * Center camera on spawn point at 100% zoom.
+   */
+  centerOnSpawn() {
+    const spawn = this.grid.meta.spawn;
+    const sq = spawn ? spawn[0] : 0;
+    const sr = spawn ? spawn[1] : 0;
+    const world = HexMath.axialToPixel(sq, sr);
+    this.camera.zoom = 1.0;
+    this.camera.offsetX = this.canvas.width / 2 - world.x * this.camera.zoom;
+    this.camera.offsetY = this.canvas.height / 2 - world.y * this.camera.zoom;
+    this.requestRender();
+  }
+
+  /**
+   * Zoom and pan to fit all tiles in view with padding.
+   * @param {number} [padding=40]
+   */
   fitToView(padding = 40) {
     if (this.grid.tiles.size === 0) return;
 
@@ -1478,7 +1703,7 @@ export class HexCanvas {
     const scaleX = (canvasW - padding * 2) / worldW;
     const scaleY = (canvasH - padding * 2) / worldH;
     this.camera.zoom = Math.min(scaleX, scaleY, 6.0);
-    this.camera.zoom = Math.max(this.camera.zoom, 0.05);
+    this.camera.zoom = Math.max(this.camera.zoom, 0.03);
 
     // Center the map
     const worldCenterX = (minX + maxX) / 2;

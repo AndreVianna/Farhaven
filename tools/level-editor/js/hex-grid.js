@@ -86,12 +86,79 @@ export const CATEGORY_COLORS = {
 };
 
 /**
+ * Compute waterLevel for a water tile: min elevation of adjacent dry tiles.
+ * Returns tile.elevation if no dry neighbor exists (open water).
+ * @param {HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ * @returns {number}
+ */
+export function computeWaterLevel(grid, q, r) {
+  let minDryElev = Infinity;
+  for (const dir of HexMath.DIRECTIONS) {
+    const neighbor = grid.getTile(q + dir.q, r + dir.r);
+    if (!neighbor) continue;
+    if (neighbor.biome === 'B00005') continue; // skip water neighbors
+    if (neighbor.elevation < minDryElev) minDryElev = neighbor.elevation;
+  }
+  const tile = grid.getTile(q, r);
+  if (!tile) return 0;
+  // No dry neighbors (open water) → waterLevel = elevation (surface at bottom)
+  if (minDryElev === Infinity) return tile.elevation;
+  // waterLevel = min(dry neighbors), clamped so elevation <= waterLevel
+  return Math.max(tile.elevation, minDryElev);
+}
+
+/** Default walls array — all false (no walls). */
+export const DEFAULT_WALLS = [false, false, false, false, false, false];
+
+/**
  * Creates a default TileData object.
  * @param {string} [biome='']
- * @returns {{ biome: string, elevation: number, props: Array<Object> }}
+ * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[], waterLevel: number|null, waterType: string|null }}
  */
 export function createTileData(biome = '') {
-  return { biome, elevation: 0, props: [] };
+  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null, waterType: null };
+}
+
+/**
+ * Compute default wall values for a tile based on elevation diffs
+ * with its 6 neighbors. Wall = true when abs(diff) >= 2.
+ * @param {HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ * @returns {boolean[]} 6-element array matching HexMath.DIRECTIONS
+ */
+export function computeDefaultWalls(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return [...DEFAULT_WALLS];
+  const walls = [];
+  for (const dir of HexMath.DIRECTIONS) {
+    const neighbor = grid.getTile(q + dir.q, r + dir.r);
+    if (!neighbor) {
+      walls.push(false);
+    } else {
+      walls.push(Math.abs(tile.elevation - neighbor.elevation) >= 2);
+    }
+  }
+  return walls;
+}
+
+/**
+ * Recompute walls for a tile AND all its neighbors (since changing
+ * one tile's elevation affects walls on both sides of each edge).
+ * @param {HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ */
+export function recomputeWallsAround(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (tile) tile.walls = computeDefaultWalls(grid, q, r);
+  for (const dir of HexMath.DIRECTIONS) {
+    const nq = q + dir.q, nr = r + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (neighbor) neighbor.walls = computeDefaultWalls(grid, nq, nr);
+  }
 }
 
 /**
@@ -330,6 +397,15 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       const { q, r } = HexGrid.parseKey(key);
       const tile = createTileData(tileJson.biome || '');
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
+      if (Array.isArray(tileJson.walls) && tileJson.walls.length === 6) {
+        tile.walls = tileJson.walls.map(v => !!v);
+      }
+      if (typeof tileJson.waterLevel === 'number') {
+        tile.waterLevel = tileJson.waterLevel;
+      }
+      if (tileJson.waterType) {
+        tile.waterType = tileJson.waterType;
+      }
 
       // New format: props array present
       if (Array.isArray(tileJson.props)) {
@@ -363,6 +439,35 @@ export function loadMapIntoGrid(hexGrid, mapData) {
     }
   }
 
+  // Walls default to all-false. Placement is manual via wall tool.
+
+  // Compute waterLevel for water tiles that don't have it from JSON.
+  for (const [key, tile] of hexGrid.tiles) {
+    if (tile.biome !== 'B00005') continue;
+    if (tile.waterLevel != null) continue;
+    const { q, r } = HexGrid.parseKey(key);
+    tile.waterLevel = computeWaterLevel(hexGrid, q, r);
+  }
+  // Exception: water↔land shoreline gets wall only when elevation differs.
+  for (const [key, tile] of hexGrid.tiles) {
+    const { q, r } = HexGrid.parseKey(key);
+    const tileIsWater = tile.biome === 'B00005';
+    for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+      const dir = HexMath.DIRECTIONS[d];
+      const neighbor = hexGrid.getTile(q + dir.q, r + dir.r);
+      if (!neighbor) continue;
+      const neighborIsWater = neighbor.biome === 'B00005';
+      if (tileIsWater !== neighborIsWater) {
+        const waterTile = tileIsWater ? tile : neighbor;
+        const landTile = tileIsWater ? neighbor : tile;
+        const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
+        if (wl !== landTile.elevation) {
+          tile.walls[d] = true;
+        }
+      }
+    }
+  }
+
   return { success: true };
 }
 
@@ -377,7 +482,14 @@ export function serializeGridToMapJson(hexGrid) {
     const entry = {
       biome: tile.biome,
       elevation: tile.elevation,
+      walls: tile.walls || [...DEFAULT_WALLS],
     };
+    if (tile.waterLevel != null) {
+      entry.waterLevel = tile.waterLevel;
+    }
+    if (tile.waterType) {
+      entry.waterType = tile.waterType;
+    }
     if (tile.props && tile.props.length > 0) {
       entry.props = tile.props.map(p => {
         const obj = {

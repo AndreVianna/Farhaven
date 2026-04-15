@@ -2,7 +2,64 @@
 // CommandHistory (task-004)
 // ============================================================
 
-import { createTileData } from './hex-grid.js';
+import { createTileData, computeWaterLevel } from './hex-grid.js';
+import { HexMath } from './hex-math.js';
+
+/**
+ * Update shoreline walls for ALL edges of a water tile.
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {number} wq - water tile q
+ * @param {number} wr - water tile r
+ */
+function _updateShorelineWalls(grid, wq, wr) {
+  const waterTile = grid.getTile(wq, wr);
+  if (!waterTile || waterTile.biome !== 'B00005') return;
+  const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
+
+  for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+    const dir = HexMath.DIRECTIONS[d];
+    const nq = wq + dir.q, nr = wr + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (!neighbor) continue;
+    if (neighbor.biome === 'B00005') continue; // water↔water, skip
+    const shouldWall = wl !== neighbor.elevation;
+    waterTile.walls[d] = shouldWall;
+    const opposite = (d + 3) % 6;
+    neighbor.walls[opposite] = shouldWall;
+  }
+}
+
+function _updateWaterNeighbors(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return;
+  const tileIsWater = tile.biome === 'B00005';
+
+  // Collect water tiles that need full shoreline wall update
+  const waterTilesToUpdate = new Set();
+
+  for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+    const dir = HexMath.DIRECTIONS[d];
+    const nq = q + dir.q, nr = r + dir.r;
+    const neighbor = grid.getTile(nq, nr);
+    if (!neighbor) continue;
+    const neighborIsWater = neighbor.biome === 'B00005';
+
+    if (neighborIsWater && !tileIsWater) {
+      neighbor.waterLevel = computeWaterLevel(grid, nq, nr);
+      waterTilesToUpdate.add(`${nq},${nr}`);
+    }
+    if (tileIsWater && !neighborIsWater) {
+      tile.waterLevel = computeWaterLevel(grid, q, r);
+      waterTilesToUpdate.add(`${q},${r}`);
+    }
+  }
+
+  // Update ALL shoreline walls for each affected water tile
+  for (const key of waterTilesToUpdate) {
+    const [wq, wr] = key.split(',').map(Number);
+    _updateShorelineWalls(grid, wq, wr);
+  }
+}
 
 export class CommandHistory {
   constructor() {
@@ -119,19 +176,21 @@ export class SetBiomeCommand {
    * @param {string} oldBiome
    * @param {string} newBiome
    */
-  constructor(grid, q, r, oldBiome, newBiome) {
+  constructor(grid, q, r, oldBiome, newBiome, waterType = null) {
     this.grid = grid;
     this.q = q;
     this.r = r;
     this.oldBiome = oldBiome;
     this.newBiome = newBiome;
+    this.waterType = waterType;
     this.tab = 'map';
     this.type = 'SetBiome';
-    // Capture existence state before execute so undo can distinguish
-    // "restore old biome on an existing tile" from "delete the tile
-    // we just created". Without this the old undo set biome to '' and
-    // left a ghost gray tile behind.
     this._tileExistedBefore = grid.hasTile(q, r);
+    // Save old state for undo
+    const existingTile = grid.getTile(q, r);
+    this._oldWaterType = existingTile ? existingTile.waterType : null;
+    this._oldElevation = existingTile ? existingTile.elevation : 0;
+    this._oldWaterLevel = existingTile ? existingTile.waterLevel : null;
   }
   execute() {
     let tile = this.grid.getTile(this.q, this.r);
@@ -142,17 +201,45 @@ export class SetBiomeCommand {
       tile.biome = this.newBiome;
       this.grid.setTile(this.q, this.r, tile);
     }
+    tile.waterType = this.waterType;
+    if (this.newBiome === 'B00005') {
+      // Convert to water: compute waterLevel, set depth below surface
+      tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+      // Depth should be at or below waterLevel (default: waterLevel for shallow)
+      if (tile.waterLevel != null && tile.elevation > tile.waterLevel) {
+        tile.elevation = tile.waterLevel;
+      }
+      // Remove walls between this water tile and adjacent water tiles
+      for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+        const dir = HexMath.DIRECTIONS[d];
+        const neighbor = this.grid.getTile(this.q + dir.q, this.r + dir.r);
+        if (neighbor && neighbor.biome === 'B00005') {
+          tile.walls[d] = false;
+          const opposite = (d + 3) % 6;
+          neighbor.walls[opposite] = false;
+        }
+      }
+    } else {
+      tile.waterLevel = null;
+      tile.waterType = null;
+    }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
   undo() {
     if (!this._tileExistedBefore) {
       this.grid.deleteTile(this.q, this.r);
+      _updateWaterNeighbors(this.grid, this.q, this.r);
       return;
     }
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
       tile.biome = this.oldBiome;
+      tile.elevation = this._oldElevation;
+      tile.waterType = this._oldWaterType;
+      tile.waterLevel = this._oldWaterLevel;
       this.grid.setTile(this.q, this.r, tile);
     }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
 }
 
@@ -182,6 +269,7 @@ export class SetElevationCommand {
     }
     tile.elevation = this.newElevation;
     this.grid.setTile(this.q, this.r, tile);
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
   undo() {
     if (this._created) {
@@ -193,6 +281,48 @@ export class SetElevationCommand {
         this.grid.setTile(this.q, this.r, tile);
       }
     }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
+  }
+}
+
+/**
+ * Toggle a wall on a hex edge (and the opposite edge on the neighbor).
+ */
+export class ToggleWallCommand {
+  /**
+   * @param {import('./hex-grid.js').HexGrid} grid
+   * @param {number} q - Hex q coordinate
+   * @param {number} r - Hex r coordinate
+   * @param {number} edgeIdx - Edge index (0-5)
+   */
+  constructor(grid, q, r, edgeIdx) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.edgeIdx = edgeIdx;
+    this.tab = 'map';
+    this.type = 'ToggleWall';
+  }
+  execute() {
+    this._toggle();
+  }
+  undo() {
+    this._toggle(); // toggle is its own inverse
+  }
+  _toggle() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile || !tile.walls) return;
+    tile.walls[this.edgeIdx] = !tile.walls[this.edgeIdx];
+    // Also toggle the opposite edge on the neighbor
+    const dir = HexMath.DIRECTIONS[this.edgeIdx];
+    const nq = this.q + dir.q, nr = this.r + dir.r;
+    const neighbor = this.grid.getTile(nq, nr);
+    if (neighbor && neighbor.walls) {
+      const oppositeIdx = (this.edgeIdx + 3) % 6;
+      neighbor.walls[oppositeIdx] = tile.walls[this.edgeIdx];
+    }
+    // Trigger render
+    this.grid.setTile(this.q, this.r, tile);
   }
 }
 

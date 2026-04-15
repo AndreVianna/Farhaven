@@ -164,42 +164,43 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 	if tile == null:
 		return 0.0
 
-	var elev: float = float(tile.elevation)
+	var is_water: bool = tile.biome == _HexTile.Biome.WATER
+	# Water tiles use water_level (surface) for rendering, not elevation (depth).
+	var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 	var center_y: float = elev * ELEVATION_STEP
 
-	# Water stays flat.
-	if tile.biome == _HexTile.Biome.WATER:
-		return center_y
-
-	# Compute edge_y (6 values) — don't blend land with water.
-	var is_water: bool = tile.biome == _HexTile.Biome.WATER
+	# Compute edge_y (6 values) — uses walls array to decide cliff vs slope.
 	var edge_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for d: int in range(6):
+		if tile.walls[d]:
+			continue  # wall = cliff, keep own elevation
 		var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
 		var n_tile: Resource = _tiles.get(n_coords, null)
 		if n_tile == null:
 			continue
 		if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 			continue
-		if absi(tile.elevation - n_tile.elevation) <= 2:
-			edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+		var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+		edge_y[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 
-	# Compute corner_y (6 values) — don't blend land with water.
+	# Compute corner_y (6 values) — skips neighbors across wall edges.
 	var corner_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
 	for ci: int in range(6):
 		var sum_e: float = elev
 		var cnt: int = 1
 		var dir_pair: Array = _CORNER_NEIGHBOR_DIRS[ci]
 		for d: int in dir_pair:
+			if tile.walls[d]:
+				continue  # wall = cliff, don't average
 			var n_coords: Vector2i = coords + (_HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = _tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
-			if absi(tile.elevation - n_tile.elevation) <= 2:
-				sum_e += float(n_tile.elevation)
-				cnt += 1
+			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			sum_e += n_elev
+			cnt += 1
 		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 
 	# Distance and angle from hex center.
@@ -263,103 +264,23 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 
 # --- Serialization ---
 
+## HexGrid has no runtime state to save — terrain lives in the map JSON,
+## and prop deltas will be handled separately when needed.
 func get_save_data() -> Dictionary:
-	var tiles_data: Array = []
-	for coords in _tiles:
-		var tile: Resource = _tiles[coords]
-		var props_data: Array = []
-		for prop in tile.props:
-			props_data.append({
-				"type": String(prop.type),
-				"origin": prop.origin,
-				"sub_hex_q": prop.sub_hex.x,
-				"sub_hex_r": prop.sub_hex.y,
-				"remaining": prop.remaining,
-				"max_amount": prop.max_amount,
-				"tool_required": String(prop.tool_required),
-				"respawn_time": prop.respawn_time,
-				"rotation": prop.rotation_deg,
-			})
-		tiles_data.append({
-			"tile_col": coords.x,
-			"tile_row": coords.y,
-			"biome": tile.biome,
-			"elevation": tile.elevation,
-			"props": props_data,
-		})
-	return {
-		"seed": _seed,
-		"tiles": tiles_data,
-	}
+	return {}
 
 
 func load_map(path: String) -> bool:
 	var loader = load("res://scripts/hex/map_loader.gd").new(self)
 	var ok: bool = loader.load_map(path)
 	if ok:
-		# Record the active map so SaveManager can persist progression
-		# across sessions. Store just the filename relative to
-		# `res://data/maps/`, matching GameSettings.starting_map.
 		SaveManager.current_map = path.get_file()
 	return ok
 
 
-func load_save_data(data: Dictionary) -> void:
-	_tiles.clear()
-	_seed = int(data.get("seed", 0))
-	var tiles_array: Array = data.get("tiles", [])
-	for td in tiles_array:
-		if not td.has("tile_col") or not td.has("tile_row"):
-			push_warning("HexGrid.load_save_data: tile entry missing coords, skipped")
-			continue
-		var tile: Resource = _HexTile.new()
-		var coords := Vector2i(int(td["tile_col"]), int(td["tile_row"]))
-		tile.coords = coords
-		tile.biome = int(td.get("biome", _HexTile.Biome.GRASSLAND))
-		tile.elevation = int(td.get("elevation", 0))
-		# Legacy "fog" key from old saves is silently ignored.
-
-		if td.has("props"):
-			# New save format: unified props array
-			for pd in td["props"]:
-				var prop_type: StringName = StringName(pd.get("type", ""))
-				if prop_type == &"":
-					push_warning("HexGrid.load_save_data: prop entry missing type at %s, skipped" % coords)
-					continue
-				var prop: Resource = _Prop.new()
-				prop.type = prop_type
-				prop.origin = int(pd.get("origin", _Prop.Origin.NATURAL))
-				prop.sub_hex = Vector2i(int(pd.get("sub_hex_q", 0)), int(pd.get("sub_hex_r", 0)))
-				prop.remaining = int(pd.get("remaining", 0))
-				prop.max_amount = int(pd.get("max_amount", 0))
-				prop.tool_required = StringName(pd.get("tool_required", ""))
-				prop.respawn_time = float(pd.get("respawn_time", 0.0))
-				prop.rotation_deg = float(pd.get("rotation", 0.0))
-				tile.props.append(prop)
-		else:
-			# Legacy save format: "resources" + "structure" + "anomaly"
-			for rd in td.get("resources", []):
-				var legacy_type: StringName = StringName(rd.get("type", ""))
-				if legacy_type == &"":
-					continue
-				tile.props.append(_Prop.create_prop(
-					legacy_type,
-					int(rd.get("remaining", 0)),
-					int(rd.get("max", 0)),
-					StringName(rd.get("tool", "")),
-				))
-
-			var structure_str: String = td.get("structure", "")
-			if structure_str != "":
-				tile.props.append(_Prop.create_structure(
-					StringName(structure_str),
-				))
-
-			var anomaly_str: String = td.get("anomaly", "")
-			if anomaly_str != "":
-				tile.props.append(_Prop.create_anomaly(StringName(anomaly_str)))
-
-		_tiles[coords] = tile
+## No-op — HexGrid state comes from the map JSON via load_map().
+func load_save_data(_data: Dictionary) -> void:
+	pass
 
 
 

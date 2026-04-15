@@ -6,8 +6,6 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 
-const TILE_COUNT_MIN: int = 200
-const TILE_COUNT_MAX: int = 300
 
 var _grid: Node
 var _biome_data: Dictionary = {}    # biome_id (String) -> BiomeData
@@ -82,6 +80,7 @@ func load_map(path: String) -> bool:
 	# Step 2 & 3: Create HexTile objects and register in HexGrid._tiles
 	_grid._tiles.clear()
 	var tiles_dict: Dictionary = root["tiles"]
+	var _water_tiles_with_level: Dictionary = {}  # coords → true if waterLevel from JSON
 
 	for key in tiles_dict:
 		var parts := str(key).split(",")
@@ -98,6 +97,19 @@ func load_map(path: String) -> bool:
 		tile.coords = coords
 		tile.biome = biome_int
 		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
+
+		# Walls: 6-boolean array [E,NE,NW,W,SW,SE]. Defaults to all-false.
+		# Only shoreline walls (water↔land with diff) are auto-computed.
+		if td.has("walls") and td["walls"] is Array and td["walls"].size() == 6:
+			var w: Array[bool] = []
+			for v in td["walls"]:
+				w.append(bool(v))
+			tile.walls = w
+		if td.has("waterLevel"):
+			tile.water_level = clampi(int(td["waterLevel"]), -32000, 32000)
+			_water_tiles_with_level[coords] = true
+		if td.has("waterType"):
+			tile.water_type = String(td["waterType"])
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):
@@ -149,6 +161,47 @@ func load_map(path: String) -> bool:
 
 		_grid._tiles[coords] = tile
 
+	# Compute water_level for water tiles that don't have it in JSON.
+	for c: Variant in _grid._tiles:
+		if _water_tiles_with_level.has(c):
+			continue
+		var t: Resource = _grid._tiles[c]
+		if t.biome != _HexTile.Biome.WATER:
+			continue
+		# Compute: min elevation of adjacent dry tiles
+		var crd: Vector2i = c as Vector2i
+		var min_dry: int = 32000
+		for d: int in range(6):
+			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_t: Resource = _grid._tiles.get(n_crd, null)
+			if n_t == null or n_t.biome == _HexTile.Biome.WATER:
+				continue
+			if n_t.elevation < min_dry:
+				min_dry = n_t.elevation
+		if min_dry < 32000:
+			t.water_level = maxi(t.elevation, min_dry)
+		else:
+			# Open water (no dry neighbors) — surface at own elevation
+			t.water_level = t.elevation
+
+	# Walls default to all-false (no walls). Placement is manual via editor.
+	# Exception: water↔land shoreline gets wall only when elevation differs.
+	for c: Variant in _grid._tiles:
+		var t: Resource = _grid._tiles[c]
+		var crd: Vector2i = c as Vector2i
+		var t_water: bool = t.biome == _HexTile.Biome.WATER
+		for d: int in range(6):
+			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_t: Resource = _grid._tiles.get(n_crd, null)
+			if n_t == null:
+				continue
+			if t_water != (n_t.biome == _HexTile.Biome.WATER):
+				# Water surface vs land elevation — wall only if different
+				var water_tile: Resource = t if t_water else n_t
+				var land_tile: Resource = n_t if t_water else t
+				if water_tile.water_level != land_tile.elevation:
+					t.walls[d] = true
+
 	# Step 4: Store spawn position and starting loadout on the grid.
 	_grid.spawn_tile = spawn
 	_grid.spawn_sub_hex = spawn_sub_hex
@@ -186,49 +239,12 @@ func _make_prop(type: StringName, _biome_int: int) -> Resource:
 
 
 func _validate(spawn: Vector2i) -> void:
-	var count: int = _grid.get_tile_count()
-	if count < TILE_COUNT_MIN or count > TILE_COUNT_MAX:
-		push_warning("MapLoader: tile count %d not in [%d,%d]" % [count, TILE_COUNT_MIN, TILE_COUNT_MAX])
-
 	var spawn_tile: Resource = _grid.get_tile(spawn)
 	if spawn_tile == null:
 		push_warning("MapLoader: spawn tile %s does not exist" % str(spawn))
-	var biomes: Dictionary = {}
-	var has_anomaly: bool = false
+
 	var all_tiles: Dictionary = _grid.get_all_tiles()
 	for c in all_tiles:
 		var t: Resource = all_tiles[c]
-		biomes[t.biome] = true
-		for p in t.props:
-			if p.is_anomaly():
-				has_anomaly = true
-				break
 		if t.elevation < -32000 or t.elevation > 32000:
 			push_warning("MapLoader: tile %s has invalid elevation %d" % [str(c), t.elevation])
-
-	_validate_reachability(spawn)
-
-
-func _validate_reachability(spawn: Vector2i) -> void:
-	if not _grid.has_tile(spawn):
-		return
-
-	var reachable: Dictionary = {spawn: true}
-	var queue: Array[Vector2i] = [spawn]
-	while queue.size() > 0:
-		var cur: Vector2i = queue.pop_front()
-		for n in _HexMath.get_neighbors(cur):
-			if reachable.has(n) or not _grid.has_tile(n):
-				continue
-			if _grid.is_passable(cur, n):
-				reachable[n] = true
-				queue.append(n)
-
-	var all_tiles: Dictionary = _grid.get_all_tiles()
-	for c in all_tiles:
-		var coords: Vector2i = c
-		var t: Resource = all_tiles[coords]
-		if t.biome != _HexTile.Biome.WATER and not reachable.has(coords):
-			push_warning("MapLoader: tile %s (biome=%d elev=%d) unreachable from spawn" % [
-				str(coords), t.biome, t.elevation
-			])

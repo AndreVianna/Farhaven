@@ -390,7 +390,9 @@ function passBiomes(hexMap, coords, o) {
       cell.elevation = 0;
     } else if (cell.isWater) {
       cell.biome = biomeFor('water');
-      cell.elevation = 0; // water surface
+      // Keep elevation as depth (bottom of water body).
+      // waterLevel computed in a post-pass after all biomes assigned.
+      cell.elevation = Math.round(cell.elevation);
     } else {
       // Whittaker lookup: elevation (normalized) × moisture
       const eNorm = cell.elevation / maxElev; // 0-1
@@ -418,46 +420,54 @@ function passBiomes(hexMap, coords, o) {
 // an elevation diff ≤ 4 (the max step-up height in-game).
 
 function passAccessibility(hexMap, coords, o) {
-  const MAX_STEP = 4;
+  // Must match engine: JUMP_MAX_DIFF = 4, traversal uses abs(diff).
+  // Water blocks traversal. Rocky does NOT block (it's just terrain).
+  const MAX_DIFF = 4;
 
-  // Detect biome IDs for water and rocky
   const biomeFiles = [...ProjectContext.files.biomes.keys()];
   const biomeSet = new Set(biomeFiles.map(f => f.replace('.tres', '')));
   const waterBiome = biomeSet.has('B00005') ? 'B00005' : null;
   const rockyBiome = biomeSet.has('B00004') ? 'B00004' : null;
 
-  // Helper: get highest non-water, non-rocky neighbor elevation
-  function highestLandNeighborElev(q, r) {
-    let best = 0;
-    for (const dir of HexMath.DIRECTIONS) {
-      const nk = hexKey(q + dir.q, r + dir.r);
-      const neighbor = hexMap.get(nk);
-      if (!neighbor || neighbor.isWater || neighbor.biome === rockyBiome) continue;
-      if (neighbor.elevation > best) best = neighbor.elevation;
-    }
-    return best;
-  }
-
-  function isSkippable(cell) {
+  function isWaterTile(cell) {
     return !cell || cell.isWater || cell.biome === waterBiome;
   }
 
-  // Accessible from below = at least one non-water, non-rocky neighbor
-  // with elevation between (tile - MAX_STEP) and tile (inclusive).
-  // Neighbors above the tile don't count (not "coming from below").
-  // Neighbors more than MAX_STEP below don't count (too steep).
-  function isAccessibleFromLand(q, r) {
+  // Accessible from below: at least one non-water neighbor with
+  // elevation between (tile - MAX_DIFF) and tile. Only uphill access
+  // counts — neighbors above the tile don't provide access.
+  function isReachable(q, r) {
     const cell = hexMap.get(hexKey(q, r));
     if (!cell) return true;
+    if (isWaterTile(cell)) return true;
     const elev = cell.elevation;
     for (const dir of HexMath.DIRECTIONS) {
       const nk = hexKey(q + dir.q, r + dir.r);
       const neighbor = hexMap.get(nk);
-      if (!neighbor || neighbor.isWater || neighbor.biome === waterBiome || neighbor.biome === rockyBiome) continue;
+      if (!neighbor || isWaterTile(neighbor)) continue;
       const diff = elev - neighbor.elevation;
-      if (diff >= 0 && diff <= MAX_STEP) return true;
+      if (diff >= 0 && diff <= MAX_DIFF) return true;
     }
     return false;
+  }
+
+  // Closest non-water neighbor elevation (for smoothing target)
+  function closestNeighborElev(q, r) {
+    const cell = hexMap.get(hexKey(q, r));
+    if (!cell) return 0;
+    let bestElev = 0;
+    let bestDiff = Infinity;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(q + dir.q, r + dir.r);
+      const neighbor = hexMap.get(nk);
+      if (!neighbor || isWaterTile(neighbor)) continue;
+      const diff = Math.abs(cell.elevation - neighbor.elevation);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestElev = neighbor.elevation;
+      }
+    }
+    return bestElev;
   }
 
   // Step 1: Promote inaccessible high tiles (≥10) to Rocky — repeat until stable
@@ -468,8 +478,8 @@ function passAccessibility(hexMap, coords, o) {
       changed = false;
       for (const { q, r } of coords) {
         const cell = hexMap.get(hexKey(q, r));
-        if (isSkippable(cell) || cell.biome === rockyBiome) continue;
-        if (cell.elevation >= 10 && !isAccessibleFromLand(q, r)) {
+        if (isWaterTile(cell) || cell.biome === rockyBiome) continue;
+        if (cell.elevation >= 10 && !isReachable(q, r)) {
           cell.biome = rockyBiome;
           totalPromoted++;
           changed = true;
@@ -478,20 +488,30 @@ function passAccessibility(hexMap, coords, o) {
     }
   }
 
-  // Step 2: Clamp inaccessible non-water, non-rocky tiles to highest non-rocky neighbor + MAX_STEP
-  let smoothed = 0;
-  for (const { q, r } of coords) {
-    const cell = hexMap.get(hexKey(q, r));
-    if (isSkippable(cell) || cell.biome === rockyBiome) continue;
-    if (!isAccessibleFromLand(q, r)) {
-      const target = highestLandNeighborElev(q, r) + MAX_STEP;
-      cell.elevation = target;
-      smoothed++;
+  // Step 2: Smooth unreachable non-water tiles — clamp to nearest neighbor ± MAX_DIFF
+  // Iterate with a safety limit to avoid infinite loops on isolated clusters.
+  let totalSmoothed = 0;
+  const MAX_PASSES = 20;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let changed = false;
+    for (const { q, r } of coords) {
+      const cell = hexMap.get(hexKey(q, r));
+      if (isWaterTile(cell)) continue;
+      if (!isReachable(q, r)) {
+        const target = closestNeighborElev(q, r);
+        const newElev = cell.elevation > target ? target + MAX_DIFF : target - MAX_DIFF;
+        if (newElev !== cell.elevation) {
+          cell.elevation = newElev;
+          totalSmoothed++;
+          changed = true;
+        }
+      }
     }
+    if (!changed) break;
   }
 
-  if (totalPromoted > 0 || smoothed > 0) {
-    console.log(`passAccessibility: ${totalPromoted} tiles promoted to rocky, ${smoothed} tiles elevation-smoothed`);
+  if (totalPromoted > 0 || totalSmoothed > 0) {
+    console.log(`passAccessibility: ${totalPromoted} tiles promoted to rocky, ${totalSmoothed} tiles elevation-smoothed`);
   }
 }
 
@@ -528,13 +548,35 @@ export function generateMap(opts = {}) {
 
   console.log(`map-generator passes: elev=${(t1-t0).toFixed(0)}ms erosion=${(t2-t1).toFixed(0)}ms hydro=${(t3-t2).toFixed(0)}ms moisture=${(t4-t3).toFixed(0)}ms biomes=${(t5-t4).toFixed(0)}ms access=${(t6-t5).toFixed(0)}ms total=${(t6-t0).toFixed(0)}ms`);
 
+  // Compute waterLevel for water tiles (min elevation of adjacent dry neighbors)
+  const waterBiomeId = (() => {
+    const bf = [...ProjectContext.files.biomes.keys()];
+    return new Set(bf.map(f => f.replace('.tres', ''))).has('B00005') ? 'B00005' : null;
+  })();
+
+  for (const [key, cell] of hexMap) {
+    if (cell.biome !== waterBiomeId) continue;
+    let minDry = Infinity;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nk = hexKey(cell.q + dir.q, cell.r + dir.r);
+      const n = hexMap.get(nk);
+      if (!n || n.biome === waterBiomeId) continue;
+      if (n.elevation < minDry) minDry = n.elevation;
+    }
+    cell.waterLevel = minDry === Infinity ? Math.round(cell.elevation) : Math.max(Math.round(cell.elevation), Math.round(minDry));
+  }
+
   // Build output tiles
   const tiles = {};
   for (const [key, cell] of hexMap) {
-    tiles[key] = {
+    const t = {
       biome: cell.biome || 'B00002',
       elevation: typeof cell.elevation === 'number' ? Math.round(cell.elevation) : 0,
     };
+    if (cell.waterLevel != null) {
+      t.waterLevel = Math.round(cell.waterLevel);
+    }
+    tiles[key] = t;
   }
 
   return {

@@ -240,7 +240,9 @@ func _rebuild_mesh() -> void:
 			)
 			if not corner_map.has(pos_key):
 				corner_map[pos_key] = []
-			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = tile.elevation, is_water = (tile.biome == _HexTile.Biome.WATER)})
+			# Water tiles use water_level (surface) for corner sharing, not elevation (depth).
+			var surface_elev: int = tile.water_level if tile.biome == _HexTile.Biome.WATER else tile.elevation
+			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = surface_elev, is_water = (tile.biome == _HexTile.Biome.WATER)})
 
 	# Step 3: Average corner colors per elevation group.
 	var corner_colors: Dictionary = {}
@@ -257,7 +259,8 @@ func _rebuild_mesh() -> void:
 			for other: Dictionary in entries:
 				if entry_is_water != other.is_water:
 					continue
-				if absi(elev - other.elevation) <= 2:
+				# Water is always smooth — skip elevation diff check
+				if entry_is_water or absi(elev - other.elevation) <= 2:
 					r += (other.color as Color).r
 					g += (other.color as Color).g
 					b += (other.color as Color).b
@@ -290,21 +293,26 @@ func _rebuild_mesh() -> void:
 
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		var elev: float = float(tile.elevation)
-		var elev_y: float = elev * ELEVATION_STEP
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		# Water tiles render at water_level (surface), not elevation (depth).
+		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
+		var elev_y: float = elev * ELEVATION_STEP
 
 		var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
 		for d: int in range(6):
+			# If this edge has a wall, keep own elevation (cliff face).
+			if tile.walls[d]:
+				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
-			var diff: int = absi(tile.elevation - n_tile.elevation)
-			if diff <= 2:
-				ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+			# No wall → slope: average the two surface elevations.
+			# Water tiles use water_level (surface), land tiles use elevation.
+			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
 		var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
@@ -313,15 +321,18 @@ func _rebuild_mesh() -> void:
 			var cnt: int = 1
 			var dir_pair: Array = corner_neighbor_dirs[ci]
 			for d: int in dir_pair:
+				# Skip neighbors across a wall edge
+				if tile.walls[d]:
+					continue
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 				if n_tile == null:
 					continue
 				if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 					continue
-				if absi(tile.elevation - n_tile.elevation) <= 2:
-					sum_e += float(n_tile.elevation)
-					cnt += 1
+				var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+				sum_e += n_elev
+				cnt += 1
 			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 		all_corner_y[coords] = cy
 
@@ -355,9 +366,9 @@ func _rebuild_mesh() -> void:
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
-		var elevation_y: float = float(tile.elevation) * ELEVATION_STEP
-		var center_color: Color = tile_colors[coords]
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var elevation_y: float = (float(tile.water_level) if is_water else float(tile.elevation)) * ELEVATION_STEP
+		var center_color: Color = tile_colors[coords]
 		var corner_y: Array[float] = all_corner_y[coords]
 		var edge_y: Array[float] = all_edge_y[coords]
 		# Per-tile UV rotation (0/90/180/270°) — multiplies effective
@@ -420,11 +431,7 @@ func _rebuild_mesh() -> void:
 					var cb: int = (ei + 1) % 6
 					target_col = corner_colors_at[ca].lerp(corner_colors_at[cb], 0.5)
 
-				var vy: float
-				if is_water:
-					vy = elevation_y
-				else:
-					vy = lerpf(elevation_y, target_y, s)
+				var vy: float = lerpf(elevation_y, target_y, s)
 				ring_pos.append(Vector3(vx, vy, vz))
 				ring_col.append(center_color.lerp(target_col, t))
 				# UV: hex-local, with per-tile rotation about (0.5, 0.5).
@@ -502,19 +509,31 @@ func _rebuild_mesh() -> void:
 	# Step 6: Wall faces — color-only bucket.
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		if tile.biome == _HexTile.Biome.WATER:
-			continue
 		var world_2d: Vector2 = HexMath.axial_to_world(coords)
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
 
 		for d: int in range(6):
+			if not tile.walls[d]:
+				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			if n_tile != null and n_tile.biome != _HexTile.Biome.WATER and n_tile.elevation >= tile.elevation:
+			# Skip if current tile is water and neighbor is higher land
+			# (land tile draws the shoreline cliff from its side).
+			if tile.biome == _HexTile.Biome.WATER and n_tile != null \
+					and n_tile.biome != _HexTile.Biome.WATER \
+					and n_tile.elevation > tile.water_level:
 				continue
 
-			var cliff_color: Color = tile_colors[coords] * 0.6
+			# Water walls get blue color; land walls get darkened biome color.
+			var cliff_color: Color
+			var foam_color: Color
+			if tile.biome == _HexTile.Biome.WATER:
+				cliff_color = Color(0.15, 0.35, 0.7, 1.0)  # water blue
+				foam_color = Color(0.85, 0.92, 0.98, 1.0)  # white foam
+			else:
+				cliff_color = tile_colors[coords] * 0.6
+				foam_color = cliff_color  # no foam for land cliffs
 			var ec: Array = edge_corners[d]
 			var ca_idx: int = ec[0]
 			var cb_idx: int = ec[1]
@@ -542,7 +561,7 @@ func _rebuild_mesh() -> void:
 			var l_mid_y: float
 			var l_cb_y: float
 			if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
-				var water_y: float = float(n_tile.elevation) * ELEVATION_STEP
+				var water_y: float = float(n_tile.water_level) * ELEVATION_STEP
 				l_ca_y = water_y
 				l_mid_y = water_y
 				l_cb_y = water_y
@@ -560,15 +579,15 @@ func _rebuild_mesh() -> void:
 					l_mid_y = n_ey[rev_d]
 					l_ca_y = n_cy[rev_ec[1]]
 				else:
-					var low_y: float = float(n_tile.elevation) * ELEVATION_STEP
-					l_ca_y = low_y
-					l_mid_y = low_y
-					l_cb_y = low_y
+					var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+					l_ca_y = n_surface
+					l_mid_y = n_surface
+					l_cb_y = n_surface
 			elif n_tile != null:
-				var low_y: float = float(n_tile.elevation) * ELEVATION_STEP
-				l_ca_y = low_y
-				l_mid_y = low_y
-				l_cb_y = low_y
+				var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+				l_ca_y = n_surface
+				l_mid_y = n_surface
+				l_cb_y = n_surface
 			else:
 				l_ca_y = 0.0
 				l_mid_y = 0.0
@@ -592,21 +611,21 @@ func _rebuild_mesh() -> void:
 			var l2 := Vector3(cb_x, l_cb_y, cb_z)
 
 			var cst: SurfaceTool = _get_bucket.call(CLIFF_KEY)
-			# Tri 1: h0, l0, l1
+			# Tri 1: h0, l0, l1 — h vertices get cliff_color, l vertices get foam_color
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
 			# Tri 2: h0, l1, h1
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
 			# Tri 3: h1, l1, l2
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
 			# Tri 4: h1, l2, h2
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h2)
 
 	# Step 7: Commit every bucket.
