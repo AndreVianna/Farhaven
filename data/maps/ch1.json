@@ -361641,7 +361641,7 @@
 			"elevation": 0,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -365121,7 +365121,7 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -368529,7 +368529,7 @@
 			"elevation": 3,
 			"walls": [
 				false,
-				true,
+				false,
 				true,
 				true,
 				true,
@@ -372012,7 +372012,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false
 			]
 		},
@@ -375512,7 +375512,7 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -375525,7 +375525,7 @@
 			"elevation": 1,
 			"walls": [
 				true,
-				true,
+				false,
 				false,
 				false,
 				true,
@@ -375560,7 +375560,7 @@
 			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
-				false,
+				true,
 				false,
 				false,
 				false,
@@ -379021,7 +379021,7 @@
 				false,
 				false,
 				false,
-				true
+				false
 			]
 		},
 		"-8,-10": {
@@ -379030,9 +379030,9 @@
 			"walls": [
 				false,
 				true,
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				true
 			]
 		},
@@ -382557,7 +382557,7 @@
 			"elevation": 3,
 			"walls": [
 				false,
-				true,
+				false,
 				true,
 				false,
 				true,
@@ -386060,7 +386060,7 @@
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -386073,7 +386073,7 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				true,
+				false,
 				false,
 				false,
 				true,
@@ -386088,17 +386088,17 @@
 				false,
 				false,
 				true,
-				true,
-				true
+				false,
+				false
 			]
 		},
 		"-6,-10": {
 			"biome": "B00002",
 			"elevation": 4,
 			"walls": [
+				false,
 				true,
-				true,
-				true,
+				false,
 				false,
 				true,
 				true
@@ -389612,12 +389612,12 @@
 			"biome": "B00002",
 			"elevation": 3,
 			"walls": [
+				false,
 				true,
 				true,
-				true,
-				true,
-				true,
-				true
+				false,
+				false,
+				false
 			]
 		},
 		"-5,-12": {
@@ -389626,7 +389626,7 @@
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -389651,7 +389651,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				true,
 				true
 			]
@@ -393179,7 +393179,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -393217,19 +393217,19 @@
 				false,
 				false,
 				true,
-				true
+				false
 			]
 		},
 		"-4,-9": {
 			"biome": "B00002",
 			"elevation": 5,
 			"walls": [
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				true,
 				false,
-				true
+				false
 			]
 		},
 		"-4,-8": {
@@ -393238,7 +393238,7 @@
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -396781,7 +396781,7 @@
 				false,
 				false,
 				false,
-				true
+				false
 			]
 		},
 		"-3,-10": {
@@ -396790,9 +396790,9 @@
 			"walls": [
 				false,
 				false,
-				true,
 				false,
-				true,
+				false,
+				false,
 				false
 			]
 		},
@@ -396803,7 +396803,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -400376,8 +400376,8 @@
 			"biome": "B00002",
 			"elevation": 3,
 			"walls": [
-				true,
-				true,
+				false,
+				false,
 				false,
 				false,
 				false,
@@ -400388,7 +400388,7 @@
 			"biome": "B00002",
 			"elevation": 2,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -403968,7 +403968,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false
 			]
 		},
@@ -403979,7 +403979,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -403991,7 +403991,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
