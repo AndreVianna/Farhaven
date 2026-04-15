@@ -80,6 +80,7 @@ func load_map(path: String) -> bool:
 	# Step 2 & 3: Create HexTile objects and register in HexGrid._tiles
 	_grid._tiles.clear()
 	var tiles_dict: Dictionary = root["tiles"]
+	var _tiles_with_walls: Dictionary = {}  # coords → true if walls came from JSON
 
 	for key in tiles_dict:
 		var parts := str(key).split(",")
@@ -104,6 +105,7 @@ func load_map(path: String) -> bool:
 			for v in td["walls"]:
 				w.append(bool(v))
 			tile.walls = w
+			_tiles_with_walls[coords] = true
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):
@@ -156,10 +158,11 @@ func load_map(path: String) -> bool:
 		_grid._tiles[coords] = tile
 
 	# Step 3b: Compute default walls for tiles that lack them (legacy maps).
+	# Tiles that HAD walls in JSON (even all-false) keep their values.
 	for c: Variant in _grid._tiles:
+		if _tiles_with_walls.has(c):
+			continue
 		var t: Resource = _grid._tiles[c]
-		if t.walls.any(func(w: bool) -> bool: return w):
-			continue  # already has walls from JSON
 		var crd: Vector2i = c as Vector2i
 		for d: int in range(6):
 			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
