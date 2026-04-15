@@ -2,7 +2,7 @@
 // CommandHistory (task-004)
 // ============================================================
 
-import { createTileData, recomputeWallsAround } from './hex-grid.js';
+import { createTileData } from './hex-grid.js';
 
 export class CommandHistory {
   constructor() {
@@ -182,7 +182,6 @@ export class SetElevationCommand {
     }
     tile.elevation = this.newElevation;
     this.grid.setTile(this.q, this.r, tile);
-    recomputeWallsAround(this.grid, this.q, this.r);
   }
   undo() {
     if (this._created) {
@@ -194,7 +193,6 @@ export class SetElevationCommand {
         this.grid.setTile(this.q, this.r, tile);
       }
     }
-    recomputeWallsAround(this.grid, this.q, this.r);
   }
 }
 

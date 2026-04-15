@@ -375,7 +375,6 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       tile.elevation = typeof tileJson.elevation === 'number' ? tileJson.elevation : 0;
       if (Array.isArray(tileJson.walls) && tileJson.walls.length === 6) {
         tile.walls = tileJson.walls.map(v => !!v);
-        tile._wallsFromJson = true; // flag: keep these, don't recompute
       }
 
       // New format: props array present
@@ -410,15 +409,7 @@ export function loadMapIntoGrid(hexGrid, mapData) {
     }
   }
 
-  // Compute default walls for tiles that didn't have the field in JSON.
-  // Tiles that HAVE walls (even all-false = no walls) keep their values.
-  for (const [key, tile] of hexGrid.tiles) {
-    if (!tile._wallsFromJson) {
-      const { q, r } = HexGrid.parseKey(key);
-      tile.walls = computeDefaultWalls(hexGrid, q, r);
-    }
-    delete tile._wallsFromJson;
-  }
+  // Walls default to all-false. Placement is manual via wall tool.
 
   return { success: true };
 }
