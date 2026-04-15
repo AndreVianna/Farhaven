@@ -319,7 +319,10 @@ export class HexCanvas {
     // textures haven't loaded yet. Elevation no longer tints the colour —
     // with the range now ±32000 there's no sensible brightness curve and
     // the old `*(1 + elev*0.05)` washed high-elevation tiles to white.
-    const color = this.biomeColorMap.get(tile.biome) || BIOME_FALLBACK_COLOR;
+    // Water tiles use compound key for color lookup (B00005:leveled or B00005:flowing)
+    const colorKey = tile.biome === 'B00005' && tile.waterType
+      ? `${tile.biome}:${tile.waterType}` : tile.biome;
+    const color = this.biomeColorMap.get(colorKey) || BIOME_FALLBACK_COLOR;
 
     this._traceHexPath(corners);
     ctx.fillStyle = color;
@@ -397,14 +400,12 @@ export class HexCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    if (tile.biome === 'B00005' && tile.waterLevel != null) {
-      // Water tiles: show waterLevel (surface) on top, elevation (depth) below
-      const smallFont = Math.max(6, 9 * this.camera.zoom);
-      ctx.fillStyle = 'rgba(200,230,255,0.9)';
-      ctx.fillText(String(tile.waterLevel), screen.x, screen.y - fontSize * 0.4);
-      ctx.font = `${smallFont}px sans-serif`;
-      ctx.fillStyle = 'rgba(160,200,255,0.6)';
-      ctx.fillText(`d:${tile.elevation}`, screen.x, screen.y + fontSize * 0.5);
+    if (tile.biome === 'B00005') {
+      // Water tiles: show only depth (elevation)
+      if (tile.elevation !== 0) {
+        ctx.fillStyle = 'rgba(160,200,255,0.7)';
+        ctx.fillText(String(tile.elevation), screen.x, screen.y);
+      }
     } else if (tile.elevation !== 0) {
       ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
       ctx.fillText(String(tile.elevation), screen.x, screen.y);

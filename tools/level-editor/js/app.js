@@ -722,6 +722,12 @@ function initializeAfterLoad() {
       console.warn(`  Biome "${filename}" has no valid color field.`);
     }
   }
+  // Virtual water type entries
+  if (biomeColorMap.has('B00005')) {
+    biomeColorMap.delete('B00005');
+    biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
+    biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
+  }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
   // Build prop color map from loaded .tres data (stored in files.props)
@@ -959,6 +965,13 @@ function _rebuildColorMaps() {
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
     }
   }
+  // Virtual water type entries (same biome B00005, different display color)
+  if (biomeColorMap.has('B00005')) {
+    biomeColorMap.delete('B00005');
+    biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
+    biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
+  }
+
   propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.props) {
     const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
@@ -1109,23 +1122,27 @@ function _initBiomePalette() {
   if (!container) return;
   container.innerHTML = '';
 
-  for (const [biomeName, color] of biomeColorMap) {
+  for (const [paletteKey, color] of biomeColorMap) {
     const item = document.createElement('div');
     item.className = 'palette-item';
-    item.dataset.value = biomeName;
+    item.dataset.value = paletteKey;
 
     const swatch = document.createElement('span');
     swatch.className = 'biome-swatch';
     swatch.style.backgroundColor = color;
 
-    // Show display name from .tres if available, otherwise the ID.
-    // Accepts `display_name` (Gear-based B00NNN format) or the legacy
-    // `biome_name` for any files that haven't been re-saved yet.
-    const biomeEntry = ProjectContext.files.biomes.get(biomeName + '.tres');
+    // Parse compound key: 'B00005:leveled' → biomeId='B00005', waterType='leveled'
+    const [biomeId, waterType] = paletteKey.includes(':') ? paletteKey.split(':') : [paletteKey, null];
+
+    // Show display name from .tres if available
+    const biomeEntry = ProjectContext.files.biomes.get(biomeId + '.tres');
     const entryData = biomeEntry && biomeEntry.data;
-    const displayName = (entryData && (entryData.display_name || entryData.biome_name))
+    let displayName = (entryData && (entryData.display_name || entryData.biome_name))
       ? String(entryData.display_name || entryData.biome_name)
-      : biomeName;
+      : biomeId;
+    if (waterType) {
+      displayName += waterType === 'leveled' ? ' (Leveled)' : ' (Flowing)';
+    }
     const label = document.createElement('span');
     label.textContent = displayName;
 
@@ -1133,10 +1150,10 @@ function _initBiomePalette() {
     item.appendChild(label);
 
     item.addEventListener('click', () => {
-      toolManager.setTool('biome', biomeName);
+      toolManager.setTool('biome', paletteKey);
       if (hexCanvas) hexCanvas.toolManager = toolManager;
       updateSidebar();
-      setStatus(`Tool: biome — ${biomeName}`);
+      setStatus(`Tool: biome — ${displayName}`);
     });
 
     container.appendChild(item);

@@ -175,10 +175,12 @@ export class BiomeBrush extends DragBrushTool {
   _applyToHex(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
     const oldBiome = tile ? tile.biome : '';
-    const newBiome = this.toolManager.activeValue || '';
-    if (oldBiome === newBiome) return;
+    // Parse compound value: 'B00005:flowing' → biome='B00005', waterType='flowing'
+    const rawValue = this.toolManager.activeValue || '';
+    const [newBiome, waterType] = rawValue.includes(':') ? rawValue.split(':') : [rawValue, null];
+    if (oldBiome === newBiome && (!waterType || (tile && tile.waterType === waterType))) return;
 
-    const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, oldBiome, newBiome);
+    const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, oldBiome, newBiome, waterType);
     this.commandHistory.execute(cmd);
     this._dragCommands.push(cmd);
   }

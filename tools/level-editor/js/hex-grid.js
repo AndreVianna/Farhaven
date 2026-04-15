@@ -117,7 +117,7 @@ export const DEFAULT_WALLS = [false, false, false, false, false, false];
  * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[] }}
  */
 export function createTileData(biome = '') {
-  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null };
+  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null, waterType: null };
 }
 
 /**
@@ -402,6 +402,9 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       if (typeof tileJson.waterLevel === 'number') {
         tile.waterLevel = tileJson.waterLevel;
       }
+      if (tileJson.waterType) {
+        tile.waterType = tileJson.waterType;
+      }
 
       // New format: props array present
       if (Array.isArray(tileJson.props)) {
@@ -482,6 +485,9 @@ export function serializeGridToMapJson(hexGrid) {
     };
     if (tile.waterLevel != null) {
       entry.waterLevel = tile.waterLevel;
+    }
+    if (tile.waterType) {
+      entry.waterType = tile.waterType;
     }
     if (tile.props && tile.props.length > 0) {
       entry.props = tile.props.map(p => {

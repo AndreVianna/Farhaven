@@ -106,6 +106,8 @@ func load_map(path: String) -> bool:
 			tile.walls = w
 		if td.has("waterLevel"):
 			tile.water_level = int(td["waterLevel"])
+		if td.has("waterType"):
+			tile.water_type = String(td["waterType"])
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):

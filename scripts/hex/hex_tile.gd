@@ -21,6 +21,8 @@ enum Biome {
 ## Water surface elevation. Only meaningful for WATER biome tiles.
 ## elevation = bottom depth, water_level = surface height.
 @export var water_level: int = 0
+## Water behavior type: 'leveled' (lakes) or 'flowing' (rivers).
+@export var water_type: String = ""
 
 
 ## Returns all natural-origin props (non-structure, non-anomaly).

@@ -183,19 +183,19 @@ export class SetBiomeCommand {
    * @param {string} oldBiome
    * @param {string} newBiome
    */
-  constructor(grid, q, r, oldBiome, newBiome) {
+  constructor(grid, q, r, oldBiome, newBiome, waterType = null) {
     this.grid = grid;
     this.q = q;
     this.r = r;
     this.oldBiome = oldBiome;
     this.newBiome = newBiome;
+    this.waterType = waterType;
     this.tab = 'map';
     this.type = 'SetBiome';
-    // Capture existence state before execute so undo can distinguish
-    // "restore old biome on an existing tile" from "delete the tile
-    // we just created". Without this the old undo set biome to '' and
-    // left a ghost gray tile behind.
     this._tileExistedBefore = grid.hasTile(q, r);
+    // Save old waterType for undo
+    const existingTile = grid.getTile(q, r);
+    this._oldWaterType = existingTile ? existingTile.waterType : null;
   }
   execute() {
     let tile = this.grid.getTile(this.q, this.r);
@@ -206,17 +206,35 @@ export class SetBiomeCommand {
       tile.biome = this.newBiome;
       this.grid.setTile(this.q, this.r, tile);
     }
+    tile.waterType = this.waterType;
+    // Compute waterLevel for new water tiles
+    if (this.newBiome === 'B00005') {
+      tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+    } else {
+      tile.waterLevel = null;
+      tile.waterType = null;
+    }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
   undo() {
     if (!this._tileExistedBefore) {
       this.grid.deleteTile(this.q, this.r);
+      _updateWaterNeighbors(this.grid, this.q, this.r);
       return;
     }
     const tile = this.grid.getTile(this.q, this.r);
     if (tile) {
       tile.biome = this.oldBiome;
+      tile.waterType = this._oldWaterType;
+      if (this.oldBiome === 'B00005') {
+        tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+      } else {
+        tile.waterLevel = null;
+        tile.waterType = null;
+      }
       this.grid.setTile(this.q, this.r, tile);
     }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
   }
 }
 
