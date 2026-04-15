@@ -361628,7 +361628,7 @@
 			"biome": "B00002",
 			"elevation": 0,
 			"walls": [
-				true,
+				false,
 				true,
 				false,
 				false,
@@ -361641,7 +361641,7 @@
 			"elevation": 0,
 			"walls": [
 				false,
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -365099,18 +365099,18 @@
 				true,
 				true,
 				true,
-				true,
-				true,
-				true
+				false,
+				false,
+				false
 			]
 		},
 		"-12,-4": {
 			"biome": "B00002",
 			"elevation": 1,
 			"walls": [
+				false,
 				true,
-				true,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -365121,7 +365121,7 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -368591,9 +368591,9 @@
 				true,
 				true,
 				true,
-				true,
-				true,
-				true
+				false,
+				false,
+				false
 			]
 		},
 		"-11,-3": {
@@ -368602,7 +368602,7 @@
 			"walls": [
 				false,
 				true,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -375560,7 +375560,7 @@
 			"biome": "B00004",
 			"elevation": 5,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -379076,10 +379076,10 @@
 			"biome": "B00002",
 			"elevation": 3,
 			"walls": [
-				true,
+				false,
 				false,
 				true,
-				true,
+				false,
 				true,
 				false
 			]
@@ -382592,12 +382592,12 @@
 			"biome": "B00002",
 			"elevation": 4,
 			"walls": [
-				true,
+				false,
 				false,
 				true,
 				true,
 				false,
-				true
+				false
 			]
 		},
 		"-7,-6": {
@@ -382606,19 +382606,19 @@
 			"walls": [
 				false,
 				false,
-				true,
-				true,
 				false,
-				true
+				false,
+				false,
+				false
 			]
 		},
 		"-7,-5": {
 			"biome": "B00002",
 			"elevation": 3,
 			"walls": [
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				false,
 				false,
 				false
@@ -382628,7 +382628,7 @@
 			"biome": "B00002",
 			"elevation": 2,
 			"walls": [
-				true,
+				false,
 				false,
 				false,
 				false,
@@ -386120,12 +386120,12 @@
 			"biome": "B00002",
 			"elevation": 4,
 			"walls": [
-				true,
+				false,
 				true,
 				true,
 				true,
 				false,
-				true
+				false
 			]
 		},
 		"-6,-7": {
@@ -386133,9 +386133,9 @@
 			"elevation": 2,
 			"walls": [
 				false,
-				true,
-				true,
-				true,
+				false,
+				false,
+				false,
 				false,
 				false
 			]
@@ -386145,10 +386145,10 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				true,
 				false,
 				false,
-				true,
+				false,
+				false,
 				false
 			]
 		},
@@ -386159,7 +386159,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -386171,7 +386171,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -389672,24 +389672,24 @@
 			"biome": "B00002",
 			"elevation": 6,
 			"walls": [
-				true,
+				false,
 				false,
 				true,
-				true,
-				true,
-				true
+				false,
+				false,
+				false
 			]
 		},
 		"-5,-7": {
 			"biome": "B00002",
 			"elevation": 3,
 			"walls": [
-				true,
-				true,
-				true,
 				false,
-				true,
-				true
+				false,
+				false,
+				false,
+				false,
+				false
 			]
 		},
 		"-5,-6": {
@@ -389698,7 +389698,7 @@
 			"walls": [
 				false,
 				false,
-				true,
+				false,
 				false,
 				false,
 				false
@@ -393239,8 +393239,8 @@
 				false,
 				false,
 				true,
-				true,
-				true,
+				false,
+				false,
 				false
 			]
 		},
@@ -393251,7 +393251,7 @@
 				false,
 				false,
 				false,
-				true,
+				false,
 				false,
 				false
 			]
@@ -396789,11 +396789,11 @@
 			"elevation": 3,
 			"walls": [
 				false,
-				true,
+				false,
 				true,
 				false,
 				true,
-				true
+				false
 			]
 		},
 		"-3,-9": {
@@ -396801,8 +396801,8 @@
 			"elevation": 1,
 			"walls": [
 				false,
-				true,
-				true,
+				false,
+				false,
 				true,
 				false,
 				false
@@ -400368,8 +400368,8 @@
 				false,
 				false,
 				false,
-				true,
-				true
+				false,
+				false
 			]
 		},
 		"-2,-10": {
@@ -400378,9 +400378,9 @@
 			"walls": [
 				true,
 				true,
-				true,
 				false,
-				true,
+				false,
+				false,
 				false
 			]
 		},
