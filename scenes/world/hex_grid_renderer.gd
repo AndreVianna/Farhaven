@@ -535,10 +535,7 @@ func _rebuild_mesh() -> void:
 			else:
 				cliff_color = tile_colors[coords] * 0.6
 				foam_color = cliff_color  # no foam for land cliffs
-			# Convert direction index to edge index. edge_corners is indexed
-			# by edge (0=NE,1=SE,...), not by direction (0=E,1=NE,...).
-			var dir_to_edge: Array[int] = [0, 5, 4, 3, 2, 1]
-			var ec: Array = edge_corners[dir_to_edge[d]]
+			var ec: Array = edge_corners[d]
 			var ca_idx: int = ec[0]
 			var cb_idx: int = ec[1]
 
