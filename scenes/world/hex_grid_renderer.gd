@@ -431,11 +431,7 @@ func _rebuild_mesh() -> void:
 					var cb: int = (ei + 1) % 6
 					target_col = corner_colors_at[ca].lerp(corner_colors_at[cb], 0.5)
 
-				var vy: float
-				if is_water:
-					vy = elevation_y
-				else:
-					vy = lerpf(elevation_y, target_y, s)
+				var vy: float = lerpf(elevation_y, target_y, s)
 				ring_pos.append(Vector3(vx, vy, vz))
 				ring_col.append(center_color.lerp(target_col, t))
 				# UV: hex-local, with per-tile rotation about (0.5, 0.5).
