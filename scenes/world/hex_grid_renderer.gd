@@ -259,7 +259,8 @@ func _rebuild_mesh() -> void:
 			for other: Dictionary in entries:
 				if entry_is_water != other.is_water:
 					continue
-				if absi(elev - other.elevation) <= 2:
+				# Water is always smooth — skip elevation diff check
+				if entry_is_water or absi(elev - other.elevation) <= 2:
 					r += (other.color as Color).r
 					g += (other.color as Color).g
 					b += (other.color as Color).b
