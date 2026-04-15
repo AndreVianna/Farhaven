@@ -240,7 +240,9 @@ func _rebuild_mesh() -> void:
 			)
 			if not corner_map.has(pos_key):
 				corner_map[pos_key] = []
-			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = tile.elevation, is_water = (tile.biome == _HexTile.Biome.WATER)})
+			# Water tiles use water_level (surface) for corner sharing, not elevation (depth).
+			var surface_elev: int = tile.water_level if tile.biome == _HexTile.Biome.WATER else tile.elevation
+			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = surface_elev, is_water = (tile.biome == _HexTile.Biome.WATER)})
 
 	# Step 3: Average corner colors per elevation group.
 	var corner_colors: Dictionary = {}
