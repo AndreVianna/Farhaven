@@ -101,9 +101,10 @@ export function computeWaterLevel(grid, q, r) {
     if (neighbor.biome === 'B00005') continue; // skip water neighbors
     if (neighbor.elevation < minDryElev) minDryElev = neighbor.elevation;
   }
-  if (minDryElev === Infinity) return null; // no dry neighbors (open water)
   const tile = grid.getTile(q, r);
-  if (!tile) return null;
+  if (!tile) return 0;
+  // No dry neighbors (open water) → waterLevel = elevation (surface at bottom)
+  if (minDryElev === Infinity) return tile.elevation;
   // waterLevel = min(dry neighbors), clamped so elevation <= waterLevel
   return Math.max(tile.elevation, minDryElev);
 }

@@ -722,9 +722,9 @@ function initializeAfterLoad() {
       console.warn(`  Biome "${filename}" has no valid color field.`);
     }
   }
-  // Virtual water type entries
+  // Virtual water type entries — keep B00005 as alias for leveled
   if (biomeColorMap.has('B00005')) {
-    biomeColorMap.delete('B00005');
+    biomeColorMap.set('B00005', 'rgb(30,80,160)');       // base = leveled color
     biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
     biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
   }
@@ -965,9 +965,9 @@ function _rebuildColorMaps() {
       biomeColorMap.set(biomeName, `rgb(${r},${g},${b})`);
     }
   }
-  // Virtual water type entries (same biome B00005, different display color)
+  // Virtual water type entries — keep B00005 as alias for leveled
   if (biomeColorMap.has('B00005')) {
-    biomeColorMap.delete('B00005');
+    biomeColorMap.set('B00005', 'rgb(30,80,160)');
     biomeColorMap.set('B00005:leveled', 'rgb(30,80,160)');
     biomeColorMap.set('B00005:flowing', 'rgb(70,150,220)');
   }

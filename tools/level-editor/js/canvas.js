@@ -1662,6 +1662,10 @@ export class HexCanvas {
     this.requestRender();
   }
 
+  /**
+   * Zoom and pan to fit all tiles in view with padding.
+   * @param {number} [padding=40]
+   */
   fitToView(padding = 40) {
     if (this.grid.tiles.size === 0) return;
 
