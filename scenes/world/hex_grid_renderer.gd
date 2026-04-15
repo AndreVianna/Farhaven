@@ -521,12 +521,22 @@ func _rebuild_mesh() -> void:
 				continue
 			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			# Water tiles don't draw wall faces — the land tile draws the
-			# shoreline cliff from its side. Water surface is flat at waterLevel.
-			if tile.biome == _HexTile.Biome.WATER:
+			# Skip if current tile is water and neighbor is higher land
+			# (land tile draws the shoreline cliff from its side).
+			if tile.biome == _HexTile.Biome.WATER and n_tile != null \
+					and n_tile.biome != _HexTile.Biome.WATER \
+					and n_tile.elevation > tile.water_level:
 				continue
 
-			var cliff_color: Color = tile_colors[coords] * 0.6
+			# Water walls get blue color; land walls get darkened biome color.
+			var cliff_color: Color
+			var foam_color: Color
+			if tile.biome == _HexTile.Biome.WATER:
+				cliff_color = Color(0.15, 0.35, 0.7, 1.0)  # water blue
+				foam_color = Color(0.85, 0.92, 0.98, 1.0)  # white foam
+			else:
+				cliff_color = tile_colors[coords] * 0.6
+				foam_color = cliff_color  # no foam for land cliffs
 			var ec: Array = edge_corners[d]
 			var ca_idx: int = ec[0]
 			var cb_idx: int = ec[1]
@@ -604,21 +614,21 @@ func _rebuild_mesh() -> void:
 			var l2 := Vector3(cb_x, l_cb_y, cb_z)
 
 			var cst: SurfaceTool = _get_bucket.call(CLIFF_KEY)
-			# Tri 1: h0, l0, l1
+			# Tri 1: h0, l0, l1 — h vertices get cliff_color, l vertices get foam_color
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
 			# Tri 2: h0, l1, h1
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
 			# Tri 3: h1, l1, l2
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
 			# Tri 4: h1, l2, h2
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
 			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h2)
 
 	# Step 7: Commit every bucket.
