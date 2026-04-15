@@ -20,7 +20,8 @@ import { CutsceneModel, cutsceneModelToRaw, validateCutsceneForm } from './js/cu
 import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { generateMap } from './js/map-generator.js';
 import { createNoise2D } from './js/simplex-noise.js';
-import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand } from './js/commands.js';
+import { computeWaterLevel } from './js/hex-grid.js';
+import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand, ToggleWallCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
 import { ToolType, ToolManager, BiomeBrush, ElevationBrush, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
@@ -4265,6 +4266,61 @@ for (const csFile of __cutsceneFiles) {
   assert(map4.chapter_id === 'test', 'custom chapter_id');
   assert(map4.name === 'Test Map', 'custom map name');
   assert(Object.keys(map4.tiles).length === 3 * 9 + 3 * 3 + 1, 'radius 3 tile count');
+}
+
+// ============================================================
+// ToggleWallCommand + Water Neighbor Tests
+// ============================================================
+
+{
+  console.log('\n--- ToggleWall + Water Neighbors ---');
+
+  const grid = new HexGridClass();
+  // Create two adjacent tiles: (0,0) and (1,0) — E neighbor
+  grid.setTile(0, 0, createTileData('B00002'));  // grassland
+  grid.setTile(1, 0, createTileData('B00002'));
+  grid.getTile(0, 0).elevation = 5;
+  grid.getTile(1, 0).elevation = 5;
+
+  const history = new CommandHistory();
+
+  // Test: ToggleWallCommand toggles both sides
+  const toggleCmd = new ToggleWallCommand(grid, 0, 0, 0); // edge 0 = E
+  history.execute(toggleCmd);
+  assert(grid.getTile(0, 0).walls[0] === true, 'toggle: tile (0,0) wall E = true');
+  assert(grid.getTile(1, 0).walls[3] === true, 'toggle: tile (1,0) wall W = true (opposite)');
+
+  // Test: undo restores both sides
+  history.undo();
+  assert(grid.getTile(0, 0).walls[0] === false, 'undo toggle: tile (0,0) wall E = false');
+  assert(grid.getTile(1, 0).walls[3] === false, 'undo toggle: tile (1,0) wall W = false');
+
+  // Test: SetBiomeCommand to water computes waterLevel
+  grid.getTile(0, 0).elevation = 3;
+  grid.getTile(1, 0).elevation = 5;
+  grid.setTile(0, 1, createTileData('B00002'));  // SE neighbor
+  grid.getTile(0, 1).elevation = 4;
+
+  const biomeCmd = new SetBiomeCommand(grid, 0, 0, 'B00002', 'B00005', 'leveled');
+  history.execute(biomeCmd);
+  const waterTile = grid.getTile(0, 0);
+  assert(waterTile.biome === 'B00005', 'set water: biome = B00005');
+  assert(waterTile.waterType === 'leveled', 'set water: waterType = leveled');
+  assert(waterTile.waterLevel != null, 'set water: waterLevel computed');
+  assert(waterTile.elevation <= waterTile.waterLevel, 'set water: elevation <= waterLevel');
+
+  // Test: undo restores original biome + elevation
+  history.undo();
+  const restoredTile = grid.getTile(0, 0);
+  assert(restoredTile.biome === 'B00002', 'undo water: biome restored to B00002');
+  assert(restoredTile.waterType == null, 'undo water: waterType cleared');
+  assert(restoredTile.elevation === 3, 'undo water: elevation restored');
+
+  // Test: computeWaterLevel returns min of dry neighbors
+  grid.setTile(0, 0, createTileData('B00005'));
+  grid.getTile(0, 0).elevation = -2;
+  const wl = computeWaterLevel(grid, 0, 0);
+  assert(wl === 4, 'computeWaterLevel: min of neighbors (4,5) = 4, max(elev,min) = 4');
 }
 
 // ============================================================

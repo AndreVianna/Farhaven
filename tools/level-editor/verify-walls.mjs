@@ -3,7 +3,7 @@
  * Verifies that for every shared edge between two hexes,
  * tile.walls[d] matches neighbor.walls[opposite_d].
  *
- * Usage: node tools/level-editor/verify-walls.mjs <map.json>
+ * Usage: node tools/level-editor/verify-walls.mjs data/maps/<map.json>
  */
 
 import { readFileSync } from 'fs';
@@ -21,7 +21,7 @@ const DIR_NAMES = ['E', 'NE', 'NW', 'W', 'SW', 'SE'];
 
 const file = process.argv[2];
 if (!file) {
-  console.error('Usage: node verify-walls.mjs <map.json>');
+  console.error('Usage: node tools/level-editor/verify-walls.mjs data/maps/<map.json>');
   process.exit(1);
 }
 

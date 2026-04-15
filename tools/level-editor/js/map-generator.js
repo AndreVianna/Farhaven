@@ -499,13 +499,12 @@ function passAccessibility(hexMap, coords, o) {
       if (isWaterTile(cell)) continue;
       if (!isReachable(q, r)) {
         const target = closestNeighborElev(q, r);
-        if (cell.elevation > target) {
-          cell.elevation = target + MAX_DIFF;
-        } else {
-          cell.elevation = target - MAX_DIFF;
+        const newElev = cell.elevation > target ? target + MAX_DIFF : target - MAX_DIFF;
+        if (newElev !== cell.elevation) {
+          cell.elevation = newElev;
+          totalSmoothed++;
+          changed = true;
         }
-        totalSmoothed++;
-        changed = true;
       }
     }
     if (!changed) break;

@@ -159,6 +159,26 @@ func load_map(path: String) -> bool:
 
 		_grid._tiles[coords] = tile
 
+	# Compute water_level for water tiles that don't have it in JSON.
+	for c: Variant in _grid._tiles:
+		var t: Resource = _grid._tiles[c]
+		if t.biome != _HexTile.Biome.WATER:
+			continue
+		if t.water_level != 0:
+			continue  # already set from JSON
+		# Compute: min elevation of adjacent dry tiles
+		var crd: Vector2i = c as Vector2i
+		var min_dry: int = 32000
+		for d: int in range(6):
+			var n_crd: Vector2i = crd + (_HexMath.DIRECTIONS[d] as Vector2i)
+			var n_t: Resource = _grid._tiles.get(n_crd, null)
+			if n_t == null or n_t.biome == _HexTile.Biome.WATER:
+				continue
+			if n_t.elevation < min_dry:
+				min_dry = n_t.elevation
+		if min_dry < 32000:
+			t.water_level = maxi(t.elevation, min_dry)
+
 	# Walls default to all-false (no walls). Placement is manual via editor.
 	# Exception: water↔land shoreline gets wall only when elevation differs.
 	for c: Variant in _grid._tiles:

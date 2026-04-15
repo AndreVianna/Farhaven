@@ -421,6 +421,10 @@ export class HexCanvas {
     const spawn = this.grid.meta.spawn;
     if (!spawn || !this.grid.hasTile(spawn[0], spawn[1])) return new Set();
 
+    // If spawn is on water, nothing is reachable from it
+    const spawnTile = this.grid.getTile(spawn[0], spawn[1]);
+    if (spawnTile && spawnTile.biome === 'B00005') return new Set();
+
     const JUMP_MAX = 4;
     const spawnKey = `${spawn[0]},${spawn[1]}`;
     const reachable = new Set([spawnKey]);

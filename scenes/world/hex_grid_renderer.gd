@@ -306,8 +306,10 @@ func _rebuild_mesh() -> void:
 				continue
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
-			# No wall → slope: average the two elevations
-			ey[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+			# No wall → slope: average the two surface elevations.
+			# Water tiles use water_level (surface), land tiles use elevation.
+			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
 		var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
@@ -325,7 +327,8 @@ func _rebuild_mesh() -> void:
 					continue
 				if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 					continue
-				sum_e += float(n_tile.elevation)
+				var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+				sum_e += n_elev
 				cnt += 1
 			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 		all_corner_y[coords] = cy

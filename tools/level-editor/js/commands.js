@@ -321,11 +321,7 @@ export class ToggleWallCommand {
     if (!tile || !tile.walls) return;
     tile.walls[this.edgeIdx] = !tile.walls[this.edgeIdx];
     // Also toggle the opposite edge on the neighbor
-    const dirs = [
-      { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-      { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
-    ];
-    const dir = dirs[this.edgeIdx];
+    const dir = HexMath.DIRECTIONS[this.edgeIdx];
     const nq = this.q + dir.q, nr = this.r + dir.r;
     const neighbor = this.grid.getTile(nq, nr);
     if (neighbor && neighbor.walls) {

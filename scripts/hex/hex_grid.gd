@@ -184,7 +184,8 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 			continue
 		if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 			continue
-		edge_y[d] = ((elev + float(n_tile.elevation)) / 2.0) * ELEVATION_STEP
+		var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+		edge_y[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 
 	# Compute corner_y (6 values) — skips neighbors across wall edges.
 	var corner_y: Array[float] = [center_y, center_y, center_y, center_y, center_y, center_y]
@@ -201,7 +202,8 @@ func get_terrain_y(world_x: float, world_z: float) -> float:
 				continue
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
-			sum_e += float(n_tile.elevation)
+			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			sum_e += n_elev
 			cnt += 1
 		corner_y[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 
