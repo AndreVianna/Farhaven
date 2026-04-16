@@ -16,3 +16,8 @@ extends Resource
 
 @export var yields: Array[HarvestYield] = []
 @export var respawn_conditions: Array[StringName] = []
+
+## Visual variants shown when the prop has been harvested (depleted).
+## If empty, the prop falls back to placeholder_depleted_mesh_type.
+## Can be 1:1 with PlaceableCap.meshes or a smaller set.
+@export var depleted_meshes: Array[MeshVariant] = []
