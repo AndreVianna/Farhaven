@@ -912,7 +912,7 @@ let activeMapFilename = null;
 
 /**
  * Tool definitions grouped by scope.
- * @type {Array<{group: string, tools: Array<{type: string, label: string, shortcut: string}>}>}
+ * @type {Array<{group: string, tools: Array<{type: string, label: string, shortcut: string, action?: boolean}>}>}
  */
 const TOOL_GROUPS = [
   { group: 'General', tools: [

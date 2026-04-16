@@ -1635,7 +1635,8 @@ export class HexCanvas {
    */
   _computeGhostSet(bounds) {
     const ghosts = new Set();
-    // Expand bounds by one hex so ghosts on the edge are included.
+    // Expand bounds by 3× hex size so ghosts just outside the viewport
+    // (neighbors of visible tiles) are included.
     const pad = HEX_SIZE * 3;
     const useBounds = !!bounds;
     const bMinX = useBounds ? bounds.minX - pad : 0;

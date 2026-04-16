@@ -432,6 +432,19 @@ func _rebuild_mesh() -> void:
 			chunks[ck] = []
 		(chunks[ck] as Array).append(coords)
 
+	# Material cache: reuse the same ShaderMaterial for identical bucket keys
+	# across chunks. Avoids material explosion on large maps and reduces
+	# DayNightCycle iteration overhead.
+	var _material_cache: Dictionary = {}  # Vector2i bucket_key → ShaderMaterial
+	var _get_or_create_material := func(key: Vector2i) -> ShaderMaterial:
+		if _material_cache.has(key):
+			return _material_cache[key]
+		var mat := _make_bucket_material(key)
+		_material_cache[key] = mat
+		_materials.append(mat)
+		DayNightCycle.register_hex_material(mat)
+		return mat
+
 	# Build each chunk.
 	var first_mesh_assigned: bool = false
 	for ck: Variant in chunks:
@@ -686,6 +699,12 @@ func _rebuild_mesh() -> void:
 					l_mid_y = 0.0
 					l_cb_y = 0.0
 
+				# Skip degenerate wall faces (zero height) — walls still block
+				# smoothing but no cliff geometry is needed when both sides
+				# are at the same level.
+				if absf(h_ca_y - l_ca_y) < 0.01 and absf(h_mid_y - l_mid_y) < 0.01 and absf(h_cb_y - l_cb_y) < 0.01:
+					continue
+
 				var cliff_normal: Vector3
 				if n_tile != null:
 					var n_world: Vector2 = HexMath.axial_to_world(n_coords)
@@ -727,9 +746,7 @@ func _rebuild_mesh() -> void:
 		for bucket_key: Vector2i in buckets:
 			var st: SurfaceTool = buckets[bucket_key]
 			var mesh: ArrayMesh = st.commit()
-			var mat := _make_bucket_material(bucket_key)
-			_materials.append(mat)
-			DayNightCycle.register_hex_material(mat)
+			var mat: ShaderMaterial = _get_or_create_material.call(bucket_key)
 
 			if not first_mesh_assigned:
 				_mesh_instance.mesh = mesh

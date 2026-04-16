@@ -4324,6 +4324,46 @@ for (const csFile of __cutsceneFiles) {
 }
 
 // ============================================================
+// Shoreline Wall Tests — water↔land always gets wall
+// ============================================================
+
+{
+  // Test: loadMapIntoGrid creates wall at water↔land border even when
+  // waterLevel equals land elevation (the "always wall" rule).
+  const grid = new HexGridClass();
+  const mapData = {
+    spawn: [0, 0],
+    tiles: {
+      '0,0': { biome: 'B00002', elevation: 3 },       // land, elev=3
+      '1,0': { biome: 'B00005', elevation: 1, waterLevel: 3 }, // water, wl=3 (same as land)
+    }
+  };
+  loadMapIntoGrid(grid, mapData);
+  const land = grid.getTile(0, 0);
+  const water = grid.getTile(1, 0);
+  assert(land.walls[0] === true, 'shoreline: land.walls[E] = true (water↔land, equal level)');
+  assert(water.walls[3] === true, 'shoreline: water.walls[W] = true (water↔land, equal level)');
+
+  // Test: SetBiomeCommand water→land clears stale shoreline walls on
+  // land↔land edges.
+  const grid2 = new HexGridClass();
+  grid2.setTile(0, 0, createTileData('B00005'));  // water
+  grid2.getTile(0, 0).elevation = 0;
+  grid2.getTile(0, 0).waterLevel = 3;
+  grid2.setTile(1, 0, createTileData('B00002'));  // land
+  grid2.getTile(1, 0).elevation = 3;
+  // Manually set shoreline walls
+  grid2.getTile(0, 0).walls[0] = true;
+  grid2.getTile(1, 0).walls[3] = true;
+
+  const hist2 = new CommandHistory();
+  const cmd = new SetBiomeCommand(grid2, 0, 0, 'B00005', 'B00002');
+  hist2.execute(cmd);
+  assert(grid2.getTile(0, 0).walls[0] === false, 'water→land: stale wall cleared on (0,0) E');
+  assert(grid2.getTile(1, 0).walls[3] === false, 'water→land: stale wall cleared on (1,0) W');
+}
+
+// ============================================================
 // Summary
 // ============================================================
 

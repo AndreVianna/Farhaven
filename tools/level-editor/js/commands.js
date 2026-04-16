@@ -221,6 +221,19 @@ export class SetBiomeCommand {
     } else {
       tile.waterLevel = null;
       tile.waterType = null;
+      // Clear stale shoreline walls: this tile is now land, so any
+      // water↔land walls from when it was water must be removed.
+      // _updateWaterNeighbors will re-add walls on adjacent water tiles.
+      for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
+        const dir = HexMath.DIRECTIONS[d];
+        const neighbor = this.grid.getTile(this.q + dir.q, this.r + dir.r);
+        if (neighbor && neighbor.biome !== 'B00005') {
+          // Land↔land: clear walls on both sides
+          tile.walls[d] = false;
+          const opposite = (d + 3) % 6;
+          neighbor.walls[opposite] = false;
+        }
+      }
     }
     _updateWaterNeighbors(this.grid, this.q, this.r);
   }
