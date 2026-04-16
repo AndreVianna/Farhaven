@@ -14,7 +14,10 @@ extends Resource
 ##   &"season:wet"           — only respawns in wet season
 ## Empty list = never respawns (mineral deposits, permanent structures).
 
-@export var yields: Array[HarvestYield] = []
+## HarvestYield resources — each element should be a HarvestYield.
+## Typed as Array[Resource] to avoid class-name resolution order issues
+## when adding new custom Resource subclasses to the project.
+@export var yields: Array[Resource] = []
 @export var respawn_conditions: Array[StringName] = []
 
 ## Visual variants (MeshVariant resources) shown when the prop has been
