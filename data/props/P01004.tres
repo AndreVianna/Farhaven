@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"crystal_form": "formless",
+	"crystal_pattern": "none",
+	"hardness": 2,
+	"breaking_behavior": "bends",
+	"surface_shine": "dull",
+	"light_transmission": "blocked",
+	"fluorescence": false,
+	"piezoelectricity": false,
+	"radioactivity": false,
+	"density": 1.8
+}
+
+[sub_resource type="Resource" id="yield_clay"]
+script = ExtResource("5_yield")
+item_id = &"clay_lump"
+amount = 2
+conditions = []
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_clay")]
+respawn_conditions = []
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P01004"
+display_name = "Clay Patch"
+short_description = "A smooth patch of workable clay."
+long_description = "Damp, malleable clay exposed where water once pooled. Shapes easily in the hand, hardens when fired."
+tags = [&"mineral", &"common", &"near_water", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"cube"
+placeholder_params = {"half_size": 0.18}
+placeholder_color = Color(0.5, 0.35, 0.2, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.08}
+placeholder_depleted_color = Color(0.4, 0.3, 0.2, 1.0)

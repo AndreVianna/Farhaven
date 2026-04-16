@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"energy_source": "light",
+	"internal_transport": "vessels",
+	"shape_symmetry": "radial",
+	"growth_form": "rosette",
+	"rigidity": "flexible",
+	"edibility_level": 0,
+	"toxicity_level": 0,
+	"hydration_level": 5
+}
+
+[sub_resource type="Resource" id="yield_frond"]
+script = ExtResource("5_yield")
+item_id = &"fern_frond"
+amount = 1
+conditions = []
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_frond")]
+respawn_conditions = [&"time_elapsed:4_days"]
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P00007"
+display_name = "Spiral Fern"
+short_description = "A fern-like plant with tightly coiled spiral fronds."
+long_description = "Fronds unfurl from perfect logarithmic spirals — Fibonacci echoes in alien biology. Not edible, but striking to the eye."
+tags = [&"plant", &"uncommon", &"decoration"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"sphere"
+placeholder_params = {"radius": 0.18}
+placeholder_color = Color(0.25, 0.6, 0.4, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.08}
+placeholder_depleted_color = Color(0.25, 0.4, 0.3, 1.0)

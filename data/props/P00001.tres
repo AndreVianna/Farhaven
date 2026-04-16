@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 1.0
+show_as_anomaly = false
+properties = {
+	"energy_source": "light",
+	"internal_transport": "vessels",
+	"shape_symmetry": "radial",
+	"growth_form": "ground_cover",
+	"rigidity": "flexible",
+	"edibility_level": 1,
+	"toxicity_level": 0,
+	"hydration_level": 3
+}
+
+[sub_resource type="Resource" id="yield_fiber"]
+script = ExtResource("5_yield")
+item_id = &"plant_fiber"
+amount = 1
+conditions = []
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_fiber")]
+respawn_conditions = [&"time_elapsed:2_days"]
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P00001"
+display_name = "Blade Grass"
+short_description = "Dense tufts of fibrous alien grass."
+long_description = "A low, dense cover of sharp-bladed grass-like flora. The fibers are tough and useful for cordage."
+tags = [&"plant", &"common", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"cube"
+placeholder_params = {"half_size": 0.15}
+placeholder_color = Color(0.45, 0.7, 0.3, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.08}
+placeholder_depleted_color = Color(0.35, 0.45, 0.25, 1.0)

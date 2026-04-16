@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"crystal_form": "irregular",
+	"crystal_pattern": "none",
+	"hardness": 6,
+	"breaking_behavior": "shatters",
+	"surface_shine": "dull",
+	"light_transmission": "blocked",
+	"fluorescence": false,
+	"piezoelectricity": false,
+	"radioactivity": false,
+	"density": 2.7
+}
+
+[sub_resource type="Resource" id="yield_stone"]
+script = ExtResource("5_yield")
+item_id = &"stone_piece"
+amount = 2
+conditions = []
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_stone")]
+respawn_conditions = []
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P01002"
+display_name = "Loose Stone"
+short_description = "Scattered fragments of weathered stone."
+long_description = "A small pile of fist-sized stones. Workable by hand, useful for toolmaking, construction, or just throwing."
+tags = [&"mineral", &"common", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"sphere"
+placeholder_params = {"radius": 0.18}
+placeholder_color = Color(0.5, 0.5, 0.5, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.05}
+placeholder_depleted_color = Color(0.4, 0.4, 0.4, 1.0)

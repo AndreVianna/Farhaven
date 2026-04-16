@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"crystal_form": "formless",
+	"crystal_pattern": "trigonal",
+	"hardness": 7,
+	"breaking_behavior": "shatters",
+	"surface_shine": "waxy",
+	"light_transmission": "diffused",
+	"fluorescence": false,
+	"piezoelectricity": true,
+	"radioactivity": false,
+	"density": 2.6
+}
+
+[sub_resource type="Resource" id="yield_flint"]
+script = ExtResource("5_yield")
+item_id = &"flint_shard"
+amount = 1
+conditions = [&"tool:hammering_tool"]
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_flint")]
+respawn_conditions = []
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P01003"
+display_name = "Flint Deposit"
+short_description = "A seam of glassy flint in the soil."
+long_description = "Dense, waxy-lustered mineral with a conchoidal fracture. Hard enough to scrape steel and sharp enough to cut flesh when struck correctly."
+tags = [&"mineral", &"common", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"prism"
+placeholder_params = {"size": Vector3(0.3, 0.15, 0.25)}
+placeholder_color = Color(0.3, 0.3, 0.35, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.07}
+placeholder_depleted_color = Color(0.25, 0.25, 0.3, 1.0)

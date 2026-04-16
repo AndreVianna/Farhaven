@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 3.0
+show_as_anomaly = false
+properties = {
+	"energy_source": "light",
+	"internal_transport": "vessels",
+	"shape_symmetry": "radial",
+	"growth_form": "column",
+	"rigidity": "rigid",
+	"edibility_level": 0,
+	"toxicity_level": 0,
+	"hydration_level": 3
+}
+
+[sub_resource type="Resource" id="yield_wood"]
+script = ExtResource("5_yield")
+item_id = &"wood_stalk"
+amount = 3
+conditions = [&"tool:cutting_tool"]
+
+[sub_resource type="Resource" id="yield_stalk_fiber"]
+script = ExtResource("5_yield")
+item_id = &"stalk_fiber"
+amount = 2
+conditions = [&"tool:cutting_tool"]
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_wood"), SubResource("yield_stalk_fiber")]
+respawn_conditions = [&"time_elapsed:7_days"]
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P00005"
+display_name = "Stalk Plant"
+short_description = "Tall treelike plant with a rigid central stalk."
+long_description = "A single thick stalk rising two to three meters, crowned with a narrow spread of upward-pointing fronds. The core is woody and strong; the outer layers yield long, pliable fibers."
+tags = [&"plant", &"common", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"cylinder"
+placeholder_params = {"radius": 0.12, "height": 1.2}
+placeholder_color = Color(0.55, 0.5, 0.3, 1.0)
+placeholder_depleted_type = &"cylinder"
+placeholder_depleted_params = {"radius": 0.15, "height": 0.2}
+placeholder_depleted_color = Color(0.4, 0.35, 0.25, 1.0)

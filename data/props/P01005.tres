@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"crystal_form": "irregular",
+	"crystal_pattern": "cubic",
+	"hardness": 4,
+	"breaking_behavior": "bends",
+	"surface_shine": "metallic",
+	"light_transmission": "blocked",
+	"fluorescence": false,
+	"piezoelectricity": false,
+	"radioactivity": false,
+	"density": 7.9
+}
+
+[sub_resource type="Resource" id="yield_iron"]
+script = ExtResource("5_yield")
+item_id = &"iron_ore"
+amount = 1
+conditions = [&"tool:stone_breaking_tool"]
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_iron")]
+respawn_conditions = []
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P01005"
+display_name = "Iron Nodule"
+short_description = "A rust-hued metallic nodule."
+long_description = "A heavy, rust-streaked mass of native iron-bearing ore. Dull metallic sheen where weather has worn the crust. Worth the effort of breaking."
+tags = [&"mineral", &"rare", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"sphere"
+placeholder_params = {"radius": 0.2}
+placeholder_color = Color(0.5, 0.3, 0.2, 1.0)
+placeholder_depleted_type = &"cube"
+placeholder_depleted_params = {"half_size": 0.08}
+placeholder_depleted_color = Color(0.35, 0.25, 0.18, 1.0)

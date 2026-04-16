@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="PropDef" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
+
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("3_catalogable")
+scan_time = 2.0
+show_as_anomaly = false
+properties = {
+	"energy_source": "light",
+	"internal_transport": "vessels",
+	"shape_symmetry": "radial",
+	"growth_form": "tree",
+	"rigidity": "flexible",
+	"edibility_level": 6,
+	"toxicity_level": 1,
+	"hydration_level": 4
+}
+
+[sub_resource type="Resource" id="yield_fruit"]
+script = ExtResource("5_yield")
+item_id = &"strange_fruit"
+amount = 2
+conditions = []
+
+[sub_resource type="Resource" id="yield_pod_fiber"]
+script = ExtResource("5_yield")
+item_id = &"pod_fiber"
+amount = 1
+conditions = [&"tool:cutting_tool"]
+
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("4_harvestable")
+yields = [SubResource("yield_fruit"), SubResource("yield_pod_fiber")]
+respawn_conditions = [&"time_elapsed:4_days"]
+
+[resource]
+script = ExtResource("1_propdef")
+id = &"P00003"
+display_name = "Seed Pod Bush"
+short_description = "A bushy plant bearing strange alien fruit."
+long_description = "A knee-high bush with woody stems and fleshy, oval pods. The pods split open to reveal edible pulp — faintly sweet, slightly tangy, possibly worth the mild aftertaste."
+tags = [&"plant", &"common", &"food_source", &"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+placeholder_mesh_type = &"sphere"
+placeholder_params = {"radius": 0.28}
+placeholder_color = Color(0.4, 0.6, 0.3, 1.0)
+placeholder_depleted_type = &"sphere"
+placeholder_depleted_params = {"radius": 0.15}
+placeholder_depleted_color = Color(0.3, 0.4, 0.25, 1.0)
