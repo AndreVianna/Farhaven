@@ -57,26 +57,53 @@ func _create_pools() -> void:
 		var normal_mesh: Mesh
 		var depleted_mesh_res: Mesh
 		var y_offset: float = PROP_Y_OFFSET
+		var uses_real_mesh: bool = false
+		var uses_real_depleted: bool = false
 
-		if def.mesh != null:
+		# Priority order for the live mesh:
+		# 1. PlaceableCap.meshes[0].scene — first authored variant (most preferred)
+		# 2. def.mesh — legacy single-mesh field (backward compat)
+		# 3. placeholder_mesh_type — fallback geometric primitive
+		if def.placeable != null and def.placeable.meshes != null \
+				and def.placeable.meshes.size() > 0 \
+				and def.placeable.meshes[0] != null \
+				and def.placeable.meshes[0].scene != null:
+			var extracted: Array = _extract_mesh_from_scene(def.placeable.meshes[0].scene)
+			normal_mesh = extracted[0]
+			y_offset = extracted[1]
+			uses_real_mesh = normal_mesh != null
+		if normal_mesh == null and def.mesh != null:
 			normal_mesh = def.mesh
-		else:
+			uses_real_mesh = true
+		if normal_mesh == null:
 			var result: Array = _build_placeholder_mesh(def.placeholder_mesh_type, def.placeholder_params)
 			normal_mesh = result[0]
 			y_offset = result[1]
 
-		if def.depleted_mesh != null:
+		# Same priority for the depleted mesh.
+		if def.harvestable != null and def.harvestable.depleted_meshes != null \
+				and def.harvestable.depleted_meshes.size() > 0 \
+				and def.harvestable.depleted_meshes[0] != null \
+				and def.harvestable.depleted_meshes[0].scene != null:
+			var extracted: Array = _extract_mesh_from_scene(def.harvestable.depleted_meshes[0].scene)
+			depleted_mesh_res = extracted[0]
+			uses_real_depleted = depleted_mesh_res != null
+		if depleted_mesh_res == null and def.depleted_mesh != null:
 			depleted_mesh_res = def.depleted_mesh
-		else:
+			uses_real_depleted = true
+		if depleted_mesh_res == null:
 			var result: Array = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
 			depleted_mesh_res = result[0]
 
 		_normal_meshes[def.id] = normal_mesh
 		_depleted_meshes[def.id] = depleted_mesh_res
 		_pool_y_offsets[def.id] = y_offset
-		var color: Color = def.placeholder_color if def.mesh == null else Color.WHITE
+		# Real meshes carry their own materials — use WHITE so material_override
+		# (if applied for dimming later) doesn't tint them. Placeholder meshes
+		# use the authored placeholder_color.
+		var color: Color = Color.WHITE if uses_real_mesh else def.placeholder_color
 		_pool_colors[def.id] = color
-		_create_pool(def.id, normal_mesh, color)
+		_create_pool(def.id, normal_mesh, color, uses_real_mesh)
 
 
 ## Returns [mesh, y_offset] where y_offset is center-to-bottom distance.
@@ -106,7 +133,7 @@ func _build_placeholder_mesh(type: StringName, params: Dictionary) -> Array:
 			return [_make_cube_mesh(0.3), 0.3]
 
 
-func _create_pool(pool_id: StringName, mesh: Mesh, color: Color) -> void:
+func _create_pool(pool_id: StringName, mesh: Mesh, color: Color, is_real_mesh: bool = false) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
@@ -118,10 +145,13 @@ func _create_pool(pool_id: StringName, mesh: Mesh, color: Color) -> void:
 	mmi.multimesh = mm
 	mmi.name = "PropPool_%s" % pool_id
 
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mmi.material_override = mat
+	# Real meshes carry their own PBR materials — don't override, let them
+	# render natively. Placeholder meshes get a flat unshaded color.
+	if not is_real_mesh:
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mmi.material_override = mat
 
 	add_child(mmi)
 	_pools[pool_id] = mmi
@@ -179,6 +209,41 @@ func _make_prism_mesh(radius: float, height: float) -> Mesh:
 	mesh.radial_segments = 6
 	mesh.rings = 1
 	return mesh
+
+
+## Extract the first Mesh found inside an imported PackedScene (.glb/.gltf/etc).
+## The mesh's surface materials come along for free since they're stored in
+## the Mesh resource itself.
+## Returns [mesh, y_offset] where y_offset is center-to-bottom height derived
+## from the mesh's AABB. Returns [null, PROP_Y_OFFSET] if no MeshInstance3D is found.
+func _extract_mesh_from_scene(scene: PackedScene) -> Array:
+	if scene == null:
+		return [null, PROP_Y_OFFSET]
+	var root: Node = scene.instantiate()
+	if root == null:
+		return [null, PROP_Y_OFFSET]
+	var mesh_instance: MeshInstance3D = _find_first_mesh_instance(root)
+	var mesh: Mesh = null
+	var y_offset: float = PROP_Y_OFFSET
+	if mesh_instance != null:
+		mesh = mesh_instance.mesh
+		if mesh != null:
+			var aabb: AABB = mesh.get_aabb()
+			# Center-to-bottom offset so the prop's anchor sits on the ground.
+			y_offset = -aabb.position.y
+	root.queue_free()
+	return [mesh, y_offset]
+
+
+## Depth-first search for the first MeshInstance3D in a scene tree.
+func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var result: MeshInstance3D = _find_first_mesh_instance(child)
+		if result != null:
+			return result
+	return null
 
 
 # --- Signal wiring ---
