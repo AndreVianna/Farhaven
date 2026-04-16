@@ -7,7 +7,7 @@
 [ext_resource type="Script" path="res://scripts/crafting/crafting_system.gd" id="5_crafting"]
 [ext_resource type="Script" path="res://scripts/survival/survival_system.gd" id="6_survival"]
 [ext_resource type="Script" path="res://scripts/fauna/fauna_manager.gd" id="7_fauna"]
-[ext_resource type="PackedScene" path="res://assets/hero/mesh.glb" id="8_hero_mesh"]
+[ext_resource type="PackedScene" path="res://assets/hero/animations/walking.glb" id="8_hero_mesh"]
 
 [node name="Player" type="Node3D"]
 script = ExtResource("1_player")

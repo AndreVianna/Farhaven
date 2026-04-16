@@ -48,6 +48,8 @@ var _joystick_magnitude: float = 0.0
 var _buffered_dir: Vector2 = Vector2.ZERO
 var _buffered_magnitude: float = 0.0
 var _model: Node3D  # PlayerModel child
+var _anim_player: AnimationPlayer  # Under PlayerModel/HeroMesh (imported .glb)
+var _anim_walk_name: StringName = &""  # Name of the walking animation in the lib
 var _jump_tween: Tween
 var _snap_tween: Tween
 var _was_moving: bool = false
@@ -60,11 +62,67 @@ func _ready() -> void:
 	_grid.map_generated.connect(_on_map_generated)
 	_connect_player_input()
 	_model = get_node_or_null("PlayerModel")
+	_discover_animation_player()
 	# Camera is a sibling under World (not a child of Player).
 	if _camera == null:
 		var world: Node = get_parent()
 		if world != null:
 			_camera = world.get_node_or_null("Camera3D")
+
+
+## Find the AnimationPlayer inside the imported hero .glb (anywhere under
+## PlayerModel). Records the first available animation name so we can
+## drive walking/idle from move_state without hardcoding Meshy's naming.
+func _discover_animation_player() -> void:
+	if _model == null:
+		return
+	_anim_player = _find_anim_player_recursive(_model)
+	if _anim_player == null:
+		return
+	var anim_list: PackedStringArray = _anim_player.get_animation_list()
+	for a: String in anim_list:
+		var lower: String = a.to_lower()
+		if lower.contains("walk"):
+			_anim_walk_name = StringName(a)
+			break
+	# Fallback to first animation if none named "walk"
+	if _anim_walk_name == &"" and anim_list.size() > 0:
+		_anim_walk_name = StringName(anim_list[0])
+
+
+func _find_anim_player_recursive(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found: AnimationPlayer = _find_anim_player_recursive(child)
+		if found != null:
+			return found
+	return null
+
+
+## Called from _process when move_state changes or continuously to keep the
+## walk animation looped while moving and paused at a neutral frame when idle.
+func _update_animation_for_state() -> void:
+	if _anim_player == null or _anim_walk_name == &"":
+		return
+	match move_state:
+		MoveState.WALKING:
+			if _anim_player.current_animation != String(_anim_walk_name):
+				_anim_player.play(_anim_walk_name)
+			elif not _anim_player.is_playing():
+				_anim_player.play(_anim_walk_name)
+		MoveState.IDLE:
+			# Pause at a neutral mid-stride frame so the hero doesn't T-pose.
+			# Frame position = 25% into the walk cycle (heel-strike area).
+			if _anim_player.is_playing():
+				var anim: Animation = _anim_player.get_animation(_anim_walk_name)
+				if anim != null:
+					_anim_player.seek(anim.length * 0.25, true)
+				_anim_player.pause()
+		MoveState.JUMPING:
+			# Keep walking animation playing during jumps for now; later
+			# we'll have a dedicated jump pose.
+			pass
 
 
 func get_inventory() -> _Inventory:
@@ -176,6 +234,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if move_state == MoveState.WALKING:
 		_process_walking(delta)
+	_update_animation_for_state()
 
 
 ## Snap the player's world position to the given tile center.
