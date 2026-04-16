@@ -957,7 +957,7 @@ func debug_hex(coords: Vector2i) -> void:
 	for w: bool in center.walls:
 		walls_str += "T" if w else "F"
 	print("=== Hex %s ===" % str(coords))
-	print("  Biome: %d  Elev: %d  WaterLvl: %d  Water: %s  Walls: [%s]  Chunk: %s" % [
+	print("  Biome: %d  Elev: %d  WaterLvl: %s  Water: %s  Walls: [%s]  Chunk: %s" % [
 		center.biome, center.elevation, center.water_level,
 		"Y" if center.is_water else "N", walls_str, str(_chunk_key_for(coords))])
 	print("  edge_y:   %s" % str(_fmt_floats(center.edge_y)))
@@ -984,7 +984,7 @@ func debug_hex(coords: Vector2i) -> void:
 		for w: bool in n_data.walls:
 			n_walls_str += "T" if w else "F"
 		print("--- %s (%s) ---" % [_DIR_NAMES[d], str(n_coords)])
-		print("  Biome: %d  Elev: %d  WaterLvl: %d  Water: %s  Walls: [%s]" % [
+		print("  Biome: %d  Elev: %d  WaterLvl: %s  Water: %s  Walls: [%s]" % [
 			n_data.biome, n_data.elevation, n_data.water_level,
 			"Y" if n_data.is_water else "N", n_walls_str])
 		print("  edge_y:   %s" % str(_fmt_floats(n_data.edge_y)))
