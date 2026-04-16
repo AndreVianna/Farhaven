@@ -718,3 +718,152 @@ func _bucket_node_name(key: Vector2i) -> String:
 ## rest of the lighting, the right default is just the biome color.
 func _pick_color(bd: BiomeData, _elevation: int) -> Color:
 	return bd.color if bd != null else Color.WHITE
+
+
+# ---------------------------------------------------------------------------
+# Debug tool — call from Godot console:
+#   $World/HexGridRenderer.debug_hex(Vector2i(q, r))
+# ---------------------------------------------------------------------------
+
+const _DIR_NAMES: Array = ["E", "NE", "NW", "W", "SW", "SE"]
+
+## Compute edge_y[6] and corner_y[6] for a single tile using the same
+## algorithm as _rebuild_mesh Step 4.
+func _compute_tile_geometry(coords: Vector2i) -> Dictionary:
+	var tile: Resource = HexGrid._tiles.get(coords, null)
+	if tile == null:
+		return {}
+	var is_water: bool = tile.biome == _HexTile.Biome.WATER
+	var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
+	var elev_y: float = elev * ELEVATION_STEP
+
+	var corner_neighbor_dirs: Array = [
+		[0, 1], [0, 5], [5, 4], [4, 3], [3, 2], [2, 1],
+	]
+
+	# edge_y
+	var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+	for d: int in range(6):
+		if tile.walls[d]:
+			continue
+		var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
+		var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+		if n_tile == null:
+			continue
+		if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+			continue
+		var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+		ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
+
+	# corner_y
+	var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+	for ci: int in range(6):
+		var sum_e: float = elev
+		var cnt: int = 1
+		var dir_pair: Array = corner_neighbor_dirs[ci]
+		for d: int in dir_pair:
+			if tile.walls[d]:
+				continue
+			var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
+			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+			if n_tile == null:
+				continue
+			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+				continue
+			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			sum_e += n_elev
+			cnt += 1
+		cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
+
+	return {
+		biome = tile.biome,
+		elevation = tile.elevation,
+		water_level = tile.water_level,
+		is_water = is_water,
+		walls = tile.walls.duplicate(),
+		edge_y = ey,
+		corner_y = cy,
+	}
+
+
+## Print edge_y / corner_y for a hex and all neighbors, marking shared-point mismatches.
+func debug_hex(coords: Vector2i) -> void:
+	var edge_corners: Array = [
+		[0, 1], [5, 0], [4, 5], [3, 4], [2, 3], [1, 2],
+	]
+
+	var center: Dictionary = _compute_tile_geometry(coords)
+	if center.is_empty():
+		print("debug_hex: tile %s does not exist" % str(coords))
+		return
+
+	var walls_str: String = ""
+	for w: bool in center.walls:
+		walls_str += "T" if w else "F"
+	print("=== Hex %s ===" % str(coords))
+	print("  Biome: %d  Elev: %d  WaterLvl: %d  Water: %s  Walls: [%s]  Chunk: %s" % [
+		center.biome, center.elevation, center.water_level,
+		"Y" if center.is_water else "N", walls_str, str(_chunk_key_for(coords))])
+	print("  edge_y:   %s" % str(_fmt_floats(center.edge_y)))
+	print("  corner_y: %s" % str(_fmt_floats(center.corner_y)))
+
+	var mismatch_count: int = 0
+	for d: int in range(6):
+		var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
+		var n_data: Dictionary = _compute_tile_geometry(n_coords)
+		var rev_d: int = (d + 3) % 6
+		var ec: Array = edge_corners[d]
+		var ca_idx: int = ec[0]
+		var cb_idx: int = ec[1]
+
+		print("")
+		if n_data.is_empty():
+			print("--- %s (%s) — no tile ---" % [_DIR_NAMES[d], str(n_coords)])
+			continue
+
+		var n_walls_str: String = ""
+		for w: bool in n_data.walls:
+			n_walls_str += "T" if w else "F"
+		print("--- %s (%s) ---" % [_DIR_NAMES[d], str(n_coords)])
+		print("  Biome: %d  Elev: %d  WaterLvl: %d  Water: %s  Walls: [%s]" % [
+			n_data.biome, n_data.elevation, n_data.water_level,
+			"Y" if n_data.is_water else "N", n_walls_str])
+		print("  edge_y:   %s" % str(_fmt_floats(n_data.edge_y)))
+		print("  corner_y: %s" % str(_fmt_floats(n_data.corner_y)))
+
+		# Compare shared edge midpoint
+		var rev_ec: Array = edge_corners[rev_d]
+		var c_mid: float = center.edge_y[d]
+		var n_mid: float = n_data.edge_y[rev_d]
+		var mid_ok: String = "OK" if absf(c_mid - n_mid) < 0.001 else "MISMATCH"
+		if mid_ok != "OK":
+			mismatch_count += 1
+		print("  Edge mid  (c.ey[%d]=%.3f  n.ey[%d]=%.3f) %s" % [d, c_mid, rev_d, n_mid, mid_ok])
+
+		# Compare shared corners (cross-mapped)
+		var c_ca_y: float = center.corner_y[ca_idx]
+		var n_ca_y: float = n_data.corner_y[rev_ec[1]]
+		var ca_ok: String = "OK" if absf(c_ca_y - n_ca_y) < 0.001 else "MISMATCH"
+		if ca_ok != "OK":
+			mismatch_count += 1
+		print("  Corner A  (c.cy[%d]=%.3f  n.cy[%d]=%.3f) %s" % [ca_idx, c_ca_y, rev_ec[1], n_ca_y, ca_ok])
+
+		var c_cb_y: float = center.corner_y[cb_idx]
+		var n_cb_y: float = n_data.corner_y[rev_ec[0]]
+		var cb_ok: String = "OK" if absf(c_cb_y - n_cb_y) < 0.001 else "MISMATCH"
+		if cb_ok != "OK":
+			mismatch_count += 1
+		print("  Corner B  (c.cy[%d]=%.3f  n.cy[%d]=%.3f) %s" % [cb_idx, c_cb_y, rev_ec[0], n_cb_y, cb_ok])
+
+	print("")
+	if mismatch_count == 0:
+		print("All shared points match.")
+	else:
+		print("%d MISMATCHES found!" % mismatch_count)
+
+
+func _fmt_floats(arr: Array) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for v: float in arr:
+		parts.append("%.3f" % v)
+	return "[%s]" % ", ".join(parts)
