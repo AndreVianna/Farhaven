@@ -14,16 +14,7 @@ footprint = Vector2i(1, 1)
 script = ExtResource("3_catalogable")
 scan_time = 1.0
 show_as_anomaly = false
-properties = {
-	"energy_source": "light",
-	"internal_transport": "none",
-	"shape_symmetry": "irregular",
-	"growth_form": "ground_cover",
-	"rigidity": "pressure_filled",
-	"edibility_level": 0,
-	"toxicity_level": 0,
-	"hydration_level": 7
-}
+properties = { "energy_source": "light", "internal_transport": "none", "shape_symmetry": "irregular", "growth_form": "ground_cover", "rigidity": "pressure_filled", "edibility_level": 0, "toxicity_level": 0, "hydration_level": 7 }
 
 [sub_resource type="Resource" id="yield_moss"]
 script = ExtResource("5_yield")

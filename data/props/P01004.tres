@@ -14,18 +14,7 @@ footprint = Vector2i(1, 1)
 script = ExtResource("3_catalogable")
 scan_time = 2.0
 show_as_anomaly = false
-properties = {
-	"crystal_form": "formless",
-	"crystal_pattern": "none",
-	"hardness": 2,
-	"breaking_behavior": "bends",
-	"surface_shine": "dull",
-	"light_transmission": "blocked",
-	"fluorescence": false,
-	"piezoelectricity": false,
-	"radioactivity": false,
-	"density": 1.8
-}
+properties = { "crystal_form": "formless", "crystal_pattern": "none", "hardness": 2, "breaking_behavior": "bends", "surface_shine": "dull", "light_transmission": "blocked", "fluorescence": false, "piezoelectricity": false, "radioactivity": false, "density": 1.8 }
 
 [sub_resource type="Resource" id="yield_clay"]
 script = ExtResource("5_yield")

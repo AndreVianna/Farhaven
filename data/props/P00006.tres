@@ -14,16 +14,7 @@ footprint = Vector2i(1, 1)
 script = ExtResource("3_catalogable")
 scan_time = 2.0
 show_as_anomaly = false
-properties = {
-	"energy_source": "light",
-	"internal_transport": "vessels",
-	"shape_symmetry": "radial",
-	"growth_form": "rosette",
-	"rigidity": "flexible",
-	"edibility_level": 4,
-	"toxicity_level": 2,
-	"hydration_level": 5
-}
+properties = { "energy_source": "light", "internal_transport": "vessels", "shape_symmetry": "radial", "growth_form": "rosette", "rigidity": "flexible", "edibility_level": 4, "toxicity_level": 2, "hydration_level": 5 }
 
 [sub_resource type="Resource" id="yield_leaf"]
 script = ExtResource("5_yield")

@@ -14,18 +14,7 @@ footprint = Vector2i(1, 1)
 script = ExtResource("3_catalogable")
 scan_time = 2.0
 show_as_anomaly = false
-properties = {
-	"crystal_form": "irregular",
-	"crystal_pattern": "cubic",
-	"hardness": 4,
-	"breaking_behavior": "bends",
-	"surface_shine": "metallic",
-	"light_transmission": "blocked",
-	"fluorescence": false,
-	"piezoelectricity": false,
-	"radioactivity": false,
-	"density": 7.9
-}
+properties = { "crystal_form": "irregular", "crystal_pattern": "cubic", "hardness": 4, "breaking_behavior": "bends", "surface_shine": "metallic", "light_transmission": "blocked", "fluorescence": false, "piezoelectricity": false, "radioactivity": false, "density": 7.9 }
 
 [sub_resource type="Resource" id="yield_iron"]
 script = ExtResource("5_yield")

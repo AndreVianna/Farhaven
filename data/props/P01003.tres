@@ -14,18 +14,7 @@ footprint = Vector2i(1, 1)
 script = ExtResource("3_catalogable")
 scan_time = 2.0
 show_as_anomaly = false
-properties = {
-	"crystal_form": "formless",
-	"crystal_pattern": "trigonal",
-	"hardness": 7,
-	"breaking_behavior": "shatters",
-	"surface_shine": "waxy",
-	"light_transmission": "diffused",
-	"fluorescence": false,
-	"piezoelectricity": true,
-	"radioactivity": false,
-	"density": 2.6
-}
+properties = { "crystal_form": "formless", "crystal_pattern": "trigonal", "hardness": 7, "breaking_behavior": "shatters", "surface_shine": "waxy", "light_transmission": "diffused", "fluorescence": false, "piezoelectricity": true, "radioactivity": false, "density": 2.6 }
 
 [sub_resource type="Resource" id="yield_flint"]
 script = ExtResource("5_yield")
@@ -50,8 +39,8 @@ tags = [&"resource_source"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 harvestable = SubResource("harvestable_1")
-placeholder_mesh_type = &"prism"
-placeholder_params = {"size": Vector3(0.3, 0.15, 0.25)}
+placeholder_mesh_type = &"octahedron"
+placeholder_params = { "half_size": 0.15 }
 placeholder_color = Color(0.3, 0.3, 0.35, 1.0)
 placeholder_depleted_type = &"cube"
 placeholder_depleted_params = {"half_size": 0.07}

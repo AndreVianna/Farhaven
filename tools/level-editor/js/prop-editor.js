@@ -54,6 +54,8 @@ export class PropDefModel {
     this.behavior = null;
     /** @type {{ spawn_min: number, spawn_max: number, first_spawn_day: number, spawn_min_distance: number, allowed_biomes: string[] }|null} */
     this.spawnable = null;
+    /** @type {{ yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[] }|null} */
+    this.harvestable = null;
 
     // --- Gear base fields ---
     /** @type {string} One-line summary for tooltips */
@@ -267,6 +269,41 @@ export class PropDefModel {
       };
     }
 
+    if (d.harvestable && typeof d.harvestable === 'object') {
+      // Resolve nested sub_resource refs in yields array. file-discovery
+      // only resolves top-level refs; array elements stay as
+      // { type: 'sub_resource', value: 'yield_id' } and need lookup.
+      const subMap = new Map();
+      if (entry.raw && entry.raw.subResources) {
+        for (const sub of entry.raw.subResources) {
+          const subData = {};
+          for (const [k, v] of sub.fields) subData[k] = v.value;
+          subMap.set(sub.id, subData);
+        }
+      }
+      const yieldRefs = Array.isArray(d.harvestable.yields) ? d.harvestable.yields : [];
+      const yields = [];
+      for (const ref of yieldRefs) {
+        let yd = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          yd = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          yd = ref; // already resolved
+        }
+        if (yd) {
+          yields.push({
+            item_id: _str(yd.item_id),
+            amount: _num(yd.amount) || 1,
+            conditions: _strArray(yd.conditions),
+          });
+        }
+      }
+      model.harvestable = {
+        yields: yields,
+        respawn_conditions: _strArray(d.harvestable.respawn_conditions),
+      };
+    }
+
     // --- Legacy fields (still in .tres during transition, kept for round-trip) ---
     model.gather_time = _num(d.gather_time);
     model.gather_amount = _num(d.gather_amount);
@@ -274,7 +311,6 @@ export class PropDefModel {
     model.respawn_time = _num(d.respawn_time);
     model.yield_type = _str(d.yield_type);
     model.tool_speed = _dictToObj(d.tool_speed);
-    model.category = _str(d.category);
     model.emits_light = !!d.emits_light;
     model.light_radius = _num(d.light_radius);
     model.is_respawn_point = !!d.is_respawn_point;
@@ -1031,6 +1067,167 @@ function _createStringArrayEditor(name, labelText, values) {
   return wrapper;
 }
 
+/** Harvestable condition types. */
+const _CONDITION_TYPES = [
+  'tool', 'time_elapsed', 'time_of_day', 'skill', 'weather', 'season', 'biome',
+];
+
+/**
+ * Render the Harvestable capability editor into the given panel.
+ * Shows a list of yields (each with item_id/amount/conditions) and
+ * a list of respawn conditions.
+ * @param {HTMLElement} panel
+ * @param {{yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[]}|null} cap
+ */
+function _addHarvestableEditor(panel, cap) {
+  const currentYields = cap && Array.isArray(cap.yields) ? cap.yields : [];
+  const currentRespawn = cap && Array.isArray(cap.respawn_conditions) ? cap.respawn_conditions : [];
+
+  // --- Yields section ---
+  const yieldsLabel = document.createElement('div');
+  yieldsLabel.textContent = 'Yields';
+  yieldsLabel.classList.add('prop-label');
+  yieldsLabel.style.gridColumn = '1 / -1';
+  panel.appendChild(yieldsLabel);
+
+  const yieldsContainer = document.createElement('div');
+  yieldsContainer.dataset.harvestableYields = '1';
+  yieldsContainer.style.cssText = 'grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px;';
+  panel.appendChild(yieldsContainer);
+
+  function _addConditionRow(container, type, value) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin-left:16px;';
+    row.dataset.conditionRow = '1';
+
+    const typeSel = document.createElement('select');
+    typeSel.dataset.conditionType = '1';
+    typeSel.classList.add('prop-input');
+    typeSel.style.cssText = 'flex:0 0 120px;';
+    for (const t of _CONDITION_TYPES) {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (t === type) opt.selected = true;
+      typeSel.appendChild(opt);
+    }
+
+    const valInput = document.createElement('input');
+    valInput.type = 'text';
+    valInput.placeholder = 'value (e.g. cutting_tool, 2_days)';
+    valInput.value = value;
+    valInput.dataset.conditionValue = '1';
+    valInput.classList.add('prop-input');
+    valInput.style.cssText = 'flex:1;';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(typeSel);
+    row.appendChild(valInput);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  }
+
+  function _addYieldRow(y) {
+    const wrapper = document.createElement('div');
+    wrapper.dataset.harvestYield = '1';
+    wrapper.style.cssText = 'border:1px solid var(--border);border-radius:3px;padding:6px;background:var(--bg-tertiary);';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
+
+    const itemInput = document.createElement('input');
+    itemInput.type = 'text';
+    itemInput.placeholder = 'item_id (e.g. plant_fiber)';
+    itemInput.value = y.item_id || '';
+    itemInput.dataset.yieldItemId = '1';
+    itemInput.classList.add('prop-input');
+    itemInput.style.cssText = 'flex:1;';
+
+    const amountInput = document.createElement('input');
+    amountInput.type = 'number';
+    amountInput.step = '1';
+    amountInput.min = '1';
+    amountInput.value = Number.isFinite(y.amount) ? y.amount : 1;
+    amountInput.dataset.yieldAmount = '1';
+    amountInput.classList.add('prop-input');
+    amountInput.style.cssText = 'flex:0 0 80px;';
+
+    const removeYieldBtn = document.createElement('button');
+    removeYieldBtn.textContent = 'Remove Yield';
+    removeYieldBtn.type = 'button';
+    removeYieldBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeYieldBtn.addEventListener('click', () => wrapper.remove());
+
+    header.appendChild(itemInput);
+    header.appendChild(amountInput);
+    header.appendChild(removeYieldBtn);
+    wrapper.appendChild(header);
+
+    const condLabel = document.createElement('div');
+    condLabel.textContent = 'Conditions (all must match to yield):';
+    condLabel.style.cssText = 'font-size:11px;color:var(--text-secondary);margin:4px 0 2px 0;';
+    wrapper.appendChild(condLabel);
+
+    const condContainer = document.createElement('div');
+    condContainer.dataset.yieldConditions = '1';
+    condContainer.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+    wrapper.appendChild(condContainer);
+
+    for (const c of (y.conditions || [])) {
+      const [type, ...rest] = String(c).split(':');
+      _addConditionRow(condContainer, type || 'tool', rest.join(':'));
+    }
+
+    const addCondBtn = document.createElement('button');
+    addCondBtn.textContent = '+ Condition';
+    addCondBtn.type = 'button';
+    addCondBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:4px;margin-left:16px;';
+    addCondBtn.addEventListener('click', () => _addConditionRow(condContainer, 'tool', ''));
+    wrapper.appendChild(addCondBtn);
+
+    yieldsContainer.appendChild(wrapper);
+  }
+
+  for (const y of currentYields) _addYieldRow(y);
+
+  const addYieldBtn = document.createElement('button');
+  addYieldBtn.textContent = '+ Add Yield';
+  addYieldBtn.type = 'button';
+  addYieldBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addYieldBtn.addEventListener('click', () => _addYieldRow({ item_id: '', amount: 1, conditions: [] }));
+  panel.appendChild(addYieldBtn);
+
+  // --- Respawn conditions section ---
+  const respawnLabel = document.createElement('div');
+  respawnLabel.textContent = 'Respawn Conditions (empty = never respawns)';
+  respawnLabel.classList.add('prop-label');
+  respawnLabel.style.gridColumn = '1 / -1';
+  respawnLabel.style.marginTop = '8px';
+  panel.appendChild(respawnLabel);
+
+  const respawnContainer = document.createElement('div');
+  respawnContainer.dataset.harvestableRespawn = '1';
+  respawnContainer.style.cssText = 'grid-column: 1 / -1; display:flex; flex-direction:column; gap:3px;';
+  panel.appendChild(respawnContainer);
+
+  for (const c of currentRespawn) {
+    const [type, ...rest] = String(c).split(':');
+    _addConditionRow(respawnContainer, type || 'time_elapsed', rest.join(':'));
+  }
+
+  const addRespawnBtn = document.createElement('button');
+  addRespawnBtn.textContent = '+ Respawn Condition';
+  addRespawnBtn.type = 'button';
+  addRespawnBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addRespawnBtn.addEventListener('click', () => _addConditionRow(respawnContainer, 'time_elapsed', ''));
+  panel.appendChild(addRespawnBtn);
+}
+
 /** Mode int value -> label used by the movement editor dropdown. */
 const _MOVEMENT_MODE_OPTIONS = [
   { value: 0, label: 'WALK' },
@@ -1662,6 +1859,11 @@ export function renderPropEditor(container, options) {
       _addCsvField(panel, 'Allowed Biomes (comma-separated, empty = any)', 'cap_spawnable_allowed_biomes', model.spawnable ? model.spawnable.allowed_biomes : []);
     }));
 
+    // HARVESTABLE
+    grid.appendChild(_createCapabilityPanel('harvestable', 'Harvestable', model.harvestable, (panel) => {
+      _addHarvestableEditor(panel, model.harvestable);
+    }));
+
     body.appendChild(grid);
   }
 
@@ -2145,6 +2347,39 @@ export function collectPropFormData(formElement) {
     };
   }
 
+  if (isChecked('cap_harvestable_enabled')) {
+    const yields = [];
+    const yieldEls = formElement.querySelectorAll('[data-harvest-yield]');
+    for (const yEl of yieldEls) {
+      const itemInput = yEl.querySelector('[data-yield-item-id]');
+      const amountInput = yEl.querySelector('[data-yield-amount]');
+      const conditions = [];
+      const condRows = yEl.querySelectorAll('[data-yield-conditions] [data-condition-row]');
+      for (const r of condRows) {
+        const t = r.querySelector('[data-condition-type]');
+        const v = r.querySelector('[data-condition-value]');
+        const tv = (t && t.value || '').trim();
+        const vv = (v && v.value || '').trim();
+        if (tv && vv) conditions.push(`${tv}:${vv}`);
+      }
+      yields.push({
+        item_id: (itemInput && itemInput.value || '').trim(),
+        amount: parseInt(amountInput && amountInput.value, 10) || 1,
+        conditions,
+      });
+    }
+    const respawnConds = [];
+    const respawnRows = formElement.querySelectorAll('[data-harvestable-respawn] [data-condition-row]');
+    for (const r of respawnRows) {
+      const t = r.querySelector('[data-condition-type]');
+      const v = r.querySelector('[data-condition-value]');
+      const tv = (t && t.value || '').trim();
+      const vv = (v && v.value || '').trim();
+      if (tv && vv) respawnConds.push(`${tv}:${vv}`);
+    }
+    model.harvestable = { yields, respawn_conditions: respawnConds };
+  }
+
   // Visuals
   model.placeholder_mesh_type = val('placeholder_mesh_type').trim();
   model.placeholder_params = _collectKvData(formElement, 'placeholder_params');
@@ -2384,6 +2619,7 @@ function _modelToPlain(model) {
     combat: model.combat,
     behavior: model.behavior,
     spawnable: model.spawnable,
+    harvestable: model.harvestable,
     max_stack: model.max_stack,
     placeholder_mesh_type: model.placeholder_mesh_type,
     placeholder_params: model.placeholder_params,
@@ -2643,7 +2879,61 @@ export function propModelToRaw(model) {
     extId++;
   }
 
-  // Build sub_resources
+  // Harvestable cap — emits the cap itself PLUS one sub_resource per yield.
+  // Yield sub_resources are pushed to subResources directly (before the main
+  // loop below) so they appear before the harvestable cap that references them.
+  /** @type {Array<{id: string, fields: Map<string, any>}>} */
+  const extraSubResources = [];
+  if (model.harvestable) {
+    const harvExtId = `${extId}_harvestable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="${harvExtId}"]`);
+    extId++;
+
+    const yields = Array.isArray(model.harvestable.yields) ? model.harvestable.yields : [];
+    let yieldExtId = null;
+    if (yields.length > 0) {
+      yieldExtId = `${extId}_harvest_yield`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="${yieldExtId}"]`);
+      extId++;
+    }
+
+    const yieldSubIds = [];
+    for (let i = 0; i < yields.length; i++) {
+      const y = yields[i];
+      const yieldSubId = `harvest_yield_${i + 1}`;
+      yieldSubIds.push(yieldSubId);
+
+      const yieldFields = new Map();
+      yieldFields.set('script', { type: 'ext_resource', value: `ExtResource("${yieldExtId}")` });
+      yieldFields.set('item_id', { type: 'stringname', value: y.item_id || '' });
+      yieldFields.set('amount', { type: 'int', value: Number.isFinite(y.amount) ? y.amount : 1 });
+      yieldFields.set('conditions', {
+        type: 'array', elementType: null,
+        value: (Array.isArray(y.conditions) ? y.conditions : []).map(c => ({ type: 'stringname', value: c })),
+      });
+
+      extraSubResources.push({ type: 'Resource', id: yieldSubId, fields: yieldFields });
+    }
+
+    const harvSubFields = new Map();
+    harvSubFields.set('script', { type: 'ext_resource', value: `ExtResource("${harvExtId}")` });
+    harvSubFields.set('yields', {
+      type: 'array', elementType: 'HarvestYield',
+      value: yieldSubIds.map(id => ({ type: 'sub_resource', value: id })),
+    });
+    const respawnConds = Array.isArray(model.harvestable.respawn_conditions) ? model.harvestable.respawn_conditions : [];
+    harvSubFields.set('respawn_conditions', {
+      type: 'array', elementType: null,
+      value: respawnConds.map(c => ({ type: 'stringname', value: c })),
+    });
+    capEntries.push({ capName: 'harvestable', subId: 'harvestable_1', subFields: harvSubFields });
+  }
+
+  // Build sub_resources: yields come first (so harvestable can reference them),
+  // then capability sub_resources in definition order.
+  for (const sub of extraSubResources) {
+    subResources.push(sub);
+  }
   for (const cap of capEntries) {
     subResources.push({ type: 'Resource', id: cap.subId, fields: cap.subFields });
   }
@@ -2738,7 +3028,7 @@ export function propModelToRaw(model) {
   // survive from the old raw.
   const MANAGED_FIELDS = new Set([
     'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
-    'endurance', 'movement', 'combat', 'behavior', 'spawnable',
+    'endurance', 'movement', 'combat', 'behavior', 'spawnable', 'harvestable',
     'category', 'rarity', 'footprint', 'prop_category',
   ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {
