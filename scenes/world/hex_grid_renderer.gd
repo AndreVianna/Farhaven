@@ -324,26 +324,96 @@ func _rebuild_mesh() -> void:
 			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
-		var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+		all_corner_y[coords] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+
+	# Step 4b: corner_y — per-point computation for cross-tile consistency.
+	# Each physical corner point is shared by up to 3 tiles. We find connected
+	# components based on walls and type (water/land), average within each
+	# component, and assign the SAME value to every tile in that component.
+	var corner_point_tiles: Dictionary = {}  # Vector2i pos_key → Array[Dictionary]
+	for coords: Variant in tile_colors:
+		var tile: Resource = HexGrid._tiles[coords]
+		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
+		var world_2d: Vector2 = HexMath.axial_to_world(coords)
+		var cx: float = world_2d.x
+		var cz: float = world_2d.y
 		for ci: int in range(6):
-			var sum_e: float = elev
-			var cnt: int = 1
-			var dir_pair: Array = corner_neighbor_dirs[ci]
-			for d: int in dir_pair:
-				# Skip neighbors across a wall edge
-				if tile.walls[d]:
+			var angle: float = deg_to_rad(60.0 * float(ci))
+			var pos_key := Vector2i(
+				roundi((cx + cos(angle) * HexMath.HEX_SIZE) * 1000.0),
+				roundi((cz + sin(angle) * HexMath.HEX_SIZE) * 1000.0),
+			)
+			if not corner_point_tiles.has(pos_key):
+				corner_point_tiles[pos_key] = []
+			(corner_point_tiles[pos_key] as Array).append({
+				coords = coords, ci = ci, elev = elev, is_water = is_water,
+			})
+
+	for pos_key: Variant in corner_point_tiles:
+		var entries: Array = corner_point_tiles[pos_key]
+		var n: int = entries.size()
+		if n == 1:
+			# Single tile — keeps its own elevation (already set above).
+			continue
+
+		# Build connectivity: two entries are connected if they are neighbors
+		# with no wall on either side and same type (water/land).
+		# parent[i] tracks union-find root.
+		var parent: Array[int] = []
+		parent.resize(n)
+		for i: int in range(n):
+			parent[i] = i
+		for i: int in range(n):
+			for j: int in range(i + 1, n):
+				var a: Dictionary = entries[i]
+				var b: Dictionary = entries[j]
+				if a.is_water != b.is_water:
 					continue
-				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
-				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-				if n_tile == null:
-					continue
-				if is_water != (n_tile.biome == _HexTile.Biome.WATER):
-					continue
-				var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
-				sum_e += n_elev
-				cnt += 1
-			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
-		all_corner_y[coords] = cy
+				# Find direction from a to b.
+				var a_coords: Vector2i = a.coords
+				var b_coords: Vector2i = b.coords
+				var dir_ab: int = -1
+				for d: int in range(6):
+					if a_coords + (HexMath.DIRECTIONS[d] as Vector2i) == b_coords:
+						dir_ab = d
+						break
+				if dir_ab < 0:
+					continue  # not neighbors
+				var dir_ba: int = (dir_ab + 3) % 6
+				var a_tile: Resource = HexGrid._tiles[a_coords]
+				var b_tile: Resource = HexGrid._tiles[b_coords]
+				if a_tile.walls[dir_ab] or b_tile.walls[dir_ba]:
+					continue  # wall blocks connection
+				# Union
+				var ra: int = i
+				while parent[ra] != ra:
+					ra = parent[ra]
+				var rb: int = j
+				while parent[rb] != rb:
+					rb = parent[rb]
+				if ra != rb:
+					parent[ra] = rb
+
+		# Group by component root and average elevation.
+		var components: Dictionary = {}  # root → Array[int]
+		for i: int in range(n):
+			var r: int = i
+			while parent[r] != r:
+				r = parent[r]
+			if not components.has(r):
+				components[r] = []
+			(components[r] as Array).append(i)
+
+		for root: Variant in components:
+			var indices: Array = components[root]
+			var sum_e: float = 0.0
+			for idx: int in indices:
+				sum_e += (entries[idx] as Dictionary).elev
+			var avg_y: float = (sum_e / float(indices.size())) * ELEVATION_STEP
+			for idx: int in indices:
+				var entry: Dictionary = entries[idx]
+				(all_corner_y[entry.coords] as Array)[entry.ci] = avg_y
 
 	# Steps 5-7: Build per-chunk geometry.
 	# Each chunk gets its own Node3D with MeshInstance3D children per bucket.
@@ -727,41 +797,23 @@ func _pick_color(bd: BiomeData, _elevation: int) -> Color:
 
 const _DIR_NAMES: Array = ["E", "NE", "NW", "W", "SW", "SE"]
 
-## Compute edge_y[6] and corner_y[6] for a single tile using the same
-## algorithm as _rebuild_mesh Step 4.
-func _compute_tile_geometry(coords: Vector2i) -> Dictionary:
-	var tile: Resource = HexGrid._tiles.get(coords, null)
-	if tile == null:
-		return {}
-	var is_water: bool = tile.biome == _HexTile.Biome.WATER
-	var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
-	var elev_y: float = elev * ELEVATION_STEP
+## Compute edge_y[6] and corner_y[6] for a set of tiles using the same
+## per-point algorithm as _rebuild_mesh Steps 4 + 4b.
+## Returns Dictionary { coords → { edge_y, corner_y, biome, ... } }.
+func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
+	var results: Dictionary = {}  # Vector2i → Dictionary
 
-	var corner_neighbor_dirs: Array = [
-		[0, 1], [0, 5], [5, 4], [4, 3], [3, 2], [2, 1],
-	]
+	# edge_y: per-tile (same as renderer Step 4).
+	for coords: Vector2i in tile_coords:
+		var tile: Resource = HexGrid._tiles.get(coords, null)
+		if tile == null:
+			continue
+		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
+		var elev_y: float = elev * ELEVATION_STEP
 
-	# edge_y
-	var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
-	for d: int in range(6):
-		if tile.walls[d]:
-			continue
-		var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
-		var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-		if n_tile == null:
-			continue
-		if is_water != (n_tile.biome == _HexTile.Biome.WATER):
-			continue
-		var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
-		ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
-
-	# corner_y
-	var cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
-	for ci: int in range(6):
-		var sum_e: float = elev
-		var cnt: int = 1
-		var dir_pair: Array = corner_neighbor_dirs[ci]
-		for d: int in dir_pair:
+		var ey: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+		for d: int in range(6):
 			if tile.walls[d]:
 				continue
 			var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
@@ -771,31 +823,122 @@ func _compute_tile_geometry(coords: Vector2i) -> Dictionary:
 			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
 				continue
 			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
-			sum_e += n_elev
-			cnt += 1
-		cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
+			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 
-	return {
-		biome = tile.biome,
-		elevation = tile.elevation,
-		water_level = tile.water_level,
-		is_water = is_water,
-		walls = tile.walls.duplicate(),
-		edge_y = ey,
-		corner_y = cy,
-	}
+		results[coords] = {
+			biome = tile.biome,
+			elevation = tile.elevation,
+			water_level = tile.water_level,
+			is_water = is_water,
+			walls = tile.walls.duplicate(),
+			edge_y = ey,
+			corner_y = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y] as Array[float],
+		}
+
+	# corner_y: per-point with connected components (same as renderer Step 4b).
+	var corner_point_tiles: Dictionary = {}
+	for coords: Vector2i in results:
+		var data: Dictionary = results[coords]
+		var world_2d: Vector2 = HexMath.axial_to_world(coords)
+		var cx: float = world_2d.x
+		var cz: float = world_2d.y
+		for ci: int in range(6):
+			var angle: float = deg_to_rad(60.0 * float(ci))
+			var pos_key := Vector2i(
+				roundi((cx + cos(angle) * HexMath.HEX_SIZE) * 1000.0),
+				roundi((cz + sin(angle) * HexMath.HEX_SIZE) * 1000.0),
+			)
+			if not corner_point_tiles.has(pos_key):
+				corner_point_tiles[pos_key] = []
+			(corner_point_tiles[pos_key] as Array).append({
+				coords = coords, ci = ci,
+				elev = float(data.water_level) if data.is_water else float(data.elevation),
+				is_water = data.is_water,
+			})
+
+	for pos_key: Variant in corner_point_tiles:
+		var entries: Array = corner_point_tiles[pos_key]
+		var n: int = entries.size()
+		if n <= 1:
+			continue
+		var parent: Array[int] = []
+		parent.resize(n)
+		for i: int in range(n):
+			parent[i] = i
+		for i: int in range(n):
+			for j: int in range(i + 1, n):
+				var a: Dictionary = entries[i]
+				var b: Dictionary = entries[j]
+				if a.is_water != b.is_water:
+					continue
+				var dir_ab: int = -1
+				for d: int in range(6):
+					if (a.coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i) == (b.coords as Vector2i):
+						dir_ab = d
+						break
+				if dir_ab < 0:
+					continue
+				var dir_ba: int = (dir_ab + 3) % 6
+				var a_tile: Resource = HexGrid._tiles[a.coords]
+				var b_tile: Resource = HexGrid._tiles[b.coords]
+				if a_tile.walls[dir_ab] or b_tile.walls[dir_ba]:
+					continue
+				var ra: int = i
+				while parent[ra] != ra:
+					ra = parent[ra]
+				var rb: int = j
+				while parent[rb] != rb:
+					rb = parent[rb]
+				if ra != rb:
+					parent[ra] = rb
+		var components: Dictionary = {}
+		for i: int in range(n):
+			var r: int = i
+			while parent[r] != r:
+				r = parent[r]
+			if not components.has(r):
+				components[r] = []
+			(components[r] as Array).append(i)
+		for root: Variant in components:
+			var indices: Array = components[root]
+			var sum_e: float = 0.0
+			for idx: int in indices:
+				sum_e += (entries[idx] as Dictionary).elev
+			var avg_y: float = (sum_e / float(indices.size())) * ELEVATION_STEP
+			for idx: int in indices:
+				var entry: Dictionary = entries[idx]
+				if results.has(entry.coords):
+					(results[entry.coords].corner_y as Array)[entry.ci] = avg_y
+
+	return results
 
 
-## Print edge_y / corner_y for a hex and all neighbors, marking shared-point mismatches.
+## Print edge_y / corner_y for a hex and all neighbors, marking shared-point
+## mismatches and wall rendering status.
 func debug_hex(coords: Vector2i) -> void:
 	var edge_corners: Array = [
 		[0, 1], [5, 0], [4, 5], [3, 4], [2, 3], [1, 2],
 	]
 
-	var center: Dictionary = _compute_tile_geometry(coords)
-	if center.is_empty():
+	if not HexGrid._tiles.has(coords):
 		print("debug_hex: tile %s does not exist" % str(coords))
 		return
+
+	# Gather center + all neighbors for per-point computation.
+	var all_coords: Array[Vector2i] = [coords]
+	for d: int in range(6):
+		var n: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
+		if HexGrid._tiles.has(n):
+			all_coords.append(n)
+		# Also include neighbors-of-neighbors that share corners with center.
+		# This ensures the per-point algorithm has full context for all corners.
+		for d2: int in range(6):
+			var nn: Vector2i = n + (HexMath.DIRECTIONS[d2] as Vector2i)
+			if HexGrid._tiles.has(nn) and not all_coords.has(nn):
+				all_coords.append(nn)
+
+	var geo: Dictionary = _compute_geometry_for(all_coords)
+	var center: Dictionary = geo[coords]
 
 	var walls_str: String = ""
 	for w: bool in center.walls:
@@ -810,17 +953,20 @@ func debug_hex(coords: Vector2i) -> void:
 	var mismatch_count: int = 0
 	for d: int in range(6):
 		var n_coords: Vector2i = coords + (HexMath.DIRECTIONS[d] as Vector2i)
-		var n_data: Dictionary = _compute_tile_geometry(n_coords)
 		var rev_d: int = (d + 3) % 6
 		var ec: Array = edge_corners[d]
 		var ca_idx: int = ec[0]
 		var cb_idx: int = ec[1]
 
 		print("")
-		if n_data.is_empty():
+		if not geo.has(n_coords):
 			print("--- %s (%s) — no tile ---" % [_DIR_NAMES[d], str(n_coords)])
+			# Wall analysis: center has wall toward empty → wall face drawn
+			if center.walls[d]:
+				print("  Wall: center draws cliff face toward void")
 			continue
 
+		var n_data: Dictionary = geo[n_coords]
 		var n_walls_str: String = ""
 		for w: bool in n_data.walls:
 			n_walls_str += "T" if w else "F"
@@ -830,6 +976,50 @@ func debug_hex(coords: Vector2i) -> void:
 			"Y" if n_data.is_water else "N", n_walls_str])
 		print("  edge_y:   %s" % str(_fmt_floats(n_data.edge_y)))
 		print("  corner_y: %s" % str(_fmt_floats(n_data.corner_y)))
+
+		# Wall rendering analysis
+		var c_has_wall: bool = center.walls[d]
+		var n_has_wall: bool = n_data.walls[rev_d]
+		var c_surface: float = float(center.water_level) if center.is_water else float(center.elevation)
+		var n_surface: float = float(n_data.water_level) if n_data.is_water else float(n_data.elevation)
+		var same_type: bool = center.is_water == n_data.is_water
+		var wall_expected: bool = false
+		if not same_type:
+			# Water↔land: wall expected when levels differ
+			var w_tile: Dictionary = center if center.is_water else n_data
+			var l_tile: Dictionary = n_data if center.is_water else center
+			wall_expected = w_tile.water_level != l_tile.elevation
+		elif not same_type:
+			wall_expected = true
+		# Who draws the wall face?
+		var c_draws: bool = c_has_wall
+		var n_draws: bool = n_has_wall
+		if center.is_water and not n_data.is_water and n_data.elevation > center.water_level:
+			c_draws = false  # water skips when neighbor land is higher
+		if n_data.is_water and not center.is_water and center.elevation > n_data.water_level:
+			n_draws = false
+
+		if c_has_wall or n_has_wall:
+			var wall_parts: PackedStringArray = PackedStringArray()
+			if c_has_wall:
+				wall_parts.append("center.walls[%d]=T" % d)
+			if n_has_wall:
+				wall_parts.append("neighbor.walls[%d]=T" % rev_d)
+			var draw_parts: PackedStringArray = PackedStringArray()
+			if c_draws:
+				draw_parts.append("center draws")
+			if n_draws:
+				draw_parts.append("neighbor draws")
+			if draw_parts.is_empty():
+				draw_parts.append("neither draws (skipped)")
+			print("  Wall: %s → %s" % [", ".join(wall_parts), ", ".join(draw_parts)])
+		else:
+			if wall_expected:
+				print("  Wall: MISSING — expected wall between %s and %s" % [
+					"water" if center.is_water else "land",
+					"water" if n_data.is_water else "land"])
+			else:
+				print("  Wall: none (smooth edge)")
 
 		# Compare shared edge midpoint
 		var rev_ec: Array = edge_corners[rev_d]
