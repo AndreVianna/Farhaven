@@ -1249,9 +1249,8 @@ function _initPropPalette() {
       // Only show placeable props on the map
       if (!d.placeable) continue;
 
-      // Read prop_category (int) and convert to category name
-      const catInt = d.prop_category != null ? Number(d.prop_category) : 0;
-      const resCat = CATEGORIES[catInt] || 'plant';
+      // Read category (StringName field)
+      const resCat = (typeof d.category === 'string' && d.category) ? d.category : 'plant';
       if (!showCats.includes(resCat)) continue;
 
       // Read origin (int) and convert to origin name

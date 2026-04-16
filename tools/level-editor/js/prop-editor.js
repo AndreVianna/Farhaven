@@ -5,7 +5,7 @@
 import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
+import { CATEGORIES, RARITIES, ORIGINS, NATURAL_CATEGORIES, ORIGIN_TO_INT } from './hex-grid.js';
 import { renderGearHeader } from './editor-common.js';
 
 /**
@@ -65,6 +65,12 @@ export class PropDefModel {
     /** @type {number} */
     this.max_stack = 99;
 
+    // --- Classification ---
+    /** @type {string} Primary category (plant/mineral/animal/fungi/ooze/liquid/stuff/structure/equipment/vehicle/storage) */
+    this.category = '';
+    /** @type {string} Rarity tier (common/uncommon/rare) */
+    this.rarity = 'common';
+
     // --- Placement ---
     /** @type {string} Default origin for placement */
     this.prop_origin = 'natural';
@@ -90,8 +96,6 @@ export class PropDefModel {
     this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
 
     // --- Legacy fields (DEPRECATED — kept for round-trip during transition) ---
-    /** @type {string} */
-    this.prop_category = 'plant';
     /** @type {number} */
     this.gather_time = 0;
     /** @type {number} */
@@ -104,8 +108,6 @@ export class PropDefModel {
     this.yield_type = '';
     /** @type {Object<string, number>} */
     this.tool_speed = {};
-    /** @type {string} */
-    this.category = '';
     /** @type {boolean} */
     this.emits_light = false;
     /** @type {number} */
@@ -169,8 +171,10 @@ export class PropDefModel {
     // Legacy footprint (top-level)
     model.footprint = _footprintArray(d.footprint);
 
+    // Classification
+    model.category = _str(d.category);
+    model.rarity = _str(d.rarity) || 'common';
     // Placement defaults
-    model.prop_category = CATEGORIES[_num(d.prop_category)] || 'plant';
     model.prop_origin = ORIGINS[_num(d.origin)] || 'natural';
 
     // --- Capabilities (resolved sub_resource data from file-discovery) ---
@@ -1286,7 +1290,7 @@ export function renderPropEditor(container, options) {
 
     for (const [filename, entry] of ProjectContext.files.props) {
       const model = PropDefModel.fromEntry(filename, entry);
-      allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
+      allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.category, propOrigin: model.prop_origin });
     }
     allProps.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
@@ -1323,7 +1327,7 @@ export function renderPropEditor(container, options) {
           editingModel = new PropDefModel();
           editingModel.id = prop.id;
           editingModel.display_name = prop.id;
-          editingModel.prop_category = prop.propCat;
+          editingModel.category = prop.propCat;
           editingModel.prop_origin = prop.propOrigin;
         }
         initialJson = JSON.stringify(_modelToPlain(editingModel));
@@ -1701,7 +1705,7 @@ export function renderPropEditor(container, options) {
     // If the editor is locked to a category (tab-per-category), pre-set it
     // so the new prop joins the current tab's list immediately.
     if (lockedCategory) {
-      editingModel.prop_category = lockedCategory;
+      editingModel.category = lockedCategory;
       // STUFF defaults to non-natural origin (per Andre, 2026-04-10)
       if (lockedCategory === 'stuff') {
         editingModel.prop_origin = 'crafted';
@@ -1921,6 +1925,33 @@ const _NON_NATURAL_CAT_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.h
  * @returns {void}
  */
 function _addOriginCategoryFields(grid, model) {
+  // Category
+  const catLabel = document.createElement('label');
+  catLabel.textContent = 'Category';
+  catLabel.classList.add('prop-label');
+  const catSelect = document.createElement('select');
+  catSelect.name = 'category';
+  catSelect.classList.add('prop-input');
+  grid.appendChild(catLabel);
+  grid.appendChild(catSelect);
+
+  // Rarity
+  const rarityLabel = document.createElement('label');
+  rarityLabel.textContent = 'Rarity';
+  rarityLabel.classList.add('prop-label');
+  const raritySelect = document.createElement('select');
+  raritySelect.name = 'rarity';
+  raritySelect.classList.add('prop-input');
+  for (const r of RARITIES) {
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = r;
+    if (r === model.rarity) opt.selected = true;
+    raritySelect.appendChild(opt);
+  }
+  grid.appendChild(rarityLabel);
+  grid.appendChild(raritySelect);
+
   // Origin
   const originLabel = document.createElement('label');
   originLabel.textContent = 'Origin';
@@ -1937,16 +1968,6 @@ function _addOriginCategoryFields(grid, model) {
   }
   grid.appendChild(originLabel);
   grid.appendChild(originSelect);
-
-  // Category
-  const catLabel = document.createElement('label');
-  catLabel.textContent = 'Prop Category';
-  catLabel.classList.add('prop-label');
-  const catSelect = document.createElement('select');
-  catSelect.name = 'prop_category';
-  catSelect.classList.add('prop-input');
-  grid.appendChild(catLabel);
-  grid.appendChild(catSelect);
 
   /** Rebuild category options based on origin. */
   function _refreshCategories(preserveValue) {
@@ -1966,7 +1987,7 @@ function _addOriginCategoryFields(grid, model) {
     }
   }
 
-  _refreshCategories(model.prop_category);
+  _refreshCategories(model.category);
   originSelect.addEventListener('change', () => _refreshCategories());
 }
 
@@ -2034,7 +2055,8 @@ export function collectPropFormData(formElement) {
   model.tags = _collectTagData(formElement);
 
   // Placement defaults (editor-only)
-  model.prop_category = val('prop_category') || 'plant';
+  model.category = val('category') || '';
+  model.rarity = val('rarity') || 'common';
   model.prop_origin = val('prop_origin') || 'natural';
   // tool_slot and max_stack preserved from model (not in form)
 
@@ -2370,7 +2392,8 @@ function _modelToPlain(model) {
     placeholder_depleted_params: model.placeholder_depleted_params,
     placeholder_depleted_color: model.placeholder_depleted_color,
     footprint: model.footprint,
-    prop_category: model.prop_category,
+    category: model.category,
+    rarity: model.rarity,
     prop_origin: model.prop_origin,
     tool_slot: model.tool_slot,
   };
@@ -2644,7 +2667,11 @@ export function propModelToRaw(model) {
   if (model.short_description) fields.set('short_description', { type: 'string', value: model.short_description });
   if (model.long_description) fields.set('long_description', { type: 'string', value: model.long_description });
 
-  // Tags
+  // Classification (fixed fields, not tags)
+  if (model.category) fields.set('category', { type: 'stringname', value: model.category });
+  if (model.rarity) fields.set('rarity', { type: 'stringname', value: model.rarity });
+
+  // Tags (attribute labels only — not category/rarity)
   if (model.tags && model.tags.length > 0) {
     fields.set('tags', {
       type: 'array', elementType: null,
@@ -2692,8 +2719,6 @@ export function propModelToRaw(model) {
   if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
   if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
   if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
-  if (model.category) fields.set('category', { type: 'stringname', value: model.category });
-  if (model.prop_category) fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
 
   // Placeholder fields
   fields.set('placeholder_mesh_type', { type: 'stringname', value: model.placeholder_mesh_type });
@@ -2714,7 +2739,7 @@ export function propModelToRaw(model) {
   const MANAGED_FIELDS = new Set([
     'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
     'endurance', 'movement', 'combat', 'behavior', 'spawnable',
-    'category', 'footprint',
+    'category', 'rarity', 'footprint', 'prop_category',
   ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
