@@ -324,7 +324,8 @@ func _rebuild_mesh() -> void:
 			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
-		all_corner_y[coords] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+		var _init_cy: Array[float] = [elev_y, elev_y, elev_y, elev_y, elev_y, elev_y]
+		all_corner_y[coords] = _init_cy
 
 	# Step 4b: corner_y — per-point computation for cross-tile consistency.
 	# Each physical corner point is shared by up to 3 tiles. We find connected
