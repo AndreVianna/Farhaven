@@ -180,6 +180,28 @@ export class HexCanvas {
     });
   }
 
+  // --- Viewport culling ---
+
+  /**
+   * Compute the world-space bounding box of the visible viewport,
+   * padded by 2 hex sizes so edge hexes and labels aren't clipped.
+   * @returns {{ minX: number, maxX: number, minY: number, maxY: number }}
+   */
+  _getVisibleWorldBounds() {
+    const pad = HEX_SIZE * 2;
+    const topLeft = this.screenToWorld(-pad, -pad);
+    const bottomRight = this.screenToWorld(
+      this.canvas.width + pad,
+      this.canvas.height + pad,
+    );
+    return {
+      minX: topLeft.x,
+      maxX: bottomRight.x,
+      minY: topLeft.y,
+      maxY: bottomRight.y,
+    };
+  }
+
   // --- Hex path and screen helpers (D1, D4) ---
 
   /**
@@ -224,8 +246,12 @@ export class HexCanvas {
 
     if (this.grid.tiles.size === 0) return;
 
+    // Viewport culling: only draw hexes whose world position falls
+    // inside the visible screen area (padded by 2 hex sizes).
+    const vb = this._getVisibleWorldBounds();
+
     // --- Phase 2: Ghost grid (behind real tiles) ---
-    this._ghostSet = this._computeGhostSet();
+    this._ghostSet = this._computeGhostSet(vb);
     for (const key of this._ghostSet) {
       const { q, r } = HexGrid.parseKey(key);
       this._drawGhostHex(q, r);
@@ -238,6 +264,8 @@ export class HexCanvas {
     }
     for (const [key, tile] of this.grid.getAllTiles()) {
       const { q, r } = HexGrid.parseKey(key);
+      const wp = HexMath.axialToPixel(q, r);
+      if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
       this._drawHex(q, r, tile);
       this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
@@ -253,6 +281,8 @@ export class HexCanvas {
     for (const [key, tile] of this.grid.getAllTiles()) {
       if (tile.props && tile.props.length > 0) {
         const { q, r } = HexGrid.parseKey(key);
+        const wp = HexMath.axialToPixel(q, r);
+        if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
         this._drawSubHexOccupancy(q, r, tile);
       }
     }
@@ -1597,13 +1627,28 @@ export class HexCanvas {
   // --- Ghost Grid ---
 
   /**
-   * Compute the set of empty hex positions adjacent to any existing tile.
+   * Compute the set of empty hex positions adjacent to visible tiles.
+   * When `bounds` is provided, only tiles inside the viewport (with extra
+   * padding for ghost neighbors just outside) are considered.
+   * @param {{ minX: number, maxX: number, minY: number, maxY: number }} [bounds]
    * @returns {Set<string>} Set of "q,r" keys for ghost positions
    */
-  _computeGhostSet() {
+  _computeGhostSet(bounds) {
     const ghosts = new Set();
+    // Expand bounds by 3× hex size so ghosts just outside the viewport
+    // (neighbors of visible tiles) are included.
+    const pad = HEX_SIZE * 3;
+    const useBounds = !!bounds;
+    const bMinX = useBounds ? bounds.minX - pad : 0;
+    const bMaxX = useBounds ? bounds.maxX + pad : 0;
+    const bMinY = useBounds ? bounds.minY - pad : 0;
+    const bMaxY = useBounds ? bounds.maxY + pad : 0;
     for (const key of this.grid.tiles.keys()) {
       const { q, r } = HexGrid.parseKey(key);
+      if (useBounds) {
+        const wp = HexMath.axialToPixel(q, r);
+        if (wp.x < bMinX || wp.x > bMaxX || wp.y < bMinY || wp.y > bMaxY) continue;
+      }
       const neighbors = HexMath.getNeighbors(q, r);
       for (const n of neighbors) {
         if (!this.grid.hasTile(n.q, n.r)) {

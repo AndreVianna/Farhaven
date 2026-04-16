@@ -185,7 +185,8 @@ func load_map(path: String) -> bool:
 			t.water_level = t.elevation
 
 	# Walls default to all-false (no walls). Placement is manual via editor.
-	# Exception: water↔land shoreline gets wall only when elevation differs.
+	# Exception: water↔land shoreline always gets a wall (different biome
+	# types never smooth into each other).
 	for c: Variant in _grid._tiles:
 		var t: Resource = _grid._tiles[c]
 		var crd: Vector2i = c as Vector2i
@@ -196,11 +197,7 @@ func load_map(path: String) -> bool:
 			if n_t == null:
 				continue
 			if t_water != (n_t.biome == _HexTile.Biome.WATER):
-				# Water surface vs land elevation — wall only if different
-				var water_tile: Resource = t if t_water else n_t
-				var land_tile: Resource = n_t if t_water else t
-				if water_tile.water_level != land_tile.elevation:
-					t.walls[d] = true
+				t.walls[d] = true
 
 	# Step 4: Store spawn position and starting loadout on the grid.
 	_grid.spawn_tile = spawn
