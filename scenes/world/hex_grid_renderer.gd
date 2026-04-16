@@ -35,6 +35,7 @@ const _COLOR_SHADER: Shader = preload("res://shaders/hex_tile.gdshader")
 const _TEXTURED_SHADER: Shader = preload("res://shaders/hex_tile_textured.gdshader")
 
 const ELEVATION_STEP: float = 0.5
+const CHUNK_SIZE: int = 16
 
 ## Sentinel used in the bucket key when a biome has no textures.
 const _NO_TEXTURE_VARIATION: int = -1
@@ -59,6 +60,9 @@ var _tile_data: Dictionary = {}
 
 ## Currently highlighted tile coords → true.
 var _highlights: Dictionary = {}
+
+## Chunk Node3D containers keyed by Vector2i(chunk_q, chunk_r).
+var _chunk_nodes: Dictionary = {}
 
 ## Cached light count to avoid redundant shader updates.
 var _last_light_count: int = 0
@@ -201,7 +205,12 @@ func _hash_coords(coords: Vector2i, seed: int) -> int:
 ## Rebuild every MeshInstance3D bucket from current _tile_data.
 ## Called on map_generated and on any highlight change.
 func _rebuild_mesh() -> void:
-	# Step 0: Drop previous bucket instances + materials (keep _mesh_instance node).
+	# Step 0: Drop previous chunk nodes, bucket instances + materials.
+	for ck: Variant in _chunk_nodes:
+		var node: Node3D = _chunk_nodes[ck]
+		if is_instance_valid(node):
+			node.queue_free()
+	_chunk_nodes.clear()
 	for inst: MeshInstance3D in _bucket_instances:
 		if is_instance_valid(inst):
 			inst.queue_free()
@@ -336,322 +345,337 @@ func _rebuild_mesh() -> void:
 			cy[ci] = (sum_e / float(cnt)) * ELEVATION_STEP
 		all_corner_y[coords] = cy
 
-	# Step 5: Build per-bucket SurfaceTools for tile surfaces.
-	# Bucket key = Vector2i(biome_int, variation_idx). Cliff faces go into a
-	# single dedicated color-only bucket keyed (-1, -1) so all cliffs of all
-	# biomes share one draw.
+	# Steps 5-7: Build per-chunk geometry.
+	# Each chunk gets its own Node3D with MeshInstance3D children per bucket.
+	# Godot frustum-culls each MeshInstance3D by its AABB, so smaller chunks
+	# mean only visible terrain is rendered.
 	const RING_COUNT: int = 4
 	const VERTS_PER_RING: int = 12
 	var CLIFF_KEY := Vector2i(-1, -1)
 
-	var buckets: Dictionary = {}  # Vector2i → SurfaceTool
-	var _get_bucket := func(key: Vector2i) -> SurfaceTool:
-		if not buckets.has(key):
-			var new_st := SurfaceTool.new()
-			new_st.begin(Mesh.PRIMITIVE_TRIANGLES)
-			buckets[key] = new_st
-		return buckets[key]
-
+	# Group tiles by chunk key.
+	var chunks: Dictionary = {}  # Vector2i → Array[Variant]
 	for coords: Variant in tile_colors:
-		var tile: Resource = HexGrid._tiles[coords]
-		var bd: BiomeData = _biome_data[tile.biome]
-		var variation_idx: int = _pick_variation_idx(bd, coords)
-		var bucket_key: Vector2i
-		if bd != null and not bd.terrain_textures.is_empty():
-			bucket_key = Vector2i(int(tile.biome), variation_idx)
-		else:
-			bucket_key = Vector2i(int(tile.biome), _NO_TEXTURE_VARIATION)
-		var st: SurfaceTool = _get_bucket.call(bucket_key)
+		var ck: Vector2i = _chunk_key_for(coords as Vector2i)
+		if not chunks.has(ck):
+			chunks[ck] = []
+		(chunks[ck] as Array).append(coords)
 
-		var world_2d: Vector2 = HexMath.axial_to_world(coords)
-		var cx: float = world_2d.x
-		var cz: float = world_2d.y
-		var is_water: bool = tile.biome == _HexTile.Biome.WATER
-		var elevation_y: float = (float(tile.water_level) if is_water else float(tile.elevation)) * ELEVATION_STEP
-		var center_color: Color = tile_colors[coords]
-		var corner_y: Array[float] = all_corner_y[coords]
-		var edge_y: Array[float] = all_edge_y[coords]
-		# Per-tile UV rotation (0/90/180/270°) — multiplies effective
-		# variation by 4 against the same texture set. Skipped for
-		# untextured biomes since they sample no texture anyway.
-		var uv_rotation: float = 0.0
-		if bd != null and not bd.terrain_textures.is_empty():
-			uv_rotation = _pick_rotation_radians(coords)
+	# Build each chunk.
+	var first_mesh_assigned: bool = false
+	for ck: Variant in chunks:
+		var chunk_node := Node3D.new()
+		chunk_node.name = "Chunk_%d_%d" % [(ck as Vector2i).x, (ck as Vector2i).y]
+		add_child(chunk_node)
+		_chunk_nodes[ck] = chunk_node
 
-		var corner_colors_at: Array[Color] = [
-			center_color, center_color, center_color,
-			center_color, center_color, center_color,
-		]
-		for i: int in range(6):
-			var angle_i: float = deg_to_rad(60.0 * float(i))
-			var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
-			var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
-			var key_i := Vector3i(
-				roundi(ci_x * 1000.0),
-				tile.elevation,
-				roundi(ci_z * 1000.0)
-			)
-			corner_colors_at[i] = corner_colors.get(key_i, center_color)
+		var chunk_coords: Array = chunks[ck]
+		var buckets: Dictionary = {}  # Vector2i → SurfaceTool
+		var _get_bucket := func(key: Vector2i) -> SurfaceTool:
+			if not buckets.has(key):
+				var new_st := SurfaceTool.new()
+				new_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				buckets[key] = new_st
+			return buckets[key]
 
-		var rings_pos: Array = []
-		var rings_col: Array = []
-		var rings_uv: Array = []
+		# Step 5: Tile surface geometry for this chunk.
+		for coords: Variant in chunk_coords:
+			var tile: Resource = HexGrid._tiles[coords]
+			var bd: BiomeData = _biome_data[tile.biome]
+			var variation_idx: int = _pick_variation_idx(bd, coords)
+			var bucket_key: Vector2i
+			if bd != null and not bd.terrain_textures.is_empty():
+				bucket_key = Vector2i(int(tile.biome), variation_idx)
+			else:
+				bucket_key = Vector2i(int(tile.biome), _NO_TEXTURE_VARIATION)
+			var st: SurfaceTool = _get_bucket.call(bucket_key)
 
-		# Ring 0: center.
-		rings_pos.append([Vector3(cx, elevation_y, cz)])
-		rings_col.append([center_color])
-		rings_uv.append([Vector2(0.5, 0.5)])
+			var world_2d: Vector2 = HexMath.axial_to_world(coords)
+			var cx: float = world_2d.x
+			var cz: float = world_2d.y
+			var is_water: bool = tile.biome == _HexTile.Biome.WATER
+			var elevation_y: float = (float(tile.water_level) if is_water else float(tile.elevation)) * ELEVATION_STEP
+			var center_color: Color = tile_colors[coords]
+			var corner_y: Array[float] = all_corner_y[coords]
+			var edge_y: Array[float] = all_edge_y[coords]
+			# Per-tile UV rotation (0/90/180/270°) — multiplies effective
+			# variation by 4 against the same texture set. Skipped for
+			# untextured biomes since they sample no texture anyway.
+			var uv_rotation: float = 0.0
+			if bd != null and not bd.terrain_textures.is_empty():
+				uv_rotation = _pick_rotation_radians(coords)
 
-		# Rings 1..4.
-		for k: int in range(1, RING_COUNT + 1):
-			var t: float = float(k) / float(RING_COUNT)
-			var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
-			var radius: float = HexMath.HEX_SIZE * t
+			var corner_colors_at: Array[Color] = [
+				center_color, center_color, center_color,
+				center_color, center_color, center_color,
+			]
+			for i: int in range(6):
+				var angle_i: float = deg_to_rad(60.0 * float(i))
+				var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
+				var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
+				var key_i := Vector3i(
+					roundi(ci_x * 1000.0),
+					tile.elevation,
+					roundi(ci_z * 1000.0)
+				)
+				corner_colors_at[i] = corner_colors.get(key_i, center_color)
 
-			var ring_pos: Array = []
-			var ring_col: Array = []
-			var ring_uv: Array = []
-			for j: int in range(VERTS_PER_RING):
-				var angle: float = deg_to_rad(30.0 * float(j))
-				var r: float = radius if j % 2 == 0 else radius * cos(deg_to_rad(30.0))
-				var vx: float = cx + cos(angle) * r
-				var vz: float = cz + sin(angle) * r
+			var rings_pos: Array = []
+			var rings_col: Array = []
+			var rings_uv: Array = []
 
-				var target_y: float
-				var target_col: Color
-				if j % 2 == 0:
-					var ci: int = j / 2
-					target_y = corner_y[ci]
-					target_col = corner_colors_at[ci]
-				else:
-					var ei: int = (j - 1) / 2
-					var d: int = edge_dir_for_midpoint[ei]
-					target_y = edge_y[d]
-					var ca: int = ei
-					var cb: int = (ei + 1) % 6
-					target_col = corner_colors_at[ca].lerp(corner_colors_at[cb], 0.5)
+			# Ring 0: center.
+			rings_pos.append([Vector3(cx, elevation_y, cz)])
+			rings_col.append([center_color])
+			rings_uv.append([Vector2(0.5, 0.5)])
 
-				var vy: float = lerpf(elevation_y, target_y, s)
-				ring_pos.append(Vector3(vx, vy, vz))
-				ring_col.append(center_color.lerp(target_col, t))
-				# UV: hex-local, with per-tile rotation about (0.5, 0.5).
-				# Centre stays put; the offset angle gets `uv_rotation`
-				# added so each tile shows the same texture rotated by
-				# 0/90/180/270°. Edge midpoints ride slightly closer to
-				# centre via the r factor.
-				var r_uv: float = r / HexMath.HEX_SIZE  # 0..1
-				var uv_angle: float = angle + uv_rotation
-				ring_uv.append(Vector2(
-					0.5 + 0.5 * r_uv * cos(uv_angle),
-					0.5 + 0.5 * r_uv * sin(uv_angle)
-				))
-			rings_pos.append(ring_pos)
-			rings_col.append(ring_col)
-			rings_uv.append(ring_uv)
+			# Rings 1..4.
+			for k: int in range(1, RING_COUNT + 1):
+				var t: float = float(k) / float(RING_COUNT)
+				var s: float = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
+				var radius: float = HexMath.HEX_SIZE * t
 
-		# Inner fan (center → ring1[j] → ring1[j+1]).
-		var center_pos: Vector3 = rings_pos[0][0]
-		var center_uv: Vector2 = rings_uv[0][0]
-		var ring1_pos: Array = rings_pos[1]
-		var ring1_col: Array = rings_col[1]
-		var ring1_uv: Array = rings_uv[1]
-		for j: int in range(VERTS_PER_RING):
-			var j_next: int = (j + 1) % VERTS_PER_RING
-			st.set_normal(Vector3.UP)
-			st.set_color(center_color)
-			st.set_uv(center_uv)
-			st.add_vertex(center_pos)
-			st.set_normal(Vector3.UP)
-			st.set_color(ring1_col[j])
-			st.set_uv(ring1_uv[j])
-			st.add_vertex(ring1_pos[j])
-			st.set_normal(Vector3.UP)
-			st.set_color(ring1_col[j_next])
-			st.set_uv(ring1_uv[j_next])
-			st.add_vertex(ring1_pos[j_next])
+				var ring_pos: Array = []
+				var ring_col: Array = []
+				var ring_uv: Array = []
+				for j: int in range(VERTS_PER_RING):
+					var angle: float = deg_to_rad(30.0 * float(j))
+					var r: float = radius if j % 2 == 0 else radius * cos(deg_to_rad(30.0))
+					var vx: float = cx + cos(angle) * r
+					var vz: float = cz + sin(angle) * r
 
-		# Quad strips (3 × 12 quads × 2 tris).
-		for k: int in range(1, RING_COUNT):
-			var rk_pos: Array = rings_pos[k]
-			var rk_col: Array = rings_col[k]
-			var rk_uv: Array = rings_uv[k]
-			var rk1_pos: Array = rings_pos[k + 1]
-			var rk1_col: Array = rings_col[k + 1]
-			var rk1_uv: Array = rings_uv[k + 1]
+					var target_y: float
+					var target_col: Color
+					if j % 2 == 0:
+						var ci: int = j / 2
+						target_y = corner_y[ci]
+						target_col = corner_colors_at[ci]
+					else:
+						var ei: int = (j - 1) / 2
+						var d: int = edge_dir_for_midpoint[ei]
+						target_y = edge_y[d]
+						var ca: int = ei
+						var cb: int = (ei + 1) % 6
+						target_col = corner_colors_at[ca].lerp(corner_colors_at[cb], 0.5)
+
+					var vy: float = lerpf(elevation_y, target_y, s)
+					ring_pos.append(Vector3(vx, vy, vz))
+					ring_col.append(center_color.lerp(target_col, t))
+					# UV: hex-local, with per-tile rotation about (0.5, 0.5).
+					# Centre stays put; the offset angle gets `uv_rotation`
+					# added so each tile shows the same texture rotated by
+					# 0/90/180/270°. Edge midpoints ride slightly closer to
+					# centre via the r factor.
+					var r_uv: float = r / HexMath.HEX_SIZE  # 0..1
+					var uv_angle: float = angle + uv_rotation
+					ring_uv.append(Vector2(
+						0.5 + 0.5 * r_uv * cos(uv_angle),
+						0.5 + 0.5 * r_uv * sin(uv_angle)
+					))
+				rings_pos.append(ring_pos)
+				rings_col.append(ring_col)
+				rings_uv.append(ring_uv)
+
+			# Inner fan (center → ring1[j] → ring1[j+1]).
+			var center_pos: Vector3 = rings_pos[0][0]
+			var center_uv: Vector2 = rings_uv[0][0]
+			var ring1_pos: Array = rings_pos[1]
+			var ring1_col: Array = rings_col[1]
+			var ring1_uv: Array = rings_uv[1]
 			for j: int in range(VERTS_PER_RING):
 				var j_next: int = (j + 1) % VERTS_PER_RING
 				st.set_normal(Vector3.UP)
-				st.set_color(rk_col[j])
-				st.set_uv(rk_uv[j])
-				st.add_vertex(rk_pos[j])
+				st.set_color(center_color)
+				st.set_uv(center_uv)
+				st.add_vertex(center_pos)
 				st.set_normal(Vector3.UP)
-				st.set_color(rk1_col[j])
-				st.set_uv(rk1_uv[j])
-				st.add_vertex(rk1_pos[j])
+				st.set_color(ring1_col[j])
+				st.set_uv(ring1_uv[j])
+				st.add_vertex(ring1_pos[j])
 				st.set_normal(Vector3.UP)
-				st.set_color(rk_col[j_next])
-				st.set_uv(rk_uv[j_next])
-				st.add_vertex(rk_pos[j_next])
+				st.set_color(ring1_col[j_next])
+				st.set_uv(ring1_uv[j_next])
+				st.add_vertex(ring1_pos[j_next])
 
-				st.set_normal(Vector3.UP)
-				st.set_color(rk1_col[j])
-				st.set_uv(rk1_uv[j])
-				st.add_vertex(rk1_pos[j])
-				st.set_normal(Vector3.UP)
-				st.set_color(rk1_col[j_next])
-				st.set_uv(rk1_uv[j_next])
-				st.add_vertex(rk1_pos[j_next])
-				st.set_normal(Vector3.UP)
-				st.set_color(rk_col[j_next])
-				st.set_uv(rk_uv[j_next])
-				st.add_vertex(rk_pos[j_next])
+			# Quad strips (3 × 12 quads × 2 tris).
+			for k: int in range(1, RING_COUNT):
+				var rk_pos: Array = rings_pos[k]
+				var rk_col: Array = rings_col[k]
+				var rk_uv: Array = rings_uv[k]
+				var rk1_pos: Array = rings_pos[k + 1]
+				var rk1_col: Array = rings_col[k + 1]
+				var rk1_uv: Array = rings_uv[k + 1]
+				for j: int in range(VERTS_PER_RING):
+					var j_next: int = (j + 1) % VERTS_PER_RING
+					st.set_normal(Vector3.UP)
+					st.set_color(rk_col[j])
+					st.set_uv(rk_uv[j])
+					st.add_vertex(rk_pos[j])
+					st.set_normal(Vector3.UP)
+					st.set_color(rk1_col[j])
+					st.set_uv(rk1_uv[j])
+					st.add_vertex(rk1_pos[j])
+					st.set_normal(Vector3.UP)
+					st.set_color(rk_col[j_next])
+					st.set_uv(rk_uv[j_next])
+					st.add_vertex(rk_pos[j_next])
 
-	# Step 6: Wall faces — color-only bucket.
-	for coords: Variant in tile_colors:
-		var tile: Resource = HexGrid._tiles[coords]
-		var world_2d: Vector2 = HexMath.axial_to_world(coords)
-		var cx: float = world_2d.x
-		var cz: float = world_2d.y
+					st.set_normal(Vector3.UP)
+					st.set_color(rk1_col[j])
+					st.set_uv(rk1_uv[j])
+					st.add_vertex(rk1_pos[j])
+					st.set_normal(Vector3.UP)
+					st.set_color(rk1_col[j_next])
+					st.set_uv(rk1_uv[j_next])
+					st.add_vertex(rk1_pos[j_next])
+					st.set_normal(Vector3.UP)
+					st.set_color(rk_col[j_next])
+					st.set_uv(rk_uv[j_next])
+					st.add_vertex(rk_pos[j_next])
 
-		for d: int in range(6):
-			if not tile.walls[d]:
-				continue
-			var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
-			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-			# Skip if current tile is water and neighbor is higher land
-			# (land tile draws the shoreline cliff from its side).
-			if tile.biome == _HexTile.Biome.WATER and n_tile != null \
-					and n_tile.biome != _HexTile.Biome.WATER \
-					and n_tile.elevation > tile.water_level:
-				continue
+		# Step 6: Wall faces for this chunk — color-only bucket.
+		for coords: Variant in chunk_coords:
+			var tile: Resource = HexGrid._tiles[coords]
+			var world_2d: Vector2 = HexMath.axial_to_world(coords)
+			var cx: float = world_2d.x
+			var cz: float = world_2d.y
 
-			# Water walls get blue color; land walls get darkened biome color.
-			var cliff_color: Color
-			var foam_color: Color
-			if tile.biome == _HexTile.Biome.WATER:
-				cliff_color = Color(0.15, 0.35, 0.7, 1.0)  # water blue
-				foam_color = Color(0.85, 0.92, 0.98, 1.0)  # white foam
-			else:
-				cliff_color = tile_colors[coords] * 0.6
-				foam_color = cliff_color  # no foam for land cliffs
-			var ec: Array = edge_corners[d]
-			var ca_idx: int = ec[0]
-			var cb_idx: int = ec[1]
+			for d: int in range(6):
+				if not tile.walls[d]:
+					continue
+				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
+				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
+				# Skip if current tile is water and neighbor is higher land
+				# (land tile draws the shoreline cliff from its side).
+				if tile.biome == _HexTile.Biome.WATER and n_tile != null \
+						and n_tile.biome != _HexTile.Biome.WATER \
+						and n_tile.elevation > tile.water_level:
+					continue
 
-			var angle_a: float = deg_to_rad(60.0 * float(ca_idx))
-			var angle_b: float = deg_to_rad(60.0 * float(cb_idx))
-			var ca_x: float = cx + cos(angle_a) * HexMath.HEX_SIZE
-			var ca_z: float = cz + sin(angle_a) * HexMath.HEX_SIZE
-			var cb_x: float = cx + cos(angle_b) * HexMath.HEX_SIZE
-			var cb_z: float = cz + sin(angle_b) * HexMath.HEX_SIZE
-			var mid_angle: float = (angle_a + angle_b) / 2.0
-			if absf(angle_a - angle_b) > PI:
-				mid_angle += PI
-			var edge_mid_radius: float = HexMath.HEX_SIZE * cos(deg_to_rad(30.0))
-			var mid_x: float = cx + cos(mid_angle) * edge_mid_radius
-			var mid_z: float = cz + sin(mid_angle) * edge_mid_radius
-
-			var h_corner_y: Array[float] = all_corner_y[coords]
-			var h_edge_y: Array[float] = all_edge_y[coords]
-			var h_ca_y: float = h_corner_y[ca_idx]
-			var h_mid_y: float = h_edge_y[d]
-			var h_cb_y: float = h_corner_y[cb_idx]
-
-			var l_ca_y: float
-			var l_mid_y: float
-			var l_cb_y: float
-			if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
-				var water_y: float = float(n_tile.water_level) * ELEVATION_STEP
-				l_ca_y = water_y
-				l_mid_y = water_y
-				l_cb_y = water_y
-			elif n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
-				var n_cy: Array[float] = all_corner_y[n_coords]
-				var n_ey: Array[float] = all_edge_y[n_coords]
-				var rev_d: int = -1
-				for rd: int in range(6):
-					if n_coords + (HexMath.DIRECTIONS[rd] as Vector2i) == (coords as Vector2i):
-						rev_d = rd
-						break
-				if rev_d >= 0:
-					var rev_ec: Array = edge_corners[rev_d]
-					l_cb_y = n_cy[rev_ec[0]]
-					l_mid_y = n_ey[rev_d]
-					l_ca_y = n_cy[rev_ec[1]]
+				# Water walls get blue color; land walls get darkened biome color.
+				var cliff_color: Color
+				var foam_color: Color
+				if tile.biome == _HexTile.Biome.WATER:
+					cliff_color = Color(0.15, 0.35, 0.7, 1.0)  # water blue
+					foam_color = Color(0.85, 0.92, 0.98, 1.0)  # white foam
 				else:
+					cliff_color = tile_colors[coords] * 0.6
+					foam_color = cliff_color  # no foam for land cliffs
+				var ec: Array = edge_corners[d]
+				var ca_idx: int = ec[0]
+				var cb_idx: int = ec[1]
+
+				var angle_a: float = deg_to_rad(60.0 * float(ca_idx))
+				var angle_b: float = deg_to_rad(60.0 * float(cb_idx))
+				var ca_x: float = cx + cos(angle_a) * HexMath.HEX_SIZE
+				var ca_z: float = cz + sin(angle_a) * HexMath.HEX_SIZE
+				var cb_x: float = cx + cos(angle_b) * HexMath.HEX_SIZE
+				var cb_z: float = cz + sin(angle_b) * HexMath.HEX_SIZE
+				var mid_angle: float = (angle_a + angle_b) / 2.0
+				if absf(angle_a - angle_b) > PI:
+					mid_angle += PI
+				var edge_mid_radius: float = HexMath.HEX_SIZE * cos(deg_to_rad(30.0))
+				var mid_x: float = cx + cos(mid_angle) * edge_mid_radius
+				var mid_z: float = cz + sin(mid_angle) * edge_mid_radius
+
+				var h_corner_y: Array[float] = all_corner_y[coords]
+				var h_edge_y: Array[float] = all_edge_y[coords]
+				var h_ca_y: float = h_corner_y[ca_idx]
+				var h_mid_y: float = h_edge_y[d]
+				var h_cb_y: float = h_corner_y[cb_idx]
+
+				var l_ca_y: float
+				var l_mid_y: float
+				var l_cb_y: float
+				if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
+					var water_y: float = float(n_tile.water_level) * ELEVATION_STEP
+					l_ca_y = water_y
+					l_mid_y = water_y
+					l_cb_y = water_y
+				elif n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
+					var n_cy: Array[float] = all_corner_y[n_coords]
+					var n_ey: Array[float] = all_edge_y[n_coords]
+					var rev_d: int = -1
+					for rd: int in range(6):
+						if n_coords + (HexMath.DIRECTIONS[rd] as Vector2i) == (coords as Vector2i):
+							rev_d = rd
+							break
+					if rev_d >= 0:
+						var rev_ec: Array = edge_corners[rev_d]
+						l_cb_y = n_cy[rev_ec[0]]
+						l_mid_y = n_ey[rev_d]
+						l_ca_y = n_cy[rev_ec[1]]
+					else:
+						var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+						l_ca_y = n_surface
+						l_mid_y = n_surface
+						l_cb_y = n_surface
+				elif n_tile != null:
 					var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
 					l_ca_y = n_surface
 					l_mid_y = n_surface
 					l_cb_y = n_surface
-			elif n_tile != null:
-				var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
-				l_ca_y = n_surface
-				l_mid_y = n_surface
-				l_cb_y = n_surface
+				else:
+					l_ca_y = 0.0
+					l_mid_y = 0.0
+					l_cb_y = 0.0
+
+				var cliff_normal: Vector3
+				if n_tile != null:
+					var n_world: Vector2 = HexMath.axial_to_world(n_coords)
+					var dir_x: float = n_world.x - cx
+					var dir_z: float = n_world.y - cz
+					var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
+					cliff_normal = Vector3(dir_x / dir_len, 0.0, dir_z / dir_len)
+				else:
+					cliff_normal = Vector3(cos(mid_angle), 0.0, sin(mid_angle))
+
+				var h0 := Vector3(ca_x, h_ca_y, ca_z)
+				var h1 := Vector3(mid_x, h_mid_y, mid_z)
+				var h2 := Vector3(cb_x, h_cb_y, cb_z)
+				var l0 := Vector3(ca_x, l_ca_y, ca_z)
+				var l1 := Vector3(mid_x, l_mid_y, mid_z)
+				var l2 := Vector3(cb_x, l_cb_y, cb_z)
+
+				var cst: SurfaceTool = _get_bucket.call(CLIFF_KEY)
+				# Tri 1: h0, l0, l1 — h vertices get cliff_color, l vertices get foam_color
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+				# Tri 2: h0, l1, h1
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
+				# Tri 3: h1, l1, l2
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+				# Tri 4: h1, l2, h2
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
+				cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
+				cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h2)
+
+		# Step 7: Commit this chunk's buckets.
+		# First mesh overall → legacy $MeshInstance3D (test compatibility).
+		# All others → MeshInstance3D children of the chunk Node3D.
+		for bucket_key: Vector2i in buckets:
+			var st: SurfaceTool = buckets[bucket_key]
+			var mesh: ArrayMesh = st.commit()
+			var mat := _make_bucket_material(bucket_key)
+			_materials.append(mat)
+			DayNightCycle.register_hex_material(mat)
+
+			if not first_mesh_assigned:
+				_mesh_instance.mesh = mesh
+				_mesh_instance.material_override = mat
+				first_mesh_assigned = true
 			else:
-				l_ca_y = 0.0
-				l_mid_y = 0.0
-				l_cb_y = 0.0
-
-			var cliff_normal: Vector3
-			if n_tile != null:
-				var n_world: Vector2 = HexMath.axial_to_world(n_coords)
-				var dir_x: float = n_world.x - cx
-				var dir_z: float = n_world.y - cz
-				var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
-				cliff_normal = Vector3(dir_x / dir_len, 0.0, dir_z / dir_len)
-			else:
-				cliff_normal = Vector3(cos(mid_angle), 0.0, sin(mid_angle))
-
-			var h0 := Vector3(ca_x, h_ca_y, ca_z)
-			var h1 := Vector3(mid_x, h_mid_y, mid_z)
-			var h2 := Vector3(cb_x, h_cb_y, cb_z)
-			var l0 := Vector3(ca_x, l_ca_y, ca_z)
-			var l1 := Vector3(mid_x, l_mid_y, mid_z)
-			var l2 := Vector3(cb_x, l_cb_y, cb_z)
-
-			var cst: SurfaceTool = _get_bucket.call(CLIFF_KEY)
-			# Tri 1: h0, l0, l1 — h vertices get cliff_color, l vertices get foam_color
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l0)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
-			# Tri 2: h0, l1, h1
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h0)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			# Tri 3: h1, l1, l2
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l1)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
-			# Tri 4: h1, l2, h2
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h1)
-			cst.set_normal(cliff_normal); cst.set_color(foam_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(l2)
-			cst.set_normal(cliff_normal); cst.set_color(cliff_color); cst.set_uv(Vector2.ZERO); cst.add_vertex(h2)
-
-	# Step 7: Commit every bucket.
-	# - The first bucket goes into the scene's $MeshInstance3D so the existing
-	#   test that asserts "mesh != null on the child named MeshInstance3D"
-	#   stays happy.
-	# - Additional buckets spawn new MeshInstance3D children.
-	var first_assigned: bool = false
-	for bucket_key: Vector2i in buckets:
-		var st: SurfaceTool = buckets[bucket_key]
-		var mesh: ArrayMesh = st.commit()
-		var mat := _make_bucket_material(bucket_key)
-		_materials.append(mat)
-		DayNightCycle.register_hex_material(mat)
-
-		if not first_assigned:
-			_mesh_instance.mesh = mesh
-			_mesh_instance.material_override = mat
-			first_assigned = true
-		else:
-			var inst := MeshInstance3D.new()
-			inst.name = _bucket_node_name(bucket_key)
-			inst.mesh = mesh
-			inst.material_override = mat
-			add_child(inst)
-			_bucket_instances.append(inst)
+				var inst := MeshInstance3D.new()
+				inst.name = _bucket_node_name(bucket_key)
+				inst.mesh = mesh
+				inst.material_override = mat
+				chunk_node.add_child(inst)
+				_bucket_instances.append(inst)
 
 
 ## Build the ShaderMaterial for a bucket key.
@@ -671,6 +695,14 @@ func _make_bucket_material(key: Vector2i) -> ShaderMaterial:
 	# Fall back to color-only shader (cliffs, or biome without textures).
 	mat.shader = _COLOR_SHADER
 	return mat
+
+
+## Map tile axial coords to chunk key using floor division.
+func _chunk_key_for(coords: Vector2i) -> Vector2i:
+	return Vector2i(
+		floori(float(coords.x) / float(CHUNK_SIZE)),
+		floori(float(coords.y) / float(CHUNK_SIZE)),
+	)
 
 
 func _bucket_node_name(key: Vector2i) -> String:
