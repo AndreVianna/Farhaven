@@ -616,11 +616,11 @@ func _rebuild_mesh() -> void:
 					continue
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-				# Skip if current tile is water and neighbor is higher land
-				# (land tile draws the shoreline cliff from its side).
+				# Skip if current tile is water and neighbor land is at or above
+				# water level — land tile draws the shoreline cliff from its side.
 				if tile.biome == _HexTile.Biome.WATER and n_tile != null \
 						and n_tile.biome != _HexTile.Biome.WATER \
-						and n_tile.elevation > tile.water_level:
+						and n_tile.elevation >= tile.water_level:
 					continue
 
 				# Water walls get blue color; land walls get darkened biome color.
@@ -989,9 +989,9 @@ func debug_hex(coords: Vector2i) -> void:
 		# Who draws the wall face?
 		var c_draws: bool = c_has_wall
 		var n_draws: bool = n_has_wall
-		if center.is_water and not n_data.is_water and n_data.elevation > center.water_level:
-			c_draws = false  # water skips when neighbor land is higher
-		if n_data.is_water and not center.is_water and center.elevation > n_data.water_level:
+		if center.is_water and not n_data.is_water and n_data.elevation >= center.water_level:
+			c_draws = false  # water skips when neighbor land is at or above water
+		if n_data.is_water and not center.is_water and center.elevation >= n_data.water_level:
 			n_draws = false
 
 		if c_has_wall or n_has_wall:
