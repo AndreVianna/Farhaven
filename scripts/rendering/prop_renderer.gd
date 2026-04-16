@@ -58,7 +58,6 @@ func _create_pools() -> void:
 		var depleted_mesh_res: Mesh
 		var y_offset: float = PROP_Y_OFFSET
 		var uses_real_mesh: bool = false
-		var uses_real_depleted: bool = false
 
 		# Priority order for the live mesh:
 		# 1. PlaceableCap.meshes[0].scene — first authored variant (most preferred)
@@ -85,15 +84,13 @@ func _create_pools() -> void:
 				and def.harvestable.depleted_meshes.size() > 0 \
 				and def.harvestable.depleted_meshes[0] != null \
 				and def.harvestable.depleted_meshes[0].scene != null:
-			var extracted: Array = _extract_mesh_from_scene(def.harvestable.depleted_meshes[0].scene)
-			depleted_mesh_res = extracted[0]
-			uses_real_depleted = depleted_mesh_res != null
+			var extracted_d: Array = _extract_mesh_from_scene(def.harvestable.depleted_meshes[0].scene)
+			depleted_mesh_res = extracted_d[0]
 		if depleted_mesh_res == null and def.depleted_mesh != null:
 			depleted_mesh_res = def.depleted_mesh
-			uses_real_depleted = true
 		if depleted_mesh_res == null:
-			var result: Array = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
-			depleted_mesh_res = result[0]
+			var result_d: Array = _build_placeholder_mesh(def.placeholder_depleted_type, def.placeholder_depleted_params)
+			depleted_mesh_res = result_d[0]
 
 		_normal_meshes[def.id] = normal_mesh
 		_depleted_meshes[def.id] = depleted_mesh_res

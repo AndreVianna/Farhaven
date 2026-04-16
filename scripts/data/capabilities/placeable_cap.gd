@@ -9,7 +9,10 @@ extends Resource
 ## Used for placement validation with multi-cell structures.
 @export var footprint: Vector2i = Vector2i(1, 1)
 
-## Visual variants — the renderer picks one per instance for variety.
+## Visual variants (MeshVariant resources) — the renderer picks one per
+## instance for variety. Array[Resource] is used instead of
+## Array[MeshVariant] to avoid class-name resolution order issues with
+## custom Resource subclasses. Each element should be a MeshVariant.
 ## Empty array is allowed during content authoring; the prop falls back
 ## to placeholder_mesh_type until a real mesh is authored.
-@export var meshes: Array[MeshVariant] = []
+@export var meshes: Array[Resource] = []
