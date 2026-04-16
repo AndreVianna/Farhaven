@@ -165,6 +165,14 @@ func _snap_to_spawn() -> void:
 	_update_model_rotation()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F3:
+			var renderer: Node = get_tree().current_scene.get_node_or_null("World/HexGridRenderer")
+			if renderer != null and renderer.has_method("debug_hex"):
+				renderer.debug_hex(current_tile)
+
+
 func _process(delta: float) -> void:
 	if move_state == MoveState.WALKING:
 		_process_walking(delta)
