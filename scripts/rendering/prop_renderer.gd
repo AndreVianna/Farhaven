@@ -371,10 +371,14 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 	var y_off: float = _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
 	var pos := Vector3(wx, elevation_y + y_off, wz)
 
-	# Apply rotation
+	# Apply rotation — rotate basis around Y, then set origin.
 	var xform := Transform3D.IDENTITY
-	xform = xform.rotated(Vector3.UP, deg_to_rad(rn.rotation_deg))
+	xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rn.rotation_deg))
 	xform.origin = pos
+
+	# DEBUG: verify rotation is being read from prop data
+	if rn.rotation_deg != 0.0:
+		print("PropRenderer: ", pool_id, " @ ", coords, " rotation=", rn.rotation_deg, "° xform.basis=", xform.basis)
 
 	mm.visible_instance_count = idx + 1
 	mm.set_instance_transform(idx, xform)
