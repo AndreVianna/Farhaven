@@ -658,12 +658,7 @@ func _rebuild_mesh() -> void:
 				var l_ca_y: float
 				var l_mid_y: float
 				var l_cb_y: float
-				if n_tile != null and n_tile.biome == _HexTile.Biome.WATER:
-					var water_y: float = float(n_tile.water_level) * ELEVATION_STEP
-					l_ca_y = water_y
-					l_mid_y = water_y
-					l_cb_y = water_y
-				elif n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
+				if n_tile != null and all_corner_y.has(n_coords) and all_edge_y.has(n_coords):
 					var n_cy: Array[float] = all_corner_y[n_coords]
 					var n_ey: Array[float] = all_edge_y[n_coords]
 					var rev_d: int = -1
