@@ -14,7 +14,6 @@ import { HexMath } from './hex-math.js';
 function _updateShorelineWalls(grid, wq, wr) {
   const waterTile = grid.getTile(wq, wr);
   if (!waterTile || waterTile.biome !== 'B00005') return;
-  const wl = waterTile.waterLevel != null ? waterTile.waterLevel : 0;
 
   for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
     const dir = HexMath.DIRECTIONS[d];
@@ -22,10 +21,10 @@ function _updateShorelineWalls(grid, wq, wr) {
     const neighbor = grid.getTile(nq, nr);
     if (!neighbor) continue;
     if (neighbor.biome === 'B00005') continue; // water↔water, skip
-    const shouldWall = wl !== neighbor.elevation;
-    waterTile.walls[d] = shouldWall;
+    // Water↔land always gets a wall.
+    waterTile.walls[d] = true;
     const opposite = (d + 3) % 6;
-    neighbor.walls[opposite] = shouldWall;
+    neighbor.walls[opposite] = true;
   }
 }
 

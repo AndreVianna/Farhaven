@@ -984,14 +984,8 @@ func debug_hex(coords: Vector2i) -> void:
 		var c_surface: float = float(center.water_level) if center.is_water else float(center.elevation)
 		var n_surface: float = float(n_data.water_level) if n_data.is_water else float(n_data.elevation)
 		var same_type: bool = center.is_water == n_data.is_water
-		var wall_expected: bool = false
-		if not same_type:
-			# Water↔land: wall expected when levels differ
-			var w_tile: Dictionary = center if center.is_water else n_data
-			var l_tile: Dictionary = n_data if center.is_water else center
-			wall_expected = w_tile.water_level != l_tile.elevation
-		elif not same_type:
-			wall_expected = true
+		# Water↔land always expects a wall.
+		var wall_expected: bool = not same_type
 		# Who draws the wall face?
 		var c_draws: bool = c_has_wall
 		var n_draws: bool = n_has_wall
