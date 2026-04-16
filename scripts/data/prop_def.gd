@@ -71,7 +71,8 @@ class_name PropDef extends Gear
 
 # --- Legacy fields (DEPRECATED — replaced by capabilities/tags; kept for backward compat) ---
 # DEPRECATED in task-053: remove when all callers migrate to capabilities/tags.
-@export var category: StringName = &"prop"  # DEPRECATED: use capabilities + tags
+# NOTE: legacy `category: StringName = &"prop"` removed — replaced by the
+# classification `category` field at the top of the class.
 @export var prop_category: int = 0  # DEPRECATED: use capabilities
 @export var emits_light: bool = false  # DEPRECATED: use light != null (LightCap)
 @export var light_radius: int = 0  # DEPRECATED: use light.radius (LightCap)
