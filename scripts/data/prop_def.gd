@@ -1,7 +1,19 @@
 class_name PropDef extends Gear
 
+# --- Classification ---
+## Primary category for grouping and UI tabs.
+## Values: &"plant" | &"mineral" | &"animal" | &"fungi" | &"ooze" | &"liquid"
+##       | &"stuff" | &"structure" | &"equipment" | &"vehicle" | &"storage"
+@export var category: StringName = &""
+
+## Rarity tier for spawn frequency and catalog display.
+## Values: &"common" | &"uncommon" | &"rare"
+@export var rarity: StringName = &"common"
+
 # --- Tags ---
-## Free-form labels (e.g. &"SOURCE", &"WOOD", &"BURNABLE.log", &"CONSUMABLE.edible").
+## Free-form attribute labels (e.g. &"resource_source", &"food_source",
+## &"hazard", &"decoration", &"defensive", &"near_water").
+## Category and rarity are NOT tags — they live in the dedicated fields above.
 @export var tags: Array[StringName] = []
 
 # --- Capabilities ---
