@@ -1777,16 +1777,9 @@ export function renderPropEditor(container, options) {
     _addOriginCategoryFields(grid, model);
 
     // -- Capabilities --
+    // Capabilities with visual impact (Portable, Placeable, Harvestable)
+    // live in the right-side Visuals tab. Data-only capabilities stay here.
     _addSeparator(grid, 'Capabilities');
-
-    // PORTABLE
-    grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
-      panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
-    }));
-
-    // PLACEABLE
-    grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
-    }));
 
     // CONTAINER
     grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
@@ -1865,68 +1858,53 @@ export function renderPropEditor(container, options) {
       _addCsvField(panel, 'Allowed Biomes (comma-separated, empty = any)', 'cap_spawnable_allowed_biomes', model.spawnable ? model.spawnable.allowed_biomes : []);
     }));
 
-    // HARVESTABLE
-    grid.appendChild(_createCapabilityPanel('harvestable', 'Harvestable', model.harvestable, (panel) => {
-      _addHarvestableEditor(panel, model.harvestable);
-    }));
-
     body.appendChild(grid);
   }
 
   /**
-   * Render the Visuals tab content.
+   * Render the Visuals tab content — capabilities that affect what the prop
+   * looks like or how it interacts in the world live here so the author can
+   * see visual + data side-by-side with the left column.
    * @param {HTMLElement} body
    * @param {PropDefModel} model
    * @returns {void}
    */
   function _renderVisualsTab(body, model) {
-    const container = document.createElement('div');
-    container.style.cssText = 'padding: 12px;';
+    const grid = document.createElement('div');
+    grid.classList.add('prop-grid');
 
-    // --- Placeable: mesh variants ---
-    const placeableSection = document.createElement('section');
-    const placeableTitle = document.createElement('h3');
-    placeableTitle.textContent = 'Placeable Meshes';
-    placeableTitle.style.cssText = 'margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #888);';
-    placeableSection.appendChild(placeableTitle);
+    _addSeparator(grid, 'Visual Capabilities');
 
-    if (model.placeable && Array.isArray(model.placeable.meshes) && model.placeable.meshes.length > 0) {
-      placeableSection.appendChild(_renderMeshVariantList(model.placeable.meshes));
-    } else if (model.placeable) {
-      const empty = document.createElement('div');
-      empty.textContent = 'Placeable enabled — no mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
-      empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
-      placeableSection.appendChild(empty);
-    } else {
-      const empty = document.createElement('div');
-      empty.textContent = 'Placeable capability disabled.';
-      empty.style.cssText = 'padding: 12px; color: var(--muted, #888); font-size: 12px; font-style: italic;';
-      placeableSection.appendChild(empty);
-    }
+    // PORTABLE — inventory shape + (future) inventory icon/thumb.
+    grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
+      panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
+    }));
 
-    container.appendChild(placeableSection);
+    // PLACEABLE — world mesh variants.
+    grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
+      const meshes = model.placeable && Array.isArray(model.placeable.meshes)
+        ? model.placeable.meshes
+        : [];
+      if (meshes.length > 0) {
+        panel.appendChild(_renderMeshVariantList(meshes));
+      } else {
+        const empty = document.createElement('div');
+        empty.textContent = 'No mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
+        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
+        panel.appendChild(empty);
+      }
+    }));
 
-    // --- Harvestable: depleted meshes (future) ---
-    // Placeholder section so users see the structure; actual UI when content uses it.
-    const harvestSection = document.createElement('section');
-    harvestSection.style.cssText = 'margin-top: 20px;';
-    const harvestTitle = document.createElement('h3');
-    harvestTitle.textContent = 'Harvestable Depleted Meshes';
-    harvestTitle.style.cssText = 'margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #888);';
-    harvestSection.appendChild(harvestTitle);
+    // HARVESTABLE — yields + respawn conditions + (future) depleted meshes.
+    grid.appendChild(_createCapabilityPanel('harvestable', 'Harvestable', model.harvestable, (panel) => {
+      _addHarvestableEditor(panel, model.harvestable);
+      const depletedNote = document.createElement('div');
+      depletedNote.textContent = 'Depleted mesh variants (harvestable.depleted_meshes) will appear here once authored in .tres.';
+      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--muted, #888); font-size: 11px; font-style: italic; border-left: 2px solid var(--border, #444); padding-left: 10px;';
+      panel.appendChild(depletedNote);
+    }));
 
-    const harvestHint = document.createElement('div');
-    if (model.harvestable) {
-      harvestHint.textContent = 'Harvestable enabled — depleted meshes authored in .tres will show here when implemented.';
-    } else {
-      harvestHint.textContent = 'Harvestable capability disabled.';
-    }
-    harvestHint.style.cssText = 'padding: 12px; color: var(--muted, #888); font-size: 12px; font-style: italic;';
-    harvestSection.appendChild(harvestHint);
-
-    container.appendChild(harvestSection);
-
-    body.appendChild(container);
+    body.appendChild(grid);
   }
 
   /**
