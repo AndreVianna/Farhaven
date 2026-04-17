@@ -13,11 +13,13 @@
       "Read",
       "TodoRead",
       "TodoWrite",
+      "Update",
       "WebFetch",
       "WebSearch",
       "Write",
       "Bash([ -f \".aid/knowledge/$f\" ])",
       "Bash(cat:*)",
+      "Bash(cp:*)",
       "Bash(dotnet:*)",
       "Bash(dotnet-coverage:*)",
       "Bash(find:*)",
@@ -27,11 +29,15 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(mkdir:*)",
+      "Bash(mv:*)",
       "Bash(reportgenerator:*)",
       "Bash(rm:*)",
       "Bash(sed:*)",
       "Bash(touch:*)",
       "Bash(xmllint:*)"
     ]
-  }
+  },
+  "effortLevel": "max",
+  "autoUpdatesChannel": "latest",
+  "prefersReducedMotion": true
 }
