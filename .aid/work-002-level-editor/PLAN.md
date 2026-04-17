@@ -2,7 +2,7 @@
 
 **Status:** Approved
 **Created:** 2026-04-03
-**Features:** 9 (all SPECs Ready)
+**Features:** 10 (001–009 Ready + 010 Ready pending tasks)
 **Minimum grade:** A
 
 ## Dependency Map
@@ -18,12 +18,14 @@
 | 004 Import/Export | 001 (HexGrid model), 007 (file handles), 008 (Ctrl+S) | -- |
 | 005 Resource Editor | 007 (TresParser, handles), 008 (commands) | 003 (resource palette), 006 (resource dropdown) |
 | 006 Biome Editor | 007 (TresParser, handles), 008 (commands), 005 (resource dropdown) | 001 (live color preview), 003 (biome palette) |
+| 010 Editor Redesign | 001, 003, 005, 006 (existing UI must be tested before restyling) | -- (visual polish layer) |
 
 **Key dependency notes:**
 - F-007 (File Discovery) and F-008 (Command Infrastructure) are the two zero-dependency foundations
 - F-003 (Palette & Sidebar) has the highest fan-in — it is the integration glue connecting nearly everything
 - F-005 (Resource Editor) must precede F-006 (Biome Editor) because biome resource_table dropdown needs resource IDs
 - F-004 (Import/Export) is independent of the .tres editors — only needs the HexGrid model + file handles
+- F-010 (Editor Redesign) runs on top of a complete editor — restyles existing components without changing form logic
 
 ## Deliveries
 
@@ -153,13 +155,56 @@ This is the final delivery. After this, the editor is fully functional: open pro
 |------------------------|
 | (none — linear chain) |
 
+### delivery-005: Editor Redesign — Foundation
+
+**Features:** 010 (Editor Redesign) — Phases 1, 2, 3
+**Depends on:** delivery-004 (complete editor must be shippable before restyling)
+**Branch:** `feature/editor-redesign` (proposed — branched from `main` after feature/props-grassland merges)
+**Cumulative state:** Editor has design token system, hierarchical domain sidebar (WORLD/PROPS/SYSTEMS/NARRATIVE/PROJECT), master-detail 3-column layout. All form logic (caps, CollisionShapes, MeshVariants) preserved intact.
+
+Build order:
+1. **Phase 1** — Port `:root` tokens + import Inter/IBM Plex Mono fonts. Replace ad-hoc colors/fonts with CSS custom properties. Reversible via deleting `tokens.css`.
+2. **Phase 2** — Extract Sidebar module, define NAV array, port `.side-section` / `.nav-item` styles, swap sidebar markup. Existing flat nav stays wired until cutover.
+3. **Phase 3** — Wrap existing prop editor, biome editor form logic in new `.master-detail` / `.master` / `.detail` / `.detail-preview` structure. Tests from feature-005/006 must all still pass.
+
+**AC coverage:** AC12 (design system), AC13 (sidebar IA), AC14 (master-detail)
+
+### delivery-006: Editor Cross-References
+
+**Features:** 010 (Editor Redesign) — Phase 4
+**Depends on:** delivery-005
+**Cumulative state:** Detail preview column shows live cross-references. Selecting a biome reveals which chapters reference it and their tile counts; selecting a prop reveals which biomes drop it.
+
+Build order:
+1. Create `js/cross-refs.js` graph analyzer (scans `data/maps/*.json` + `data/biomes/*.tres`)
+2. Wire preview panels in prop editor and biome editor
+3. Optional: cache computation in server.py endpoint if client-side scan becomes slow as maps grow
+
+**AC coverage:** AC15 (cross-references)
+
+### delivery-007: Editor Quality-of-Life (optional)
+
+**Features:** 010 (Editor Redesign) — Nice-to-haves
+**Depends on:** delivery-006
+**Cumulative state:** Command palette ⌘K, status bar with git/godot/route state, live hex preview widget, Playtest button that launches Godot, runtime tweaks panel for accent/density.
+
+Build order (each ships independently):
+1. Command Palette — port `src/command-palette.jsx` (169 LoC) to vanilla JS
+2. Status Bar — bottom bar with unsaved/branch/route/hex/tool/tile-count
+3. Hex Preview widget in Biome Editor detail column
+4. Playtest button — server.py endpoint launches `godot --path <project>`
+5. Tweaks Panel — runtime accent/density/layout toggles
+
 ## Delivery Progression
 
 ```
-delivery-001: Infrastructure  → "The editor opens, loads my project, parses all files."
-delivery-002: See & Paint      → "I can see my map and paint it!"
-delivery-003: Data Editors     → "I can create and edit resources and biomes."
-delivery-004: Ship It          → "I can import, export, and the editor is complete."
+delivery-001: Infrastructure     → "The editor opens, loads my project, parses all files."
+delivery-002: See & Paint         → "I can see my map and paint it!"
+delivery-003: Data Editors        → "I can create and edit resources and biomes."
+delivery-004: Ship It             → "I can import, export, and the editor is complete."
+delivery-005: Redesign Foundation → "The editor looks professional — tokens, sidebar, master-detail."
+delivery-006: Cross-References    → "I can see which chapters use this biome and which biomes drop this prop."
+delivery-007: Quality-of-Life     → "⌘K, status bar, Playtest, tweaks — the editor is a joy to use."
 ```
 
 Each delivery is testable standalone. Delivery-002 and delivery-003 can be built in parallel since they share only delivery-001 as a prerequisite.
@@ -179,3 +224,4 @@ Each delivery is testable standalone. Delivery-002 and delivery-003 can be built
 | 2026-04-03 | Task breakdown complete — 20 tasks across 4 deliveries. Execution graphs added. | /aid-detail |
 | 2026-04-04 | Sub-hex grid retrofit note added to delivery-002 section. Task list and execution graph unchanged. | design change |
 | 2026-04-04 | Unified props model retrofit note added to delivery-002 section. | design change |
+| 2026-04-17 | Added feature-010 (Editor Redesign) + delivery-005/006/007 — port of Claude Design prototype (tokens, sidebar IA, master-detail, cross-refs, QoL nice-to-haves). Features count 9 → 10. | feature-010 approval |
