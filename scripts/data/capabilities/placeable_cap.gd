@@ -13,6 +13,5 @@ extends Resource
 ## instance for variety. Array[Resource] is used instead of
 ## Array[MeshVariant] to avoid class-name resolution order issues with
 ## custom Resource subclasses. Each element should be a MeshVariant.
-## Empty array is allowed during content authoring; the prop falls back
-## to placeholder_mesh_type until a real mesh is authored.
+## Empty array means the prop is not rendered.
 @export var meshes: Array[Resource] = []

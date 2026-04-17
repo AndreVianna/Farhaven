@@ -44,7 +44,6 @@ func test_set_equipped_updates_tooltip_with_display_name() -> void:
 	var def := _PropDef.new()
 	def.id = &"P00TEST"
 	def.display_name = "Test Backpack"
-	def.placeholder_color = Color(0.1, 0.5, 0.9, 1.0)
 	# PropDef.wearable presence is not required for the widget — it
 	# paints whatever slot the caller asked about. Wiring code in
 	# Player enforces the correct mapping.
@@ -66,7 +65,6 @@ func test_set_equipped_clears_previous_mapping() -> void:
 	var def := _PropDef.new()
 	def.id = &"P00TEST"
 	def.display_name = "Ephemeral"
-	def.placeholder_color = Color.RED
 	_widget.set_equipped({_WearableCap.Place.BACK: def})
 
 	_widget.set_equipped({})  # fully unequip

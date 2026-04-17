@@ -48,6 +48,3 @@ rarity = &"common"
 tags = [&"decoration"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
-placeholder_mesh_type = &"octahedron"
-placeholder_params = {"half_size": 0.45}
-placeholder_color = Color(0.4, 0.4, 0.4, 1.0)

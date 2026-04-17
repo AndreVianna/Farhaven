@@ -12,11 +12,11 @@ const _PropDef = preload("res://scripts/data/prop_def.gd")
 # ---------------------------------------------------------------------------
 
 
-func _make_prop_def(mesh_type: StringName, params: Dictionary = {}) -> Resource:
-	var def := _PropDef.new()
-	def.placeholder_mesh_type = mesh_type
-	def.placeholder_params = params
-	return def
+func _make_prop_def(_mesh_type: StringName, _params: Dictionary = {}) -> Resource:
+	# TODO: rewrite these tests to author a real MeshInstance3D and assert
+	# AABB-derived collision dimensions. The old placeholder-type API is
+	# gone; collision now defaults to a unit cube for meshless props.
+	return _PropDef.new()
 
 
 # ---------------------------------------------------------------------------

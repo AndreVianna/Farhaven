@@ -2390,12 +2390,6 @@ function _makePropEntry(overrides) {
     origin: 0,
     category: 'plant',
     rarity: 'common',
-    placeholder_mesh_type: 'cube',
-    placeholder_params: new Map(),
-    placeholder_color: { r: 1, g: 1, b: 1, a: 1 },
-    placeholder_depleted_type: 'cube',
-    placeholder_depleted_params: new Map(),
-    placeholder_depleted_color: { r: 0.5, g: 0.5, b: 0.5, a: 1 },
     ...overrides,
   };
   const raw = new TresFile();
@@ -2415,10 +2409,6 @@ function _makeModel(overrides) {
   model.id = 'Ptest';
   model.display_name = 'Test Prop';
   model.max_stack = 99;
-  model.placeholder_mesh_type = 'cube';
-  model.placeholder_color = { r: 1, g: 1, b: 1, a: 1 };
-  model.placeholder_depleted_type = 'cube';
-  model.placeholder_depleted_color = { r: 0.5, g: 0.5, b: 0.5, a: 1 };
   for (const [key, val] of Object.entries(overrides)) {
     model[key] = val;
   }

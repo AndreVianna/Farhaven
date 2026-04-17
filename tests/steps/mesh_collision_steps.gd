@@ -14,8 +14,6 @@ func register_steps(registry) -> void:
 		var prop_def := _PropDef.new()
 		prop_def.id = &"P_TEST_CAMPFIRE"
 		prop_def.display_name = "Test Campfire"
-		prop_def.placeholder_mesh_type = &"cylinder"
-		prop_def.placeholder_params = {"radius": 0.3, "height": 0.6}
 		ctx.set_value("prop_def", prop_def)
 	)
 
@@ -65,7 +63,6 @@ func register_steps(registry) -> void:
 		if shape == null:
 			return
 		var prop_def: Resource = ctx.get_value("prop_def", null)
-		var expected_radius: float = prop_def.placeholder_params.get("radius", 0.25)
 		var cyl: CylinderShape3D = shape as CylinderShape3D
 		ctx.assert_not_null(cyl, "Shape must be CylinderShape3D")
 		if cyl != null:

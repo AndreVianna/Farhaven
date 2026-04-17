@@ -91,7 +91,8 @@ func _apply_empty_style() -> void:
 
 func _apply_occupied_style() -> void:
 	var def: _PropDef = PropRegistry.get_def(_type)
-	_icon_rect.color = def.placeholder_color if def != null else DEFAULT_SLOT_COLOR
+	# TODO: use prop thumbnail/icon once the icon system lands.
+	_icon_rect.color = DEFAULT_SLOT_COLOR
 	var display_name: String = def.display_name if def != null and def.display_name != "" else String(_type)
 	_quantity_label.text = "%s (%d)" % [display_name, _quantity]
 	_quantity_label.visible = true

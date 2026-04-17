@@ -79,18 +79,11 @@ class_name PropDef extends Gear
 @export var is_respawn_point: bool = false  # DEPRECATED: use station cap with "respawn" tag
 @export var is_crafting_station: bool = false  # DEPRECATED: use station cap with "craft" tag
 
-# --- Visual: Real assets (override placeholders when set) ---
+# --- Visual: Real assets ---
+## Legacy single-mesh paths. Prefer PlaceableCap.meshes + HarvestableCap.depleted_meshes.
 @export var mesh: Mesh
 @export var depleted_mesh: Mesh
 @export var material: Material
-
-# --- Visual: Placeholders (used when mesh is null) ---
-@export var placeholder_mesh_type: StringName = &"cube"  # cube, cylinder, sphere, octahedron, prism, box
-@export var placeholder_params: Dictionary = {}  # e.g. {"half_size": 0.35} or {"radius": 0.2, "height": 0.8}
-@export var placeholder_color: Color = Color.WHITE
-@export var placeholder_depleted_type: StringName = &"cube"
-@export var placeholder_depleted_params: Dictionary = {}
-@export var placeholder_depleted_color: Color = Color.GRAY
 
 
 ## Returns true if the named capability is present (non-null) on this PropDef.

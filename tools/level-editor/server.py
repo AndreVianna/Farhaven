@@ -43,7 +43,7 @@ ALLOWED_FILES = {'data/game_settings.tres'}
 # Read-only binary asset prefixes served via /api/asset (e.g. terrain
 # textures the editor previews). Kept separate from the writable
 # ALLOWED_PREFIXES so a stray POST can never overwrite a PNG.
-ALLOWED_ASSET_PREFIXES = ['assets/textures/']
+ALLOWED_ASSET_PREFIXES = ['assets/textures/', 'assets/props/']
 
 # Extensions we'll serve through /api/asset, mapped to MIME types.
 ASSET_MIME = {

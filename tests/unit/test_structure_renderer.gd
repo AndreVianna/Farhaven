@@ -74,9 +74,8 @@ func _ensure_structure_def(id: StringName, mesh_type: StringName = &"box",
 	def.id = id
 	def.display_name = String(id)
 	def.tags = [&"STRUCTURE"]
-	def.placeholder_mesh_type = mesh_type
-	def.placeholder_params = params
-	def.placeholder_color = color
+	# TODO: wire a real PlaceableCap.meshes entry for these tests — structures
+	# without authored meshes no longer render.
 	var pcap := _PlaceableCap.new()
 	def.placeable = pcap
 	def.max_stack = 1

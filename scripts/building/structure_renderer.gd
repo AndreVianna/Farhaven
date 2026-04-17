@@ -75,21 +75,28 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	if _instances.has(key):
 		_remove_child_node(key)
 
-	# Build placeholder mesh from PropDef config.
+	# Resolve mesh from PropDef's PlaceableCap (first variant).
+	# Structures without authored meshes don't render.
 	var def = PropRegistry.get_def(structure_type)
 	var mesh: Mesh
-	var color: Color = Color.WHITE
 	var y_offset: float = PROP_Y_OFFSET
+	var color: Color = Color.WHITE
 
-	if def != null:
-		var result: Array = _build_placeholder_mesh(def.placeholder_mesh_type, def.placeholder_params)
-		mesh = result[0]
-		y_offset = result[1]
-		color = def.placeholder_color if def.mesh == null else Color.WHITE
-	else:
-		# Fallback: generic cube.
-		mesh = _make_cube_mesh(0.3)
-		y_offset = 0.3
+	if def != null and def.placeable != null and def.placeable.meshes != null:
+		for mv in def.placeable.meshes:
+			if mv == null or mv.scene == null:
+				continue
+			var extracted: Array = _extract_mesh_from_scene(mv.scene)
+			if extracted[0] != null:
+				mesh = extracted[0]
+				y_offset = extracted[1]
+				break
+	if mesh == null and def != null and def.mesh != null:
+		mesh = def.mesh
+
+	if mesh == null:
+		# No authored mesh — skip rendering this structure.
+		return
 
 	# Calculate world position: snap to nearest SSH center for 32cm precision.
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
@@ -157,84 +164,39 @@ func _get_elevation_y(coords: Vector2i, wx: float, wz: float) -> float:
 	return 0.0
 
 
-# --- Mesh factories (matching PropRenderer patterns) ---
+# --- Mesh resolution (PackedScene → Mesh, matching PropRenderer) ---
 
 
-## Returns [mesh, y_offset] where y_offset is center-to-bottom distance.
-func _build_placeholder_mesh(type: StringName, params: Dictionary) -> Array:
-	match type:
-		&"cylinder":
-			var h: float = params.get("height", 0.8)
-			return [_make_cylinder_mesh(params.get("radius", 0.2), h), h / 2.0]
-		&"cube":
-			var hs: float = params.get("half_size", 0.3)
-			return [_make_cube_mesh(hs), hs]
-		&"box":
-			var sx: float = params.get("size_x", 0.5)
-			var sy: float = params.get("size_y", 0.15)
-			var sz: float = params.get("size_z", 0.5)
-			return [_make_box_mesh(Vector3(sx, sy, sz)), sy / 2.0]
-		&"sphere":
-			var r: float = params.get("radius", 0.3)
-			return [_make_sphere_mesh(r), r]
-		&"octahedron":
-			var r: float = params.get("radius", 0.35)
-			return [_make_octahedron_mesh(r), r]
-		&"prism":
-			var h: float = params.get("height", 0.7)
-			return [_make_prism_mesh(params.get("radius", 0.2), h), h / 2.0]
-		_:
-			return [_make_cube_mesh(0.3), 0.3]
+## Extract the first Mesh from an imported PackedScene (.glb/.gltf).
+## Returns [mesh, y_offset] where y_offset is center-to-bottom derived from AABB.
+## Returns [null, PROP_Y_OFFSET] when no MeshInstance3D is found.
+func _extract_mesh_from_scene(scene: PackedScene) -> Array:
+	if scene == null:
+		return [null, PROP_Y_OFFSET]
+	var root: Node = scene.instantiate()
+	if root == null:
+		return [null, PROP_Y_OFFSET]
+	var mesh_instance: MeshInstance3D = _find_first_mesh_instance(root)
+	var mesh: Mesh = null
+	var y_offset: float = PROP_Y_OFFSET
+	if mesh_instance != null:
+		mesh = mesh_instance.mesh
+		if mesh != null:
+			var aabb: AABB = mesh.get_aabb()
+			y_offset = -aabb.position.y
+	root.queue_free()
+	return [mesh, y_offset]
 
 
-func _make_cylinder_mesh(radius: float, height: float) -> Mesh:
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 8
-	mesh.rings = 1
-	return mesh
-
-
-func _make_cube_mesh(half_size: float) -> Mesh:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(half_size * 2.0, half_size * 2.0, half_size * 2.0)
-	return mesh
-
-
-func _make_box_mesh(size: Vector3) -> Mesh:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	return mesh
-
-
-func _make_sphere_mesh(radius: float) -> Mesh:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 8
-	mesh.rings = 4
-	return mesh
-
-
-func _make_octahedron_mesh(radius: float) -> Mesh:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 4
-	mesh.rings = 2
-	return mesh
-
-
-func _make_prism_mesh(radius: float, height: float) -> Mesh:
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius * 0.3
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 6
-	mesh.rings = 1
-	return mesh
+## Depth-first search for the first MeshInstance3D in a scene tree.
+func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var result: MeshInstance3D = _find_first_mesh_instance(child)
+		if result != null:
+			return result
+	return null
 
 
 # --- Public API (for testing) ---

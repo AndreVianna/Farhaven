@@ -84,18 +84,9 @@ export class PropDefModel {
     this.tool_slot = '';
 
     // --- Visuals ---
-    /** @type {string} */
-    this.placeholder_mesh_type = '';
-    /** @type {Object<string, number>} */
-    this.placeholder_params = {};
-    /** @type {{r: number, g: number, b: number, a: number}} */
-    this.placeholder_color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {string} */
-    this.placeholder_depleted_type = '';
-    /** @type {Object<string, number>} */
-    this.placeholder_depleted_params = {};
-    /** @type {{r: number, g: number, b: number, a: number}} */
-    this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
+    // Placeholder fields removed — all visual rendering now comes from
+    // PlaceableCap.meshes (visible/placed) and HarvestableCap.depleted_meshes
+    // (after harvest). See assets/props/{id}/reference_v{n}.png for preview.
 
     // --- Legacy fields (DEPRECATED — kept for round-trip during transition) ---
     /** @type {number} */
@@ -152,8 +143,6 @@ export class PropDefModel {
     model.display_name = _str(d.display_name);
     model.short_description = _str(d.short_description);
     model.long_description = _str(d.long_description);
-    model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
-    model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
     model.tool_slot = _str(d.tool_slot);
 
     // Tags (array of stringname values -> string[])
@@ -161,14 +150,6 @@ export class PropDefModel {
 
     // Numeric fields (max_stack still read for round-trip but no longer shown in UI)
     model.max_stack = _num(d.max_stack) || 99;
-
-    // Dict fields (TresParser stores as Map<string, TresValue>)
-    model.placeholder_params = _dictToObj(d.placeholder_params);
-    model.placeholder_depleted_params = _dictToObj(d.placeholder_depleted_params);
-
-    // Color fields
-    model.placeholder_color = _color(d.placeholder_color);
-    model.placeholder_depleted_color = _color(d.placeholder_depleted_color);
 
     // Legacy footprint (top-level)
     model.footprint = _footprintArray(d.footprint);
@@ -187,8 +168,44 @@ export class PropDefModel {
     }
 
     if (d.placeable && typeof d.placeable === 'object') {
-      model.placeable = {
-      };
+      // Parse meshes (Array[Resource] of MeshVariant sub_resources). Nested
+      // array refs stay as { type: 'sub_resource', value: 'id' } and need
+      // lookup via entry.raw.subResources, same pattern as harvestable yields.
+      const subMap = new Map();
+      if (entry.raw && entry.raw.subResources) {
+        for (const sub of entry.raw.subResources) {
+          const subData = {};
+          for (const [k, v] of sub.fields) subData[k] = v.value;
+          subMap.set(sub.id, subData);
+        }
+      }
+      const meshRefs = Array.isArray(d.placeable.meshes) ? d.placeable.meshes : [];
+      const meshes = [];
+      for (const ref of meshRefs) {
+        let md = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          md = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          md = ref;
+        }
+        if (md) {
+          // scene is an ext_resource ref; store as the path string if resolved.
+          const sceneRef = md.scene;
+          let scenePath = '';
+          if (sceneRef && typeof sceneRef === 'object' && sceneRef.type === 'ext_resource' && entry.raw && entry.raw.extResources) {
+            const ext = entry.raw.extResources.find((x) => x.id === sceneRef.value);
+            if (ext) scenePath = ext.path;
+          } else if (typeof sceneRef === 'string') {
+            scenePath = sceneRef;
+          }
+          meshes.push({
+            scene: scenePath,
+            scale: _num(md.scale) || 1.0,
+            rotation_offset_deg: _num(md.rotation_offset_deg) || 0.0,
+          });
+        }
+      }
+      model.placeable = { meshes };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -323,17 +340,6 @@ export class PropDefModel {
     return model;
   }
 
-  /**
-   * Get placeholder_color as a CSS hex string (e.g. '#33b233').
-   * @returns {string}
-   */
-  get colorHex() {
-    const c = this.placeholder_color;
-    const r = Math.round((c.r || 0) * 255);
-    const g = Math.round((c.g || 0) * 255);
-    const b = Math.round((c.b || 0) * 255);
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-  }
 }
 
 // ============================================================
@@ -1874,20 +1880,100 @@ export function renderPropEditor(container, options) {
    * @returns {void}
    */
   function _renderVisualsTab(body, model) {
-    const grid = document.createElement('div');
-    grid.classList.add('prop-grid');
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 12px;';
 
-    _addField(grid, 'Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type);
-    grid.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
-    grid.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
+    // --- Placeable: mesh variants ---
+    const placeableSection = document.createElement('section');
+    const placeableTitle = document.createElement('h3');
+    placeableTitle.textContent = 'Placeable Meshes';
+    placeableTitle.style.cssText = 'margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #888);';
+    placeableSection.appendChild(placeableTitle);
 
-    // -- Depleted separator --
-    _addSeparator(grid, 'Depleted');
-    _addField(grid, 'Depleted Mesh', 'placeholder_depleted_type', 'text', model.placeholder_depleted_type);
-    grid.appendChild(_createKvEditor('placeholder_depleted_params', model.placeholder_depleted_params));
-    grid.appendChild(_createColorField('Depleted Color', 'placeholder_depleted_color', model.placeholder_depleted_color));
+    if (model.placeable && Array.isArray(model.placeable.meshes) && model.placeable.meshes.length > 0) {
+      placeableSection.appendChild(_renderMeshVariantList(model.placeable.meshes));
+    } else if (model.placeable) {
+      const empty = document.createElement('div');
+      empty.textContent = 'Placeable enabled — no mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
+      empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
+      placeableSection.appendChild(empty);
+    } else {
+      const empty = document.createElement('div');
+      empty.textContent = 'Placeable capability disabled.';
+      empty.style.cssText = 'padding: 12px; color: var(--muted, #888); font-size: 12px; font-style: italic;';
+      placeableSection.appendChild(empty);
+    }
 
-    body.appendChild(grid);
+    container.appendChild(placeableSection);
+
+    // --- Harvestable: depleted meshes (future) ---
+    // Placeholder section so users see the structure; actual UI when content uses it.
+    const harvestSection = document.createElement('section');
+    harvestSection.style.cssText = 'margin-top: 20px;';
+    const harvestTitle = document.createElement('h3');
+    harvestTitle.textContent = 'Harvestable Depleted Meshes';
+    harvestTitle.style.cssText = 'margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #888);';
+    harvestSection.appendChild(harvestTitle);
+
+    const harvestHint = document.createElement('div');
+    if (model.harvestable) {
+      harvestHint.textContent = 'Harvestable enabled — depleted meshes authored in .tres will show here when implemented.';
+    } else {
+      harvestHint.textContent = 'Harvestable capability disabled.';
+    }
+    harvestHint.style.cssText = 'padding: 12px; color: var(--muted, #888); font-size: 12px; font-style: italic;';
+    harvestSection.appendChild(harvestHint);
+
+    container.appendChild(harvestSection);
+
+    body.appendChild(container);
+  }
+
+  /**
+   * Render a read-only list of MeshVariant entries with reference.png preview.
+   * @param {Array<{scene: string, scale: number, rotation_offset_deg: number}>} meshes
+   * @returns {HTMLElement}
+   */
+  function _renderMeshVariantList(meshes) {
+    const list = document.createElement('div');
+    list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+
+    meshes.forEach((mv, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
+
+      // Preview image (resolve mesh_vN.glb -> reference_vN.png in same dir).
+      const previewPath = mv.scene.replace(/^res:\/\//, '').replace(/mesh_(v\d+)\.glb$/, 'reference_$1.png');
+      const img = document.createElement('img');
+      img.src = `/api/asset?path=${encodeURIComponent(previewPath)}`;
+      img.alt = `variant ${idx + 1}`;
+      img.style.cssText = 'width: 96px; height: 96px; object-fit: cover; border-radius: 3px; background: #222;';
+      img.onerror = () => { img.style.display = 'none'; };
+      row.appendChild(img);
+
+      const info = document.createElement('div');
+      info.style.cssText = 'flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px;';
+
+      const label = document.createElement('div');
+      label.textContent = `Variant ${idx + 1}`;
+      label.style.cssText = 'font-weight: 600;';
+      info.appendChild(label);
+
+      const scenePath = document.createElement('code');
+      scenePath.textContent = mv.scene || '(no scene)';
+      scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+      info.appendChild(scenePath);
+
+      const xform = document.createElement('div');
+      xform.textContent = `scale: ${mv.scale} · rotation_offset: ${mv.rotation_offset_deg}°`;
+      xform.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+      info.appendChild(xform);
+
+      row.appendChild(info);
+      list.appendChild(row);
+    });
+
+    return list;
   }
 
   // --- Wire up events ---
@@ -2380,14 +2466,6 @@ export function collectPropFormData(formElement) {
     model.harvestable = { yields, respawn_conditions: respawnConds };
   }
 
-  // Visuals
-  model.placeholder_mesh_type = val('placeholder_mesh_type').trim();
-  model.placeholder_params = _collectKvData(formElement, 'placeholder_params');
-  model.placeholder_color = _hexToColor(val('placeholder_color'), floatVal('placeholder_color_alpha'));
-  model.placeholder_depleted_type = val('placeholder_depleted_type').trim();
-  model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
-  model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
-
   // Legacy footprint preserved from model (no longer in form UI)
 
   return model;
@@ -2621,12 +2699,6 @@ function _modelToPlain(model) {
     spawnable: model.spawnable,
     harvestable: model.harvestable,
     max_stack: model.max_stack,
-    placeholder_mesh_type: model.placeholder_mesh_type,
-    placeholder_params: model.placeholder_params,
-    placeholder_color: model.placeholder_color,
-    placeholder_depleted_type: model.placeholder_depleted_type,
-    placeholder_depleted_params: model.placeholder_depleted_params,
-    placeholder_depleted_color: model.placeholder_depleted_color,
     footprint: model.footprint,
     category: model.category,
     rarity: model.rarity,
@@ -3009,14 +3081,6 @@ export function propModelToRaw(model) {
   if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
   if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
   if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
-
-  // Placeholder fields
-  fields.set('placeholder_mesh_type', { type: 'stringname', value: model.placeholder_mesh_type });
-  fields.set('placeholder_params', _objToTresDict(model.placeholder_params, 'string', 'float'));
-  fields.set('placeholder_color', _colorToTresValue(model.placeholder_color));
-  fields.set('placeholder_depleted_type', { type: 'stringname', value: model.placeholder_depleted_type });
-  fields.set('placeholder_depleted_params', _objToTresDict(model.placeholder_depleted_params, 'string', 'float'));
-  fields.set('placeholder_depleted_color', _colorToTresValue(model.placeholder_depleted_color));
 
   // Preserve any fields from the original .tres the editor doesn't yet
   // understand (e.g. `mesh`, `depleted_mesh`, `material` asset references).
