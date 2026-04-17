@@ -1038,6 +1038,7 @@ const COLLISION_SIZE_LABELS = {
 function _createCollisionShapesEditor(shapes) {
   const wrapper = document.createElement('div');
   wrapper.dataset.collisionShapesEditor = '1';
+  wrapper.classList.add('prop-full');
   wrapper.style.cssText = 'margin-top: 14px; display: flex; flex-direction: column; gap: 8px;';
 
   const header = document.createElement('div');
@@ -2153,6 +2154,7 @@ export function renderPropEditor(container, options) {
   function _renderMeshVariantList(meshes) {
     const list = document.createElement('div');
     list.dataset.meshVariantsList = '1';
+    list.classList.add('prop-full');
     list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
 
     meshes.forEach((mv, idx) => {
