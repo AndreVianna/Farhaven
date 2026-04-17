@@ -1174,6 +1174,30 @@ function _makeSpan(text) {
 }
 
 /**
+ * Collect MeshVariant entries from the form.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{scene:string, scale:number, rotation_offset_deg:number}>}
+ */
+function _collectMeshVariantsData(formElement) {
+  const list = formElement.querySelector('[data-mesh-variants-list]');
+  if (!list) return [];
+  const rows = list.querySelectorAll('[data-mesh-variant-row]');
+  const out = [];
+  for (const row of rows) {
+    const scaleEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="scale"]'));
+    const rotEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="rotation_offset_deg"]'));
+    const scale = scaleEl ? parseFloat(scaleEl.value) : 1;
+    const rot = rotEl ? parseFloat(rotEl.value) : 0;
+    out.push({
+      scene: /** @type {HTMLElement} */ (row).dataset.meshScene || '',
+      scale: Number.isFinite(scale) ? scale : 1,
+      rotation_offset_deg: Number.isFinite(rot) ? rot : 0,
+    });
+  }
+  return out;
+}
+
+/**
  * Collect collision_shapes from the form.
  * @param {HTMLFormElement} formElement
  * @returns {Array<{shape_type:string, size:{x:number,y:number,z:number}, offset:{x:number,y:number,z:number}}>}
@@ -2120,50 +2144,103 @@ export function renderPropEditor(container, options) {
   }
 
   /**
-   * Render a read-only list of MeshVariant entries with reference.png preview.
+   * Render an editable list of MeshVariant entries — reference.png preview,
+   * scene path, scale and rotation offset inputs. Scene editing still goes
+   * through the .tres for now (no file picker yet).
    * @param {Array<{scene: string, scale: number, rotation_offset_deg: number}>} meshes
    * @returns {HTMLElement}
    */
   function _renderMeshVariantList(meshes) {
     const list = document.createElement('div');
+    list.dataset.meshVariantsList = '1';
     list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
 
     meshes.forEach((mv, idx) => {
-      const row = document.createElement('div');
-      row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
-
-      // Preview image (resolve mesh_vN.glb -> reference_vN.png in same dir).
-      const previewPath = mv.scene.replace(/^res:\/\//, '').replace(/mesh_(v\d+)\.glb$/, 'reference_$1.png');
-      const img = document.createElement('img');
-      img.src = `/api/asset?path=${encodeURIComponent(previewPath)}`;
-      img.alt = `variant ${idx + 1}`;
-      img.style.cssText = 'width: 96px; height: 96px; object-fit: cover; border-radius: 3px; background: #222;';
-      img.onerror = () => { img.style.display = 'none'; };
-      row.appendChild(img);
-
-      const info = document.createElement('div');
-      info.style.cssText = 'flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px;';
-
-      const label = document.createElement('div');
-      label.textContent = `Variant ${idx + 1}`;
-      label.style.cssText = 'font-weight: 600;';
-      info.appendChild(label);
-
-      const scenePath = document.createElement('code');
-      scenePath.textContent = mv.scene || '(no scene)';
-      scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-      info.appendChild(scenePath);
-
-      const xform = document.createElement('div');
-      xform.textContent = `scale: ${mv.scale} · rotation_offset: ${mv.rotation_offset_deg}°`;
-      xform.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
-      info.appendChild(xform);
-
-      row.appendChild(info);
-      list.appendChild(row);
+      list.appendChild(_buildMeshVariantRow(mv, idx));
     });
 
     return list;
+  }
+
+  function _buildMeshVariantRow(mv, idx) {
+    const row = document.createElement('div');
+    row.dataset.meshVariantRow = '1';
+    row.dataset.meshScene = mv.scene || '';
+    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
+
+    // Preview image (resolve mesh_vN.glb → reference_vN.png in same dir).
+    // Falls back to a visible placeholder when the server can't serve the PNG.
+    const previewPath = (mv.scene || '').replace(/^res:\/\//, '').replace(/mesh_(v\d+)\.glb$/, 'reference_$1.png');
+    const img = document.createElement('img');
+    if (previewPath) img.src = `/api/asset?path=${encodeURIComponent(previewPath)}`;
+    img.alt = `variant ${idx + 1}`;
+    img.style.cssText = 'width: 96px; height: 96px; object-fit: cover; border-radius: 3px; background: #222; flex-shrink: 0;';
+    img.onerror = () => {
+      img.replaceWith(_buildPreviewFallback(idx + 1));
+    };
+    row.appendChild(img);
+
+    const info = document.createElement('div');
+    info.style.cssText = 'flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px;';
+
+    // Header row: variant label + remove button.
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px;';
+    const label = document.createElement('div');
+    label.textContent = `Variant ${idx + 1}`;
+    label.style.cssText = 'font-weight: 600;';
+    header.appendChild(label);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove variant';
+    removeBtn.style.cssText = 'padding: 2px 8px; font-size: 14px; cursor: pointer; line-height: 1;';
+    removeBtn.addEventListener('click', () => row.remove());
+    header.appendChild(removeBtn);
+    info.appendChild(header);
+
+    const scenePath = document.createElement('code');
+    scenePath.textContent = mv.scene || '(no scene)';
+    scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    info.appendChild(scenePath);
+
+    // Editable scale + rotation offset inputs.
+    const xform = document.createElement('div');
+    xform.style.cssText = 'display: grid; grid-template-columns: auto 70px auto 70px; gap: 6px; align-items: center;';
+    const scaleLabel = document.createElement('span');
+    scaleLabel.textContent = 'scale';
+    scaleLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    const scaleInput = document.createElement('input');
+    scaleInput.type = 'number';
+    scaleInput.step = 'any';
+    scaleInput.value = String(mv.scale);
+    scaleInput.dataset.field = 'scale';
+    scaleInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    const rotLabel = document.createElement('span');
+    rotLabel.textContent = 'rotation°';
+    rotLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    const rotInput = document.createElement('input');
+    rotInput.type = 'number';
+    rotInput.step = 'any';
+    rotInput.value = String(mv.rotation_offset_deg);
+    rotInput.dataset.field = 'rotation_offset_deg';
+    rotInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    xform.appendChild(scaleLabel);
+    xform.appendChild(scaleInput);
+    xform.appendChild(rotLabel);
+    xform.appendChild(rotInput);
+    info.appendChild(xform);
+
+    row.appendChild(info);
+    return row;
+  }
+
+  function _buildPreviewFallback(variantNumber) {
+    const fallback = document.createElement('div');
+    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--muted, #888); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border, #444);';
+    fallback.textContent = `no preview\nv${variantNumber}`;
+    fallback.style.whiteSpace = 'pre';
+    return fallback;
   }
 
   // --- Wire up events ---
@@ -2544,8 +2621,8 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
-    // meshes aren't editable in the form yet — emission preserves them from _raw.
     model.placeable = {
+      meshes: _collectMeshVariantsData(formElement),
       collision_shapes: _collectCollisionShapesData(formElement),
     };
   }
@@ -2962,6 +3039,36 @@ export function propModelToRaw(model) {
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
     extId++;
 
+    // Mesh variants (Array[Resource] of MeshVariant sub_resources).
+    const meshes = Array.isArray(model.placeable.meshes) ? model.placeable.meshes : [];
+    let meshVarExtId = null;
+    if (meshes.length > 0) {
+      meshVarExtId = `${extId}_mesh_variant`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="${meshVarExtId}"]`);
+      extId++;
+    }
+    const meshSubIds = [];
+    for (let i = 0; i < meshes.length; i++) {
+      const mv = meshes[i];
+      // One ext_resource per unique scene path (PackedScene reference).
+      let sceneExtId = null;
+      if (mv.scene) {
+        sceneExtId = `${extId}_mesh_scene_${i + 1}`;
+        extResources.push(`[ext_resource type="PackedScene" path="${mv.scene}" id="${sceneExtId}"]`);
+        extId++;
+      }
+      const mvSubId = `mesh_variant_${i + 1}`;
+      meshSubIds.push(mvSubId);
+      const mvFields = new Map();
+      mvFields.set('script', { type: 'ext_resource', value: `ExtResource("${meshVarExtId}")` });
+      if (sceneExtId) {
+        mvFields.set('scene', { type: 'ext_resource', value: `ExtResource("${sceneExtId}")` });
+      }
+      mvFields.set('scale', { type: 'float', value: Number.isFinite(mv.scale) ? mv.scale : 1.0 });
+      mvFields.set('rotation_offset_deg', { type: 'float', value: Number.isFinite(mv.rotation_offset_deg) ? mv.rotation_offset_deg : 0.0 });
+      extraSubResources.push({ type: 'Resource', id: mvSubId, fields: mvFields });
+    }
+
     // Collision shapes (Array[Resource] of CollisionShape sub_resources).
     const collShapes = Array.isArray(model.placeable.collision_shapes) ? model.placeable.collision_shapes : [];
     let collShapeExtId = null;
@@ -2985,18 +3092,17 @@ export function propModelToRaw(model) {
 
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (meshSubIds.length > 0) {
+      subFields.set('meshes', {
+        type: 'array', elementType: 'Resource',
+        value: meshSubIds.map(id => ({ type: 'sub_resource', value: id })),
+      });
+    }
     if (collSubIds.length > 0) {
       subFields.set('collision_shapes', {
         type: 'array', elementType: 'Resource',
         value: collSubIds.map(id => ({ type: 'sub_resource', value: id })),
       });
-    }
-
-    // Preserve meshes from the original _raw placeable sub_resource — the
-    // editor doesn't author MeshVariants yet, so we round-trip them verbatim.
-    const rawMeshes = _extractRawPlaceableMeshes(model._raw);
-    if (rawMeshes) {
-      subFields.set('meshes', rawMeshes);
     }
 
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
@@ -3370,27 +3476,6 @@ function _resolveExtResourcePath(ref, rawFile) {
     }
   }
   return '';
-}
-
-/**
- * Pull the raw `meshes` TresValue from a model's stored _raw TresFile so
- * the editor can round-trip PlaceableCap.meshes without understanding
- * MeshVariant yet. Returns null if the original placeable sub_resource
- * didn't carry a meshes field.
- * @param {import('./tres-parser.js').TresFile|null|undefined} rawFile
- * @returns {import('./tres-parser.js').TresValue|null}
- */
-function _extractRawPlaceableMeshes(rawFile) {
-  if (!rawFile || !Array.isArray(rawFile.subResources)) return null;
-  // The placeable sub_resource is the only one that carries a `meshes`
-  // field, so presence of that field uniquely identifies it without us
-  // having to resolve the ext_resource script reference.
-  for (const sub of rawFile.subResources) {
-    if (!sub || !(sub.fields instanceof Map)) continue;
-    const meshes = sub.fields.get('meshes');
-    if (meshes) return meshes;
-  }
-  return null;
 }
 
 /**
