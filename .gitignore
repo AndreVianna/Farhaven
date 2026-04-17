@@ -23,4 +23,7 @@ Thumbs.db
 
 # Test reports
 reports/
+
+#Claude
 .claude/worktrees/
+**/*.local.json
