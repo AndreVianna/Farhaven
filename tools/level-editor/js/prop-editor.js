@@ -179,7 +179,13 @@ export class PropDefModel {
           subMap.set(sub.id, subData);
         }
       }
-      const meshRefs = Array.isArray(d.placeable.meshes) ? d.placeable.meshes : [];
+      // TresParser wraps `Array[Resource]([...])` as an outer array of one
+      // inner array TresValue. Unwrap to the inner refs. Plain `[...]` parses
+      // as the flat list directly.
+      let meshRefs = Array.isArray(d.placeable.meshes) ? d.placeable.meshes : [];
+      if (meshRefs.length === 1 && meshRefs[0] && meshRefs[0].type === 'array' && Array.isArray(meshRefs[0].value)) {
+        meshRefs = meshRefs[0].value;
+      }
       const meshes = [];
       for (const ref of meshRefs) {
         let md = null;
@@ -189,17 +195,8 @@ export class PropDefModel {
           md = ref;
         }
         if (md) {
-          // scene is an ext_resource ref; store as the path string if resolved.
-          const sceneRef = md.scene;
-          let scenePath = '';
-          if (sceneRef && typeof sceneRef === 'object' && sceneRef.type === 'ext_resource' && entry.raw && entry.raw.extResources) {
-            const ext = entry.raw.extResources.find((x) => x.id === sceneRef.value);
-            if (ext) scenePath = ext.path;
-          } else if (typeof sceneRef === 'string') {
-            scenePath = sceneRef;
-          }
           meshes.push({
-            scene: scenePath,
+            scene: _resolveExtResourcePath(md.scene, entry.raw),
             scale: _num(md.scale) || 1.0,
             rotation_offset_deg: _num(md.rotation_offset_deg) || 0.0,
           });
@@ -207,7 +204,11 @@ export class PropDefModel {
       }
 
       // Parse collision_shapes (Array[Resource] of CollisionShape sub_resources).
-      const collisionRefs = Array.isArray(d.placeable.collision_shapes) ? d.placeable.collision_shapes : [];
+      // Same outer-array unwrap as meshes above.
+      let collisionRefs = Array.isArray(d.placeable.collision_shapes) ? d.placeable.collision_shapes : [];
+      if (collisionRefs.length === 1 && collisionRefs[0] && collisionRefs[0].type === 'array' && Array.isArray(collisionRefs[0].value)) {
+        collisionRefs = collisionRefs[0].value;
+      }
       const collision_shapes = [];
       for (const ref of collisionRefs) {
         let cd = null;
@@ -3336,6 +3337,39 @@ export function propModelToRaw(model) {
 
   raw.resourceFields = fields;
   return raw;
+}
+
+/**
+ * Resolve an ExtResource reference (e.g. "ExtResource(\"7_mesh_v1\")") or
+ * a raw `{ type: 'ext_resource', value: id }` TresValue to the `path`
+ * attribute from the corresponding [ext_resource ...] header line in the
+ * raw .tres. Returns the empty string if the reference can't be resolved.
+ * @param {string|{type:string,value:string}|null|undefined} ref
+ * @param {import('./tres-parser.js').TresFile|null|undefined} rawFile
+ * @returns {string}
+ */
+function _resolveExtResourcePath(ref, rawFile) {
+  let id = '';
+  if (!ref) return '';
+  if (typeof ref === 'string') {
+    // Match ExtResource("id") or plain id.
+    const m = ref.match(/ExtResource\(\s*"([^"]+)"\s*\)/);
+    id = m ? m[1] : ref;
+  } else if (typeof ref === 'object' && ref.type === 'ext_resource') {
+    const v = typeof ref.value === 'string' ? ref.value : '';
+    const m = v.match(/ExtResource\(\s*"([^"]+)"\s*\)/);
+    id = m ? m[1] : v;
+  }
+  if (!id || !rawFile || !Array.isArray(rawFile.extResources)) return '';
+  for (const line of rawFile.extResources) {
+    if (typeof line !== 'string') continue;
+    const lineMatch = line.match(/id\s*=\s*"([^"]+)"/);
+    if (lineMatch && lineMatch[1] === id) {
+      const pathMatch = line.match(/path\s*=\s*"([^"]+)"/);
+      if (pathMatch) return pathMatch[1];
+    }
+  }
+  return '';
 }
 
 /**
