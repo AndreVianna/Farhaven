@@ -121,14 +121,18 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	mesh_instance.material_override = mat
 	node.add_child(mesh_instance)
 
-	# Add StaticBody3D with CollisionShape3D for physics detection.
+	# Add StaticBody3D with per-prop authored collision shapes (zero or more).
+	# Empty collision_shapes → walkthrough prop, no StaticBody3D added.
 	if def != null:
-		var static_body := StaticBody3D.new()
-		static_body.name = "StaticBody"
-		var collision_shape: CollisionShape3D = _CollisionHelper.create_collision_shape(def)
-		collision_shape.name = "CollisionShape"
-		static_body.add_child(collision_shape)
-		node.add_child(static_body)
+		var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_collision_shapes(def)
+		if not collision_nodes.is_empty():
+			var static_body := StaticBody3D.new()
+			static_body.name = "StaticBody"
+			for i in collision_nodes.size():
+				var cs_node: CollisionShape3D = collision_nodes[i]
+				cs_node.name = "CollisionShape_%d" % i
+				static_body.add_child(cs_node)
+			node.add_child(static_body)
 
 	add_child(node)
 	_instances[key] = node

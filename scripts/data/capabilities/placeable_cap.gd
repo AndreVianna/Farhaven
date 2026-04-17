@@ -15,3 +15,10 @@ extends Resource
 ## custom Resource subclasses. Each element should be a MeshVariant.
 ## Empty array means the prop is not rendered.
 @export var meshes: Array[Resource] = []
+
+## Collision shape composition. Each element should be a CollisionShape
+## resource describing one primitive (box/cylinder/sphere) with size
+## and offset. Multiple shapes compose the full collision volume. An
+## empty array means the prop has no collision (walkthrough) — useful
+## for decorative props like flat plants or particle-only effects.
+@export var collision_shapes: Array[Resource] = []

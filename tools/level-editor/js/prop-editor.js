@@ -205,7 +205,29 @@ export class PropDefModel {
           });
         }
       }
-      model.placeable = { meshes };
+
+      // Parse collision_shapes (Array[Resource] of CollisionShape sub_resources).
+      const collisionRefs = Array.isArray(d.placeable.collision_shapes) ? d.placeable.collision_shapes : [];
+      const collision_shapes = [];
+      for (const ref of collisionRefs) {
+        let cd = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          cd = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          cd = ref;
+        }
+        if (cd) {
+          const sz = cd.size;
+          const off = cd.offset;
+          collision_shapes.push({
+            shape_type: _str(cd.shape_type) || 'box',
+            size: sz && typeof sz === 'object' ? { x: _num(sz.x), y: _num(sz.y), z: _num(sz.z) } : { x: 1, y: 1, z: 1 },
+            offset: off && typeof off === 'object' ? { x: _num(off.x), y: _num(off.y), z: _num(off.z) } : { x: 0, y: 0, z: 0 },
+          });
+        }
+      }
+
+      model.placeable = { meshes, collision_shapes };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -991,6 +1013,190 @@ function _createShapeEditor(fieldId, shape) {
   wrapper.appendChild(grid);
   updateCount();
   return wrapper;
+}
+
+// ============================================================
+// Collision Shapes Editor (PlaceableCap.collision_shapes)
+// ============================================================
+
+const COLLISION_SHAPE_TYPES = ['box', 'cylinder', 'sphere'];
+
+// Which size components are relevant per shape type. Helps the UI dim
+// irrelevant inputs so authors don't waste attention on them.
+const COLLISION_SIZE_LABELS = {
+  box:      { x: 'Width',  y: 'Height', z: 'Depth'  },
+  cylinder: { x: 'Radius', y: 'Height', z: '—'      },
+  sphere:   { x: 'Radius', y: '—',      z: '—'      },
+};
+
+/**
+ * Create the collision_shapes editor (list of box/cylinder/sphere entries).
+ * @param {Array<{shape_type:string, size:{x:number,y:number,z:number}, offset:{x:number,y:number,z:number}}>} shapes
+ * @returns {HTMLElement}
+ */
+function _createCollisionShapesEditor(shapes) {
+  const wrapper = document.createElement('div');
+  wrapper.dataset.collisionShapesEditor = '1';
+  wrapper.style.cssText = 'margin-top: 14px; display: flex; flex-direction: column; gap: 8px;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:baseline;justify-content:space-between;';
+  const title = document.createElement('div');
+  title.textContent = 'Collision Shapes';
+  title.classList.add('prop-label');
+  header.appendChild(title);
+  const hint = document.createElement('span');
+  hint.textContent = 'empty = walkthrough prop';
+  hint.style.cssText = 'font-size:11px; color: var(--text-secondary, #888); font-style: italic;';
+  header.appendChild(hint);
+  wrapper.appendChild(header);
+
+  const list = document.createElement('div');
+  list.dataset.collisionShapesList = '1';
+  list.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+  wrapper.appendChild(list);
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+ Add Shape';
+  addBtn.style.cssText = 'align-self:flex-start;padding:4px 10px;font-size:12px;cursor:pointer;';
+  addBtn.addEventListener('click', () => {
+    list.appendChild(_buildCollisionShapeRow({
+      shape_type: 'box',
+      size: { x: 1, y: 1, z: 1 },
+      offset: { x: 0, y: 0, z: 0 },
+    }));
+  });
+  wrapper.appendChild(addBtn);
+
+  for (const s of shapes) {
+    list.appendChild(_buildCollisionShapeRow(s));
+  }
+
+  return wrapper;
+}
+
+function _buildCollisionShapeRow(shape) {
+  const row = document.createElement('div');
+  row.dataset.collisionShapeRow = '1';
+  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border, #444);border-radius:3px;font-size:11px;';
+
+  // Shape type dropdown.
+  const typeSelect = document.createElement('select');
+  typeSelect.dataset.field = 'shape_type';
+  for (const t of COLLISION_SHAPE_TYPES) {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    if (t === shape.shape_type) opt.selected = true;
+    typeSelect.appendChild(opt);
+  }
+  typeSelect.style.cssText = 'font-size:11px;padding:2px 4px;';
+  row.appendChild(typeSelect);
+
+  // Size inputs (x, y, z).
+  const sxLabel = document.createElement('span');
+  const syLabel = document.createElement('span');
+  const szLabel = document.createElement('span');
+  const sx = _numCell('size_x', shape.size.x);
+  const sy = _numCell('size_y', shape.size.y);
+  const sz = _numCell('size_z', shape.size.z);
+  const sizeWrapX = _titledCell(sxLabel, sx);
+  const sizeWrapY = _titledCell(syLabel, sy);
+  const sizeWrapZ = _titledCell(szLabel, sz);
+  row.appendChild(sizeWrapX);
+  row.appendChild(sizeWrapY);
+  row.appendChild(sizeWrapZ);
+
+  // Divider between size and offset.
+  const divider = document.createElement('span');
+  divider.textContent = '·';
+  divider.style.cssText = 'text-align:center;color:var(--text-secondary, #888);';
+  row.appendChild(divider);
+
+  // Offset inputs (x, y, z).
+  const ox = _numCell('offset_x', shape.offset.x);
+  const oy = _numCell('offset_y', shape.offset.y);
+  const oz = _numCell('offset_z', shape.offset.z);
+  row.appendChild(_titledCell(_makeSpan('X'), ox));
+  row.appendChild(_titledCell(_makeSpan('Y'), oy));
+  row.appendChild(_titledCell(_makeSpan('Z'), oz));
+
+  // Remove button.
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = '×';
+  removeBtn.style.cssText = 'padding:2px 6px;font-size:14px;cursor:pointer;line-height:1;';
+  removeBtn.title = 'Remove shape';
+  removeBtn.addEventListener('click', () => row.remove());
+  row.appendChild(removeBtn);
+
+  // Update size labels when type changes.
+  const refreshLabels = () => {
+    const t = typeSelect.value;
+    const labels = COLLISION_SIZE_LABELS[t] || COLLISION_SIZE_LABELS.box;
+    sxLabel.textContent = labels.x;
+    syLabel.textContent = labels.y;
+    szLabel.textContent = labels.z;
+    sy.disabled = labels.y === '—';
+    sz.disabled = labels.z === '—';
+  };
+  typeSelect.addEventListener('change', refreshLabels);
+  refreshLabels();
+
+  return row;
+}
+
+function _numCell(fieldName, value) {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.value = String(value);
+  input.dataset.field = fieldName;
+  input.style.cssText = 'width:100%;padding:2px 4px;font-size:11px;';
+  return input;
+}
+
+function _titledCell(labelSpan, input) {
+  const w = document.createElement('label');
+  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary, #888);';
+  labelSpan.style.cssText = 'font-size:10px;';
+  w.appendChild(labelSpan);
+  w.appendChild(input);
+  return w;
+}
+
+function _makeSpan(text) {
+  const s = document.createElement('span');
+  s.textContent = text;
+  return s;
+}
+
+/**
+ * Collect collision_shapes from the form.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{shape_type:string, size:{x:number,y:number,z:number}, offset:{x:number,y:number,z:number}}>}
+ */
+function _collectCollisionShapesData(formElement) {
+  const wrapper = formElement.querySelector('[data-collision-shapes-editor]');
+  if (!wrapper) return [];
+  const rows = wrapper.querySelectorAll('[data-collision-shape-row]');
+  const out = [];
+  for (const row of rows) {
+    const typeEl = /** @type {HTMLSelectElement} */ (row.querySelector('select[data-field="shape_type"]'));
+    const getNum = (field) => {
+      const el = /** @type {HTMLInputElement} */ (row.querySelector(`input[data-field="${field}"]`));
+      if (!el) return 0;
+      const v = parseFloat(el.value);
+      return Number.isFinite(v) ? v : 0;
+    };
+    out.push({
+      shape_type: typeEl ? typeEl.value : 'box',
+      size: { x: getNum('size_x'), y: getNum('size_y'), z: getNum('size_z') },
+      offset: { x: getNum('offset_x'), y: getNum('offset_y'), z: getNum('offset_z') },
+    });
+  }
+  return out;
 }
 
 /**
@@ -1880,7 +2086,7 @@ export function renderPropEditor(container, options) {
       panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
     }));
 
-    // PLACEABLE — world mesh variants.
+    // PLACEABLE — world mesh variants + collision shape composition.
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
       const meshes = model.placeable && Array.isArray(model.placeable.meshes)
         ? model.placeable.meshes
@@ -1893,6 +2099,11 @@ export function renderPropEditor(container, options) {
         empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
         panel.appendChild(empty);
       }
+
+      const collisionShapes = model.placeable && Array.isArray(model.placeable.collision_shapes)
+        ? model.placeable.collision_shapes
+        : [];
+      panel.appendChild(_createCollisionShapesEditor(collisionShapes));
     }));
 
     // HARVESTABLE — yields + respawn conditions + (future) depleted meshes.
@@ -2332,7 +2543,10 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
-    model.placeable = {};
+    // meshes aren't editable in the form yet — emission preserves them from _raw.
+    model.placeable = {
+      collision_shapes: _collectCollisionShapesData(formElement),
+    };
   }
 
   if (isChecked('cap_container_enabled')) {
@@ -2718,6 +2932,10 @@ export function propModelToRaw(model) {
 
   /** @type {Array<{capName: string, scriptPath: string, subId: string, subFields: Map<string, import('./tres-parser.js').TresValue>}>} */
   const capEntries = [];
+  // Nested sub_resources referenced BY caps (e.g. CollisionShape and HarvestYield).
+  // Emitted before the cap sub_resources so they're available when the caps
+  // reference them.
+  const extraSubResources = [];
 
   // Build capability entries in the order defined by the GDScript schema
   if (model.portable) {
@@ -2741,10 +2959,46 @@ export function propModelToRaw(model) {
   if (model.placeable) {
     const eid = `${extId}_placeable`;
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
+    extId++;
+
+    // Collision shapes (Array[Resource] of CollisionShape sub_resources).
+    const collShapes = Array.isArray(model.placeable.collision_shapes) ? model.placeable.collision_shapes : [];
+    let collShapeExtId = null;
+    if (collShapes.length > 0) {
+      collShapeExtId = `${extId}_collision_shape`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/collision_shape.gd" id="${collShapeExtId}"]`);
+      extId++;
+    }
+    const collSubIds = [];
+    for (let i = 0; i < collShapes.length; i++) {
+      const cs = collShapes[i];
+      const csSubId = `collision_shape_${i + 1}`;
+      collSubIds.push(csSubId);
+      const csFields = new Map();
+      csFields.set('script', { type: 'ext_resource', value: `ExtResource("${collShapeExtId}")` });
+      csFields.set('shape_type', { type: 'stringname', value: cs.shape_type || 'box' });
+      csFields.set('size', { type: 'vector3', value: { x: cs.size.x, y: cs.size.y, z: cs.size.z } });
+      csFields.set('offset', { type: 'vector3', value: { x: cs.offset.x, y: cs.offset.y, z: cs.offset.z } });
+      extraSubResources.push({ type: 'Resource', id: csSubId, fields: csFields });
+    }
+
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (collSubIds.length > 0) {
+      subFields.set('collision_shapes', {
+        type: 'array', elementType: 'Resource',
+        value: collSubIds.map(id => ({ type: 'sub_resource', value: id })),
+      });
+    }
+
+    // Preserve meshes from the original _raw placeable sub_resource — the
+    // editor doesn't author MeshVariants yet, so we round-trip them verbatim.
+    const rawMeshes = _extractRawPlaceableMeshes(model._raw);
+    if (rawMeshes) {
+      subFields.set('meshes', rawMeshes);
+    }
+
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
-    extId++;
   }
 
   if (model.container) {
@@ -2933,7 +3187,6 @@ export function propModelToRaw(model) {
   // Yield sub_resources are pushed to subResources directly (before the main
   // loop below) so they appear before the harvestable cap that references them.
   /** @type {Array<{id: string, fields: Map<string, any>}>} */
-  const extraSubResources = [];
   if (model.harvestable) {
     const harvExtId = `${extId}_harvestable`;
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="${harvExtId}"]`);
@@ -3083,6 +3336,27 @@ export function propModelToRaw(model) {
 
   raw.resourceFields = fields;
   return raw;
+}
+
+/**
+ * Pull the raw `meshes` TresValue from a model's stored _raw TresFile so
+ * the editor can round-trip PlaceableCap.meshes without understanding
+ * MeshVariant yet. Returns null if the original placeable sub_resource
+ * didn't carry a meshes field.
+ * @param {import('./tres-parser.js').TresFile|null|undefined} rawFile
+ * @returns {import('./tres-parser.js').TresValue|null}
+ */
+function _extractRawPlaceableMeshes(rawFile) {
+  if (!rawFile || !Array.isArray(rawFile.subResources)) return null;
+  // The placeable sub_resource is the only one that carries a `meshes`
+  // field, so presence of that field uniquely identifies it without us
+  // having to resolve the ext_resource script reference.
+  for (const sub of rawFile.subResources) {
+    if (!sub || !(sub.fields instanceof Map)) continue;
+    const meshes = sub.fields.get('meshes');
+    if (meshes) return meshes;
+  }
+  return null;
 }
 
 /**
