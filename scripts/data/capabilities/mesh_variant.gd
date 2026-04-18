@@ -14,13 +14,14 @@ extends Resource
 @export var scene: PackedScene = null
 
 ## Optional uniform scale applied to the variant (default 1.0).
-## Expected range: positive, finite. Forward-declared for feature-011
-## (prop placement scatter) — will be consumed by the renderer when
-## computing per-instance scale with ±15% jitter. No runtime validation
-## yet because no consumer exists.
+## Expected range: positive, finite. Consumed by PropRenderer and
+## StructureRenderer — siblings in a scatter group receive additional
+## variance from the seeded RNG on top of this base value.
 @export var scale: float = 1.0
 
-## Optional rotation offset in degrees around Y axis.
-## The prop's per-instance rotation is applied on top of this.
-## Forward-declared for feature-011 — any float is valid (fmod 360).
-@export var rotation_offset_deg: float = 0.0
+# Note: rotation_offset_deg was removed 2026-04-18. Rotation is now
+# either purely procedural (seeded 0-360°) on scatter / default SINGLE,
+# or pinned per-instance via Prop.rotation_override (UI context menu).
+# Correcting a mesh that was exported at the wrong base rotation should
+# happen in the DCC tool or the .glb import step, not as a per-variant
+# runtime offset.

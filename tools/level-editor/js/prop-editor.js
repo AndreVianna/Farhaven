@@ -198,7 +198,6 @@ export class PropDefModel {
           meshes.push({
             scene: _resolveExtResourcePath(md.scene, entry.raw),
             scale: _num(md.scale) || 1.0,
-            rotation_offset_deg: _num(md.rotation_offset_deg) || 0.0,
           });
         }
       }
@@ -1177,7 +1176,7 @@ function _makeSpan(text) {
 /**
  * Collect MeshVariant entries from the form.
  * @param {HTMLFormElement} formElement
- * @returns {Array<{scene:string, scale:number, rotation_offset_deg:number}>}
+ * @returns {Array<{scene:string, scale:number}>}
  */
 function _collectMeshVariantsData(formElement) {
   const list = formElement.querySelector('[data-mesh-variants-list]');
@@ -1186,13 +1185,10 @@ function _collectMeshVariantsData(formElement) {
   const out = [];
   for (const row of rows) {
     const scaleEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="scale"]'));
-    const rotEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="rotation_offset_deg"]'));
     const scale = scaleEl ? parseFloat(scaleEl.value) : 1;
-    const rot = rotEl ? parseFloat(rotEl.value) : 0;
     out.push({
       scene: /** @type {HTMLElement} */ (row).dataset.meshScene || '',
       scale: Number.isFinite(scale) ? scale : 1,
-      rotation_offset_deg: Number.isFinite(rot) ? rot : 0,
     });
   }
   return out;
@@ -2146,9 +2142,9 @@ export function renderPropEditor(container, options) {
 
   /**
    * Render an editable list of MeshVariant entries — reference.png preview,
-   * scene path, scale and rotation offset inputs. Scene editing still goes
-   * through the .tres for now (no file picker yet).
-   * @param {Array<{scene: string, scale: number, rotation_offset_deg: number}>} meshes
+   * scene path and scale input. Scene editing still goes through the
+   * .tres for now (no file picker yet).
+   * @param {Array<{scene: string, scale: number}>} meshes
    * @returns {HTMLElement}
    */
   function _renderMeshVariantList(meshes) {
@@ -2206,9 +2202,11 @@ export function renderPropEditor(container, options) {
     scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
     info.appendChild(scenePath);
 
-    // Editable scale + rotation offset inputs.
+    // Editable scale input. Rotation was removed 2026-04-18 — rotation
+    // is now fully procedural (seeded 0-360°) or per-instance override
+    // via the Prop context menu, never per-variant.
     const xform = document.createElement('div');
-    xform.style.cssText = 'display: grid; grid-template-columns: auto 70px auto 70px; gap: 6px; align-items: center;';
+    xform.style.cssText = 'display: grid; grid-template-columns: auto 100px; gap: 6px; align-items: center;';
     const scaleLabel = document.createElement('span');
     scaleLabel.textContent = 'scale';
     scaleLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
@@ -2218,19 +2216,8 @@ export function renderPropEditor(container, options) {
     scaleInput.value = String(mv.scale);
     scaleInput.dataset.field = 'scale';
     scaleInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
-    const rotLabel = document.createElement('span');
-    rotLabel.textContent = 'rotation°';
-    rotLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
-    const rotInput = document.createElement('input');
-    rotInput.type = 'number';
-    rotInput.step = 'any';
-    rotInput.value = String(mv.rotation_offset_deg);
-    rotInput.dataset.field = 'rotation_offset_deg';
-    rotInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
     xform.appendChild(scaleLabel);
     xform.appendChild(scaleInput);
-    xform.appendChild(rotLabel);
-    xform.appendChild(rotInput);
     info.appendChild(xform);
 
     row.appendChild(info);
@@ -3067,7 +3054,6 @@ export function propModelToRaw(model) {
         mvFields.set('scene', { type: 'ext_resource', value: `ExtResource("${sceneExtId}")` });
       }
       mvFields.set('scale', { type: 'float', value: Number.isFinite(mv.scale) ? mv.scale : 1.0 });
-      mvFields.set('rotation_offset_deg', { type: 'float', value: Number.isFinite(mv.rotation_offset_deg) ? mv.rotation_offset_deg : 0.0 });
       extraSubResources.push({ type: 'Resource', id: mvSubId, fields: mvFields });
     }
 

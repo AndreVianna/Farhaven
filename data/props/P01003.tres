@@ -16,19 +16,16 @@
 script = ExtResource("6_meshvar")
 scene = ExtResource("7_mesh_v1")
 scale = 0.35
-rotation_offset_deg = 0.0
 
 [sub_resource type="Resource" id="mesh_variant_2"]
 script = ExtResource("6_meshvar")
 scene = ExtResource("8_mesh_v2")
 scale = 0.35
-rotation_offset_deg = 0.0
 
 [sub_resource type="Resource" id="mesh_variant_3"]
 script = ExtResource("6_meshvar")
 scene = ExtResource("9_mesh_v3")
 scale = 0.35
-rotation_offset_deg = 0.0
 
 [sub_resource type="Resource" id="collision_1"]
 script = ExtResource("10_collision")
