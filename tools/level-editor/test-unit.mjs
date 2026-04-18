@@ -21,7 +21,7 @@ import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { generateMap } from './js/map-generator.js';
 import { createNoise2D } from './js/simplex-noise.js';
 import { computeWaterLevel } from './js/hex-grid.js';
-import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand, ToggleWallCommand } from './js/commands.js';
+import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, MovePropCommand, SetSpawnCommand, ToggleWallCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
 import { ToolType, ToolManager, BiomeBrush, ElevationBrush, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
@@ -853,6 +853,47 @@ test('EditPropCommand — execute and undo', () => {
   assert(grid.getTile(0, 0).props[0].sq === -1, 'sq should be -1');
   cmd.undo();
   assert(grid.getTile(0, 0).props[0].sq === 1, 'sq should be 1 after undo');
+});
+
+test('MovePropCommand — cross-hex move and undo', () => {
+  const grid = new HexGridClass();
+  const srcTile = createTileData('grassland');
+  srcTile.props = [createProp('P00001', 0, 0, 'plant', { rotation: 0 })];
+  grid.setTile(0, 0, srcTile);
+  const dstTile = createTileData('grassland');
+  grid.setTile(1, 0, dstTile);
+
+  const cmd = new MovePropCommand(grid, 0, 0, 0, 1, 0, { sq: 2, sr: -1 });
+  cmd.execute();
+  assert(grid.getTile(0, 0).props.length === 0, 'source tile should lose the prop');
+  assert(grid.getTile(1, 0).props.length === 1, 'destination tile should gain it');
+  assert(grid.getTile(1, 0).props[0].sq === 2, 'prop sq should be 2');
+  assert(grid.getTile(1, 0).props[0].sr === -1, 'prop sr should be -1');
+
+  cmd.undo();
+  assert(grid.getTile(0, 0).props.length === 1, 'source tile should get the prop back');
+  assert(grid.getTile(1, 0).props.length === 0, 'destination tile should lose it on undo');
+  assert(grid.getTile(0, 0).props[0].sq === 0, 'undo restores original sq');
+  assert(grid.getTile(0, 0).props[0].sr === 0, 'undo restores original sr');
+});
+
+test('MovePropCommand — preserves prop fields across move', () => {
+  const grid = new HexGridClass();
+  const srcTile = createTileData('grassland');
+  srcTile.props = [createProp('P00001', 0, 0, 'plant', {
+    rotation: 45,
+    placement_override: 2,
+    variant_override: 1,
+  })];
+  grid.setTile(0, 0, srcTile);
+  grid.setTile(-1, 0, createTileData('grassland'));
+
+  const cmd = new MovePropCommand(grid, 0, 0, 0, -1, 0, { sq: 1, sr: 1 });
+  cmd.execute();
+  const moved = grid.getTile(-1, 0).props[0];
+  assert(moved.rotation === 45, 'rotation preserved');
+  assert(moved.placement_override === 2, 'placement_override preserved');
+  assert(moved.variant_override === 1, 'variant_override preserved');
 });
 
 test('DeletePropCommand — execute and undo', () => {
