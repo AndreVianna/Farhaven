@@ -40,19 +40,19 @@ static func _build_one(cs: Resource) -> CollisionShape3D:
 			box.size = size
 			shape = box
 		&"cylinder":
-			if size.x <= 0.0:
-				push_warning("CollisionHelper: cylinder radius %f clamped to 0.01 — likely an authoring error" % size.x)
-			if size.y <= 0.0:
-				push_warning("CollisionHelper: cylinder height %f clamped to 0.01 — likely an authoring error" % size.y)
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper: cylinder radius %s clamped to 0.01 — likely an authoring error" % size.x)
+			if is_nan(size.y) or size.y <= 0.0:
+				push_warning("CollisionHelper: cylinder height %s clamped to 0.01 — likely an authoring error" % size.y)
 			var cyl := CylinderShape3D.new()
-			cyl.radius = maxf(size.x, 0.01)
-			cyl.height = maxf(size.y, 0.01)
+			cyl.radius = 0.01 if is_nan(size.x) else maxf(size.x, 0.01)
+			cyl.height = 0.01 if is_nan(size.y) else maxf(size.y, 0.01)
 			shape = cyl
 		&"sphere":
-			if size.x <= 0.0:
-				push_warning("CollisionHelper: sphere radius %f clamped to 0.01 — likely an authoring error" % size.x)
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper: sphere radius %s clamped to 0.01 — likely an authoring error" % size.x)
 			var sph := SphereShape3D.new()
-			sph.radius = maxf(size.x, 0.01)
+			sph.radius = 0.01 if is_nan(size.x) else maxf(size.x, 0.01)
 			shape = sph
 		_:
 			push_warning("CollisionHelper: unknown shape_type %s — skipping" % shape_type)
