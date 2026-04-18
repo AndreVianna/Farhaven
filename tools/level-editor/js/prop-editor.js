@@ -610,7 +610,7 @@ function _createKvEditor(name, data) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(keyInput);
@@ -627,7 +627,7 @@ function _createKvEditor(name, data) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow('', 0));
   wrapper.appendChild(addBtn);
 
@@ -683,7 +683,7 @@ function _createFootprintEditor(footprint) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(xInput);
@@ -700,7 +700,7 @@ function _createFootprintEditor(footprint) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Cell';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 0));
   wrapper.appendChild(addBtn);
 
@@ -791,7 +791,7 @@ function _createTagEditor(tags) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = '\u00d7';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'border:none;background:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => chip.remove());
     chip.appendChild(removeBtn);
 
@@ -814,7 +814,7 @@ function _createTagEditor(tags) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => {
     const val = addInput.value.trim();
     if (val) {
@@ -934,7 +934,7 @@ function _createCapFootprintEditor(footprint) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(xInput);
@@ -950,7 +950,7 @@ function _createCapFootprintEditor(footprint) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Cell';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 0));
   wrapper.appendChild(addBtn);
 
@@ -1068,7 +1068,8 @@ function _createCollisionShapesEditor(shapes) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.textContent = '+ Add Shape';
-  addBtn.style.cssText = 'align-self:flex-start;padding:4px 10px;font-size:12px;cursor:pointer;';
+  addBtn.classList.add('prop-btn');
+  addBtn.style.alignSelf = 'flex-start';
   addBtn.addEventListener('click', () => {
     list.appendChild(_buildCollisionShapeRow({
       shape_type: 'box',
@@ -1088,7 +1089,8 @@ function _createCollisionShapesEditor(shapes) {
 function _buildCollisionShapeRow(shape) {
   const row = document.createElement('div');
   row.dataset.collisionShapeRow = '1';
-  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:3px;font-size:11px;';
+  row.classList.add('prop-card');
+  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;font-size:11px;';
 
   // Shape type dropdown.
   const typeSelect = document.createElement('select');
@@ -1135,7 +1137,7 @@ function _buildCollisionShapeRow(shape) {
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.textContent = '×';
-  removeBtn.style.cssText = 'padding:2px 6px;font-size:14px;cursor:pointer;line-height:1;';
+  removeBtn.classList.add('prop-btn-icon');
   removeBtn.title = 'Remove shape';
   removeBtn.addEventListener('click', () => row.remove());
   row.appendChild(removeBtn);
@@ -1287,7 +1289,7 @@ function _createStringArrayEditor(name, labelText, values) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(input);
@@ -1302,7 +1304,7 @@ function _createStringArrayEditor(name, labelText, values) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(''));
   wrapper.appendChild(addBtn);
 
@@ -1365,7 +1367,7 @@ function _addHarvestableEditor(panel, cap) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(typeSel);
@@ -1402,7 +1404,7 @@ function _addHarvestableEditor(panel, cap) {
     const removeYieldBtn = document.createElement('button');
     removeYieldBtn.textContent = 'Remove Yield';
     removeYieldBtn.type = 'button';
-    removeYieldBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeYieldBtn.classList.add('prop-btn-icon');
     removeYieldBtn.addEventListener('click', () => wrapper.remove());
 
     header.appendChild(itemInput);
@@ -1428,7 +1430,8 @@ function _addHarvestableEditor(panel, cap) {
     const addCondBtn = document.createElement('button');
     addCondBtn.textContent = '+ Condition';
     addCondBtn.type = 'button';
-    addCondBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:4px;margin-left:16px;';
+    addCondBtn.classList.add('prop-btn');
+    addCondBtn.style.cssText = 'margin-top:4px;margin-left:16px;';
     addCondBtn.addEventListener('click', () => _addConditionRow(condContainer, 'tool', ''));
     wrapper.appendChild(addCondBtn);
 
@@ -1440,7 +1443,8 @@ function _addHarvestableEditor(panel, cap) {
   const addYieldBtn = document.createElement('button');
   addYieldBtn.textContent = '+ Add Yield';
   addYieldBtn.type = 'button';
-  addYieldBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addYieldBtn.classList.add('prop-btn');
+  addYieldBtn.style.cssText = 'grid-column: 1 / -1; justify-self: start;';
   addYieldBtn.addEventListener('click', () => _addYieldRow({ item_id: '', amount: 1, conditions: [] }));
   panel.appendChild(addYieldBtn);
 
@@ -1465,7 +1469,8 @@ function _addHarvestableEditor(panel, cap) {
   const addRespawnBtn = document.createElement('button');
   addRespawnBtn.textContent = '+ Respawn Condition';
   addRespawnBtn.type = 'button';
-  addRespawnBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addRespawnBtn.classList.add('prop-btn');
+  addRespawnBtn.style.cssText = 'grid-column: 1 / -1; justify-self: start;';
   addRespawnBtn.addEventListener('click', () => _addConditionRow(respawnContainer, 'time_elapsed', ''));
   panel.appendChild(addRespawnBtn);
 }
@@ -1546,7 +1551,7 @@ function _createMovementModesEditor(modes) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(modeSelect);
@@ -1563,7 +1568,7 @@ function _createMovementModesEditor(modes) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Mode';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 1.0, 1.0));
   wrapper.appendChild(addBtn);
 
@@ -2230,7 +2235,8 @@ export function renderPropEditor(container, options) {
     const row = document.createElement('div');
     row.dataset.meshVariantRow = '1';
     row.dataset.meshScene = mv.scene || '';
-    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-secondary);';
+    row.classList.add('prop-card');
+    row.style.cssText = 'display: flex; gap: 12px;';
 
     // Preview image (resolve mesh_vN.glb → reference_vN.png in same dir).
     // Falls back to a visible placeholder when the server can't serve the PNG.
@@ -2258,7 +2264,7 @@ export function renderPropEditor(container, options) {
     removeBtn.type = 'button';
     removeBtn.textContent = '×';
     removeBtn.title = 'Remove variant';
-    removeBtn.style.cssText = 'padding: 2px 8px; font-size: 14px; cursor: pointer; line-height: 1;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
     header.appendChild(removeBtn);
     info.appendChild(header);

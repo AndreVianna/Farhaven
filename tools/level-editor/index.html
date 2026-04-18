@@ -518,7 +518,9 @@ html, body {
 /* Property grid rows (label-value) */
 .prop-grid {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  /* Label column sizes to content so there's no big gap between short
+     labels and their inputs. 1fr for the input column. */
+  grid-template-columns: auto 1fr;
   gap: 4px 10px;
   align-items: center;
   font-size: 12px;
@@ -528,9 +530,12 @@ html, body {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.prop-grid .prop-input {
+/* .prop-input works both inside .prop-grid and standalone (Variant
+   cards, collision rows, placement dropdown all use it now). */
+.prop-input {
   width: 100%;
   padding: 3px 6px;
   border: 1px solid var(--border);
@@ -539,6 +544,50 @@ html, body {
   color: var(--text-primary);
   font-size: 12px;
   box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* Reusable button styles (previously duplicated as inline CSS). */
+.prop-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.prop-btn:hover { background: var(--bg-secondary); }
+
+.prop-btn-icon {
+  padding: 2px 8px;
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.prop-btn-icon:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Shared card styling (Variant rows, collision rows, preview blocks). */
+.prop-card {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+}
+
+/* Secondary / muted hint text. */
+.prop-hint {
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .prop-grid .prop-separator {
