@@ -36,6 +36,12 @@ var _variant_pools: Dictionary = {}
 ## Index 0 corresponds to _pools[pool_id] (variant 0), rest match _variant_pools.
 var _variant_y_offsets: Dictionary = {}
 
+## Variant-aware scale factors — `_variant_scales[pool_id]` → Array[float].
+## Mirrors MeshVariant.scale. Applied to each instance's transform basis
+## and scales the effective y_offset. Always positive finite (NaN/≤0
+## inputs fall back to 1.0 during pool creation).
+var _variant_scales: Dictionary = {}
+
 ## Normal mesh variants per prop type id (variant 0 only — for API compat).
 var _normal_meshes: Dictionary = {}
 
@@ -71,6 +77,7 @@ func _create_pools() -> void:
 		# Props with no meshes are skipped; they will not render.
 		var variant_meshes: Array[Mesh] = []
 		var variant_y_offsets: Array[float] = []
+		var variant_scales: Array[float] = []
 
 		if def.placeable != null and def.placeable.meshes != null:
 			for mv_entry in def.placeable.meshes:
@@ -81,10 +88,14 @@ func _create_pools() -> void:
 				if extracted[0] != null:
 					variant_meshes.append(extracted[0])
 					variant_y_offsets.append(extracted[1])
+					# Positive finite scale only — falls back to 1.0 on bad data.
+					var s: float = mv.scale if (mv.scale > 0.0 and not is_nan(mv.scale)) else 1.0
+					variant_scales.append(s)
 
 		if variant_meshes.is_empty() and def.mesh != null:
 			variant_meshes.append(def.mesh)
 			variant_y_offsets.append(PROP_Y_OFFSET)
+			variant_scales.append(1.0)
 
 		if variant_meshes.is_empty():
 			# Prop has no visible mesh — skip pool creation.
@@ -110,6 +121,7 @@ func _create_pools() -> void:
 		_depleted_meshes[def.id] = depleted_mesh_res
 		_pool_y_offsets[def.id] = variant_y_offsets[0]
 		_variant_y_offsets[def.id] = variant_y_offsets.duplicate()
+		_variant_scales[def.id] = variant_scales.duplicate()
 
 		# Real meshes carry their own PBR materials — use WHITE so
 		# material_override doesn't tint them.
@@ -335,10 +347,14 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
+	# Anomalies use variant 0's scale + y_offset.
 	var y_off: float = _pool_y_offsets.get(anomaly_pool_id, PROP_Y_OFFSET)
-	var pos := Vector3(world_2d.x, elevation_y + y_off, world_2d.y)
+	var anomaly_scales: Array = _variant_scales.get(anomaly_pool_id, [])
+	var anomaly_scale: float = anomaly_scales[0] if anomaly_scales.size() > 0 else 1.0
+	var pos := Vector3(world_2d.x, elevation_y + y_off * anomaly_scale, world_2d.y)
 
 	var xform := Transform3D.IDENTITY
+	xform = xform.scaled(Vector3.ONE * anomaly_scale)
 	xform.origin = pos
 
 	mm.visible_instance_count = idx + 1
@@ -385,10 +401,15 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	# Per-variant Y offset (AABB-derived when real mesh is used).
+	# Per-variant Y offset (AABB-derived when real mesh is used) and scale
+	# (from MeshVariant.scale). The AABB was measured at unit scale so the
+	# y_offset must be multiplied by the variant scale to keep the prop
+	# sitting on the ground.
 	var variant_offsets: Array = _variant_y_offsets.get(pool_id, [])
 	var y_off: float = variant_offsets[variant_idx] if variant_idx < variant_offsets.size() else _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
-	var pos := Vector3(wx, elevation_y + y_off, wz)
+	var variant_scales_arr: Array = _variant_scales.get(pool_id, [])
+	var variant_scale: float = variant_scales_arr[variant_idx] if variant_idx < variant_scales_arr.size() else 1.0
+	var pos := Vector3(wx, elevation_y + y_off * variant_scale, wz)
 
 	# Per-instance jitter (scale + tilt) derived from same cell seed.
 	var jitter: Array = _compute_jitter(coords, rn.sub_hex)
@@ -396,9 +417,10 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 	var tilt_x: float = jitter[1]
 	var tilt_z: float = jitter[2]
 
-	# Build transform: scale → rotate Y (from prop) → tilt X/Z → position.
+	# Build transform: scale (variant × per-instance jitter) → rotate Y
+	# (from prop) → tilt X/Z → position.
 	var xform := Transform3D.IDENTITY
-	xform = xform.scaled(Vector3.ONE * scale_factor)
+	xform = xform.scaled(Vector3.ONE * (scale_factor * variant_scale))
 	xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rn.rotation_deg))
 	xform.basis = xform.basis.rotated(Vector3(1.0, 0.0, 0.0), deg_to_rad(tilt_x))
 	xform.basis = xform.basis.rotated(Vector3(0.0, 0.0, 1.0), deg_to_rad(tilt_z))
