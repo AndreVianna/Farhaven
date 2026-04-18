@@ -266,6 +266,31 @@ test('TresParser — parseValue Vector3', () => {
   assert(v.value.z === 0.0, 'z should be 0.0');
 });
 
+test('TresParser — typed array serializes with inner brackets (Godot format)', () => {
+  // Godot's .tres format requires Array[T]([a, b]), NOT Array[T](a, b).
+  // Missing inner brackets breaks load with "Expected '['". Regression
+  // guard: broke P00001 in 2026-04-18 editor save, caused Blade Grass
+  // to silently not render until the .tres was hand-patched.
+  const arr = {
+    type: 'array',
+    elementType: 'Resource',
+    value: [
+      { type: 'sub_resource', value: 'mesh_variant_1' },
+      { type: 'sub_resource', value: 'mesh_variant_2' },
+    ],
+  };
+  const out = TresParser.serializeValue(arr);
+  assert(out === 'Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2")])',
+    'typed array needs inner [...], got: ' + out);
+});
+
+test('TresParser — empty typed array serializes as Array[T]([])', () => {
+  const arr = { type: 'array', elementType: 'HarvestYield', value: [] };
+  const out = TresParser.serializeValue(arr);
+  assert(out === 'Array[HarvestYield]([])',
+    'empty typed array must have inner [], got: ' + out);
+});
+
 test('TresParser — serialize Vector3 round-trip', () => {
   const parsed = TresParser.parseValue('Vector3(0.35, 0.4, 0.0)');
   const serialized = TresParser.serializeValue(parsed);

@@ -304,12 +304,20 @@ export class TresParser {
       return { type: 'array', value: colors, elementType: 'Color' };
     }
 
-    // Typed array: Array[Type](...)
+    // Typed array: Godot writes Array[T]([a, b]) (inner brackets required).
+    // Legacy variant Array[T](a, b) (no inner brackets) existed briefly
+    // and is accepted for backward compat, but re-serialized in the
+    // canonical form.
     if (s.startsWith('Array[')) {
       const bracketEnd = s.indexOf(']');
       const elementType = s.substring(6, bracketEnd);
       const parenStart = s.indexOf('(', bracketEnd);
-      const inner = s.slice(parenStart + 1, -1);
+      let inner = s.slice(parenStart + 1, -1).trim();
+      // Strip the inner [...] wrapper when present — it's a list-literal
+      // marker, not a real element.
+      if (inner.startsWith('[') && inner.endsWith(']')) {
+        inner = inner.slice(1, -1).trim();
+      }
       const elements = TresParser._parseArrayElements(inner, elementType);
       return { type: 'array', value: elements, elementType: elementType };
     }
@@ -718,11 +726,13 @@ export class TresParser {
   static _serializeArray(tv) {
     const elements = tv.value;
     if (tv.elementType) {
-      // Typed array: Array[Type](...)
+      // Typed array: Godot expects Array[Type]([a, b, c]) — inner brackets
+      // are required, not optional. Emitting Array[Type](a, b, c) produces
+      // a file Godot refuses to parse ("Expected '['").
       if (elements.length === 0) {
-        return 'Array[' + tv.elementType + ']()';
+        return 'Array[' + tv.elementType + ']([])';
       }
-      return 'Array[' + tv.elementType + '](' + elements.map(e => TresParser.serializeValue(e)).join(', ') + ')';
+      return 'Array[' + tv.elementType + ']([' + elements.map(e => TresParser.serializeValue(e)).join(', ') + '])';
     }
     // Untyped array: [...]
     if (elements.length === 0) return '[]';

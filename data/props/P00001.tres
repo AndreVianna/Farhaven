@@ -33,7 +33,7 @@ conditions = []
 
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("2_placeable")
-meshes = Array[Resource](SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3"))
+meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 placement = 1
 
 [sub_resource type="Resource" id="catalogable_1"]
@@ -41,7 +41,7 @@ script = ExtResource("7_catalogable")
 
 [sub_resource type="Resource" id="harvestable_1"]
 script = ExtResource("8_harvestable")
-yields = Array[HarvestYield](SubResource("harvest_yield_1"))
+yields = Array[HarvestYield]([SubResource("harvest_yield_1")])
 respawn_conditions = [&"time_elapsed:2_days"]
 
 [resource]
