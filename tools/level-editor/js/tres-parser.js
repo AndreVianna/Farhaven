@@ -271,6 +271,13 @@ export class TresParser {
       return { type: 'vector2i', value: { x: parts[0], y: parts[1] } };
     }
 
+    // Vector3: Vector3(x, y, z) — floats
+    if (s.startsWith('Vector3(')) {
+      const inner = s.slice(8, -1);
+      const parts = inner.split(',').map(p => parseFloat(p.trim()));
+      return { type: 'vector3', value: { x: parts[0], y: parts[1], z: parts[2] } };
+    }
+
     // PackedStringArray: PackedStringArray("a", "b")
     if (s.startsWith('PackedStringArray(')) {
       const inner = s.slice(18, -1);
@@ -582,6 +589,10 @@ export class TresParser {
           + ', ' + TresParser._serializeFloat(tv.value.a) + ')';
       case 'vector2i':
         return 'Vector2i(' + tv.value.x + ', ' + tv.value.y + ')';
+      case 'vector3':
+        return 'Vector3(' + TresParser._serializeFloat(tv.value.x)
+          + ', ' + TresParser._serializeFloat(tv.value.y)
+          + ', ' + TresParser._serializeFloat(tv.value.z) + ')';
       case 'ext_resource':
         return tv.value;
       case 'sub_resource':
