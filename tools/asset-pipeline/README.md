@@ -23,7 +23,8 @@ Runs the full Meshy chain on reference PNGs: image-to-3d → remesh (3K tris)
 
 ```bash
 export MESHY_API_KEY=...
-export MESHY_PARALLEL=5  # optional
+export MESHY_PARALLEL=5         # optional (default 5 workers)
+export FARHAVEN_PROPS_DIR=...   # optional override — default resolves to ../../assets/props from this script
 
 # default: all P01001–P01005, all 3 variants
 python3 meshy_pipeline.py
@@ -46,7 +47,6 @@ it for one-offs.
 
 ## Known rough edges
 
-- Hardcoded `ASSETS` path in `meshy_pipeline.py`
 - Default target list is hardcoded to P01001–P01005 (minerals batch)
 - No retry on failed Meshy tasks
 - No resume support — re-running reprocesses successful items

@@ -18,7 +18,11 @@ import urllib.error
 
 BASE = "https://api.meshy.ai"
 KEY = os.environ.get("MESHY_API_KEY")
-ASSETS = "/home/andre/projects/Farhaven/assets/props"
+# Resolve assets dir relative to this script: tools/asset-pipeline/ -> ../../assets/props.
+# Override via FARHAVEN_PROPS_DIR env var.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_ASSETS = os.path.normpath(os.path.join(_SCRIPT_DIR, "..", "..", "assets", "props"))
+ASSETS = os.environ.get("FARHAVEN_PROPS_DIR", _DEFAULT_ASSETS)
 POLL_INTERVAL = 8
 MAX_POLL_SECONDS = 15 * 60
 
