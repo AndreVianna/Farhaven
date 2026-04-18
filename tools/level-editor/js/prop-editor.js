@@ -56,6 +56,8 @@ export class PropDefModel {
     this.spawnable = null;
     /** @type {{ yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[] }|null} */
     this.harvestable = null;
+    /** @type {{ placement: number }|null} feature-011 PlacementCap. placement is a PlacementPreset enum int. */
+    this.placement = null;
 
     // --- Gear base fields ---
     /** @type {string} One-line summary for tooltips */
@@ -341,6 +343,12 @@ export class PropDefModel {
         yields: yields,
         respawn_conditions: _strArray(d.harvestable.respawn_conditions),
       };
+    }
+
+    // Placement cap (feature-011). Int preset enum on the sub_resource.
+    if (d.placement && typeof d.placement === 'object') {
+      const p = Number.isInteger(d.placement.placement) ? d.placement.placement : 0;
+      model.placement = { placement: p };
     }
 
     // --- Legacy fields (still in .tres during transition, kept for round-trip) ---
@@ -2137,7 +2145,65 @@ export function renderPropEditor(container, options) {
       panel.appendChild(depletedNote);
     }));
 
+    // PLACEMENT — scatter preset (feature-011). Controls how the
+    // renderer expands one authored Prop into 1-19 MultiMesh instances.
+    grid.appendChild(_createCapabilityPanel('placement', 'Placement', model.placement, (panel) => {
+      panel.appendChild(_renderPlacementEditor(model));
+    }));
+
     body.appendChild(grid);
+  }
+
+  /**
+   * PlacementCap editor — dropdown of the 5 presets with short descriptions.
+   * Null model.placement = no cap authored = implicit SINGLE.
+   */
+  function _renderPlacementEditor(model) {
+    const wrap = document.createElement('div');
+    wrap.classList.add('prop-full');
+    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+
+    const PRESETS = [
+      { value: 0, label: 'Single',    desc: '1 instance at sub-hex center. Default for boulders, structures, authored props.' },
+      { value: 1, label: 'Normal',    desc: '7 instances (center + 6 scattered). Sibling scale 0.5. Default for plants.' },
+      { value: 2, label: 'Dense',     desc: '13 instances (center + 12 scattered). Sibling scale 0.5. Thick vegetation.' },
+      { value: 3, label: 'Sprouting', desc: '7 instances, sibling scale 0.3. Small satellites around parent — young growth, mineral clusters.' },
+      { value: 4, label: 'Spread',    desc: '13 instances, sibling scale 1.0. Uniform coverage — pasture, moss fields.' },
+    ];
+
+    const current = (model.placement && Number.isInteger(model.placement.placement))
+      ? model.placement.placement : 0;
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;';
+    const label = document.createElement('span');
+    label.textContent = 'Preset';
+    label.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    const select = document.createElement('select');
+    select.dataset.field = 'placement_preset';
+    select.style.cssText = 'padding: 4px 6px; font-size: 12px;';
+    for (const p of PRESETS) {
+      const opt = document.createElement('option');
+      opt.value = String(p.value);
+      opt.textContent = p.label;
+      if (p.value === current) opt.selected = true;
+      select.appendChild(opt);
+    }
+    row.appendChild(label);
+    row.appendChild(select);
+    wrap.appendChild(row);
+
+    const desc = document.createElement('div');
+    desc.style.cssText = 'font-size: 11px; color: var(--muted, #888); padding: 8px 10px; border-left: 2px solid var(--border, #444); background: var(--panel-bg, rgba(255,255,255,0.02));';
+    const _refreshDesc = () => {
+      const p = PRESETS.find(x => x.value === parseInt(select.value, 10)) || PRESETS[0];
+      desc.textContent = p.desc;
+    };
+    _refreshDesc();
+    select.addEventListener('change', _refreshDesc);
+    wrap.appendChild(desc);
+
+    return wrap;
   }
 
   /**
@@ -2723,6 +2789,18 @@ export function collectPropFormData(formElement) {
       if (tv && vv) respawnConds.push(`${tv}:${vv}`);
     }
     model.harvestable = { yields, respawn_conditions: respawnConds };
+  }
+
+  // Placement cap (feature-011). Capability is enabled via the same
+  // checkbox pattern as the others. When the checkbox is unchecked the
+  // cap is null (implicit SINGLE). When checked, read the preset
+  // dropdown.
+  if (isChecked('cap_placement_enabled')) {
+    const select = formElement.querySelector('select[data-field="placement_preset"]');
+    const preset = select ? parseInt(/** @type {HTMLSelectElement} */ (select).value, 10) : 0;
+    model.placement = { placement: Number.isInteger(preset) ? preset : 0 };
+  } else {
+    model.placement = null;
   }
 
   // Legacy footprint preserved from model (no longer in form UI)
@@ -3325,6 +3403,23 @@ export function propModelToRaw(model) {
       value: respawnConds.map(c => ({ type: 'stringname', value: c })),
     });
     capEntries.push({ capName: 'harvestable', subId: 'harvestable_1', subFields: harvSubFields });
+  }
+
+  // Placement cap (feature-011). Emit when the UI exposes a preset selection
+  // different from the implicit SINGLE default (or when model.placement
+  // was loaded from an existing .tres). Keeps the .tres minimal for
+  // legacy SINGLE-default props by skipping emission when cap is absent
+  // AND the UI selection is SINGLE (0).
+  const placementPreset = model.placement && Number.isInteger(model.placement.placement)
+    ? model.placement.placement : null;
+  if (placementPreset !== null) {
+    const placementExtId = `${extId}_placement`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="${placementExtId}"]`);
+    extId++;
+    const placementSub = new Map();
+    placementSub.set('script', { type: 'ext_resource', value: `ExtResource("${placementExtId}")` });
+    placementSub.set('placement', { type: 'int', value: placementPreset });
+    capEntries.push({ capName: 'placement', subId: 'placement_1', subFields: placementSub });
   }
 
   // Build sub_resources: yields come first (so harvestable can reference them),
