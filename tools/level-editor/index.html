@@ -533,6 +533,15 @@ html, body {
   white-space: nowrap;
 }
 
+/* Fixed-width form controls (checkbox, color picker) would otherwise
+   float to wherever the grid cell's default alignment places them —
+   which on some browsers ends up at the right side of the 1fr column.
+   Pin them to the start of their cell so they visually hug the label. */
+.prop-grid input[type="checkbox"],
+.prop-grid input[type="color"] {
+  justify-self: start;
+}
+
 /* .prop-input works both inside .prop-grid and standalone — applies
    to <input>, <select>, and <textarea>. Class works for all three
    because they share padding/border/bg/color styling. Textareas

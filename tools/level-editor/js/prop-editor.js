@@ -2219,16 +2219,35 @@ export function renderPropEditor(container, options) {
    * @returns {HTMLElement}
    */
   function _renderMeshVariantList(meshes) {
+    const wrap = document.createElement('div');
+    wrap.classList.add('prop-full');
+    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+
     const list = document.createElement('div');
     list.dataset.meshVariantsList = '1';
-    list.classList.add('prop-full');
     list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
 
     meshes.forEach((mv, idx) => {
       list.appendChild(_buildMeshVariantRow(mv, idx));
     });
+    wrap.appendChild(list);
 
-    return list;
+    // + Add Variant — appends an empty variant row so the author can
+    // paste a scene path / set scale. The actual .glb picker is a
+    // future improvement; for now the scene input is left blank and
+    // the author fills it by hand.
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '+ Add Variant';
+    addBtn.classList.add('prop-btn');
+    addBtn.style.alignSelf = 'flex-start';
+    addBtn.addEventListener('click', () => {
+      const nextIdx = list.querySelectorAll('[data-mesh-variant-row]').length;
+      list.appendChild(_buildMeshVariantRow({ scene: '', scale: 1.0 }, nextIdx));
+    });
+    wrap.appendChild(addBtn);
+
+    return wrap;
   }
 
   function _buildMeshVariantRow(mv, idx) {
@@ -2277,17 +2296,20 @@ export function renderPropEditor(container, options) {
     // Editable scale input. Rotation was removed 2026-04-18 — rotation
     // is now fully procedural (seeded 0-360°) or per-instance override
     // via the Prop context menu, never per-variant.
+    // Flex-in-line keeps the label and input adjacent instead of
+    // letting a grid column expand and put dead space between them.
     const xform = document.createElement('div');
-    xform.style.cssText = 'display: grid; grid-template-columns: auto 100px; gap: 6px; align-items: center;';
+    xform.style.cssText = 'display: flex; gap: 6px; align-items: center;';
     const scaleLabel = document.createElement('span');
     scaleLabel.textContent = 'scale';
-    scaleLabel.style.cssText = 'font-size: 11px; color: var(--text-secondary);';
+    scaleLabel.classList.add('prop-hint');
     const scaleInput = document.createElement('input');
     scaleInput.type = 'number';
     scaleInput.step = 'any';
     scaleInput.value = String(mv.scale);
     scaleInput.dataset.field = 'scale';
     scaleInput.classList.add('prop-input');
+    scaleInput.style.width = '100px';
     xform.appendChild(scaleLabel);
     xform.appendChild(scaleInput);
     info.appendChild(xform);
