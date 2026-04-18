@@ -77,10 +77,13 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 	# Resolve mesh from PropDef's PlaceableCap (first variant).
 	# Structures without authored meshes don't render.
+	# `mesh_from_scene` tracks whether the mesh came from an authored
+	# PackedScene (with embedded PBR materials) vs a legacy primitive
+	# fallback — the former must NOT be overridden by a solid material.
 	var def = PropRegistry.get_def(structure_type)
 	var mesh: Mesh
 	var y_offset: float = PROP_Y_OFFSET
-	var color: Color = Color.WHITE
+	var mesh_from_scene: bool = false
 
 	if def != null and def.placeable != null and def.placeable.meshes != null:
 		for mv_entry in def.placeable.meshes:
@@ -91,6 +94,7 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 			if extracted[0] != null:
 				mesh = extracted[0]
 				y_offset = extracted[1]
+				mesh_from_scene = true
 				break
 	if mesh == null and def != null and def.mesh != null:
 		mesh = def.mesh
@@ -118,10 +122,13 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mesh_instance.material_override = mat
+	# Only override the material for legacy primitive-mesh fallback.
+	# Authored .glb meshes carry their own PBR materials — overriding
+	# would render them flat white regardless of the imported texture.
+	if not mesh_from_scene:
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mesh_instance.material_override = mat
 	node.add_child(mesh_instance)
 
 	# Add StaticBody3D with per-prop authored collision shapes (zero or more).
