@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
@@ -9,7 +9,6 @@
 [ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="7_catalogable"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="8_harvestable"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="9_harvest_yield"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="10_placement"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("3_mesh_variant")
@@ -35,6 +34,7 @@ conditions = []
 [sub_resource type="Resource" id="placeable_1"]
 script = ExtResource("2_placeable")
 meshes = Array[Resource](SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3"))
+placement = 1
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("7_catalogable")
@@ -43,10 +43,6 @@ script = ExtResource("7_catalogable")
 script = ExtResource("8_harvestable")
 yields = Array[HarvestYield](SubResource("harvest_yield_1"))
 respawn_conditions = [&"time_elapsed:2_days"]
-
-[sub_resource type="Resource" id="placement_1"]
-script = ExtResource("10_placement")
-placement = 1
 
 [resource]
 script = ExtResource("1_script")
@@ -60,6 +56,5 @@ tags = [&"resource_source"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 harvestable = SubResource("harvestable_1")
-placement = SubResource("placement_1")
 max_stack = 99
 origin = 0

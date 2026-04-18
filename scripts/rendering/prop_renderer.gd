@@ -420,18 +420,19 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 	if not _pools.has(pool_id):
 		return
 
-	# --- Resolve scatter preset from PlacementCap (feature-011) ---
-	# Effective placement = Prop.placement_override, then PropDef.placement,
-	# then SINGLE (default). Ignore overrides for non-SINGLE presets — the
-	# spec says per-instance variant/scale/rotation overrides only apply
-	# when the preset resolves to SINGLE, because distributing copies with
-	# a pinned center breaks the visual illusion.
+	# --- Resolve scatter preset from PlaceableCap.placement (feature-011) ---
+	# Effective placement = Prop.placement_override, then
+	# PropDef.placeable.placement, then SINGLE (default). Ignore overrides
+	# for non-SINGLE presets — the spec says per-instance variant / scale
+	# / rotation overrides only apply when the preset resolves to SINGLE,
+	# because distributing copies with a pinned center breaks the
+	# visual illusion.
 	var def: Resource = PropRegistry.get_def(rn.type) if PropRegistry.has_def(rn.type) else null
 	var effective_placement: int = _PlacementPreset.Preset.SINGLE
 	if rn.placement_override >= 0:
 		effective_placement = rn.placement_override
-	elif def != null and def.placement != null:
-		effective_placement = def.placement.placement
+	elif def != null and def.placeable != null:
+		effective_placement = def.placeable.placement
 	var preset_count: int = _PlacementPreset.get_count(effective_placement)
 	var sibling_scale: float = _PlacementPreset.get_sibling_scale(effective_placement)
 	var supports_overrides: bool = _PlacementPreset.supports_instance_overrides(effective_placement)

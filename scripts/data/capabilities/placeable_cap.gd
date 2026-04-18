@@ -22,3 +22,14 @@ extends Resource
 ## empty array means the prop has no collision (walkthrough) — useful
 ## for decorative props like flat plants or particle-only effects.
 @export var collision_shapes: Array[Resource] = []
+
+## Scatter preset — controls how many copies of this prop render per
+## placement and at what sibling scale. Stored as int because GDScript
+## @export can't store enum values from a sibling class.
+## Valid values: PlacementPreset.Preset.*
+##   0 SINGLE     — 1 instance at the sub-hex center (default)
+##   1 NORMAL     — 7 instances, sibling scale 0.5
+##   2 DENSE      — 13 instances, sibling scale 0.5
+##   3 SPROUTING  — 7 instances, sibling scale 0.3 (small satellites)
+##   4 SPREAD     — 13 instances, sibling scale 1.0 (uniform coverage)
+@export var placement: int = 0  # PlacementPreset.Preset.SINGLE

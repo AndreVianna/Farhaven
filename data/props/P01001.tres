@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
@@ -8,7 +8,6 @@
 [ext_resource type="PackedScene" path="res://assets/props/P01001/mesh_v2.glb" id="6_mesh_v2"]
 [ext_resource type="PackedScene" path="res://assets/props/P01001/mesh_v3.glb" id="7_mesh_v3"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/collision_shape.gd" id="8_collision"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="9_placement"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("4_meshvar")
@@ -36,16 +35,13 @@ script = ExtResource("2_placeable")
 footprint = Vector2i(1, 1)
 meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 collision_shapes = Array[Resource]([SubResource("collision_1")])
+placement = 0
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
 scan_time = 2.0
 show_as_anomaly = false
 properties = { "crystal_form": "irregular", "crystal_pattern": "none", "hardness": 6, "breaking_behavior": "shatters", "surface_shine": "dull", "light_transmission": "blocked", "fluorescence": false, "piezoelectricity": false, "radioactivity": false, "density": 2.7 }
-
-[sub_resource type="Resource" id="placement_1"]
-script = ExtResource("9_placement")
-placement = 0
 
 [resource]
 script = ExtResource("1_propdef")
@@ -58,4 +54,3 @@ rarity = &"common"
 tags = [&"decoration"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
-placement = SubResource("placement_1")

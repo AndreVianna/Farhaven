@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=21 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
@@ -10,7 +10,6 @@
 [ext_resource type="PackedScene" path="res://assets/props/P00005/mesh_v2.glb" id="8_mesh_v2"]
 [ext_resource type="PackedScene" path="res://assets/props/P00005/mesh_v3.glb" id="9_mesh_v3"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/collision_shape.gd" id="10_collision"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="11_placement"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("6_meshvar")
@@ -38,6 +37,7 @@ script = ExtResource("2_placeable")
 footprint = Vector2i(1, 1)
 meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 collision_shapes = Array[Resource]([SubResource("collision_1")])
+placement = 1
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("3_catalogable")
@@ -62,10 +62,6 @@ script = ExtResource("4_harvestable")
 yields = [SubResource("yield_wood"), SubResource("yield_stalk_fiber")]
 respawn_conditions = [&"time_elapsed:7_days"]
 
-[sub_resource type="Resource" id="placement_1"]
-script = ExtResource("11_placement")
-placement = 1
-
 [resource]
 script = ExtResource("1_propdef")
 id = &"P00005"
@@ -78,4 +74,3 @@ tags = [&"resource_source"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 harvestable = SubResource("harvestable_1")
-placement = SubResource("placement_1")

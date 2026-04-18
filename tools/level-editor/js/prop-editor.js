@@ -56,8 +56,6 @@ export class PropDefModel {
     this.spawnable = null;
     /** @type {{ yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[] }|null} */
     this.harvestable = null;
-    /** @type {{ placement: number }|null} feature-011 PlacementCap. placement is a PlacementPreset enum int. */
-    this.placement = null;
 
     // --- Gear base fields ---
     /** @type {string} One-line summary for tooltips */
@@ -229,7 +227,10 @@ export class PropDefModel {
         }
       }
 
-      model.placeable = { meshes, collision_shapes };
+      // feature-011: scatter preset lives inside PlaceableCap as a
+      // plain int (default SINGLE = 0).
+      const placement = Number.isInteger(d.placeable.placement) ? d.placeable.placement : 0;
+      model.placeable = { meshes, collision_shapes, placement };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -343,12 +344,6 @@ export class PropDefModel {
         yields: yields,
         respawn_conditions: _strArray(d.harvestable.respawn_conditions),
       };
-    }
-
-    // Placement cap (feature-011). Int preset enum on the sub_resource.
-    if (d.placement && typeof d.placement === 'object') {
-      const p = Number.isInteger(d.placement.placement) ? d.placement.placement : 0;
-      model.placement = { placement: p };
     }
 
     // --- Legacy fields (still in .tres during transition, kept for round-trip) ---
@@ -2121,7 +2116,9 @@ export function renderPropEditor(container, options) {
       panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
     }));
 
-    // PLACEABLE — world mesh variants + collision shape composition.
+    // PLACEABLE — world mesh variants + collision shape composition +
+    // scatter preset (feature-011). One capability box bundles everything
+    // the renderer needs to place this prop in the world.
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
       const meshes = model.placeable && Array.isArray(model.placeable.meshes)
         ? model.placeable.meshes
@@ -2139,6 +2136,9 @@ export function renderPropEditor(container, options) {
         ? model.placeable.collision_shapes
         : [];
       panel.appendChild(_createCollisionShapesEditor(collisionShapes));
+
+      // Scatter preset dropdown — inline as a placeable sub-section.
+      panel.appendChild(_renderPlacementSection(model));
     }));
 
     // HARVESTABLE — yields + respawn conditions + (future) depleted meshes.
@@ -2150,23 +2150,24 @@ export function renderPropEditor(container, options) {
       panel.appendChild(depletedNote);
     }));
 
-    // PLACEMENT — scatter preset (feature-011). Controls how the
-    // renderer expands one authored Prop into 1-19 MultiMesh instances.
-    grid.appendChild(_createCapabilityPanel('placement', 'Placement', model.placement, (panel) => {
-      panel.appendChild(_renderPlacementEditor(model));
-    }));
-
     body.appendChild(grid);
   }
 
   /**
    * PlacementCap editor — dropdown of the 5 presets with short descriptions.
-   * Null model.placement = no cap authored = implicit SINGLE.
+   * Reads from model.placeable.placement — feature-011 post-refactor,
+   * scatter preset lives inside PlaceableCap rather than as a separate
+   * capability. Falls back to SINGLE (0) when unset.
    */
-  function _renderPlacementEditor(model) {
+  function _renderPlacementSection(model) {
     const wrap = document.createElement('div');
     wrap.classList.add('prop-full');
-    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 10px; margin-top: 10px;';
+
+    const heading = document.createElement('div');
+    heading.textContent = 'Scatter Placement';
+    heading.style.cssText = 'font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);';
+    wrap.appendChild(heading);
 
     const PRESETS = [
       { value: 0, label: 'Single',    desc: '1 instance at sub-hex center. Default for boulders, structures, authored props.' },
@@ -2176,17 +2177,18 @@ export function renderPropEditor(container, options) {
       { value: 4, label: 'Spread',    desc: '13 instances, sibling scale 1.0. Uniform coverage — pasture, moss fields.' },
     ];
 
-    const current = (model.placement && Number.isInteger(model.placement.placement))
-      ? model.placement.placement : 0;
+    const current = (model.placeable && Number.isInteger(model.placeable.placement))
+      ? model.placeable.placement : 0;
 
     const row = document.createElement('div');
-    row.style.cssText = 'display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;';
+    row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
     const label = document.createElement('span');
     label.textContent = 'Preset';
-    label.style.cssText = 'font-size: 11px; color: var(--text-secondary);';
+    label.classList.add('prop-hint');
     const select = document.createElement('select');
     select.dataset.field = 'placement_preset';
     select.classList.add('prop-input');
+    select.style.flex = '1';
     for (const p of PRESETS) {
       const opt = document.createElement('option');
       opt.value = String(p.value);
@@ -2704,9 +2706,17 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
+    // Scatter preset lives inside the Placeable cap (feature-011 refactor).
+    // Read the dropdown that _renderPlacementSection emits with
+    // data-field="placement_preset".
+    const placementSelect = formElement.querySelector('select[data-field="placement_preset"]');
+    const placement = placementSelect
+      ? parseInt(/** @type {HTMLSelectElement} */ (placementSelect).value, 10)
+      : 0;
     model.placeable = {
       meshes: _collectMeshVariantsData(formElement),
       collision_shapes: _collectCollisionShapesData(formElement),
+      placement: Number.isInteger(placement) ? placement : 0,
     };
   }
 
@@ -2817,18 +2827,6 @@ export function collectPropFormData(formElement) {
       if (tv && vv) respawnConds.push(`${tv}:${vv}`);
     }
     model.harvestable = { yields, respawn_conditions: respawnConds };
-  }
-
-  // Placement cap (feature-011). Capability is enabled via the same
-  // checkbox pattern as the others. When the checkbox is unchecked the
-  // cap is null (implicit SINGLE). When checked, read the preset
-  // dropdown.
-  if (isChecked('cap_placement_enabled')) {
-    const select = formElement.querySelector('select[data-field="placement_preset"]');
-    const preset = select ? parseInt(/** @type {HTMLSelectElement} */ (select).value, 10) : 0;
-    model.placement = { placement: Number.isInteger(preset) ? preset : 0 };
-  } else {
-    model.placement = null;
   }
 
   // Legacy footprint preserved from model (no longer in form UI)
@@ -3199,6 +3197,14 @@ export function propModelToRaw(model) {
       });
     }
 
+    // feature-011: scatter preset lives on PlaceableCap now. Emit only
+    // when non-default (SINGLE = 0) to keep legacy .tres files minimal.
+    const placementPreset = Number.isInteger(model.placeable.placement)
+      ? model.placeable.placement : 0;
+    if (placementPreset !== 0) {
+      subFields.set('placement', { type: 'int', value: placementPreset });
+    }
+
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
   }
 
@@ -3431,23 +3437,6 @@ export function propModelToRaw(model) {
       value: respawnConds.map(c => ({ type: 'stringname', value: c })),
     });
     capEntries.push({ capName: 'harvestable', subId: 'harvestable_1', subFields: harvSubFields });
-  }
-
-  // Placement cap (feature-011). Emit when the UI exposes a preset selection
-  // different from the implicit SINGLE default (or when model.placement
-  // was loaded from an existing .tres). Keeps the .tres minimal for
-  // legacy SINGLE-default props by skipping emission when cap is absent
-  // AND the UI selection is SINGLE (0).
-  const placementPreset = model.placement && Number.isInteger(model.placement.placement)
-    ? model.placement.placement : null;
-  if (placementPreset !== null) {
-    const placementExtId = `${extId}_placement`;
-    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="${placementExtId}"]`);
-    extId++;
-    const placementSub = new Map();
-    placementSub.set('script', { type: 'ext_resource', value: `ExtResource("${placementExtId}")` });
-    placementSub.set('placement', { type: 'int', value: placementPreset });
-    capEntries.push({ capName: 'placement', subId: 'placement_1', subFields: placementSub });
   }
 
   // Build sub_resources: yields come first (so harvestable can reference them),
