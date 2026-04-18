@@ -40,11 +40,17 @@ static func _build_one(cs: Resource) -> CollisionShape3D:
 			box.size = size
 			shape = box
 		&"cylinder":
+			if size.x <= 0.0:
+				push_warning("CollisionHelper: cylinder radius %f clamped to 0.01 — likely an authoring error" % size.x)
+			if size.y <= 0.0:
+				push_warning("CollisionHelper: cylinder height %f clamped to 0.01 — likely an authoring error" % size.y)
 			var cyl := CylinderShape3D.new()
 			cyl.radius = maxf(size.x, 0.01)
 			cyl.height = maxf(size.y, 0.01)
 			shape = cyl
 		&"sphere":
+			if size.x <= 0.0:
+				push_warning("CollisionHelper: sphere radius %f clamped to 0.01 — likely an authoring error" % size.x)
 			var sph := SphereShape3D.new()
 			sph.radius = maxf(size.x, 0.01)
 			shape = sph
