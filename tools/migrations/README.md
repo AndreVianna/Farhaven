@@ -19,3 +19,4 @@ When adding a new migration:
 | Date | Script | Transformation |
 |------|--------|----------------|
 | 2026-04-17 | `2026-04-17-grassland-scale-collision.py` | Add scale + collision_shapes to 12 grassland prop .tres files (P00001-P00007 plants, P01001-P01005 minerals). First-pass values per Discord discussion 2026-04-17/18. |
+| 2026-04-18 | `2026-04-18-grassland-placement-cap.py` | Add PlacementCap to same 12 props. Plants get NORMAL scatter, Boulder stays SINGLE, other minerals get SPROUTING. Enables feature-011 scatter rendering for the grassland biome. |
