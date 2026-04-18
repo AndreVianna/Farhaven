@@ -496,9 +496,14 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 				copy_scale *= sibling_scale
 
 		# Rotation: 0-360° seeded, or override if SINGLE center.
+		# Backward-compat: when SINGLE center and the legacy rotation_deg
+		# field is non-zero, treat it as an implicit override so saved
+		# maps authored before feature-011 keep their authored rotation.
 		var rotation_deg: float
 		if is_center and supports_overrides and rn.has_rotation_override():
 			rotation_deg = rn.rotation_override
+		elif is_center and supports_overrides and rn.rotation_deg != 0.0:
+			rotation_deg = rn.rotation_deg
 		else:
 			rotation_deg = rng.randf() * 360.0
 

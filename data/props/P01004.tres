@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://assets/props/P01004/mesh_v1.glb" id="7_mesh_v1"]
 [ext_resource type="PackedScene" path="res://assets/props/P01004/mesh_v2.glb" id="8_mesh_v2"]
 [ext_resource type="PackedScene" path="res://assets/props/P01004/mesh_v3.glb" id="9_mesh_v3"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placement_cap.gd" id="10_placement"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("6_meshvar")
@@ -50,6 +51,10 @@ script = ExtResource("4_harvestable")
 yields = [SubResource("yield_clay")]
 respawn_conditions = []
 
+[sub_resource type="Resource" id="placement_1"]
+script = ExtResource("10_placement")
+placement = 3
+
 [resource]
 script = ExtResource("1_propdef")
 id = &"P01004"
@@ -62,3 +67,4 @@ tags = [&"near_water", &"resource_source"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 harvestable = SubResource("harvestable_1")
+placement = SubResource("placement_1")
