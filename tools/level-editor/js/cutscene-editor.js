@@ -408,11 +408,11 @@ export function renderCutsceneEditor(container, options) {
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
   filterInput.placeholder = 'Filter...';
-  filterInput.classList.add('editor-filter');
+  filterInput.classList.add('editor-filter', 'prop-input');
 
   const newBtn = document.createElement('button');
   newBtn.textContent = '+ New Cutscene';
-  newBtn.classList.add('editor-new-btn');
+  newBtn.classList.add('editor-new-btn', 'prop-btn');
 
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
@@ -551,12 +551,12 @@ export function renderCutsceneEditor(container, options) {
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.type = 'button';
-    saveBtn.classList.add('editor-btn-save');
+    saveBtn.classList.add('editor-btn-save', 'prop-btn-primary');
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.type = 'button';
-    deleteBtn.classList.add('editor-btn-delete');
+    deleteBtn.classList.add('editor-btn-delete', 'prop-btn');
 
     btnGroup.appendChild(saveBtn);
     if (!isNew) {

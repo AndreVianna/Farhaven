@@ -180,7 +180,7 @@ export async function renderSettingsEditor(container, options) {
 
   const saveBtn = document.createElement('button');
   saveBtn.textContent = 'Save';
-  saveBtn.classList.add('btn-primary');
+  saveBtn.classList.add('btn-primary', 'prop-btn-primary');
 
   const statusEl = document.createElement('span');
   statusEl.style.color = 'var(--text-secondary)';
