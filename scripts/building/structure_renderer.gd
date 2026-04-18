@@ -84,6 +84,10 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	var mesh: Mesh
 	var y_offset: float = PROP_Y_OFFSET
 	var mesh_from_scene: bool = false
+	# variant_scale: MeshVariant.scale applied to both visual (MeshInstance3D)
+	# and collision composition so authored sizes are the source of truth.
+	# Default 1.0 when no scale is authored.
+	var variant_scale: float = 1.0
 
 	if def != null and def.placeable != null and def.placeable.meshes != null:
 		for mv_entry in def.placeable.meshes:
@@ -95,6 +99,9 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 				mesh = extracted[0]
 				y_offset = extracted[1]
 				mesh_from_scene = true
+				# Positive, finite scale only — falls back to 1.0 on bad data.
+				if mv.scale > 0.0 and not is_nan(mv.scale):
+					variant_scale = mv.scale
 				break
 	if mesh == null and def != null and def.mesh != null:
 		mesh = def.mesh
@@ -115,10 +122,14 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	var wz: float = snapped.y
 	var elevation_y: float = _get_elevation_y(coords, wx, wz)
 
-	# Create Node3D with MeshInstance3D child.
+	# Create Node3D with MeshInstance3D child. Apply the MeshVariant scale to
+	# the root Node3D so both visual (MeshInstance3D) and physics (StaticBody3D)
+	# children inherit it. y_offset is scaled accordingly because the mesh AABB
+	# was measured at unit scale.
 	var node := Node3D.new()
 	node.name = "Structure_%s" % key
-	node.position = Vector3(wx, elevation_y + y_offset, wz)
+	node.position = Vector3(wx, elevation_y + y_offset * variant_scale, wz)
+	node.scale = Vector3.ONE * variant_scale
 
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = mesh
@@ -133,6 +144,7 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 	# Add StaticBody3D with per-prop authored collision shapes (zero or more).
 	# Empty collision_shapes → walkthrough prop, no StaticBody3D added.
+	# Collision inherits variant_scale via the parent node's scale.
 	if def != null:
 		var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_collision_shapes(def)
 		if not collision_nodes.is_empty():
