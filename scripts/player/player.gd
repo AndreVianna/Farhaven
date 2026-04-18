@@ -20,10 +20,12 @@ signal wearables_changed()
 
 enum MoveState { IDLE, WALKING, RUNNING, JUMPING }
 
-## Joystick magnitude threshold: above this, the player is running; below
-## (and above movement_dead_zone), walking. Tuned to match the joystick's
-## commonly-used "push-hard" zone without requiring full pegged input.
-const _RUN_THRESHOLD: float = 0.75
+## Joystick magnitude thresholds with hysteresis. The deadband between
+## _RUN_ENTER (transition to RUNNING) and _RUN_EXIT (back to WALKING)
+## prevents state flapping when the stick hovers around the threshold —
+## flapping would retrigger the 0.2s animation blend every frame.
+const _RUN_ENTER: float = 0.75
+const _RUN_EXIT: float = 0.70
 
 signal player_moved(from: Vector2i, to: Vector2i)
 
@@ -305,13 +307,19 @@ func _process(delta: float) -> void:
 	_update_animation_for_state()
 
 
-## Returns WALKING or RUNNING based on the current joystick magnitude.
-## Called whenever the player is moving (either directly from joystick
-## events or after a jump lands). Keeps the state machine honest so the
-## animation selector and downstream logic (survival drain, etc.) can
-## distinguish between walk and run without re-checking magnitude.
+## Returns WALKING or RUNNING based on the current joystick magnitude and
+## the previous moving state. Called whenever the player is moving. Uses
+## hysteresis: enter RUNNING at magnitude > _RUN_ENTER, stay RUNNING while
+## magnitude > _RUN_EXIT, otherwise WALKING. When the previous state is
+## not a moving state (IDLE, JUMPING transitions), use the enter threshold.
 func _moving_state_for_magnitude(magnitude: float) -> MoveState:
-	if magnitude > _RUN_THRESHOLD:
+	if move_state == MoveState.RUNNING:
+		# Stay running until we drop below the lower threshold.
+		if magnitude > _RUN_EXIT:
+			return MoveState.RUNNING
+		return MoveState.WALKING
+	# Entering from WALKING / IDLE / JUMPING — use the stricter threshold.
+	if magnitude > _RUN_ENTER:
 		return MoveState.RUNNING
 	return MoveState.WALKING
 
