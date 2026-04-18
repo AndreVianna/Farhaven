@@ -14,5 +14,9 @@ extends Resource
 ## Empty list = always yields.
 
 @export var item_id: StringName = &""
+
+## Quantity produced when this yield fires. Forward-declared —
+## consumed by the future harvest resolver (not yet implemented).
 @export var amount: int = 1
+
 @export var conditions: Array[StringName] = []

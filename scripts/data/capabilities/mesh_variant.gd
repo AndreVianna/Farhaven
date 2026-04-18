@@ -14,8 +14,13 @@ extends Resource
 @export var scene: PackedScene = null
 
 ## Optional uniform scale applied to the variant (default 1.0).
+## Expected range: positive, finite. Forward-declared for feature-011
+## (prop placement scatter) — will be consumed by the renderer when
+## computing per-instance scale with ±15% jitter. No runtime validation
+## yet because no consumer exists.
 @export var scale: float = 1.0
 
 ## Optional rotation offset in degrees around Y axis.
 ## The prop's per-instance rotation is applied on top of this.
+## Forward-declared for feature-011 — any float is valid (fmod 360).
 @export var rotation_offset_deg: float = 0.0
