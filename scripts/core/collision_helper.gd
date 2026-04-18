@@ -29,7 +29,14 @@ static func create_collision_shapes(prop_def: _PropDef) -> Array[CollisionShape3
 	return out
 
 
-static func _build_one(cs: Resource) -> CollisionShape3D:
+static func _build_one(cs_resource: Resource) -> CollisionShape3D:
+	# Defensive cast — a non-CollisionShape resource in the array would
+	# throw when accessing .shape_type/.size/.offset below. Skip silently
+	# and let the outer "no meshes" warning surface the broader issue.
+	var cs: _CollisionShape = cs_resource as _CollisionShape
+	if cs == null:
+		push_warning("CollisionHelper: skipping non-CollisionShape entry in collision_shapes array")
+		return null
 	var node := CollisionShape3D.new()
 	var shape: Shape3D = null
 	var shape_type: StringName = cs.shape_type

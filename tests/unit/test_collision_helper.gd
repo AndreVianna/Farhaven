@@ -204,6 +204,31 @@ func test_null_entry_is_skipped() -> void:
 	assert_int(out.size()).is_equal(2)
 
 
+func test_non_collision_shape_entry_is_skipped() -> void:
+	# A plain Resource (not a CollisionShape) in the array must be skipped
+	# defensively, not crash on cs.shape_type access.
+	var shapes: Array[Resource] = [
+		_make_shape(&"box", Vector3.ONE),
+		Resource.new(),  # valid Resource but not a CollisionShape
+		_make_shape(&"sphere", Vector3(0.3, 0.0, 0.0)),
+	]
+	var def := _make_prop_with_shapes(shapes)
+	var out := _CollisionHelper.create_collision_shapes(def)
+	assert_int(out.size()).is_equal(2)
+	assert_object(out[0].shape).is_instanceof(BoxShape3D)
+	assert_object(out[1].shape).is_instanceof(SphereShape3D)
+
+
+func test_nan_dimension_clamped_to_safe_default() -> void:
+	# NaN compares as false to <= 0.0, so prior versions of the clamp
+	# logic would leak NaN through maxf(). Verify explicit is_nan guard.
+	var nan_size := Vector3(NAN, 1.0, 0.0)
+	var def := _make_prop_with_shapes([_make_shape(&"cylinder", nan_size)])
+	var out := _CollisionHelper.create_collision_shapes(def)
+	var cyl: CylinderShape3D = out[0].shape as CylinderShape3D
+	assert_float(cyl.radius).is_equal_approx(0.01, 0.001)
+
+
 # ---------------------------------------------------------------------------
 # Type contract — always returns Array[CollisionShape3D] with valid shapes
 # ---------------------------------------------------------------------------
