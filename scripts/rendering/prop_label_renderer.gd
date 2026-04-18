@@ -166,7 +166,11 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET, wz)
+	# Scale the label offset by the prop's visual scale so small props
+	# (scale 0.3) don't get their markers floating in empty air and large
+	# props (scale 1.2) don't hide their marker inside the mesh.
+	var visual_scale: float = _PropUtils.get_visual_scale(entry_id)
+	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET * visual_scale, wz)
 
 	var label_3d := Label3D.new()
 	label_3d.text = text

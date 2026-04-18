@@ -7,6 +7,7 @@ extends Node3D
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # --- Constants ---
 
@@ -23,6 +24,7 @@ var _mesh_instance: MeshInstance3D = null
 var _shader_material: ShaderMaterial = null
 var _progress: float = 0.0
 var _target_coords: Vector2i = Vector2i.ZERO
+var _target_entry: StringName = &""
 var _active: bool = false
 var _scanner: Node = null
 var _grid: Node = null
@@ -86,8 +88,9 @@ func _find_scanner() -> Node:
 
 # --- Signal handlers ---
 
-func _on_scan_started(_entry_id: StringName, coords: Vector2i) -> void:
+func _on_scan_started(entry_id: StringName, coords: Vector2i) -> void:
 	_target_coords = coords
+	_target_entry = entry_id
 	_progress = 0.0
 	_active = true
 	_position_at(coords)
@@ -124,7 +127,11 @@ func _position_at(coords: Vector2i) -> void:
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET, world_2d.y)
+	# Scale the progress bar offset by the target prop's visual scale so
+	# the bar tracks the scanned prop's size rather than floating at a
+	# fixed world height regardless of what's being scanned.
+	var visual_scale: float = _PropUtils.get_visual_scale(_target_entry)
+	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET * visual_scale, world_2d.y)
 
 
 func _update_fill(progress_val: float) -> void:

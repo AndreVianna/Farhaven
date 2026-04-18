@@ -37,3 +37,21 @@ static func sub_hex_to_world(sub_hex: Vector2i) -> Vector2:
 ## Deprecated — use sub_hex_to_world or HexMath.sub_axial_to_world instead.
 static func offset_to_world(offset: Vector2, hex_size: float) -> Vector2:
 	return Vector2(offset.x * hex_size * OFFSET_SCALE, offset.y * hex_size * OFFSET_SCALE)
+
+
+## Visual scale for a prop type, derived from the first authored
+## MeshVariant's scale field. Returns 1.0 when no PlaceableCap or valid
+## mesh variant exists. Used by attachment renderers (labels, scan
+## rings, fly-to-player origin) so their Y offsets track the prop's
+## actual visual size instead of floating/sinking for small/large props.
+static func get_visual_scale(type: StringName) -> float:
+	var def = PropRegistry.get_def(type)
+	if def == null or def.placeable == null or def.placeable.meshes == null:
+		return 1.0
+	for mv_entry in def.placeable.meshes:
+		var mv: MeshVariant = mv_entry as MeshVariant
+		if mv == null:
+			continue
+		if is_finite(mv.scale) and mv.scale > 0.0:
+			return mv.scale
+	return 1.0
