@@ -18,7 +18,12 @@ const STARTER_BACKPACK_ID: StringName = &"P00301"
 ## the inventory panel header both subscribe to refresh from this.
 signal wearables_changed()
 
-enum MoveState { IDLE, WALKING, JUMPING }
+enum MoveState { IDLE, WALKING, RUNNING, JUMPING }
+
+## Joystick magnitude threshold: above this, the player is running; below
+## (and above movement_dead_zone), walking. Tuned to match the joystick's
+## commonly-used "push-hard" zone without requiring full pegged input.
+const _RUN_THRESHOLD: float = 0.75
 
 signal player_moved(from: Vector2i, to: Vector2i)
 
@@ -178,6 +183,8 @@ func _anim_walk_target_for_state() -> StringName:
 	match move_state:
 		MoveState.WALKING:
 			return _ANIM_WALKING
+		MoveState.RUNNING:
+			return _ANIM_RUNNING
 		MoveState.JUMPING:
 			# No jump animation yet — keep walking so the transition to
 			# landing doesn't snap to idle mid-air.
@@ -293,9 +300,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if move_state == MoveState.WALKING:
+	if move_state == MoveState.WALKING or move_state == MoveState.RUNNING:
 		_process_walking(delta)
 	_update_animation_for_state()
+
+
+## Returns WALKING or RUNNING based on the current joystick magnitude.
+## Called whenever the player is moving (either directly from joystick
+## events or after a jump lands). Keeps the state machine honest so the
+## animation selector and downstream logic (survival drain, etc.) can
+## distinguish between walk and run without re-checking magnitude.
+func _moving_state_for_magnitude(magnitude: float) -> MoveState:
+	if magnitude > _RUN_THRESHOLD:
+		return MoveState.RUNNING
+	return MoveState.WALKING
 
 
 ## Snap the player's world position to the given tile center.
@@ -313,9 +331,9 @@ func _on_joystick_start(direction: Vector2) -> void:
 		_buffered_dir = direction
 		_buffered_magnitude = 1.0
 		return
-	move_state = MoveState.WALKING
 	_joystick_dir = direction
 	_joystick_magnitude = 1.0
+	move_state = _moving_state_for_magnitude(_joystick_magnitude)
 
 
 func _on_joystick_move(direction: Vector2, magnitude: float) -> void:
@@ -323,11 +341,11 @@ func _on_joystick_move(direction: Vector2, magnitude: float) -> void:
 		_buffered_dir = direction
 		_buffered_magnitude = magnitude
 		return
-	if move_state != MoveState.WALKING:
+	if move_state != MoveState.WALKING and move_state != MoveState.RUNNING:
 		_cancel_snap_tween()
-		move_state = MoveState.WALKING
 	_joystick_dir = direction
 	_joystick_magnitude = magnitude
+	move_state = _moving_state_for_magnitude(magnitude)
 
 
 func _on_joystick_stop() -> void:
@@ -463,9 +481,9 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 
 func _on_jump_landed() -> void:
 	if _joystick_magnitude > 0.01 and not _buffered_dir.is_zero_approx():
-		move_state = MoveState.WALKING
 		_joystick_dir = _buffered_dir
 		_joystick_magnitude = _buffered_magnitude
+		move_state = _moving_state_for_magnitude(_joystick_magnitude)
 	else:
 		move_state = MoveState.IDLE
 		# No snap — player stays at landing point
