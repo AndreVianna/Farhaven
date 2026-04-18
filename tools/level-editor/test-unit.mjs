@@ -281,6 +281,34 @@ test('TresParser — Vector3 serialize preserves float formatting', () => {
     'integers should get .0 suffix, got: ' + serialized);
 });
 
+test('TresParser — Vector3 accepts negative numbers', () => {
+  const v = TresParser.parseValue('Vector3(-0.5, -1.0, -2.5)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(v.value.x === -0.5, 'x should be -0.5');
+  assert(v.value.y === -1.0, 'y should be -1.0');
+  assert(v.value.z === -2.5, 'z should be -2.5');
+});
+
+test('TresParser — Vector3 accepts scientific notation', () => {
+  const v = TresParser.parseValue('Vector3(1e-5, 2.5e3, -1.2e-2)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(Math.abs(v.value.x - 1e-5) < 1e-10, 'x should be 1e-5');
+  assert(v.value.y === 2500, 'y should be 2500');
+  assert(Math.abs(v.value.z - -0.012) < 1e-10, 'z should be -0.012');
+});
+
+test('TresParser — Vector3 rejects arity mismatch (too few)', () => {
+  const v = TresParser.parseValue('Vector3(1, 2)');
+  // Malformed input must NOT return vector3 with NaN z. Falls through to
+  // the generic string path, preserving the literal for round-trip.
+  assert(v.type !== 'vector3', 'malformed Vector3 should not parse as vector3');
+});
+
+test('TresParser — Vector3 rejects non-numeric components', () => {
+  const v = TresParser.parseValue('Vector3(foo, bar, baz)');
+  assert(v.type !== 'vector3', 'non-numeric Vector3 should not parse as vector3');
+});
+
 test('TresParser — parseValue ExtResource', () => {
   const v = TresParser.parseValue('ExtResource("1_script")');
   assert(v.type === 'ext_resource', 'type should be ext_resource');

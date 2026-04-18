@@ -99,8 +99,8 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 				mesh = extracted[0]
 				y_offset = extracted[1]
 				mesh_from_scene = true
-				# Positive, finite scale only — falls back to 1.0 on bad data.
-				if mv.scale > 0.0 and not is_nan(mv.scale):
+				# Positive, finite scale only — rejects NaN, ±inf, 0, negatives.
+				if is_finite(mv.scale) and mv.scale > 0.0:
 					variant_scale = mv.scale
 				break
 	if mesh == null and def != null and def.mesh != null:

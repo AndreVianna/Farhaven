@@ -88,8 +88,8 @@ func _create_pools() -> void:
 				if extracted[0] != null:
 					variant_meshes.append(extracted[0])
 					variant_y_offsets.append(extracted[1])
-					# Positive finite scale only — falls back to 1.0 on bad data.
-					var s: float = mv.scale if (mv.scale > 0.0 and not is_nan(mv.scale)) else 1.0
+					# Positive finite scale only — rejects NaN, ±inf, 0, negatives.
+					var s: float = mv.scale if (is_finite(mv.scale) and mv.scale > 0.0) else 1.0
 					variant_scales.append(s)
 
 		if variant_meshes.is_empty() and def.mesh != null:
