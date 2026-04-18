@@ -97,12 +97,33 @@ const PROP_CATEGORY_TABS = [
 ];
 
 /**
+ * Optional guards registered by editors to veto a tab switch when the
+ * active editor has pending in-form state (not yet committed to the
+ * model/dirtyTracker). Each guard returns `true` to allow the switch,
+ * `false` to cancel. See prop-editor's _guardDirty for an example.
+ * @type {Array<() => boolean>}
+ */
+const _tabSwitchGuards = [];
+
+export function registerTabSwitchGuard(fn) {
+  _tabSwitchGuards.push(fn);
+}
+
+/**
  * Switch to the specified tab.
  * @param {string} tabName - 'map' | 'props' | 'biomes'
  * @returns {void}
  */
 function switchTab(tabName) {
   if (!TAB_LABELS[tabName]) return;
+  if (tabName === activeTab) return;
+  // Leaving a tab with uncommitted form state (prop/biome/recipe editors
+  // only mark dirty after Save — the form input itself is ephemeral).
+  // Ask each registered guard before changing tabs so the user can
+  // cancel and go save first.
+  for (const guard of _tabSwitchGuards) {
+    if (guard() === false) return;
+  }
   activeTab = tabName;
 
   // Update tab buttons
@@ -169,6 +190,16 @@ function setStatus(text) {
 // ============================================================
 
 toolManager.onStatus = (msg) => setStatus(msg);
+
+// Surface save failures. Previously every saveFile error was swallowed
+// by the caller's `.catch(err => console.warn(...))` — the user only
+// learned something went wrong when they later noticed the file hadn't
+// updated. Centralized notifier means every failed save shows up in
+// the status bar AND a blocking alert (so the user can't miss it).
+FileDiscovery.onSaveError = (path, err) => {
+  setStatus(`Save failed: ${path} — ${err.message}`);
+  alert(`Failed to save ${path}\n\n${err.message}`);
+};
 
 // ============================================================
 // selectTool — wires keyboard shortcuts to ToolManager (task-009)
@@ -778,6 +809,7 @@ function initializeAfterLoad() {
         categoryFilter: cat,
         onChange: refreshPalettes,
         onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+        registerGuard: registerTabSwitchGuard,
       });
     }
   }

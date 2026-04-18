@@ -359,8 +359,9 @@ export class FileDiscovery {
    * @returns {Promise<void>}
    */
   static async saveFile(dir, content, filename) {
+    const fullPath = dir + '/' + filename;
     try {
-      const resp = await fetch(`/api/file?path=${encodeURIComponent(dir + '/' + filename)}`, {
+      const resp = await fetch(`/api/file?path=${encodeURIComponent(fullPath)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: content,
@@ -382,6 +383,13 @@ export class FileDiscovery {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } else {
+        // Route through the app-level notifier (if registered) BEFORE
+        // re-throwing so the user sees *something* even when the
+        // caller's .catch just console.warn's. Callers still get the
+        // exception for their own logging / rollback.
+        if (typeof FileDiscovery.onSaveError === 'function') {
+          try { FileDiscovery.onSaveError(fullPath, err); } catch (_) { /* notifier must not mask the real error */ }
+        }
         throw err;
       }
     }

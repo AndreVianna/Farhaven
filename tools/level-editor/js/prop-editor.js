@@ -1589,6 +1589,8 @@ export function renderPropEditor(container, options) {
   const onSave = options && typeof options.onSave === 'function' ? options.onSave : onChange;
   /** @type {string|null} If set, locks the category filter to this value and hides the dropdowns. */
   const lockedCategory = options && options.categoryFilter ? options.categoryFilter : null;
+  /** @type {((guard: () => boolean) => void) | null} Registers the editor's dirty guard with the tab switcher. */
+  const registerGuard = options && typeof options.registerGuard === 'function' ? options.registerGuard : null;
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -1710,6 +1712,17 @@ export function renderPropEditor(container, options) {
       return confirm('Discard unsaved changes?');
     }
     return true;
+  }
+
+  if (registerGuard) {
+    // Only the currently-visible prop editor should veto tab changes —
+    // each category tab instantiates its own renderPropEditor, so they
+    // all register a guard, but only the one whose tab panel is `.active`
+    // has a live form to dirty-check.
+    registerGuard(() => {
+      if (!container.closest('.tab-panel.active')) return true;
+      return _guardDirty();
+    });
   }
 
   // --- Build the prop list ---

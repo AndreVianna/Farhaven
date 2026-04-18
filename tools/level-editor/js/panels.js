@@ -206,15 +206,17 @@ export function showErrorListModal(title, errors) {
   btnClose.textContent = 'Close';
   btnClose.classList.add('prop-btn-primary');
 
-  const cleanup = () => overlay.remove();
-  btnClose.addEventListener('click', cleanup);
-
+  // Cleanup must remove BOTH the overlay AND the document keydown listener
+  // — the listener stays attached to document (not the overlay), so
+  // removing only the DOM leaked a handler per modal open.
   const keyHandler = (e) => {
-    if (e.key === 'Escape') {
-      cleanup();
-      document.removeEventListener('keydown', keyHandler);
-    }
+    if (e.key === 'Escape') cleanup();
   };
+  const cleanup = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  };
+  btnClose.addEventListener('click', cleanup);
   document.addEventListener('keydown', keyHandler);
 
   btnRow.appendChild(btnClose);
