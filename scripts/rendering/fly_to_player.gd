@@ -95,7 +95,11 @@ func _tween_to_player(sprite: MeshInstance3D, start_pos: Vector3) -> void:
 	var mid_y: float = maxf(start_pos.y, target_pos.y) + ARC_HEIGHT
 	var half_dur: float = FLY_DURATION * 0.5
 
-	var tween := create_tween()
+	# Bind the tween to the sprite so it dies with its target. Previously
+	# `create_tween()` on `self` kept running after scene change / map
+	# reload, then its queue_free callback fired on a freed Node and
+	# logged "Nonexistent function" errors.
+	var tween := sprite.create_tween()
 	tween.set_parallel(true)
 
 	# XZ movement: linear to player's current position

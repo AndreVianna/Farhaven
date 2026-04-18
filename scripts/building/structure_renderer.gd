@@ -161,13 +161,56 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _remove_structure(coords: Vector2i, structure_type: StringName) -> void:
-	# Find matching key by prefix since we need sub_hex to build exact key.
+	# The structure_destroyed signal doesn't include sub_hex, so two
+	# structures of the same type on the same tile are ambiguous from
+	# this handler alone. Resolve the ambiguity by diffing our tracked
+	# sub_hex positions against the tile's current crafted props — any
+	# tracked key whose sub_hex no longer exists on the tile is what
+	# was destroyed.
 	var prefix: String = "%d,%d:" % [coords.x, coords.y]
 	var suffix: String = ":%s" % String(structure_type)
+
+	# Collect currently-alive sub_hex positions for this (coords, type).
+	var alive_sub_hexes: Array[Vector2i] = []
+	if _grid != null and _grid.has_method("get_tile"):
+		var tile: Resource = _grid.get_tile(coords)
+		if tile != null:
+			for prop in tile.props:
+				if prop.type == structure_type and prop.origin == _Prop.Origin.CRAFTED:
+					alive_sub_hexes.append(prop.sub_hex)
+
+	# Find tracked keys matching (coords, type) and remove any whose
+	# sub_hex is absent from the tile (i.e. was just destroyed).
+	var keys_to_remove: Array[String] = []
 	for key in _instances.keys():
-		if key.begins_with(prefix) and key.ends_with(suffix):
-			_remove_child_node(key)
-			return
+		if not (key.begins_with(prefix) and key.ends_with(suffix)):
+			continue
+		var sub_hex := _parse_sub_hex_from_key(key)
+		if not alive_sub_hexes.has(sub_hex):
+			keys_to_remove.append(key)
+
+	# Fallback: if we couldn't determine the tile state (no grid / no
+	# tile), remove only ONE matching key to avoid wiping them all.
+	if keys_to_remove.is_empty() and (_grid == null or alive_sub_hexes.is_empty()):
+		for key in _instances.keys():
+			if key.begins_with(prefix) and key.ends_with(suffix):
+				keys_to_remove.append(key)
+				break
+
+	for key in keys_to_remove:
+		_remove_child_node(key)
+
+
+## Parse "q,r:sq,sr:TYPE" and return the sub_hex Vector2i, or ZERO on
+## malformed input (shouldn't happen since _make_key produces them).
+func _parse_sub_hex_from_key(key: String) -> Vector2i:
+	var parts: PackedStringArray = key.split(":")
+	if parts.size() < 2:
+		return Vector2i.ZERO
+	var sub_parts: PackedStringArray = parts[1].split(",")
+	if sub_parts.size() < 2:
+		return Vector2i.ZERO
+	return Vector2i(int(sub_parts[0]), int(sub_parts[1]))
 
 
 func _remove_child_node(key: String) -> void:
