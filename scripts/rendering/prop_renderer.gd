@@ -9,6 +9,7 @@ extends Node3D
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
+const _PlacementPreset = preload("res://scripts/data/capabilities/placement_preset.gd")
 
 # --- Constants ---
 
@@ -206,6 +207,44 @@ func _get_variant_count(pool_id: StringName) -> int:
 	return 1 + extras.size()
 
 
+## Feature-011: compute a deterministic seed for scatter RNG. Same
+## tile + sub_hex + prop_type always produces the same seed → identical
+## scatter layout on every reload. Prop type is included so swapping
+## one prop for another at the same SH gives a different scatter.
+func _compute_scatter_seed(coords: Vector2i, sub_hex: Vector2i, prop_type: StringName) -> int:
+	var h: int = 0
+	h = h ^ (coords.x * 73856093)
+	h = h ^ (coords.y * 19349663)
+	h = h ^ (sub_hex.x * 83492791)
+	h = h ^ (sub_hex.y * 2654435761)
+	h = h ^ hash(prop_type)
+	return h & 0x7fffffff
+
+
+## Feature-011: pick N SSH positions within a sub-hex. Position 0 is
+## always ZERO (center). Remaining positions are the (N-1) closest to
+## ZERO out of a seeded-random permutation of the other 18 SSH cells.
+## Assumes 1 <= N <= 19.
+func _select_ssh_positions(rng: RandomNumberGenerator, n: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = [Vector2i.ZERO]
+	if n <= 1:
+		return result
+	# Build the pool of 18 non-center SSH positions.
+	var pool: Array[Vector2i] = []
+	for ssh in _HexMath.get_all_sshs():
+		if ssh != Vector2i.ZERO:
+			pool.append(ssh)
+	# Fisher-Yates partial shuffle (seeded) — take the first n-1 items.
+	var take: int = mini(n - 1, pool.size())
+	for i in range(take):
+		var j: int = rng.randi_range(i, pool.size() - 1)
+		var tmp: Vector2i = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+		result.append(pool[i])
+	return result
+
+
 func _create_pool(pool_id: StringName, mesh: Mesh, color: Color, is_real_mesh: bool = false) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -381,75 +420,129 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 	if not _pools.has(pool_id):
 		return
 
-	# Pick a mesh variant deterministically from tile coords + sub_hex.
-	# Same prop at same cell always gets the same variant after reloads.
-	var variant_count: int = _get_variant_count(pool_id)
-	var variant_idx: int = _pick_variant(coords, rn.sub_hex, variant_count)
-	var mmi: MultiMeshInstance3D = _get_pool_for_variant(pool_id, variant_idx)
-	if mmi == null:
-		return
-	var mm: MultiMesh = mmi.multimesh
-	var idx: int = mm.visible_instance_count
+	# --- Resolve scatter preset from PlacementCap (feature-011) ---
+	# Effective placement = Prop.placement_override, then PropDef.placement,
+	# then SINGLE (default). Ignore overrides for non-SINGLE presets — the
+	# spec says per-instance variant/scale/rotation overrides only apply
+	# when the preset resolves to SINGLE, because distributing copies with
+	# a pinned center breaks the visual illusion.
+	var def: Resource = PropRegistry.get_def(rn.type) if PropRegistry.has_def(rn.type) else null
+	var effective_placement: int = _PlacementPreset.Preset.SINGLE
+	if rn.placement_override >= 0:
+		effective_placement = rn.placement_override
+	elif def != null and def.placement != null:
+		effective_placement = def.placement.placement
+	var preset_count: int = _PlacementPreset.get_count(effective_placement)
+	var sibling_scale: float = _PlacementPreset.get_sibling_scale(effective_placement)
+	var supports_overrides: bool = _PlacementPreset.supports_instance_overrides(effective_placement)
 
-	if idx >= MAX_INSTANCES:
-		return
+	# --- Seeded RNG: deterministic per (tile, sub_hex, prop_type) ---
+	# Same prop in the same cell of the same map always renders identical
+	# scatter layout / variants / jitter across reloads.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _compute_scatter_seed(coords, rn.sub_hex, rn.type)
 
-	# Position: tile center + sub-hex offset + elevation
+	# --- Actual instance count with ±2 jitter, clamped to [1, 19] ---
+	var actual_count: int = preset_count
+	if preset_count > 1:
+		actual_count = clampi(preset_count + rng.randi_range(-2, 2), 1, 19)
+
+	# --- SSH positions: center (0) plus (actual_count - 1) chosen from the
+	# remaining 18 via seeded Fisher-Yates partial shuffle. ---
+	var ssh_positions: Array[Vector2i] = _select_ssh_positions(rng, actual_count)
+
+	# --- Shared tile/elevation context ---
 	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
-	var wx: float = world_2d.x + sub_hex_offset.x
-	var wz: float = world_2d.y + sub_hex_offset.y
-	var elevation_y: float = 0.0
-	if _grid != null and _grid.has_method("get_terrain_y"):
-		elevation_y = _grid.get_terrain_y(wx, wz)
-	elif tile != null:
-		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	# Per-variant Y offset (AABB-derived when real mesh is used) and scale
-	# (from MeshVariant.scale). The AABB was measured at unit scale so the
-	# y_offset must be multiplied by the variant scale to keep the prop
-	# sitting on the ground.
-	var variant_offsets: Array = _variant_y_offsets.get(pool_id, [])
-	var y_off: float = variant_offsets[variant_idx] if variant_idx < variant_offsets.size() else _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
-	var variant_scales_arr: Array = _variant_scales.get(pool_id, [])
-	var variant_scale: float = variant_scales_arr[variant_idx] if variant_idx < variant_scales_arr.size() else 1.0
-	var pos := Vector3(wx, elevation_y + y_off * variant_scale, wz)
+	var center_wx: float = world_2d.x + sub_hex_offset.x
+	var center_wz: float = world_2d.y + sub_hex_offset.y
 
-	# Per-instance jitter (scale + tilt) derived from same cell seed.
-	var jitter: Array = _compute_jitter(coords, rn.sub_hex)
-	var scale_factor: float = jitter[0]
-	var tilt_x: float = jitter[1]
-	var tilt_z: float = jitter[2]
+	# --- Emit one MultiMesh instance per SSH position ---
+	var variant_count: int = _get_variant_count(pool_id)
+	for i in ssh_positions.size():
+		var ssh: Vector2i = ssh_positions[i]
+		var is_center: bool = (i == 0)
 
-	# Build transform: scale (variant × per-instance jitter) → rotate Y
-	# (from prop) → tilt X/Z → position.
-	var xform := Transform3D.IDENTITY
-	xform = xform.scaled(Vector3.ONE * (scale_factor * variant_scale))
-	xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rn.rotation_deg))
-	xform.basis = xform.basis.rotated(Vector3(1.0, 0.0, 0.0), deg_to_rad(tilt_x))
-	xform.basis = xform.basis.rotated(Vector3(0.0, 0.0, 1.0), deg_to_rad(tilt_z))
-	xform.origin = pos
+		# Variant: SINGLE + override → pin. Otherwise seeded random.
+		var variant_idx: int
+		if is_center and supports_overrides and rn.has_variant_override():
+			variant_idx = clampi(rn.variant_override, 0, max(variant_count - 1, 0))
+		else:
+			variant_idx = rng.randi_range(0, max(variant_count - 1, 0))
 
-	mm.visible_instance_count = idx + 1
-	mm.set_instance_transform(idx, xform)
+		var mmi: MultiMeshInstance3D = _get_pool_for_variant(pool_id, variant_idx)
+		if mmi == null:
+			continue
+		var mm: MultiMesh = mmi.multimesh
+		var idx: int = mm.visible_instance_count
+		if idx >= MAX_INSTANCES:
+			continue
 
-	# Custom data: channel 0 = dimmed flag (0.0 or 1.0), channel 1 = depleted flag
-	var custom := Color(1.0 if dimmed else 0.0, 1.0 if depleted else 0.0, 0.0, 1.0)
-	mm.set_instance_custom_data(idx, custom)
+		# Y offset + base scale from the variant's AABB / authored scale.
+		var variant_offsets: Array = _variant_y_offsets.get(pool_id, [])
+		var y_off: float = variant_offsets[variant_idx] if variant_idx < variant_offsets.size() else _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
+		var variant_scales_arr: Array = _variant_scales.get(pool_id, [])
+		var variant_scale: float = variant_scales_arr[variant_idx] if variant_idx < variant_scales_arr.size() else 1.0
 
-	# Update material color based on dimmed state (variant 0 only — variants
-	# share the same color configuration).
-	_update_pool_material(pool_id, dimmed)
+		# Per-copy scale: 0.85..1.15 jitter, then sibling_scale for non-center.
+		var scale_jitter: float = rng.randf_range(0.85, 1.15)
+		var copy_scale: float
+		if is_center and supports_overrides and rn.has_scale_override():
+			copy_scale = rn.scale_override
+		else:
+			copy_scale = variant_scale * scale_jitter
+			if not is_center:
+				copy_scale *= sibling_scale
 
-	if not _tile_entries.has(coords):
-		_tile_entries[coords] = []
-	_tile_entries[coords].append({
-		"prop_type": rn.type,
-		"pool": pool_id,
-		"variant": variant_idx,
-		"instance_idx": idx,
-		"depleted": depleted,
-	})
+		# Rotation: 0-360° seeded, or override if SINGLE center.
+		var rotation_deg: float
+		if is_center and supports_overrides and rn.has_rotation_override():
+			rotation_deg = rn.rotation_override
+		else:
+			rotation_deg = rng.randf() * 360.0
+
+		# Position: tile + sub_hex_offset + ssh_offset; center is ZERO.
+		var ssh_offset: Vector2 = Vector2.ZERO
+		if ssh != Vector2i.ZERO:
+			ssh_offset = _HexMath.ssh_axial_to_world(ssh.x, ssh.y)
+		var wx: float = center_wx + ssh_offset.x
+		var wz: float = center_wz + ssh_offset.y
+		var elevation_y: float = 0.0
+		if _grid != null and _grid.has_method("get_terrain_y"):
+			elevation_y = _grid.get_terrain_y(wx, wz)
+		elif tile != null:
+			elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
+		# y_offset scales with copy_scale because the AABB was measured at
+		# unit mesh scale.
+		var pos := Vector3(wx, elevation_y + y_off * copy_scale, wz)
+
+		# Build transform.
+		var xform := Transform3D.IDENTITY
+		xform = xform.scaled(Vector3.ONE * copy_scale)
+		xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rotation_deg))
+		xform.origin = pos
+
+		mm.visible_instance_count = idx + 1
+		mm.set_instance_transform(idx, xform)
+		var custom := Color(1.0 if dimmed else 0.0, 1.0 if depleted else 0.0, 0.0, 1.0)
+		mm.set_instance_custom_data(idx, custom)
+		_update_pool_material(pool_id, dimmed)
+
+		if not _tile_entries.has(coords):
+			_tile_entries[coords] = []
+		_tile_entries[coords].append({
+			"prop_type": rn.type,
+			"pool": pool_id,
+			"variant": variant_idx,
+			"instance_idx": idx,
+			"depleted": depleted,
+			# Added for feature-011 — group scattered siblings under the
+			# same authored sub_hex so _swap_mesh_variant / depletion can
+			# affect all copies of the same logical prop.
+			"sub_hex": rn.sub_hex,
+			"is_center": is_center,
+		})
 
 
 func _remove_all_props_at(coords: Vector2i) -> void:

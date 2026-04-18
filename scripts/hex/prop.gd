@@ -26,6 +26,31 @@ enum Origin {
 @export var respawn_time: float = 0.0
 @export var rotation_deg: float = 0.0
 
+# Feature-011 per-instance overrides. Sentinel values (< 0 for signed
+# fields) mean "use the procedural default from the seed". These are
+# only effective when the effective placement preset resolves to
+# SINGLE; scatter presets distribute copies procedurally so pinning
+# just the center copy would break the visual illusion.
+@export var placement_override: int = -1       # -1 = inherit from PlacementCap
+@export var variant_override: int = -1          # -1 = seeded random variant
+@export var scale_override: float = -1.0        # < 0 = seeded scale
+@export var rotation_override: float = -1.0     # < 0 = seeded rotation (else degrees)
+
+
+## True when this instance pins its variant through the override.
+func has_variant_override() -> bool:
+	return variant_override >= 0
+
+
+## True when this instance pins its scale through the override.
+func has_scale_override() -> bool:
+	return scale_override > 0.0
+
+
+## True when this instance pins its rotation through the override.
+func has_rotation_override() -> bool:
+	return rotation_override >= 0.0
+
 
 
 ## Returns true if this prop is considered an anomaly (derived state).

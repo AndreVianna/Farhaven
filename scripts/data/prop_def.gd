@@ -31,6 +31,9 @@ class_name PropDef extends Gear
 @export var spawnable: SpawnableCap = null
 @export var wearable: WearableCap = null
 @export var harvestable: HarvestableCap = null
+## Feature-011: scatter preset for instances of this PropDef. When
+## null, behavior is SINGLE (one instance per placed Prop, legacy).
+@export var placement: PlacementCap = null
 
 # --- Inventory ---
 ## Temporary — kept during transition, will be replaced by PORTABLE.weight in task-049.
