@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://playerscene001"]
+[gd_scene load_steps=8 format=3 uid="uid://playerscene001"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/player_input.gd" id="2_input"]
@@ -7,71 +7,15 @@
 [ext_resource type="Script" path="res://scripts/crafting/crafting_system.gd" id="5_crafting"]
 [ext_resource type="Script" path="res://scripts/survival/survival_system.gd" id="6_survival"]
 [ext_resource type="Script" path="res://scripts/fauna/fauna_manager.gd" id="7_fauna"]
-
-[sub_resource type="StandardMaterial3D" id="suit_mat"]
-albedo_color = Color(0.35, 0.45, 0.55, 1.0)
-
-[sub_resource type="StandardMaterial3D" id="skin_mat"]
-albedo_color = Color(0.85, 0.7, 0.6, 1.0)
-
-[sub_resource type="StandardMaterial3D" id="bracelet_mat"]
-albedo_color = Color(0.0, 0.85, 0.95, 1.0)
-emission_enabled = true
-emission = Color(0.0, 0.6, 0.8, 1.0)
-emission_energy_multiplier = 0.5
-
-[sub_resource type="SphereMesh" id="head_mesh"]
-radius = 0.15
-height = 0.3
-
-[sub_resource type="BoxMesh" id="torso_mesh"]
-size = Vector3(0.45, 0.6, 0.25)
-
-[sub_resource type="BoxMesh" id="arm_mesh"]
-size = Vector3(0.14, 0.55, 0.14)
-
-[sub_resource type="BoxMesh" id="leg_mesh"]
-size = Vector3(0.17, 0.5, 0.17)
+[ext_resource type="PackedScene" path="res://assets/hero/animations/walking.glb" id="8_hero_mesh"]
 
 [node name="Player" type="Node3D"]
 script = ExtResource("1_player")
 
 [node name="PlayerModel" type="Node3D" parent="."]
 
-[node name="Head" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
-mesh = SubResource("head_mesh")
-material_override = SubResource("skin_mat")
-
-[node name="Torso" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("torso_mesh")
-material_override = SubResource("suit_mat")
-
-[node name="LeftArm" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.295, 1.05, 0)
-mesh = SubResource("arm_mesh")
-material_override = SubResource("suit_mat")
-
-[node name="RightArm" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.295, 1.05, 0)
-mesh = SubResource("arm_mesh")
-material_override = SubResource("suit_mat")
-
-[node name="Bracelet" type="MeshInstance3D" parent="PlayerModel/RightArm"]
-transform = Transform3D(0.7, 0, 0, 0, 0.2, 0, 0, 0, 1.15, 0, -0.2, 0)
-mesh = SubResource("arm_mesh")
-material_override = SubResource("bracelet_mat")
-
-[node name="LeftLeg" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.25, 0)
-mesh = SubResource("leg_mesh")
-material_override = SubResource("suit_mat")
-
-[node name="RightLeg" type="MeshInstance3D" parent="PlayerModel"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.25, 0)
-mesh = SubResource("leg_mesh")
-material_override = SubResource("suit_mat")
+[node name="HeroMesh" parent="PlayerModel" instance=ExtResource("8_hero_mesh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="PlayerInput" type="Node" parent="."]
 script = ExtResource("2_input")

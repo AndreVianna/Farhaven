@@ -206,7 +206,7 @@ func _on_inventory_changed() -> void:
 class GridCanvas extends Control:
 	## Custom Control that renders the Tetris-style inventory grid.
 	## Each cell is _cell_size × _cell_size pixels. Items are drawn as
-	## colored silhouettes using their PropDef.placeholder_color.
+	## neutral gray silhouettes until icon thumbnails are wired.
 
 	signal item_clicked(type: StringName)
 
@@ -296,8 +296,8 @@ class GridCanvas extends Control:
 		for item_id: int in all_items:
 			var item: Dictionary = all_items[item_id]
 			var type: StringName = item["type"]
-			var def: _InnerPropDef = PropRegistry.get_def(type)
-			var color: Color = def.placeholder_color if def != null else Color.WHITE
+			# TODO: use prop thumbnail/icon once the icon system lands.
+			var color: Color = Color(0.6, 0.6, 0.6)
 			var origin: Vector2i = item["origin"]
 			var rotation: int = item["rotation"]
 			var rotated_shape: Array[Vector2i] = _InnerInventory.get_rotated_shape(

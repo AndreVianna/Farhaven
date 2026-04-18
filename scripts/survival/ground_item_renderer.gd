@@ -171,9 +171,9 @@ func _add_instance(tile: Vector2i, sub_hex: Vector2i, item_type: StringName) -> 
 	mm.visible_instance_count = idx + 1
 	mm.set_instance_transform(idx, xform)
 
-	# Set per-instance color via custom data
-	var def: _PropDef = PropRegistry.get_def(item_type)
-	var color: Color = def.placeholder_color if def != null else DEFAULT_COLOR
+	# Set per-instance color via custom data.
+	# TODO: tint by prop once the icon system lands.
+	var color: Color = DEFAULT_COLOR
 	color.a = 0.8
 	mm.set_instance_custom_data(idx, color)
 

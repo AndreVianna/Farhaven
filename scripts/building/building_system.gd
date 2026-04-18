@@ -387,17 +387,28 @@ func _has_collision_overlap(prop_def: Resource, world_pos: Vector3) -> bool:
 	if space_state == null:
 		return false  # Fallback: footprint check handles this case
 
-	var collision_shape: CollisionShape3D = _CollisionHelper.create_collision_shape(prop_def)
-	if collision_shape.shape == null:
+	# Walkthrough props (no collision_shapes) never overlap with anything.
+	var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_collision_shapes(prop_def)
+	if collision_nodes.is_empty():
 		return false
 
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = collision_shape.shape
-	query.transform = Transform3D(Basis.IDENTITY, world_pos)
-	query.collision_mask = 1  # Default layer
-
-	var results: Array[Dictionary] = space_state.intersect_shape(query, 1)
-	return results.size() > 0
+	# Any authored shape overlapping is enough to reject placement.
+	# Nodes are created detached from the scene tree (query-only) and must
+	# be freed to avoid leaking across repeated placement checks.
+	var overlap_found: bool = false
+	for cs_node in collision_nodes:
+		if overlap_found or cs_node.shape == null:
+			cs_node.free()
+			continue
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = cs_node.shape
+		query.transform = Transform3D(Basis.IDENTITY, world_pos + cs_node.position)
+		query.collision_mask = 1  # Default layer
+		var results: Array[Dictionary] = space_state.intersect_shape(query, 1)
+		cs_node.free()
+		if results.size() > 0:
+			overlap_found = true
+	return overlap_found
 
 
 func _get_space_state() -> PhysicsDirectSpaceState3D:

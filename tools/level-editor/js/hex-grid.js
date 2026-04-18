@@ -20,6 +20,9 @@ export const CATEGORY_TO_INT = Object.fromEntries(CATEGORIES.map((name, i) => [n
 /** Maps engine JSON integer category values to internal string categories. */
 export const INT_TO_CATEGORY = Object.fromEntries(CATEGORIES.map((name, i) => [i, name]));
 
+/** Prop rarity tiers (affect spawn frequency and catalog grouping). */
+export const RARITIES = ['common', 'uncommon', 'rare'];
+
 /** Natural category indices (0-5). */
 export const NATURAL_CATEGORIES = new Set([0, 1, 2, 3, 4, 5]);
 

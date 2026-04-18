@@ -5,7 +5,7 @@
 import { ProjectContext, FileDiscovery, nextId } from './file-discovery.js';
 import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
-import { CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, ORIGIN_TO_INT } from './hex-grid.js';
+import { CATEGORIES, RARITIES, ORIGINS, NATURAL_CATEGORIES, ORIGIN_TO_INT } from './hex-grid.js';
 import { renderGearHeader } from './editor-common.js';
 
 /**
@@ -54,6 +54,8 @@ export class PropDefModel {
     this.behavior = null;
     /** @type {{ spawn_min: number, spawn_max: number, first_spawn_day: number, spawn_min_distance: number, allowed_biomes: string[] }|null} */
     this.spawnable = null;
+    /** @type {{ yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[] }|null} */
+    this.harvestable = null;
 
     // --- Gear base fields ---
     /** @type {string} One-line summary for tooltips */
@@ -64,6 +66,12 @@ export class PropDefModel {
     // --- Inventory ---
     /** @type {number} */
     this.max_stack = 99;
+
+    // --- Classification ---
+    /** @type {string} Primary category (plant/mineral/animal/fungi/ooze/liquid/stuff/structure/equipment/vehicle/storage) */
+    this.category = '';
+    /** @type {string} Rarity tier (common/uncommon/rare) */
+    this.rarity = 'common';
 
     // --- Placement ---
     /** @type {string} Default origin for placement */
@@ -76,22 +84,11 @@ export class PropDefModel {
     this.tool_slot = '';
 
     // --- Visuals ---
-    /** @type {string} */
-    this.placeholder_mesh_type = '';
-    /** @type {Object<string, number>} */
-    this.placeholder_params = {};
-    /** @type {{r: number, g: number, b: number, a: number}} */
-    this.placeholder_color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {string} */
-    this.placeholder_depleted_type = '';
-    /** @type {Object<string, number>} */
-    this.placeholder_depleted_params = {};
-    /** @type {{r: number, g: number, b: number, a: number}} */
-    this.placeholder_depleted_color = { r: 0, g: 0, b: 0, a: 1 };
+    // Placeholder fields removed — all visual rendering now comes from
+    // PlaceableCap.meshes (visible/placed) and HarvestableCap.depleted_meshes
+    // (after harvest). See assets/props/{id}/reference_v{n}.png for preview.
 
     // --- Legacy fields (DEPRECATED — kept for round-trip during transition) ---
-    /** @type {string} */
-    this.prop_category = 'plant';
     /** @type {number} */
     this.gather_time = 0;
     /** @type {number} */
@@ -104,8 +101,6 @@ export class PropDefModel {
     this.yield_type = '';
     /** @type {Object<string, number>} */
     this.tool_speed = {};
-    /** @type {string} */
-    this.category = '';
     /** @type {boolean} */
     this.emits_light = false;
     /** @type {number} */
@@ -148,8 +143,6 @@ export class PropDefModel {
     model.display_name = _str(d.display_name);
     model.short_description = _str(d.short_description);
     model.long_description = _str(d.long_description);
-    model.placeholder_mesh_type = _str(d.placeholder_mesh_type);
-    model.placeholder_depleted_type = _str(d.placeholder_depleted_type);
     model.tool_slot = _str(d.tool_slot);
 
     // Tags (array of stringname values -> string[])
@@ -158,19 +151,13 @@ export class PropDefModel {
     // Numeric fields (max_stack still read for round-trip but no longer shown in UI)
     model.max_stack = _num(d.max_stack) || 99;
 
-    // Dict fields (TresParser stores as Map<string, TresValue>)
-    model.placeholder_params = _dictToObj(d.placeholder_params);
-    model.placeholder_depleted_params = _dictToObj(d.placeholder_depleted_params);
-
-    // Color fields
-    model.placeholder_color = _color(d.placeholder_color);
-    model.placeholder_depleted_color = _color(d.placeholder_depleted_color);
-
     // Legacy footprint (top-level)
     model.footprint = _footprintArray(d.footprint);
 
+    // Classification
+    model.category = _str(d.category);
+    model.rarity = _str(d.rarity) || 'common';
     // Placement defaults
-    model.prop_category = CATEGORIES[_num(d.prop_category)] || 'plant';
     model.prop_origin = ORIGINS[_num(d.origin)] || 'natural';
 
     // --- Capabilities (resolved sub_resource data from file-discovery) ---
@@ -181,8 +168,67 @@ export class PropDefModel {
     }
 
     if (d.placeable && typeof d.placeable === 'object') {
-      model.placeable = {
-      };
+      // Parse meshes (Array[Resource] of MeshVariant sub_resources). Nested
+      // array refs stay as { type: 'sub_resource', value: 'id' } and need
+      // lookup via entry.raw.subResources, same pattern as harvestable yields.
+      const subMap = new Map();
+      if (entry.raw && entry.raw.subResources) {
+        for (const sub of entry.raw.subResources) {
+          const subData = {};
+          for (const [k, v] of sub.fields) subData[k] = v.value;
+          subMap.set(sub.id, subData);
+        }
+      }
+      // TresParser wraps `Array[Resource]([...])` as an outer array of one
+      // inner array TresValue. Unwrap to the inner refs. Plain `[...]` parses
+      // as the flat list directly.
+      let meshRefs = Array.isArray(d.placeable.meshes) ? d.placeable.meshes : [];
+      if (meshRefs.length === 1 && meshRefs[0] && meshRefs[0].type === 'array' && Array.isArray(meshRefs[0].value)) {
+        meshRefs = meshRefs[0].value;
+      }
+      const meshes = [];
+      for (const ref of meshRefs) {
+        let md = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          md = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          md = ref;
+        }
+        if (md) {
+          meshes.push({
+            scene: _resolveExtResourcePath(md.scene, entry.raw),
+            scale: _num(md.scale) || 1.0,
+            rotation_offset_deg: _num(md.rotation_offset_deg) || 0.0,
+          });
+        }
+      }
+
+      // Parse collision_shapes (Array[Resource] of CollisionShape sub_resources).
+      // Same outer-array unwrap as meshes above.
+      let collisionRefs = Array.isArray(d.placeable.collision_shapes) ? d.placeable.collision_shapes : [];
+      if (collisionRefs.length === 1 && collisionRefs[0] && collisionRefs[0].type === 'array' && Array.isArray(collisionRefs[0].value)) {
+        collisionRefs = collisionRefs[0].value;
+      }
+      const collision_shapes = [];
+      for (const ref of collisionRefs) {
+        let cd = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          cd = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          cd = ref;
+        }
+        if (cd) {
+          const sz = cd.size;
+          const off = cd.offset;
+          collision_shapes.push({
+            shape_type: _str(cd.shape_type) || 'box',
+            size: sz && typeof sz === 'object' ? { x: _num(sz.x), y: _num(sz.y), z: _num(sz.z) } : { x: 1, y: 1, z: 1 },
+            offset: off && typeof off === 'object' ? { x: _num(off.x), y: _num(off.y), z: _num(off.z) } : { x: 0, y: 0, z: 0 },
+          });
+        }
+      }
+
+      model.placeable = { meshes, collision_shapes };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -263,6 +309,41 @@ export class PropDefModel {
       };
     }
 
+    if (d.harvestable && typeof d.harvestable === 'object') {
+      // Resolve nested sub_resource refs in yields array. file-discovery
+      // only resolves top-level refs; array elements stay as
+      // { type: 'sub_resource', value: 'yield_id' } and need lookup.
+      const subMap = new Map();
+      if (entry.raw && entry.raw.subResources) {
+        for (const sub of entry.raw.subResources) {
+          const subData = {};
+          for (const [k, v] of sub.fields) subData[k] = v.value;
+          subMap.set(sub.id, subData);
+        }
+      }
+      const yieldRefs = Array.isArray(d.harvestable.yields) ? d.harvestable.yields : [];
+      const yields = [];
+      for (const ref of yieldRefs) {
+        let yd = null;
+        if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+          yd = subMap.get(ref.value) || null;
+        } else if (ref && typeof ref === 'object') {
+          yd = ref; // already resolved
+        }
+        if (yd) {
+          yields.push({
+            item_id: _str(yd.item_id),
+            amount: _num(yd.amount) || 1,
+            conditions: _strArray(yd.conditions),
+          });
+        }
+      }
+      model.harvestable = {
+        yields: yields,
+        respawn_conditions: _strArray(d.harvestable.respawn_conditions),
+      };
+    }
+
     // --- Legacy fields (still in .tres during transition, kept for round-trip) ---
     model.gather_time = _num(d.gather_time);
     model.gather_amount = _num(d.gather_amount);
@@ -270,7 +351,6 @@ export class PropDefModel {
     model.respawn_time = _num(d.respawn_time);
     model.yield_type = _str(d.yield_type);
     model.tool_speed = _dictToObj(d.tool_speed);
-    model.category = _str(d.category);
     model.emits_light = !!d.emits_light;
     model.light_radius = _num(d.light_radius);
     model.is_respawn_point = !!d.is_respawn_point;
@@ -283,17 +363,6 @@ export class PropDefModel {
     return model;
   }
 
-  /**
-   * Get placeholder_color as a CSS hex string (e.g. '#33b233').
-   * @returns {string}
-   */
-  get colorHex() {
-    const c = this.placeholder_color;
-    const r = Math.round((c.r || 0) * 255);
-    const g = Math.round((c.g || 0) * 255);
-    const b = Math.round((c.b || 0) * 255);
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-  }
 }
 
 // ============================================================
@@ -947,6 +1016,215 @@ function _createShapeEditor(fieldId, shape) {
   return wrapper;
 }
 
+// ============================================================
+// Collision Shapes Editor (PlaceableCap.collision_shapes)
+// ============================================================
+
+const COLLISION_SHAPE_TYPES = ['box', 'cylinder', 'sphere'];
+
+// Which size components are relevant per shape type. Helps the UI dim
+// irrelevant inputs so authors don't waste attention on them.
+const COLLISION_SIZE_LABELS = {
+  box:      { x: 'Width',  y: 'Height', z: 'Depth'  },
+  cylinder: { x: 'Radius', y: 'Height', z: '—'      },
+  sphere:   { x: 'Radius', y: '—',      z: '—'      },
+};
+
+/**
+ * Create the collision_shapes editor (list of box/cylinder/sphere entries).
+ * @param {Array<{shape_type:string, size:{x:number,y:number,z:number}, offset:{x:number,y:number,z:number}}>} shapes
+ * @returns {HTMLElement}
+ */
+function _createCollisionShapesEditor(shapes) {
+  const wrapper = document.createElement('div');
+  wrapper.dataset.collisionShapesEditor = '1';
+  wrapper.classList.add('prop-full');
+  wrapper.style.cssText = 'margin-top: 14px; display: flex; flex-direction: column; gap: 8px;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:baseline;justify-content:space-between;';
+  const title = document.createElement('div');
+  title.textContent = 'Collision Shapes';
+  title.classList.add('prop-label');
+  header.appendChild(title);
+  const hint = document.createElement('span');
+  hint.textContent = 'empty = walkthrough prop';
+  hint.style.cssText = 'font-size:11px; color: var(--text-secondary, #888); font-style: italic;';
+  header.appendChild(hint);
+  wrapper.appendChild(header);
+
+  const list = document.createElement('div');
+  list.dataset.collisionShapesList = '1';
+  list.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+  wrapper.appendChild(list);
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+ Add Shape';
+  addBtn.style.cssText = 'align-self:flex-start;padding:4px 10px;font-size:12px;cursor:pointer;';
+  addBtn.addEventListener('click', () => {
+    list.appendChild(_buildCollisionShapeRow({
+      shape_type: 'box',
+      size: { x: 1, y: 1, z: 1 },
+      offset: { x: 0, y: 0, z: 0 },
+    }));
+  });
+  wrapper.appendChild(addBtn);
+
+  for (const s of shapes) {
+    list.appendChild(_buildCollisionShapeRow(s));
+  }
+
+  return wrapper;
+}
+
+function _buildCollisionShapeRow(shape) {
+  const row = document.createElement('div');
+  row.dataset.collisionShapeRow = '1';
+  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border, #444);border-radius:3px;font-size:11px;';
+
+  // Shape type dropdown.
+  const typeSelect = document.createElement('select');
+  typeSelect.dataset.field = 'shape_type';
+  for (const t of COLLISION_SHAPE_TYPES) {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    if (t === shape.shape_type) opt.selected = true;
+    typeSelect.appendChild(opt);
+  }
+  typeSelect.style.cssText = 'font-size:11px;padding:2px 4px;';
+  row.appendChild(typeSelect);
+
+  // Size inputs (x, y, z).
+  const sxLabel = document.createElement('span');
+  const syLabel = document.createElement('span');
+  const szLabel = document.createElement('span');
+  const sx = _numCell('size_x', shape.size.x);
+  const sy = _numCell('size_y', shape.size.y);
+  const sz = _numCell('size_z', shape.size.z);
+  const sizeWrapX = _titledCell(sxLabel, sx);
+  const sizeWrapY = _titledCell(syLabel, sy);
+  const sizeWrapZ = _titledCell(szLabel, sz);
+  row.appendChild(sizeWrapX);
+  row.appendChild(sizeWrapY);
+  row.appendChild(sizeWrapZ);
+
+  // Divider between size and offset.
+  const divider = document.createElement('span');
+  divider.textContent = '·';
+  divider.style.cssText = 'text-align:center;color:var(--text-secondary, #888);';
+  row.appendChild(divider);
+
+  // Offset inputs (x, y, z).
+  const ox = _numCell('offset_x', shape.offset.x);
+  const oy = _numCell('offset_y', shape.offset.y);
+  const oz = _numCell('offset_z', shape.offset.z);
+  row.appendChild(_titledCell(_makeSpan('X'), ox));
+  row.appendChild(_titledCell(_makeSpan('Y'), oy));
+  row.appendChild(_titledCell(_makeSpan('Z'), oz));
+
+  // Remove button.
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = '×';
+  removeBtn.style.cssText = 'padding:2px 6px;font-size:14px;cursor:pointer;line-height:1;';
+  removeBtn.title = 'Remove shape';
+  removeBtn.addEventListener('click', () => row.remove());
+  row.appendChild(removeBtn);
+
+  // Update size labels when type changes.
+  const refreshLabels = () => {
+    const t = typeSelect.value;
+    const labels = COLLISION_SIZE_LABELS[t] || COLLISION_SIZE_LABELS.box;
+    sxLabel.textContent = labels.x;
+    syLabel.textContent = labels.y;
+    szLabel.textContent = labels.z;
+    sy.disabled = labels.y === '—';
+    sz.disabled = labels.z === '—';
+  };
+  typeSelect.addEventListener('change', refreshLabels);
+  refreshLabels();
+
+  return row;
+}
+
+function _numCell(fieldName, value) {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.value = String(value);
+  input.dataset.field = fieldName;
+  input.style.cssText = 'width:100%;padding:2px 4px;font-size:11px;';
+  return input;
+}
+
+function _titledCell(labelSpan, input) {
+  const w = document.createElement('label');
+  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary, #888);';
+  labelSpan.style.cssText = 'font-size:10px;';
+  w.appendChild(labelSpan);
+  w.appendChild(input);
+  return w;
+}
+
+function _makeSpan(text) {
+  const s = document.createElement('span');
+  s.textContent = text;
+  return s;
+}
+
+/**
+ * Collect MeshVariant entries from the form.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{scene:string, scale:number, rotation_offset_deg:number}>}
+ */
+function _collectMeshVariantsData(formElement) {
+  const list = formElement.querySelector('[data-mesh-variants-list]');
+  if (!list) return [];
+  const rows = list.querySelectorAll('[data-mesh-variant-row]');
+  const out = [];
+  for (const row of rows) {
+    const scaleEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="scale"]'));
+    const rotEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="rotation_offset_deg"]'));
+    const scale = scaleEl ? parseFloat(scaleEl.value) : 1;
+    const rot = rotEl ? parseFloat(rotEl.value) : 0;
+    out.push({
+      scene: /** @type {HTMLElement} */ (row).dataset.meshScene || '',
+      scale: Number.isFinite(scale) ? scale : 1,
+      rotation_offset_deg: Number.isFinite(rot) ? rot : 0,
+    });
+  }
+  return out;
+}
+
+/**
+ * Collect collision_shapes from the form.
+ * @param {HTMLFormElement} formElement
+ * @returns {Array<{shape_type:string, size:{x:number,y:number,z:number}, offset:{x:number,y:number,z:number}}>}
+ */
+function _collectCollisionShapesData(formElement) {
+  const wrapper = formElement.querySelector('[data-collision-shapes-editor]');
+  if (!wrapper) return [];
+  const rows = wrapper.querySelectorAll('[data-collision-shape-row]');
+  const out = [];
+  for (const row of rows) {
+    const typeEl = /** @type {HTMLSelectElement} */ (row.querySelector('select[data-field="shape_type"]'));
+    const getNum = (field) => {
+      const el = /** @type {HTMLInputElement} */ (row.querySelector(`input[data-field="${field}"]`));
+      if (!el) return 0;
+      const v = parseFloat(el.value);
+      return Number.isFinite(v) ? v : 0;
+    };
+    out.push({
+      shape_type: typeEl ? typeEl.value : 'box',
+      size: { x: getNum('size_x'), y: getNum('size_y'), z: getNum('size_z') },
+      offset: { x: getNum('offset_x'), y: getNum('offset_y'), z: getNum('offset_z') },
+    });
+  }
+  return out;
+}
+
 /**
  * Collect shape data from a shape grid editor.
  * @param {HTMLFormElement} formElement - The form containing the editor
@@ -1025,6 +1303,167 @@ function _createStringArrayEditor(name, labelText, values) {
   wrapper.appendChild(addBtn);
 
   return wrapper;
+}
+
+/** Harvestable condition types. */
+const _CONDITION_TYPES = [
+  'tool', 'time_elapsed', 'time_of_day', 'skill', 'weather', 'season', 'biome',
+];
+
+/**
+ * Render the Harvestable capability editor into the given panel.
+ * Shows a list of yields (each with item_id/amount/conditions) and
+ * a list of respawn conditions.
+ * @param {HTMLElement} panel
+ * @param {{yields: Array<{item_id: string, amount: number, conditions: string[]}>, respawn_conditions: string[]}|null} cap
+ */
+function _addHarvestableEditor(panel, cap) {
+  const currentYields = cap && Array.isArray(cap.yields) ? cap.yields : [];
+  const currentRespawn = cap && Array.isArray(cap.respawn_conditions) ? cap.respawn_conditions : [];
+
+  // --- Yields section ---
+  const yieldsLabel = document.createElement('div');
+  yieldsLabel.textContent = 'Yields';
+  yieldsLabel.classList.add('prop-label');
+  yieldsLabel.style.gridColumn = '1 / -1';
+  panel.appendChild(yieldsLabel);
+
+  const yieldsContainer = document.createElement('div');
+  yieldsContainer.dataset.harvestableYields = '1';
+  yieldsContainer.style.cssText = 'grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px;';
+  panel.appendChild(yieldsContainer);
+
+  function _addConditionRow(container, type, value) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin-left:16px;';
+    row.dataset.conditionRow = '1';
+
+    const typeSel = document.createElement('select');
+    typeSel.dataset.conditionType = '1';
+    typeSel.classList.add('prop-input');
+    typeSel.style.cssText = 'flex:0 0 120px;';
+    for (const t of _CONDITION_TYPES) {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (t === type) opt.selected = true;
+      typeSel.appendChild(opt);
+    }
+
+    const valInput = document.createElement('input');
+    valInput.type = 'text';
+    valInput.placeholder = 'value (e.g. cutting_tool, 2_days)';
+    valInput.value = value;
+    valInput.dataset.conditionValue = '1';
+    valInput.classList.add('prop-input');
+    valInput.style.cssText = 'flex:1;';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'X';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(typeSel);
+    row.appendChild(valInput);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  }
+
+  function _addYieldRow(y) {
+    const wrapper = document.createElement('div');
+    wrapper.dataset.harvestYield = '1';
+    wrapper.style.cssText = 'border:1px solid var(--border);border-radius:3px;padding:6px;background:var(--bg-tertiary);';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
+
+    const itemInput = document.createElement('input');
+    itemInput.type = 'text';
+    itemInput.placeholder = 'item_id (e.g. plant_fiber)';
+    itemInput.value = y.item_id || '';
+    itemInput.dataset.yieldItemId = '1';
+    itemInput.classList.add('prop-input');
+    itemInput.style.cssText = 'flex:1;';
+
+    const amountInput = document.createElement('input');
+    amountInput.type = 'number';
+    amountInput.step = '1';
+    amountInput.min = '1';
+    amountInput.value = Number.isFinite(y.amount) ? y.amount : 1;
+    amountInput.dataset.yieldAmount = '1';
+    amountInput.classList.add('prop-input');
+    amountInput.style.cssText = 'flex:0 0 80px;';
+
+    const removeYieldBtn = document.createElement('button');
+    removeYieldBtn.textContent = 'Remove Yield';
+    removeYieldBtn.type = 'button';
+    removeYieldBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeYieldBtn.addEventListener('click', () => wrapper.remove());
+
+    header.appendChild(itemInput);
+    header.appendChild(amountInput);
+    header.appendChild(removeYieldBtn);
+    wrapper.appendChild(header);
+
+    const condLabel = document.createElement('div');
+    condLabel.textContent = 'Conditions (all must match to yield):';
+    condLabel.style.cssText = 'font-size:11px;color:var(--text-secondary);margin:4px 0 2px 0;';
+    wrapper.appendChild(condLabel);
+
+    const condContainer = document.createElement('div');
+    condContainer.dataset.yieldConditions = '1';
+    condContainer.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+    wrapper.appendChild(condContainer);
+
+    for (const c of (y.conditions || [])) {
+      const [type, ...rest] = String(c).split(':');
+      _addConditionRow(condContainer, type || 'tool', rest.join(':'));
+    }
+
+    const addCondBtn = document.createElement('button');
+    addCondBtn.textContent = '+ Condition';
+    addCondBtn.type = 'button';
+    addCondBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:4px;margin-left:16px;';
+    addCondBtn.addEventListener('click', () => _addConditionRow(condContainer, 'tool', ''));
+    wrapper.appendChild(addCondBtn);
+
+    yieldsContainer.appendChild(wrapper);
+  }
+
+  for (const y of currentYields) _addYieldRow(y);
+
+  const addYieldBtn = document.createElement('button');
+  addYieldBtn.textContent = '+ Add Yield';
+  addYieldBtn.type = 'button';
+  addYieldBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addYieldBtn.addEventListener('click', () => _addYieldRow({ item_id: '', amount: 1, conditions: [] }));
+  panel.appendChild(addYieldBtn);
+
+  // --- Respawn conditions section ---
+  const respawnLabel = document.createElement('div');
+  respawnLabel.textContent = 'Respawn Conditions (empty = never respawns)';
+  respawnLabel.classList.add('prop-label');
+  respawnLabel.style.gridColumn = '1 / -1';
+  respawnLabel.style.marginTop = '8px';
+  panel.appendChild(respawnLabel);
+
+  const respawnContainer = document.createElement('div');
+  respawnContainer.dataset.harvestableRespawn = '1';
+  respawnContainer.style.cssText = 'grid-column: 1 / -1; display:flex; flex-direction:column; gap:3px;';
+  panel.appendChild(respawnContainer);
+
+  for (const c of currentRespawn) {
+    const [type, ...rest] = String(c).split(':');
+    _addConditionRow(respawnContainer, type || 'time_elapsed', rest.join(':'));
+  }
+
+  const addRespawnBtn = document.createElement('button');
+  addRespawnBtn.textContent = '+ Respawn Condition';
+  addRespawnBtn.type = 'button';
+  addRespawnBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addRespawnBtn.addEventListener('click', () => _addConditionRow(respawnContainer, 'time_elapsed', ''));
+  panel.appendChild(addRespawnBtn);
 }
 
 /** Mode int value -> label used by the movement editor dropdown. */
@@ -1286,7 +1725,7 @@ export function renderPropEditor(container, options) {
 
     for (const [filename, entry] of ProjectContext.files.props) {
       const model = PropDefModel.fromEntry(filename, entry);
-      allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.prop_category, propOrigin: model.prop_origin });
+      allProps.push({ id: model.id, displayName: model.display_name || model.id, isPropDef: true, propCat: model.category, propOrigin: model.prop_origin });
     }
     allProps.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
@@ -1323,7 +1762,7 @@ export function renderPropEditor(container, options) {
           editingModel = new PropDefModel();
           editingModel.id = prop.id;
           editingModel.display_name = prop.id;
-          editingModel.prop_category = prop.propCat;
+          editingModel.category = prop.propCat;
           editingModel.prop_origin = prop.propOrigin;
         }
         initialJson = JSON.stringify(_modelToPlain(editingModel));
@@ -1570,16 +2009,9 @@ export function renderPropEditor(container, options) {
     _addOriginCategoryFields(grid, model);
 
     // -- Capabilities --
+    // Capabilities with visual impact (Portable, Placeable, Harvestable)
+    // live in the right-side Visuals tab. Data-only capabilities stay here.
     _addSeparator(grid, 'Capabilities');
-
-    // PORTABLE
-    grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
-      panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
-    }));
-
-    // PLACEABLE
-    grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
-    }));
 
     // CONTAINER
     grid.appendChild(_createCapabilityPanel('container', 'Container', model.container, (panel) => {
@@ -1662,7 +2094,9 @@ export function renderPropEditor(container, options) {
   }
 
   /**
-   * Render the Visuals tab content.
+   * Render the Visuals tab content — capabilities that affect what the prop
+   * looks like or how it interacts in the world live here so the author can
+   * see visual + data side-by-side with the left column.
    * @param {HTMLElement} body
    * @param {PropDefModel} model
    * @returns {void}
@@ -1671,17 +2105,144 @@ export function renderPropEditor(container, options) {
     const grid = document.createElement('div');
     grid.classList.add('prop-grid');
 
-    _addField(grid, 'Mesh Type', 'placeholder_mesh_type', 'text', model.placeholder_mesh_type);
-    grid.appendChild(_createKvEditor('placeholder_params', model.placeholder_params));
-    grid.appendChild(_createColorField('Color', 'placeholder_color', model.placeholder_color));
+    _addSeparator(grid, 'Visual Capabilities');
 
-    // -- Depleted separator --
-    _addSeparator(grid, 'Depleted');
-    _addField(grid, 'Depleted Mesh', 'placeholder_depleted_type', 'text', model.placeholder_depleted_type);
-    grid.appendChild(_createKvEditor('placeholder_depleted_params', model.placeholder_depleted_params));
-    grid.appendChild(_createColorField('Depleted Color', 'placeholder_depleted_color', model.placeholder_depleted_color));
+    // PORTABLE — inventory shape + (future) inventory icon/thumb.
+    grid.appendChild(_createCapabilityPanel('portable', 'Portable', model.portable, (panel) => {
+      panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
+    }));
+
+    // PLACEABLE — world mesh variants + collision shape composition.
+    grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
+      const meshes = model.placeable && Array.isArray(model.placeable.meshes)
+        ? model.placeable.meshes
+        : [];
+      if (meshes.length > 0) {
+        panel.appendChild(_renderMeshVariantList(meshes));
+      } else {
+        const empty = document.createElement('div');
+        empty.textContent = 'No mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
+        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
+        panel.appendChild(empty);
+      }
+
+      const collisionShapes = model.placeable && Array.isArray(model.placeable.collision_shapes)
+        ? model.placeable.collision_shapes
+        : [];
+      panel.appendChild(_createCollisionShapesEditor(collisionShapes));
+    }));
+
+    // HARVESTABLE — yields + respawn conditions + (future) depleted meshes.
+    grid.appendChild(_createCapabilityPanel('harvestable', 'Harvestable', model.harvestable, (panel) => {
+      _addHarvestableEditor(panel, model.harvestable);
+      const depletedNote = document.createElement('div');
+      depletedNote.textContent = 'Depleted mesh variants (harvestable.depleted_meshes) will appear here once authored in .tres.';
+      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--muted, #888); font-size: 11px; font-style: italic; border-left: 2px solid var(--border, #444); padding-left: 10px;';
+      panel.appendChild(depletedNote);
+    }));
 
     body.appendChild(grid);
+  }
+
+  /**
+   * Render an editable list of MeshVariant entries — reference.png preview,
+   * scene path, scale and rotation offset inputs. Scene editing still goes
+   * through the .tres for now (no file picker yet).
+   * @param {Array<{scene: string, scale: number, rotation_offset_deg: number}>} meshes
+   * @returns {HTMLElement}
+   */
+  function _renderMeshVariantList(meshes) {
+    const list = document.createElement('div');
+    list.dataset.meshVariantsList = '1';
+    list.classList.add('prop-full');
+    list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+
+    meshes.forEach((mv, idx) => {
+      list.appendChild(_buildMeshVariantRow(mv, idx));
+    });
+
+    return list;
+  }
+
+  function _buildMeshVariantRow(mv, idx) {
+    const row = document.createElement('div');
+    row.dataset.meshVariantRow = '1';
+    row.dataset.meshScene = mv.scene || '';
+    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
+
+    // Preview image (resolve mesh_vN.glb → reference_vN.png in same dir).
+    // Falls back to a visible placeholder when the server can't serve the PNG.
+    const previewPath = (mv.scene || '').replace(/^res:\/\//, '').replace(/mesh_(v\d+)\.glb$/, 'reference_$1.png');
+    const img = document.createElement('img');
+    if (previewPath) img.src = `/api/asset?path=${encodeURIComponent(previewPath)}`;
+    img.alt = `variant ${idx + 1}`;
+    img.style.cssText = 'width: 96px; height: 96px; object-fit: cover; border-radius: 3px; background: #222; flex-shrink: 0;';
+    img.onerror = () => {
+      img.replaceWith(_buildPreviewFallback(idx + 1));
+    };
+    row.appendChild(img);
+
+    const info = document.createElement('div');
+    info.style.cssText = 'flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px;';
+
+    // Header row: variant label + remove button.
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px;';
+    const label = document.createElement('div');
+    label.textContent = `Variant ${idx + 1}`;
+    label.style.cssText = 'font-weight: 600;';
+    header.appendChild(label);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove variant';
+    removeBtn.style.cssText = 'padding: 2px 8px; font-size: 14px; cursor: pointer; line-height: 1;';
+    removeBtn.addEventListener('click', () => row.remove());
+    header.appendChild(removeBtn);
+    info.appendChild(header);
+
+    const scenePath = document.createElement('code');
+    scenePath.textContent = mv.scene || '(no scene)';
+    scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    info.appendChild(scenePath);
+
+    // Editable scale + rotation offset inputs.
+    const xform = document.createElement('div');
+    xform.style.cssText = 'display: grid; grid-template-columns: auto 70px auto 70px; gap: 6px; align-items: center;';
+    const scaleLabel = document.createElement('span');
+    scaleLabel.textContent = 'scale';
+    scaleLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    const scaleInput = document.createElement('input');
+    scaleInput.type = 'number';
+    scaleInput.step = 'any';
+    scaleInput.value = String(mv.scale);
+    scaleInput.dataset.field = 'scale';
+    scaleInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    const rotLabel = document.createElement('span');
+    rotLabel.textContent = 'rotation°';
+    rotLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    const rotInput = document.createElement('input');
+    rotInput.type = 'number';
+    rotInput.step = 'any';
+    rotInput.value = String(mv.rotation_offset_deg);
+    rotInput.dataset.field = 'rotation_offset_deg';
+    rotInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    xform.appendChild(scaleLabel);
+    xform.appendChild(scaleInput);
+    xform.appendChild(rotLabel);
+    xform.appendChild(rotInput);
+    info.appendChild(xform);
+
+    row.appendChild(info);
+    return row;
+  }
+
+  function _buildPreviewFallback(variantNumber) {
+    const fallback = document.createElement('div');
+    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--muted, #888); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border, #444);';
+    fallback.textContent = `no preview\nv${variantNumber}`;
+    fallback.style.whiteSpace = 'pre';
+    return fallback;
   }
 
   // --- Wire up events ---
@@ -1701,7 +2262,7 @@ export function renderPropEditor(container, options) {
     // If the editor is locked to a category (tab-per-category), pre-set it
     // so the new prop joins the current tab's list immediately.
     if (lockedCategory) {
-      editingModel.prop_category = lockedCategory;
+      editingModel.category = lockedCategory;
       // STUFF defaults to non-natural origin (per Andre, 2026-04-10)
       if (lockedCategory === 'stuff') {
         editingModel.prop_origin = 'crafted';
@@ -1921,6 +2482,33 @@ const _NON_NATURAL_CAT_NAMES = CATEGORIES.filter((_, i) => !NATURAL_CATEGORIES.h
  * @returns {void}
  */
 function _addOriginCategoryFields(grid, model) {
+  // Category
+  const catLabel = document.createElement('label');
+  catLabel.textContent = 'Category';
+  catLabel.classList.add('prop-label');
+  const catSelect = document.createElement('select');
+  catSelect.name = 'category';
+  catSelect.classList.add('prop-input');
+  grid.appendChild(catLabel);
+  grid.appendChild(catSelect);
+
+  // Rarity
+  const rarityLabel = document.createElement('label');
+  rarityLabel.textContent = 'Rarity';
+  rarityLabel.classList.add('prop-label');
+  const raritySelect = document.createElement('select');
+  raritySelect.name = 'rarity';
+  raritySelect.classList.add('prop-input');
+  for (const r of RARITIES) {
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = r;
+    if (r === model.rarity) opt.selected = true;
+    raritySelect.appendChild(opt);
+  }
+  grid.appendChild(rarityLabel);
+  grid.appendChild(raritySelect);
+
   // Origin
   const originLabel = document.createElement('label');
   originLabel.textContent = 'Origin';
@@ -1937,16 +2525,6 @@ function _addOriginCategoryFields(grid, model) {
   }
   grid.appendChild(originLabel);
   grid.appendChild(originSelect);
-
-  // Category
-  const catLabel = document.createElement('label');
-  catLabel.textContent = 'Prop Category';
-  catLabel.classList.add('prop-label');
-  const catSelect = document.createElement('select');
-  catSelect.name = 'prop_category';
-  catSelect.classList.add('prop-input');
-  grid.appendChild(catLabel);
-  grid.appendChild(catSelect);
 
   /** Rebuild category options based on origin. */
   function _refreshCategories(preserveValue) {
@@ -1966,7 +2544,7 @@ function _addOriginCategoryFields(grid, model) {
     }
   }
 
-  _refreshCategories(model.prop_category);
+  _refreshCategories(model.category);
   originSelect.addEventListener('change', () => _refreshCategories());
 }
 
@@ -2034,7 +2612,8 @@ export function collectPropFormData(formElement) {
   model.tags = _collectTagData(formElement);
 
   // Placement defaults (editor-only)
-  model.prop_category = val('prop_category') || 'plant';
+  model.category = val('category') || '';
+  model.rarity = val('rarity') || 'common';
   model.prop_origin = val('prop_origin') || 'natural';
   // tool_slot and max_stack preserved from model (not in form)
 
@@ -2044,7 +2623,10 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
-    model.placeable = {};
+    model.placeable = {
+      meshes: _collectMeshVariantsData(formElement),
+      collision_shapes: _collectCollisionShapesData(formElement),
+    };
   }
 
   if (isChecked('cap_container_enabled')) {
@@ -2123,13 +2705,38 @@ export function collectPropFormData(formElement) {
     };
   }
 
-  // Visuals
-  model.placeholder_mesh_type = val('placeholder_mesh_type').trim();
-  model.placeholder_params = _collectKvData(formElement, 'placeholder_params');
-  model.placeholder_color = _hexToColor(val('placeholder_color'), floatVal('placeholder_color_alpha'));
-  model.placeholder_depleted_type = val('placeholder_depleted_type').trim();
-  model.placeholder_depleted_params = _collectKvData(formElement, 'placeholder_depleted_params');
-  model.placeholder_depleted_color = _hexToColor(val('placeholder_depleted_color'), floatVal('placeholder_depleted_color_alpha'));
+  if (isChecked('cap_harvestable_enabled')) {
+    const yields = [];
+    const yieldEls = formElement.querySelectorAll('[data-harvest-yield]');
+    for (const yEl of yieldEls) {
+      const itemInput = yEl.querySelector('[data-yield-item-id]');
+      const amountInput = yEl.querySelector('[data-yield-amount]');
+      const conditions = [];
+      const condRows = yEl.querySelectorAll('[data-yield-conditions] [data-condition-row]');
+      for (const r of condRows) {
+        const t = r.querySelector('[data-condition-type]');
+        const v = r.querySelector('[data-condition-value]');
+        const tv = (t && t.value || '').trim();
+        const vv = (v && v.value || '').trim();
+        if (tv && vv) conditions.push(`${tv}:${vv}`);
+      }
+      yields.push({
+        item_id: (itemInput && itemInput.value || '').trim(),
+        amount: parseInt(amountInput && amountInput.value, 10) || 1,
+        conditions,
+      });
+    }
+    const respawnConds = [];
+    const respawnRows = formElement.querySelectorAll('[data-harvestable-respawn] [data-condition-row]');
+    for (const r of respawnRows) {
+      const t = r.querySelector('[data-condition-type]');
+      const v = r.querySelector('[data-condition-value]');
+      const tv = (t && t.value || '').trim();
+      const vv = (v && v.value || '').trim();
+      if (tv && vv) respawnConds.push(`${tv}:${vv}`);
+    }
+    model.harvestable = { yields, respawn_conditions: respawnConds };
+  }
 
   // Legacy footprint preserved from model (no longer in form UI)
 
@@ -2362,15 +2969,11 @@ function _modelToPlain(model) {
     combat: model.combat,
     behavior: model.behavior,
     spawnable: model.spawnable,
+    harvestable: model.harvestable,
     max_stack: model.max_stack,
-    placeholder_mesh_type: model.placeholder_mesh_type,
-    placeholder_params: model.placeholder_params,
-    placeholder_color: model.placeholder_color,
-    placeholder_depleted_type: model.placeholder_depleted_type,
-    placeholder_depleted_params: model.placeholder_depleted_params,
-    placeholder_depleted_color: model.placeholder_depleted_color,
     footprint: model.footprint,
-    prop_category: model.prop_category,
+    category: model.category,
+    rarity: model.rarity,
     prop_origin: model.prop_origin,
     tool_slot: model.tool_slot,
   };
@@ -2409,6 +3012,10 @@ export function propModelToRaw(model) {
 
   /** @type {Array<{capName: string, scriptPath: string, subId: string, subFields: Map<string, import('./tres-parser.js').TresValue>}>} */
   const capEntries = [];
+  // Nested sub_resources referenced BY caps (e.g. CollisionShape and HarvestYield).
+  // Emitted before the cap sub_resources so they're available when the caps
+  // reference them.
+  const extraSubResources = [];
 
   // Build capability entries in the order defined by the GDScript schema
   if (model.portable) {
@@ -2432,10 +3039,75 @@ export function propModelToRaw(model) {
   if (model.placeable) {
     const eid = `${extId}_placeable`;
     extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="${eid}"]`);
+    extId++;
+
+    // Mesh variants (Array[Resource] of MeshVariant sub_resources).
+    const meshes = Array.isArray(model.placeable.meshes) ? model.placeable.meshes : [];
+    let meshVarExtId = null;
+    if (meshes.length > 0) {
+      meshVarExtId = `${extId}_mesh_variant`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="${meshVarExtId}"]`);
+      extId++;
+    }
+    const meshSubIds = [];
+    for (let i = 0; i < meshes.length; i++) {
+      const mv = meshes[i];
+      // One ext_resource per unique scene path (PackedScene reference).
+      let sceneExtId = null;
+      if (mv.scene) {
+        sceneExtId = `${extId}_mesh_scene_${i + 1}`;
+        extResources.push(`[ext_resource type="PackedScene" path="${mv.scene}" id="${sceneExtId}"]`);
+        extId++;
+      }
+      const mvSubId = `mesh_variant_${i + 1}`;
+      meshSubIds.push(mvSubId);
+      const mvFields = new Map();
+      mvFields.set('script', { type: 'ext_resource', value: `ExtResource("${meshVarExtId}")` });
+      if (sceneExtId) {
+        mvFields.set('scene', { type: 'ext_resource', value: `ExtResource("${sceneExtId}")` });
+      }
+      mvFields.set('scale', { type: 'float', value: Number.isFinite(mv.scale) ? mv.scale : 1.0 });
+      mvFields.set('rotation_offset_deg', { type: 'float', value: Number.isFinite(mv.rotation_offset_deg) ? mv.rotation_offset_deg : 0.0 });
+      extraSubResources.push({ type: 'Resource', id: mvSubId, fields: mvFields });
+    }
+
+    // Collision shapes (Array[Resource] of CollisionShape sub_resources).
+    const collShapes = Array.isArray(model.placeable.collision_shapes) ? model.placeable.collision_shapes : [];
+    let collShapeExtId = null;
+    if (collShapes.length > 0) {
+      collShapeExtId = `${extId}_collision_shape`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/collision_shape.gd" id="${collShapeExtId}"]`);
+      extId++;
+    }
+    const collSubIds = [];
+    for (let i = 0; i < collShapes.length; i++) {
+      const cs = collShapes[i];
+      const csSubId = `collision_shape_${i + 1}`;
+      collSubIds.push(csSubId);
+      const csFields = new Map();
+      csFields.set('script', { type: 'ext_resource', value: `ExtResource("${collShapeExtId}")` });
+      csFields.set('shape_type', { type: 'stringname', value: cs.shape_type || 'box' });
+      csFields.set('size', { type: 'vector3', value: { x: cs.size.x, y: cs.size.y, z: cs.size.z } });
+      csFields.set('offset', { type: 'vector3', value: { x: cs.offset.x, y: cs.offset.y, z: cs.offset.z } });
+      extraSubResources.push({ type: 'Resource', id: csSubId, fields: csFields });
+    }
+
     const subFields = new Map();
     subFields.set('script', { type: 'ext_resource', value: `ExtResource("${eid}")` });
+    if (meshSubIds.length > 0) {
+      subFields.set('meshes', {
+        type: 'array', elementType: 'Resource',
+        value: meshSubIds.map(id => ({ type: 'sub_resource', value: id })),
+      });
+    }
+    if (collSubIds.length > 0) {
+      subFields.set('collision_shapes', {
+        type: 'array', elementType: 'Resource',
+        value: collSubIds.map(id => ({ type: 'sub_resource', value: id })),
+      });
+    }
+
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
-    extId++;
   }
 
   if (model.container) {
@@ -2620,7 +3292,60 @@ export function propModelToRaw(model) {
     extId++;
   }
 
-  // Build sub_resources
+  // Harvestable cap — emits the cap itself PLUS one sub_resource per yield.
+  // Yield sub_resources are pushed to subResources directly (before the main
+  // loop below) so they appear before the harvestable cap that references them.
+  /** @type {Array<{id: string, fields: Map<string, any>}>} */
+  if (model.harvestable) {
+    const harvExtId = `${extId}_harvestable`;
+    extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="${harvExtId}"]`);
+    extId++;
+
+    const yields = Array.isArray(model.harvestable.yields) ? model.harvestable.yields : [];
+    let yieldExtId = null;
+    if (yields.length > 0) {
+      yieldExtId = `${extId}_harvest_yield`;
+      extResources.push(`[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="${yieldExtId}"]`);
+      extId++;
+    }
+
+    const yieldSubIds = [];
+    for (let i = 0; i < yields.length; i++) {
+      const y = yields[i];
+      const yieldSubId = `harvest_yield_${i + 1}`;
+      yieldSubIds.push(yieldSubId);
+
+      const yieldFields = new Map();
+      yieldFields.set('script', { type: 'ext_resource', value: `ExtResource("${yieldExtId}")` });
+      yieldFields.set('item_id', { type: 'stringname', value: y.item_id || '' });
+      yieldFields.set('amount', { type: 'int', value: Number.isFinite(y.amount) ? y.amount : 1 });
+      yieldFields.set('conditions', {
+        type: 'array', elementType: null,
+        value: (Array.isArray(y.conditions) ? y.conditions : []).map(c => ({ type: 'stringname', value: c })),
+      });
+
+      extraSubResources.push({ type: 'Resource', id: yieldSubId, fields: yieldFields });
+    }
+
+    const harvSubFields = new Map();
+    harvSubFields.set('script', { type: 'ext_resource', value: `ExtResource("${harvExtId}")` });
+    harvSubFields.set('yields', {
+      type: 'array', elementType: 'HarvestYield',
+      value: yieldSubIds.map(id => ({ type: 'sub_resource', value: id })),
+    });
+    const respawnConds = Array.isArray(model.harvestable.respawn_conditions) ? model.harvestable.respawn_conditions : [];
+    harvSubFields.set('respawn_conditions', {
+      type: 'array', elementType: null,
+      value: respawnConds.map(c => ({ type: 'stringname', value: c })),
+    });
+    capEntries.push({ capName: 'harvestable', subId: 'harvestable_1', subFields: harvSubFields });
+  }
+
+  // Build sub_resources: yields come first (so harvestable can reference them),
+  // then capability sub_resources in definition order.
+  for (const sub of extraSubResources) {
+    subResources.push(sub);
+  }
   for (const cap of capEntries) {
     subResources.push({ type: 'Resource', id: cap.subId, fields: cap.subFields });
   }
@@ -2644,7 +3369,11 @@ export function propModelToRaw(model) {
   if (model.short_description) fields.set('short_description', { type: 'string', value: model.short_description });
   if (model.long_description) fields.set('long_description', { type: 'string', value: model.long_description });
 
-  // Tags
+  // Classification (fixed fields, not tags)
+  if (model.category) fields.set('category', { type: 'stringname', value: model.category });
+  if (model.rarity) fields.set('rarity', { type: 'stringname', value: model.rarity });
+
+  // Tags (attribute labels only — not category/rarity)
   if (model.tags && model.tags.length > 0) {
     fields.set('tags', {
       type: 'array', elementType: null,
@@ -2692,16 +3421,6 @@ export function propModelToRaw(model) {
   if (model.light_radius > 0) fields.set('light_radius', { type: 'int', value: model.light_radius });
   if (model.is_respawn_point) fields.set('is_respawn_point', { type: 'bool', value: true });
   if (model.is_crafting_station) fields.set('is_crafting_station', { type: 'bool', value: true });
-  if (model.category) fields.set('category', { type: 'stringname', value: model.category });
-  if (model.prop_category) fields.set('prop_category', { type: 'int', value: CATEGORY_TO_INT[model.prop_category] ?? 0 });
-
-  // Placeholder fields
-  fields.set('placeholder_mesh_type', { type: 'stringname', value: model.placeholder_mesh_type });
-  fields.set('placeholder_params', _objToTresDict(model.placeholder_params, 'string', 'float'));
-  fields.set('placeholder_color', _colorToTresValue(model.placeholder_color));
-  fields.set('placeholder_depleted_type', { type: 'stringname', value: model.placeholder_depleted_type });
-  fields.set('placeholder_depleted_params', _objToTresDict(model.placeholder_depleted_params, 'string', 'float'));
-  fields.set('placeholder_depleted_color', _colorToTresValue(model.placeholder_depleted_color));
 
   // Preserve any fields from the original .tres the editor doesn't yet
   // understand (e.g. `mesh`, `depleted_mesh`, `material` asset references).
@@ -2713,8 +3432,8 @@ export function propModelToRaw(model) {
   // survive from the old raw.
   const MANAGED_FIELDS = new Set([
     'portable', 'placeable', 'container', 'light', 'movable', 'station', 'catalogable',
-    'endurance', 'movement', 'combat', 'behavior', 'spawnable',
-    'category', 'footprint',
+    'endurance', 'movement', 'combat', 'behavior', 'spawnable', 'harvestable',
+    'category', 'rarity', 'footprint', 'prop_category',
   ]);
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [key, value] of model._raw.resourceFields) {
@@ -2726,6 +3445,39 @@ export function propModelToRaw(model) {
 
   raw.resourceFields = fields;
   return raw;
+}
+
+/**
+ * Resolve an ExtResource reference (e.g. "ExtResource(\"7_mesh_v1\")") or
+ * a raw `{ type: 'ext_resource', value: id }` TresValue to the `path`
+ * attribute from the corresponding [ext_resource ...] header line in the
+ * raw .tres. Returns the empty string if the reference can't be resolved.
+ * @param {string|{type:string,value:string}|null|undefined} ref
+ * @param {import('./tres-parser.js').TresFile|null|undefined} rawFile
+ * @returns {string}
+ */
+function _resolveExtResourcePath(ref, rawFile) {
+  let id = '';
+  if (!ref) return '';
+  if (typeof ref === 'string') {
+    // Match ExtResource("id") or plain id.
+    const m = ref.match(/ExtResource\(\s*"([^"]+)"\s*\)/);
+    id = m ? m[1] : ref;
+  } else if (typeof ref === 'object' && ref.type === 'ext_resource') {
+    const v = typeof ref.value === 'string' ? ref.value : '';
+    const m = v.match(/ExtResource\(\s*"([^"]+)"\s*\)/);
+    id = m ? m[1] : v;
+  }
+  if (!id || !rawFile || !Array.isArray(rawFile.extResources)) return '';
+  for (const line of rawFile.extResources) {
+    if (typeof line !== 'string') continue;
+    const lineMatch = line.match(/id\s*=\s*"([^"]+)"/);
+    if (lineMatch && lineMatch[1] === id) {
+      const pathMatch = line.match(/path\s*=\s*"([^"]+)"/);
+      if (pathMatch) return pathMatch[1];
+    }
+  }
+  return '';
 }
 
 /**

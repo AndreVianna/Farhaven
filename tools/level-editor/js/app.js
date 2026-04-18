@@ -731,23 +731,16 @@ function initializeAfterLoad() {
   }
   console.log(`Biome color map built — ${biomeColorMap.size} entries.`);
 
-  // Build prop color map from loaded .tres data (stored in files.props)
+  // Build prop color map from category (placeholder_color was removed in favor
+  // of real meshes + reference PNGs; category-tinted icons are a pragmatic
+  // fallback until the map view shows thumbnails directly).
   propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.props) {
-    const colorField = entry.raw.resourceFields.get('placeholder_color');
-    if (colorField && colorField.type === 'color') {
-      const propName = filename.replace('.tres', '');
-      const c = colorField.value;
-      const r = Math.round(c.r * 255);
-      const g = Math.round(c.g * 255);
-      const b = Math.round(c.b * 255);
-      propColorMap.set(propName, `rgb(${r},${g},${b})`);
-      console.log(`  Prop color: "${propName}" -> rgb(${r},${g},${b})`);
-    } else {
-      console.warn(`  Prop "${filename}" has no valid placeholder_color field.`);
-    }
+    const propName = filename.replace('.tres', '');
+    const category = entry.data && entry.data.category ? String(entry.data.category) : '';
+    propColorMap.set(propName, _colorForPropCategory(category));
   }
-  console.log(`Prop color map built — ${propColorMap.size} entries.`);
+  console.log(`Prop color map built — ${propColorMap.size} entries (category-tinted).`);
 
   // Load first map into grid
   const firstMap = ProjectContext.files.maps.entries().next();
@@ -976,15 +969,28 @@ function _rebuildColorMaps() {
 
   propColorMap.clear();
   for (const [filename, entry] of ProjectContext.files.props) {
-    const colorField = entry.raw && entry.raw.resourceFields.get('placeholder_color');
-    if (colorField && colorField.type === 'color') {
-      const propName = filename.replace('.tres', '');
-      const c = colorField.value;
-      const r = Math.round(c.r * 255);
-      const g = Math.round(c.g * 255);
-      const b = Math.round(c.b * 255);
-      propColorMap.set(propName, `rgb(${r},${g},${b})`);
-    }
+    const propName = filename.replace('.tres', '');
+    const category = entry.data && entry.data.category ? String(entry.data.category) : '';
+    propColorMap.set(propName, _colorForPropCategory(category));
+  }
+}
+
+/**
+ * Fallback color for a prop on the map view, keyed by its category.
+ * Used until the map palette displays reference thumbnails directly.
+ * @param {string} category
+ * @returns {string}
+ */
+function _colorForPropCategory(category) {
+  switch (String(category || '').toLowerCase()) {
+    case 'plant': return 'rgb(110, 160, 80)';
+    case 'mineral': return 'rgb(130, 115, 95)';
+    case 'animal': return 'rgb(180, 90, 80)';
+    case 'fungi': return 'rgb(150, 90, 170)';
+    case 'ooze': return 'rgb(90, 160, 150)';
+    case 'liquid': return 'rgb(70, 120, 180)';
+    case 'structure': return 'rgb(120, 120, 140)';
+    default: return 'rgb(130, 130, 130)';
   }
 }
 
@@ -1249,9 +1255,8 @@ function _initPropPalette() {
       // Only show placeable props on the map
       if (!d.placeable) continue;
 
-      // Read prop_category (int) and convert to category name
-      const catInt = d.prop_category != null ? Number(d.prop_category) : 0;
-      const resCat = CATEGORIES[catInt] || 'plant';
+      // Read category (StringName field)
+      const resCat = (typeof d.category === 'string' && d.category) ? d.category : 'plant';
       if (!showCats.includes(resCat)) continue;
 
       // Read origin (int) and convert to origin name

@@ -1,7 +1,19 @@
 class_name PropDef extends Gear
 
+# --- Classification ---
+## Primary category for grouping and UI tabs.
+## Values: &"plant" | &"mineral" | &"animal" | &"fungi" | &"ooze" | &"liquid"
+##       | &"stuff" | &"structure" | &"equipment" | &"vehicle" | &"storage"
+@export var category: StringName = &""
+
+## Rarity tier for spawn frequency and catalog display.
+## Values: &"common" | &"uncommon" | &"rare"
+@export var rarity: StringName = &"common"
+
 # --- Tags ---
-## Free-form labels (e.g. &"SOURCE", &"WOOD", &"BURNABLE.log", &"CONSUMABLE.edible").
+## Free-form attribute labels (e.g. &"resource_source", &"food_source",
+## &"hazard", &"decoration", &"defensive", &"near_water").
+## Category and rarity are NOT tags — they live in the dedicated fields above.
 @export var tags: Array[StringName] = []
 
 # --- Capabilities ---
@@ -18,6 +30,7 @@ class_name PropDef extends Gear
 @export var behavior: BehaviorCap = null
 @export var spawnable: SpawnableCap = null
 @export var wearable: WearableCap = null
+@export var harvestable: HarvestableCap = null
 
 # --- Inventory ---
 ## Temporary — kept during transition, will be replaced by PORTABLE.weight in task-049.
@@ -58,25 +71,19 @@ class_name PropDef extends Gear
 
 # --- Legacy fields (DEPRECATED — replaced by capabilities/tags; kept for backward compat) ---
 # DEPRECATED in task-053: remove when all callers migrate to capabilities/tags.
-@export var category: StringName = &"prop"  # DEPRECATED: use capabilities + tags
+# NOTE: legacy `category: StringName = &"prop"` removed — replaced by the
+# classification `category` field at the top of the class.
 @export var prop_category: int = 0  # DEPRECATED: use capabilities
 @export var emits_light: bool = false  # DEPRECATED: use light != null (LightCap)
 @export var light_radius: int = 0  # DEPRECATED: use light.radius (LightCap)
 @export var is_respawn_point: bool = false  # DEPRECATED: use station cap with "respawn" tag
 @export var is_crafting_station: bool = false  # DEPRECATED: use station cap with "craft" tag
 
-# --- Visual: Real assets (override placeholders when set) ---
+# --- Visual: Real assets ---
+## Legacy single-mesh paths. Prefer PlaceableCap.meshes + HarvestableCap.depleted_meshes.
 @export var mesh: Mesh
 @export var depleted_mesh: Mesh
 @export var material: Material
-
-# --- Visual: Placeholders (used when mesh is null) ---
-@export var placeholder_mesh_type: StringName = &"cube"  # cube, cylinder, sphere, octahedron, prism, box
-@export var placeholder_params: Dictionary = {}  # e.g. {"half_size": 0.35} or {"radius": 0.2, "height": 0.8}
-@export var placeholder_color: Color = Color.WHITE
-@export var placeholder_depleted_type: StringName = &"cube"
-@export var placeholder_depleted_params: Dictionary = {}
-@export var placeholder_depleted_color: Color = Color.GRAY
 
 
 ## Returns true if the named capability is present (non-null) on this PropDef.
@@ -94,6 +101,7 @@ func has_capability(cap_name: StringName) -> bool:
 		&"behavior": return behavior != null
 		&"spawnable": return spawnable != null
 		&"wearable": return wearable != null
+		&"harvestable": return harvestable != null
 	return false
 
 

@@ -1722,6 +1722,55 @@ test('PropDefModel — fromEntry null capabilities when not present', () => {
   assert(model.combat === null, 'combat should be null');
   assert(model.behavior === null, 'behavior should be null');
   assert(model.spawnable === null, 'spawnable should be null');
+  assert(model.harvestable === null, 'harvestable should be null');
+});
+
+test('PropDefModel — category and rarity fields roundtrip', () => {
+  const entry = _makePropEntry({ category: 'plant', rarity: 'uncommon' });
+  const model = PropDefModel.fromEntry('P00001.tres', entry);
+  assert(model.category === 'plant', 'category parsed');
+  assert(model.rarity === 'uncommon', 'rarity parsed');
+
+  // Also verify that missing rarity defaults to 'common'
+  const entry2 = _makePropEntry({ category: 'mineral' });
+  const model2 = PropDefModel.fromEntry('P01001.tres', entry2);
+  assert(model2.category === 'mineral', 'category mineral');
+  assert(model2.rarity === 'common', 'rarity defaults to common when absent');
+});
+
+test('PropDefModel — fromEntry reads harvestable capability with yields', () => {
+  // Build a raw TresFile that has harvest yield sub_resources
+  const entry = _makePropEntry({ harvestable: { yields: [
+    { type: 'sub_resource', value: 'yield_fiber' },
+    { type: 'sub_resource', value: 'yield_wood' },
+  ], respawn_conditions: ['time_elapsed:2_days', 'season:wet'] } });
+
+  // Add corresponding sub_resources to raw
+  const sub1 = { type: 'Resource', id: 'yield_fiber', fields: new Map([
+    ['item_id', { type: 'stringname', value: 'plant_fiber' }],
+    ['amount', { type: 'int', value: 1 }],
+    ['conditions', { type: 'array', elementType: null, value: [] }],
+  ])};
+  const sub2 = { type: 'Resource', id: 'yield_wood', fields: new Map([
+    ['item_id', { type: 'stringname', value: 'wood_stalk' }],
+    ['amount', { type: 'int', value: 3 }],
+    ['conditions', { type: 'array', elementType: null, value: [
+      { type: 'stringname', value: 'tool:cutting_tool' },
+    ] }],
+  ])};
+  entry.raw.subResources = [sub1, sub2];
+
+  const model = PropDefModel.fromEntry('P00001.tres', entry);
+  assert(model.harvestable !== null, 'harvestable should be present');
+  assert(model.harvestable.yields.length === 2, 'two yields parsed');
+  assert(model.harvestable.yields[0].item_id === 'plant_fiber', 'first yield item_id');
+  assert(model.harvestable.yields[0].amount === 1, 'first yield amount');
+  assert(model.harvestable.yields[0].conditions.length === 0, 'first yield no conditions');
+  assert(model.harvestable.yields[1].item_id === 'wood_stalk', 'second yield item_id');
+  assert(model.harvestable.yields[1].amount === 3, 'second yield amount');
+  assert(model.harvestable.yields[1].conditions[0] === 'tool:cutting_tool', 'second yield condition');
+  assert(model.harvestable.respawn_conditions.includes('time_elapsed:2_days'), 'respawn time_elapsed');
+  assert(model.harvestable.respawn_conditions.includes('season:wet'), 'respawn season');
 });
 
 // ============================================================
@@ -2339,13 +2388,8 @@ function _makePropEntry(overrides) {
     display_name: 'Test Prop',
     max_stack: 99,
     origin: 0,
-    prop_category: 0,
-    placeholder_mesh_type: 'cube',
-    placeholder_params: new Map(),
-    placeholder_color: { r: 1, g: 1, b: 1, a: 1 },
-    placeholder_depleted_type: 'cube',
-    placeholder_depleted_params: new Map(),
-    placeholder_depleted_color: { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+    category: 'plant',
+    rarity: 'common',
     ...overrides,
   };
   const raw = new TresFile();
@@ -2365,10 +2409,6 @@ function _makeModel(overrides) {
   model.id = 'Ptest';
   model.display_name = 'Test Prop';
   model.max_stack = 99;
-  model.placeholder_mesh_type = 'cube';
-  model.placeholder_color = { r: 1, g: 1, b: 1, a: 1 };
-  model.placeholder_depleted_type = 'cube';
-  model.placeholder_depleted_color = { r: 0.5, g: 0.5, b: 0.5, a: 1 };
   for (const [key, val] of Object.entries(overrides)) {
     model[key] = val;
   }

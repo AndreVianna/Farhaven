@@ -13,6 +13,7 @@
 | 2026-04-04 | Sub-hex grid system: resources use discrete (sq, sr) positions, structures use footprints, canvas shows sub-hex overlay for placement tools. Updated F1, F2, F5, F7, §9. | design change |
 | 2026-04-04 | Unified props model: resources/structures/anomalies collapsed into single props[] array per tile. Separate placement fields replaced with per-prop {type, sq, sr, category, rotation?, footprint?}. Commands unified to AddProp/EditProp/DeleteProp. Spawn stays in grid.meta. Updated F1, F2, F5, F7, §9. | design change |
 | 2026-04-07 | Engine sync (delivery-004b): sub-hex scale corrected to 1/(cos(30°)*5), elevation range expanded to -32000..+32000, prop categories expanded to 10 (Plant/Mineral/Animal/Fungi/Liquid/Ooze/Structure/Vehicle/Equipment/Storage), origin field added (Natural/Crafted/Human/NativeAlien/Unknown), anomaly removed as category, spawn facing angle added. Single Prop tool replaces 3 separate tools. Updated F1, F2, F3, F4, F5, F7, §9. | engine sync |
+| 2026-04-17 | Added F16 (Editor Design System & Master-Detail IA) and AC12 (redesign acceptance) — Port Claude Design prototype. Feature spec in features/feature-010-editor-redesign/. | feature-010 approval |
 
 ## 1. Objective
 
@@ -171,6 +172,15 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - On .tres import: validate format, check for required sections (`[gd_resource]`, `[resource]`), warn on unrecognized properties
 - Graceful error handling: malformed files never crash the editor — show actionable error message with line/field info where possible
 
+### F16: Editor Design System & Master-Detail IA
+- Adopt a cohesive design token system (colors, typography, spacing) matching the Claude Design prototype at `temp/Farhaven Editor/` — all hard-coded colors and fonts migrated to CSS custom properties
+- Sidebar organized hierarchically by domain: WORLD (Maps, Biomes, Events) / PROPS (Flora, Fauna, Minerals, Structures, Equipment, Storage) / SYSTEMS (Recipes) / NARRATIVE (Journal, Cutscenes) / PROJECT (Settings) — with per-item counts and dirty badges
+- Data editors use a master-detail layout: sidebar + master list column (with search and A–Z sort) + detail form column (existing form logic preserved) + preview column (metadata + cross-references)
+- Cross-reference panels computed from project data: biome shows "Used In" (chapters and tile counts), prop shows "Drop Sources" (biomes that include it in their resource_table)
+- Ship in phases: (1) tokens + typography, (2) sidebar reorg, (3) master-detail layout, (4) cross-refs. Each phase leaves the editor fully functional.
+- Preserve all form logic from F10 (Resource Editor), F11 (Biome Editor), F14 (Unsaved Changes) unchanged — the redesign is visual/structural only, not a data-layer rewrite
+- **Full specification:** `features/feature-010-editor-redesign/SPEC.md`
+
 ## 6. Non-Functional Requirements
 
 - **Performance:** No hard tile limit. Map shape and size are defined implicitly by the array of hexes and how they connect — no `map_size` field needed. The editor should remain responsive at any practical map size.
@@ -227,6 +237,14 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 
 **AC11: Sub-hex placement** -- Given a prop placer tool active, when hovering a hex, then the 19 sub-hex positions are shown as a grid overlay. Clicking an available sub-hex places the prop there (resource, structure, or anomaly depending on tool mode). Occupied sub-hexes show as blocked. Structure placement previews the footprint before confirming.
 
+**AC12: Redesign — Design system applied** — Given the redesigned editor is loaded, when any control is rendered, then colors/typography/spacing match the `:root` token scale from `editor.css` (no arbitrary literal hex colors or fonts remain in component styles).
+
+**AC13: Redesign — Sidebar IA** — Given the editor loads, when the sidebar renders, then entries are grouped under WORLD / PROPS / SYSTEMS / NARRATIVE / PROJECT headers with per-item counts; existing routes (map, biomes, per-category props) are reachable through the new structure.
+
+**AC14: Redesign — Master-detail** — Given the user opens any data editor, when the layout is rendered, then a master (list + search) / detail (form) / preview (metadata + cross-refs) structure is visible and the form logic from F10/F11/F14 continues to function identically.
+
+**AC15: Redesign — Cross-references** — Given the user selects a biome, when the preview renders, then a "Used In" panel lists referencing chapters with tile counts. Given the user selects a prop, when the preview renders, then a "Drop Sources" panel lists biomes whose resource_table references the prop.
+
 ## 10. Priority
 
 ### Must Have (MVP)
@@ -237,6 +255,9 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Undo/redo
 - .tres read/write with round-trip safety
 
+### Should Have (Post-MVP, high leverage)
+- F16 Editor Design System & Master-Detail IA — ship in 4 phases (tokens, sidebar, master-detail, cross-refs)
+
 ### Stretch Goals (Post-MVP)
 - Multi-chapter tabs
 - Biome auto-paint (zone-based)
@@ -246,3 +267,4 @@ Internal tool only. No external users, no onboarding flow needed. UX can priorit
 - Structure editor tab
 - Catalog editor tab
 - Dark mode
+- Editor redesign nice-to-haves (⌘K palette, status bar, hex preview widget, live Playtest button, runtime tweaks panel) — see feature-010 spec

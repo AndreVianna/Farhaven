@@ -210,7 +210,8 @@ func _draw_slot_overlays() -> void:
 		if def != null:
 			# Equipped: colored disc with alpha so the silhouette bleeds
 			# through — simulates a prop visible through clothing layers.
-			var fill: Color = def.placeholder_color
+			# TODO: use prop thumbnail/icon once the icon system lands.
+			var fill: Color = Color(0.6, 0.6, 0.6)
 			fill.a = OVERLAY_ALPHA
 			draw_circle(pos, SLOT_RADIUS, fill)
 			draw_arc(pos, SLOT_RADIUS, 0.0, TAU, 24, SILHOUETTE_OUTLINE, 1.5)

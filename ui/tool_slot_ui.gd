@@ -73,5 +73,5 @@ func refresh(tool_type: StringName) -> void:
 	if tool_type == &"":
 		_icon_rect.color = Color(0.10, 0.10, 0.12)
 	else:
-		var def: _PropDef = PropRegistry.get_def(tool_type)
-		_icon_rect.color = def.placeholder_color if def != null else DEFAULT_TOOL_COLOR
+		# TODO: use prop thumbnail/icon once the icon system lands.
+		_icon_rect.color = DEFAULT_TOOL_COLOR

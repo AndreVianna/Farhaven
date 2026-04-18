@@ -161,7 +161,8 @@ func test_fly_to_player_no_crash_without_player() -> void:
 
 
 func test_fly_to_player_prop_colors() -> void:
-	# Colors come from PropDef.placeholder_color via PropRegistry, no hardcoded dict.
+	# Each yieldable item must have a registered PropDef (colors are now
+	# derived from the icon system, no longer from placeholder_color).
 	# Verify each yieldable item id has a non-empty PropDef.
 	for item_id: StringName in [&"P00010", &"P00013", &"P00020", &"P00012", &"P00014", &"P00015"]:
 		var def = PropRegistry.get_def(item_id)

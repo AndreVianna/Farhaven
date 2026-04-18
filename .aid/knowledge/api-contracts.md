@@ -56,13 +56,14 @@ This project is a Godot 4.x game (GDScript) with no web APIs, no backend, and no
 - **Key Fields:** `count: int` (runtime state), `max_count: int` (0=unlimited, 1=one-shot, N=limited)
 - **Source:** `scripts/core/event.gd`
 
-### CollisionHelper (added delivery-006a)
+### CollisionHelper (refactored 2026-04-17)
 - **Type:** RefCounted with static methods (not autoload)
-- **Purpose:** Generates CollisionShape3D from PropDef placeholder_mesh_type and placeholder_params. Used by BuildingSystem and StructureRenderer.
+- **Purpose:** Composes CollisionShape3D nodes from an authored `PlaceableCap.collision_shapes: Array[CollisionShape]` resource list. Used by BuildingSystem and StructureRenderer.
 - **Public Method:**
-  - `create_collision_shape(prop_def: Resource) -> CollisionShape3D` -- creates shape matching the prop's placeholder mesh (box, cylinder, sphere, cube, or fallback)
-- **Supported shapes:** cube (BoxShape3D), box (BoxShape3D), cylinder (CylinderShape3D), sphere (SphereShape3D), octahedron/prism (approximated as CylinderShape3D), fallback (small BoxShape3D)
-- **Source:** `scripts/core/collision_helper.gd`
+  - `create_collision_shapes(prop_def: _PropDef) -> Array[CollisionShape3D]` -- returns one CollisionShape3D per entry in PlaceableCap.collision_shapes; returns empty array for walkthrough props (no collision_shapes authored)
+- **Supported shape_type values:** `&"box"` (BoxShape3D), `&"cylinder"` (CylinderShape3D), `&"sphere"` (SphereShape3D). Each authored `CollisionShape` resource has `shape_type`, `size: Vector3`, `offset: Vector3`.
+- **Note:** The old `create_collision_shape()` (singular, placeholder-based) API was removed when `placeholder_*` fields were removed from PropDef.
+- **Source:** `scripts/core/collision_helper.gd`, `scripts/data/capabilities/collision_shape.gd`
 
 ### RecipeRuntime (added delivery-005a)
 - **Type:** Autoload singleton (initialized after DiscoveryWatcher)

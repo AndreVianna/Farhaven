@@ -1,8 +1,13 @@
 class_name TestStructureRenderer
 extends GdUnitTestSuite
 
-## Unit tests for StructureRenderer (task-034).
-## Tests signal-driven rendering of player-placed structures.
+## Unit tests for StructureRenderer.
+## Tests signal-driven rendering of player-placed structures using the
+## authored-mesh + composable-collision API (2026-04 refactor). Tests no
+## longer assert on specific primitive mesh types or placeholder colors,
+## since rendering now pulls meshes from authored PackedScenes (or the
+## legacy def.mesh fallback) and materials are neutral until an icon
+## system lands.
 
 const _StructureRenderer = preload("res://scripts/building/structure_renderer.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
@@ -10,6 +15,7 @@ const _HexTile = preload("res://scripts/hex/hex_tile.gd")
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _PropDef = preload("res://scripts/data/prop_def.gd")
 const _PlaceableCap = preload("res://scripts/data/capabilities/placeable_cap.gd")
+const _CollisionShape = preload("res://scripts/data/capabilities/collision_shape.gd")
 
 
 # ---------------------------------------------------------------------------
@@ -66,21 +72,33 @@ var _registered_defs: Array[StringName] = []
 # ---------------------------------------------------------------------------
 
 
-func _ensure_structure_def(id: StringName, mesh_type: StringName = &"box",
-		params: Dictionary = {}, color: Color = Color.WHITE) -> void:
+func _make_collision_shape(shape_type: StringName, size: Vector3) -> _CollisionShape:
+	var s := _CollisionShape.new()
+	s.shape_type = shape_type
+	s.size = size
+	return s
+
+
+## Registers a structure PropDef with the given collision shapes. The legacy
+## def.mesh = BoxMesh(size.ONE) fallback is always set so the renderer has a
+## mesh to render (PackedScene authoring is infeasible in unit tests).
+func _ensure_structure_def(id: StringName, collision_shapes: Array[Resource] = []) -> void:
 	if PropRegistry.get_def(id) != null:
 		return
 	var def := _PropDef.new()
 	def.id = id
 	def.display_name = String(id)
 	def.tags = [&"STRUCTURE"]
-	def.placeholder_mesh_type = mesh_type
-	def.placeholder_params = params
-	def.placeholder_color = color
-	var pcap := _PlaceableCap.new()
-	def.placeable = pcap
 	def.max_stack = 1
 	def.origin = 1  # CRAFTED
+	# Authored mesh via legacy fallback (tests can't practically author
+	# PackedScenes). The renderer prefers placeable.meshes but falls back
+	# to def.mesh when scene-based authoring is absent.
+	def.mesh = BoxMesh.new()
+	# PlaceableCap with authored collision shapes.
+	var pcap := _PlaceableCap.new()
+	pcap.collision_shapes = collision_shapes
+	def.placeable = pcap
 	PropRegistry._defs[id] = def
 	_registered_defs.append(id)
 
@@ -108,31 +126,19 @@ func _add_structure_prop(tile: Resource, type: StringName,
 func before_test() -> void:
 	_registered_defs.clear()
 
-	# Ensure structure defs exist (matching actual .tres files).
-	_ensure_structure_def(ID_CAMPFIRE, &"cylinder",
-		{"radius": 0.3, "height": 0.15},
-		Color(0.9, 0.4, 0.1, 1.0))
-	_ensure_structure_def(ID_SHELTER, &"box",
-		{"size_x": 1.0, "size_y": 0.6, "size_z": 1.0},
-		Color(0.45, 0.35, 0.2, 1.0))
-	_ensure_structure_def(ID_TORCH, &"cylinder",
-		{"radius": 0.05, "height": 0.5},
-		Color(0.8, 0.6, 0.1, 1.0))
-	_ensure_structure_def(ID_STORAGE_CHEST, &"box",
-		{"size_x": 0.4, "size_y": 0.3, "size_z": 0.3},
-		Color(0.5, 0.35, 0.15, 1.0))
-	_ensure_structure_def(ID_WORKBENCH, &"box",
-		{"size_x": 0.8, "size_y": 0.4, "size_z": 0.5},
-		Color(0.6, 0.4, 0.2, 1.0))
-	_ensure_structure_def(ID_WALL, &"box",
-		{"size_x": 0.8, "size_y": 0.6, "size_z": 0.2},
-		Color(0.5, 0.4, 0.3, 1.0))
+	# Campfire, torch — walkthrough (no collision).
+	_ensure_structure_def(ID_CAMPFIRE)
+	_ensure_structure_def(ID_TORCH)
+	# Wall, workbench, chest, shelter — box collision so StaticBody3D is added.
+	var box_shape: Array[Resource] = [_make_collision_shape(&"box", Vector3.ONE)]
+	_ensure_structure_def(ID_WALL, box_shape)
+	_ensure_structure_def(ID_WORKBENCH, box_shape)
+	_ensure_structure_def(ID_STORAGE_CHEST, box_shape)
+	_ensure_structure_def(ID_SHELTER, box_shape)
 
-	# Create mock grid.
 	_grid = MockGrid.new()
 	add_child(_grid)
 
-	# Create renderer with injected grid.
 	_renderer = _StructureRenderer.new()
 	_renderer.name = "StructureRenderer"
 	_renderer._grid = _grid
@@ -148,13 +154,12 @@ func after_test() -> void:
 		_grid.queue_free()
 	_renderer = null
 	_grid = null
-	# Clean up registered prop defs.
 	for id: StringName in _registered_defs:
 		PropRegistry._defs.erase(id)
 
 
 # ===========================================================================
-# Tests: Initial state
+# Initial state
 # ===========================================================================
 
 
@@ -163,7 +168,7 @@ func test_initial_instance_count_is_zero() -> void:
 
 
 # ===========================================================================
-# Tests: structure_placed creates Node3D child
+# structure_placed creates instance
 # ===========================================================================
 
 
@@ -190,7 +195,8 @@ func test_structure_placed_creates_node3d_child() -> void:
 	assert_bool(node is Node3D).is_true()
 
 
-func test_structure_placed_node_has_mesh_child() -> void:
+func test_placed_node_has_mesh_child_when_collision_authored() -> void:
+	# ID_WALL has a box collision_shape authored → MeshInstance3D + StaticBody3D.
 	var tile := _make_tile()
 	_add_structure_prop(tile, ID_WALL)
 	_grid.set_tile(Vector2i.ZERO, tile)
@@ -198,14 +204,26 @@ func test_structure_placed_node_has_mesh_child() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	# Node has MeshInstance3D + StaticBody3D (with CollisionShape3D) children.
 	assert_int(node.get_child_count()).is_equal(2)
 	assert_bool(node.get_child(0) is MeshInstance3D).is_true()
 	assert_bool(node.get_child(1) is StaticBody3D).is_true()
 
 
+func test_walkthrough_prop_has_no_static_body() -> void:
+	# ID_CAMPFIRE has no collision_shapes authored → walkthrough, only MeshInstance3D.
+	var tile := _make_tile()
+	_add_structure_prop(tile, ID_CAMPFIRE)
+	_grid.set_tile(Vector2i.ZERO, tile)
+
+	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
+
+	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_CAMPFIRE)
+	assert_int(node.get_child_count()).is_equal(1)
+	assert_bool(node.get_child(0) is MeshInstance3D).is_true()
+
+
 # ===========================================================================
-# Tests: structure_destroyed removes instance
+# structure_destroyed removes instance
 # ===========================================================================
 
 
@@ -223,13 +241,12 @@ func test_structure_destroyed_removes_instance() -> void:
 
 
 func test_structure_destroyed_for_nonexistent_is_safe() -> void:
-	# Should not crash when removing something that doesn't exist.
 	_grid.structure_destroyed.emit(Vector2i(5, 5), ID_WALL)
 	assert_int(_renderer.get_instance_count()).is_equal(0)
 
 
 # ===========================================================================
-# Tests: Multiple structures
+# Multiple structures
 # ===========================================================================
 
 
@@ -281,23 +298,11 @@ func test_destroy_one_keeps_others() -> void:
 
 
 # ===========================================================================
-# Tests: Correct mesh types per structure (visual distinction)
+# Collision shape composition — StaticBody3D has one child per authored shape
 # ===========================================================================
 
 
-func test_campfire_uses_cylinder_mesh() -> void:
-	var tile := _make_tile()
-	_add_structure_prop(tile, ID_CAMPFIRE)
-	_grid.set_tile(Vector2i.ZERO, tile)
-
-	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
-
-	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_CAMPFIRE)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	assert_bool(mesh_inst.mesh is CylinderMesh).is_true()
-
-
-func test_wall_uses_box_mesh() -> void:
+func test_single_collision_shape_produces_one_static_body_child() -> void:
 	var tile := _make_tile()
 	_add_structure_prop(tile, ID_WALL)
 	_grid.set_tile(Vector2i.ZERO, tile)
@@ -305,75 +310,33 @@ func test_wall_uses_box_mesh() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	assert_bool(mesh_inst.mesh is BoxMesh).is_true()
+	var static_body: StaticBody3D = node.get_child(1) as StaticBody3D
+	assert_int(static_body.get_child_count()).is_equal(1)
+	assert_bool(static_body.get_child(0) is CollisionShape3D).is_true()
 
 
-func test_torch_uses_cylinder_mesh() -> void:
+func test_composite_collision_produces_multiple_static_body_children() -> void:
+	# Register a prop with two collision shapes.
+	var composite_id: StringName = &"P99901"
+	var shapes: Array[Resource] = [
+		_make_collision_shape(&"box", Vector3.ONE),
+		_make_collision_shape(&"sphere", Vector3(0.3, 0.0, 0.0)),
+	]
+	_ensure_structure_def(composite_id, shapes)
+
 	var tile := _make_tile()
-	_add_structure_prop(tile, ID_TORCH)
+	_add_structure_prop(tile, composite_id)
 	_grid.set_tile(Vector2i.ZERO, tile)
 
-	_grid.structure_placed.emit(Vector2i.ZERO, ID_TORCH)
+	_grid.structure_placed.emit(Vector2i.ZERO, composite_id)
 
-	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_TORCH)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	assert_bool(mesh_inst.mesh is CylinderMesh).is_true()
-
-
-func test_workbench_uses_box_mesh() -> void:
-	var tile := _make_tile()
-	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO)
-	_grid.set_tile(Vector2i.ZERO, tile)
-
-	_grid.structure_placed.emit(Vector2i.ZERO, ID_WORKBENCH)
-
-	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WORKBENCH)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	assert_bool(mesh_inst.mesh is BoxMesh).is_true()
+	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, composite_id)
+	var static_body: StaticBody3D = node.get_child(1) as StaticBody3D
+	assert_int(static_body.get_child_count()).is_equal(2)
 
 
 # ===========================================================================
-# Tests: Material color matches PropDef
-# ===========================================================================
-
-
-func test_campfire_has_correct_color() -> void:
-	var tile := _make_tile()
-	_add_structure_prop(tile, ID_CAMPFIRE)
-	_grid.set_tile(Vector2i.ZERO, tile)
-
-	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
-
-	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_CAMPFIRE)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	var mat: StandardMaterial3D = mesh_inst.material_override as StandardMaterial3D
-	assert_bool(mat != null).is_true()
-	# Campfire color: Color(0.9, 0.4, 0.1, 1.0)
-	assert_float(mat.albedo_color.r).is_equal_approx(0.9, 0.01)
-	assert_float(mat.albedo_color.g).is_equal_approx(0.4, 0.01)
-	assert_float(mat.albedo_color.b).is_equal_approx(0.1, 0.01)
-
-
-func test_wall_has_correct_color() -> void:
-	var tile := _make_tile()
-	_add_structure_prop(tile, ID_WALL)
-	_grid.set_tile(Vector2i.ZERO, tile)
-
-	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
-
-	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	var mesh_inst: MeshInstance3D = node.get_child(0) as MeshInstance3D
-	var mat: StandardMaterial3D = mesh_inst.material_override as StandardMaterial3D
-	assert_bool(mat != null).is_true()
-	# Wall color: Color(0.5, 0.4, 0.3, 1.0)
-	assert_float(mat.albedo_color.r).is_equal_approx(0.5, 0.01)
-	assert_float(mat.albedo_color.g).is_equal_approx(0.4, 0.01)
-	assert_float(mat.albedo_color.b).is_equal_approx(0.3, 0.01)
-
-
-# ===========================================================================
-# Tests: Positioning — sub-hex offset
+# Positioning — sub-hex offset
 # ===========================================================================
 
 
@@ -386,7 +349,6 @@ func test_structure_at_sub_hex_has_ssh_snapped_position() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_TORCH)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_TORCH)
-	# Position should be SSH-snapped from sub-hex offset.
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
 	var sub_offset: Vector2 = _HexMath.sub_axial_to_world(sub_hex)
 	var raw_pos: Vector2 = tile_center + sub_offset
@@ -413,11 +375,12 @@ func test_structure_at_tile_center_uses_ssh_snapped_pos() -> void:
 
 
 # ===========================================================================
-# Tests: Positioning — elevation
+# Positioning — elevation
 # ===========================================================================
 
 
 func test_structure_at_elevated_tile_has_y_offset() -> void:
+	# Default BoxMesh has size (1,1,1) → AABB.position.y = -0.5 → y_offset = 0.5.
 	_grid._terrain_y = 2.5
 	var tile := _make_tile(Vector2i.ZERO, 5)
 	_add_structure_prop(tile, ID_WALL)
@@ -426,8 +389,7 @@ func test_structure_at_elevated_tile_has_y_offset() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WALL)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WALL)
-	# Y should be terrain_y (2.5) + y_offset (size_y/2 = 0.3).
-	assert_float(node.position.y).is_equal_approx(2.5 + 0.3, 0.01)
+	assert_float(node.position.y).is_equal_approx(2.5 + 0.5, 0.01)
 
 
 func test_structure_at_zero_elevation() -> void:
@@ -439,17 +401,16 @@ func test_structure_at_zero_elevation() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_CAMPFIRE)
-	# Campfire: cylinder height 0.15, y_offset = 0.075.
-	assert_float(node.position.y).is_equal_approx(0.075, 0.01)
+	# BoxMesh default size(1,1,1) → y_offset = 0.5.
+	assert_float(node.position.y).is_equal_approx(0.5, 0.01)
 
 
 # ===========================================================================
-# Tests: Multi-hex structures render at anchor position
+# Multi-hex structure anchor position
 # ===========================================================================
 
 
 func test_workbench_renders_at_anchor_ssh_snapped() -> void:
-	# Workbench anchored at sub_hex (0,0), rendered at SSH-snapped position.
 	var tile := _make_tile()
 	_add_structure_prop(tile, ID_WORKBENCH, Vector2i.ZERO)
 	_grid.set_tile(Vector2i.ZERO, tile)
@@ -457,7 +418,6 @@ func test_workbench_renders_at_anchor_ssh_snapped() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_WORKBENCH)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_WORKBENCH)
-	# Anchor is at sub_hex (0,0), SSH snap of tile center should be near tile center.
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
 	var ssh_result: Dictionary = _HexMath.snap_to_ssh(tile_center, Vector2i.ZERO)
 	var snapped: Vector2 = ssh_result["snapped_world"]
@@ -466,7 +426,6 @@ func test_workbench_renders_at_anchor_ssh_snapped() -> void:
 
 
 func test_shelter_renders_at_anchor_ssh_snapped() -> void:
-	# Shelter anchored at sub_hex (1,1).
 	var tile := _make_tile()
 	var anchor := Vector2i(1, 1)
 	_add_structure_prop(tile, ID_SHELTER, anchor)
@@ -475,7 +434,6 @@ func test_shelter_renders_at_anchor_ssh_snapped() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_SHELTER)
 
 	var node: Node3D = _renderer.get_instance(Vector2i.ZERO, ID_SHELTER)
-	# Position should be SSH-snapped from anchor sub_hex (1,1).
 	var tile_center: Vector2 = _HexMath.axial_to_world(Vector2i.ZERO)
 	var sub_offset: Vector2 = _HexMath.sub_axial_to_world(anchor)
 	var raw_pos: Vector2 = tile_center + sub_offset
@@ -486,22 +444,19 @@ func test_shelter_renders_at_anchor_ssh_snapped() -> void:
 
 
 # ===========================================================================
-# Tests: Signal-driven only (no per-frame queries)
+# Signal-driven only
 # ===========================================================================
 
 
 func test_no_instances_without_signals() -> void:
-	# Even with tiles in the grid, no instances until signals are emitted.
 	var tile := _make_tile()
 	_add_structure_prop(tile, ID_CAMPFIRE)
 	_grid.set_tile(Vector2i.ZERO, tile)
-
-	# No signal emitted — should have zero instances.
 	assert_int(_renderer.get_instance_count()).is_equal(0)
 
 
 # ===========================================================================
-# Tests: Idempotent placement
+# Idempotent placement
 # ===========================================================================
 
 
@@ -513,12 +468,11 @@ func test_duplicate_placed_signal_replaces_instance() -> void:
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
 	_grid.structure_placed.emit(Vector2i.ZERO, ID_CAMPFIRE)
 
-	# Should still have exactly 1 instance (replaced, not duplicated).
 	assert_int(_renderer.get_instance_count()).is_equal(1)
 
 
 # ===========================================================================
-# Tests: Key format
+# Key format
 # ===========================================================================
 
 
@@ -531,13 +485,11 @@ func test_key_format_includes_coords_and_type() -> void:
 
 	var keys: Array = _renderer.get_all_keys()
 	assert_int(keys.size()).is_equal(1)
-	# Key format: "q,r:sq,sr:TYPE" — extended to include sub-hex coordinates
-	# so multiple structures of the same type on one tile are preserved.
 	assert_str(keys[0]).is_equal("3,-2:0,0:P00103")
 
 
 # ===========================================================================
-# Tests: All 6 structure types render
+# All 6 structure types render
 # ===========================================================================
 
 
@@ -556,3 +508,31 @@ func test_all_six_structure_types_render() -> void:
 	assert_int(_renderer.get_instance_count()).is_equal(6)
 	for i in range(types.size()):
 		assert_bool(_renderer.has_instance(Vector2i(i, 0), types[i])).is_true()
+
+
+# ===========================================================================
+# Props without meshes are skipped
+# ===========================================================================
+
+
+func test_prop_without_mesh_is_not_rendered() -> void:
+	# Register a def with no mesh and no placeable.meshes — renderer should skip.
+	var meshless_id: StringName = &"P99902"
+	var def := _PropDef.new()
+	def.id = meshless_id
+	def.display_name = String(meshless_id)
+	def.tags = [&"STRUCTURE"]
+	def.max_stack = 1
+	def.origin = 1
+	def.placeable = _PlaceableCap.new()
+	# No def.mesh, no placeable.meshes.
+	PropRegistry._defs[meshless_id] = def
+	_registered_defs.append(meshless_id)
+
+	var tile := _make_tile()
+	_add_structure_prop(tile, meshless_id)
+	_grid.set_tile(Vector2i.ZERO, tile)
+
+	_grid.structure_placed.emit(Vector2i.ZERO, meshless_id)
+
+	assert_int(_renderer.get_instance_count()).is_equal(0)

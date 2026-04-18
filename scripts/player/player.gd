@@ -48,6 +48,28 @@ var _joystick_magnitude: float = 0.0
 var _buffered_dir: Vector2 = Vector2.ZERO
 var _buffered_magnitude: float = 0.0
 var _model: Node3D  # PlayerModel child
+var _anim_player: AnimationPlayer  # Under PlayerModel/HeroMesh (imported .glb)
+
+## Animation names available in the main AnimationPlayer after merging.
+## Merged from the .glb files below into the default AnimationLibrary.
+const _ANIM_IDLE: StringName = &"idle"
+const _ANIM_WALKING: StringName = &"walking"
+const _ANIM_RUNNING: StringName = &"running"
+const _ANIM_SIT: StringName = &"sit_cross_legged"
+
+## Per-animation .glb paths. The base .glb instanced in player.tscn already
+## carries one of these (walking); the others are loaded at _ready and
+## their animation tracks are merged into the main AnimationPlayer so all
+## poses share the same skeleton and can transition with blend_time.
+const _ANIM_FILES: Dictionary = {
+	_ANIM_IDLE: "res://assets/hero/animations/idle.glb",
+	_ANIM_WALKING: "res://assets/hero/animations/walking.glb",
+	_ANIM_RUNNING: "res://assets/hero/animations/running.glb",
+	_ANIM_SIT: "res://assets/hero/animations/sit_cross_legged.glb",
+}
+
+## Transition duration (seconds) between move-state animations.
+const _ANIM_BLEND_TIME: float = 0.2
 var _jump_tween: Tween
 var _snap_tween: Tween
 var _was_moving: bool = false
@@ -60,11 +82,108 @@ func _ready() -> void:
 	_grid.map_generated.connect(_on_map_generated)
 	_connect_player_input()
 	_model = get_node_or_null("PlayerModel")
+	_discover_animation_player()
 	# Camera is a sibling under World (not a child of Player).
 	if _camera == null:
 		var world: Node = get_parent()
 		if world != null:
 			_camera = world.get_node_or_null("Camera3D")
+
+
+## Find the AnimationPlayer inside the imported hero .glb and merge all
+## extra animations from the sibling .glb files so the hero can transition
+## between idle/walking/running/sitting without swapping scene nodes.
+func _discover_animation_player() -> void:
+	if _model == null:
+		return
+	_anim_player = _find_anim_player_recursive(_model)
+	if _anim_player == null:
+		return
+	_merge_extra_animations()
+	# Start in the IDLE pose on spawn so nothing T-poses on frame 0.
+	if _anim_player.has_animation(_ANIM_IDLE):
+		_anim_player.play(_ANIM_IDLE)
+
+
+func _find_anim_player_recursive(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found: AnimationPlayer = _find_anim_player_recursive(child)
+		if found != null:
+			return found
+	return null
+
+
+## Load each animation .glb, extract its animation track, and add it to the
+## main AnimationPlayer under a stable name (idle/walking/running/...).
+## All four .glbs were generated from the same Meshy biped, so the skeleton
+## paths inside each Animation match the main rig and the tracks replay
+## correctly on this player's skeleton.
+func _merge_extra_animations() -> void:
+	if _anim_player == null:
+		return
+	var lib: AnimationLibrary = _anim_player.get_animation_library("")
+	if lib == null:
+		lib = AnimationLibrary.new()
+		_anim_player.add_animation_library("", lib)
+
+	for anim_name: StringName in _ANIM_FILES:
+		if lib.has_animation(anim_name):
+			_apply_loop_mode(lib.get_animation(anim_name), anim_name)
+			continue
+		var path: String = _ANIM_FILES[anim_name]
+		var scn: PackedScene = load(path) as PackedScene
+		if scn == null:
+			push_warning("Player: could not load animation scene: %s" % path)
+			continue
+		var inst: Node = scn.instantiate()
+		var other: AnimationPlayer = _find_anim_player_recursive(inst)
+		if other != null:
+			# Pull the first animation available from any library the .glb
+			# shipped with — Godot's .glb importer may place the track in
+			# either the default library ("") or a named one.
+			var source_list: PackedStringArray = other.get_animation_list()
+			if source_list.size() > 0:
+				var source_anim: Animation = other.get_animation(source_list[0])
+				if source_anim != null:
+					var dup: Animation = source_anim.duplicate(true)
+					_apply_loop_mode(dup, anim_name)
+					lib.add_animation(anim_name, dup)
+		inst.queue_free()
+
+
+func _apply_loop_mode(anim: Animation, anim_name: StringName) -> void:
+	if anim == null:
+		return
+	if anim_name == _ANIM_SIT:
+		anim.loop_mode = Animation.LOOP_NONE
+	else:
+		anim.loop_mode = Animation.LOOP_LINEAR
+
+
+## Drive the AnimationPlayer from move_state. Called every frame from _process.
+## Uses blend_time so idle↔walking transitions are smooth instead of snapping.
+func _update_animation_for_state() -> void:
+	if _anim_player == null:
+		return
+	var target: StringName = _anim_walk_target_for_state()
+	if target == &"" or not _anim_player.has_animation(target):
+		return
+	if _anim_player.current_animation != String(target):
+		_anim_player.play(target, _ANIM_BLEND_TIME)
+
+
+func _anim_walk_target_for_state() -> StringName:
+	match move_state:
+		MoveState.WALKING:
+			return _ANIM_WALKING
+		MoveState.JUMPING:
+			# No jump animation yet — keep walking so the transition to
+			# landing doesn't snap to idle mid-air.
+			return _ANIM_WALKING
+		_:
+			return _ANIM_IDLE
 
 
 func get_inventory() -> _Inventory:
@@ -176,6 +295,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if move_state == MoveState.WALKING:
 		_process_walking(delta)
+	_update_animation_for_state()
 
 
 ## Snap the player's world position to the given tile center.

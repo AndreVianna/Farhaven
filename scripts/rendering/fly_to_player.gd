@@ -69,10 +69,8 @@ func _create_sprite(prop_type: StringName) -> MeshInstance3D:
 	mesh_instance.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
-	# Use the gathered item's color (yield) so the sphere matches what the player receives.
-	var yield_id: StringName = PropRegistry.get_yield_type(prop_type)
-	var def: _PropDef = PropRegistry.get_def(yield_id)
-	mat.albedo_color = def.placeholder_color if def != null else DEFAULT_COLOR
+	# TODO: tint by yield type once the icon system lands. For now a neutral color.
+	mat.albedo_color = DEFAULT_COLOR
 	mat.emission_enabled = true
 	mat.emission = mat.albedo_color
 	mat.emission_energy_multiplier = 2.0
