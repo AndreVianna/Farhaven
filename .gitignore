@@ -27,3 +27,11 @@ reports/
 #Claude
 .claude/worktrees/
 **/*.local.json
+
+# Secrets — never commit credentials even during local dev.
+.env
+.env.*
+*.key
+*.pem
+secrets/
+secrets.*

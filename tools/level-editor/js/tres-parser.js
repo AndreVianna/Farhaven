@@ -318,9 +318,13 @@ export class TresParser {
     if (s === 'true') return { type: 'bool', value: true };
     if (s === 'false') return { type: 'bool', value: false };
 
-    // String: "..."
+    // String: "..." — unescape Godot's backslash sequences.
+    // Godot writes \", \n, \t, \\ (and others) when a string contains
+    // those characters. Previously the parser sliced off the quotes
+    // and left the escapes verbatim, which corrupted any display_name
+    // or description with a quote or real newline on round-trip.
     if (s.startsWith('"') && s.endsWith('"')) {
-      return { type: 'string', value: s.slice(1, -1) };
+      return { type: 'string', value: TresParser._unescapeString(s.slice(1, -1)) };
     }
 
     // Dict: { ... }
@@ -576,9 +580,9 @@ export class TresParser {
   static serializeValue(tv) {
     switch (tv.type) {
       case 'stringname':
-        return '&"' + tv.value + '"';
+        return '&"' + TresParser._escapeString(tv.value) + '"';
       case 'string':
-        return '"' + tv.value + '"';
+        return '"' + TresParser._escapeString(tv.value) + '"';
       case 'int':
         return String(tv.value);
       case 'float':
@@ -626,6 +630,53 @@ export class TresParser {
       return s + '.0';
     }
     return s;
+  }
+
+  /**
+   * Escape a string for embedding in a Godot .tres double-quoted literal.
+   * Mirrors Godot's own writer: \\, \", \n, \t, \r. Any character outside
+   * those stays verbatim (Godot accepts UTF-8 in .tres files directly).
+   * @param {string} str
+   * @returns {string}
+   */
+  static _escapeString(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+  }
+
+  /**
+   * Reverse of _escapeString — unescape the sequences Godot emits in
+   * double-quoted .tres string literals. Unknown sequences preserve
+   * the backslash (defensive — won't silently drop data).
+   * @param {string} str
+   * @returns {string}
+   */
+  static _unescapeString(str) {
+    if (typeof str !== 'string' || str.indexOf('\\') === -1) return str;
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i];
+      if (ch !== '\\' || i === str.length - 1) {
+        out += ch;
+        continue;
+      }
+      const next = str[i + 1];
+      switch (next) {
+        case '\\': out += '\\'; break;
+        case '"':  out += '"'; break;
+        case 'n':  out += '\n'; break;
+        case 'r':  out += '\r'; break;
+        case 't':  out += '\t'; break;
+        default:   out += '\\' + next; break;
+      }
+      i++;
+    }
+    return out;
   }
 
   /**

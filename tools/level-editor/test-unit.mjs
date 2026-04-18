@@ -309,6 +309,42 @@ test('TresParser — Vector3 rejects non-numeric components', () => {
   assert(v.type !== 'vector3', 'non-numeric Vector3 should not parse as vector3');
 });
 
+test('TresParser — String round-trip with embedded quote', () => {
+  // Godot stores "" as \" — round-trip must preserve the literal quote.
+  const parsed = TresParser.parseValue('"he said \\"hi\\""');
+  assert(parsed.type === 'string', 'type should be string');
+  assert(parsed.value === 'he said "hi"',
+    'value should have unescaped quote, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"he said \\"hi\\""',
+    'serialized should re-escape quote, got: ' + serialized);
+});
+
+test('TresParser — String round-trip with newline', () => {
+  const parsed = TresParser.parseValue('"line 1\\nline 2"');
+  assert(parsed.value === 'line 1\nline 2',
+    'value should have real newline, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"line 1\\nline 2"',
+    'serialized should re-escape newline, got: ' + serialized);
+});
+
+test('TresParser — String round-trip with backslash', () => {
+  const parsed = TresParser.parseValue('"path\\\\to\\\\file"');
+  assert(parsed.value === 'path\\to\\file',
+    'value should have single backslashes, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"path\\\\to\\\\file"',
+    'serialized should re-escape backslashes, got: ' + serialized);
+});
+
+test('TresParser — String with no escapes passes through unchanged', () => {
+  const parsed = TresParser.parseValue('"plain text"');
+  assert(parsed.value === 'plain text', 'value should be plain');
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"plain text"', 'serialized should be verbatim');
+});
+
 test('TresParser — parseValue ExtResource', () => {
   const v = TresParser.parseValue('ExtResource("1_script")');
   assert(v.type === 'ext_resource', 'type should be ext_resource');
