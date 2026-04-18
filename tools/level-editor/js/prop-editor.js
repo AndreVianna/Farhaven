@@ -1056,7 +1056,7 @@ function _createCollisionShapesEditor(shapes) {
   header.appendChild(title);
   const hint = document.createElement('span');
   hint.textContent = 'empty = walkthrough prop';
-  hint.style.cssText = 'font-size:11px; color: var(--text-secondary, #888); font-style: italic;';
+  hint.style.cssText = 'font-size:11px; color: var(--text-secondary); font-style: italic;';
   header.appendChild(hint);
   wrapper.appendChild(header);
 
@@ -1088,7 +1088,7 @@ function _createCollisionShapesEditor(shapes) {
 function _buildCollisionShapeRow(shape) {
   const row = document.createElement('div');
   row.dataset.collisionShapeRow = '1';
-  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border, #444);border-radius:3px;font-size:11px;';
+  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:3px;font-size:11px;';
 
   // Shape type dropdown.
   const typeSelect = document.createElement('select');
@@ -1100,7 +1100,7 @@ function _buildCollisionShapeRow(shape) {
     if (t === shape.shape_type) opt.selected = true;
     typeSelect.appendChild(opt);
   }
-  typeSelect.style.cssText = 'font-size:11px;padding:2px 4px;';
+  typeSelect.classList.add('prop-input');
   row.appendChild(typeSelect);
 
   // Size inputs (x, y, z).
@@ -1120,7 +1120,7 @@ function _buildCollisionShapeRow(shape) {
   // Divider between size and offset.
   const divider = document.createElement('span');
   divider.textContent = '·';
-  divider.style.cssText = 'text-align:center;color:var(--text-secondary, #888);';
+  divider.style.cssText = 'text-align:center;color:var(--text-secondary);';
   row.appendChild(divider);
 
   // Offset inputs (x, y, z).
@@ -1162,13 +1162,13 @@ function _numCell(fieldName, value) {
   input.step = 'any';
   input.value = String(value);
   input.dataset.field = fieldName;
-  input.style.cssText = 'width:100%;padding:2px 4px;font-size:11px;';
+  input.classList.add('prop-input');
   return input;
 }
 
 function _titledCell(labelSpan, input) {
   const w = document.createElement('label');
-  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary, #888);';
+  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary);';
   labelSpan.style.cssText = 'font-size:10px;';
   w.appendChild(labelSpan);
   w.appendChild(input);
@@ -2126,7 +2126,7 @@ export function renderPropEditor(container, options) {
       } else {
         const empty = document.createElement('div');
         empty.textContent = 'No mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
-        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
+        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border); border-radius: 4px; color: var(--text-secondary); font-size: 12px;';
         panel.appendChild(empty);
       }
 
@@ -2141,7 +2141,7 @@ export function renderPropEditor(container, options) {
       _addHarvestableEditor(panel, model.harvestable);
       const depletedNote = document.createElement('div');
       depletedNote.textContent = 'Depleted mesh variants (harvestable.depleted_meshes) will appear here once authored in .tres.';
-      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--muted, #888); font-size: 11px; font-style: italic; border-left: 2px solid var(--border, #444); padding-left: 10px;';
+      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--text-secondary); font-size: 11px; font-style: italic; border-left: 2px solid var(--border); padding-left: 10px;';
       panel.appendChild(depletedNote);
     }));
 
@@ -2178,10 +2178,10 @@ export function renderPropEditor(container, options) {
     row.style.cssText = 'display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;';
     const label = document.createElement('span');
     label.textContent = 'Preset';
-    label.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    label.style.cssText = 'font-size: 11px; color: var(--text-secondary);';
     const select = document.createElement('select');
     select.dataset.field = 'placement_preset';
-    select.style.cssText = 'padding: 4px 6px; font-size: 12px;';
+    select.classList.add('prop-input');
     for (const p of PRESETS) {
       const opt = document.createElement('option');
       opt.value = String(p.value);
@@ -2194,7 +2194,7 @@ export function renderPropEditor(container, options) {
     wrap.appendChild(row);
 
     const desc = document.createElement('div');
-    desc.style.cssText = 'font-size: 11px; color: var(--muted, #888); padding: 8px 10px; border-left: 2px solid var(--border, #444); background: var(--panel-bg, rgba(255,255,255,0.02));';
+    desc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
     const _refreshDesc = () => {
       const p = PRESETS.find(x => x.value === parseInt(select.value, 10)) || PRESETS[0];
       desc.textContent = p.desc;
@@ -2230,7 +2230,7 @@ export function renderPropEditor(container, options) {
     const row = document.createElement('div');
     row.dataset.meshVariantRow = '1';
     row.dataset.meshScene = mv.scene || '';
-    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
+    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-secondary);';
 
     // Preview image (resolve mesh_vN.glb → reference_vN.png in same dir).
     // Falls back to a visible placeholder when the server can't serve the PNG.
@@ -2265,7 +2265,7 @@ export function renderPropEditor(container, options) {
 
     const scenePath = document.createElement('code');
     scenePath.textContent = mv.scene || '(no scene)';
-    scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    scenePath.style.cssText = 'font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
     info.appendChild(scenePath);
 
     // Editable scale input. Rotation was removed 2026-04-18 — rotation
@@ -2275,13 +2275,13 @@ export function renderPropEditor(container, options) {
     xform.style.cssText = 'display: grid; grid-template-columns: auto 100px; gap: 6px; align-items: center;';
     const scaleLabel = document.createElement('span');
     scaleLabel.textContent = 'scale';
-    scaleLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    scaleLabel.style.cssText = 'font-size: 11px; color: var(--text-secondary);';
     const scaleInput = document.createElement('input');
     scaleInput.type = 'number';
     scaleInput.step = 'any';
     scaleInput.value = String(mv.scale);
     scaleInput.dataset.field = 'scale';
-    scaleInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    scaleInput.classList.add('prop-input');
     xform.appendChild(scaleLabel);
     xform.appendChild(scaleInput);
     info.appendChild(xform);
@@ -2292,7 +2292,7 @@ export function renderPropEditor(container, options) {
 
   function _buildPreviewFallback(variantNumber) {
     const fallback = document.createElement('div');
-    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--muted, #888); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border, #444);';
+    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border);';
     fallback.textContent = `no preview\nv${variantNumber}`;
     fallback.style.whiteSpace = 'pre';
     return fallback;
