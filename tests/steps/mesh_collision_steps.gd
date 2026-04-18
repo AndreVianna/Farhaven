@@ -20,14 +20,15 @@ func register_steps(registry) -> void:
 		var cap := _PlaceableCap.new()
 		var cs := _CollisionShape.new()
 		cs.shape_type = &"cylinder"
-		# size: (radius, height, unused)
-		cs.size = Vector3(0.3, 0.15, 0.0)
+		# size stores (radius, full_height, unused). Use a clearly non-half
+		# value for height so the mapping is unambiguous (0.6u tall campfire).
+		cs.size = Vector3(0.3, 0.6, 0.0)
 		cap.collision_shapes = [cs]
 		prop_def.placeable = cap
 
 		ctx.set_value("prop_def", prop_def)
 		ctx.set_value("expected_radius", 0.3)
-		ctx.set_value("expected_height", 0.15)
+		ctx.set_value("expected_height", 0.6)
 	)
 
 	registry.given("a structure at position {int}, {int}", func(ctx, x: int, y: int):
@@ -86,6 +87,21 @@ func register_steps(registry) -> void:
 		var expected_radius: float = ctx.get_value("expected_radius", 0.0)
 		ctx.assert_true(is_equal_approx(cyl.radius, expected_radius),
 			"Expected radius %.4f, got %.4f" % [expected_radius, cyl.radius])
+	)
+
+	registry.then("the height matches the authored size", func(ctx):
+		var shapes: Array = ctx.get_value("collision_shapes", [])
+		if shapes.is_empty():
+			ctx.assert_true(false, "No collision shapes generated")
+			return
+		var shape: Shape3D = shapes[0]
+		var cyl: CylinderShape3D = shape as CylinderShape3D
+		ctx.assert_not_null(cyl, "Shape must be CylinderShape3D")
+		if cyl == null:
+			return
+		var expected_height: float = ctx.get_value("expected_height", 0.0)
+		ctx.assert_true(is_equal_approx(cyl.height, expected_height),
+			"Expected height %.4f, got %.4f" % [expected_height, cyl.height])
 	)
 
 	# NOTE: "the placement is rejected" step is defined in crafting_steps.gd

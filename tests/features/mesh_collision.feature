@@ -6,6 +6,7 @@ Feature: Mesh Collision
     When collision shapes are generated
     Then the first shape is a CylinderShape3D
     And the radius matches the authored size
+    And the height matches the authored size
 
   Scenario: Overlapping placement rejected
     Given a structure at position 0, 0
