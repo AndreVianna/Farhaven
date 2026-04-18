@@ -399740,6 +399740,13 @@
 				false,
 				false,
 				false
+			],
+			"props": [
+				{
+					"type": "P00001",
+					"category": 0,
+					"origin": 0
+				}
 			]
 		},
 		"-3,1": {
@@ -403344,6 +403351,55 @@
 				false,
 				false,
 				false
+			],
+			"props": [
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": 0,
+					"sub_hex_r": -1,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": 1,
+					"sub_hex_r": -1,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": -1,
+					"sub_hex_r": 0,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": -1,
+					"sub_hex_r": 1,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": 0,
+					"sub_hex_r": 1,
+					"origin": 0
+				},
+				{
+					"type": "P00001",
+					"category": 0,
+					"sub_hex_q": 1,
+					"sub_hex_r": 0,
+					"origin": 0
+				}
 			]
 		},
 		"-2,0": {
@@ -410610,13 +410666,6 @@
 				false,
 				false,
 				false
-			],
-			"props": [
-				{
-					"type": "P00001",
-					"category": 0,
-					"origin": 0
-				}
 			]
 		},
 		"0,0": {
@@ -414253,61 +414302,6 @@
 				false,
 				false,
 				false
-			],
-			"props": [
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": -1,
-					"sub_hex_r": 1,
-					"origin": 0,
-					"rotation": 178
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": -1,
-					"sub_hex_r": 0,
-					"origin": 0
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": 0,
-					"sub_hex_r": -1,
-					"origin": 0,
-					"rotation": 22
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"origin": 0,
-					"rotation": 61
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": 1,
-					"sub_hex_r": -1,
-					"origin": 0,
-					"rotation": 212
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": 1,
-					"sub_hex_r": 0,
-					"origin": 0,
-					"rotation": 295
-				},
-				{
-					"type": "P00001",
-					"category": 0,
-					"sub_hex_q": 0,
-					"sub_hex_r": 1,
-					"origin": 0,
-					"rotation": 123
-				}
 			]
 		},
 		"1,0": {
