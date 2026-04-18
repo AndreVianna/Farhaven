@@ -229,6 +229,28 @@ func test_nan_dimension_clamped_to_safe_default() -> void:
 	assert_float(cyl.radius).is_equal_approx(0.01, 0.001)
 
 
+func test_box_nan_and_negative_dimensions_clamped() -> void:
+	# Box used to skip validation. Verify each component is clamped to
+	# 0.01 on NaN or non-positive values.
+	var bad_size := Vector3(NAN, -0.5, 0.0)
+	var def := _make_prop_with_shapes([_make_shape(&"box", bad_size)])
+	var out := _CollisionHelper.create_collision_shapes(def)
+	var box: BoxShape3D = out[0].shape as BoxShape3D
+	assert_float(box.size.x).is_equal_approx(0.01, 0.001)
+	assert_float(box.size.y).is_equal_approx(0.01, 0.001)
+	assert_float(box.size.z).is_equal_approx(0.01, 0.001)
+
+
+func test_box_positive_dimensions_preserved() -> void:
+	# Ensure the box clamp doesn't mangle legitimate dimensions.
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3(2.0, 0.5, 1.25))])
+	var out := _CollisionHelper.create_collision_shapes(def)
+	var box: BoxShape3D = out[0].shape as BoxShape3D
+	assert_float(box.size.x).is_equal_approx(2.0, 0.001)
+	assert_float(box.size.y).is_equal_approx(0.5, 0.001)
+	assert_float(box.size.z).is_equal_approx(1.25, 0.001)
+
+
 # ---------------------------------------------------------------------------
 # Type contract — always returns Array[CollisionShape3D] with valid shapes
 # ---------------------------------------------------------------------------

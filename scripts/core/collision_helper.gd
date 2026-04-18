@@ -43,8 +43,18 @@ static func _build_one(cs_resource: Resource) -> CollisionShape3D:
 	var size: Vector3 = cs.size
 	match shape_type:
 		&"box":
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper: box size.x %s clamped to 0.01 — likely an authoring error" % size.x)
+			if is_nan(size.y) or size.y <= 0.0:
+				push_warning("CollisionHelper: box size.y %s clamped to 0.01 — likely an authoring error" % size.y)
+			if is_nan(size.z) or size.z <= 0.0:
+				push_warning("CollisionHelper: box size.z %s clamped to 0.01 — likely an authoring error" % size.z)
 			var box := BoxShape3D.new()
-			box.size = size
+			box.size = Vector3(
+				0.01 if is_nan(size.x) else maxf(size.x, 0.01),
+				0.01 if is_nan(size.y) else maxf(size.y, 0.01),
+				0.01 if is_nan(size.z) else maxf(size.z, 0.01),
+			)
 			shape = box
 		&"cylinder":
 			if is_nan(size.x) or size.x <= 0.0:
