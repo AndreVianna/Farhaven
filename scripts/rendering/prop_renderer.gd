@@ -73,7 +73,8 @@ func _create_pools() -> void:
 		var variant_y_offsets: Array[float] = []
 
 		if def.placeable != null and def.placeable.meshes != null:
-			for mv in def.placeable.meshes:
+			for mv_entry in def.placeable.meshes:
+				var mv: MeshVariant = mv_entry as MeshVariant
 				if mv == null or mv.scene == null:
 					continue
 				var extracted: Array = _extract_mesh_from_scene(mv.scene)
@@ -87,16 +88,20 @@ func _create_pools() -> void:
 
 		if variant_meshes.is_empty():
 			# Prop has no visible mesh — skip pool creation.
+			# Emit a warning so authors notice silently-skipped PropDefs
+			# (easy to hit by creating a PropDef with a PlaceableCap but
+			# forgetting to author a MeshVariant.scene).
+			push_warning("PropRenderer: prop '%s' has no meshes — will not render" % def.id)
 			continue
 
 		# Depleted mesh (same for all variants for now).
 		var depleted_mesh_res: Mesh
 		if def.harvestable != null and def.harvestable.depleted_meshes != null \
-				and def.harvestable.depleted_meshes.size() > 0 \
-				and def.harvestable.depleted_meshes[0] != null \
-				and def.harvestable.depleted_meshes[0].scene != null:
-			var extracted_d: Array = _extract_mesh_from_scene(def.harvestable.depleted_meshes[0].scene)
-			depleted_mesh_res = extracted_d[0]
+				and def.harvestable.depleted_meshes.size() > 0:
+			var depleted_mv: MeshVariant = def.harvestable.depleted_meshes[0] as MeshVariant
+			if depleted_mv != null and depleted_mv.scene != null:
+				var extracted_d: Array = _extract_mesh_from_scene(depleted_mv.scene)
+				depleted_mesh_res = extracted_d[0]
 		if depleted_mesh_res == null and def.depleted_mesh != null:
 			depleted_mesh_res = def.depleted_mesh
 		# If still null, depleted state will reuse the primary mesh.

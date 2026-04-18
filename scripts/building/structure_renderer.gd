@@ -83,7 +83,8 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	var color: Color = Color.WHITE
 
 	if def != null and def.placeable != null and def.placeable.meshes != null:
-		for mv in def.placeable.meshes:
+		for mv_entry in def.placeable.meshes:
+			var mv: MeshVariant = mv_entry as MeshVariant
 			if mv == null or mv.scene == null:
 				continue
 			var extracted: Array = _extract_mesh_from_scene(mv.scene)
@@ -96,6 +97,8 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 	if mesh == null:
 		# No authored mesh — skip rendering this structure.
+		# Emit a warning so authors notice silently-skipped structures.
+		push_warning("StructureRenderer: structure '%s' at %s has no mesh — will not render" % [structure_type, coords])
 		return
 
 	# Calculate world position: snap to nearest SSH center for 32cm precision.
