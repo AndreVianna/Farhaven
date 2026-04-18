@@ -249,12 +249,12 @@ export function renderBiomeEditor(container, options) {
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
   filterInput.placeholder = 'Filter biomes...';
-  filterInput.className = 'editor-filter';
+  filterInput.className = 'editor-filter prop-input';
   filterInput.addEventListener('input', () => _applyFilter());
 
   const newBtn = document.createElement('button');
   newBtn.textContent = '+ New';
-  newBtn.className = 'editor-new-btn';
+  newBtn.className = 'editor-new-btn prop-btn';
   newBtn.addEventListener('click', () => {
     if (!_guardDirty()) return;
     _selectNew();
@@ -469,12 +469,12 @@ export function renderBiomeEditor(container, options) {
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.type = 'button';
-    saveBtn.className = 'editor-btn-save';
+    saveBtn.className = 'editor-btn-save prop-btn-primary';
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.type = 'button';
-    deleteBtn.className = 'editor-btn-delete';
+    deleteBtn.className = 'editor-btn-delete prop-btn';
 
     btnGroup.appendChild(saveBtn);
     if (!isNew) {
@@ -739,7 +739,7 @@ export function renderBiomeEditor(container, options) {
       const removeBtn = document.createElement('button');
       removeBtn.textContent = 'X';
       removeBtn.type = 'button';
-      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+      removeBtn.classList.add('prop-btn-icon');
       removeBtn.addEventListener('click', () => row.remove());
 
       row.appendChild(input);
@@ -755,7 +755,8 @@ export function renderBiomeEditor(container, options) {
     const addVarBtn = document.createElement('button');
     addVarBtn.textContent = '+ Add Variation';
     addVarBtn.type = 'button';
-    addVarBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+    addVarBtn.classList.add('prop-btn');
+    addVarBtn.style.marginTop = '2px';
     addVarBtn.addEventListener('click', () => {
       const currentCount = variationsContainer.querySelectorAll('[data-variation-color]').length;
       if (currentCount >= 10) {
@@ -822,7 +823,8 @@ export function renderBiomeEditor(container, options) {
     const addTexBtn = document.createElement('button');
     addTexBtn.textContent = '+ Add Texture';
     addTexBtn.type = 'button';
-    addTexBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+    addTexBtn.classList.add('prop-btn');
+    addTexBtn.style.marginTop = '2px';
 
     addTexBtn.addEventListener('click', async () => {
       // Pull the list of PNGs available under assets/textures/biomes/
@@ -912,7 +914,8 @@ function _openTexturePicker(paths, callback) {
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  cancel.classList.add('prop-btn');
+  cancel.style.marginTop = '10px';
   cancel.addEventListener('click', () => {
     document.body.removeChild(backdrop);
     callback(null);

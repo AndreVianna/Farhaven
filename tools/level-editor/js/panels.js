@@ -32,18 +32,19 @@ export function showInlineModal(label, defaultValue, callback) {
   const input = document.createElement('input');
   input.type = 'text';
   input.value = defaultValue;
-  input.style.cssText = 'width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;margin-bottom:12px;box-sizing:border-box;';
+  input.classList.add('prop-input');
+  input.style.marginBottom = '12px';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
 
   const btnCancel = document.createElement('button');
   btnCancel.textContent = 'Cancel';
-  btnCancel.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  btnCancel.classList.add('prop-btn');
 
   const btnOk = document.createElement('button');
   btnOk.textContent = 'OK';
-  btnOk.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+  btnOk.classList.add('prop-btn-primary');
 
   const cleanup = () => overlay.remove();
 
@@ -103,7 +104,8 @@ export function showInlineFormModal(title, fields, callback) {
     input.type = 'text';
     input.value = field.defaultValue != null ? String(field.defaultValue) : '';
     if (field.placeholder) input.placeholder = field.placeholder;
-    input.style.cssText = 'width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;margin-bottom:10px;box-sizing:border-box;';
+    input.classList.add('prop-input');
+    input.style.marginBottom = '10px';
 
     dialog.appendChild(labelEl);
     dialog.appendChild(input);
@@ -115,11 +117,11 @@ export function showInlineFormModal(title, fields, callback) {
 
   const btnCancel = document.createElement('button');
   btnCancel.textContent = 'Cancel';
-  btnCancel.style.cssText = 'padding:6px 16px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  btnCancel.classList.add('prop-btn');
 
   const btnOk = document.createElement('button');
   btnOk.textContent = 'OK';
-  btnOk.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+  btnOk.classList.add('prop-btn-primary');
 
   const cleanup = () => overlay.remove();
   const confirm = () => { cleanup(); callback(inputs.map(i => i.value)); };
@@ -202,7 +204,7 @@ export function showErrorListModal(title, errors) {
 
   const btnClose = document.createElement('button');
   btnClose.textContent = 'Close';
-  btnClose.style.cssText = 'padding:6px 16px;border:none;border-radius:4px;background:var(--accent);color:var(--bg-primary);cursor:pointer;font-weight:600;';
+  btnClose.classList.add('prop-btn-primary');
 
   const cleanup = () => overlay.remove();
   btnClose.addEventListener('click', cleanup);
@@ -369,7 +371,8 @@ export class HexInspector {
       if (this.onRegenerate) {
         const btn = document.createElement('button');
         btn.textContent = 'Regenerate';
-        btn.style.cssText = 'margin-top:6px;width:100%;padding:4px 8px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;';
+        btn.classList.add('prop-btn-primary');
+        btn.style.cssText = 'margin-top:6px;width:100%;';
         btn.addEventListener('click', () => this.onRegenerate());
         this.mapStatsEl.appendChild(btn);
       }
@@ -548,6 +551,7 @@ export class HexInspector {
       input.step = String(field.step);
       input.dataset.propIndex = String(index);
       input.dataset.field = field.name;
+      input.classList.add('prop-input');
 
       const origValue = field.value;
       const handleChange = () => {
@@ -649,8 +653,8 @@ export class HexInspector {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = value;
-    input.className = 'stat-input';
-    input.style.cssText = 'flex:1;padding:1px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);font-size:11px;min-width:0;';
+    input.className = 'stat-input prop-input';
+    input.style.cssText = 'flex:1;min-width:0;';
     /** @type {string} */
     let lastValue = value;
     const commit = () => {
