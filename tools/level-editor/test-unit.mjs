@@ -258,6 +258,29 @@ test('TresParser — parseValue Vector2i', () => {
   assert(v.value.y === 9, 'y should be 9');
 });
 
+test('TresParser — parseValue Vector3', () => {
+  const v = TresParser.parseValue('Vector3(0.35, 0.4, 0.0)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(v.value.x === 0.35, 'x should be 0.35');
+  assert(v.value.y === 0.4, 'y should be 0.4');
+  assert(v.value.z === 0.0, 'z should be 0.0');
+});
+
+test('TresParser — serialize Vector3 round-trip', () => {
+  const parsed = TresParser.parseValue('Vector3(0.35, 0.4, 0.0)');
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === 'Vector3(0.35, 0.4, 0.0)',
+    'serialized should match, got: ' + serialized);
+});
+
+test('TresParser — Vector3 serialize preserves float formatting', () => {
+  const parsed = TresParser.parseValue('Vector3(1, 2, 3)');
+  const serialized = TresParser.serializeValue(parsed);
+  // Integers must serialize with .0 suffix per Godot convention.
+  assert(serialized === 'Vector3(1.0, 2.0, 3.0)',
+    'integers should get .0 suffix, got: ' + serialized);
+});
+
 test('TresParser — parseValue ExtResource', () => {
   const v = TresParser.parseValue('ExtResource("1_script")');
   assert(v.type === 'ext_resource', 'type should be ext_resource');
