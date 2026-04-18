@@ -25,8 +25,21 @@ export class BiomeDataModel {
     this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
-    this.color_variations = [];
+    /**
+     * Generative prop distribution entries. Mirrors the GDScript
+     * `BiomeProp` resource. Empty = biome doesn't populate props.
+     * @type {Array<{
+     *   prop_id: string,
+     *   frequency: number,
+     *   grouping_range: {x: number, y: number},
+     *   elevation_range: {x: number, y: number},
+     *   near_biomes: string[],
+     *   not_near_biomes: string[],
+     *   near_props: string[],
+     *   not_near_props: string[],
+     * }>}
+     */
+    this.natural_props = [];
     /** @type {string[]} `res://...` paths to terrain texture variations
      *  (what the runtime hex shader samples). Order matters because the
      *  per-tile variation index % length selects one. */
@@ -89,21 +102,11 @@ export class BiomeDataModel {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
 
-    // color_variations: TresParser stores as TresValue[] of color TresValues.
-    // Each element is { type: 'color', value: { r, g, b, a } }.
-    if (Array.isArray(d.color_variations)) {
-      model.color_variations = d.color_variations.map(tv => {
-        // TresValue color: { type: 'color', value: { r, g, b, a } }
-        if (tv && tv.type === 'color' && tv.value && typeof tv.value === 'object') {
-          return { r: tv.value.r || 0, g: tv.value.g || 0, b: tv.value.b || 0, a: tv.value.a != null ? tv.value.a : 1 };
-        }
-        // Plain color object fallback
-        if (tv && typeof tv === 'object' && 'r' in tv) {
-          return { r: tv.r || 0, g: tv.g || 0, b: tv.b || 0, a: tv.a != null ? tv.a : 1 };
-        }
-        return { r: 0, g: 0, b: 0, a: 1 };
-      });
-    }
+    // natural_props: Array[Resource] of BiomeProp sub_resources.
+    // Same dereferencing pattern as PropDef.placeable.meshes — the raw
+    // .tres wraps them as sub_resource refs that we resolve against
+    // the TresFile's subResources collection.
+    model.natural_props = _parseNaturalProps(d.natural_props, entry.raw);
 
     // terrain_textures: array of ext_resource refs we resolve back to
     // the raw `res://...` path so the editor model is path-based.
@@ -201,9 +204,163 @@ function _modelToPlain(model) {
     short_description: model.short_description,
     long_description: model.long_description,
     color: model.color,
-    color_variations: model.color_variations,
+    natural_props: model.natural_props,
     terrain_textures: model.terrain_textures,
   };
+}
+
+/**
+ * Build a "label: [minInput] – [maxInput]" row bound to a `_range`
+ * field on a natural_props card. Returns the wrapper element; the
+ * caller is responsible for appending it.
+ * @param {string} label
+ * @param {string} field — `grouping_range` or `elevation_range`
+ * @param {{x: number, y: number}} value
+ * @param {number} minBound
+ * @param {number} maxBound
+ * @returns {HTMLElement}
+ */
+function _buildRangeField(label, field, value, minBound, maxBound) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
+  const lbl = document.createElement('span');
+  lbl.classList.add('prop-hint');
+  lbl.textContent = label;
+  const minIn = document.createElement('input');
+  minIn.type = 'number';
+  minIn.step = '1';
+  minIn.min = String(minBound);
+  minIn.max = String(maxBound);
+  minIn.value = String(value.x);
+  minIn.dataset.npField = field + '_min';
+  minIn.classList.add('prop-input');
+  minIn.style.width = '60px';
+  const sep = document.createElement('span');
+  sep.textContent = '–';
+  sep.classList.add('prop-hint');
+  const maxIn = document.createElement('input');
+  maxIn.type = 'number';
+  maxIn.step = '1';
+  maxIn.min = String(minBound);
+  maxIn.max = String(maxBound);
+  maxIn.value = String(value.y);
+  maxIn.dataset.npField = field + '_max';
+  maxIn.classList.add('prop-input');
+  maxIn.style.width = '60px';
+  wrap.appendChild(lbl);
+  wrap.appendChild(minIn);
+  wrap.appendChild(sep);
+  wrap.appendChild(maxIn);
+  return wrap;
+}
+
+/**
+ * Build a single-line CSV condition field. The value is a plain
+ * comma-separated list of StringName ids; empty = constraint off.
+ * @param {string} field
+ * @param {string} label
+ * @param {string[]} list
+ * @returns {HTMLElement}
+ */
+function _buildCsvField(field, label, list) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  const lbl = document.createElement('span');
+  lbl.classList.add('prop-hint');
+  lbl.textContent = label;
+  lbl.style.minWidth = '130px';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = list.join(', ');
+  input.placeholder = 'comma-separated ids, blank = off';
+  input.dataset.npField = field;
+  input.classList.add('prop-input');
+  input.style.flex = '1';
+  wrap.appendChild(lbl);
+  wrap.appendChild(input);
+  return wrap;
+}
+
+/**
+ * Dereference the natural_props sub_resource refs out of a parsed
+ * .tres entry. Mirrors prop-editor.js's mesh / collision_shape
+ * handling — TresParser keeps the Array[Resource] contents as refs,
+ * and the editor model wants a flat list of plain JS objects.
+ * @param {*} refs
+ * @param {import('./tres-parser.js').TresFile|null|undefined} raw
+ * @returns {Array<Object>}
+ */
+function _parseNaturalProps(refs, raw) {
+  if (!Array.isArray(refs) || refs.length === 0) return [];
+  // Handle the TresParser's outer-wrapper quirk for typed arrays.
+  let list = refs;
+  if (list.length === 1 && list[0] && list[0].type === 'array' && Array.isArray(list[0].value)) {
+    list = list[0].value;
+  }
+  const subMap = new Map();
+  if (raw && raw.subResources) {
+    for (const sub of raw.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) subData[k] = v.value;
+      subMap.set(sub.id, subData);
+    }
+  }
+  const out = [];
+  for (const ref of list) {
+    let d = null;
+    if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+      d = subMap.get(ref.value) || null;
+    } else if (ref && typeof ref === 'object') {
+      d = ref;
+    }
+    if (!d) continue;
+    out.push({
+      prop_id: typeof d.prop_id === 'string' ? d.prop_id : '',
+      frequency: typeof d.frequency === 'number' ? d.frequency : 1.0,
+      grouping_range: _readVector2i(d.grouping_range, { x: 1, y: 1 }),
+      elevation_range: _readVector2i(d.elevation_range, { x: -100, y: 100 }),
+      near_biomes: _readStringNameArray(d.near_biomes),
+      not_near_biomes: _readStringNameArray(d.not_near_biomes),
+      near_props: _readStringNameArray(d.near_props),
+      not_near_props: _readStringNameArray(d.not_near_props),
+    });
+  }
+  return out;
+}
+
+/**
+ * Normalize a TresValue-ish Vector2i into `{x, y}`, preserving the
+ * defaults when the field is missing or malformed.
+ * @param {*} v
+ * @param {{x: number, y: number}} fallback
+ * @returns {{x: number, y: number}}
+ */
+function _readVector2i(v, fallback) {
+  if (v && typeof v === 'object') {
+    if (typeof v.x === 'number' && typeof v.y === 'number') return { x: v.x, y: v.y };
+    if (v.value && typeof v.value.x === 'number') return { x: v.value.x, y: v.value.y };
+  }
+  return { x: fallback.x, y: fallback.y };
+}
+
+/**
+ * Normalize an Array[StringName]-shaped field into a flat string[].
+ * @param {*} arr
+ * @returns {string[]}
+ */
+function _readStringNameArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  // Unwrap the Array[StringName]([...]) outer layer if TresParser kept it.
+  let list = arr;
+  if (list.length === 1 && list[0] && list[0].type === 'array' && Array.isArray(list[0].value)) {
+    list = list[0].value;
+  }
+  const out = [];
+  for (const item of list) {
+    if (typeof item === 'string') out.push(item);
+    else if (item && typeof item === 'object' && typeof item.value === 'string') out.push(item.value);
+  }
+  return out;
 }
 
 // ============================================================
@@ -708,69 +865,139 @@ export function renderBiomeEditor(container, options) {
     grid.appendChild(colorLabel);
     grid.appendChild(colorCell);
 
-    // Separator — Variations
-    const varSep = document.createElement('div');
-    varSep.className = 'prop-separator';
-    varSep.textContent = 'Variations';
-    grid.appendChild(varSep);
+    // Separator — Natural Props (replaces the old color-variation section)
+    const propsSep = document.createElement('div');
+    propsSep.className = 'prop-separator';
+    propsSep.textContent = 'Natural Props';
+    grid.appendChild(propsSep);
 
-    // Variations list — full width
-    const varFull = document.createElement('div');
-    varFull.className = 'prop-full';
+    // Natural props list — full width
+    const propsFull = document.createElement('div');
+    propsFull.className = 'prop-full';
 
-    const variationsContainer = document.createElement('div');
-    variationsContainer.dataset.variationsContainer = 'true';
+    const propsHint = document.createElement('div');
+    propsHint.classList.add('prop-hint');
+    propsHint.style.marginBottom = '6px';
+    propsHint.textContent = 'Feeds the map-editor Populate command. Each entry spawns its prop on qualifying tiles at `frequency` probability; when it fires, grouping min/max picks the instance count. Conditions are all AND-ed; empty lists disable the constraint.';
+    propsFull.appendChild(propsHint);
+
+    const propsContainer = document.createElement('div');
+    propsContainer.dataset.naturalPropsContainer = 'true';
+    propsContainer.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
     /**
-     * Add a color variation entry.
-     * @param {{ r: number, g: number, b: number, a: number }} varColor
+     * Render one natural_props card.
+     * @param {{
+     *   prop_id: string,
+     *   frequency: number,
+     *   grouping_range: {x: number, y: number},
+     *   elevation_range: {x: number, y: number},
+     *   near_biomes: string[],
+     *   not_near_biomes: string[],
+     *   near_props: string[],
+     *   not_near_props: string[],
+     * }} entry
      */
-    function addVariationRow(varColor) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px;';
+    function addNaturalPropRow(entry) {
+      const card = document.createElement('div');
+      card.classList.add('prop-card');
+      card.dataset.naturalProp = 'true';
+      card.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:8px;';
 
-      const input = document.createElement('input');
-      input.type = 'color';
-      input.value = _colorToHex(varColor);
-      input.dataset.variationColor = 'true';
-      input.className = 'prop-input';
-      input.style.cssText = 'width:40px;height:28px;padding:0;cursor:pointer;';
+      // Row 1: prop_id + frequency + remove
+      const row1 = document.createElement('div');
+      row1.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+      const propSelect = document.createElement('select');
+      propSelect.dataset.npField = 'prop_id';
+      propSelect.classList.add('prop-input');
+      propSelect.style.flex = '1';
+      // Populate from ProjectContext.files.props — only Natural-origin props
+      // qualify for populate (structures, equipment, etc. stay manual).
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = '— select prop —';
+      propSelect.appendChild(blank);
+      for (const [filename, pEntry] of ProjectContext.files.props) {
+        const pid = filename.replace('.tres', '');
+        const origin = pEntry.data && typeof pEntry.data.origin === 'number' ? pEntry.data.origin : 0;
+        if (origin !== 0) continue; // NATURAL = 0 in Prop.Origin
+        const opt = document.createElement('option');
+        opt.value = pid;
+        const label = pEntry.data && pEntry.data.display_name ? `${pid} — ${pEntry.data.display_name}` : pid;
+        opt.textContent = label;
+        if (entry.prop_id === pid) opt.selected = true;
+        propSelect.appendChild(opt);
+      }
+
+      const freqLabel = document.createElement('span');
+      freqLabel.classList.add('prop-hint');
+      freqLabel.textContent = 'freq';
+
+      const freqInput = document.createElement('input');
+      freqInput.type = 'number';
+      freqInput.step = '0.01';
+      freqInput.min = '0';
+      freqInput.max = '1';
+      freqInput.value = String(entry.frequency);
+      freqInput.dataset.npField = 'frequency';
+      freqInput.classList.add('prop-input');
+      freqInput.style.width = '70px';
 
       const removeBtn = document.createElement('button');
       removeBtn.textContent = 'X';
       removeBtn.type = 'button';
       removeBtn.classList.add('prop-btn-icon');
-      removeBtn.addEventListener('click', () => row.remove());
+      removeBtn.addEventListener('click', () => card.remove());
 
-      row.appendChild(input);
-      row.appendChild(removeBtn);
-      variationsContainer.appendChild(row);
+      row1.appendChild(propSelect);
+      row1.appendChild(freqLabel);
+      row1.appendChild(freqInput);
+      row1.appendChild(removeBtn);
+      card.appendChild(row1);
+
+      // Row 2: grouping + elevation ranges (compact numeric pairs)
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
+      row2.appendChild(_buildRangeField('Grouping', 'grouping_range', entry.grouping_range, 1, 19));
+      row2.appendChild(_buildRangeField('Elevation', 'elevation_range', entry.elevation_range, -100, 100));
+      card.appendChild(row2);
+
+      // Row 3..6: one CSV line per list condition. Kept plaintext
+      // (comma-separated ids) to keep the layout tight — a richer
+      // chip picker can replace this later without changing the
+      // underlying data model.
+      card.appendChild(_buildCsvField('near_biomes', 'Near biomes (any)', entry.near_biomes));
+      card.appendChild(_buildCsvField('not_near_biomes', 'Not near biomes', entry.not_near_biomes));
+      card.appendChild(_buildCsvField('near_props', 'Near props (any)', entry.near_props));
+      card.appendChild(_buildCsvField('not_near_props', 'Not near props', entry.not_near_props));
+
+      propsContainer.appendChild(card);
     }
 
-    // Populate existing variations
-    for (const vc of model.color_variations) {
-      addVariationRow(vc);
-    }
+    for (const np of model.natural_props) addNaturalPropRow(np);
 
-    const addVarBtn = document.createElement('button');
-    addVarBtn.textContent = '+ Add Variation';
-    addVarBtn.type = 'button';
-    addVarBtn.classList.add('prop-btn');
-    addVarBtn.style.marginTop = '2px';
-    addVarBtn.addEventListener('click', () => {
-      const currentCount = variationsContainer.querySelectorAll('[data-variation-color]').length;
-      if (currentCount >= 10) {
-        errorArea.style.display = 'block';
-        errorArea.textContent = 'Maximum 10 color variations allowed.';
-        return;
-      }
-      const baseHex = colorInput.value || '#000000';
-      addVariationRow(_hexToColor(baseHex));
+    const addNpBtn = document.createElement('button');
+    addNpBtn.textContent = '+ Add Natural Prop';
+    addNpBtn.type = 'button';
+    addNpBtn.classList.add('prop-btn');
+    addNpBtn.style.marginTop = '6px';
+    addNpBtn.addEventListener('click', () => {
+      addNaturalPropRow({
+        prop_id: '',
+        frequency: 1.0,
+        grouping_range: { x: 1, y: 1 },
+        elevation_range: { x: -100, y: 100 },
+        near_biomes: [],
+        not_near_biomes: [],
+        near_props: [],
+        not_near_props: [],
+      });
     });
 
-    varFull.appendChild(variationsContainer);
-    varFull.appendChild(addVarBtn);
-    grid.appendChild(varFull);
+    propsFull.appendChild(propsContainer);
+    propsFull.appendChild(addNpBtn);
+    grid.appendChild(propsFull);
 
     // ── Textures section ──
     const texSep = document.createElement('div');
@@ -975,11 +1202,36 @@ function _collectBiomeFormData(formElement) {
   // Color
   model.color = _hexToColor(val('color'));
 
-  // Color variations
-  model.color_variations = [];
-  const variationInputs = formElement.querySelectorAll('[data-variation-color]');
-  for (const input of variationInputs) {
-    model.color_variations.push(_hexToColor(/** @type {HTMLInputElement} */ (input).value));
+  // Natural props — one card per entry, collected back to plain
+  // JS objects for emit.
+  model.natural_props = [];
+  const propCards = formElement.querySelectorAll('[data-natural-prop]');
+  for (const card of propCards) {
+    const cardEl = /** @type {HTMLElement} */ (card);
+    const qField = (name) => {
+      const el = cardEl.querySelector(`[data-np-field="${name}"]`);
+      return el ? /** @type {HTMLInputElement|HTMLSelectElement} */ (el).value : '';
+    };
+    const intPair = (base) => ({
+      x: parseInt(qField(base + '_min'), 10) || 0,
+      y: parseInt(qField(base + '_max'), 10) || 0,
+    });
+    const csvList = (name) => qField(name)
+      .split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    const propId = qField('prop_id');
+    if (!propId) continue; // skip rows the user never filled in
+
+    model.natural_props.push({
+      prop_id: propId,
+      frequency: Math.max(0, Math.min(1, parseFloat(qField('frequency')) || 0)),
+      grouping_range: intPair('grouping_range'),
+      elevation_range: intPair('elevation_range'),
+      near_biomes: csvList('near_biomes'),
+      not_near_biomes: csvList('not_near_biomes'),
+      near_props: csvList('near_props'),
+      not_near_props: csvList('not_near_props'),
+    });
   }
 
   // Terrain textures — keep the DOM order (hash-picked variation index
@@ -1084,7 +1336,51 @@ export function biomeModelToRaw(model) {
     const uidAttr = prev && prev.uid ? ` uid="${prev.uid}"` : '';
     newExtResources.push(`[ext_resource type="Texture2D"${uidAttr} path="${resPath}" id="${texId}"]`);
   }
+  // Add the biome_prop.gd ext_resource when the biome actually has
+  // natural_props entries to emit. Reuse any prior id if present to
+  // keep round-trip diffs minimal.
+  let biomePropExtId = null;
+  if (Array.isArray(model.natural_props) && model.natural_props.length > 0) {
+    const bpPath = 'res://scripts/hex/biome_prop.gd';
+    const prevBp = prevIdByPath.get(bpPath);
+    biomePropExtId = (prevBp && prevBp.id) ? prevBp.id : `${nextTexIdx++}_biome_prop`;
+    newExtResources.push(`[ext_resource type="Script" path="${bpPath}" id="${biomePropExtId}"]`);
+  }
   raw.extResources = newExtResources;
+
+  // Rebuild sub_resources from natural_props. Each entry becomes one
+  // `[sub_resource type="Resource" id="biome_prop_N"]` block.
+  const subResources = [];
+  const biomePropRefs = [];
+  if (biomePropExtId && Array.isArray(model.natural_props)) {
+    for (let i = 0; i < model.natural_props.length; i++) {
+      const np = model.natural_props[i];
+      const subId = `biome_prop_${i + 1}`;
+      biomePropRefs.push(subId);
+      const subFields = new Map();
+      subFields.set('script', { type: 'ext_resource', value: `ExtResource("${biomePropExtId}")` });
+      subFields.set('prop_id', { type: 'stringname', value: np.prop_id });
+      subFields.set('frequency', { type: 'float', value: Number.isFinite(np.frequency) ? np.frequency : 1.0 });
+      subFields.set('grouping_range', {
+        type: 'vector2i',
+        value: { x: np.grouping_range.x | 0, y: np.grouping_range.y | 0 },
+      });
+      subFields.set('elevation_range', {
+        type: 'vector2i',
+        value: { x: np.elevation_range.x | 0, y: np.elevation_range.y | 0 },
+      });
+      const snameArr = (list) => ({
+        type: 'array', elementType: 'StringName',
+        value: list.map(v => ({ type: 'stringname', value: v })),
+      });
+      if (np.near_biomes.length) subFields.set('near_biomes', snameArr(np.near_biomes));
+      if (np.not_near_biomes.length) subFields.set('not_near_biomes', snameArr(np.not_near_biomes));
+      if (np.near_props.length) subFields.set('near_props', snameArr(np.near_props));
+      if (np.not_near_props.length) subFields.set('not_near_props', snameArr(np.not_near_props));
+      subResources.push({ type: 'Resource', id: subId, fields: subFields });
+    }
+  }
+  raw.subResources = subResources;
 
   // Keep the header's load_steps in sync so Godot doesn't warn about
   // a mismatch between declared count and actual resources.
@@ -1119,12 +1415,15 @@ export function biomeModelToRaw(model) {
     value: { r: model.color.r, g: model.color.g, b: model.color.b, a: model.color.a },
   });
 
-  // color_variations: untyped array of Colors
-  const colorVariationEntries = model.color_variations.map(vc => ({
-    type: 'color',
-    value: { r: vc.r, g: vc.g, b: vc.b, a: vc.a },
-  }));
-  fields.set('color_variations', { type: 'array', value: colorVariationEntries, elementType: null });
+  // natural_props: Array[Resource] of BiomeProp sub_resources. Emitted
+  // only when the biome actually has entries so byte-clean biomes
+  // (pre-populate-feature) stay untouched on save.
+  if (biomePropRefs.length > 0) {
+    fields.set('natural_props', {
+      type: 'array', elementType: 'Resource',
+      value: biomePropRefs.map(id => ({ type: 'sub_resource', value: id })),
+    });
+  }
 
   // terrain_textures: Array[Texture2D] referencing the ext_resource ids
   // we just emitted. Only write the field when the list is non-empty so

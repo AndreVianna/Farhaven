@@ -3557,7 +3557,7 @@ for (const biomeFile of __biomeFiles) {
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
     assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
-    assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
+    assert(Array.isArray(model.natural_props), `${biomeFile}: natural_props is array`);
     assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
 
     // Re-serialize through model and compare
@@ -3575,9 +3575,46 @@ for (const biomeFile of __biomeFiles) {
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
-    assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
+    assert(model2.natural_props.length === model.natural_props.length, `${biomeFile}: natural_props count survives`);
   });
 }
+
+test('BiomeDataModel — natural_props round-trip through editor emit + reparse', () => {
+  // Hand-build a model with one fully-populated natural_props entry,
+  // emit, reparse, and confirm every field arrived intact. Mirrors the
+  // populate flow the Map Editor will drive.
+  const model = new BiomeDataModel();
+  model._id = 'B99999';
+  model.display_name = 'Test';
+  model.color = { r: 0.5, g: 0.5, b: 0.5, a: 1 };
+  model.natural_props = [{
+    prop_id: 'P00001',
+    frequency: 0.4,
+    grouping_range: { x: 3, y: 8 },
+    elevation_range: { x: 0, y: 30 },
+    near_biomes: ['B00005'],
+    not_near_biomes: [],
+    near_props: ['P01001'],
+    not_near_props: ['P01002', 'P01003'],
+  }];
+
+  const raw = biomeModelToRaw(model);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) data[key] = tv.value;
+  const model2 = BiomeDataModel.fromEntry('B99999.tres', { data, raw: reparsed });
+
+  assert(model2.natural_props.length === 1, 'one entry survives');
+  const np = model2.natural_props[0];
+  assert(np.prop_id === 'P00001', 'prop_id survives');
+  assert(np.frequency === 0.4, 'frequency survives: ' + np.frequency);
+  assert(np.grouping_range.x === 3 && np.grouping_range.y === 8, 'grouping_range survives');
+  assert(np.elevation_range.x === 0 && np.elevation_range.y === 30, 'elevation_range survives');
+  assert(np.near_biomes.length === 1 && np.near_biomes[0] === 'B00005', 'near_biomes survives');
+  assert(np.near_props.length === 1 && np.near_props[0] === 'P01001', 'near_props survives');
+  assert(np.not_near_props.length === 2, 'not_near_props count survives');
+});
 
 // ============================================================
 // JournalModel — parsing, validation, round-trip (task-076)
