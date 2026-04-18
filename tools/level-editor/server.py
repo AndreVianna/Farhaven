@@ -57,7 +57,7 @@ ASSET_MIME = {
 def is_safe_path(rel_path):
     """Ensure the path doesn't escape allowed directories."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
-    if '..' in normalized:
+    if any(part == '..' for part in normalized.split('/')):
         return False
     if normalized in ALLOWED_FILES:
         return True
@@ -77,7 +77,7 @@ def is_safe_delete_path(rel_path):
 def is_safe_asset_path(rel_path):
     """Read-only check for /api/asset and /api/list-assets serving."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
-    if '..' in normalized:
+    if any(part == '..' for part in normalized.split('/')):
         return False
     # Accept both the exact directory ('assets/textures') and paths
     # under it ('assets/textures/biomes/foo.png') so callers don't
