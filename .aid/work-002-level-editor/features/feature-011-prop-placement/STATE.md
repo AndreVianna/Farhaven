@@ -1,7 +1,8 @@
 # Feature State — Prop Placement (Scatter Presets, Seeded Randomization, Per-Instance Overrides)
 
-**Status:** Draft (pending Grade A review)
+**Status:** In Progress (scaffolding complete, consumer pending)
 **Started:** 2026-04-18
+**Approved:** 2026-04-18 (Andre, via Discord discussion)
 
 ## Sections
 
@@ -27,3 +28,15 @@
 | Date | Change | Source |
 |------|--------|--------|
 | 2026-04-18 | Initial draft — 8 sections complete. Design discussion Discord 2026-04-17/18. | Lola |
+| 2026-04-18 | Grade A approved by Andre. Status Draft → In Progress. | Andre approval |
+| 2026-04-18 | Scaffolding committed on `feature/grassland-polish`: PlacementPreset enum + PlacementCap resource class. Consumer (scatter algorithm + per-instance overrides + editor UI) pending. | implementation |
+| 2026-04-18 | Engine consumer implemented in PropRenderer: scatter algorithm with seeded RNG, ±2 count jitter, Fisher-Yates SSH selection, per-copy variant / scale / rotation. Override fields added on Prop. Backward-compat for legacy rotation_deg as implicit rotation_override on SINGLE center. | implementation |
+| 2026-04-18 | 12 grassland .tres patched with PlacementCap (plants NORMAL, Boulder SINGLE, other minerals SPROUTING). Migration script at tools/migrations/. Roundtrip tests green. | implementation |
+| 2026-04-18 | Unit tests added: test_placement_preset.gd (13 tests), test_placement_cap.gd (3 tests). | implementation |
+
+## Still Pending
+
+- Editor UI for PlacementCap authoring on PropDef (right column, next to PlaceableCap)
+- Editor context menu for per-instance overrides (variant / scale / rotation)
+- Natural prop collision in PropRenderer (StaticBody3D from center scattered copy)
+- Removal of legacy Prop.rotation_deg after full migration of saves
