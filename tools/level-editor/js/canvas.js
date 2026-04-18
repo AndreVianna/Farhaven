@@ -1619,9 +1619,31 @@ export class HexCanvas {
     }
   }
 
-  /** @param {Event} event */
+  /** @param {MouseEvent} event */
   _onContextMenu(event) {
     event.preventDefault();
+    // Dispatch a right-click on a placed prop to whoever registered
+    // onPropContextMenu — used by app.js to open the override panel
+    // (feature-011). Anything else is swallowed so the browser menu
+    // doesn't interrupt the editor.
+    if (typeof this.onPropContextMenu !== 'function') return;
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const hex = this.screenToHex(mx, my);
+    const world = HexMath.axialToPixel(hex.q, hex.r);
+    const mouseWorld = this.screenToWorld(mx, my);
+    const subHex = HexMath.pixelToSubHex(mouseWorld.x - world.x, mouseWorld.y - world.y);
+    const found = this._findPropAtSubHex(hex.q, hex.r, subHex.q, subHex.r);
+    if (!found) return;
+    this.onPropContextMenu({
+      hexQ: hex.q,
+      hexR: hex.r,
+      propIndex: found.propIndex,
+      prop: found.prop,
+      screenX: event.clientX,
+      screenY: event.clientY,
+    });
   }
 
   // --- Ghost Grid ---

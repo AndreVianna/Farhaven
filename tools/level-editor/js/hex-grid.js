@@ -201,6 +201,13 @@ export function createProp(type, sq = 0, sr = 0, category = 'plant', options = {
   if (typeof options.respawn_time === 'number') prop.respawn_time = options.respawn_time;
   if (options.footprint) prop.footprint = options.footprint;
   if (typeof options.blocks_movement === 'boolean') prop.blocks_movement = options.blocks_movement;
+  // Feature-011 per-instance overrides. Sentinel < 0 / missing = "use
+  // seeded default from PlaceableCap". Only effective when the resolved
+  // placement preset is SINGLE.
+  if (typeof options.placement_override === 'number') prop.placement_override = options.placement_override;
+  if (typeof options.variant_override === 'number') prop.variant_override = options.variant_override;
+  if (typeof options.scale_override === 'number') prop.scale_override = options.scale_override;
+  if (typeof options.rotation_override === 'number') prop.rotation_override = options.rotation_override;
   return prop;
 }
 
@@ -431,6 +438,11 @@ export function loadMapIntoGrid(hexGrid, mapData) {
           if (typeof p.respawn_time === 'number') options.respawn_time = p.respawn_time;
           if (typeof p.blocks_movement === 'boolean') options.blocks_movement = p.blocks_movement;
           if (p.footprint) options.footprint = p.footprint;
+          // Feature-011 per-instance overrides
+          if (typeof p.placement_override === 'number') options.placement_override = p.placement_override;
+          if (typeof p.variant_override === 'number') options.variant_override = p.variant_override;
+          if (typeof p.scale_override === 'number') options.scale_override = p.scale_override;
+          if (typeof p.rotation_override === 'number') options.rotation_override = p.rotation_override;
 
           return createProp(p.type || '', sq, sr, categoryStr, options);
         });
@@ -514,6 +526,21 @@ export function serializeGridToMapJson(hexGrid) {
         if (p.tool_required) obj.tool_required = p.tool_required;
         if (typeof p.respawn_time === 'number' && p.respawn_time > 0) obj.respawn_time = p.respawn_time;
         if (p.blocks_movement) obj.blocks_movement = true;
+        // Feature-011 overrides — emit only when the user has authored
+        // a non-sentinel value. Sentinel (< 0) means "let the engine
+        // compute from the seed" and matches the default in prop.gd.
+        if (typeof p.placement_override === 'number' && p.placement_override >= 0) {
+          obj.placement_override = p.placement_override;
+        }
+        if (typeof p.variant_override === 'number' && p.variant_override >= 0) {
+          obj.variant_override = p.variant_override;
+        }
+        if (typeof p.scale_override === 'number' && p.scale_override > 0) {
+          obj.scale_override = p.scale_override;
+        }
+        if (typeof p.rotation_override === 'number' && p.rotation_override >= 0) {
+          obj.rotation_override = p.rotation_override;
+        }
         // footprint is internal only — not serialized
         return obj;
       });

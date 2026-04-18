@@ -6,10 +6,10 @@
 
 import { TresParser } from './tres-parser.js';
 import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
-import { CommandHistory } from './commands.js';
+import { CommandHistory, EditPropCommand } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal } from './panels.js';
+import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal, showPropOverrideModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -924,6 +924,34 @@ function initializeAfterLoad() {
   if (hexCanvas) {
     hexCanvas.onHexHover = (hex, subHex) => {
       if (hexInspector) hexInspector.updateHex(hex, subHex);
+    };
+    // Right-click on a placed prop → open the per-instance override
+    // modal. canvas.js hit-tests and fires this callback only when the
+    // click lands on an actual prop sub-hex (plain empty-tile right
+    // clicks are swallowed server-side).
+    hexCanvas.onPropContextMenu = (ctx) => {
+      const entry = ProjectContext.files.props.get(ctx.prop.type + '.tres');
+      const def = entry ? entry.data : null;
+      showPropOverrideModal({
+        prop: ctx.prop,
+        def,
+        onSave: (overrides) => {
+          const oldValues = {
+            placement_override: typeof ctx.prop.placement_override === 'number' ? ctx.prop.placement_override : -1,
+            variant_override: typeof ctx.prop.variant_override === 'number' ? ctx.prop.variant_override : -1,
+            scale_override: typeof ctx.prop.scale_override === 'number' ? ctx.prop.scale_override : -1,
+            rotation_override: typeof ctx.prop.rotation_override === 'number' ? ctx.prop.rotation_override : -1,
+          };
+          // Skip the undo stack entry when nothing actually changed.
+          if (oldValues.placement_override === overrides.placement_override
+            && oldValues.variant_override === overrides.variant_override
+            && oldValues.scale_override === overrides.scale_override
+            && oldValues.rotation_override === overrides.rotation_override) return;
+          const cmd = new EditPropCommand(hexGrid, ctx.hexQ, ctx.hexR, ctx.propIndex, oldValues, overrides);
+          commandHistory.execute(cmd);
+          hexCanvas.requestRender();
+        },
+      });
     };
   }
 }

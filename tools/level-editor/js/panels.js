@@ -227,6 +227,256 @@ export function showErrorListModal(title, errors) {
 }
 
 // ============================================================
+// Prop Override Modal (feature-011)
+// ============================================================
+
+/**
+ * Per-instance override editor opened via right-click on a placed prop.
+ * Lets the user pin placement preset, mesh variant, scale, and rotation
+ * for a single Prop instance — the PropRenderer consults these before
+ * falling back to the seeded scatter algorithm.
+ *
+ * Rules (from feature-011 spec):
+ *  - When the effective preset is SINGLE, variant / scale / rotation are
+ *    editable. Reset clears all four overrides at once.
+ *  - When the effective preset is anything else, the three non-placement
+ *    fields become read-only and show "(seeded)" because the engine
+ *    only applies them to a SINGLE render and scatter copies would
+ *    diverge from the pinned center visually.
+ *
+ * @param {{
+ *   prop: Object,
+ *   def: Object|null,            // PropDef data for this prop (meshes, placement default)
+ *   onSave: (overrides: {
+ *     placement_override: number,
+ *     variant_override: number,
+ *     scale_override: number,
+ *     rotation_override: number,
+ *   }) => void,
+ * }} opts
+ */
+export function showPropOverrideModal(opts) {
+  const { prop, def, onSave } = opts;
+  const existing = document.getElementById('prop-override-modal');
+  if (existing) existing.remove();
+
+  const PRESET_LABELS = ['Single', 'Normal', 'Dense', 'Sprouting', 'Spread'];
+  const overlay = document.createElement('div');
+  overlay.id = 'prop-override-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:360px;max-width:480px;color:var(--text-primary);display:flex;flex-direction:column;gap:12px;';
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = `Prop Overrides — ${prop.type}`;
+  titleEl.style.cssText = 'font-size:15px;font-weight:600;';
+  dialog.appendChild(titleEl);
+
+  const subtitle = document.createElement('div');
+  subtitle.textContent = `sub-hex (${prop.sq ?? 0}, ${prop.sr ?? 0})`;
+  subtitle.style.cssText = 'font-size:11px;color:var(--text-secondary);margin-top:-8px;';
+  dialog.appendChild(subtitle);
+
+  // --- Placement override ---
+  const defPlacement = (def && def.placeable && typeof def.placeable.placement === 'number') ? def.placeable.placement : 0;
+  const currPlacement = (typeof prop.placement_override === 'number' && prop.placement_override >= 0)
+    ? prop.placement_override : -1;
+
+  const placementRow = document.createElement('div');
+  placementRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const placementLabel = document.createElement('label');
+  placementLabel.textContent = 'Placement';
+  placementLabel.style.cssText = 'min-width:90px;font-size:12px;';
+  const placementSelect = document.createElement('select');
+  placementSelect.classList.add('prop-input');
+  placementSelect.style.flex = '1';
+  const inheritOpt = document.createElement('option');
+  inheritOpt.value = '-1';
+  inheritOpt.textContent = `Inherit (${PRESET_LABELS[defPlacement] || 'Single'})`;
+  placementSelect.appendChild(inheritOpt);
+  for (let i = 0; i < PRESET_LABELS.length; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = PRESET_LABELS[i];
+    placementSelect.appendChild(opt);
+  }
+  placementSelect.value = String(currPlacement);
+  placementRow.appendChild(placementLabel);
+  placementRow.appendChild(placementSelect);
+  dialog.appendChild(placementRow);
+
+  // --- Variant / scale / rotation ---
+  // Effective preset = override if set, else def default. Only SINGLE (0)
+  // supports per-instance overrides for these three.
+  const meshCount = (def && def.placeable && Array.isArray(def.placeable.meshes)) ? def.placeable.meshes.length : 0;
+
+  const variantRow = document.createElement('div');
+  variantRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const variantLabel = document.createElement('label');
+  variantLabel.textContent = 'Variant';
+  variantLabel.style.cssText = 'min-width:90px;font-size:12px;';
+  const variantSelect = document.createElement('select');
+  variantSelect.classList.add('prop-input');
+  variantSelect.style.flex = '1';
+  const seededVariantOpt = document.createElement('option');
+  seededVariantOpt.value = '-1';
+  seededVariantOpt.textContent = 'Seeded (random)';
+  variantSelect.appendChild(seededVariantOpt);
+  for (let i = 0; i < meshCount; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = `Variant ${i + 1}`;
+    variantSelect.appendChild(opt);
+  }
+  variantSelect.value = (typeof prop.variant_override === 'number' && prop.variant_override >= 0)
+    ? String(prop.variant_override) : '-1';
+  variantRow.appendChild(variantLabel);
+  variantRow.appendChild(variantSelect);
+  dialog.appendChild(variantRow);
+
+  const scaleRow = document.createElement('div');
+  scaleRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const scaleLabel = document.createElement('label');
+  scaleLabel.textContent = 'Scale';
+  scaleLabel.style.cssText = 'min-width:90px;font-size:12px;';
+  const scaleInput = document.createElement('input');
+  scaleInput.type = 'number';
+  scaleInput.step = '0.01';
+  scaleInput.min = '0.01';
+  scaleInput.max = '10';
+  scaleInput.placeholder = 'Seeded';
+  scaleInput.classList.add('prop-input');
+  scaleInput.style.flex = '1';
+  if (typeof prop.scale_override === 'number' && prop.scale_override > 0) {
+    scaleInput.value = String(prop.scale_override);
+  }
+  scaleRow.appendChild(scaleLabel);
+  scaleRow.appendChild(scaleInput);
+  dialog.appendChild(scaleRow);
+
+  const rotationRow = document.createElement('div');
+  rotationRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const rotationLabel = document.createElement('label');
+  rotationLabel.textContent = 'Rotation °';
+  rotationLabel.style.cssText = 'min-width:90px;font-size:12px;';
+  const rotationInput = document.createElement('input');
+  rotationInput.type = 'number';
+  rotationInput.step = '1';
+  rotationInput.min = '0';
+  rotationInput.max = '359';
+  rotationInput.placeholder = 'Seeded';
+  rotationInput.classList.add('prop-input');
+  rotationInput.style.flex = '1';
+  if (typeof prop.rotation_override === 'number' && prop.rotation_override >= 0) {
+    rotationInput.value = String(prop.rotation_override);
+  }
+  rotationRow.appendChild(rotationLabel);
+  rotationRow.appendChild(rotationInput);
+  dialog.appendChild(rotationRow);
+
+  const hint = document.createElement('div');
+  hint.classList.add('prop-hint');
+  hint.style.fontSize = '11px';
+  dialog.appendChild(hint);
+
+  // --- Enable/disable variant/scale/rotation based on effective preset ---
+  const _refreshEnabled = () => {
+    const effective = parseInt(placementSelect.value, 10) >= 0
+      ? parseInt(placementSelect.value, 10) : defPlacement;
+    const isSingle = effective === 0;
+    variantSelect.disabled = !isSingle;
+    scaleInput.disabled = !isSingle;
+    rotationInput.disabled = !isSingle;
+    if (!isSingle) {
+      // Scatter copies are procedural — overriding variant/scale/rotation
+      // on the center alone breaks the illusion, so the spec says the
+      // fields only apply under SINGLE. Wipe any stale input while
+      // disabled so save doesn't persist it.
+      variantSelect.value = '-1';
+      scaleInput.value = '';
+      rotationInput.value = '';
+      hint.textContent = `Scatter preset (${PRESET_LABELS[effective]}) renders procedurally — variant / scale / rotation are seeded. Switch to Single to pin specific values.`;
+    } else {
+      hint.textContent = 'Leave variant/scale/rotation empty to use seeded defaults.';
+    }
+  };
+  placementSelect.addEventListener('change', _refreshEnabled);
+  _refreshEnabled();
+
+  // --- Buttons ---
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;justify-content:space-between;gap:8px;margin-top:4px;';
+
+  const btnReset = document.createElement('button');
+  btnReset.textContent = 'Reset';
+  btnReset.classList.add('prop-btn');
+  btnReset.addEventListener('click', () => {
+    placementSelect.value = '-1';
+    variantSelect.value = '-1';
+    scaleInput.value = '';
+    rotationInput.value = '';
+    _refreshEnabled();
+  });
+
+  const rightRow = document.createElement('div');
+  rightRow.style.cssText = 'display:flex;gap:8px;';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.classList.add('prop-btn');
+  const btnOk = document.createElement('button');
+  btnOk.textContent = 'Apply';
+  btnOk.classList.add('prop-btn-primary');
+  rightRow.appendChild(btnCancel);
+  rightRow.appendChild(btnOk);
+
+  btnRow.appendChild(btnReset);
+  btnRow.appendChild(rightRow);
+  dialog.appendChild(btnRow);
+
+  const cleanup = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  };
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') cleanup();
+    else if (e.key === 'Enter' && e.target !== scaleInput && e.target !== rotationInput) {
+      e.preventDefault();
+      _commit();
+    }
+  };
+
+  const _commit = () => {
+    const placementVal = parseInt(placementSelect.value, 10);
+    const variantVal = parseInt(variantSelect.value, 10);
+    const scaleStr = scaleInput.value.trim();
+    const rotationStr = rotationInput.value.trim();
+    const overrides = {
+      placement_override: Number.isFinite(placementVal) ? placementVal : -1,
+      variant_override: Number.isFinite(variantVal) ? variantVal : -1,
+      scale_override: scaleStr === '' ? -1 : parseFloat(scaleStr),
+      rotation_override: rotationStr === '' ? -1 : parseFloat(rotationStr),
+    };
+    if (!Number.isFinite(overrides.scale_override) || overrides.scale_override <= 0) {
+      overrides.scale_override = -1;
+    }
+    if (!Number.isFinite(overrides.rotation_override) || overrides.rotation_override < 0) {
+      overrides.rotation_override = -1;
+    }
+    cleanup();
+    onSave(overrides);
+  };
+
+  btnCancel.addEventListener('click', cleanup);
+  btnOk.addEventListener('click', _commit);
+  document.addEventListener('keydown', keyHandler);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  placementSelect.focus();
+}
+
+// ============================================================
 // HexInspector — Right sidebar panel (replaces PropDetailPanel)
 // ============================================================
 

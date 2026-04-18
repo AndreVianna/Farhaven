@@ -1282,6 +1282,42 @@ test('serializeGridToMapJson — prop optional fields round-trip', () => {
   assert(prop.respawn_time === 300, 'respawn_time should serialize');
 });
 
+test('serializeGridToMapJson — per-instance overrides serialize when set', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [createProp('P00001', 0, 0, 'plant', {
+    placement_override: 0,
+    variant_override: 2,
+    scale_override: 1.25,
+    rotation_override: 45,
+  })];
+  grid.setTile(0, 0, tile);
+  const json = serializeGridToMapJson(grid);
+  const p = json.tiles['0,0'].props[0];
+  assert(p.placement_override === 0, 'placement_override should serialize');
+  assert(p.variant_override === 2, 'variant_override should serialize');
+  assert(p.scale_override === 1.25, 'scale_override should serialize');
+  assert(p.rotation_override === 45, 'rotation_override should serialize');
+});
+
+test('serializeGridToMapJson — per-instance overrides omitted when sentinel', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [createProp('P00001', 0, 0, 'plant', {
+    placement_override: -1,
+    variant_override: -1,
+    scale_override: -1,
+    rotation_override: -1,
+  })];
+  grid.setTile(0, 0, tile);
+  const json = serializeGridToMapJson(grid);
+  const p = json.tiles['0,0'].props[0];
+  assert(p.placement_override === undefined, 'placement_override sentinel should NOT serialize');
+  assert(p.variant_override === undefined, 'variant_override sentinel should NOT serialize');
+  assert(p.scale_override === undefined, 'scale_override sentinel should NOT serialize');
+  assert(p.rotation_override === undefined, 'rotation_override sentinel should NOT serialize');
+});
+
 test('serializeGridToMapJson — root level has spawn and tiles, optional metadata', () => {
   const grid = new HexGridClass();
   grid.meta.spawn = [2, 3];
