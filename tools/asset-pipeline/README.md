@@ -6,6 +6,11 @@ First end-to-end run on 2026-04-17 (Group 3 minerals, 15 meshes).
 Not official yet — we want to revisit and formalize later (CLI ergonomics,
 config, retries, probably wrap into a single `./generate <prop_id>` entry point).
 
+## Requirements
+
+- Python 3.7+ (uses `from __future__ import annotations` so PEP 604 unions work on older interpreters)
+- stdlib only — no `pip install` needed
+
 ## Scripts
 
 ### `gen_image.py`
