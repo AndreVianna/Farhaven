@@ -8,6 +8,10 @@ Usage:
 
 Requires env var MESHY_API_KEY.
 """
+# Defer annotation evaluation so PEP 604 unions (e.g. `dict | None`) and
+# built-in generic subscripting (e.g. `list[str]`) work on Python 3.7+.
+from __future__ import annotations
+
 import os
 import sys
 import json
