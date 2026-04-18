@@ -313,8 +313,12 @@ func _populate_all_visible_tiles() -> void:
 
 
 func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
-	# Remove existing instances first (re-add with correct state)
-	_remove_all_props_at(coords)
+	# Remove existing instances first (re-add with correct state). Skip
+	# when nothing is tracked — the O(N*M) _update_instance_index walk
+	# inside _remove_all_props_at is wasted work on fresh map loads and
+	# the first visit to any tile.
+	if _tile_entries.has(coords):
+		_remove_all_props_at(coords)
 
 	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
 	if tile == null:
