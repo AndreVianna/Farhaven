@@ -200,20 +200,15 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
             # into the Blob-download fallback.
             MAX_UPLOAD_BYTES = 64 * 1024 * 1024
             if length < 0 or length > MAX_UPLOAD_BYTES:
+                # Do NOT drain an oversized body based on the declared
+                # Content-Length — a client can claim an absurd length
+                # and never actually send the bytes, blocking this
+                # handler indefinitely (easy DoS). Force the connection
+                # closed after the 413; the browser sees the response
+                # on its own socket, no drain needed (Copilot PR #27
+                # comment 3107506602).
+                self.close_connection = True
                 self._json_response(413, {'error': f'Request body too large (limit {MAX_UPLOAD_BYTES} bytes)'})
-                # Drain the body so the connection can stay alive and
-                # the client can actually read the 413 JSON instead of
-                # seeing a generic "Failed to fetch" when the server
-                # closes mid-stream.
-                try:
-                    remaining = length
-                    while remaining > 0:
-                        chunk = self.rfile.read(min(remaining, 65536))
-                        if not chunk:
-                            break
-                        remaining -= len(chunk)
-                except Exception:
-                    pass
                 return
             body = self.rfile.read(length).decode('utf-8')
             with open(full_path, 'w', encoding='utf-8', newline='\n') as f:

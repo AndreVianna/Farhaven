@@ -41,10 +41,15 @@ def migrate(text: str) -> str:
         raise RuntimeError("placement_1 block missing placement = ... line")
     preset = int(preset_match.group(1))
 
-    # 2) Inject `placement = N` into placeable_1 sub_resource as the last field.
+    # 2) Inject `placement = N` into placeable_1 sub_resource as the
+    # last field. If a partial prior run already injected a `placement`
+    # line into placeable_1, skip injection so we don't duplicate it.
+    # Copilot PR #27 comment 3107506643.
     def _inject(m: re.Match) -> str:
-        body = m.group(0).rstrip() + f"\nplacement = {preset}\n"
-        return body
+        body = m.group(0)
+        if re.search(r"^placement\s*=", body, flags=re.MULTILINE):
+            return body
+        return body.rstrip() + f"\nplacement = {preset}\n"
 
     new_text = re.sub(
         r'\[sub_resource type="Resource" id="placeable_1"\](?:[^\[]|\[(?!sub_resource|resource))*?(?=\n\n|\n\[)',

@@ -62,6 +62,16 @@ def add_collision_shapes(text: str, shapes: list) -> str:
     if not shapes:
         return text
 
+    # Idempotency guard: if the file already has a collision_shapes
+    # line (or the collision_shape.gd ext_resource), a second run would
+    # duplicate sub_resources and inflate load_steps. Bail early so
+    # re-running the migration on an already-migrated .tres is a no-op.
+    # Copilot PR #27 comment 3107506636.
+    if re.search(r"^collision_shapes\s*=", text, flags=re.MULTILINE):
+        return text
+    if 'capabilities/collision_shape.gd' in text:
+        return text
+
     # 1) Bump load_steps.
     def _bump(m):
         n = int(m.group(1))
