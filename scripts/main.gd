@@ -52,9 +52,12 @@ func _apply_render_settings() -> void:
 	if settings == null:
 		return
 	var radius: int = settings.prop_stream_radius
+	var collision_radius: int = settings.prop_collision_radius
 	var prop_renderer: Node = $World.get_node_or_null("PropRenderer")
 	if prop_renderer != null and prop_renderer.has_method("set_stream_radius"):
 		prop_renderer.set_stream_radius(radius)
+	if prop_renderer != null and prop_renderer.has_method("set_collision_radius"):
+		prop_renderer.set_collision_radius(collision_radius)
 	var label_renderer: Node = $World.get_node_or_null("PropLabelRenderer")
 	if label_renderer != null and label_renderer.has_method("set_stream_radius"):
 		label_renderer.set_stream_radius(radius)

@@ -37,6 +37,14 @@ export class GameSettingsModel {
      * (every tile renders). Mirror of GameSettings.prop_stream_radius.
      */
     this.prop_stream_radius = 0;
+    /**
+     * @type {number} View-distance radius (hex tiles) for spawning
+     * StaticBody3D collision bodies around natural props. Decoupled
+     * from render radius: MultiMesh is cheap on GPU, a StaticBody3D
+     * per scattered prop is not. Range [3, 30], default 8. Mirror of
+     * GameSettings.prop_collision_radius.
+     */
+    this.prop_collision_radius = 8;
     /** @type {TresFile|null} Round-trip handle to preserve unknown fields. */
     this._raw = null;
   }
@@ -51,6 +59,9 @@ export class GameSettingsModel {
     if (data.starting_map != null) model.starting_map = String(data.starting_map);
     if (typeof data.prop_stream_radius === 'number') {
       model.prop_stream_radius = data.prop_stream_radius;
+    }
+    if (typeof data.prop_collision_radius === 'number') {
+      model.prop_collision_radius = data.prop_collision_radius;
     }
     return model;
   }
@@ -87,6 +98,14 @@ function modelToRaw(model) {
   // there's no byte-churn cost worth the footgun.
   const radius = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
   fields.set('prop_stream_radius', { type: 'int', value: radius });
+  // Emit prop_collision_radius ALWAYS (same reason: avoid the silent-
+  // restore footgun from the preservation loop below). Clamp to the
+  // GDScript @export_range [3, 30] so an out-of-range value typed
+  // into the number input never lands in the .tres file.
+  const collisionRadiusRaw = Number.isFinite(model.prop_collision_radius)
+    ? model.prop_collision_radius | 0 : 8;
+  const collisionRadius = Math.max(3, Math.min(30, collisionRadiusRaw));
+  fields.set('prop_collision_radius', { type: 'int', value: collisionRadius });
 
   // Preserve forward-compat fields (future additions we don't edit here).
   // Guarded by fields.has(k) above — every key the UI manages is
@@ -224,6 +243,41 @@ export async function renderSettingsEditor(container, options) {
   radiusWrap.appendChild(radiusHint);
 
   container.appendChild(radiusWrap);
+
+  // prop_collision_radius number input
+  const collisionWrap = document.createElement('div');
+  collisionWrap.style.marginTop = '16px';
+  const collisionLabel = document.createElement('label');
+  collisionLabel.textContent = 'Prop Collision Radius (hex tiles)';
+  collisionLabel.classList.add('prop-label');
+  collisionLabel.style.display = 'block';
+  collisionWrap.appendChild(collisionLabel);
+
+  const collisionInput = document.createElement('input');
+  collisionInput.type = 'number';
+  collisionInput.min = '3';
+  collisionInput.max = '30';
+  collisionInput.step = '1';
+  collisionInput.value = String(model.prop_collision_radius);
+  collisionInput.classList.add('prop-input');
+  collisionInput.style.maxWidth = '160px';
+  collisionInput.addEventListener('change', () => {
+    const v = parseInt(collisionInput.value, 10);
+    model.prop_collision_radius = Number.isFinite(v) ? Math.max(3, Math.min(30, v)) : 8;
+    collisionInput.value = String(model.prop_collision_radius);
+  });
+  collisionWrap.appendChild(collisionInput);
+
+  const collisionHint = document.createElement('div');
+  collisionHint.style.color = 'var(--text-secondary)';
+  collisionHint.style.fontSize = '0.85em';
+  collisionHint.style.marginTop = '4px';
+  collisionHint.innerHTML = 'Natural props get solid collision only within this radius around the player. ' +
+    'Visual rendering can be unlimited (above) while collision stays near the player for performance. ' +
+    'Range <strong>3–30</strong>, default 8.';
+  collisionWrap.appendChild(collisionHint);
+
+  container.appendChild(collisionWrap);
 
   // Save button + status
   const actionRow = document.createElement('div');
