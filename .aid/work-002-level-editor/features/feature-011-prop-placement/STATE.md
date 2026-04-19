@@ -33,10 +33,10 @@
 | 2026-04-18 | Engine consumer implemented in PropRenderer: scatter algorithm with seeded RNG, ±2 count jitter, Fisher-Yates SSH selection, per-copy variant / scale / rotation. Override fields added on Prop. Backward-compat for legacy rotation_deg as implicit rotation_override on SINGLE center. | implementation |
 | 2026-04-18 | 12 grassland .tres patched with PlacementCap (plants NORMAL, Boulder SINGLE, other minerals SPROUTING). Migration script at tools/migrations/. Roundtrip tests green. | implementation |
 | 2026-04-18 | Unit tests added: test_placement_preset.gd (13 tests), test_placement_cap.gd (3 tests). | implementation |
+| 2026-04-19 | Refactor: PlacementCap merged into PlaceableCap as `placement: PlacementPreset`. PropDef now carries placement on the same cap instead of a sibling resource. Tests renamed: test_placement_cap.gd → test_placeable_cap.gd. Migration `2026-04-18-placement-into-placeable.py` relocated the existing saves. | implementation |
+| 2026-04-19 | Editor UI for per-instance overrides shipped (context menu: variant / scale / rotation / reset). Drag-to-move placed props and generative populate button also shipped as part of the same branch. | implementation |
 
 ## Still Pending
 
-- Editor UI for PlacementCap authoring on PropDef (right column, next to PlaceableCap)
-- Editor context menu for per-instance overrides (variant / scale / rotation)
-- Natural prop collision in PropRenderer (StaticBody3D from center scattered copy)
+- Natural prop collision in PropRenderer (StaticBody3D from center scattered copy) — task #109
 - Removal of legacy Prop.rotation_deg after full migration of saves
