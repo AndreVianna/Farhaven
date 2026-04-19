@@ -22,11 +22,15 @@ const PROP_Y_OFFSET: float = 0.3
 const INITIAL_INSTANCES: int = 256
 
 ## Upper bound on MultiMesh.instance_count per pool variant. With
-## view-distance streaming (STREAM_RADIUS hexes around the player)
-## a single pool rarely crosses ~2000 instances even on a densely
-## populated biome, so 4096 is a comfortable ceiling; any further
-## growth signals a bug we'd rather catch than paper over.
-const MAX_INSTANCES: int = 4096
+## radius-20 streaming a Dense-scatter grassland tile can author
+## ~26 copies per populated tile; across ~630 populated tiles split
+## into 3 mesh variants, a single pool variant lands at ~5500
+## instances. 16384 gives ~3× headroom so the cap is a safety net
+## against runaway maps, not the throttle it used to be when the
+## old 4096 value silently dropped everything past the fourth
+## populated tile cluster. Memory cost 16384 × 64 B = 1 MB per pool
+## variant — still trivial.
+const MAX_INSTANCES: int = 16384
 
 ## Fallback streaming radius used before GameSettings is loaded.
 ## Overridden by `set_stream_radius()` (called from main.gd once
