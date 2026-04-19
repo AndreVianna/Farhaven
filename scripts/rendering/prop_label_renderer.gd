@@ -194,6 +194,21 @@ func _stream_around(center: Vector2i) -> void:
 		for coords in _grid.get_all_tiles():
 			desired[coords] = true
 
+	# Clean up orphan labels added during the warm-up window.
+	# bootstrap_visible() fires element_unknown for every tile on the
+	# map; _is_streamed accepted all of them because _streamed_tiles
+	# was still empty, but none of those tiles were added to
+	# _streamed_tiles for later eviction. So when a far-away tile
+	# falls outside the stream window after the first real stream,
+	# its "?" label stays forever — that's the "labels visible but
+	# no 3D props" case Andre hit. Evict anything in _tile_labels
+	# whose coords aren't in the desired set, regardless of whether
+	# we remember adding it.
+	for coords in _tile_labels.keys():
+		if not desired.has(coords):
+			_remove_all_labels_at(coords)
+			_streamed_tiles.erase(coords)
+
 	for coords in _streamed_tiles.keys():
 		if not desired.has(coords):
 			_remove_all_labels_at(coords)
