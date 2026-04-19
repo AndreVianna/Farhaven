@@ -115,6 +115,17 @@ var _pool_y_offsets: Dictionary = {}
 ##   variant: int, instance_idx: int, depleted: bool}
 var _tile_entries: Dictionary = {}
 
+## Reverse index for O(1) MultiMesh-slot → owning entry lookup.
+## Keyed by `pool_id`, then `variant_idx`, value is Array[Dictionary]
+## where `entry_at_slot_i = _pool_instance_owner[pool][variant][i]`.
+## The previous _update_instance_index implementation walked every
+## _tile_entries dict entry on every hide+swap (O(total streamed
+## instances) per remove). At radius 10 with dense scatter — ~25k
+## live entries, ~140 removes per hex cross — that was 3.5M iterations
+## per cross (~5-7s freeze, reported 2026-04-19). This index makes
+## the same operation O(1).
+var _pool_instance_owner: Dictionary = {}
+
 ## Reference to HexGrid (allows override in tests)
 var _grid: Node = null
 
@@ -855,7 +866,7 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 
 		if not _tile_entries.has(coords):
 			_tile_entries[coords] = []
-		_tile_entries[coords].append({
+		var info: Dictionary = {
 			"prop_type": rn.type,
 			"pool": pool_id,
 			"variant": variant_idx,
@@ -866,7 +877,26 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 			# affect all copies of the same logical prop.
 			"sub_hex": rn.sub_hex,
 			"is_center": s["is_center"],
-		})
+		}
+		_tile_entries[coords].append(info)
+		# Register in the reverse index at MultiMesh slot = idx so
+		# _hide_instance can find this entry in O(1) when the slot is
+		# swapped during eviction. Same dict ref — mutations through
+		# the index update the _tile_entries entry too.
+		var pool_map: Dictionary = _pool_instance_owner.get(pool_id, {})
+		if not _pool_instance_owner.has(pool_id):
+			_pool_instance_owner[pool_id] = pool_map
+		var owner_list: Array = pool_map.get(variant_idx, [])
+		if not pool_map.has(variant_idx):
+			pool_map[variant_idx] = owner_list
+		# idx is the pre-bump visible_instance_count — the slot we just
+		# wrote. owner_list length should equal that, so append lands it
+		# at the correct index. Defensive pad if an anomaly write drove
+		# the MM count past the owner_list (anomalies don't participate
+		# in the index).
+		while owner_list.size() < idx:
+			owner_list.append(null)
+		owner_list.append(info)
 
 
 ## Compute the deterministic scatter layout for a single prop on a tile.
@@ -1036,22 +1066,32 @@ func _hide_instance(pool_id: StringName, variant_idx: int, instance_idx: int) ->
 	if instance_idx >= mm.visible_instance_count:
 		return
 	var last_idx: int = mm.visible_instance_count - 1
+	# Fetch the owner list once; we need it both for the swap update
+	# and for popping the freed slot at the end.
+	var pool_map: Dictionary = _pool_instance_owner.get(pool_id, {})
+	var owner_list: Array = pool_map.get(variant_idx, [])
 	if instance_idx != last_idx:
 		var last_xform: Transform3D = mm.get_instance_transform(last_idx)
 		var last_custom: Color = mm.get_instance_custom_data(last_idx)
 		mm.set_instance_transform(instance_idx, last_xform)
 		mm.set_instance_custom_data(instance_idx, last_custom)
-		_update_instance_index(pool_id, variant_idx, last_idx, instance_idx)
+		# O(1) reverse-index update: the info that was parked at
+		# last_idx is the one that got its transform moved to
+		# instance_idx. Point it at its new slot and swap the
+		# owner_list entries. Pre-existing bug around anomalies not
+		# participating in the index is tolerated here — if the last
+		# slot is an anomaly (owner_list shorter than last_idx + 1
+		# because anomalies skip the register), the swap is a no-op
+		# on the index and the MultiMesh write happens anyway.
+		if last_idx < owner_list.size():
+			var moved_info = owner_list[last_idx]
+			if moved_info != null:
+				moved_info.instance_idx = instance_idx
+			owner_list[instance_idx] = moved_info
+	# Drop the now-freed tail slot from both MultiMesh and the index.
+	if not owner_list.is_empty():
+		owner_list.pop_back()
 	mm.visible_instance_count = last_idx
-
-
-func _update_instance_index(pool_id: StringName, variant_idx: int, old_idx: int, new_idx: int) -> void:
-	for coords in _tile_entries:
-		var entries_list: Array = _tile_entries[coords]
-		for info in entries_list:
-			if info.pool == pool_id and info.get("variant", 0) == variant_idx and info.instance_idx == old_idx:
-				info.instance_idx = new_idx
-				return
 
 
 func _swap_mesh_variant(coords: Vector2i, prop_type: StringName, to_depleted: bool) -> void:
