@@ -13,6 +13,9 @@
 <!-- Design tokens (Phase 1) -->
 <link rel="stylesheet" href="css/tokens.css">
 
+<!-- Shell styles: titlebar, sidebar, workspace, statusbar (Phase 2) -->
+<link rel="stylesheet" href="css/shell.css">
+
 <style>
 /* ============================================================
    CSS — Dark theme, full-viewport layout
@@ -992,35 +995,15 @@ input[type="checkbox"] {
 </style>
 </head>
 <body>
-<div id="app">
-  <!-- Editor Workspace -->
-  <div id="editor-workspace">
-    <header id="toolbar">
-      <span class="toolbar-title">Farhaven Level Editor</span>
-      <span id="tool-indicator" style="font-size:12px;color:var(--text-secondary);"></span>
-      <button id="help-btn" title="Keyboard Shortcuts (?)">?</button>
-    </header>
-    <nav id="tabs">
-      <button class="tab-btn" data-tab="settings">Settings</button>
-      <button class="tab-btn active" data-tab="map">Maps</button>
-      <button class="tab-btn" data-tab="biomes">Biomes</button>
-      <button class="tab-btn" data-tab="mineral">Minerals</button>
-      <button class="tab-btn" data-tab="plant">Flora</button>
-      <button class="tab-btn" data-tab="animal">Fauna</button>
-      <button class="tab-btn" data-tab="fungi">Fungi</button>
-      <button class="tab-btn" data-tab="ooze">Oozes</button>
-      <button class="tab-btn" data-tab="liquid">Liquids</button>
-      <button class="tab-btn" data-tab="stuff">Stuff</button>
-      <button class="tab-btn" data-tab="structure">Structures</button>
-      <button class="tab-btn" data-tab="equipment">Equipment</button>
-      <button class="tab-btn" data-tab="vehicle">Vehicles</button>
-      <button class="tab-btn" data-tab="storage">Containers</button>
-      <button class="tab-btn" data-tab="recipes">Recipes</button>
-      <button class="tab-btn" data-tab="events">Events</button>
-      <button class="tab-btn" data-tab="journal">Journal</button>
-      <button class="tab-btn" data-tab="cutscenes">Cutscenes</button>
-    </nav>
-    <main id="tab-content">
+<div id="app" class="app-root">
+  <header class="titlebar" id="titlebar">
+    <!-- Mounted by titlebar.js on DOMContentLoaded -->
+  </header>
+  <div class="workspace">
+    <aside class="sidebar" id="sidebar-nav">
+      <!-- Mounted by sidebar.js on DOMContentLoaded -->
+    </aside>
+    <main id="tab-content" class="main">
       <div id="tab-map" class="tab-panel active">
         <div id="map-sidebar">
           <!-- Map selector -->
@@ -1132,11 +1115,15 @@ input[type="checkbox"] {
         <p style="color: var(--text-secondary);">Game Settings</p>
       </div>
     </main>
-    <footer id="status-bar">
-      <span id="status-text">Ready</span>
-    </footer>
   </div>
-
+  <footer id="status-bar" class="statusbar">
+    <div class="sb-group">
+      <span id="status-text" class="sb-item strong">Ready</span>
+    </div>
+    <div class="sb-group">
+      <span id="tool-indicator" class="sb-item"></span>
+    </div>
+  </footer>
 </div>
 
 <!-- Help overlay -->

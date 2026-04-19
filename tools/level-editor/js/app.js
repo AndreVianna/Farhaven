@@ -24,6 +24,8 @@ import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
 import { showGeneratorDialog, generateMap } from './map-generator.js';
 import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './populate.js';
+import { mountTitlebar } from './titlebar.js';
+import { mountSidebar, NAV } from './sidebar.js';
 
 // ============================================================
 // Module-level state
@@ -110,33 +112,27 @@ export function registerTabSwitchGuard(fn) {
   _tabSwitchGuards.push(fn);
 }
 
+/** @type {{refresh: () => void, setActive: (id: string) => void}|null} */
+let sidebarHandle = null;
+
+/** @type {{refresh: () => void, setBreadcrumb: (text: string) => void}|null} */
+let titlebarHandle = null;
+
 /**
- * Switch to the specified tab.
- * @param {string} tabName - 'map' | 'props' | 'biomes'
+ * Switch to the specified route (tab). Updates the sidebar's active
+ * state and shows the matching panel. No-op if the route id is
+ * unknown. Runs tab-switch guards to protect unsaved form state.
+ * @param {string} tabName
  * @returns {void}
  */
 function switchTab(tabName) {
   if (!TAB_LABELS[tabName]) return;
   if (tabName === activeTab) return;
-  // Leaving a tab with uncommitted form state (prop/biome/recipe editors
-  // only mark dirty after Save — the form input itself is ephemeral).
-  // Ask each registered guard before changing tabs so the user can
-  // cancel and go save first.
   for (const guard of _tabSwitchGuards) {
     if (guard() === false) return;
   }
   activeTab = tabName;
 
-  // Update tab buttons
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.dataset.tab === tabName) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-
-  // Update tab panels
   document.querySelectorAll('.tab-panel').forEach(panel => {
     if (panel.id === 'tab-' + tabName) {
       panel.classList.add('active');
@@ -144,14 +140,9 @@ function switchTab(tabName) {
       panel.classList.remove('active');
     }
   });
-}
 
-// Wire tab click handlers
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    switchTab(btn.dataset.tab);
-  });
-});
+  if (sidebarHandle) sidebarHandle.setActive(tabName);
+}
 
 // ============================================================
 // UI Helpers
@@ -285,24 +276,13 @@ dirtyTracker.onChange = () => {
 };
 
 /**
- * Update tab button labels and dirty indicators.
+ * Refresh sidebar counts / active state after data mutations.
+ * Keeps the name for backwards-compatible call sites.
  * @returns {void}
  */
 function updateTabIndicators() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    const tab = btn.dataset.tab;
-    const baseLabel = TAB_LABELS[tab];
-    if (!baseLabel) return;
-    // Category tabs share the 'props' dirty bucket since they all edit prop files
-    const dirtyKey = PROP_CATEGORY_TABS.includes(tab) ? 'props' : tab;
-    if (dirtyTracker.isDirty(dirtyKey)) {
-      btn.textContent = baseLabel + ' *';
-      btn.classList.add('tab-dirty');
-    } else {
-      btn.textContent = baseLabel;
-      btn.classList.remove('tab-dirty');
-    }
-  });
+  if (sidebarHandle) sidebarHandle.refresh();
+  if (titlebarHandle) titlebarHandle.refresh();
 }
 
 /**
@@ -1032,11 +1012,112 @@ async function autoLoadProject() {
 autoLoadProject();
 
 /**
+ * Build the titlebar menus + wire their actions.
+ * @returns {Array<{label: string, items: Array}>}
+ */
+function _buildTitlebarMenus() {
+  return [
+    {
+      label: 'File',
+      items: [
+        { label: 'New Map…',    kbd: 'Ctrl+N',       action: () => _clickByIdIfExists('btn-new-map') },
+        { label: 'Generate Procedural Map', action: () => _clickByIdIfExists('btn-generate-map') },
+        { separator: true },
+        { label: 'Save All',    kbd: 'Ctrl+S',       action: () => _clickByIdIfExists('btn-save') },
+        { label: 'Save As…',    kbd: 'Ctrl+Shift+S', action: () => _clickByIdIfExists('btn-save-as') },
+        { separator: true },
+        { label: 'Delete Map…', danger: true,        action: () => _clickByIdIfExists('btn-delete-map') },
+      ],
+    },
+    {
+      label: 'Edit',
+      items: [
+        { label: 'Undo',        kbd: 'Ctrl+Z',       action: () => { if (commandHistory.canUndo()) commandHistory.undo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); }, disabled: () => !commandHistory.canUndo() },
+        { label: 'Redo',        kbd: 'Ctrl+Shift+Z', action: () => { if (commandHistory.canRedo()) commandHistory.redo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); }, disabled: () => !commandHistory.canRedo() },
+      ],
+    },
+    {
+      label: 'View',
+      items: [
+        { label: 'Biome Preview: Color',   action: () => _clickByIdIfExists('btn-render-color') },
+        { label: 'Biome Preview: Texture', action: () => _clickByIdIfExists('btn-render-texture') },
+      ],
+    },
+    {
+      label: 'Tools',
+      items: [
+        { label: 'Populate Natural Props…', action: () => _clickByIdIfExists('btn-populate-map') },
+        { label: 'Clear Natural Props…',    danger: true, action: () => _clickByIdIfExists('btn-clear-props') },
+      ],
+    },
+    {
+      label: 'Run',
+      items: [
+        { label: 'Playtest in Godot', kbd: 'F5', disabled: () => true, action: () => {} },
+      ],
+    },
+    {
+      label: 'Help',
+      items: [
+        { label: 'Keyboard Shortcuts', kbd: '?', action: _toggleHelpOverlay },
+      ],
+    },
+  ];
+}
+
+/** @param {string} id */
+function _clickByIdIfExists(id) {
+  const el = document.getElementById(id);
+  if (el && typeof el.click === 'function') el.click();
+}
+
+function _toggleHelpOverlay() {
+  const overlay = document.getElementById('help-overlay');
+  const backdrop = document.getElementById('help-overlay-backdrop');
+  if (!overlay) return;
+  const isVisible = overlay.classList.contains('visible');
+  overlay.classList.toggle('visible', !isVisible);
+  if (backdrop) backdrop.classList.toggle('visible', !isVisible);
+}
+
+/**
+ * Mount the new shell (titlebar + sidebar). Called once after
+ * ProjectContext + commandHistory + dirtyTracker are available.
+ * @returns {void}
+ */
+function _mountShell() {
+  const titlebarEl = document.getElementById('titlebar');
+  if (titlebarEl) {
+    titlebarHandle = mountTitlebar(titlebarEl, {
+      menus: _buildTitlebarMenus(),
+      onCommandPalette: () => { /* Nice-to-have: Command Palette — wired in later commit */ },
+      onUndo: () => { if (commandHistory.canUndo()) commandHistory.undo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
+      onRedo: () => { if (commandHistory.canRedo()) commandHistory.redo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
+      onSave: () => _clickByIdIfExists('btn-save'),
+      onPlaytest: null,  // Nice-to-have: wired once server.py endpoint lands
+      isDirty: () => dirtyTracker.hasUnsavedChanges(),
+    });
+  }
+
+  const sidebarEl = document.getElementById('sidebar-nav');
+  if (sidebarEl) {
+    sidebarHandle = mountSidebar(sidebarEl, {
+      onRouteChange: (id) => switchTab(id),
+      activeRouteId: () => activeTab,
+    });
+  }
+}
+
+/**
  * Post-load initialization: load first map into grid, build biome color map.
  * @returns {void}
  */
 function initializeAfterLoad() {
   console.group('initializeAfterLoad');
+
+  // Mount titlebar + sidebar now that ProjectContext has data and the
+  // callback wiring targets (commandHistory, dirtyTracker) are live.
+  _mountShell();
 
   // Build biome color map from loaded .tres data
   biomeColorMap.clear();
