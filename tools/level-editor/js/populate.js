@@ -314,7 +314,11 @@ export function computePopulatePlan(grid, opts) {
     let kept = existing;
     if (replace) {
       // Drop natural-origin props so populate gets a clean slate;
-      // structures, equipment, etc. stay put.
+      // structures, equipment, etc. stay put. q/r come from the key
+      // parse below — keeping them off `dropped` avoids a dead field
+      // that earlier encoded `tile ? null : 0` for an impossible
+      // "tile is null" case (tile is the iteration value and always
+      // truthy inside a Map for-of).
       const dropped = [];
       kept = [];
       for (let i = 0; i < existing.length; i++) {
@@ -322,14 +326,14 @@ export function computePopulatePlan(grid, opts) {
         const originIsNatural = (typeof p.origin === 'string' && p.origin === 'natural')
           || (typeof p.origin === 'number' && p.origin === 0);
         if (originIsNatural) {
-          dropped.push({ q: tile ? null : 0, propIndex: i, prop: p });
+          dropped.push({ propIndex: i, prop: p });
         } else {
           kept.push(p);
         }
       }
-      // removed[] needs real (q,r); splice indices here are against
-      // the pre-existing array. We use a reverse-delete trick when
-      // applying so indices stay valid.
+      // removed[] gets real (q,r) from the key; splice indices here
+      // are against the pre-existing array. We use a reverse-delete
+      // trick when applying so indices stay valid.
       const { q, r } = _parseKey(key);
       for (const d of dropped) removed.push({ q, r, propIndex: d.propIndex, prop: d.prop });
     }
