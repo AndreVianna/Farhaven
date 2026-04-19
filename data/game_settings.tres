@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_script")
 starting_map = "ch1.json"
-prop_stream_radius = 10
-prop_collision_radius = 5
+prop_stream_radius = 15
+prop_collision_radius = 3
