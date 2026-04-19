@@ -27,21 +27,22 @@ const PROP_Y_OFFSET: float = 0.3
 ## ground-cover ever looks sparse again.
 const MIN_RENDER_SCALE: float = 0.35
 
-## Initial capacity of each MultiMesh pool. Pools grow on demand
-## past this via `_ensure_pool_capacity`, doubling each time, so the
-## constant only affects startup cost.
-const INITIAL_INSTANCES: int = 256
+## Initial capacity of each MultiMesh pool. Each pool allocates this
+## many slots up front. DO NOT grow it mid-populate: Godot's
+## MultiMesh.instance_count setter erases every existing instance's
+## transform when the buffer is reallocated, so a grow-on-demand
+## strategy silently wipes everything added before the grow and the
+## player sees "half the props are missing at spawn but fine after
+## walking away and back" (Andre diagnosed this on 2026-04-19 with
+## radius 5 vs 7 vs 10 — growth was always triggering on the later
+## radii and eating the near-player instances that had already been
+## written).
+##
+## Dimensioned to cover a densely-populated radius-60 window with
+## Dense scatter (~15k instances per variant pool worst-case) plus
+## ~10% headroom. 16384 × 64 B = 1 MB per pool variant.
+const INITIAL_INSTANCES: int = 16384
 
-## Upper bound on MultiMesh.instance_count per pool variant. With
-## radius-20 streaming a Dense-scatter grassland tile can author
-## ~26 copies per populated tile; across ~630 populated tiles split
-## into 3 mesh variants, a single pool variant lands at ~5500
-## instances. 16384 gives ~3× headroom so the cap is a safety net
-## against runaway maps, not the throttle it used to be when the
-## old 4096 value silently dropped everything past the fourth
-## populated tile cluster. Memory cost 16384 × 64 B = 1 MB per pool
-## variant — still trivial.
-const MAX_INSTANCES: int = 16384
 
 ## Fallback streaming radius used before GameSettings is loaded.
 ## Overridden by `set_stream_radius()` (called from main.gd once
@@ -195,37 +196,21 @@ func _create_pools() -> void:
 		_variant_pools[def.id] = extra_pools
 
 
-## Grow a MultiMesh pool so it can hold at least `required` instances.
-## Pools start at INITIAL_INSTANCES; when Populate pushes them past
-## capacity the count doubles each time until it hits MAX_INSTANCES.
-## Returns true when there is room (possibly after resizing), false
-## when the hard ceiling has been reached and the caller should drop
-## the excess — currently never happens in practice, but keeps the
-## renderer from silently allocating gigabytes if a map goes wild.
-##
-## Godot's MultiMesh.instance_count mutation preserves existing
-## transforms inside the buffer. Newly-created slots are the default
-## Transform3D (origin 0, basis identity) with zero custom data; the
-## caller will overwrite them before bumping visible_instance_count.
+## Check whether a MultiMesh pool has room for another instance.
+## Growing the pool at runtime is NOT safe — Godot's
+## MultiMesh.instance_count setter wipes every existing instance
+## transform when the buffer is reallocated. The pool is sized up
+## front via INITIAL_INSTANCES; hitting the cap is a logged
+## overflow rather than an opportunity to quietly grow.
 static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
 	if required <= mm.instance_count:
 		return true
-	if required > MAX_INSTANCES:
-		# One-time per-pool warning: if we ever hit the ceiling, the
-		# author needs to know so they can either lower biome density
-		# or bump MAX_INSTANCES. Silent-skip was the original bug.
-		push_warning("PropRenderer: pool %s hit MAX_INSTANCES cap (%d) — some instances will not render." % [mm.resource_name, MAX_INSTANCES])
-		return false
-	var new_size: int = mm.instance_count
-	if new_size < 1:
-		new_size = INITIAL_INSTANCES
-	while new_size < required:
-		new_size *= 2
-		if new_size > MAX_INSTANCES:
-			new_size = MAX_INSTANCES
-			break
-	mm.instance_count = new_size
-	return required <= new_size
+	# One-time per-pool warning: if we ever hit the ceiling, either
+	# lower biome density (fewer populated tiles, Dense → Normal)
+	# or raise INITIAL_INSTANCES. Silent-skip would re-create the
+	# original "labels without meshes" bug.
+	push_warning("PropRenderer: pool %s hit INITIAL_INSTANCES cap (%d) — some instances will not render." % [mm.resource_name, INITIAL_INSTANCES])
+	return false
 
 
 ## DEBUG: when a prop type is listed in DEBUG_FORCE_TINT, swap its
@@ -596,12 +581,11 @@ func _stream_around(center: Vector2i) -> void:
 			desired[coords] = true
 			ordered.append(coords)
 
-	# Near-to-far add order. When a pool hits MAX_INSTANCES the
-	# overflow gets silently dropped, so we want the closest tiles
-	# to reach the pool first. Andre's diagnostic: with radius 10 on
-	# a densely populated biome the outer ring was eating all the
-	# pool capacity and props right next to the player went missing.
-	# Sorting by hex distance from the streaming center fixes that.
+	# Near-to-far add order. When a pool hits INITIAL_INSTANCES the
+	# overflow gets logged + skipped, so we want the closest tiles
+	# to reach the pool first — if any instances get dropped, the
+	# casualties are on the far fringe the player can't see up
+	# close anyway.
 	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return _HexMath.distance(a, center) < _HexMath.distance(b, center))
 
