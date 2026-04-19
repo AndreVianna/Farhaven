@@ -191,12 +191,29 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
                 self._json_response(404, {'error': f'Directory not found: {os.path.dirname(rel_path)}'})
                 return
             length = int(self.headers.get('Content-Length', 0))
-            # Cap request body to prevent DoS via oversized upload (or a
-            # mis-declared Content-Length exhausting memory). 8 MB is ample
-            # for any .tres / .json we edit; largest real file is ~100 KB.
-            MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+            # Cap request body to prevent DoS via oversized upload (or
+            # a mis-declared Content-Length exhausting memory). 64 MB
+            # covers realistic maps — the 150-radius procedural ch1
+            # already hits 10 MB before populate, and a densely
+            # populated map can more than triple that. Previous 8 MB
+            # cap silently dropped connections and forced the browser
+            # into the Blob-download fallback.
+            MAX_UPLOAD_BYTES = 64 * 1024 * 1024
             if length < 0 or length > MAX_UPLOAD_BYTES:
                 self._json_response(413, {'error': f'Request body too large (limit {MAX_UPLOAD_BYTES} bytes)'})
+                # Drain the body so the connection can stay alive and
+                # the client can actually read the 413 JSON instead of
+                # seeing a generic "Failed to fetch" when the server
+                # closes mid-stream.
+                try:
+                    remaining = length
+                    while remaining > 0:
+                        chunk = self.rfile.read(min(remaining, 65536))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                except Exception:
+                    pass
                 return
             body = self.rfile.read(length).decode('utf-8')
             with open(full_path, 'w', encoding='utf-8', newline='\n') as f:

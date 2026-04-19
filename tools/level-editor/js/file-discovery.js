@@ -371,27 +371,34 @@ export class FileDiscovery {
         throw new Error(err.error || `Save failed: ${resp.status}`);
       }
     } catch (err) {
-      // Fallback: download via Blob when server is unavailable (e.g. network error)
-      if (err.message.includes('fetch') || err.name === 'TypeError') {
-        const blob = new Blob([content], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        // Route through the app-level notifier (if registered) BEFORE
-        // re-throwing so the user sees *something* even when the
-        // caller's .catch just console.warn's. Callers still get the
-        // exception for their own logging / rollback.
-        if (typeof FileDiscovery.onSaveError === 'function') {
-          try { FileDiscovery.onSaveError(fullPath, err); } catch (_) { /* notifier must not mask the real error */ }
-        }
-        throw err;
+      // Always surface the failure — previous heuristic auto-triggered
+      // a Blob download on any TypeError, which silently redirected big
+      // populate saves into the Downloads folder when the dev server
+      // rejected a too-large POST. Now the fallback only fires when
+      // the user explicitly opts in via a dialog.
+      const looksLikeNetwork = err.name === 'TypeError' || err.message.includes('Failed to fetch');
+      if (typeof FileDiscovery.onSaveError === 'function') {
+        try {
+          FileDiscovery.onSaveError(fullPath, err, {
+            canFallbackToDownload: true,
+            downloadFallback: () => {
+              const blob = new Blob([content], { type: 'application/octet-stream' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            },
+            hint: looksLikeNetwork
+              ? 'Server unreachable. The file was NOT saved to the project directory.'
+              : '',
+          });
+        } catch (_) { /* notifier must not mask the real error */ }
       }
+      throw err;
     }
   }
 

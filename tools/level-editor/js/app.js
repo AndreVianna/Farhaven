@@ -196,10 +196,22 @@ toolManager.onStatus = (msg) => setStatus(msg);
 // by the caller's `.catch(err => console.warn(...))` — the user only
 // learned something went wrong when they later noticed the file hadn't
 // updated. Centralized notifier means every failed save shows up in
-// the status bar AND a blocking alert (so the user can't miss it).
-FileDiscovery.onSaveError = (path, err) => {
+// the status bar, and when saveFile offers a download-fallback path
+// (server unreachable) the user is asked before the browser drops a
+// stray copy in Downloads.
+FileDiscovery.onSaveError = (path, err, opts) => {
   setStatus(`Save failed: ${path} — ${err.message}`);
-  alert(`Failed to save ${path}\n\n${err.message}`);
+  const options = opts || {};
+  const hint = options.hint ? `\n\n${options.hint}` : '';
+  if (options.canFallbackToDownload && typeof options.downloadFallback === 'function') {
+    const download = confirm(
+      `Failed to save ${path}\n\n${err.message}${hint}\n\n` +
+      'Download a copy locally? (Click Cancel to abort — nothing is saved.)'
+    );
+    if (download) options.downloadFallback();
+  } else {
+    alert(`Failed to save ${path}\n\n${err.message}${hint}`);
+  }
 };
 
 // ============================================================
