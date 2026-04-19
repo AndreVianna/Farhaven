@@ -18,3 +18,10 @@ extends Gear
 ## Fallback solid color when `terrain_textures` is empty OR the renderer
 ## needs a tint to debug a missing asset.
 @export var color: Color = Color.WHITE
+
+## Generative prop distribution table — driven by the Map Editor
+## "Populate" command. Each BiomeProp entry names a PropDef id, a
+## spawn probability, a grouping count range, and placement
+## conditions (elevation, nearby biomes, nearby props). Empty =
+## biome contributes no generative props.
+@export var natural_props: Array[Resource] = []

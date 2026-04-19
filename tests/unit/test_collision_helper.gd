@@ -264,3 +264,122 @@ func test_all_valid_types_produce_nonnull_shapes() -> void:
 		assert_int(out.size()).is_equal(1)
 		assert_object(out[0]).is_not_null()
 		assert_object(out[0].shape).is_not_null()
+
+
+# ---------------------------------------------------------------------------
+# create_scaled_collision_shapes — MultiMesh path (scale baked into shape)
+# ---------------------------------------------------------------------------
+
+
+func test_scaled_box_dimensions_multiply_by_scale() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3(0.4, 0.4, 0.4))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.5)
+	assert_int(out.size()).is_equal(1)
+	var box: BoxShape3D = out[0].shape as BoxShape3D
+	assert_float(box.size.x).is_equal_approx(0.2, 0.001)
+	assert_float(box.size.y).is_equal_approx(0.2, 0.001)
+	assert_float(box.size.z).is_equal_approx(0.2, 0.001)
+
+
+func test_scaled_cylinder_radius_and_height_multiply_by_scale() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"cylinder", Vector3(0.3, 1.0, 0.0))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 2.0)
+	assert_int(out.size()).is_equal(1)
+	var cyl: CylinderShape3D = out[0].shape as CylinderShape3D
+	assert_float(cyl.radius).is_equal_approx(0.6, 0.001)
+	assert_float(cyl.height).is_equal_approx(2.0, 0.001)
+
+
+func test_scaled_sphere_radius_multiplies_by_scale() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"sphere", Vector3(0.2, 0.0, 0.0))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 1.5)
+	assert_int(out.size()).is_equal(1)
+	var sph: SphereShape3D = out[0].shape as SphereShape3D
+	assert_float(sph.radius).is_equal_approx(0.3, 0.001)
+
+
+func test_scaled_offset_multiplies_by_scale() -> void:
+	var def := _make_prop_with_shapes([
+		_make_shape(&"box", Vector3(0.4, 0.4, 0.4), Vector3(0.0, 0.2, 0.0)),
+	])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.5)
+	assert_float(out[0].position.y).is_equal_approx(0.1, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# Threshold — shapes below MIN_COLLISION_DIM after scaling are skipped
+# ---------------------------------------------------------------------------
+
+
+func test_scaled_box_below_threshold_is_skipped() -> void:
+	# Box min dim × scale = 0.4 × 0.2 = 0.08 < 0.15 → skip
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3(0.4, 0.4, 0.4))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.2)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_sphere_below_threshold_is_skipped() -> void:
+	# Sphere diameter (2 × 0.3) × scale 0.2 = 0.12 < 0.15 → skip
+	var def := _make_prop_with_shapes([_make_shape(&"sphere", Vector3(0.3, 0.0, 0.0))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.2)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_cylinder_height_below_threshold_is_skipped() -> void:
+	# Cylinder min(radius×2, height) × scale → min(1.0, 0.1) × 1.0 = 0.1 < 0.15
+	var def := _make_prop_with_shapes([_make_shape(&"cylinder", Vector3(0.5, 0.1, 0.0))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 1.0)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_threshold_boundary_exactly_min_is_kept() -> void:
+	# Box dim 0.15 × scale 1.0 = 0.15 exactly → kept (>=)
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3(0.15, 0.15, 0.15))])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 1.0)
+	assert_int(out.size()).is_equal(1)
+
+
+func test_scaled_composite_keeps_only_shapes_above_threshold() -> void:
+	# First shape (box 0.5³) at scale 0.5 → effective 0.25 ≥ 0.15 → kept
+	# Second shape (sphere r=0.1) at scale 0.5 → diameter 0.1 < 0.15 → skipped
+	var def := _make_prop_with_shapes([
+		_make_shape(&"box", Vector3(0.5, 0.5, 0.5)),
+		_make_shape(&"sphere", Vector3(0.1, 0.0, 0.0)),
+	])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.5)
+	assert_int(out.size()).is_equal(1)
+	assert_object(out[0].shape).is_instanceof(BoxShape3D)
+
+
+# ---------------------------------------------------------------------------
+# Scaled — invalid inputs return empty array
+# ---------------------------------------------------------------------------
+
+
+func test_scaled_null_prop_def_returns_empty() -> void:
+	var out := _CollisionHelper.create_scaled_collision_shapes(null, 1.0)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_zero_scale_returns_empty() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3.ONE)])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 0.0)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_negative_scale_returns_empty() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3.ONE)])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, -1.0)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_nan_scale_returns_empty() -> void:
+	var def := _make_prop_with_shapes([_make_shape(&"box", Vector3.ONE)])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, NAN)
+	assert_int(out.size()).is_equal(0)
+
+
+func test_scaled_empty_shapes_array_returns_empty() -> void:
+	var def := _make_prop_with_shapes([])
+	var out := _CollisionHelper.create_scaled_collision_shapes(def, 1.0)
+	assert_int(out.size()).is_equal(0)

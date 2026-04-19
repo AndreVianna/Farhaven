@@ -25,8 +25,21 @@ export class BiomeDataModel {
     this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {Array<{ r: number, g: number, b: number, a: number }>} */
-    this.color_variations = [];
+    /**
+     * Generative prop distribution entries. Mirrors the GDScript
+     * `BiomeProp` resource. Empty = biome doesn't populate props.
+     * @type {Array<{
+     *   prop_id: string,
+     *   frequency: number,
+     *   grouping_range: {x: number, y: number},
+     *   elevation_range: {x: number, y: number},
+     *   near_biomes: string[],
+     *   not_near_biomes: string[],
+     *   near_props: string[],
+     *   not_near_props: string[],
+     * }>}
+     */
+    this.natural_props = [];
     /** @type {string[]} `res://...` paths to terrain texture variations
      *  (what the runtime hex shader samples). Order matters because the
      *  per-tile variation index % length selects one. */
@@ -89,21 +102,11 @@ export class BiomeDataModel {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
 
-    // color_variations: TresParser stores as TresValue[] of color TresValues.
-    // Each element is { type: 'color', value: { r, g, b, a } }.
-    if (Array.isArray(d.color_variations)) {
-      model.color_variations = d.color_variations.map(tv => {
-        // TresValue color: { type: 'color', value: { r, g, b, a } }
-        if (tv && tv.type === 'color' && tv.value && typeof tv.value === 'object') {
-          return { r: tv.value.r || 0, g: tv.value.g || 0, b: tv.value.b || 0, a: tv.value.a != null ? tv.value.a : 1 };
-        }
-        // Plain color object fallback
-        if (tv && typeof tv === 'object' && 'r' in tv) {
-          return { r: tv.r || 0, g: tv.g || 0, b: tv.b || 0, a: tv.a != null ? tv.a : 1 };
-        }
-        return { r: 0, g: 0, b: 0, a: 1 };
-      });
-    }
+    // natural_props: Array[Resource] of BiomeProp sub_resources.
+    // Same dereferencing pattern as PropDef.placeable.meshes — the raw
+    // .tres wraps them as sub_resource refs that we resolve against
+    // the TresFile's subResources collection.
+    model.natural_props = _parseNaturalProps(d.natural_props, entry.raw);
 
     // terrain_textures: array of ext_resource refs we resolve back to
     // the raw `res://...` path so the editor model is path-based.
@@ -201,9 +204,91 @@ function _modelToPlain(model) {
     short_description: model.short_description,
     long_description: model.long_description,
     color: model.color,
-    color_variations: model.color_variations,
+    natural_props: model.natural_props,
     terrain_textures: model.terrain_textures,
   };
+}
+
+/**
+ * Dereference the natural_props sub_resource refs out of a parsed
+ * .tres entry. Mirrors prop-editor.js's mesh / collision_shape
+ * handling — TresParser keeps the Array[Resource] contents as refs,
+ * and the editor model wants a flat list of plain JS objects.
+ * @param {*} refs
+ * @param {import('./tres-parser.js').TresFile|null|undefined} raw
+ * @returns {Array<Object>}
+ */
+function _parseNaturalProps(refs, raw) {
+  if (!Array.isArray(refs) || refs.length === 0) return [];
+  // Handle the TresParser's outer-wrapper quirk for typed arrays.
+  let list = refs;
+  if (list.length === 1 && list[0] && list[0].type === 'array' && Array.isArray(list[0].value)) {
+    list = list[0].value;
+  }
+  const subMap = new Map();
+  if (raw && raw.subResources) {
+    for (const sub of raw.subResources) {
+      const subData = {};
+      for (const [k, v] of sub.fields) subData[k] = v.value;
+      subMap.set(sub.id, subData);
+    }
+  }
+  const out = [];
+  for (const ref of list) {
+    let d = null;
+    if (ref && typeof ref === 'object' && ref.type === 'sub_resource') {
+      d = subMap.get(ref.value) || null;
+    } else if (ref && typeof ref === 'object') {
+      d = ref;
+    }
+    if (!d) continue;
+    out.push({
+      prop_id: typeof d.prop_id === 'string' ? d.prop_id : '',
+      frequency: typeof d.frequency === 'number' ? d.frequency : 1.0,
+      grouping_range: _readVector2i(d.grouping_range, { x: 1, y: 1 }),
+      elevation_range: _readVector2i(d.elevation_range, { x: -100, y: 100 }),
+      near_biomes: _readStringNameArray(d.near_biomes),
+      not_near_biomes: _readStringNameArray(d.not_near_biomes),
+      near_props: _readStringNameArray(d.near_props),
+      not_near_props: _readStringNameArray(d.not_near_props),
+    });
+  }
+  return out;
+}
+
+/**
+ * Normalize a TresValue-ish Vector2i into `{x, y}`, preserving the
+ * defaults when the field is missing or malformed.
+ * @param {*} v
+ * @param {{x: number, y: number}} fallback
+ * @returns {{x: number, y: number}}
+ */
+function _readVector2i(v, fallback) {
+  if (v && typeof v === 'object') {
+    if (typeof v.x === 'number' && typeof v.y === 'number') return { x: v.x, y: v.y };
+    if (v.value && typeof v.value.x === 'number') return { x: v.value.x, y: v.value.y };
+  }
+  return { x: fallback.x, y: fallback.y };
+}
+
+/**
+ * Normalize an Array[StringName]-shaped field into a flat string[].
+ * @param {*} arr
+ * @returns {string[]}
+ */
+function _readStringNameArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  // Unwrap the Array[StringName]([...]) outer layer if TresParser kept it.
+  let list = arr;
+  if (list.length === 1 && list[0] && list[0].type === 'array' && Array.isArray(list[0].value)) {
+    list = list[0].value;
+  }
+  const out = [];
+  for (const item of list) {
+    if (typeof item === 'string') out.push(item);
+    else if (item && typeof item === 'object' && typeof item.value === 'string') out.push(item.value);
+  }
+  return out;
 }
 
 // ============================================================
@@ -249,12 +334,12 @@ export function renderBiomeEditor(container, options) {
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
   filterInput.placeholder = 'Filter biomes...';
-  filterInput.className = 'editor-filter';
+  filterInput.className = 'editor-filter prop-input';
   filterInput.addEventListener('input', () => _applyFilter());
 
   const newBtn = document.createElement('button');
   newBtn.textContent = '+ New';
-  newBtn.className = 'editor-new-btn';
+  newBtn.className = 'editor-new-btn prop-btn';
   newBtn.addEventListener('click', () => {
     if (!_guardDirty()) return;
     _selectNew();
@@ -469,12 +554,12 @@ export function renderBiomeEditor(container, options) {
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.type = 'button';
-    saveBtn.className = 'editor-btn-save';
+    saveBtn.className = 'editor-btn-save prop-btn-primary';
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.type = 'button';
-    deleteBtn.className = 'editor-btn-delete';
+    deleteBtn.className = 'editor-btn-delete prop-btn';
 
     btnGroup.appendChild(saveBtn);
     if (!isNew) {
@@ -643,9 +728,169 @@ export function renderBiomeEditor(container, options) {
 
     // Note: id/display_name/short_description/long_description are rendered
     // above this tab via the shared renderGearHeader() in _renderDetail.
-    // Color/texture editing lives in its own tab. For now this "General"
-    // tab is a placeholder — additional biome-level settings will land
-    // here as they emerge.
+    // Color/texture editing lives in the right column. This tab hosts the
+    // populate-table so the authoring flow reads left→right: pick the
+    // biome, add its natural props, adjust visuals.
+
+    // ── Natural Props section (feeds Map Editor "Populate") ──
+    const propsSep = document.createElement('div');
+    propsSep.className = 'prop-separator';
+    propsSep.textContent = 'Natural Props';
+    grid.appendChild(propsSep);
+
+    const propsFull = document.createElement('div');
+    propsFull.className = 'prop-full';
+
+    const propsHint = document.createElement('div');
+    propsHint.classList.add('prop-hint');
+    propsHint.style.marginBottom = '6px';
+    propsHint.textContent = 'Drives the Populate command. Frequency = chance a qualifying tile gets this prop; Grouping = how many copies when it does.';
+    propsFull.appendChild(propsHint);
+
+    const propsContainer = document.createElement('div');
+    propsContainer.dataset.naturalPropsContainer = 'true';
+    propsContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+    /**
+     * One natural_props card. UI is deliberately compact — prop select,
+     * frequency, grouping min/max on a single row. The other condition
+     * fields (elevation, near/not_near biomes + props) are preserved on
+     * the card's dataset so an existing biome's config round-trips
+     * through load→save without losing data; a richer editor comes back
+     * once Andre figures out a layout that doesn't eat the screen.
+     * @param {{
+     *   prop_id: string,
+     *   frequency: number,
+     *   grouping_range: {x: number, y: number},
+     *   elevation_range: {x: number, y: number},
+     *   near_biomes: string[],
+     *   not_near_biomes: string[],
+     *   near_props: string[],
+     *   not_near_props: string[],
+     * }} entry
+     */
+    function addNaturalPropRow(entry) {
+      const row = document.createElement('div');
+      row.classList.add('prop-card');
+      row.dataset.naturalProp = 'true';
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;padding:6px 8px;flex-wrap:wrap;';
+
+      // Stash the condition fields that aren't exposed in the UI so they
+      // survive the collect → emit cycle. JSON since the entry may
+      // contain arbitrary StringName lists.
+      row.dataset.hiddenConditions = JSON.stringify({
+        elevation_range: entry.elevation_range,
+        near_biomes: entry.near_biomes,
+        not_near_biomes: entry.not_near_biomes,
+        near_props: entry.near_props,
+        not_near_props: entry.not_near_props,
+      });
+
+      // Prop selector — narrow by design per Andre's feedback.
+      const propSelect = document.createElement('select');
+      propSelect.dataset.npField = 'prop_id';
+      propSelect.classList.add('prop-input');
+      propSelect.style.width = '160px';
+      propSelect.style.flex = '0 0 auto';
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = '— prop —';
+      propSelect.appendChild(blank);
+      for (const [filename, pEntry] of ProjectContext.files.props) {
+        const pid = filename.replace('.tres', '');
+        const origin = pEntry.data && typeof pEntry.data.origin === 'number' ? pEntry.data.origin : 0;
+        if (origin !== 0) continue;
+        const opt = document.createElement('option');
+        opt.value = pid;
+        const label = pEntry.data && pEntry.data.display_name ? `${pid} — ${pEntry.data.display_name}` : pid;
+        opt.textContent = label;
+        if (entry.prop_id === pid) opt.selected = true;
+        propSelect.appendChild(opt);
+      }
+
+      const freqLabel = document.createElement('span');
+      freqLabel.classList.add('prop-hint');
+      freqLabel.textContent = 'Frequency';
+
+      const freqInput = document.createElement('input');
+      freqInput.type = 'number';
+      freqInput.step = '0.01';
+      freqInput.min = '0';
+      freqInput.max = '1';
+      freqInput.value = String(entry.frequency);
+      freqInput.dataset.npField = 'frequency';
+      freqInput.classList.add('prop-input');
+      freqInput.style.width = '70px';
+
+      const groupingLabel = document.createElement('span');
+      groupingLabel.classList.add('prop-hint');
+      groupingLabel.textContent = 'Grouping';
+
+      const groupMin = document.createElement('input');
+      groupMin.type = 'number';
+      groupMin.step = '1';
+      groupMin.min = '1';
+      groupMin.max = '19';
+      groupMin.value = String(entry.grouping_range.x);
+      groupMin.dataset.npField = 'grouping_range_min';
+      groupMin.classList.add('prop-input');
+      groupMin.style.width = '50px';
+
+      const groupSep = document.createElement('span');
+      groupSep.classList.add('prop-hint');
+      groupSep.textContent = '–';
+
+      const groupMax = document.createElement('input');
+      groupMax.type = 'number';
+      groupMax.step = '1';
+      groupMax.min = '1';
+      groupMax.max = '19';
+      groupMax.value = String(entry.grouping_range.y);
+      groupMax.dataset.npField = 'grouping_range_max';
+      groupMax.classList.add('prop-input');
+      groupMax.style.width = '50px';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'X';
+      removeBtn.type = 'button';
+      removeBtn.classList.add('prop-btn-icon');
+      removeBtn.style.marginLeft = 'auto';
+      removeBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(propSelect);
+      row.appendChild(freqLabel);
+      row.appendChild(freqInput);
+      row.appendChild(groupingLabel);
+      row.appendChild(groupMin);
+      row.appendChild(groupSep);
+      row.appendChild(groupMax);
+      row.appendChild(removeBtn);
+      propsContainer.appendChild(row);
+    }
+
+    for (const np of model.natural_props) addNaturalPropRow(np);
+
+    const addNpBtn = document.createElement('button');
+    addNpBtn.textContent = '+ Add Natural Prop';
+    addNpBtn.type = 'button';
+    addNpBtn.classList.add('prop-btn');
+    addNpBtn.style.marginTop = '6px';
+    addNpBtn.addEventListener('click', () => {
+      addNaturalPropRow({
+        prop_id: '',
+        frequency: 1.0,
+        grouping_range: { x: 1, y: 1 },
+        elevation_range: { x: -100, y: 100 },
+        near_biomes: [],
+        not_near_biomes: [],
+        near_props: [],
+        not_near_props: [],
+      });
+    });
+
+    propsFull.appendChild(propsContainer);
+    propsFull.appendChild(addNpBtn);
+    grid.appendChild(propsFull);
 
     wrapper.appendChild(grid);
     return wrapper;
@@ -708,69 +953,6 @@ export function renderBiomeEditor(container, options) {
     grid.appendChild(colorLabel);
     grid.appendChild(colorCell);
 
-    // Separator — Variations
-    const varSep = document.createElement('div');
-    varSep.className = 'prop-separator';
-    varSep.textContent = 'Variations';
-    grid.appendChild(varSep);
-
-    // Variations list — full width
-    const varFull = document.createElement('div');
-    varFull.className = 'prop-full';
-
-    const variationsContainer = document.createElement('div');
-    variationsContainer.dataset.variationsContainer = 'true';
-
-    /**
-     * Add a color variation entry.
-     * @param {{ r: number, g: number, b: number, a: number }} varColor
-     */
-    function addVariationRow(varColor) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px;';
-
-      const input = document.createElement('input');
-      input.type = 'color';
-      input.value = _colorToHex(varColor);
-      input.dataset.variationColor = 'true';
-      input.className = 'prop-input';
-      input.style.cssText = 'width:40px;height:28px;padding:0;cursor:pointer;';
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'X';
-      removeBtn.type = 'button';
-      removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
-      removeBtn.addEventListener('click', () => row.remove());
-
-      row.appendChild(input);
-      row.appendChild(removeBtn);
-      variationsContainer.appendChild(row);
-    }
-
-    // Populate existing variations
-    for (const vc of model.color_variations) {
-      addVariationRow(vc);
-    }
-
-    const addVarBtn = document.createElement('button');
-    addVarBtn.textContent = '+ Add Variation';
-    addVarBtn.type = 'button';
-    addVarBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
-    addVarBtn.addEventListener('click', () => {
-      const currentCount = variationsContainer.querySelectorAll('[data-variation-color]').length;
-      if (currentCount >= 10) {
-        errorArea.style.display = 'block';
-        errorArea.textContent = 'Maximum 10 color variations allowed.';
-        return;
-      }
-      const baseHex = colorInput.value || '#000000';
-      addVariationRow(_hexToColor(baseHex));
-    });
-
-    varFull.appendChild(variationsContainer);
-    varFull.appendChild(addVarBtn);
-    grid.appendChild(varFull);
-
     // ── Textures section ──
     const texSep = document.createElement('div');
     texSep.className = 'prop-separator';
@@ -822,7 +1004,8 @@ export function renderBiomeEditor(container, options) {
     const addTexBtn = document.createElement('button');
     addTexBtn.textContent = '+ Add Texture';
     addTexBtn.type = 'button';
-    addTexBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+    addTexBtn.classList.add('prop-btn');
+    addTexBtn.style.marginTop = '2px';
 
     addTexBtn.addEventListener('click', async () => {
       // Pull the list of PNGs available under assets/textures/biomes/
@@ -912,7 +1095,8 @@ function _openTexturePicker(paths, callback) {
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;';
+  cancel.classList.add('prop-btn');
+  cancel.style.marginTop = '10px';
   cancel.addEventListener('click', () => {
     document.body.removeChild(backdrop);
     callback(null);
@@ -972,11 +1156,52 @@ function _collectBiomeFormData(formElement) {
   // Color
   model.color = _hexToColor(val('color'));
 
-  // Color variations
-  model.color_variations = [];
-  const variationInputs = formElement.querySelectorAll('[data-variation-color]');
-  for (const input of variationInputs) {
-    model.color_variations.push(_hexToColor(/** @type {HTMLInputElement} */ (input).value));
+  // Natural props — one card per entry, collected back to plain
+  // JS objects for emit. The simplified UI only exposes prop_id,
+  // frequency, and grouping; the other condition fields are stashed
+  // on each card's dataset as JSON so round-trip preserves them
+  // until the richer condition editor lands.
+  model.natural_props = [];
+  const propCards = formElement.querySelectorAll('[data-natural-prop]');
+  for (const card of propCards) {
+    const cardEl = /** @type {HTMLElement} */ (card);
+    const qField = (name) => {
+      const el = cardEl.querySelector(`[data-np-field="${name}"]`);
+      return el ? /** @type {HTMLInputElement|HTMLSelectElement} */ (el).value : '';
+    };
+
+    const propId = qField('prop_id');
+    if (!propId) continue; // skip rows the user never filled in
+
+    let hidden = {
+      elevation_range: { x: -100, y: 100 },
+      near_biomes: [],
+      not_near_biomes: [],
+      near_props: [],
+      not_near_props: [],
+    };
+    try {
+      if (cardEl.dataset.hiddenConditions) {
+        const parsed = JSON.parse(cardEl.dataset.hiddenConditions);
+        // Sanity guard — anything malformed falls back to defaults so a
+        // corrupt dataset doesn't break the whole save.
+        if (parsed && typeof parsed === 'object') Object.assign(hidden, parsed);
+      }
+    } catch (_) { /* keep defaults */ }
+
+    model.natural_props.push({
+      prop_id: propId,
+      frequency: Math.max(0, Math.min(1, parseFloat(qField('frequency')) || 0)),
+      grouping_range: {
+        x: parseInt(qField('grouping_range_min'), 10) || 1,
+        y: parseInt(qField('grouping_range_max'), 10) || 1,
+      },
+      elevation_range: hidden.elevation_range,
+      near_biomes: hidden.near_biomes,
+      not_near_biomes: hidden.not_near_biomes,
+      near_props: hidden.near_props,
+      not_near_props: hidden.not_near_props,
+    });
   }
 
   // Terrain textures — keep the DOM order (hash-picked variation index
@@ -1081,7 +1306,70 @@ export function biomeModelToRaw(model) {
     const uidAttr = prev && prev.uid ? ` uid="${prev.uid}"` : '';
     newExtResources.push(`[ext_resource type="Texture2D"${uidAttr} path="${resPath}" id="${texId}"]`);
   }
+  // Add the biome_prop.gd ext_resource when the biome actually has
+  // natural_props entries to emit. Reuse any prior id if present to
+  // keep round-trip diffs minimal.
+  let biomePropExtId = null;
+  if (Array.isArray(model.natural_props) && model.natural_props.length > 0) {
+    const bpPath = 'res://scripts/hex/biome_prop.gd';
+    const prevBp = prevIdByPath.get(bpPath);
+    biomePropExtId = (prevBp && prevBp.id) ? prevBp.id : `${nextTexIdx++}_biome_prop`;
+    newExtResources.push(`[ext_resource type="Script" path="${bpPath}" id="${biomePropExtId}"]`);
+  }
   raw.extResources = newExtResources;
+
+  // Rebuild sub_resources from natural_props. Each entry becomes one
+  // `[sub_resource type="Resource" id="biome_prop_N"]` block.
+  //
+  // IDs of sub_resources the editor manages (owns the lifecycle of).
+  // Anything in the previous raw that ISN'T in this set is a future
+  // feature the editor doesn't know about yet — preserve it verbatim
+  // instead of wiping on save (Copilot finding 2026-04-19).
+  const MANAGED_SUB_IDS = new Set();
+  const subResources = [];
+  const biomePropRefs = [];
+  if (biomePropExtId && Array.isArray(model.natural_props)) {
+    for (let i = 0; i < model.natural_props.length; i++) {
+      const np = model.natural_props[i];
+      const subId = `biome_prop_${i + 1}`;
+      biomePropRefs.push(subId);
+      MANAGED_SUB_IDS.add(subId);
+      const subFields = new Map();
+      subFields.set('script', { type: 'ext_resource', value: `ExtResource("${biomePropExtId}")` });
+      subFields.set('prop_id', { type: 'stringname', value: np.prop_id });
+      subFields.set('frequency', { type: 'float', value: Number.isFinite(np.frequency) ? np.frequency : 1.0 });
+      subFields.set('grouping_range', {
+        type: 'vector2i',
+        value: { x: np.grouping_range.x | 0, y: np.grouping_range.y | 0 },
+      });
+      subFields.set('elevation_range', {
+        type: 'vector2i',
+        value: { x: np.elevation_range.x | 0, y: np.elevation_range.y | 0 },
+      });
+      const snameArr = (list) => ({
+        type: 'array', elementType: 'StringName',
+        value: list.map(v => ({ type: 'stringname', value: v })),
+      });
+      if (np.near_biomes.length) subFields.set('near_biomes', snameArr(np.near_biomes));
+      if (np.not_near_biomes.length) subFields.set('not_near_biomes', snameArr(np.not_near_biomes));
+      if (np.near_props.length) subFields.set('near_props', snameArr(np.near_props));
+      if (np.not_near_props.length) subFields.set('not_near_props', snameArr(np.not_near_props));
+      subResources.push({ type: 'Resource', id: subId, fields: subFields });
+    }
+  }
+  // Forward-compat: keep any sub_resource the editor didn't author.
+  // `biome_prop_N` is the only id pattern this editor owns today;
+  // unrelated future sub_resources (other caps, metadata, etc.)
+  // survive round-trip instead of being silently dropped.
+  if (model._raw && Array.isArray(model._raw.subResources)) {
+    for (const sub of model._raw.subResources) {
+      if (!sub || typeof sub.id !== 'string') continue;
+      if (MANAGED_SUB_IDS.has(sub.id)) continue;
+      if (/^biome_prop_\d+$/.test(sub.id)) continue;  // stale managed entry, drop
+      subResources.push(sub);
+    }
+  }
+  raw.subResources = subResources;
 
   // Keep the header's load_steps in sync so Godot doesn't warn about
   // a mismatch between declared count and actual resources.
@@ -1116,12 +1404,15 @@ export function biomeModelToRaw(model) {
     value: { r: model.color.r, g: model.color.g, b: model.color.b, a: model.color.a },
   });
 
-  // color_variations: untyped array of Colors
-  const colorVariationEntries = model.color_variations.map(vc => ({
-    type: 'color',
-    value: { r: vc.r, g: vc.g, b: vc.b, a: vc.a },
-  }));
-  fields.set('color_variations', { type: 'array', value: colorVariationEntries, elementType: null });
+  // natural_props: Array[Resource] of BiomeProp sub_resources. Emitted
+  // only when the biome actually has entries so byte-clean biomes
+  // (pre-populate-feature) stay untouched on save.
+  if (biomePropRefs.length > 0) {
+    fields.set('natural_props', {
+      type: 'array', elementType: 'Resource',
+      value: biomePropRefs.map(id => ({ type: 'sub_resource', value: id })),
+    });
+  }
 
   // terrain_textures: Array[Texture2D] referencing the ext_resource ids
   // we just emitted. Only write the field when the list is non-empty so

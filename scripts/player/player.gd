@@ -1,7 +1,11 @@
-extends Node3D
+extends CharacterBody3D
 
 ## Player — continuous joystick movement, derived current_tile, tile transitions.
-## Uses Node3D with per-frame position updates (not CharacterBody3D).
+## Uses CharacterBody3D with motion_mode=FLOATING (no gravity); movement is
+## driven by move_and_slide() for XZ-plane prop collision, while Y is
+## slaved to the hex terrain / jump tweens like before. Switched from
+## Node3D on 2026-04-19 so natural-prop StaticBody3D bodies (task #109)
+## actually block the player instead of being phased through.
 ## current_tile is derived from HexMath.world_to_axial(position), not set directly.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
@@ -18,7 +22,14 @@ const STARTER_BACKPACK_ID: StringName = &"P00301"
 ## the inventory panel header both subscribe to refresh from this.
 signal wearables_changed()
 
-enum MoveState { IDLE, WALKING, JUMPING }
+enum MoveState { IDLE, WALKING, RUNNING, JUMPING }
+
+## Joystick magnitude thresholds with hysteresis. The deadband between
+## _RUN_ENTER (transition to RUNNING) and _RUN_EXIT (back to WALKING)
+## prevents state flapping when the stick hovers around the threshold —
+## flapping would retrigger the 0.2s animation blend every frame.
+const _RUN_ENTER: float = 0.75
+const _RUN_EXIT: float = 0.70
 
 signal player_moved(from: Vector2i, to: Vector2i)
 
@@ -178,6 +189,8 @@ func _anim_walk_target_for_state() -> StringName:
 	match move_state:
 		MoveState.WALKING:
 			return _ANIM_WALKING
+		MoveState.RUNNING:
+			return _ANIM_RUNNING
 		MoveState.JUMPING:
 			# No jump animation yet — keep walking so the transition to
 			# landing doesn't snap to idle mid-air.
@@ -293,9 +306,26 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if move_state == MoveState.WALKING:
+	if move_state == MoveState.WALKING or move_state == MoveState.RUNNING:
 		_process_walking(delta)
 	_update_animation_for_state()
+
+
+## Returns WALKING or RUNNING based on the current joystick magnitude and
+## the previous moving state. Called whenever the player is moving. Uses
+## hysteresis: enter RUNNING at magnitude > _RUN_ENTER, stay RUNNING while
+## magnitude > _RUN_EXIT, otherwise WALKING. When the previous state is
+## not a moving state (IDLE, JUMPING transitions), use the enter threshold.
+func _moving_state_for_magnitude(magnitude: float) -> MoveState:
+	if move_state == MoveState.RUNNING:
+		# Stay running until we drop below the lower threshold.
+		if magnitude > _RUN_EXIT:
+			return MoveState.RUNNING
+		return MoveState.WALKING
+	# Entering from WALKING / IDLE / JUMPING — use the stricter threshold.
+	if magnitude > _RUN_ENTER:
+		return MoveState.RUNNING
+	return MoveState.WALKING
 
 
 ## Snap the player's world position to the given tile center.
@@ -313,9 +343,9 @@ func _on_joystick_start(direction: Vector2) -> void:
 		_buffered_dir = direction
 		_buffered_magnitude = 1.0
 		return
-	move_state = MoveState.WALKING
 	_joystick_dir = direction
 	_joystick_magnitude = 1.0
+	move_state = _moving_state_for_magnitude(_joystick_magnitude)
 
 
 func _on_joystick_move(direction: Vector2, magnitude: float) -> void:
@@ -323,11 +353,11 @@ func _on_joystick_move(direction: Vector2, magnitude: float) -> void:
 		_buffered_dir = direction
 		_buffered_magnitude = magnitude
 		return
-	if move_state != MoveState.WALKING:
+	if move_state != MoveState.WALKING and move_state != MoveState.RUNNING:
 		_cancel_snap_tween()
-		move_state = MoveState.WALKING
 	_joystick_dir = direction
 	_joystick_magnitude = magnitude
+	move_state = _moving_state_for_magnitude(magnitude)
 
 
 func _on_joystick_stop() -> void:
@@ -375,27 +405,41 @@ func _process_walking(delta: float) -> void:
 			survival_start.start_activity_drain(&"moving")
 	_was_moving = is_moving
 
-	var movement := Vector3(velocity_2d.x, 0.0, velocity_2d.y) * delta
+	# Hex-level decision first: does the INTENDED step cross into a tile
+	# that requires a jump, is blocked by terrain, or is just a normal
+	# WALK? We base this on the *desired* displacement, before any
+	# prop-collision slide, because jump/drop is a discrete animation
+	# that shouldn't be triggered by a prop body nudging us sideways.
+	var delta_step := Vector3(velocity_2d.x, 0.0, velocity_2d.y) * delta
+	var desired_pos_2d := Vector2(position.x + delta_step.x, position.z + delta_step.z)
+	var candidate_tile: Vector2i = _HexMath.world_to_axial(desired_pos_2d)
+	var old_walk_tile: Vector2i = current_tile
 
-	var new_pos: Vector3 = position + movement
-	var new_pos_2d := Vector2(new_pos.x, new_pos.z)
-	var candidate_tile: Vector2i = _HexMath.world_to_axial(new_pos_2d)
-
-	if candidate_tile != current_tile:
-		var traversal: int = _grid.get_traversal(current_tile, candidate_tile)
+	if candidate_tile != old_walk_tile:
+		var traversal: int = _grid.get_traversal(old_walk_tile, candidate_tile)
 		match traversal:
-			_grid.TraversalType.WALK:
-				position = new_pos
-				var old_walk_tile: Vector2i = current_tile
-				_update_elevation_y_interpolated(new_pos_2d, old_walk_tile, candidate_tile)
-				_emit_tile_transition(old_walk_tile, candidate_tile)
 			_grid.TraversalType.JUMP, _grid.TraversalType.DROP:
 				_start_jump(candidate_tile, traversal)
+				return
 			_grid.TraversalType.BLOCKED:
 				_slide_along_boundary(velocity_2d, delta)
-	else:
-		position = new_pos
-		_update_elevation_y_same_tile()
+				return
+			# _grid.TraversalType.WALK falls through to move_and_slide below.
+
+	# WALK or same-tile: drive the CharacterBody3D through move_and_slide
+	# so natural-prop StaticBody3Ds block / redirect us as authored. XZ
+	# only — Y stays slaved to terrain.
+	velocity = Vector3(velocity_2d.x, 0.0, velocity_2d.y)
+	move_and_slide()
+	position.y = _grid.get_terrain_y(position.x, position.z)
+
+	# Recompute current_tile from the *actual* final position (a prop
+	# body may have kept us in the old tile even though the desired step
+	# crossed the border). Only emit the transition if we really landed
+	# on a different tile.
+	var final_tile: Vector2i = _HexMath.world_to_axial(Vector2(position.x, position.z))
+	if final_tile != old_walk_tile:
+		_emit_tile_transition(old_walk_tile, final_tile)
 
 
 ## Update Y from curved terrain at current XZ position.
@@ -463,9 +507,9 @@ func _start_jump(target: Vector2i, traversal_type: int) -> void:
 
 func _on_jump_landed() -> void:
 	if _joystick_magnitude > 0.01 and not _buffered_dir.is_zero_approx():
-		move_state = MoveState.WALKING
 		_joystick_dir = _buffered_dir
 		_joystick_magnitude = _buffered_magnitude
+		move_state = _moving_state_for_magnitude(_joystick_magnitude)
 	else:
 		move_state = MoveState.IDLE
 		# No snap — player stays at landing point

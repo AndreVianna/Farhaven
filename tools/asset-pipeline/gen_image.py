@@ -9,7 +9,9 @@ import urllib.error
 
 def generate(api_key: str, prompt: str, out_path: str) -> None:
     model = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    # API key goes in the x-goog-api-key header so it never lands in URLs
+    # (error tracebacks, CI logs, proxy access logs would otherwise leak it).
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
@@ -17,7 +19,10 @@ def generate(api_key: str, prompt: str, out_path: str) -> None:
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+        },
         method="POST",
     )
     try:

@@ -10,6 +10,7 @@ const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 const _Prop = preload("res://scripts/hex/prop.gd")
 ## Uses preload because tests can be parsed before class_name registration completes.
 const _PropDef = preload("res://scripts/data/prop_def.gd")
+const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 ## Duration of the fly-to-player tween in seconds.
 const FLY_DURATION: float = 0.3
@@ -52,7 +53,11 @@ func spawn_fly(coords: Vector2i, prop_type: StringName, grid: Node) -> void:
 		elevation_y = grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	var start_pos := Vector3(wx, elevation_y + 0.6, wz)
+	# Start the fly-out from ~prop-top so small props (scale 0.3) don't
+	# have the sprite spawn buried underground and tall props (scale 1.2)
+	# don't have it start mid-mesh. 0.6 was tuned for unit-scale meshes.
+	var visual_scale: float = _PropUtils.get_visual_scale(prop_type)
+	var start_pos := Vector3(wx, elevation_y + 0.6 * visual_scale, wz)
 
 	var sprite := _create_sprite(prop_type)
 	sprite.position = start_pos
@@ -90,7 +95,11 @@ func _tween_to_player(sprite: MeshInstance3D, start_pos: Vector3) -> void:
 	var mid_y: float = maxf(start_pos.y, target_pos.y) + ARC_HEIGHT
 	var half_dur: float = FLY_DURATION * 0.5
 
-	var tween := create_tween()
+	# Bind the tween to the sprite so it dies with its target. Previously
+	# `create_tween()` on `self` kept running after scene change / map
+	# reload, then its queue_free callback fired on a freed Node and
+	# logged "Nonexistent function" errors.
+	var tween := sprite.create_tween()
 	tween.set_parallel(true)
 
 	# XZ movement: linear to player's current position

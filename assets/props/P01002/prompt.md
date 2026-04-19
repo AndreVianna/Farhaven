@@ -33,6 +33,17 @@ Yields 2 stone_piece per harvest, no respawn.
 
 ## Variation 1 (Baseline / medium pile) — `reference_v1.png` → `mesh_v1.glb`
 
+> **2026-04-19 — Andre rejected the generated pyramid pile.** `P01002.tres`
+> currently points variant 1 to `mesh_v3.glb` (same content as variant 3) so
+> no "pyramid of stones" appears in-game. A fresh v1 mesh with the below
+> prompt can be dropped back in and variant 1 in `P01002.tres` pointed back
+> to `mesh_v1.glb` when ready. (Specifically: change the `mesh_variant_1`
+> sub-resource's `scene = ExtResource(…mesh_v3…)` back to the ExtResource
+> that points at `res://assets/props/P01002/mesh_v1.glb` — the exact id
+> suffix may shift if the file has been re-saved.)
+
+**Historical prompt (do not use for current mesh):**
+
 ```
 A small alien stone pile resting on the ground. Roughly seven fist-sized
 weathered gray stones piled together in a loose cluster, each stone
@@ -96,7 +107,16 @@ Render style: 3D model turnaround reference image for game asset production.
 
 ---
 
-## Variation 3 (Natural scatter, no stacking) — `reference_v3.png` → `mesh_v3.glb`
+## Variation 3 (Stone Cluster — dominant boulder + base stones) — `reference_v3.png` → `mesh_v3.glb`
+
+> **2026-04-19 — regenerated via Meshy (Andre).** Replaced the original
+> "natural scatter, no stacking" mesh with a compact cluster: one
+> dominant boulder seated atop 4–5 smaller stones at its base. This
+> is the mesh currently rendered by BOTH variant 1 and variant 3 on
+> `P01002.tres`, since variant 1's original "pyramid pile" mesh was
+> rejected (see Variation 1 note above).
+
+**Historical prompt (do not use for current mesh):**
 
 ```
 A small natural scatter of alien weathered stones resting on the ground. Six stones total in mixed sizes — one about 20 cm across, three about 12 cm, two smaller ones about 7 cm — distributed naturally across a small area where they have settled after weathering out of a parent outcrop. **The stones are NOT stacked or piled on each other** — each rests flat on the ground in its own place, no balancing, no human arrangement. Slightly angular edges suggesting recent natural fracture. Warm gray color with subtle rust-orange oxidation streaks on a couple of them, faint pale cyan-green mineral vein hints visible on the larger stone. Matte dull surface, no metallic sheen. Footprint approximately 20 cm tall and 55 cm wide. Reads as "purely natural debris — nothing has been arranged here."

@@ -84,6 +84,10 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	var mesh: Mesh
 	var y_offset: float = PROP_Y_OFFSET
 	var mesh_from_scene: bool = false
+	# variant_scale: MeshVariant.scale applied to both visual (MeshInstance3D)
+	# and collision composition so authored sizes are the source of truth.
+	# Default 1.0 when no scale is authored.
+	var variant_scale: float = 1.0
 
 	if def != null and def.placeable != null and def.placeable.meshes != null:
 		for mv_entry in def.placeable.meshes:
@@ -95,6 +99,9 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 				mesh = extracted[0]
 				y_offset = extracted[1]
 				mesh_from_scene = true
+				# Positive, finite scale only — rejects NaN, ±inf, 0, negatives.
+				if is_finite(mv.scale) and mv.scale > 0.0:
+					variant_scale = mv.scale
 				break
 	if mesh == null and def != null and def.mesh != null:
 		mesh = def.mesh
@@ -115,10 +122,14 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 	var wz: float = snapped.y
 	var elevation_y: float = _get_elevation_y(coords, wx, wz)
 
-	# Create Node3D with MeshInstance3D child.
+	# Create Node3D with MeshInstance3D child. Apply the MeshVariant scale to
+	# the root Node3D so both visual (MeshInstance3D) and physics (StaticBody3D)
+	# children inherit it. y_offset is scaled accordingly because the mesh AABB
+	# was measured at unit scale.
 	var node := Node3D.new()
 	node.name = "Structure_%s" % key
-	node.position = Vector3(wx, elevation_y + y_offset, wz)
+	node.position = Vector3(wx, elevation_y + y_offset * variant_scale, wz)
+	node.scale = Vector3.ONE * variant_scale
 
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = mesh
@@ -133,6 +144,7 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 	# Add StaticBody3D with per-prop authored collision shapes (zero or more).
 	# Empty collision_shapes → walkthrough prop, no StaticBody3D added.
+	# Collision inherits variant_scale via the parent node's scale.
 	if def != null:
 		var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_collision_shapes(def)
 		if not collision_nodes.is_empty():
@@ -149,13 +161,56 @@ func _add_structure(coords: Vector2i, structure_type: StringName) -> void:
 
 
 func _remove_structure(coords: Vector2i, structure_type: StringName) -> void:
-	# Find matching key by prefix since we need sub_hex to build exact key.
+	# The structure_destroyed signal doesn't include sub_hex, so two
+	# structures of the same type on the same tile are ambiguous from
+	# this handler alone. Resolve the ambiguity by diffing our tracked
+	# sub_hex positions against the tile's current crafted props — any
+	# tracked key whose sub_hex no longer exists on the tile is what
+	# was destroyed.
 	var prefix: String = "%d,%d:" % [coords.x, coords.y]
 	var suffix: String = ":%s" % String(structure_type)
+
+	# Collect currently-alive sub_hex positions for this (coords, type).
+	var alive_sub_hexes: Array[Vector2i] = []
+	if _grid != null and _grid.has_method("get_tile"):
+		var tile: Resource = _grid.get_tile(coords)
+		if tile != null:
+			for prop in tile.props:
+				if prop.type == structure_type and prop.origin == _Prop.Origin.CRAFTED:
+					alive_sub_hexes.append(prop.sub_hex)
+
+	# Find tracked keys matching (coords, type) and remove any whose
+	# sub_hex is absent from the tile (i.e. was just destroyed).
+	var keys_to_remove: Array[String] = []
 	for key in _instances.keys():
-		if key.begins_with(prefix) and key.ends_with(suffix):
-			_remove_child_node(key)
-			return
+		if not (key.begins_with(prefix) and key.ends_with(suffix)):
+			continue
+		var sub_hex := _parse_sub_hex_from_key(key)
+		if not alive_sub_hexes.has(sub_hex):
+			keys_to_remove.append(key)
+
+	# Fallback: if we couldn't determine the tile state (no grid / no
+	# tile), remove only ONE matching key to avoid wiping them all.
+	if keys_to_remove.is_empty() and (_grid == null or alive_sub_hexes.is_empty()):
+		for key in _instances.keys():
+			if key.begins_with(prefix) and key.ends_with(suffix):
+				keys_to_remove.append(key)
+				break
+
+	for key in keys_to_remove:
+		_remove_child_node(key)
+
+
+## Parse "q,r:sq,sr:TYPE" and return the sub_hex Vector2i, or ZERO on
+## malformed input (shouldn't happen since _make_key produces them).
+func _parse_sub_hex_from_key(key: String) -> Vector2i:
+	var parts: PackedStringArray = key.split(":")
+	if parts.size() < 2:
+		return Vector2i.ZERO
+	var sub_parts: PackedStringArray = parts[1].split(",")
+	if sub_parts.size() < 2:
+		return Vector2i.ZERO
+	return Vector2i(int(sub_parts[0]), int(sub_parts[1]))
 
 
 func _remove_child_node(key: String) -> void:

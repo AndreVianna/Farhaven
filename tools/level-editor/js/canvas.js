@@ -4,7 +4,7 @@
 
 import { HEX_SIZE, HexMath } from './hex-math.js';
 import { HexGrid, CATEGORY_COLORS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
-import { EditPropCommand, SetSpawnCommand } from './commands.js';
+import { EditPropCommand, MovePropCommand, SetSpawnCommand } from './commands.js';
 import { loadBiomeTextures, pickVariationIdx, pickRotationRadians } from './biome-textures.js';
 
 /** @type {string} Fallback color for unknown biomes */
@@ -887,14 +887,23 @@ export class HexCanvas {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Move preview ghost
+    // Move preview ghost — preview can now land on a different hex
+    // (cross-hex drag). Fall back to the source hex for legacy previews
+    // that only stored sub-hex coords.
     if (this._dragMode === 'moving' && this._movePreview) {
-      const previewScreen = this._subHexScreenPos(sp.hexQ, sp.hexR, this._movePreview.sq, this._movePreview.sr);
+      const pq = typeof this._movePreview.q === 'number' ? this._movePreview.q : sp.hexQ;
+      const pr = typeof this._movePreview.r === 'number' ? this._movePreview.r : sp.hexR;
+      const previewScreen = this._subHexScreenPos(pq, pr, this._movePreview.sq, this._movePreview.sr);
       const previewCorners = HexMath.subHexCorners(previewScreen.x, previewScreen.y, subSize);
       this._traceHexPath(previewCorners);
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      // Red tint when target tile doesn't exist or sub-hex is occupied,
+      // so the user sees up front that releasing here will cancel.
+      const targetTile = this.grid.getTile(pq, pr);
+      const blocked = !targetTile
+        || this._isSubHexOccupiedExcluding(targetTile, this._movePreview.sq, this._movePreview.sr, (pq === sp.hexQ && pr === sp.hexR) ? sp.propIndex : -1);
+      ctx.fillStyle = blocked ? 'rgba(255,64,64,0.25)' : 'rgba(255,255,255,0.2)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.strokeStyle = blocked ? 'rgba(255,128,128,0.8)' : 'rgba(255,255,255,0.6)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.stroke();
@@ -1145,20 +1154,25 @@ export class HexCanvas {
    */
   _handleSelectToolMouseMove(mx, my) {
     if (this._dragMode === 'moving') {
-      // Compute which hex and sub-hex the mouse is over
+      // Compute which hex and sub-hex the mouse is over.
       const hex = this.screenToHex(mx, my);
-      const targetQ = this.selectedProp ? this.selectedProp.hexQ : (this.grid.meta.spawn ? this.grid.meta.spawn[0] : hex.q);
-      const targetR = this.selectedProp ? this.selectedProp.hexR : (this.grid.meta.spawn ? this.grid.meta.spawn[1] : hex.r);
-
-      // Only allow movement within the same hex
-      if (hex.q !== targetQ || hex.r !== targetR) return;
-
       const world = HexMath.axialToPixel(hex.q, hex.r);
       const mouseWorld = this.screenToWorld(mx, my);
       const subHex = HexMath.pixelToSubHex(mouseWorld.x - world.x, mouseWorld.y - world.y);
 
-      if (!this._movePreview || this._movePreview.sq !== subHex.q || this._movePreview.sr !== subHex.r) {
-        this._movePreview = { sq: subHex.q, sr: subHex.r };
+      // Spawn stays locked to its hex — it's the map's anchor and we
+      // don't auto-create tiles to hold it. Props can cross-hex drag
+      // as long as the target tile exists (canvas commit validates).
+      if (this.selectedSpawn) {
+        const targetQ = this.grid.meta.spawn ? this.grid.meta.spawn[0] : hex.q;
+        const targetR = this.grid.meta.spawn ? this.grid.meta.spawn[1] : hex.r;
+        if (hex.q !== targetQ || hex.r !== targetR) return;
+      }
+
+      if (!this._movePreview
+          || this._movePreview.q !== hex.q || this._movePreview.r !== hex.r
+          || this._movePreview.sq !== subHex.q || this._movePreview.sr !== subHex.r) {
+        this._movePreview = { q: hex.q, r: hex.r, sq: subHex.q, sr: subHex.r };
         this.requestRender();
       }
     } else if (this._dragMode === 'rotating') {
@@ -1209,40 +1223,32 @@ export class HexCanvas {
     }
 
     if (this._dragMode === 'moving') {
-      // Compute final sub-hex from mouse position
+      // Compute final hex + sub-hex from mouse position
       const hex = this.screenToHex(mx, my);
-      let targetQ, targetR;
+      const world = HexMath.axialToPixel(hex.q, hex.r);
+      const mouseWorld = this.screenToWorld(mx, my);
+      const newSub = HexMath.pixelToSubHex(mouseWorld.x - world.x, mouseWorld.y - world.y);
+
       if (this.selectedProp) {
-        targetQ = this.selectedProp.hexQ;
-        targetR = this.selectedProp.hexR;
-      } else if (this.selectedSpawn) {
-        const spawn = this.grid.meta.spawn;
-        targetQ = spawn ? spawn[0] : 0;
-        targetR = spawn ? spawn[1] : 0;
-      } else {
-        this._dragMode = 'none';
-        this._movePreview = null;
-        return;
-      }
+        const sp = this.selectedProp;
+        const srcTile = this.grid.getTile(sp.hexQ, sp.hexR);
+        if (srcTile && srcTile.props[sp.propIndex]) {
+          const prop = srcTile.props[sp.propIndex];
+          const sameHex = (hex.q === sp.hexQ && hex.r === sp.hexR);
+          const dstTile = this.grid.getTile(hex.q, hex.r);
+          const moved = !sameHex || newSub.q !== prop.sq || newSub.r !== prop.sr;
 
-      // Only commit if within same hex
-      if (hex.q === targetQ && hex.r === targetR) {
-        const world = HexMath.axialToPixel(hex.q, hex.r);
-        const mouseWorld = this.screenToWorld(mx, my);
-        const newSub = HexMath.pixelToSubHex(mouseWorld.x - world.x, mouseWorld.y - world.y);
-
-        if (this.selectedProp) {
-          const sp = this.selectedProp;
-          const tile = this.grid.getTile(sp.hexQ, sp.hexR);
-          if (tile && tile.props[sp.propIndex]) {
-            const prop = tile.props[sp.propIndex];
-            if (newSub.q !== prop.sq || newSub.r !== prop.sr) {
-              // Check occupancy at target (excluding this prop's own positions)
-              const occupied = this._isSubHexOccupiedExcluding(tile, newSub.q, newSub.r, sp.propIndex);
-              if (!occupied) {
+          if (moved && dstTile) {
+            // Occupancy at destination: if same hex, exclude our own
+            // prop; if cross-hex, no exclusion.
+            const occupied = this._isSubHexOccupiedExcluding(
+              dstTile, newSub.q, newSub.r, sameHex ? sp.propIndex : -1);
+            if (!occupied) {
+              if (sameHex) {
+                // In-hex move — keep the cheaper EditPropCommand so
+                // footprint offsets can be translated in place.
                 const oldValues = { sq: prop.sq, sr: prop.sr };
                 const newValues = { sq: newSub.q, sr: newSub.r };
-                // Update footprint if present
                 if (prop.footprint) {
                   const dq = newSub.q - prop.sq;
                   const dr = newSub.r - prop.sr;
@@ -1251,10 +1257,33 @@ export class HexCanvas {
                 }
                 const cmd = new EditPropCommand(this.grid, sp.hexQ, sp.hexR, sp.propIndex, oldValues, newValues);
                 cmdHistory.execute(cmd);
+                this.selectedProp = { hexQ: sp.hexQ, hexR: sp.hexR, propIndex: sp.propIndex };
+              } else {
+                // Cross-hex move — footprinted props skip the cross-hex
+                // drag because translating absolute sub_hex coords
+                // across hex boundaries isn't well-defined here.
+                if (!prop.footprint) {
+                  const cmd = new MovePropCommand(
+                    this.grid, sp.hexQ, sp.hexR, sp.propIndex,
+                    hex.q, hex.r, { sq: newSub.q, sr: newSub.r });
+                  cmdHistory.execute(cmd);
+                  // Re-anchor the selection to the new tile. props.length-1
+                  // matches MovePropCommand.execute pushing to the end.
+                  const newTile = this.grid.getTile(hex.q, hex.r);
+                  if (newTile) {
+                    this.selectedProp = { hexQ: hex.q, hexR: hex.r, propIndex: newTile.props.length - 1 };
+                  }
+                }
               }
             }
           }
-        } else if (this.selectedSpawn) {
+        }
+      } else if (this.selectedSpawn) {
+        // Spawn drag still locked to the spawn's hex (see MouseMove).
+        const spawn = this.grid.meta.spawn;
+        const targetQ = spawn ? spawn[0] : 0;
+        const targetR = spawn ? spawn[1] : 0;
+        if (hex.q === targetQ && hex.r === targetR) {
           const spawn = this.grid.meta.spawn;
           if (spawn) {
             const oldSq = spawn.length > 2 ? spawn[2] : 0;
@@ -1619,9 +1648,31 @@ export class HexCanvas {
     }
   }
 
-  /** @param {Event} event */
+  /** @param {MouseEvent} event */
   _onContextMenu(event) {
     event.preventDefault();
+    // Dispatch a right-click on a placed prop to whoever registered
+    // onPropContextMenu — used by app.js to open the override panel
+    // (feature-011). Anything else is swallowed so the browser menu
+    // doesn't interrupt the editor.
+    if (typeof this.onPropContextMenu !== 'function') return;
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const hex = this.screenToHex(mx, my);
+    const world = HexMath.axialToPixel(hex.q, hex.r);
+    const mouseWorld = this.screenToWorld(mx, my);
+    const subHex = HexMath.pixelToSubHex(mouseWorld.x - world.x, mouseWorld.y - world.y);
+    const found = this._findPropAtSubHex(hex.q, hex.r, subHex.q, subHex.r);
+    if (!found) return;
+    this.onPropContextMenu({
+      hexQ: hex.q,
+      hexR: hex.r,
+      propIndex: found.propIndex,
+      prop: found.prop,
+      screenX: event.clientX,
+      screenY: event.clientY,
+    });
   }
 
   // --- Ghost Grid ---

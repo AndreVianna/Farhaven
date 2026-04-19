@@ -57,6 +57,19 @@ var _scanner: Node = null
 ## Reference to HexGrid
 var _grid: Node = null
 
+## Player node — source of player_moved. Late-bound (see _find_player).
+var _player: Node = null
+
+## Mirror of PropRenderer's streaming radius. Keeping the labels on
+## the same window as the meshes avoids orphan "?" markers hovering
+## over tiles whose 3D props have been unloaded. Overridden via
+## `set_stream_radius()` by main.gd using GameSettings.
+const DEFAULT_STREAM_RADIUS: int = 20
+var _stream_radius: int = DEFAULT_STREAM_RADIUS
+
+## Tiles we currently show labels for.
+var _streamed_tiles: Dictionary = {}
+
 
 func _ready() -> void:
 	if _grid == null:
@@ -66,6 +79,47 @@ func _ready() -> void:
 
 func _connect_signals() -> void:
 	_connect_scanner_signals.call_deferred()
+	_connect_player_signals.call_deferred()
+
+
+func _connect_player_signals() -> void:
+	if _player == null:
+		_player = _find_player()
+	if _player == null:
+		return
+	if _player.has_signal("player_moved"):
+		if not _player.player_moved.is_connected(_on_player_moved):
+			_player.player_moved.connect(_on_player_moved)
+	# Stream labels around the real player position as soon as we
+	# have one. Without this the initial scanner signals might fire
+	# before the first player_moved — handled by the _is_streamed
+	# warm-up path — but nothing re-evaluates labels for tiles that
+	# got populated outside the eventual stream window.
+	if "current_tile" in _player:
+		_stream_around(_player.current_tile)
+
+
+## Adjust the streaming radius. Called from main.gd after
+## GameSettings loads. Immediately re-streams around the current
+## player position so the change is visible without requiring a
+## tile transition.
+func set_stream_radius(radius: int) -> void:
+	# 0 = unlimited (every tile labeled), matching PropRenderer's
+	# sentinel. Clamping to >= 1 would diverge from GameSettings
+	# semantics and break the prop/label parity.
+	var clamped: int = clampi(radius, 0, 200)
+	if clamped == _stream_radius:
+		return
+	_stream_radius = clamped
+	if _player != null and "current_tile" in _player:
+		_stream_around(_player.current_tile)
+
+
+func _find_player() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	return parent.get_node_or_null("Player")
 
 
 func _connect_scanner_signals() -> void:
@@ -108,12 +162,119 @@ func _on_element_identified(_coords: Vector2i, _entry_id: StringName) -> void:
 
 
 func _on_element_unknown(coords: Vector2i, entry_id: StringName, category: int) -> void:
+	if not _is_streamed(coords):
+		return
 	var color: Color = CATEGORY_COLORS.get(category, Color.WHITE)
 	_add_marker(coords, entry_id, "❓", color, _Catalog.KnowledgeState.UNKNOWN, category)
 
 
 func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: String) -> void:
+	if not _is_streamed(coords):
+		return
 	_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, _Catalog.KnowledgeState.ENCOUNTERED, _Prop.Category.ANIMAL)
+
+
+## Player crossed a hex boundary. Diff the label set: drop labels
+## on tiles that are now too far away (frees the Label3D nodes and
+## the "?" swarm with them), and repopulate labels for tiles that
+## just came into range using the catalog's cached knowledge state.
+func _on_player_moved(from: Vector2i, to: Vector2i) -> void:
+	if from == to and _streamed_tiles.size() > 0:
+		return
+	_stream_around(to)
+
+
+func _stream_around(center: Vector2i) -> void:
+	if _grid == null:
+		return
+	var desired: Dictionary = {}
+	var ordered: Array[Vector2i] = []
+	# Radius 0 (or negative) disables the window — full-map labels,
+	# matching the prop renderer's unlimited mode. Keeps the
+	# "prop visible ↔ label visible" invariant intact at any scale.
+	if _stream_radius <= 0:
+		if _grid.has_method("get_all_tiles"):
+			for coords in _grid.get_all_tiles():
+				desired[coords] = true
+				ordered.append(coords)
+	elif _grid.has_method("get_tiles_in_range"):
+		for coords in _grid.get_tiles_in_range(center, _stream_radius):
+			desired[coords] = true
+			ordered.append(coords)
+	elif _grid.has_method("get_all_tiles"):
+		for coords in _grid.get_all_tiles():
+			desired[coords] = true
+			ordered.append(coords)
+
+	# Mirror PropRenderer's near-first ordering so labels come in
+	# on the same tiles as the meshes. Keeps the invariant tight:
+	# any label the player sees has a matching mesh already in the
+	# pool.
+	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _HexMath.distance(a, center) < _HexMath.distance(b, center))
+
+	# Clean up orphan labels added during the warm-up window.
+	# bootstrap_visible() fires element_unknown for every tile on the
+	# map; _is_streamed accepted all of them because _streamed_tiles
+	# was still empty, but none of those tiles were added to
+	# _streamed_tiles for later eviction. So when a far-away tile
+	# falls outside the stream window after the first real stream,
+	# its "?" label stays forever — that's the "labels visible but
+	# no 3D props" case Andre hit. Evict anything in _tile_labels
+	# whose coords aren't in the desired set, regardless of whether
+	# we remember adding it.
+	for coords in _tile_labels.keys():
+		if not desired.has(coords):
+			_remove_all_labels_at(coords)
+			_streamed_tiles.erase(coords)
+
+	for coords in _streamed_tiles.keys():
+		if not desired.has(coords):
+			_remove_all_labels_at(coords)
+			_streamed_tiles.erase(coords)
+
+	for coords in ordered:
+		if _streamed_tiles.has(coords):
+			continue
+		_streamed_tiles[coords] = true
+		_rehydrate_labels_for_tile(coords)
+
+
+## Restore labels for every prop on the tile using the scanner's
+## knowledge state. Called when a tile enters the streaming window
+## so the user sees the right marker even if they never saw the
+## original element_unknown / element_encountered signal for this
+## instance (e.g. spawned by Populate outside the streaming window).
+func _rehydrate_labels_for_tile(coords: Vector2i) -> void:
+	if _grid == null:
+		return
+	var tile: Resource = _grid.get_tile(coords) if _grid.has_method("get_tile") else null
+	if tile == null:
+		return
+	var catalog: RefCounted = _get_catalog()
+	var props: Array = tile.get_props() if tile.has_method("get_props") else []
+	for prop in props:
+		var entry_id: StringName = prop.type
+		var state: int = _Catalog.KnowledgeState.UNKNOWN
+		if catalog != null and catalog.has_method("get_knowledge_state"):
+			state = catalog.get_knowledge_state(entry_id)
+		if state == _Catalog.KnowledgeState.CATALOGED:
+			continue  # already identified — no marker
+		var category: int = prop.category if "category" in prop else _Prop.Category.PLANT
+		if state == _Catalog.KnowledgeState.ENCOUNTERED:
+			_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, state, _Prop.Category.ANIMAL)
+		else:
+			var color: Color = CATEGORY_COLORS.get(category, Color.WHITE)
+			_add_marker(coords, entry_id, "❓", color, state, category)
+
+
+func _is_streamed(coords: Vector2i) -> bool:
+	# First signal after _ready can fire before the player has emitted
+	# player_moved; accept everything until the first stream happens so
+	# we don't drop labels in the warm-up window.
+	if _streamed_tiles.is_empty():
+		return true
+	return _streamed_tiles.has(coords)
 
 
 func _on_entry_cataloged(entry_id: StringName, _category: int) -> void:
@@ -166,7 +327,11 @@ func _add_marker(coords: Vector2i, entry_id: StringName, text: String, color: Co
 		elevation_y = _grid.get_terrain_y(wx, wz)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET, wz)
+	# Scale the label offset by the prop's visual scale so small props
+	# (scale 0.3) don't get their markers floating in empty air and large
+	# props (scale 1.2) don't hide their marker inside the mesh.
+	var visual_scale: float = _PropUtils.get_visual_scale(entry_id)
+	var pos := Vector3(wx, elevation_y + LABEL_Y_OFFSET * visual_scale, wz)
 
 	var label_3d := Label3D.new()
 	label_3d.text = text

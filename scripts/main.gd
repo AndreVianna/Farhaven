@@ -15,6 +15,7 @@ const _GAME_SETTINGS_PATH: String = "res://data/game_settings.tres"
 
 func _ready() -> void:
 	_wire_systems()
+	_apply_render_settings()
 	var map_path: String = _resolve_startup_map()
 	if map_path != "" and FileAccess.file_exists(map_path):
 		HexGrid.load_map(map_path)
@@ -38,6 +39,28 @@ func _ready() -> void:
 	LightingManager.scan_existing_lights.call_deferred()
 	var _player_ref: Node = $World/Player
 	LightingManager.initialize_player_torch.call_deferred(_player_ref)
+
+
+## Pass GameSettings knobs into the renderers that need them. The
+## renderers expose setters rather than reading GameSettings
+## directly so they stay testable and the settings file stays the
+## single source of truth.
+func _apply_render_settings() -> void:
+	if not ResourceLoader.exists(_GAME_SETTINGS_PATH):
+		return
+	var settings: GameSettings = load(_GAME_SETTINGS_PATH) as GameSettings
+	if settings == null:
+		return
+	var radius: int = settings.prop_stream_radius
+	var collision_radius: int = settings.prop_collision_radius
+	var prop_renderer: Node = $World.get_node_or_null("PropRenderer")
+	if prop_renderer != null and prop_renderer.has_method("set_stream_radius"):
+		prop_renderer.set_stream_radius(radius)
+	if prop_renderer != null and prop_renderer.has_method("set_collision_radius"):
+		prop_renderer.set_collision_radius(collision_radius)
+	var label_renderer: Node = $World.get_node_or_null("PropLabelRenderer")
+	if label_renderer != null and label_renderer.has_method("set_stream_radius"):
+		label_renderer.set_stream_radius(radius)
 
 
 func _resolve_startup_map() -> String:

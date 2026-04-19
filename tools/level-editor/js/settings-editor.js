@@ -31,6 +31,20 @@ export class GameSettingsModel {
   constructor() {
     /** @type {string} Filename relative to data/maps (e.g. "ch1.json"). */
     this.starting_map = 'ch1.json';
+    /**
+     * @type {number} View-distance radius (hex tiles) for streaming
+     * natural prop meshes + their scanner labels. 0 = unlimited
+     * (every tile renders). Mirror of GameSettings.prop_stream_radius.
+     */
+    this.prop_stream_radius = 0;
+    /**
+     * @type {number} View-distance radius (hex tiles) for spawning
+     * StaticBody3D collision bodies around natural props. Decoupled
+     * from render radius: MultiMesh is cheap on GPU, a StaticBody3D
+     * per scattered prop is not. Range [3, 30], default 8. Mirror of
+     * GameSettings.prop_collision_radius.
+     */
+    this.prop_collision_radius = 8;
     /** @type {TresFile|null} Round-trip handle to preserve unknown fields. */
     this._raw = null;
   }
@@ -43,6 +57,24 @@ export class GameSettingsModel {
       data[k] = tv.value;
     }
     if (data.starting_map != null) model.starting_map = String(data.starting_map);
+    if (typeof data.prop_stream_radius === 'number') {
+      // Symmetric clamp: a hand-edited .tres with an out-of-range value
+      // is coerced on read so the UI + the emit-always writer always
+      // agree on the stored value. The UI input already clamps [0, 60]
+      // on change — this is the read side.
+      const raw = data.prop_stream_radius | 0;
+      model.prop_stream_radius = Math.max(0, Math.min(60, raw));
+    }
+    if (typeof data.prop_collision_radius === 'number') {
+      // Same symmetric clamp. 0 is accepted as the explicit "disable"
+      // sentinel mirroring the engine setter; UI minimum is 3.
+      const raw = data.prop_collision_radius | 0;
+      if (raw <= 0) {
+        model.prop_collision_radius = 0;
+      } else {
+        model.prop_collision_radius = Math.max(3, Math.min(30, raw));
+      }
+    }
     return model;
   }
 }
@@ -69,8 +101,36 @@ function modelToRaw(model) {
   const fields = new Map();
   fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
   fields.set('starting_map', { type: 'string', value: model.starting_map || 'ch1.json' });
+  // Emit prop_stream_radius ALWAYS — the UI-known set. Previous
+  // "skip when 0 to stay byte-clean" combined with the forward-compat
+  // preservation loop below silently restored the prior on-disk
+  // value whenever the user edited the field back to 0, so switching
+  // the map to unlimited mode was a no-op save (ultrareview finding
+  // 2026-04-19). Settings-tres is a singleton with ~2 fields today —
+  // there's no byte-churn cost worth the footgun.
+  const radiusRaw = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
+  // Clamp to the UI range [0, 60] on write so a hand-edited .tres with
+  // 9999 can't round-trip through save. Symmetric with fromTres.
+  const radius = Math.max(0, Math.min(60, radiusRaw));
+  fields.set('prop_stream_radius', { type: 'int', value: radius });
+  // Emit prop_collision_radius ALWAYS (same reason: avoid the silent-
+  // restore footgun from the preservation loop below). Clamp to the
+  // GDScript @export_range [3, 30] so an out-of-range value typed
+  // into the number input never lands in the .tres file. 0 is the
+  // explicit "disable" sentinel mirrored from the engine setter.
+  const collisionRadiusRaw = Number.isFinite(model.prop_collision_radius)
+    ? model.prop_collision_radius | 0 : 8;
+  let collisionRadius;
+  if (collisionRadiusRaw <= 0) {
+    collisionRadius = 0;
+  } else {
+    collisionRadius = Math.max(3, Math.min(30, collisionRadiusRaw));
+  }
+  fields.set('prop_collision_radius', { type: 'int', value: collisionRadius });
 
   // Preserve forward-compat fields (future additions we don't edit here).
+  // Guarded by fields.has(k) above — every key the UI manages is
+  // already set, so the loop never overwrites a just-written value.
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [k, v] of model._raw.resourceFields) {
       if (!fields.has(k)) fields.set(k, v);
@@ -171,6 +231,75 @@ export async function renderSettingsEditor(container, options) {
 
   container.appendChild(startWrap);
 
+  // prop_stream_radius number input
+  const radiusWrap = document.createElement('div');
+  radiusWrap.style.marginTop = '16px';
+  const radiusLabel = document.createElement('label');
+  radiusLabel.textContent = 'Prop Render Radius (hex tiles)';
+  radiusLabel.classList.add('prop-label');
+  radiusLabel.style.display = 'block';
+  radiusWrap.appendChild(radiusLabel);
+
+  const radiusInput = document.createElement('input');
+  radiusInput.type = 'number';
+  radiusInput.min = '0';
+  radiusInput.max = '60';
+  radiusInput.step = '1';
+  radiusInput.value = String(model.prop_stream_radius);
+  radiusInput.classList.add('prop-input');
+  radiusInput.style.maxWidth = '160px';
+  radiusInput.addEventListener('change', () => {
+    const v = parseInt(radiusInput.value, 10);
+    model.prop_stream_radius = Number.isFinite(v) ? Math.max(0, Math.min(60, v)) : 0;
+    radiusInput.value = String(model.prop_stream_radius);
+  });
+  radiusWrap.appendChild(radiusInput);
+
+  const radiusHint = document.createElement('div');
+  radiusHint.style.color = 'var(--text-secondary)';
+  radiusHint.style.fontSize = '0.85em';
+  radiusHint.style.marginTop = '4px';
+  radiusHint.innerHTML = '<strong>0 = unlimited</strong> — every tile on the map renders its natural props + scanner labels. ' +
+    'Higher values stream only tiles within N hexes of the player (trade visible range for perf).';
+  radiusWrap.appendChild(radiusHint);
+
+  container.appendChild(radiusWrap);
+
+  // prop_collision_radius number input
+  const collisionWrap = document.createElement('div');
+  collisionWrap.style.marginTop = '16px';
+  const collisionLabel = document.createElement('label');
+  collisionLabel.textContent = 'Prop Collision Radius (hex tiles)';
+  collisionLabel.classList.add('prop-label');
+  collisionLabel.style.display = 'block';
+  collisionWrap.appendChild(collisionLabel);
+
+  const collisionInput = document.createElement('input');
+  collisionInput.type = 'number';
+  collisionInput.min = '3';
+  collisionInput.max = '30';
+  collisionInput.step = '1';
+  collisionInput.value = String(model.prop_collision_radius);
+  collisionInput.classList.add('prop-input');
+  collisionInput.style.maxWidth = '160px';
+  collisionInput.addEventListener('change', () => {
+    const v = parseInt(collisionInput.value, 10);
+    model.prop_collision_radius = Number.isFinite(v) ? Math.max(3, Math.min(30, v)) : 8;
+    collisionInput.value = String(model.prop_collision_radius);
+  });
+  collisionWrap.appendChild(collisionInput);
+
+  const collisionHint = document.createElement('div');
+  collisionHint.style.color = 'var(--text-secondary)';
+  collisionHint.style.fontSize = '0.85em';
+  collisionHint.style.marginTop = '4px';
+  collisionHint.innerHTML = 'Natural props get solid collision only within this radius around the player. ' +
+    'Visual rendering can be unlimited (above) while collision stays near the player for performance. ' +
+    'Range <strong>3–30</strong>, default 8.';
+  collisionWrap.appendChild(collisionHint);
+
+  container.appendChild(collisionWrap);
+
   // Save button + status
   const actionRow = document.createElement('div');
   actionRow.style.marginTop = '20px';
@@ -180,7 +309,7 @@ export async function renderSettingsEditor(container, options) {
 
   const saveBtn = document.createElement('button');
   saveBtn.textContent = 'Save';
-  saveBtn.classList.add('btn-primary');
+  saveBtn.classList.add('btn-primary', 'prop-btn-primary');
 
   const statusEl = document.createElement('span');
   statusEl.style.color = 'var(--text-secondary)';

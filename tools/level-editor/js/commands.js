@@ -409,6 +409,91 @@ export class EditPropCommand {
   }
 }
 
+/**
+ * Move a prop across tiles (and optionally to a different sub-hex).
+ * Does not support moving a prop onto an occupied target sub-hex —
+ * the canvas hit-tests ahead of time and cancels the drag if needed.
+ *
+ * Undo restores the prop at its original index in the source tile so
+ * the order of props on that tile stays stable.
+ */
+export class MovePropCommand {
+  /**
+   * @param {import('./hex-grid.js').HexGrid} grid
+   * @param {number} srcQ
+   * @param {number} srcR
+   * @param {number} srcIndex
+   * @param {number} dstQ
+   * @param {number} dstR
+   * @param {{sq: number, sr: number}} dstSub — target sub-hex for the prop
+   */
+  constructor(grid, srcQ, srcR, srcIndex, dstQ, dstR, dstSub) {
+    this.grid = grid;
+    this.srcQ = srcQ;
+    this.srcR = srcR;
+    this.srcIndex = srcIndex;
+    this.dstQ = dstQ;
+    this.dstR = dstR;
+    this.dstSub = { sq: dstSub.sq, sr: dstSub.sr };
+    this._snapshot = null;     // populated on execute() for undo
+    this._srcRemovedProp = null;
+    this._dstIndex = -1;
+    this.tab = 'map';
+    this.type = 'MoveProp';
+  }
+  execute() {
+    const srcTile = this.grid.getTile(this.srcQ, this.srcR);
+    if (!srcTile || !srcTile.props[this.srcIndex]) return;
+    const prop = srcTile.props[this.srcIndex];
+    this._snapshot = { sq: prop.sq, sr: prop.sr };
+    this._srcRemovedProp = prop;
+    srcTile.props.splice(this.srcIndex, 1);
+    this.grid.setTile(this.srcQ, this.srcR, srcTile);
+
+    const dstTile = this.grid.getTile(this.dstQ, this.dstR);
+    if (!dstTile) {
+      // Target tile doesn't exist — restore source so map stays
+      // consistent. Drag-to-nonexistent-tile is blocked by the
+      // canvas, so this is defensive.
+      srcTile.props.splice(this.srcIndex, 0, prop);
+      this.grid.setTile(this.srcQ, this.srcR, srcTile);
+      return;
+    }
+    prop.sq = this.dstSub.sq;
+    prop.sr = this.dstSub.sr;
+    dstTile.props.push(prop);
+    this._dstIndex = dstTile.props.length - 1;
+    this.grid.setTile(this.dstQ, this.dstR, dstTile);
+  }
+  undo() {
+    if (this._snapshot == null || this._srcRemovedProp == null) return;
+    // Find the prop by identity, not by cached index. Other commands
+    // in the same history session could have mutated dstTile.props
+    // between execute and undo (add/delete), shifting indexOf past
+    // _dstIndex. Locate the instance by reference so we always remove
+    // the one we actually moved, never a sibling.
+    const dstTile = this.grid.getTile(this.dstQ, this.dstR);
+    if (dstTile) {
+      const idx = dstTile.props.indexOf(this._srcRemovedProp);
+      if (idx !== -1) {
+        dstTile.props.splice(idx, 1);
+        this.grid.setTile(this.dstQ, this.dstR, dstTile);
+      }
+    }
+    const srcTile = this.grid.getTile(this.srcQ, this.srcR);
+    if (srcTile) {
+      this._srcRemovedProp.sq = this._snapshot.sq;
+      this._srcRemovedProp.sr = this._snapshot.sr;
+      // Clamp the re-insert index to the current length — if siblings
+      // were removed while this move was on the stack, srcIndex could
+      // now be past the end. Append in that case.
+      const insertAt = Math.min(this.srcIndex, srcTile.props.length);
+      srcTile.props.splice(insertAt, 0, this._srcRemovedProp);
+      this.grid.setTile(this.srcQ, this.srcR, srcTile);
+    }
+  }
+}
+
 export class DeletePropCommand {
   /**
    * @param {import('./hex-grid.js').HexGrid} grid

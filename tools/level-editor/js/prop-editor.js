@@ -198,7 +198,6 @@ export class PropDefModel {
           meshes.push({
             scene: _resolveExtResourcePath(md.scene, entry.raw),
             scale: _num(md.scale) || 1.0,
-            rotation_offset_deg: _num(md.rotation_offset_deg) || 0.0,
           });
         }
       }
@@ -228,7 +227,10 @@ export class PropDefModel {
         }
       }
 
-      model.placeable = { meshes, collision_shapes };
+      // feature-011: scatter preset lives inside PlaceableCap as a
+      // plain int (default SINGLE = 0).
+      const placement = Number.isInteger(d.placeable.placement) ? d.placeable.placement : 0;
+      model.placeable = { meshes, collision_shapes, placement };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -603,7 +605,7 @@ function _createKvEditor(name, data) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(keyInput);
@@ -620,7 +622,7 @@ function _createKvEditor(name, data) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow('', 0));
   wrapper.appendChild(addBtn);
 
@@ -676,7 +678,7 @@ function _createFootprintEditor(footprint) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(xInput);
@@ -693,7 +695,7 @@ function _createFootprintEditor(footprint) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Cell';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 0));
   wrapper.appendChild(addBtn);
 
@@ -784,7 +786,7 @@ function _createTagEditor(tags) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = '\u00d7';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'border:none;background:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => chip.remove());
     chip.appendChild(removeBtn);
 
@@ -807,7 +809,7 @@ function _createTagEditor(tags) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => {
     const val = addInput.value.trim();
     if (val) {
@@ -927,7 +929,7 @@ function _createCapFootprintEditor(footprint) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(xInput);
@@ -943,7 +945,7 @@ function _createCapFootprintEditor(footprint) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Cell';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 0));
   wrapper.appendChild(addBtn);
 
@@ -1049,7 +1051,7 @@ function _createCollisionShapesEditor(shapes) {
   header.appendChild(title);
   const hint = document.createElement('span');
   hint.textContent = 'empty = walkthrough prop';
-  hint.style.cssText = 'font-size:11px; color: var(--text-secondary, #888); font-style: italic;';
+  hint.style.cssText = 'font-size:11px; color: var(--text-secondary); font-style: italic;';
   header.appendChild(hint);
   wrapper.appendChild(header);
 
@@ -1061,7 +1063,8 @@ function _createCollisionShapesEditor(shapes) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.textContent = '+ Add Shape';
-  addBtn.style.cssText = 'align-self:flex-start;padding:4px 10px;font-size:12px;cursor:pointer;';
+  addBtn.classList.add('prop-btn');
+  addBtn.style.alignSelf = 'flex-start';
   addBtn.addEventListener('click', () => {
     list.appendChild(_buildCollisionShapeRow({
       shape_type: 'box',
@@ -1081,7 +1084,8 @@ function _createCollisionShapesEditor(shapes) {
 function _buildCollisionShapeRow(shape) {
   const row = document.createElement('div');
   row.dataset.collisionShapeRow = '1';
-  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;border:1px solid var(--border, #444);border-radius:3px;font-size:11px;';
+  row.classList.add('prop-card');
+  row.style.cssText = 'display:grid;grid-template-columns: 90px repeat(3, 1fr) 14px repeat(3, 1fr) 28px;gap:4px;align-items:center;padding:6px;font-size:11px;';
 
   // Shape type dropdown.
   const typeSelect = document.createElement('select');
@@ -1093,7 +1097,7 @@ function _buildCollisionShapeRow(shape) {
     if (t === shape.shape_type) opt.selected = true;
     typeSelect.appendChild(opt);
   }
-  typeSelect.style.cssText = 'font-size:11px;padding:2px 4px;';
+  typeSelect.classList.add('prop-input');
   row.appendChild(typeSelect);
 
   // Size inputs (x, y, z).
@@ -1113,7 +1117,7 @@ function _buildCollisionShapeRow(shape) {
   // Divider between size and offset.
   const divider = document.createElement('span');
   divider.textContent = '·';
-  divider.style.cssText = 'text-align:center;color:var(--text-secondary, #888);';
+  divider.style.cssText = 'text-align:center;color:var(--text-secondary);';
   row.appendChild(divider);
 
   // Offset inputs (x, y, z).
@@ -1128,7 +1132,7 @@ function _buildCollisionShapeRow(shape) {
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.textContent = '×';
-  removeBtn.style.cssText = 'padding:2px 6px;font-size:14px;cursor:pointer;line-height:1;';
+  removeBtn.classList.add('prop-btn-icon');
   removeBtn.title = 'Remove shape';
   removeBtn.addEventListener('click', () => row.remove());
   row.appendChild(removeBtn);
@@ -1155,13 +1159,13 @@ function _numCell(fieldName, value) {
   input.step = 'any';
   input.value = String(value);
   input.dataset.field = fieldName;
-  input.style.cssText = 'width:100%;padding:2px 4px;font-size:11px;';
+  input.classList.add('prop-input');
   return input;
 }
 
 function _titledCell(labelSpan, input) {
   const w = document.createElement('label');
-  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary, #888);';
+  w.style.cssText = 'display:flex;flex-direction:column;gap:1px;font-size:10px;color:var(--text-secondary);';
   labelSpan.style.cssText = 'font-size:10px;';
   w.appendChild(labelSpan);
   w.appendChild(input);
@@ -1177,7 +1181,7 @@ function _makeSpan(text) {
 /**
  * Collect MeshVariant entries from the form.
  * @param {HTMLFormElement} formElement
- * @returns {Array<{scene:string, scale:number, rotation_offset_deg:number}>}
+ * @returns {Array<{scene:string, scale:number}>}
  */
 function _collectMeshVariantsData(formElement) {
   const list = formElement.querySelector('[data-mesh-variants-list]');
@@ -1186,13 +1190,10 @@ function _collectMeshVariantsData(formElement) {
   const out = [];
   for (const row of rows) {
     const scaleEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="scale"]'));
-    const rotEl = /** @type {HTMLInputElement} */ (row.querySelector('input[data-field="rotation_offset_deg"]'));
     const scale = scaleEl ? parseFloat(scaleEl.value) : 1;
-    const rot = rotEl ? parseFloat(rotEl.value) : 0;
     out.push({
       scene: /** @type {HTMLElement} */ (row).dataset.meshScene || '',
       scale: Number.isFinite(scale) ? scale : 1,
-      rotation_offset_deg: Number.isFinite(rot) ? rot : 0,
     });
   }
   return out;
@@ -1283,7 +1284,7 @@ function _createStringArrayEditor(name, labelText, values) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(input);
@@ -1298,7 +1299,7 @@ function _createStringArrayEditor(name, labelText, values) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(''));
   wrapper.appendChild(addBtn);
 
@@ -1361,7 +1362,7 @@ function _addHarvestableEditor(panel, cap) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(typeSel);
@@ -1398,7 +1399,7 @@ function _addHarvestableEditor(panel, cap) {
     const removeYieldBtn = document.createElement('button');
     removeYieldBtn.textContent = 'Remove Yield';
     removeYieldBtn.type = 'button';
-    removeYieldBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeYieldBtn.classList.add('prop-btn-icon');
     removeYieldBtn.addEventListener('click', () => wrapper.remove());
 
     header.appendChild(itemInput);
@@ -1424,7 +1425,8 @@ function _addHarvestableEditor(panel, cap) {
     const addCondBtn = document.createElement('button');
     addCondBtn.textContent = '+ Condition';
     addCondBtn.type = 'button';
-    addCondBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:4px;margin-left:16px;';
+    addCondBtn.classList.add('prop-btn');
+    addCondBtn.style.cssText = 'margin-top:4px;margin-left:16px;';
     addCondBtn.addEventListener('click', () => _addConditionRow(condContainer, 'tool', ''));
     wrapper.appendChild(addCondBtn);
 
@@ -1436,7 +1438,8 @@ function _addHarvestableEditor(panel, cap) {
   const addYieldBtn = document.createElement('button');
   addYieldBtn.textContent = '+ Add Yield';
   addYieldBtn.type = 'button';
-  addYieldBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addYieldBtn.classList.add('prop-btn');
+  addYieldBtn.style.cssText = 'grid-column: 1 / -1; justify-self: start;';
   addYieldBtn.addEventListener('click', () => _addYieldRow({ item_id: '', amount: 1, conditions: [] }));
   panel.appendChild(addYieldBtn);
 
@@ -1461,7 +1464,8 @@ function _addHarvestableEditor(panel, cap) {
   const addRespawnBtn = document.createElement('button');
   addRespawnBtn.textContent = '+ Respawn Condition';
   addRespawnBtn.type = 'button';
-  addRespawnBtn.style.cssText = 'padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:12px;grid-column: 1 / -1;justify-self:start;';
+  addRespawnBtn.classList.add('prop-btn');
+  addRespawnBtn.style.cssText = 'grid-column: 1 / -1; justify-self: start;';
   addRespawnBtn.addEventListener('click', () => _addConditionRow(respawnContainer, 'time_elapsed', ''));
   panel.appendChild(addRespawnBtn);
 }
@@ -1542,7 +1546,7 @@ function _createMovementModesEditor(modes) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(modeSelect);
@@ -1559,7 +1563,7 @@ function _createMovementModesEditor(modes) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Mode';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => addRow(0, 1.0, 1.0));
   wrapper.appendChild(addBtn);
 
@@ -1585,6 +1589,8 @@ export function renderPropEditor(container, options) {
   const onSave = options && typeof options.onSave === 'function' ? options.onSave : onChange;
   /** @type {string|null} If set, locks the category filter to this value and hides the dropdowns. */
   const lockedCategory = options && options.categoryFilter ? options.categoryFilter : null;
+  /** @type {((guard: () => boolean) => void) | null} Registers the editor's dirty guard with the tab switcher. */
+  const registerGuard = options && typeof options.registerGuard === 'function' ? options.registerGuard : null;
 
   // --- Split layout ---
   const split = document.createElement('div');
@@ -1708,6 +1714,17 @@ export function renderPropEditor(container, options) {
     return true;
   }
 
+  if (registerGuard) {
+    // Only the currently-visible prop editor should veto tab changes —
+    // each category tab instantiates its own renderPropEditor, so they
+    // all register a guard, but only the one whose tab panel is `.active`
+    // has a live form to dirty-check.
+    registerGuard(() => {
+      if (!container.closest('.tab-panel.active')) return true;
+      return _guardDirty();
+    });
+  }
+
   // --- Build the prop list ---
   /**
    * Rebuild the list items, optionally filtering.
@@ -1817,6 +1834,14 @@ export function renderPropEditor(container, options) {
     const form = document.createElement('form');
     form.style.cssText = 'display:flex;flex-direction:column;height:100%;';
     form.addEventListener('submit', (e) => e.preventDefault());
+    // Stash fields that have no UI surface yet so collect can round-trip
+    // them instead of emitting empty defaults on save. Keeps
+    // CatalogableCap.properties (plant/mineral schemas used by the
+    // scanner) intact until the rich properties editor lands.
+    if (model.catalogable && model.catalogable.properties) {
+      try { form.dataset.catalogableProps = JSON.stringify(model.catalogable.properties); }
+      catch (_) { /* best effort */ }
+    }
 
     // --- Header ---
     const header = document.createElement('div');
@@ -2112,7 +2137,9 @@ export function renderPropEditor(container, options) {
       panel.appendChild(_createShapeEditor('cap_portable_shape', model.portable ? model.portable.slot_shape : [{x:0,y:0}]));
     }));
 
-    // PLACEABLE — world mesh variants + collision shape composition.
+    // PLACEABLE — world mesh variants + collision shape composition +
+    // scatter preset (feature-011). One capability box bundles everything
+    // the renderer needs to place this prop in the world.
     grid.appendChild(_createCapabilityPanel('placeable', 'Placeable', model.placeable, (panel) => {
       const meshes = model.placeable && Array.isArray(model.placeable.meshes)
         ? model.placeable.meshes
@@ -2122,7 +2149,7 @@ export function renderPropEditor(container, options) {
       } else {
         const empty = document.createElement('div');
         empty.textContent = 'No mesh variants authored. Add MeshVariant entries to placeable.meshes in .tres.';
-        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border, #444); border-radius: 4px; color: var(--muted, #888); font-size: 12px;';
+        empty.style.cssText = 'padding: 12px; border: 1px dashed var(--border); border-radius: 4px; color: var(--text-secondary); font-size: 12px;';
         panel.appendChild(empty);
       }
 
@@ -2130,6 +2157,9 @@ export function renderPropEditor(container, options) {
         ? model.placeable.collision_shapes
         : [];
       panel.appendChild(_createCollisionShapesEditor(collisionShapes));
+
+      // Scatter preset dropdown — inline as a placeable sub-section.
+      panel.appendChild(_renderPlacementSection(model));
     }));
 
     // HARVESTABLE — yields + respawn conditions + (future) depleted meshes.
@@ -2137,7 +2167,7 @@ export function renderPropEditor(container, options) {
       _addHarvestableEditor(panel, model.harvestable);
       const depletedNote = document.createElement('div');
       depletedNote.textContent = 'Depleted mesh variants (harvestable.depleted_meshes) will appear here once authored in .tres.';
-      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--muted, #888); font-size: 11px; font-style: italic; border-left: 2px solid var(--border, #444); padding-left: 10px;';
+      depletedNote.style.cssText = 'margin-top: 12px; padding: 10px; color: var(--text-secondary); font-size: 11px; font-style: italic; border-left: 2px solid var(--border); padding-left: 10px;';
       panel.appendChild(depletedNote);
     }));
 
@@ -2145,30 +2175,110 @@ export function renderPropEditor(container, options) {
   }
 
   /**
+   * PlacementCap editor — dropdown of the 5 presets with short descriptions.
+   * Reads from model.placeable.placement — feature-011 post-refactor,
+   * scatter preset lives inside PlaceableCap rather than as a separate
+   * capability. Falls back to SINGLE (0) when unset.
+   */
+  function _renderPlacementSection(model) {
+    const wrap = document.createElement('div');
+    wrap.classList.add('prop-full');
+    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 10px; margin-top: 10px;';
+
+    const heading = document.createElement('div');
+    heading.textContent = 'Scatter Placement';
+    heading.style.cssText = 'font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);';
+    wrap.appendChild(heading);
+
+    const PRESETS = [
+      { value: 0, label: 'Single',    desc: '1 instance at sub-hex center. Default for boulders, structures, authored props.' },
+      { value: 1, label: 'Normal',    desc: '7 instances (center + 6 scattered). Sibling scale 0.5. Default for plants.' },
+      { value: 2, label: 'Dense',     desc: '13 instances (center + 12 scattered). Sibling scale 0.5. Thick vegetation.' },
+      { value: 3, label: 'Sprouting', desc: '7 instances, sibling scale 0.3. Small satellites around parent — young growth, mineral clusters.' },
+      { value: 4, label: 'Spread',    desc: '13 instances, sibling scale 1.0. Uniform coverage — pasture, moss fields.' },
+    ];
+
+    const current = (model.placeable && Number.isInteger(model.placeable.placement))
+      ? model.placeable.placement : 0;
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    const label = document.createElement('span');
+    label.textContent = 'Preset';
+    label.classList.add('prop-hint');
+    const select = document.createElement('select');
+    select.dataset.field = 'placement_preset';
+    select.classList.add('prop-input');
+    select.style.flex = '1';
+    for (const p of PRESETS) {
+      const opt = document.createElement('option');
+      opt.value = String(p.value);
+      opt.textContent = p.label;
+      if (p.value === current) opt.selected = true;
+      select.appendChild(opt);
+    }
+    row.appendChild(label);
+    row.appendChild(select);
+    wrap.appendChild(row);
+
+    const desc = document.createElement('div');
+    desc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
+    const _refreshDesc = () => {
+      const p = PRESETS.find(x => x.value === parseInt(select.value, 10)) || PRESETS[0];
+      desc.textContent = p.desc;
+    };
+    _refreshDesc();
+    select.addEventListener('change', _refreshDesc);
+    wrap.appendChild(desc);
+
+    return wrap;
+  }
+
+  /**
    * Render an editable list of MeshVariant entries — reference.png preview,
-   * scene path, scale and rotation offset inputs. Scene editing still goes
-   * through the .tres for now (no file picker yet).
-   * @param {Array<{scene: string, scale: number, rotation_offset_deg: number}>} meshes
+   * scene path and scale input. Scene editing still goes through the
+   * .tres for now (no file picker yet).
+   * @param {Array<{scene: string, scale: number}>} meshes
    * @returns {HTMLElement}
    */
   function _renderMeshVariantList(meshes) {
+    const wrap = document.createElement('div');
+    wrap.classList.add('prop-full');
+    wrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+
     const list = document.createElement('div');
     list.dataset.meshVariantsList = '1';
-    list.classList.add('prop-full');
     list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
 
     meshes.forEach((mv, idx) => {
       list.appendChild(_buildMeshVariantRow(mv, idx));
     });
+    wrap.appendChild(list);
 
-    return list;
+    // + Add Variant — appends an empty variant row so the author can
+    // paste a scene path / set scale. The actual .glb picker is a
+    // future improvement; for now the scene input is left blank and
+    // the author fills it by hand.
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '+ Add Variant';
+    addBtn.classList.add('prop-btn');
+    addBtn.style.alignSelf = 'flex-start';
+    addBtn.addEventListener('click', () => {
+      const nextIdx = list.querySelectorAll('[data-mesh-variant-row]').length;
+      list.appendChild(_buildMeshVariantRow({ scene: '', scale: 1.0 }, nextIdx));
+    });
+    wrap.appendChild(addBtn);
+
+    return wrap;
   }
 
   function _buildMeshVariantRow(mv, idx) {
     const row = document.createElement('div');
     row.dataset.meshVariantRow = '1';
     row.dataset.meshScene = mv.scene || '';
-    row.style.cssText = 'display: flex; gap: 12px; padding: 8px; border: 1px solid var(--border, #444); border-radius: 4px; background: var(--panel-bg, rgba(255,255,255,0.02));';
+    row.classList.add('prop-card');
+    row.style.cssText = 'display: flex; gap: 12px;';
 
     // Preview image (resolve mesh_vN.glb → reference_vN.png in same dir).
     // Falls back to a visible placeholder when the server can't serve the PNG.
@@ -2196,41 +2306,35 @@ export function renderPropEditor(container, options) {
     removeBtn.type = 'button';
     removeBtn.textContent = '×';
     removeBtn.title = 'Remove variant';
-    removeBtn.style.cssText = 'padding: 2px 8px; font-size: 14px; cursor: pointer; line-height: 1;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
     header.appendChild(removeBtn);
     info.appendChild(header);
 
     const scenePath = document.createElement('code');
     scenePath.textContent = mv.scene || '(no scene)';
-    scenePath.style.cssText = 'font-size: 11px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    scenePath.style.cssText = 'font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
     info.appendChild(scenePath);
 
-    // Editable scale + rotation offset inputs.
+    // Editable scale input. Rotation was removed 2026-04-18 — rotation
+    // is now fully procedural (seeded 0-360°) or per-instance override
+    // via the Prop context menu, never per-variant.
+    // Flex-in-line keeps the label and input adjacent instead of
+    // letting a grid column expand and put dead space between them.
     const xform = document.createElement('div');
-    xform.style.cssText = 'display: grid; grid-template-columns: auto 70px auto 70px; gap: 6px; align-items: center;';
+    xform.style.cssText = 'display: flex; gap: 6px; align-items: center;';
     const scaleLabel = document.createElement('span');
     scaleLabel.textContent = 'scale';
-    scaleLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
+    scaleLabel.classList.add('prop-hint');
     const scaleInput = document.createElement('input');
     scaleInput.type = 'number';
     scaleInput.step = 'any';
     scaleInput.value = String(mv.scale);
     scaleInput.dataset.field = 'scale';
-    scaleInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
-    const rotLabel = document.createElement('span');
-    rotLabel.textContent = 'rotation°';
-    rotLabel.style.cssText = 'font-size: 11px; color: var(--muted, #888);';
-    const rotInput = document.createElement('input');
-    rotInput.type = 'number';
-    rotInput.step = 'any';
-    rotInput.value = String(mv.rotation_offset_deg);
-    rotInput.dataset.field = 'rotation_offset_deg';
-    rotInput.style.cssText = 'padding: 2px 4px; font-size: 11px; width: 100%;';
+    scaleInput.classList.add('prop-input');
+    scaleInput.style.width = '100px';
     xform.appendChild(scaleLabel);
     xform.appendChild(scaleInput);
-    xform.appendChild(rotLabel);
-    xform.appendChild(rotInput);
     info.appendChild(xform);
 
     row.appendChild(info);
@@ -2239,7 +2343,7 @@ export function renderPropEditor(container, options) {
 
   function _buildPreviewFallback(variantNumber) {
     const fallback = document.createElement('div');
-    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--muted, #888); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border, #444);';
+    fallback.style.cssText = 'width: 96px; height: 96px; border-radius: 3px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 10px; text-align: center; flex-shrink: 0; border: 1px dashed var(--border);';
     fallback.textContent = `no preview\nv${variantNumber}`;
     fallback.style.whiteSpace = 'pre';
     return fallback;
@@ -2623,9 +2727,17 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_placeable_enabled')) {
+    // Scatter preset lives inside the Placeable cap (feature-011 refactor).
+    // Read the dropdown that _renderPlacementSection emits with
+    // data-field="placement_preset".
+    const placementSelect = formElement.querySelector('select[data-field="placement_preset"]');
+    const placement = placementSelect
+      ? parseInt(/** @type {HTMLSelectElement} */ (placementSelect).value, 10)
+      : 0;
     model.placeable = {
       meshes: _collectMeshVariantsData(formElement),
       collision_shapes: _collectCollisionShapesData(formElement),
+      placement: Number.isInteger(placement) ? placement : 0,
     };
   }
 
@@ -2656,10 +2768,25 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_catalogable_enabled')) {
+    // Properties editing isn't wired to the UI yet, but dropping the
+    // dict on every save wipes per-category metadata (plant schema,
+    // mineral schema, etc.) that the scanner + catalog read. Preserve
+    // the previously-loaded value via a hidden dataset stash on the
+    // form so an editor round-trip stays lossless until the rich
+    // properties editor lands.
+    const stash = formElement.dataset && formElement.dataset.catalogableProps
+      ? formElement.dataset.catalogableProps : '';
+    let preserved = {};
+    if (stash) {
+      try {
+        const parsed = JSON.parse(stash);
+        if (parsed && typeof parsed === 'object') preserved = parsed;
+      } catch (_) { /* ignore malformed stash */ }
+    }
     model.catalogable = {
       scan_time: floatVal('cap_catalogable_scan_time'),
       show_as_anomaly: isChecked('cap_catalogable_show_as_anomaly'),
-      properties: {},  // Properties editing not yet supported in UI
+      properties: preserved,
     };
   }
 
@@ -3067,7 +3194,6 @@ export function propModelToRaw(model) {
         mvFields.set('scene', { type: 'ext_resource', value: `ExtResource("${sceneExtId}")` });
       }
       mvFields.set('scale', { type: 'float', value: Number.isFinite(mv.scale) ? mv.scale : 1.0 });
-      mvFields.set('rotation_offset_deg', { type: 'float', value: Number.isFinite(mv.rotation_offset_deg) ? mv.rotation_offset_deg : 0.0 });
       extraSubResources.push({ type: 'Resource', id: mvSubId, fields: mvFields });
     }
 
@@ -3105,6 +3231,14 @@ export function propModelToRaw(model) {
         type: 'array', elementType: 'Resource',
         value: collSubIds.map(id => ({ type: 'sub_resource', value: id })),
       });
+    }
+
+    // feature-011: scatter preset lives on PlaceableCap now. Emit only
+    // when non-default (SINGLE = 0) to keep legacy .tres files minimal.
+    const placementPreset = Number.isInteger(model.placeable.placement)
+      ? model.placeable.placement : 0;
+    if (placementPreset !== 0) {
+      subFields.set('placement', { type: 'int', value: placementPreset });
     }
 
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });

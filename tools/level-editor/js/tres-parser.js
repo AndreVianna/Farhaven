@@ -271,6 +271,20 @@ export class TresParser {
       return { type: 'vector2i', value: { x: parts[0], y: parts[1] } };
     }
 
+    // Vector3: Vector3(x, y, z) — floats. Rejects arity != 3, NaN
+    // components, AND malformed strings missing the closing paren
+    // (previously `slice(8, -1)` trimmed an unrelated character off
+    // e.g. `"Vector3(1, 2, 3"` and silently produced nonsense).
+    if (s.startsWith('Vector3(') && s.endsWith(')')) {
+      const inner = s.slice(8, -1);
+      const parts = inner.split(',').map(p => parseFloat(p.trim()));
+      if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {
+        return { type: 'vector3', value: { x: parts[0], y: parts[1], z: parts[2] } };
+      }
+      // Malformed — fall through; the generic string fallback at the
+      // bottom of this function will preserve the original text.
+    }
+
     // PackedStringArray: PackedStringArray("a", "b")
     if (s.startsWith('PackedStringArray(')) {
       const inner = s.slice(18, -1);
@@ -291,12 +305,20 @@ export class TresParser {
       return { type: 'array', value: colors, elementType: 'Color' };
     }
 
-    // Typed array: Array[Type](...)
+    // Typed array: Godot writes Array[T]([a, b]) (inner brackets required).
+    // Legacy variant Array[T](a, b) (no inner brackets) existed briefly
+    // and is accepted for backward compat, but re-serialized in the
+    // canonical form.
     if (s.startsWith('Array[')) {
       const bracketEnd = s.indexOf(']');
       const elementType = s.substring(6, bracketEnd);
       const parenStart = s.indexOf('(', bracketEnd);
-      const inner = s.slice(parenStart + 1, -1);
+      let inner = s.slice(parenStart + 1, -1).trim();
+      // Strip the inner [...] wrapper when present — it's a list-literal
+      // marker, not a real element.
+      if (inner.startsWith('[') && inner.endsWith(']')) {
+        inner = inner.slice(1, -1).trim();
+      }
       const elements = TresParser._parseArrayElements(inner, elementType);
       return { type: 'array', value: elements, elementType: elementType };
     }
@@ -305,9 +327,13 @@ export class TresParser {
     if (s === 'true') return { type: 'bool', value: true };
     if (s === 'false') return { type: 'bool', value: false };
 
-    // String: "..."
+    // String: "..." — unescape Godot's backslash sequences.
+    // Godot writes \", \n, \t, \\ (and others) when a string contains
+    // those characters. Previously the parser sliced off the quotes
+    // and left the escapes verbatim, which corrupted any display_name
+    // or description with a quote or real newline on round-trip.
     if (s.startsWith('"') && s.endsWith('"')) {
-      return { type: 'string', value: s.slice(1, -1) };
+      return { type: 'string', value: TresParser._unescapeString(s.slice(1, -1)) };
     }
 
     // Dict: { ... }
@@ -563,9 +589,9 @@ export class TresParser {
   static serializeValue(tv) {
     switch (tv.type) {
       case 'stringname':
-        return '&"' + tv.value + '"';
+        return '&"' + TresParser._escapeString(tv.value) + '"';
       case 'string':
-        return '"' + tv.value + '"';
+        return '"' + TresParser._escapeString(tv.value) + '"';
       case 'int':
         return String(tv.value);
       case 'float':
@@ -582,6 +608,10 @@ export class TresParser {
           + ', ' + TresParser._serializeFloat(tv.value.a) + ')';
       case 'vector2i':
         return 'Vector2i(' + tv.value.x + ', ' + tv.value.y + ')';
+      case 'vector3':
+        return 'Vector3(' + TresParser._serializeFloat(tv.value.x)
+          + ', ' + TresParser._serializeFloat(tv.value.y)
+          + ', ' + TresParser._serializeFloat(tv.value.z) + ')';
       case 'ext_resource':
         return tv.value;
       case 'sub_resource':
@@ -609,6 +639,53 @@ export class TresParser {
       return s + '.0';
     }
     return s;
+  }
+
+  /**
+   * Escape a string for embedding in a Godot .tres double-quoted literal.
+   * Mirrors Godot's own writer: \\, \", \n, \t, \r. Any character outside
+   * those stays verbatim (Godot accepts UTF-8 in .tres files directly).
+   * @param {string} str
+   * @returns {string}
+   */
+  static _escapeString(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+  }
+
+  /**
+   * Reverse of _escapeString — unescape the sequences Godot emits in
+   * double-quoted .tres string literals. Unknown sequences preserve
+   * the backslash (defensive — won't silently drop data).
+   * @param {string} str
+   * @returns {string}
+   */
+  static _unescapeString(str) {
+    if (typeof str !== 'string' || str.indexOf('\\') === -1) return str;
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i];
+      if (ch !== '\\' || i === str.length - 1) {
+        out += ch;
+        continue;
+      }
+      const next = str[i + 1];
+      switch (next) {
+        case '\\': out += '\\'; break;
+        case '"':  out += '"'; break;
+        case 'n':  out += '\n'; break;
+        case 'r':  out += '\r'; break;
+        case 't':  out += '\t'; break;
+        default:   out += '\\' + next; break;
+      }
+      i++;
+    }
+    return out;
   }
 
   /**
@@ -650,11 +727,13 @@ export class TresParser {
   static _serializeArray(tv) {
     const elements = tv.value;
     if (tv.elementType) {
-      // Typed array: Array[Type](...)
+      // Typed array: Godot expects Array[Type]([a, b, c]) — inner brackets
+      // are required, not optional. Emitting Array[Type](a, b, c) produces
+      // a file Godot refuses to parse ("Expected '['").
       if (elements.length === 0) {
-        return 'Array[' + tv.elementType + ']()';
+        return 'Array[' + tv.elementType + ']([])';
       }
-      return 'Array[' + tv.elementType + '](' + elements.map(e => TresParser.serializeValue(e)).join(', ') + ')';
+      return 'Array[' + tv.elementType + ']([' + elements.map(e => TresParser.serializeValue(e)).join(', ') + '])';
     }
     // Untyped array: [...]
     if (elements.length === 0) return '[]';

@@ -53,10 +53,11 @@ func _set_tile_elevation(coords: Vector2i, elev: int) -> void:
 
 # --- MoveState enum tests ---
 
-func test_movestate_has_idle_walking_jumping() -> void:
+func test_movestate_has_idle_walking_running_jumping() -> void:
 	assert_int(_Player.MoveState.IDLE).is_equal(0)
 	assert_int(_Player.MoveState.WALKING).is_equal(1)
-	assert_int(_Player.MoveState.JUMPING).is_equal(2)
+	assert_int(_Player.MoveState.RUNNING).is_equal(2)
+	assert_int(_Player.MoveState.JUMPING).is_equal(3)
 
 
 func test_initial_state_is_idle() -> void:
@@ -65,8 +66,20 @@ func test_initial_state_is_idle() -> void:
 
 # --- Joystick start/stop ---
 
-func test_joystick_start_changes_to_walking() -> void:
+func test_joystick_start_changes_to_running() -> void:
+	# _on_joystick_start always sets magnitude=1.0, which exceeds
+	# _RUN_ENTER (0.75), so the entering state is RUNNING, not WALKING.
+	# WALKING is reached only when the joystick subsequently drops
+	# below _RUN_EXIT (0.70).
 	_player._on_joystick_start(Vector2.RIGHT)
+	assert_int(_player.move_state).is_equal(_Player.MoveState.RUNNING)
+
+
+func test_joystick_move_low_magnitude_is_walking() -> void:
+	# A partial joystick push (below _RUN_ENTER) should enter WALKING,
+	# not RUNNING. Covers the other branch of the hysteresis.
+	_player._on_joystick_start(Vector2.RIGHT)
+	_player._on_joystick_move(Vector2.RIGHT, 0.5)
 	assert_int(_player.move_state).is_equal(_Player.MoveState.WALKING)
 
 
@@ -155,8 +168,13 @@ func test_walk_traversal_seamless_boundary_crossing() -> void:
 	_player._joystick_magnitude = 1.0
 	for _i in range(100):
 		_player._process_walking(0.02)
-	# Should have walked into a tile with elevation 1
-	assert_int(_player.move_state).is_equal(_Player.MoveState.WALKING)
+	# Full-magnitude joystick hold keeps us in RUNNING (mag=1.0 is well
+	# above the _RUN_EXIT=0.70 hysteresis boundary). A "seamless"
+	# boundary crossing means we stayed in a moving state, not that we
+	# stayed in WALKING specifically — the point of the test is that
+	# nothing flipped us back to IDLE or entered JUMPING.
+	var ms: int = _player.move_state
+	assert_bool(ms == _Player.MoveState.WALKING or ms == _Player.MoveState.RUNNING).is_true()
 
 
 func test_walk_y_follows_terrain() -> void:

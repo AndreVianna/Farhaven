@@ -6,10 +6,10 @@
 
 import { TresParser } from './tres-parser.js';
 import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
-import { CommandHistory } from './commands.js';
+import { CommandHistory, EditPropCommand } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
-import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal } from './panels.js';
+import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal, showPropOverrideModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
 import { ToolManager } from './tools.js';
@@ -23,6 +23,7 @@ import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
 import { showGeneratorDialog, generateMap } from './map-generator.js';
+import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './populate.js';
 
 // ============================================================
 // Module-level state
@@ -97,12 +98,33 @@ const PROP_CATEGORY_TABS = [
 ];
 
 /**
+ * Optional guards registered by editors to veto a tab switch when the
+ * active editor has pending in-form state (not yet committed to the
+ * model/dirtyTracker). Each guard returns `true` to allow the switch,
+ * `false` to cancel. See prop-editor's _guardDirty for an example.
+ * @type {Array<() => boolean>}
+ */
+const _tabSwitchGuards = [];
+
+export function registerTabSwitchGuard(fn) {
+  _tabSwitchGuards.push(fn);
+}
+
+/**
  * Switch to the specified tab.
  * @param {string} tabName - 'map' | 'props' | 'biomes'
  * @returns {void}
  */
 function switchTab(tabName) {
   if (!TAB_LABELS[tabName]) return;
+  if (tabName === activeTab) return;
+  // Leaving a tab with uncommitted form state (prop/biome/recipe editors
+  // only mark dirty after Save — the form input itself is ephemeral).
+  // Ask each registered guard before changing tabs so the user can
+  // cancel and go save first.
+  for (const guard of _tabSwitchGuards) {
+    if (guard() === false) return;
+  }
   activeTab = tabName;
 
   // Update tab buttons
@@ -169,6 +191,28 @@ function setStatus(text) {
 // ============================================================
 
 toolManager.onStatus = (msg) => setStatus(msg);
+
+// Surface save failures. Previously every saveFile error was swallowed
+// by the caller's `.catch(err => console.warn(...))` — the user only
+// learned something went wrong when they later noticed the file hadn't
+// updated. Centralized notifier means every failed save shows up in
+// the status bar, and when saveFile offers a download-fallback path
+// (server unreachable) the user is asked before the browser drops a
+// stray copy in Downloads.
+FileDiscovery.onSaveError = (path, err, opts) => {
+  setStatus(`Save failed: ${path} — ${err.message}`);
+  const options = opts || {};
+  const hint = options.hint ? `\n\n${options.hint}` : '';
+  if (options.canFallbackToDownload && typeof options.downloadFallback === 'function') {
+    const download = confirm(
+      `Failed to save ${path}\n\n${err.message}${hint}\n\n` +
+      'Download a copy locally? (Click Cancel to abort — nothing is saved.)'
+    );
+    if (download) options.downloadFallback();
+  } else {
+    alert(`Failed to save ${path}\n\n${err.message}${hint}`);
+  }
+};
 
 // ============================================================
 // selectTool — wires keyboard shortcuts to ToolManager (task-009)
@@ -535,6 +579,289 @@ async function _regenerateMap() {
   }
 }
 
+/**
+ * Handle the Populate button — builds a distribution plan from the
+ * active map's biomes, shows the user a summary dialog with a
+ * Replace toggle, and on confirm commits the plan through the
+ * CommandHistory as a single undoable batch.
+ * @returns {void}
+ */
+function _populateMap() {
+  if (!hexGrid || hexGrid.tiles.size === 0) {
+    setStatus('Populate — no map loaded.');
+    return;
+  }
+  _showPopulateDialog(false);
+}
+
+/**
+ * Render the populate confirmation dialog. Recomputes the plan
+ * whenever the user toggles "Replace existing", so the displayed
+ * add/remove counts always match what Apply will do.
+ * @param {boolean} initialReplace
+ * @returns {void}
+ */
+function _showPopulateDialog(initialReplace) {
+  const existing = document.getElementById('populate-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'populate-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:420px;max-width:560px;color:var(--text-primary);display:flex;flex-direction:column;gap:10px;';
+
+  const title = document.createElement('div');
+  title.textContent = 'Populate Map';
+  title.style.cssText = 'font-size:15px;font-weight:600;';
+  dialog.appendChild(title);
+
+  const hint = document.createElement('div');
+  hint.classList.add('prop-hint');
+  hint.style.fontSize = '12px';
+  hint.textContent = 'Distributes natural props from each tile\'s biome rules. Deterministic per seed. Categories run in order Mineral → Liquid → Ooze → Fungi → Flora → Fauna so near_prop conditions see props placed earlier in the run.';
+  dialog.appendChild(hint);
+
+  const replaceRow = document.createElement('label');
+  replaceRow.style.cssText = 'display:flex;gap:6px;align-items:center;font-size:13px;';
+  const replaceCb = document.createElement('input');
+  replaceCb.type = 'checkbox';
+  replaceCb.checked = !!initialReplace;
+  const replaceLbl = document.createElement('span');
+  replaceLbl.textContent = 'Replace existing natural props (structures / equipment stay)';
+  replaceRow.appendChild(replaceCb);
+  replaceRow.appendChild(replaceLbl);
+  dialog.appendChild(replaceRow);
+
+  const summary = document.createElement('pre');
+  summary.style.cssText = 'background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:8px;margin:0;font-family:monospace;font-size:12px;max-height:260px;overflow:auto;white-space:pre-wrap;';
+  dialog.appendChild(summary);
+
+  /** @type {import('./populate.js').PopulatePlan|null} */
+  let currentPlan = null;
+
+  const _refreshPlan = () => {
+    currentPlan = computePopulatePlan(hexGrid, { replace: replaceCb.checked });
+    const lines = [];
+    lines.push(`seed:          ${currentPlan.seed}`);
+    lines.push(`tiles touched: ${currentPlan.touchedTiles}`);
+    lines.push(`props added:   ${currentPlan.props.length}`);
+    if (currentPlan.removed.length > 0) {
+      lines.push(`props removed: ${currentPlan.removed.length} (existing naturals)`);
+    }
+    lines.push('');
+    lines.push('by type:');
+    const sortedTypes = [...currentPlan.countByType.entries()].sort((a, b) => b[1] - a[1]);
+    if (sortedTypes.length === 0) {
+      lines.push('  (none — no biomes with natural_props conditions qualified)');
+    } else {
+      for (const [type, n] of sortedTypes) lines.push(`  ${type.padEnd(10)} ${n}`);
+    }
+    summary.textContent = lines.join('\n');
+  };
+  _refreshPlan();
+  replaceCb.addEventListener('change', _refreshPlan);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:4px;';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.classList.add('prop-btn');
+  const btnApply = document.createElement('button');
+  btnApply.textContent = 'Apply';
+  btnApply.classList.add('prop-btn-primary');
+
+  const cleanup = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  };
+  const keyHandler = (e) => { if (e.key === 'Escape') cleanup(); };
+  btnCancel.addEventListener('click', cleanup);
+  btnApply.addEventListener('click', () => {
+    if (!currentPlan || (currentPlan.props.length === 0 && currentPlan.removed.length === 0)) {
+      cleanup();
+      setStatus('Populate — nothing to do.');
+      return;
+    }
+    const cmd = buildPopulateCommand(hexGrid, currentPlan);
+    commandHistory.execute(cmd);
+    dirtyTracker.markDirty('map');
+    if (hexCanvas) hexCanvas.requestRender();
+    if (hexInspector) hexInspector.updateMapStats();
+    setStatus(`Populated ${currentPlan.props.length} props across ${currentPlan.touchedTiles} tiles (seed ${currentPlan.seed}).`);
+    cleanup();
+  });
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnApply);
+  dialog.appendChild(btnRow);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', keyHandler);
+  btnApply.focus();
+}
+
+/**
+ * Track the Clear modal's latest cleanup function so re-entrancy
+ * (user clicks Clear a second time before the first modal closes)
+ * can dispose the stale keydown listener before installing the new
+ * one. Without this, each re-open leaks another document-level
+ * listener for the lifetime of the tab.
+ * @type {(() => void) | null}
+ */
+let _clearModalCleanup = null;
+
+/**
+ * Handle the "Clear" button — wipes every natural-origin prop from
+ * the map in a single undoable batch. Gated by a confirmation modal
+ * because it's destructive; player-placed structures, anomalies
+ * (explicitly filtered via category), and anything with a non-natural
+ * origin stay put.
+ * @returns {void}
+ */
+function _clearNaturalProps() {
+  if (!hexGrid || hexGrid.tiles.size === 0) {
+    setStatus('Clear — no map loaded.');
+    return;
+  }
+  const plan = computeClearNaturalsPlan(hexGrid);
+  if (plan.removed.length === 0) {
+    setStatus('Clear — no natural props to remove.');
+    return;
+  }
+
+  // Re-entrancy: dispose the previous modal (if any) via its own
+  // cleanup so the document-level keydown listener is removed before
+  // we install a new one.
+  if (_clearModalCleanup) {
+    try { _clearModalCleanup(); } catch (_e) { /* best-effort */ }
+    _clearModalCleanup = null;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'clear-naturals-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'clear-naturals-modal-title');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:420px;max-width:560px;color:var(--text-primary);display:flex;flex-direction:column;gap:10px;';
+
+  const title = document.createElement('div');
+  title.id = 'clear-naturals-modal-title';
+  title.textContent = 'Clear Natural Props';
+  title.style.cssText = 'font-size:15px;font-weight:600;';
+  dialog.appendChild(title);
+
+  const hint = document.createElement('div');
+  hint.classList.add('prop-hint');
+  hint.style.fontSize = '12px';
+  // textContent (not innerHTML) — values are safe integers but the
+  // defensive choice removes any marginal XSS surface as this file
+  // evolves.
+  const hintStrong1 = document.createElement('strong');
+  hintStrong1.textContent = String(plan.removed.length);
+  const hintStrong2 = document.createElement('strong');
+  hintStrong2.textContent = String(plan.touchedTiles);
+  hint.append(
+    'This will remove ', hintStrong1,
+    ' natural props from ', hintStrong2,
+    ' tiles. Player-placed structures, equipment, and anomalies are preserved (anomalies filtered by category, independent of origin). Undoable via Ctrl+Z.'
+  );
+  dialog.appendChild(hint);
+
+  const summary = document.createElement('pre');
+  summary.style.cssText = 'background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:8px;margin:0;font-family:monospace;font-size:12px;max-height:260px;overflow:auto;white-space:pre-wrap;';
+  const lines = [];
+  lines.push(`tiles touched: ${plan.touchedTiles}`);
+  lines.push(`props removed: ${plan.removed.length}`);
+  lines.push('');
+  lines.push('by type:');
+  const sortedTypes = [...plan.countByType.entries()].sort((a, b) => b[1] - a[1]);
+  for (const [type, n] of sortedTypes) lines.push(`  ${type.padEnd(10)} ${n}`);
+  summary.textContent = lines.join('\n');
+  dialog.appendChild(summary);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:4px;';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.classList.add('prop-btn');
+  const btnApply = document.createElement('button');
+  btnApply.textContent = 'Clear';
+  btnApply.classList.add('prop-btn-primary');
+  btnApply.style.background = 'var(--danger, #7a3030)';
+
+  const cleanup = () => {
+    overlay.remove();
+    // MUST match the useCapture flag used on add (see below), or the
+    // DOM leaves the listener attached — which would mean every
+    // subsequent Ctrl+Z/Y/Shift+Z in the editor hits our stale
+    // preventDefault wrapper and undo/redo silently stop working
+    // globally (found in round-2 review).
+    document.removeEventListener('keydown', keyHandler, true);
+    overlay.removeEventListener('click', overlayClickHandler);
+    if (_clearModalCleanup === cleanup) _clearModalCleanup = null;
+  };
+  // Swallow Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z inside the modal so
+  // the global KeyboardManager (document-level listener) doesn't
+  // fire undo/redo against the editor history while the user is
+  // looking at a destructive confirm dialog. Escape dismisses.
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      cleanup();
+      return;
+    }
+    const isUndoLike =
+      (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y');
+    if (isUndoLike) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  // Backdrop click dismisses — matches standard destructive-dialog UX.
+  const overlayClickHandler = (e) => {
+    if (e.target === overlay) cleanup();
+  };
+
+  btnCancel.addEventListener('click', cleanup);
+  btnApply.addEventListener('click', () => {
+    const cmd = buildClearNaturalsCommand(hexGrid, plan);
+    commandHistory.execute(cmd);
+    dirtyTracker.markDirty('map');
+    // Invalidate stale prop selection — if the user had a natural
+    // prop selected, its propIndex now points to nothing or shifts to
+    // a surviving prop. Clearing avoids a misleading highlight.
+    if (hexCanvas) {
+      hexCanvas.selectedProp = null;
+      hexCanvas.requestRender();
+    }
+    if (hexInspector) {
+      hexInspector.updateMapStats();
+      // Refresh the current hex details / prop editor panel so the
+      // just-deleted props disappear from the sidebar, not just the
+      // canvas.
+      if (typeof hexInspector._refreshCurrentHex === 'function') {
+        hexInspector._refreshCurrentHex();
+      }
+    }
+    setStatus(`Cleared ${plan.removed.length} natural props across ${plan.touchedTiles} tiles.`);
+    cleanup();
+  });
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnApply);
+  dialog.appendChild(btnRow);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', keyHandler, true);  // capture so we beat KeyboardManager
+  overlay.addEventListener('click', overlayClickHandler);
+  _clearModalCleanup = cleanup;
+  btnCancel.focus();  // focus Cancel by default — this is destructive
+}
+
 // ============================================================
 // Save Functions (task-005)
 // ============================================================
@@ -636,6 +963,10 @@ const btnNewMap = document.getElementById('btn-new-map');
 if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
 const btnGenerateMap = document.getElementById('btn-generate-map');
 if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
+const btnPopulateMap = document.getElementById('btn-populate-map');
+if (btnPopulateMap) btnPopulateMap.addEventListener('click', () => _populateMap());
+const btnClearProps = document.getElementById('btn-clear-props');
+if (btnClearProps) btnClearProps.addEventListener('click', () => _clearNaturalProps());
 const btnDeleteMap = document.getElementById('btn-delete-map');
 if (btnDeleteMap) btnDeleteMap.addEventListener('click', () => _deleteCurrentMap());
 
@@ -778,6 +1109,7 @@ function initializeAfterLoad() {
         categoryFilter: cat,
         onChange: refreshPalettes,
         onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
+        registerGuard: registerTabSwitchGuard,
       });
     }
   }
@@ -892,6 +1224,34 @@ function initializeAfterLoad() {
   if (hexCanvas) {
     hexCanvas.onHexHover = (hex, subHex) => {
       if (hexInspector) hexInspector.updateHex(hex, subHex);
+    };
+    // Right-click on a placed prop → open the per-instance override
+    // modal. canvas.js hit-tests and fires this callback only when the
+    // click lands on an actual prop sub-hex (plain empty-tile right
+    // clicks are swallowed server-side).
+    hexCanvas.onPropContextMenu = (ctx) => {
+      const entry = ProjectContext.files.props.get(ctx.prop.type + '.tres');
+      const def = entry ? entry.data : null;
+      showPropOverrideModal({
+        prop: ctx.prop,
+        def,
+        onSave: (overrides) => {
+          const oldValues = {
+            placement_override: typeof ctx.prop.placement_override === 'number' ? ctx.prop.placement_override : -1,
+            variant_override: typeof ctx.prop.variant_override === 'number' ? ctx.prop.variant_override : -1,
+            scale_override: typeof ctx.prop.scale_override === 'number' ? ctx.prop.scale_override : -1,
+            rotation_override: typeof ctx.prop.rotation_override === 'number' ? ctx.prop.rotation_override : -1,
+          };
+          // Skip the undo stack entry when nothing actually changed.
+          if (oldValues.placement_override === overrides.placement_override
+            && oldValues.variant_override === overrides.variant_override
+            && oldValues.scale_override === overrides.scale_override
+            && oldValues.rotation_override === overrides.rotation_override) return;
+          const cmd = new EditPropCommand(hexGrid, ctx.hexQ, ctx.hexR, ctx.propIndex, oldValues, overrides);
+          commandHistory.execute(cmd);
+          hexCanvas.requestRender();
+        },
+      });
     };
   }
 }

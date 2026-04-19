@@ -128,6 +128,17 @@ func load_map(path: String) -> bool:
 				elif PropRegistry.has_def(prop.type):
 					prop.respawn_time = PropRegistry.get_def(prop.type).respawn_time
 				prop.rotation_deg = float(pd.get("rotation", 0.0))
+				# Feature-011 per-instance overrides — only read when the
+				# map JSON authored them, otherwise keep Prop.gd's default
+				# sentinels (-1 / -1.0 = "seeded default").
+				if pd.has("placement_override"):
+					prop.placement_override = int(pd["placement_override"])
+				if pd.has("variant_override"):
+					prop.variant_override = int(pd["variant_override"])
+				if pd.has("scale_override"):
+					prop.scale_override = float(pd["scale_override"])
+				if pd.has("rotation_override"):
+					prop.rotation_override = float(pd["rotation_override"])
 				# Resource props: default remaining/max_amount independently from biome data
 				if prop.origin == _Prop.Origin.NATURAL:
 					var defaults: Array = _get_prop_defaults(prop.type, biome_int)

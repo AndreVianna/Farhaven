@@ -848,11 +848,11 @@ export function renderRecipeEditor(container, options) {
   const filterInput = document.createElement('input');
   filterInput.type = 'text';
   filterInput.placeholder = 'Filter...';
-  filterInput.classList.add('editor-filter');
+  filterInput.classList.add('editor-filter', 'prop-input');
 
   const newBtn = document.createElement('button');
   newBtn.textContent = '+ New';
-  newBtn.classList.add('editor-new-btn');
+  newBtn.classList.add('editor-new-btn', 'prop-btn');
 
   listHeader.appendChild(filterInput);
   listHeader.appendChild(newBtn);
@@ -975,12 +975,12 @@ export function renderRecipeEditor(container, options) {
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.type = 'button';
-    saveBtn.classList.add('editor-btn-save');
+    saveBtn.classList.add('editor-btn-save', 'prop-btn-primary');
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete';
     deleteBtn.type = 'button';
-    deleteBtn.classList.add('editor-btn-delete');
+    deleteBtn.classList.add('editor-btn-delete', 'prop-btn');
 
     btnGroup.appendChild(saveBtn);
     if (!isNew) {
@@ -1212,7 +1212,7 @@ function _createActionsEditor(actions) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = '\u00d7';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'border:none;background:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => chip.remove());
     chip.appendChild(removeBtn);
 
@@ -1235,7 +1235,7 @@ function _createActionsEditor(actions) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;';
+  addBtn.classList.add('prop-btn');
   addBtn.addEventListener('click', () => {
     const val = addInput.value.trim();
     if (val) { addChip(val); addInput.value = ''; }
@@ -1282,7 +1282,7 @@ function _createInputListEditor(inputs) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Input';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn'); addBtn.style.marginTop = '2px';
   addBtn.addEventListener('click', () => addRow({ ref: '', count: 1, must_hold: false }));
   wrapper.appendChild(addBtn);
 
@@ -1320,7 +1320,7 @@ function _createOutputListEditor(outputs) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Output';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn'); addBtn.style.marginTop = '2px';
   addBtn.addEventListener('click', () => addRow({ prop_ref: '', count: 1, prob: 1.0 }));
   wrapper.appendChild(addBtn);
 
@@ -1358,7 +1358,7 @@ function _createEffectListEditor(effects) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Effect';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn'); addBtn.style.marginTop = '2px';
   addBtn.addEventListener('click', () => addRow({ kind: EFFECT_KINDS[0], params: {} }));
   wrapper.appendChild(addBtn);
 
@@ -1397,7 +1397,7 @@ function _createConditionListEditor(conditions) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Add Condition';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn'); addBtn.style.marginTop = '2px';
   addBtn.addEventListener('click', () => addRow({ predicate_kind: PREDICATE_KINDS[0], predicate_params: {}, must_sustain: false }));
   wrapper.appendChild(addBtn);
 
@@ -1438,7 +1438,7 @@ function _createInlineKvEditor(data) {
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.type = 'button';
-    removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;';
+    removeBtn.classList.add('prop-btn-icon');
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(keyInput);
@@ -1454,7 +1454,7 @@ function _createInlineKvEditor(data) {
   const addBtn = document.createElement('button');
   addBtn.textContent = '+ Param';
   addBtn.type = 'button';
-  addBtn.style.cssText = 'padding:2px 8px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;font-size:11px;margin-top:2px;';
+  addBtn.classList.add('prop-btn'); addBtn.style.marginTop = '2px';
   addBtn.addEventListener('click', () => addKvRow('', ''));
   wrapper.appendChild(addBtn);
 
@@ -1504,7 +1504,7 @@ function _appendInlineLabel(parent, text) {
 
 function _appendCheckbox(parent, fieldName, checked, label) {
   const wrapper = document.createElement('label');
-  wrapper.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text-secondary);white-space:nowrap;';
+  wrapper.classList.add('prop-check');
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.checked = !!checked;
@@ -1518,7 +1518,8 @@ function _appendRemoveBtn(parent) {
   const removeBtn = document.createElement('button');
   removeBtn.textContent = 'X';
   removeBtn.type = 'button';
-  removeBtn.style.cssText = 'padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;margin-left:auto;';
+  removeBtn.classList.add('prop-btn-icon');
+  removeBtn.style.marginLeft = 'auto';
   removeBtn.addEventListener('click', () => {
     const row = removeBtn.closest('[data-list-rows] > div, [data-list-rows] > div');
     if (row) row.remove();

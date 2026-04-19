@@ -19,6 +19,7 @@ import base64
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 
 BASE = "https://api.meshy.ai"
 KEY = os.environ.get("MESHY_API_KEY")
@@ -123,6 +124,15 @@ def create_retexture(input_task_id: str, image_data_uri: str) -> str:
 
 
 def download(url: str, out_path: str) -> int:
+    # Validate the URL before opening it. Guards against SSRF if the
+    # Meshy response is ever compromised or confused, and against
+    # accidental file:// / http:// targets.
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise RuntimeError(f"refusing non-https download: scheme={parsed.scheme!r}")
+    host = (parsed.hostname or "").lower()
+    if not (host == "meshy.ai" or host.endswith(".meshy.ai")):
+        raise RuntimeError(f"refusing download from unexpected host: {host!r}")
     req = urllib.request.Request(url)
     with urllib.request.urlopen(req, timeout=300) as resp:
         data = resp.read()
@@ -160,7 +170,10 @@ def process(prop_id: str, variant: int) -> None:
     glb_url = urls.get("glb")
     if not glb_url:
         raise RuntimeError(f"no glb url in final response: {json.dumps(final)[:500]}")
-    print(f"  step 4: download {glb_url[:80]}...")
+    # Log only the host — the full signed URL contains ephemeral tokens
+    # that shouldn't land in CI logs or shell history.
+    host = urllib.parse.urlparse(glb_url).hostname or "?"
+    print(f"  step 4: download from {host}")
     size = download(glb_url, dst)
     print(f"  DONE {label}: {size} bytes -> {dst}", flush=True)
 

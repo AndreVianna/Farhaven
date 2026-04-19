@@ -77,12 +77,19 @@ def is_safe_delete_path(rel_path):
 def is_safe_asset_path(rel_path):
     """Read-only check for /api/asset and /api/list-assets serving."""
     normalized = os.path.normpath(rel_path).replace('\\', '/')
+    if os.path.isabs(normalized) or ':' in normalized:
+        return False
     if any(part == '..' for part in normalized.split('/')):
         return False
-    # Accept both the exact directory ('assets/textures') and paths
-    # under it ('assets/textures/biomes/foo.png') so callers don't
-    # have to worry about trailing slashes.
-    return any(normalized.startswith(p.rstrip('/')) for p in ALLOWED_ASSET_PREFIXES)
+    # Accept the exact directory name (equality) or any path strictly
+    # under it. Keeping the trailing slash on the prefix avoids the
+    # prefix-confusion bug where `assets/texturesbackup/` would match
+    # `assets/textures` after rstrip('/').
+    for prefix in ALLOWED_ASSET_PREFIXES:
+        pdir = prefix.rstrip('/')
+        if normalized == pdir or normalized.startswith(pdir + '/'):
+            return True
+    return False
 
 
 def discover_files():
@@ -184,6 +191,25 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
                 self._json_response(404, {'error': f'Directory not found: {os.path.dirname(rel_path)}'})
                 return
             length = int(self.headers.get('Content-Length', 0))
+            # Cap request body to prevent DoS via oversized upload (or
+            # a mis-declared Content-Length exhausting memory). 64 MB
+            # covers realistic maps — the 150-radius procedural ch1
+            # already hits 10 MB before populate, and a densely
+            # populated map can more than triple that. Previous 8 MB
+            # cap silently dropped connections and forced the browser
+            # into the Blob-download fallback.
+            MAX_UPLOAD_BYTES = 64 * 1024 * 1024
+            if length < 0 or length > MAX_UPLOAD_BYTES:
+                # Do NOT drain an oversized body based on the declared
+                # Content-Length — a client can claim an absurd length
+                # and never actually send the bytes, blocking this
+                # handler indefinitely (easy DoS). Force the connection
+                # closed after the 413; the browser sees the response
+                # on its own socket, no drain needed (Copilot PR #27
+                # comment 3107506602).
+                self.close_connection = True
+                self._json_response(413, {'error': f'Request body too large (limit {MAX_UPLOAD_BYTES} bytes)'})
+                return
             body = self.rfile.read(length).decode('utf-8')
             with open(full_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(body)

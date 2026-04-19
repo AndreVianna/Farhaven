@@ -21,7 +21,7 @@ import { BiomeDataModel, biomeModelToRaw } from './js/biome-editor.js';
 import { generateMap } from './js/map-generator.js';
 import { createNoise2D } from './js/simplex-noise.js';
 import { computeWaterLevel } from './js/hex-grid.js';
-import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, SetSpawnCommand, ToggleWallCommand } from './js/commands.js';
+import { CommandHistory, BatchCommand, SetBiomeCommand, SetElevationCommand, EraseContentCommand, DeleteHexCommand, AddPropCommand, EditPropCommand, DeletePropCommand, MovePropCommand, SetSpawnCommand, ToggleWallCommand } from './js/commands.js';
 import { KeyboardManager } from './js/keyboard.js';
 import { DirtyTracker } from './js/dirty-tracker.js';
 import { ToolType, ToolManager, BiomeBrush, ElevationBrush, EraserTool, PropPlacer, SpawnMarker, DeleteHexTool } from './js/tools.js';
@@ -256,6 +256,118 @@ test('TresParser — parseValue Vector2i', () => {
   assert(v.type === 'vector2i', 'type should be vector2i');
   assert(v.value.x === 0, 'x should be 0');
   assert(v.value.y === 9, 'y should be 9');
+});
+
+test('TresParser — parseValue Vector3', () => {
+  const v = TresParser.parseValue('Vector3(0.35, 0.4, 0.0)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(v.value.x === 0.35, 'x should be 0.35');
+  assert(v.value.y === 0.4, 'y should be 0.4');
+  assert(v.value.z === 0.0, 'z should be 0.0');
+});
+
+test('TresParser — typed array serializes with inner brackets (Godot format)', () => {
+  // Godot's .tres format requires Array[T]([a, b]), NOT Array[T](a, b).
+  // Missing inner brackets breaks load with "Expected '['". Regression
+  // guard: broke P00001 in 2026-04-18 editor save, caused Blade Grass
+  // to silently not render until the .tres was hand-patched.
+  const arr = {
+    type: 'array',
+    elementType: 'Resource',
+    value: [
+      { type: 'sub_resource', value: 'mesh_variant_1' },
+      { type: 'sub_resource', value: 'mesh_variant_2' },
+    ],
+  };
+  const out = TresParser.serializeValue(arr);
+  assert(out === 'Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2")])',
+    'typed array needs inner [...], got: ' + out);
+});
+
+test('TresParser — empty typed array serializes as Array[T]([])', () => {
+  const arr = { type: 'array', elementType: 'HarvestYield', value: [] };
+  const out = TresParser.serializeValue(arr);
+  assert(out === 'Array[HarvestYield]([])',
+    'empty typed array must have inner [], got: ' + out);
+});
+
+test('TresParser — serialize Vector3 round-trip', () => {
+  const parsed = TresParser.parseValue('Vector3(0.35, 0.4, 0.0)');
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === 'Vector3(0.35, 0.4, 0.0)',
+    'serialized should match, got: ' + serialized);
+});
+
+test('TresParser — Vector3 serialize preserves float formatting', () => {
+  const parsed = TresParser.parseValue('Vector3(1, 2, 3)');
+  const serialized = TresParser.serializeValue(parsed);
+  // Integers must serialize with .0 suffix per Godot convention.
+  assert(serialized === 'Vector3(1.0, 2.0, 3.0)',
+    'integers should get .0 suffix, got: ' + serialized);
+});
+
+test('TresParser — Vector3 accepts negative numbers', () => {
+  const v = TresParser.parseValue('Vector3(-0.5, -1.0, -2.5)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(v.value.x === -0.5, 'x should be -0.5');
+  assert(v.value.y === -1.0, 'y should be -1.0');
+  assert(v.value.z === -2.5, 'z should be -2.5');
+});
+
+test('TresParser — Vector3 accepts scientific notation', () => {
+  const v = TresParser.parseValue('Vector3(1e-5, 2.5e3, -1.2e-2)');
+  assert(v.type === 'vector3', 'type should be vector3');
+  assert(Math.abs(v.value.x - 1e-5) < 1e-10, 'x should be 1e-5');
+  assert(v.value.y === 2500, 'y should be 2500');
+  assert(Math.abs(v.value.z - -0.012) < 1e-10, 'z should be -0.012');
+});
+
+test('TresParser — Vector3 rejects arity mismatch (too few)', () => {
+  const v = TresParser.parseValue('Vector3(1, 2)');
+  // Malformed input must NOT return vector3 with NaN z. Falls through to
+  // the generic string path, preserving the literal for round-trip.
+  assert(v.type !== 'vector3', 'malformed Vector3 should not parse as vector3');
+});
+
+test('TresParser — Vector3 rejects non-numeric components', () => {
+  const v = TresParser.parseValue('Vector3(foo, bar, baz)');
+  assert(v.type !== 'vector3', 'non-numeric Vector3 should not parse as vector3');
+});
+
+test('TresParser — String round-trip with embedded quote', () => {
+  // Godot stores "" as \" — round-trip must preserve the literal quote.
+  const parsed = TresParser.parseValue('"he said \\"hi\\""');
+  assert(parsed.type === 'string', 'type should be string');
+  assert(parsed.value === 'he said "hi"',
+    'value should have unescaped quote, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"he said \\"hi\\""',
+    'serialized should re-escape quote, got: ' + serialized);
+});
+
+test('TresParser — String round-trip with newline', () => {
+  const parsed = TresParser.parseValue('"line 1\\nline 2"');
+  assert(parsed.value === 'line 1\nline 2',
+    'value should have real newline, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"line 1\\nline 2"',
+    'serialized should re-escape newline, got: ' + serialized);
+});
+
+test('TresParser — String round-trip with backslash', () => {
+  const parsed = TresParser.parseValue('"path\\\\to\\\\file"');
+  assert(parsed.value === 'path\\to\\file',
+    'value should have single backslashes, got: ' + JSON.stringify(parsed.value));
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"path\\\\to\\\\file"',
+    'serialized should re-escape backslashes, got: ' + serialized);
+});
+
+test('TresParser — String with no escapes passes through unchanged', () => {
+  const parsed = TresParser.parseValue('"plain text"');
+  assert(parsed.value === 'plain text', 'value should be plain');
+  const serialized = TresParser.serializeValue(parsed);
+  assert(serialized === '"plain text"', 'serialized should be verbatim');
 });
 
 test('TresParser — parseValue ExtResource', () => {
@@ -743,6 +855,229 @@ test('EditPropCommand — execute and undo', () => {
   assert(grid.getTile(0, 0).props[0].sq === 1, 'sq should be 1 after undo');
 });
 
+test('MovePropCommand — cross-hex move and undo', () => {
+  const grid = new HexGridClass();
+  const srcTile = createTileData('grassland');
+  srcTile.props = [createProp('P00001', 0, 0, 'plant', { rotation: 0 })];
+  grid.setTile(0, 0, srcTile);
+  const dstTile = createTileData('grassland');
+  grid.setTile(1, 0, dstTile);
+
+  const cmd = new MovePropCommand(grid, 0, 0, 0, 1, 0, { sq: 2, sr: -1 });
+  cmd.execute();
+  assert(grid.getTile(0, 0).props.length === 0, 'source tile should lose the prop');
+  assert(grid.getTile(1, 0).props.length === 1, 'destination tile should gain it');
+  assert(grid.getTile(1, 0).props[0].sq === 2, 'prop sq should be 2');
+  assert(grid.getTile(1, 0).props[0].sr === -1, 'prop sr should be -1');
+
+  cmd.undo();
+  assert(grid.getTile(0, 0).props.length === 1, 'source tile should get the prop back');
+  assert(grid.getTile(1, 0).props.length === 0, 'destination tile should lose it on undo');
+  assert(grid.getTile(0, 0).props[0].sq === 0, 'undo restores original sq');
+  assert(grid.getTile(0, 0).props[0].sr === 0, 'undo restores original sr');
+});
+
+test('MovePropCommand — preserves prop fields across move', () => {
+  const grid = new HexGridClass();
+  const srcTile = createTileData('grassland');
+  srcTile.props = [createProp('P00001', 0, 0, 'plant', {
+    rotation: 45,
+    placement_override: 2,
+    variant_override: 1,
+  })];
+  grid.setTile(0, 0, srcTile);
+  grid.setTile(-1, 0, createTileData('grassland'));
+
+  const cmd = new MovePropCommand(grid, 0, 0, 0, -1, 0, { sq: 1, sr: 1 });
+  cmd.execute();
+  const moved = grid.getTile(-1, 0).props[0];
+  assert(moved.rotation === 45, 'rotation preserved');
+  assert(moved.placement_override === 2, 'placement_override preserved');
+  assert(moved.variant_override === 1, 'variant_override preserved');
+});
+
+// ============================================================
+// Populate — generative biome prop distribution
+// ============================================================
+
+import { SeededRng, computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './js/populate.js';
+
+test('SeededRng — deterministic from same seed', () => {
+  const a = new SeededRng(42);
+  const b = new SeededRng(42);
+  for (let i = 0; i < 10; i++) {
+    assert(a.nextUint32() === b.nextUint32(), 'same seed → same stream');
+  }
+});
+
+test('SeededRng — nextIntInclusive respects bounds', () => {
+  const r = new SeededRng(7);
+  for (let i = 0; i < 1000; i++) {
+    const v = r.nextIntInclusive(3, 7);
+    assert(v >= 3 && v <= 7, `out of range: ${v}`);
+  }
+});
+
+test('computePopulatePlan — no biomes → empty plan', () => {
+  const grid = new HexGridClass();
+  grid.setTile(0, 0, createTileData('')); // no biome id → no populate
+  const plan = computePopulatePlan(grid, { seed: 1 });
+  assert(plan.props.length === 0, 'no props without biome');
+  assert(plan.removed.length === 0, 'nothing removed without replace');
+});
+
+test('computePopulatePlan — replace clears naturals but keeps structures', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('B99999');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),             // natural
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computePopulatePlan(grid, { seed: 1, replace: true });
+  // The test biome isn't in ProjectContext so plan.props is empty,
+  // but replace: true should still remove the natural P00001 and
+  // leave the structure untouched.
+  assert(plan.removed.length === 1, 'one natural removed, got: ' + plan.removed.length);
+  assert(plan.removed[0].prop.type === 'P00001', 'natural prop removed');
+});
+
+test('buildPopulateCommand — batches adds + removes with undo', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('B99999');
+  tile.props = [createProp('P00001', 0, 0, 'plant')];
+  grid.setTile(0, 0, tile);
+
+  // Minimal plan: drop the existing natural, spawn a fresh one.
+  const plan = {
+    props: [{ q: 0, r: 0, sq: 1, sr: 0, type: 'P00002', category: 'plant' }],
+    removed: [{ q: 0, r: 0, propIndex: 0, prop: tile.props[0] }],
+    countByType: new Map([['P00002', 1]]),
+    seed: 1,
+    touchedTiles: 1,
+  };
+  const cmd = buildPopulateCommand(grid, plan);
+  cmd.execute();
+  const after = grid.getTile(0, 0).props;
+  assert(after.length === 1, 'one prop after apply');
+  assert(after[0].type === 'P00002', 'new prop replaced old');
+  cmd.undo();
+  const back = grid.getTile(0, 0).props;
+  assert(back.length === 1 && back[0].type === 'P00001', 'undo restored original');
+});
+
+// ---- computeClearNaturalsPlan + buildClearNaturalsCommand ----
+
+test('computeClearNaturalsPlan — empty grid → empty plan', () => {
+  const grid = new HexGridClass();
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 0, 'no removes on empty grid');
+  assert(plan.touchedTiles === 0, 'no tiles touched');
+  assert(plan.countByType.size === 0, 'countByType empty');
+});
+
+test('computeClearNaturalsPlan — only naturals → all removed', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    createProp('P01001', 1, 0, 'mineral'),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 2, 'both naturals removed, got: ' + plan.removed.length);
+  assert(plan.touchedTiles === 1, 'one tile touched');
+  assert(plan.countByType.get('P00001') === 1, 'P00001 counted');
+  assert(plan.countByType.get('P01001') === 1, 'P01001 counted');
+});
+
+test('computeClearNaturalsPlan — structures preserved', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),
+    createProp('E00001', 2, 0, 'equipment', { origin: 'human' }),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only P00001 removed');
+  assert(plan.removed[0].prop.type === 'P00001', 'correct prop removed');
+});
+
+test('computeClearNaturalsPlan — anomalies preserved by category even with origin=natural', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Simulate a legacy-loaded anomaly that slipped through with
+  // origin='natural'. The category='anomaly' bypass must preserve it.
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    { type: 'A00001', sq: 0, sr: 0, category: 'anomaly', origin: 'natural' },
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only P00001 removed, anomaly preserved');
+  assert(plan.removed[0].prop.type === 'P00001', 'P00001 removed');
+});
+
+test('computeClearNaturalsPlan — numeric origin=0 also treated as natural', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Engine-format (post-load) props use integer origin; 0 is natural.
+  tile.props = [
+    { type: 'P00001', sq: 0, sr: 0, category: 'plant', origin: 0 },
+    { type: 'S00001', sq: 1, sr: 0, category: 'structure', origin: 1 },
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only origin=0 removed');
+  assert(plan.removed[0].prop.type === 'P00001', 'P00001 removed');
+});
+
+test('buildClearNaturalsCommand — execute wipes, undo restores', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  const p1 = createProp('P00001', 0, 0, 'plant');
+  const p2 = createProp('P01001', 1, 0, 'mineral');
+  tile.props = [p1, p2];
+  grid.setTile(0, 0, tile);
+
+  const plan = computeClearNaturalsPlan(grid);
+  const cmd = buildClearNaturalsCommand(grid, plan);
+  cmd.execute();
+  assert(grid.getTile(0, 0).props.length === 0, 'both naturals wiped');
+  cmd.undo();
+  const restored = grid.getTile(0, 0).props;
+  assert(restored.length === 2, 'both restored');
+  assert(restored[0].type === 'P00001', 'slot 0 restored');
+  assert(restored[1].type === 'P01001', 'slot 1 restored');
+});
+
+test('buildClearNaturalsCommand — mixed tile: structures stay in place after undo', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Interleave to verify descending-propIndex sort preserves undo slots.
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),                                  // idx 0, natural
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),       // idx 1, crafted
+    createProp('P01001', 2, 0, 'mineral'),                                // idx 2, natural
+  ];
+  grid.setTile(0, 0, tile);
+
+  const plan = computeClearNaturalsPlan(grid);
+  const cmd = buildClearNaturalsCommand(grid, plan);
+  cmd.execute();
+  const after = grid.getTile(0, 0).props;
+  assert(after.length === 1, 'only structure remains, got: ' + after.length);
+  assert(after[0].type === 'S00001', 'structure survives');
+  cmd.undo();
+  const restored = grid.getTile(0, 0).props;
+  assert(restored.length === 3, 'all three restored');
+  assert(restored[0].type === 'P00001', 'idx 0 back');
+  assert(restored[1].type === 'S00001', 'idx 1 intact');
+  assert(restored[2].type === 'P01001', 'idx 2 back');
+});
+
 test('DeletePropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');
@@ -1168,6 +1503,42 @@ test('serializeGridToMapJson — prop optional fields round-trip', () => {
   assert(prop.max_amount === 10, 'max_amount should serialize');
   assert(prop.tool_required === 'pickaxe', 'tool_required should serialize');
   assert(prop.respawn_time === 300, 'respawn_time should serialize');
+});
+
+test('serializeGridToMapJson — per-instance overrides serialize when set', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [createProp('P00001', 0, 0, 'plant', {
+    placement_override: 0,
+    variant_override: 2,
+    scale_override: 1.25,
+    rotation_override: 45,
+  })];
+  grid.setTile(0, 0, tile);
+  const json = serializeGridToMapJson(grid);
+  const p = json.tiles['0,0'].props[0];
+  assert(p.placement_override === 0, 'placement_override should serialize');
+  assert(p.variant_override === 2, 'variant_override should serialize');
+  assert(p.scale_override === 1.25, 'scale_override should serialize');
+  assert(p.rotation_override === 45, 'rotation_override should serialize');
+});
+
+test('serializeGridToMapJson — per-instance overrides omitted when sentinel', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [createProp('P00001', 0, 0, 'plant', {
+    placement_override: -1,
+    variant_override: -1,
+    scale_override: -1,
+    rotation_override: -1,
+  })];
+  grid.setTile(0, 0, tile);
+  const json = serializeGridToMapJson(grid);
+  const p = json.tiles['0,0'].props[0];
+  assert(p.placement_override === undefined, 'placement_override sentinel should NOT serialize');
+  assert(p.variant_override === undefined, 'variant_override sentinel should NOT serialize');
+  assert(p.scale_override === undefined, 'scale_override sentinel should NOT serialize');
+  assert(p.rotation_override === undefined, 'rotation_override sentinel should NOT serialize');
 });
 
 test('serializeGridToMapJson — root level has spawn and tiles, optional metadata', () => {
@@ -3368,7 +3739,7 @@ for (const biomeFile of __biomeFiles) {
     const model = BiomeDataModel.fromEntry(biomeFile, { data, raw: parsed });
     assert(typeof model.id === 'string' && model.id.length > 0, `${biomeFile}: id`);
     assert(typeof model.display_name === 'string' && model.display_name.length > 0, `${biomeFile}: display_name`);
-    assert(Array.isArray(model.color_variations), `${biomeFile}: color_variations is array`);
+    assert(Array.isArray(model.natural_props), `${biomeFile}: natural_props is array`);
     assert(typeof model.color.r === 'number', `${biomeFile}: color.r is number`);
 
     // Re-serialize through model and compare
@@ -3386,9 +3757,46 @@ for (const biomeFile of __biomeFiles) {
     const model2 = BiomeDataModel.fromEntry(biomeFile, { data: data2, raw: reparsed });
     assert(model2.id === model.id, `${biomeFile}: id survives round-trip`);
     assert(model2.display_name === model.display_name, `${biomeFile}: display_name survives`);
-    assert(model2.color_variations.length === model.color_variations.length, `${biomeFile}: color_variations count survives`);
+    assert(model2.natural_props.length === model.natural_props.length, `${biomeFile}: natural_props count survives`);
   });
 }
+
+test('BiomeDataModel — natural_props round-trip through editor emit + reparse', () => {
+  // Hand-build a model with one fully-populated natural_props entry,
+  // emit, reparse, and confirm every field arrived intact. Mirrors the
+  // populate flow the Map Editor will drive.
+  const model = new BiomeDataModel();
+  model._id = 'B99999';
+  model.display_name = 'Test';
+  model.color = { r: 0.5, g: 0.5, b: 0.5, a: 1 };
+  model.natural_props = [{
+    prop_id: 'P00001',
+    frequency: 0.4,
+    grouping_range: { x: 3, y: 8 },
+    elevation_range: { x: 0, y: 30 },
+    near_biomes: ['B00005'],
+    not_near_biomes: [],
+    near_props: ['P01001'],
+    not_near_props: ['P01002', 'P01003'],
+  }];
+
+  const raw = biomeModelToRaw(model);
+  const text = TresParser.serialize(raw);
+  const reparsed = TresParser.parse(text);
+  const data = {};
+  for (const [key, tv] of reparsed.resourceFields) data[key] = tv.value;
+  const model2 = BiomeDataModel.fromEntry('B99999.tres', { data, raw: reparsed });
+
+  assert(model2.natural_props.length === 1, 'one entry survives');
+  const np = model2.natural_props[0];
+  assert(np.prop_id === 'P00001', 'prop_id survives');
+  assert(np.frequency === 0.4, 'frequency survives: ' + np.frequency);
+  assert(np.grouping_range.x === 3 && np.grouping_range.y === 8, 'grouping_range survives');
+  assert(np.elevation_range.x === 0 && np.elevation_range.y === 30, 'elevation_range survives');
+  assert(np.near_biomes.length === 1 && np.near_biomes[0] === 'B00005', 'near_biomes survives');
+  assert(np.near_props.length === 1 && np.near_props[0] === 'P01001', 'near_props survives');
+  assert(np.not_near_props.length === 2, 'not_near_props count survives');
+});
 
 // ============================================================
 // JournalModel — parsing, validation, round-trip (task-076)
