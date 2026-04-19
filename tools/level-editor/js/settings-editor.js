@@ -31,6 +31,12 @@ export class GameSettingsModel {
   constructor() {
     /** @type {string} Filename relative to data/maps (e.g. "ch1.json"). */
     this.starting_map = 'ch1.json';
+    /**
+     * @type {number} View-distance radius (hex tiles) for streaming
+     * natural prop meshes + their scanner labels. 0 = unlimited
+     * (every tile renders). Mirror of GameSettings.prop_stream_radius.
+     */
+    this.prop_stream_radius = 0;
     /** @type {TresFile|null} Round-trip handle to preserve unknown fields. */
     this._raw = null;
   }
@@ -43,6 +49,9 @@ export class GameSettingsModel {
       data[k] = tv.value;
     }
     if (data.starting_map != null) model.starting_map = String(data.starting_map);
+    if (typeof data.prop_stream_radius === 'number') {
+      model.prop_stream_radius = data.prop_stream_radius;
+    }
     return model;
   }
 }
@@ -69,6 +78,14 @@ function modelToRaw(model) {
   const fields = new Map();
   fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
   fields.set('starting_map', { type: 'string', value: model.starting_map || 'ch1.json' });
+  // Only emit prop_stream_radius when it diverges from the GDScript
+  // @export default (0 = unlimited). Keeps the .tres byte-clean for
+  // the common case and lets the GDScript default govern when the
+  // field is absent.
+  const radius = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
+  if (radius !== 0) {
+    fields.set('prop_stream_radius', { type: 'int', value: radius });
+  }
 
   // Preserve forward-compat fields (future additions we don't edit here).
   if (model._raw && model._raw.resourceFields instanceof Map) {
@@ -170,6 +187,40 @@ export async function renderSettingsEditor(container, options) {
   startWrap.appendChild(startHint);
 
   container.appendChild(startWrap);
+
+  // prop_stream_radius number input
+  const radiusWrap = document.createElement('div');
+  radiusWrap.style.marginTop = '16px';
+  const radiusLabel = document.createElement('label');
+  radiusLabel.textContent = 'Prop Render Radius (hex tiles)';
+  radiusLabel.classList.add('prop-label');
+  radiusLabel.style.display = 'block';
+  radiusWrap.appendChild(radiusLabel);
+
+  const radiusInput = document.createElement('input');
+  radiusInput.type = 'number';
+  radiusInput.min = '0';
+  radiusInput.max = '60';
+  radiusInput.step = '1';
+  radiusInput.value = String(model.prop_stream_radius);
+  radiusInput.classList.add('prop-input');
+  radiusInput.style.maxWidth = '160px';
+  radiusInput.addEventListener('change', () => {
+    const v = parseInt(radiusInput.value, 10);
+    model.prop_stream_radius = Number.isFinite(v) ? Math.max(0, Math.min(60, v)) : 0;
+    radiusInput.value = String(model.prop_stream_radius);
+  });
+  radiusWrap.appendChild(radiusInput);
+
+  const radiusHint = document.createElement('div');
+  radiusHint.style.color = 'var(--text-secondary)';
+  radiusHint.style.fontSize = '0.85em';
+  radiusHint.style.marginTop = '4px';
+  radiusHint.innerHTML = '<strong>0 = unlimited</strong> — every tile on the map renders its natural props + scanner labels. ' +
+    'Higher values stream only tiles within N hexes of the player (trade visible range for perf).';
+  radiusWrap.appendChild(radiusHint);
+
+  container.appendChild(radiusWrap);
 
   // Save button + status
   const actionRow = document.createElement('div');
