@@ -269,7 +269,13 @@ export function showPropOverrideModal(opts) {
   dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:360px;max-width:480px;color:var(--text-primary);display:flex;flex-direction:column;gap:12px;';
 
   const titleEl = document.createElement('div');
-  titleEl.textContent = `Prop Overrides — ${prop.type}`;
+  // Show "P00001 — Blade Grass" when the PropDef is resolvable; fall
+  // back to just the id for orphan refs. Makes the modal useful for
+  // debugging placements without cross-referencing another panel.
+  const displayName = def && typeof def.display_name === 'string' ? def.display_name : '';
+  titleEl.textContent = displayName
+    ? `Prop Overrides — ${prop.type} — ${displayName}`
+    : `Prop Overrides — ${prop.type}`;
   titleEl.style.cssText = 'font-size:15px;font-weight:600;';
   dialog.appendChild(titleEl);
 
