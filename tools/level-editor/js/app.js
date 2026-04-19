@@ -794,7 +794,12 @@ function _clearNaturalProps() {
 
   const cleanup = () => {
     overlay.remove();
-    document.removeEventListener('keydown', keyHandler);
+    // MUST match the useCapture flag used on add (see below), or the
+    // DOM leaves the listener attached — which would mean every
+    // subsequent Ctrl+Z/Y/Shift+Z in the editor hits our stale
+    // preventDefault wrapper and undo/redo silently stop working
+    // globally (found in round-2 review).
+    document.removeEventListener('keydown', keyHandler, true);
     overlay.removeEventListener('click', overlayClickHandler);
     if (_clearModalCleanup === cleanup) _clearModalCleanup = null;
   };

@@ -124,6 +124,18 @@ var _tile_entries: Dictionary = {}
 ## live entries, ~140 removes per hex cross — that was 3.5M iterations
 ## per cross (~5-7s freeze, reported 2026-04-19). This index makes
 ## the same operation O(1).
+##
+## INVARIANT: anomalies and props must NOT share a MultiMesh pool.
+## Anomalies use `anomaly.type` as their pool_id
+## (see _add_anomaly_instance) and props use `prop.type`, and each
+## PropDef produces exactly one pool (_create_pools), so as long as
+## no PropDef is used as BOTH a natural prop AND an anomaly this
+## holds. The index only registers props; if an anomaly ever lands
+## in the same pool as a prop, _hide_instance's swap-with-last can
+## move the anomaly's transform to a slot whose _tile_entries record
+## still claims the old slot — ghost instance on next eviction.
+## Enforced by audit, not code — `_add_anomaly_instance` does not
+## touch the index on purpose.
 var _pool_instance_owner: Dictionary = {}
 
 ## Reference to HexGrid (allows override in tests)
@@ -918,11 +930,20 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 ## per-copy scale_jitter → per-copy rotation), and replicating that
 ## order in two places is a desync waiting to happen.
 func _compute_prop_scatter(coords: Vector2i, rn: Resource, def: Resource) -> Array:
-	# Per-stream memo lookup — same (coords, sub_hex, prop_type) inside
-	# the same _stream_*_around cycle reuses the first-computed Array
-	# instead of recomputing (~30 µs saved per hit).
-	var cache_key := "%d,%d:%d,%d:%s" % [
-		coords.x, coords.y, rn.sub_hex.x, rn.sub_hex.y, String(rn.type)
+	# Per-stream memo lookup — same (coords, sub_hex, prop_type, overrides)
+	# inside the same _stream_*_around cycle reuses the first-computed
+	# Array instead of recomputing (~30 µs saved per hit).
+	#
+	# Override fields are part of the key because two Props at the same
+	# (coords, sub_hex, type) can diverge on placement_override,
+	# variant_override, scale_override, rotation_override, or
+	# rotation_deg — same seed, different outputs. Ignoring the
+	# overrides in the key would let the second reader see the first
+	# reader's unrelated scatter layout (caught in round-2 review).
+	var cache_key := "%d,%d:%d,%d:%s:%d,%d,%f,%f,%f" % [
+		coords.x, coords.y, rn.sub_hex.x, rn.sub_hex.y, String(rn.type),
+		rn.placement_override, rn.variant_override,
+		rn.scale_override, rn.rotation_override, rn.rotation_deg,
 	]
 	if _scatter_cache.has(cache_key):
 		return _scatter_cache[cache_key]
