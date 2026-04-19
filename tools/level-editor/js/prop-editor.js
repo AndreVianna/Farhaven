@@ -1834,6 +1834,14 @@ export function renderPropEditor(container, options) {
     const form = document.createElement('form');
     form.style.cssText = 'display:flex;flex-direction:column;height:100%;';
     form.addEventListener('submit', (e) => e.preventDefault());
+    // Stash fields that have no UI surface yet so collect can round-trip
+    // them instead of emitting empty defaults on save. Keeps
+    // CatalogableCap.properties (plant/mineral schemas used by the
+    // scanner) intact until the rich properties editor lands.
+    if (model.catalogable && model.catalogable.properties) {
+      try { form.dataset.catalogableProps = JSON.stringify(model.catalogable.properties); }
+      catch (_) { /* best effort */ }
+    }
 
     // --- Header ---
     const header = document.createElement('div');
@@ -2760,10 +2768,25 @@ export function collectPropFormData(formElement) {
   }
 
   if (isChecked('cap_catalogable_enabled')) {
+    // Properties editing isn't wired to the UI yet, but dropping the
+    // dict on every save wipes per-category metadata (plant schema,
+    // mineral schema, etc.) that the scanner + catalog read. Preserve
+    // the previously-loaded value via a hidden dataset stash on the
+    // form so an editor round-trip stays lossless until the rich
+    // properties editor lands.
+    const stash = formElement.dataset && formElement.dataset.catalogableProps
+      ? formElement.dataset.catalogableProps : '';
+    let preserved = {};
+    if (stash) {
+      try {
+        const parsed = JSON.parse(stash);
+        if (parsed && typeof parsed === 'object') preserved = parsed;
+      } catch (_) { /* ignore malformed stash */ }
+    }
     model.catalogable = {
       scan_time: floatVal('cap_catalogable_scan_time'),
       show_as_anomaly: isChecked('cap_catalogable_show_as_anomaly'),
-      properties: {},  // Properties editing not yet supported in UI
+      properties: preserved,
     };
   }
 
