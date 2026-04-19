@@ -33,6 +33,13 @@ Yields 2 stone_piece per harvest, no respawn.
 
 ## Variation 1 (Baseline / medium pile) — `reference_v1.png` → `mesh_v1.glb`
 
+> **2026-04-19 — Andre rejected the generated pyramid pile.** `P01002.tres`
+> currently points variant 1 to `mesh_v3.glb` (same content as variant 3) so
+> no "pyramid of stones" appears in-game. A fresh v1 mesh with the below
+> prompt can be dropped back in and `P01002.tres` restored to
+> `scene = ExtResource("7_mesh_v1")` when ready.
+
+
 ```
 A small alien stone pile resting on the ground. Roughly seven fist-sized
 weathered gray stones piled together in a loose cluster, each stone

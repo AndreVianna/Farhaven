@@ -13,7 +13,7 @@
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("6_meshvar")
-scene = ExtResource("7_mesh_v1")
+scene = ExtResource("9_mesh_v3")
 scale = 0.45
 
 [sub_resource type="Resource" id="mesh_variant_2"]
