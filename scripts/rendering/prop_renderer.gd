@@ -16,6 +16,17 @@ const _PlacementPreset = preload("res://scripts/data/capabilities/placement_pres
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
 
+## Lower bound on the scale applied to any rendered prop instance.
+## Sibling copies of scatter presets multiply variant_scale by
+## sibling_scale (0.3–1.0) and a 0.85× jitter, which could drop the
+## effective scale below 0.1 for small authored meshes. At a
+## realistic camera distance that pushes the mesh sub-pixel and the
+## GPU rasterizer silently skips it — so the tile looks empty even
+## though the instance is in the MultiMesh. Floor keeps tiny props
+## visible without changing authored scales; raise this constant if
+## ground-cover ever looks sparse again.
+const MIN_RENDER_SCALE: float = 0.35
+
 ## Initial capacity of each MultiMesh pool. Pools grow on demand
 ## past this via `_ensure_pool_capacity`, doubling each time, so the
 ## constant only affects startup cost.
@@ -715,6 +726,12 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 			copy_scale = variant_scale * scale_jitter
 			if not is_center:
 				copy_scale *= sibling_scale
+			# Floor to keep tiny authored scales from falling below the
+			# GPU's sub-pixel threshold at mid-range camera distance.
+			# Author overrides skip the floor so "explicitly tiny" still
+			# works for pinned instances.
+			if copy_scale < MIN_RENDER_SCALE:
+				copy_scale = MIN_RENDER_SCALE
 
 		# Rotation: 0-360° seeded, or override if SINGLE center.
 		# Backward-compat: when SINGLE center and the legacy rotation_deg
