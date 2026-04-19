@@ -18,18 +18,25 @@ const PROP_Y_OFFSET: float = 0.3
 
 ## Initial capacity of each MultiMesh pool. Pools grow on demand
 ## past this via `_ensure_pool_capacity`, doubling each time, so the
-## constant only affects startup cost. Hard ceiling below keeps a
-## runaway populate from eating unbounded VRAM.
-const INITIAL_INSTANCES: int = 512
+## constant only affects startup cost.
+const INITIAL_INSTANCES: int = 256
 
-## Upper bound on MultiMesh.instance_count per pool variant. A
-## populated 150-radius grassland can produce ~150 000 total prop
-## instances (Populate + Dense scatter); split across 12 prop
-## types × 3 variants = 36 pools, the biggest pool comfortably fits
-## inside this ceiling. Per-instance cost is ~64 B (Transform3D +
-## custom data Color), so 65536 × 64 = 4 MB per pool variant ×
-## ~36 pools = ~150 MB worst-case GPU memory. Still modest.
-const MAX_INSTANCES: int = 65536
+## Upper bound on MultiMesh.instance_count per pool variant. With
+## view-distance streaming (STREAM_RADIUS hexes around the player)
+## a single pool rarely crosses ~2000 instances even on a densely
+## populated biome, so 4096 is a comfortable ceiling; any further
+## growth signals a bug we'd rather catch than paper over.
+const MAX_INSTANCES: int = 4096
+
+## View-distance streaming radius (in hex tiles). Tiles outside
+## this radius around the player are actively removed from the
+## MultiMesh pools; tiles coming back into range are repopulated.
+## Keeps GPU instance count bounded by O(radius²) independent of
+## map size — essential for the Populate-authored 150 000-prop
+## maps. 20 hexes ≈ 1261 tiles; with Dense scatter that's
+## ~30 instances/tile = ~38 000 visible instances distributed
+## across 36 pool variants. Tunable.
+const STREAM_RADIUS: int = 20
 
 ## HEX_SIZE for offset calculation
 const HEX_SIZE: float = 3.0
@@ -73,6 +80,17 @@ var _tile_entries: Dictionary = {}
 
 ## Reference to HexGrid (allows override in tests)
 var _grid: Node = null
+
+## Tiles currently materialized into the MultiMesh pools. Tracked so
+## we can diff against `STREAM_RADIUS` as the player moves and only
+## touch the add/remove delta instead of re-sweeping the whole map.
+var _streamed_tiles: Dictionary = {}
+
+## Player node — source of the `player_moved` signal that drives
+## streaming. Late-bound via `_connect_player_signals` because the
+## Player is a sibling of this renderer in the scene tree and isn't
+## guaranteed to exist at _ready time.
+var _player: Node = null
 
 
 func _ready() -> void:
@@ -349,6 +367,10 @@ func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
 
 func _connect_signals() -> void:
 	_connect_grid_signals()
+	# Player is a sibling in the World scene, but it may not be wired
+	# up by the time the renderer's _ready() runs. Defer to next frame
+	# so the scene tree is fully assembled.
+	_connect_player_signals.call_deferred()
 
 
 func _connect_grid_signals() -> void:
@@ -365,10 +387,60 @@ func _connect_grid_signals() -> void:
 			_grid.prop_respawned.connect(_on_prop_respawned)
 
 
+func _connect_player_signals() -> void:
+	if _player == null:
+		_player = _find_player()
+	if _player == null:
+		return
+	if _player.has_signal("player_moved"):
+		if not _player.player_moved.is_connected(_on_player_moved):
+			_player.player_moved.connect(_on_player_moved)
+
+
+## Sibling lookup for the Player node. World.tscn puts Player as a
+## direct child of the same parent that hosts this renderer; fall
+## back to a tree search if the project layout ever changes.
+func _find_player() -> Node:
+	var parent: Node = get_parent()
+	if parent == null:
+		return null
+	var p: Node = parent.get_node_or_null("Player")
+	if p != null:
+		return p
+	# Last-resort: depth-first scan for any node that emits player_moved.
+	return _search_node_with_signal(get_tree().get_current_scene(), &"player_moved")
+
+
+static func _search_node_with_signal(root: Node, sig: StringName) -> Node:
+	if root == null:
+		return null
+	if root.has_signal(sig):
+		return root
+	for child in root.get_children():
+		var found: Node = _search_node_with_signal(child, sig)
+		if found != null:
+			return found
+	return null
+
+
 # --- Signal handlers ---
 
 func _on_map_generated() -> void:
-	_populate_all_visible_tiles()
+	# Streaming: only tiles within STREAM_RADIUS of the anchor get
+	# materialized. Anchor defaults to spawn because Player may not
+	# have a current_tile yet on first map generation; once the
+	# player_moved signal fires, _on_player_moved rebases around the
+	# real player position.
+	var anchor: Vector2i = _get_streaming_anchor()
+	_stream_around(anchor)
+
+
+func _on_player_moved(from: Vector2i, to: Vector2i) -> void:
+	# Same-tile re-emissions are filtered upstream by Player, but
+	# a defensive guard keeps re-ready scenarios cheap.
+	if from == to and _streamed_tiles.size() > 0:
+		return
+	_stream_around(to)
 
 
 func _on_prop_depleted(coords: Vector2i, prop_type: StringName) -> void:
@@ -381,15 +453,49 @@ func _on_prop_respawned(coords: Vector2i, prop_type: StringName) -> void:
 
 # --- Prop management ---
 
-func _populate_all_visible_tiles() -> void:
+## Pick the streaming center. Prefers the current player tile; falls
+## back to spawn_tile (map-load case) or Vector2i.ZERO.
+func _get_streaming_anchor() -> Vector2i:
+	if _player != null and "current_tile" in _player:
+		return _player.current_tile
+	if _grid != null and "spawn_tile" in _grid:
+		return _grid.spawn_tile
+	return Vector2i.ZERO
+
+
+## Stream the set of tiles within STREAM_RADIUS of `center` into
+## the MultiMesh pools, and evict anything currently streamed that
+## falls outside the radius. Uses the existing per-tile add/remove
+## plumbing so scatter logic, variants, and dimming all stay
+## consistent with the one-shot code path.
+func _stream_around(center: Vector2i) -> void:
 	if _grid == null:
 		return
-	var tiles: Dictionary = _grid.get_all_tiles() if _grid.has_method("get_all_tiles") else {}
-	for coords in tiles:
-		var tile: Resource = tiles[coords]
-		if tile == null:
+	var desired: Dictionary = {}
+	# Primary path: ask the grid for tiles inside the window. Test
+	# doubles may not implement get_tiles_in_range; fall back to
+	# get_all_tiles so they keep seeing the whole map (radius-less
+	# behavior = "stream everything").
+	if _grid.has_method("get_tiles_in_range"):
+		for coords in _grid.get_tiles_in_range(center, STREAM_RADIUS):
+			desired[coords] = true
+	elif _grid.has_method("get_all_tiles"):
+		for coords in _grid.get_all_tiles():
+			desired[coords] = true
+
+	# Evict tiles that left the window.
+	for coords in _streamed_tiles.keys():
+		if not desired.has(coords):
+			_remove_all_props_at(coords)
+			_streamed_tiles.erase(coords)
+
+	# Add tiles that entered the window. Skipping tiles already
+	# streamed avoids rebuilding instances on every step.
+	for coords in desired.keys():
+		if _streamed_tiles.has(coords):
 			continue
 		_add_props_for_tile(coords, false)
+		_streamed_tiles[coords] = true
 
 
 func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
