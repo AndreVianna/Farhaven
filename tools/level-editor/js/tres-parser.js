@@ -271,10 +271,11 @@ export class TresParser {
       return { type: 'vector2i', value: { x: parts[0], y: parts[1] } };
     }
 
-    // Vector3: Vector3(x, y, z) — floats. Rejects arity != 3 and NaN
-    // components by falling through to the generic string path, so the
-    // error surfaces at .tres load (not silently as NaN collision data).
-    if (s.startsWith('Vector3(')) {
+    // Vector3: Vector3(x, y, z) — floats. Rejects arity != 3, NaN
+    // components, AND malformed strings missing the closing paren
+    // (previously `slice(8, -1)` trimmed an unrelated character off
+    // e.g. `"Vector3(1, 2, 3"` and silently produced nonsense).
+    if (s.startsWith('Vector3(') && s.endsWith(')')) {
       const inner = s.slice(8, -1);
       const parts = inner.split(',').map(p => parseFloat(p.trim()));
       if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {

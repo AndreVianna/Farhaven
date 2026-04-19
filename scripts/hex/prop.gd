@@ -31,7 +31,7 @@ enum Origin {
 # only effective when the effective placement preset resolves to
 # SINGLE; scatter presets distribute copies procedurally so pinning
 # just the center copy would break the visual illusion.
-@export var placement_override: int = -1       # -1 = inherit from PlacementCap
+@export var placement_override: int = -1       # -1 = inherit from PlaceableCap.placement
 @export var variant_override: int = -1          # -1 = seeded random variant
 @export var scale_override: float = -1.0        # < 0 = seeded scale
 @export var rotation_override: float = -1.0     # < 0 = seeded rotation (else degrees)

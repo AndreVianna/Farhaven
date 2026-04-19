@@ -18,8 +18,12 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 
-PROPS_DIR = "/home/andre/projects/Farhaven/data/props"
+# Repo-relative so this replays from any checkout — the old absolute
+# path locked the script to one developer's machine.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROPS_DIR = str(REPO_ROOT / "data" / "props")
 
 
 def migrate(text: str) -> str:

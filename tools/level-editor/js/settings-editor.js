@@ -78,16 +78,19 @@ function modelToRaw(model) {
   const fields = new Map();
   fields.set('script', { type: 'ext_resource', value: `ExtResource("${scriptExtId}")` });
   fields.set('starting_map', { type: 'string', value: model.starting_map || 'ch1.json' });
-  // Only emit prop_stream_radius when it diverges from the GDScript
-  // @export default (0 = unlimited). Keeps the .tres byte-clean for
-  // the common case and lets the GDScript default govern when the
-  // field is absent.
+  // Emit prop_stream_radius ALWAYS — the UI-known set. Previous
+  // "skip when 0 to stay byte-clean" combined with the forward-compat
+  // preservation loop below silently restored the prior on-disk
+  // value whenever the user edited the field back to 0, so switching
+  // the map to unlimited mode was a no-op save (ultrareview finding
+  // 2026-04-19). Settings-tres is a singleton with ~2 fields today —
+  // there's no byte-churn cost worth the footgun.
   const radius = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
-  if (radius !== 0) {
-    fields.set('prop_stream_radius', { type: 'int', value: radius });
-  }
+  fields.set('prop_stream_radius', { type: 'int', value: radius });
 
   // Preserve forward-compat fields (future additions we don't edit here).
+  // Guarded by fields.has(k) above — every key the UI manages is
+  // already set, so the loop never overwrites a just-written value.
   if (model._raw && model._raw.resourceFields instanceof Map) {
     for (const [k, v] of model._raw.resourceFields) {
       if (!fields.has(k)) fields.set(k, v);

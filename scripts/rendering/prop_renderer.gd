@@ -344,9 +344,10 @@ func _compute_scatter_seed(coords: Vector2i, sub_hex: Vector2i, prop_type: Strin
 
 
 ## Feature-011: pick N SSH positions within a sub-hex. Position 0 is
-## always ZERO (center). Remaining positions are the (N-1) closest to
-## ZERO out of a seeded-random permutation of the other 18 SSH cells.
-## Assumes 1 <= N <= 19.
+## always ZERO (center). Remaining positions are a seeded-random
+## sample of (N-1) SSH cells drawn from the other 18 via Fisher-
+## Yates partial shuffle — uniform over all possible subsets, no
+## distance-to-ZERO bias. Assumes 1 <= N <= 19.
 func _select_ssh_positions(rng: RandomNumberGenerator, n: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = [Vector2i.ZERO]
 	if n <= 1:
@@ -475,7 +476,11 @@ func _connect_player_signals() -> void:
 ## after GameSettings loads so the value comes from a single
 ## authoritative source instead of a hardcoded constant.
 func set_stream_radius(radius: int) -> void:
-	var clamped: int = clampi(radius, 1, 200)
+	# 0 is the sentinel for "unlimited — render every tile"; anything
+	# negative folds into the same meaning. Clamping to >= 1 would
+	# silently disable the unlimited mode the GameSettings field
+	# explicitly documents.
+	var clamped: int = clampi(radius, 0, 200)
 	if clamped == _stream_radius:
 		return
 	_stream_radius = clamped

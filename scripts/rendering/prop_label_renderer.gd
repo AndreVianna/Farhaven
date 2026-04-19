@@ -104,7 +104,10 @@ func _connect_player_signals() -> void:
 ## player position so the change is visible without requiring a
 ## tile transition.
 func set_stream_radius(radius: int) -> void:
-	var clamped: int = clampi(radius, 1, 200)
+	# 0 = unlimited (every tile labeled), matching PropRenderer's
+	# sentinel. Clamping to >= 1 would diverge from GameSettings
+	# semantics and break the prop/label parity.
+	var clamped: int = clampi(radius, 0, 200)
 	if clamped == _stream_radius:
 		return
 	_stream_radius = clamped

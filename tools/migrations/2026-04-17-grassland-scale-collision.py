@@ -11,8 +11,10 @@ updated. For props with authored collision, additionally:
 import re
 import os
 import sys
+from pathlib import Path
 
-REPO = "/home/andre/projects/Farhaven"
+# Repo-relative so this replays from any checkout.
+REPO = str(Path(__file__).resolve().parents[2])
 PROPS_DIR = os.path.join(REPO, "data", "props")
 
 # Per-prop plan: (scale, collision_shapes).

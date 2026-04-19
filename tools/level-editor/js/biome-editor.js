@@ -1320,6 +1320,12 @@ export function biomeModelToRaw(model) {
 
   // Rebuild sub_resources from natural_props. Each entry becomes one
   // `[sub_resource type="Resource" id="biome_prop_N"]` block.
+  //
+  // IDs of sub_resources the editor manages (owns the lifecycle of).
+  // Anything in the previous raw that ISN'T in this set is a future
+  // feature the editor doesn't know about yet — preserve it verbatim
+  // instead of wiping on save (Copilot finding 2026-04-19).
+  const MANAGED_SUB_IDS = new Set();
   const subResources = [];
   const biomePropRefs = [];
   if (biomePropExtId && Array.isArray(model.natural_props)) {
@@ -1327,6 +1333,7 @@ export function biomeModelToRaw(model) {
       const np = model.natural_props[i];
       const subId = `biome_prop_${i + 1}`;
       biomePropRefs.push(subId);
+      MANAGED_SUB_IDS.add(subId);
       const subFields = new Map();
       subFields.set('script', { type: 'ext_resource', value: `ExtResource("${biomePropExtId}")` });
       subFields.set('prop_id', { type: 'stringname', value: np.prop_id });
@@ -1348,6 +1355,18 @@ export function biomeModelToRaw(model) {
       if (np.near_props.length) subFields.set('near_props', snameArr(np.near_props));
       if (np.not_near_props.length) subFields.set('not_near_props', snameArr(np.not_near_props));
       subResources.push({ type: 'Resource', id: subId, fields: subFields });
+    }
+  }
+  // Forward-compat: keep any sub_resource the editor didn't author.
+  // `biome_prop_N` is the only id pattern this editor owns today;
+  // unrelated future sub_resources (other caps, metadata, etc.)
+  // survive round-trip instead of being silently dropped.
+  if (model._raw && Array.isArray(model._raw.subResources)) {
+    for (const sub of model._raw.subResources) {
+      if (!sub || typeof sub.id !== 'string') continue;
+      if (MANAGED_SUB_IDS.has(sub.id)) continue;
+      if (/^biome_prop_\d+$/.test(sub.id)) continue;  // stale managed entry, drop
+      subResources.push(sub);
     }
   }
   raw.subResources = subResources;

@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 
-REPO = "/home/andre/projects/Farhaven"
+# Repo-relative so this replays from any checkout.
+REPO = str(Path(__file__).resolve().parents[2])
 PROPS_DIR = os.path.join(REPO, "data", "props")
 
 # Preset int values match PlacementPreset.Preset enum:

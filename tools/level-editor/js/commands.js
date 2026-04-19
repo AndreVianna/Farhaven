@@ -467,16 +467,28 @@ export class MovePropCommand {
   }
   undo() {
     if (this._snapshot == null || this._srcRemovedProp == null) return;
+    // Find the prop by identity, not by cached index. Other commands
+    // in the same history session could have mutated dstTile.props
+    // between execute and undo (add/delete), shifting indexOf past
+    // _dstIndex. Locate the instance by reference so we always remove
+    // the one we actually moved, never a sibling.
     const dstTile = this.grid.getTile(this.dstQ, this.dstR);
-    if (dstTile && this._dstIndex >= 0 && dstTile.props[this._dstIndex] === this._srcRemovedProp) {
-      dstTile.props.splice(this._dstIndex, 1);
-      this.grid.setTile(this.dstQ, this.dstR, dstTile);
+    if (dstTile) {
+      const idx = dstTile.props.indexOf(this._srcRemovedProp);
+      if (idx !== -1) {
+        dstTile.props.splice(idx, 1);
+        this.grid.setTile(this.dstQ, this.dstR, dstTile);
+      }
     }
     const srcTile = this.grid.getTile(this.srcQ, this.srcR);
     if (srcTile) {
       this._srcRemovedProp.sq = this._snapshot.sq;
       this._srcRemovedProp.sr = this._snapshot.sr;
-      srcTile.props.splice(this.srcIndex, 0, this._srcRemovedProp);
+      // Clamp the re-insert index to the current length — if siblings
+      // were removed while this move was on the stack, srcIndex could
+      // now be past the end. Append in that case.
+      const insertAt = Math.min(this.srcIndex, srcTile.props.length);
+      srcTile.props.splice(insertAt, 0, this._srcRemovedProp);
       this.grid.setTile(this.srcQ, this.srcR, srcTile);
     }
   }
