@@ -185,9 +185,14 @@ func _stream_around(center: Vector2i) -> void:
 	if _grid == null:
 		return
 	var desired: Dictionary = {}
-	# Test doubles typically lack get_tiles_in_range — fall back to
-	# get_all_tiles so the unit suite still covers the full label set.
-	if _grid.has_method("get_tiles_in_range"):
+	# Radius 0 (or negative) disables the window — full-map labels,
+	# matching the prop renderer's unlimited mode. Keeps the
+	# "prop visible ↔ label visible" invariant intact at any scale.
+	if _stream_radius <= 0:
+		if _grid.has_method("get_all_tiles"):
+			for coords in _grid.get_all_tiles():
+				desired[coords] = true
+	elif _grid.has_method("get_tiles_in_range"):
 		for coords in _grid.get_tiles_in_range(center, _stream_radius):
 			desired[coords] = true
 	elif _grid.has_method("get_all_tiles"):

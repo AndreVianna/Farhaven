@@ -24,8 +24,17 @@ extends Resource
 
 ## View-distance radius (in hex tiles) used by PropRenderer and
 ## PropLabelRenderer to stream natural props + their markers around
-## the player. Tiles outside this radius are evicted from the GPU
-## pools; tiles entering are repopulated. Lower values win perf at
-## the cost of visible draw distance; higher values look better but
-## tax mobile hardware. 20 ≈ 1260 tiles inside the window.
-@export_range(5, 60, 1) var prop_stream_radius: int = 20
+## the player. Tiles outside the radius are evicted from GPU pools;
+## tiles entering are repopulated.
+##
+## Set to 0 to disable streaming entirely — every tile with props
+## gets rendered, no matter the distance. Andre's rule: "wherever
+## the map says there's a prop, render the prop, always." Expected
+## perf scales with map size × per-tile scatter density; tune via
+## biome.natural_props frequency / grouping instead of cropping
+## the view.
+##
+## Positive values keep the old streaming behavior (1260 tiles at
+## radius 20) for maps where the authored density would otherwise
+## overwhelm the GPU.
+@export_range(0, 60, 1) var prop_stream_radius: int = 0

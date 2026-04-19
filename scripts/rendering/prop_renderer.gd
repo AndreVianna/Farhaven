@@ -228,16 +228,11 @@ static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
 	return required <= new_size
 
 
-## TEMPORARY debug: when a prop type is listed in DEBUG_FORCE_TINT,
-## swap its pool's material for a bright unlit color so we can see
-## exactly where the instances land in the world — rules out the
-## "pool has 12k instances but they're invisible" mystery case. Set
-## DEBUG_FORCE_TINT to an empty dict to ship the normal imported
-## materials.
-const DEBUG_FORCE_TINT: Dictionary = {
-	&"P00001": Color(1.0, 0.0, 1.0, 1.0),  # magenta — blade grass
-	&"P00002": Color(0.0, 1.0, 1.0, 1.0),  # cyan    — tuft moss
-}
+## DEBUG: when a prop type is listed in DEBUG_FORCE_TINT, swap its
+## pool's material for a bright unlit color — useful when diagnosing
+## "pool has N instances but I can't see them" bugs. Default empty
+## so the imported .glb materials render normally.
+const DEBUG_FORCE_TINT: Dictionary = {}
 
 func _maybe_apply_debug_tint(mmi: MultiMeshInstance3D, pool_id: StringName) -> void:
 	if not DEBUG_FORCE_TINT.has(pool_id):
@@ -581,11 +576,16 @@ func _stream_around(center: Vector2i) -> void:
 	if _grid == null:
 		return
 	var desired: Dictionary = {}
-	# Primary path: ask the grid for tiles inside the window. Test
-	# doubles may not implement get_tiles_in_range; fall back to
-	# get_all_tiles so they keep seeing the whole map (radius-less
-	# behavior = "stream everything").
-	if _grid.has_method("get_tiles_in_range"):
+	# Radius 0 (or negative) disables the window — we stream every
+	# tile that exists in the grid. Matches Andre's rule: "wherever
+	# the map says there's a prop, render it. Always." Performance
+	# is expected to come from scatter density + pool capacity
+	# tuning, not from culling what the player could otherwise see.
+	if _stream_radius <= 0:
+		if _grid.has_method("get_all_tiles"):
+			for coords in _grid.get_all_tiles():
+				desired[coords] = true
+	elif _grid.has_method("get_tiles_in_range"):
 		for coords in _grid.get_tiles_in_range(center, _stream_radius):
 			desired[coords] = true
 	elif _grid.has_method("get_all_tiles"):
