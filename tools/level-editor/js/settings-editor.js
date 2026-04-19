@@ -58,10 +58,22 @@ export class GameSettingsModel {
     }
     if (data.starting_map != null) model.starting_map = String(data.starting_map);
     if (typeof data.prop_stream_radius === 'number') {
-      model.prop_stream_radius = data.prop_stream_radius;
+      // Symmetric clamp: a hand-edited .tres with an out-of-range value
+      // is coerced on read so the UI + the emit-always writer always
+      // agree on the stored value. The UI input already clamps [0, 60]
+      // on change — this is the read side.
+      const raw = data.prop_stream_radius | 0;
+      model.prop_stream_radius = Math.max(0, Math.min(60, raw));
     }
     if (typeof data.prop_collision_radius === 'number') {
-      model.prop_collision_radius = data.prop_collision_radius;
+      // Same symmetric clamp. 0 is accepted as the explicit "disable"
+      // sentinel mirroring the engine setter; UI minimum is 3.
+      const raw = data.prop_collision_radius | 0;
+      if (raw <= 0) {
+        model.prop_collision_radius = 0;
+      } else {
+        model.prop_collision_radius = Math.max(3, Math.min(30, raw));
+      }
     }
     return model;
   }
@@ -96,15 +108,24 @@ function modelToRaw(model) {
   // the map to unlimited mode was a no-op save (ultrareview finding
   // 2026-04-19). Settings-tres is a singleton with ~2 fields today —
   // there's no byte-churn cost worth the footgun.
-  const radius = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
+  const radiusRaw = Number.isFinite(model.prop_stream_radius) ? model.prop_stream_radius | 0 : 0;
+  // Clamp to the UI range [0, 60] on write so a hand-edited .tres with
+  // 9999 can't round-trip through save. Symmetric with fromTres.
+  const radius = Math.max(0, Math.min(60, radiusRaw));
   fields.set('prop_stream_radius', { type: 'int', value: radius });
   // Emit prop_collision_radius ALWAYS (same reason: avoid the silent-
   // restore footgun from the preservation loop below). Clamp to the
   // GDScript @export_range [3, 30] so an out-of-range value typed
-  // into the number input never lands in the .tres file.
+  // into the number input never lands in the .tres file. 0 is the
+  // explicit "disable" sentinel mirrored from the engine setter.
   const collisionRadiusRaw = Number.isFinite(model.prop_collision_radius)
     ? model.prop_collision_radius | 0 : 8;
-  const collisionRadius = Math.max(3, Math.min(30, collisionRadiusRaw));
+  let collisionRadius;
+  if (collisionRadiusRaw <= 0) {
+    collisionRadius = 0;
+  } else {
+    collisionRadius = Math.max(3, Math.min(30, collisionRadiusRaw));
+  }
   fields.set('prop_collision_radius', { type: 'int', value: collisionRadius });
 
   // Preserve forward-compat fields (future additions we don't edit here).

@@ -16,7 +16,7 @@
 
 import { ProjectContext } from './file-discovery.js';
 import { AddPropCommand, DeletePropCommand, BatchCommand } from './commands.js';
-import { createProp, CATEGORY_TO_INT } from './hex-grid.js';
+import { createProp } from './hex-grid.js';
 import { HexMath } from './hex-math.js';
 
 /**
@@ -34,7 +34,10 @@ export class SeededRng {
    * @param {number} seed - 32-bit unsigned integer
    */
   constructor(seed) {
-    // Avoid the zero fixed point by bumping 0 → 1.
+    // Avoid the zero fixed point — xorshift32 stays at 0 forever if
+    // state ever becomes 0. Fall back to 0x9E3779B9 (the 32-bit
+    // golden-ratio constant) instead of 1 to land deeper in the
+    // state space and avoid degenerate early outputs.
     this._state = (seed | 0) || 0x9E3779B9;
   }
   /** @returns {number} next unsigned 32-bit int */
@@ -80,18 +83,40 @@ export class SeededRng {
  * .tres data bag (with natural_props resolved to flat JS objects) or
  * null if the biome doesn't exist or has no natural_props.
  * @param {string} biomeId
+ * @param {Map<string, Object> | null} cache - optional biomeId → entry
+ *   map built once per populate run; caller passes the result of
+ *   _buildBiomeCache() so the per-tile sweep avoids repeatedly
+ *   scanning ProjectContext.files.biomes (O(tiles × biomes) → O(tiles)).
  * @returns {Object|null}
  */
-function _getBiomeWithNaturalProps(biomeId) {
+function _getBiomeWithNaturalProps(biomeId, cache) {
   if (!biomeId) return null;
-  // Biome files are keyed by filename, not by id. Walk the map to
-  // find the one whose parsed data.id (or filename stem) matches.
+  if (cache) return cache.get(biomeId) || null;
+  // Uncached path — kept so ad-hoc callers (tests, future utilities)
+  // don't have to build a cache.
   for (const [filename, entry] of ProjectContext.files.biomes) {
     const entryId = (entry.data && typeof entry.data.id === 'string' && entry.data.id) || filename.replace('.tres', '');
     if (entryId !== biomeId) continue;
     return entry;
   }
   return null;
+}
+
+/**
+ * Build a biomeId → entry map from ProjectContext so the per-tile
+ * sweep inside computePopulatePlan doesn't linear-scan the biome
+ * table for every tile. On maps with thousands of tiles the previous
+ * O(tiles × biomes) walk plus the nested _resolveNaturalProps
+ * sub_resource dereference was the hottest path in Populate.
+ * @returns {Map<string, Object>}
+ */
+function _buildBiomeCache() {
+  const out = new Map();
+  for (const [filename, entry] of ProjectContext.files.biomes) {
+    const entryId = (entry.data && typeof entry.data.id === 'string' && entry.data.id) || filename.replace('.tres', '');
+    out.set(entryId, entry);
+  }
+  return out;
 }
 
 /**
@@ -361,14 +386,29 @@ export function computePopulatePlan(grid, opts) {
   const tileKeys = [...shadow.keys()].sort();
   const touchedTiles = new Set();
 
+  // Build the biome cache once so the per-tile lookup below is O(1)
+  // instead of linear-scanning ProjectContext.files.biomes each time.
+  // Also memoize _resolveNaturalProps per biomeId — the sub_resource
+  // deref work is non-trivial and the biome set is small + reused
+  // across every tile that shares a biome.
+  const biomeCache = _buildBiomeCache();
+  /** @type {Map<string, Array<Object>>} */
+  const naturalPropsCache = new Map();
+  const resolveCached = (biomeId, entry) => {
+    if (naturalPropsCache.has(biomeId)) return naturalPropsCache.get(biomeId);
+    const list = _resolveNaturalProps(entry);
+    naturalPropsCache.set(biomeId, list);
+    return list;
+  };
+
   for (const category of CATEGORY_ORDER) {
     for (const key of tileKeys) {
       const { q, r } = _parseKey(key);
       const stile = shadow.get(key);
       if (!stile) continue;
-      const biomeEntry = _getBiomeWithNaturalProps(stile.biome);
+      const biomeEntry = _getBiomeWithNaturalProps(stile.biome, biomeCache);
       if (!biomeEntry) continue;
-      const naturalProps = _resolveNaturalProps(biomeEntry);
+      const naturalProps = resolveCached(stile.biome, biomeEntry);
       if (naturalProps.length === 0) continue;
 
       const neighbors = shadowNeighbors(q, r);

@@ -387,6 +387,11 @@ export function showPropOverrideModal(opts) {
   dialog.appendChild(hint);
 
   // --- Enable/disable variant/scale/rotation based on effective preset ---
+  // Critically, we DO NOT clear the inputs when disabling — the user
+  // may have authored overrides under SINGLE previously, and wiping
+  // them while merely browsing a scatter preset would silently lose
+  // that data on Apply. Instead we disable editing and preserve the
+  // values. Use Reset to clear explicitly.
   const _refreshEnabled = () => {
     const effective = parseInt(placementSelect.value, 10) >= 0
       ? parseInt(placementSelect.value, 10) : defPlacement;
@@ -395,14 +400,7 @@ export function showPropOverrideModal(opts) {
     scaleInput.disabled = !isSingle;
     rotationInput.disabled = !isSingle;
     if (!isSingle) {
-      // Scatter copies are procedural — overriding variant/scale/rotation
-      // on the center alone breaks the illusion, so the spec says the
-      // fields only apply under SINGLE. Wipe any stale input while
-      // disabled so save doesn't persist it.
-      variantSelect.value = '-1';
-      scaleInput.value = '';
-      rotationInput.value = '';
-      hint.textContent = `Scatter preset (${PRESET_LABELS[effective]}) renders procedurally — variant / scale / rotation are seeded. Switch to Single to pin specific values.`;
+      hint.textContent = `Scatter preset (${PRESET_LABELS[effective]}) renders procedurally — variant / scale / rotation are ignored by the engine under this preset but preserved on save. Switch to Single to pin specific values, or Reset to clear.`;
     } else {
       hint.textContent = 'Leave variant/scale/rotation empty to use seeded defaults.';
     }
