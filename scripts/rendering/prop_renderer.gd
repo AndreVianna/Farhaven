@@ -576,6 +576,7 @@ func _stream_around(center: Vector2i) -> void:
 	if _grid == null:
 		return
 	var desired: Dictionary = {}
+	var ordered: Array[Vector2i] = []
 	# Radius 0 (or negative) disables the window — we stream every
 	# tile that exists in the grid. Matches Andre's rule: "wherever
 	# the map says there's a prop, render it. Always." Performance
@@ -585,12 +586,24 @@ func _stream_around(center: Vector2i) -> void:
 		if _grid.has_method("get_all_tiles"):
 			for coords in _grid.get_all_tiles():
 				desired[coords] = true
+				ordered.append(coords)
 	elif _grid.has_method("get_tiles_in_range"):
 		for coords in _grid.get_tiles_in_range(center, _stream_radius):
 			desired[coords] = true
+			ordered.append(coords)
 	elif _grid.has_method("get_all_tiles"):
 		for coords in _grid.get_all_tiles():
 			desired[coords] = true
+			ordered.append(coords)
+
+	# Near-to-far add order. When a pool hits MAX_INSTANCES the
+	# overflow gets silently dropped, so we want the closest tiles
+	# to reach the pool first. Andre's diagnostic: with radius 10 on
+	# a densely populated biome the outer ring was eating all the
+	# pool capacity and props right next to the player went missing.
+	# Sorting by hex distance from the streaming center fixes that.
+	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _HexMath.distance(a, center) < _HexMath.distance(b, center))
 
 	# Evict tiles that left the window.
 	for coords in _streamed_tiles.keys():
@@ -600,7 +613,7 @@ func _stream_around(center: Vector2i) -> void:
 
 	# Add tiles that entered the window. Skipping tiles already
 	# streamed avoids rebuilding instances on every step.
-	for coords in desired.keys():
+	for coords in ordered:
 		if _streamed_tiles.has(coords):
 			continue
 		_add_props_for_tile(coords, false)
