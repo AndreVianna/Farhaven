@@ -900,7 +900,7 @@ test('MovePropCommand — preserves prop fields across move', () => {
 // Populate — generative biome prop distribution
 // ============================================================
 
-import { SeededRng, computePopulatePlan, buildPopulateCommand } from './js/populate.js';
+import { SeededRng, computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './js/populate.js';
 
 test('SeededRng — deterministic from same seed', () => {
   const a = new SeededRng(42);
@@ -964,6 +964,118 @@ test('buildPopulateCommand — batches adds + removes with undo', () => {
   cmd.undo();
   const back = grid.getTile(0, 0).props;
   assert(back.length === 1 && back[0].type === 'P00001', 'undo restored original');
+});
+
+// ---- computeClearNaturalsPlan + buildClearNaturalsCommand ----
+
+test('computeClearNaturalsPlan — empty grid → empty plan', () => {
+  const grid = new HexGridClass();
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 0, 'no removes on empty grid');
+  assert(plan.touchedTiles === 0, 'no tiles touched');
+  assert(plan.countByType.size === 0, 'countByType empty');
+});
+
+test('computeClearNaturalsPlan — only naturals → all removed', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    createProp('P01001', 1, 0, 'mineral'),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 2, 'both naturals removed, got: ' + plan.removed.length);
+  assert(plan.touchedTiles === 1, 'one tile touched');
+  assert(plan.countByType.get('P00001') === 1, 'P00001 counted');
+  assert(plan.countByType.get('P01001') === 1, 'P01001 counted');
+});
+
+test('computeClearNaturalsPlan — structures preserved', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),
+    createProp('E00001', 2, 0, 'equipment', { origin: 'human' }),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only P00001 removed');
+  assert(plan.removed[0].prop.type === 'P00001', 'correct prop removed');
+});
+
+test('computeClearNaturalsPlan — anomalies preserved by category even with origin=natural', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Simulate a legacy-loaded anomaly that slipped through with
+  // origin='natural'. The category='anomaly' bypass must preserve it.
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),
+    { type: 'A00001', sq: 0, sr: 0, category: 'anomaly', origin: 'natural' },
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only P00001 removed, anomaly preserved');
+  assert(plan.removed[0].prop.type === 'P00001', 'P00001 removed');
+});
+
+test('computeClearNaturalsPlan — numeric origin=0 also treated as natural', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Engine-format (post-load) props use integer origin; 0 is natural.
+  tile.props = [
+    { type: 'P00001', sq: 0, sr: 0, category: 'plant', origin: 0 },
+    { type: 'S00001', sq: 1, sr: 0, category: 'structure', origin: 1 },
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computeClearNaturalsPlan(grid);
+  assert(plan.removed.length === 1, 'only origin=0 removed');
+  assert(plan.removed[0].prop.type === 'P00001', 'P00001 removed');
+});
+
+test('buildClearNaturalsCommand — execute wipes, undo restores', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  const p1 = createProp('P00001', 0, 0, 'plant');
+  const p2 = createProp('P01001', 1, 0, 'mineral');
+  tile.props = [p1, p2];
+  grid.setTile(0, 0, tile);
+
+  const plan = computeClearNaturalsPlan(grid);
+  const cmd = buildClearNaturalsCommand(grid, plan);
+  cmd.execute();
+  assert(grid.getTile(0, 0).props.length === 0, 'both naturals wiped');
+  cmd.undo();
+  const restored = grid.getTile(0, 0).props;
+  assert(restored.length === 2, 'both restored');
+  assert(restored[0].type === 'P00001', 'slot 0 restored');
+  assert(restored[1].type === 'P01001', 'slot 1 restored');
+});
+
+test('buildClearNaturalsCommand — mixed tile: structures stay in place after undo', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('grassland');
+  // Interleave to verify descending-propIndex sort preserves undo slots.
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),                                  // idx 0, natural
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),       // idx 1, crafted
+    createProp('P01001', 2, 0, 'mineral'),                                // idx 2, natural
+  ];
+  grid.setTile(0, 0, tile);
+
+  const plan = computeClearNaturalsPlan(grid);
+  const cmd = buildClearNaturalsCommand(grid, plan);
+  cmd.execute();
+  const after = grid.getTile(0, 0).props;
+  assert(after.length === 1, 'only structure remains, got: ' + after.length);
+  assert(after[0].type === 'S00001', 'structure survives');
+  cmd.undo();
+  const restored = grid.getTile(0, 0).props;
+  assert(restored.length === 3, 'all three restored');
+  assert(restored[0].type === 'P00001', 'idx 0 back');
+  assert(restored[1].type === 'S00001', 'idx 1 intact');
+  assert(restored[2].type === 'P01001', 'idx 2 back');
 });
 
 test('DeletePropCommand — execute and undo', () => {
