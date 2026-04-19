@@ -359,12 +359,19 @@ function _parseLegacyTile(tileJson) {
     }
   }
 
-  // B6: Legacy anomaly — handle both string and object form
+  // B6: Legacy anomaly — handle both string and object form.
+  // Anomalies are NEVER natural (Andre's rule: scatter doesn't emit
+  // them, Populate doesn't emit them, Clear must not wipe them).
+  // The 'anomaly' category string isn't in CATEGORIES, so
+  // CATEGORY_TO_INT resolves to 0, whose defaultOrigin is 'natural'
+  // — we override with an explicit non-natural origin here so the
+  // Clear command's origin=='natural' filter correctly preserves
+  // anomalies loaded from legacy map JSON.
   if (tileJson.anomaly) {
     const anomalyType = typeof tileJson.anomaly === 'string'
       ? tileJson.anomaly
       : (tileJson.anomaly.type || '');
-    props.push(createProp(anomalyType, 0, 0, 'anomaly'));
+    props.push(createProp(anomalyType, 0, 0, 'anomaly', { origin: 'crafted' }));
   }
 
   return props;

@@ -702,10 +702,21 @@ function _showPopulateDialog(initialReplace) {
 }
 
 /**
+ * Track the Clear modal's latest cleanup function so re-entrancy
+ * (user clicks Clear a second time before the first modal closes)
+ * can dispose the stale keydown listener before installing the new
+ * one. Without this, each re-open leaks another document-level
+ * listener for the lifetime of the tab.
+ * @type {(() => void) | null}
+ */
+let _clearModalCleanup = null;
+
+/**
  * Handle the "Clear" button — wipes every natural-origin prop from
  * the map in a single undoable batch. Gated by a confirmation modal
- * because it's destructive; player-crafted structures and anomalies
- * stay put (origin !== 'natural').
+ * because it's destructive; player-placed structures, anomalies
+ * (explicitly filtered via category), and anything with a non-natural
+ * origin stay put.
  * @returns {void}
  */
 function _clearNaturalProps() {
@@ -719,16 +730,25 @@ function _clearNaturalProps() {
     return;
   }
 
-  const existing = document.getElementById('clear-naturals-modal');
-  if (existing) existing.remove();
+  // Re-entrancy: dispose the previous modal (if any) via its own
+  // cleanup so the document-level keydown listener is removed before
+  // we install a new one.
+  if (_clearModalCleanup) {
+    try { _clearModalCleanup(); } catch (_e) { /* best-effort */ }
+    _clearModalCleanup = null;
+  }
 
   const overlay = document.createElement('div');
   overlay.id = 'clear-naturals-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'clear-naturals-modal-title');
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
   const dialog = document.createElement('div');
   dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:420px;max-width:560px;color:var(--text-primary);display:flex;flex-direction:column;gap:10px;';
 
   const title = document.createElement('div');
+  title.id = 'clear-naturals-modal-title';
   title.textContent = 'Clear Natural Props';
   title.style.cssText = 'font-size:15px;font-weight:600;';
   dialog.appendChild(title);
@@ -736,7 +756,18 @@ function _clearNaturalProps() {
   const hint = document.createElement('div');
   hint.classList.add('prop-hint');
   hint.style.fontSize = '12px';
-  hint.innerHTML = `This will remove <strong>${plan.removed.length}</strong> natural props from <strong>${plan.touchedTiles}</strong> tiles. Player-placed structures, equipment, and anomalies are preserved. Undoable via Ctrl+Z.`;
+  // textContent (not innerHTML) — values are safe integers but the
+  // defensive choice removes any marginal XSS surface as this file
+  // evolves.
+  const hintStrong1 = document.createElement('strong');
+  hintStrong1.textContent = String(plan.removed.length);
+  const hintStrong2 = document.createElement('strong');
+  hintStrong2.textContent = String(plan.touchedTiles);
+  hint.append(
+    'This will remove ', hintStrong1,
+    ' natural props from ', hintStrong2,
+    ' tiles. Player-placed structures, equipment, and anomalies are preserved (anomalies filtered by category, independent of origin). Undoable via Ctrl+Z.'
+  );
   dialog.appendChild(hint);
 
   const summary = document.createElement('pre');
@@ -759,20 +790,58 @@ function _clearNaturalProps() {
   const btnApply = document.createElement('button');
   btnApply.textContent = 'Clear';
   btnApply.classList.add('prop-btn-primary');
-  btnApply.style.background = '#7a3030';
+  btnApply.style.background = 'var(--danger, #7a3030)';
 
   const cleanup = () => {
     overlay.remove();
     document.removeEventListener('keydown', keyHandler);
+    overlay.removeEventListener('click', overlayClickHandler);
+    if (_clearModalCleanup === cleanup) _clearModalCleanup = null;
   };
-  const keyHandler = (e) => { if (e.key === 'Escape') cleanup(); };
+  // Swallow Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z inside the modal so
+  // the global KeyboardManager (document-level listener) doesn't
+  // fire undo/redo against the editor history while the user is
+  // looking at a destructive confirm dialog. Escape dismisses.
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      cleanup();
+      return;
+    }
+    const isUndoLike =
+      (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y');
+    if (isUndoLike) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  // Backdrop click dismisses — matches standard destructive-dialog UX.
+  const overlayClickHandler = (e) => {
+    if (e.target === overlay) cleanup();
+  };
+
   btnCancel.addEventListener('click', cleanup);
   btnApply.addEventListener('click', () => {
     const cmd = buildClearNaturalsCommand(hexGrid, plan);
     commandHistory.execute(cmd);
     dirtyTracker.markDirty('map');
-    if (hexCanvas) hexCanvas.requestRender();
-    if (hexInspector) hexInspector.updateMapStats();
+    // Invalidate stale prop selection — if the user had a natural
+    // prop selected, its propIndex now points to nothing or shifts to
+    // a surviving prop. Clearing avoids a misleading highlight.
+    if (hexCanvas) {
+      hexCanvas.selectedProp = null;
+      hexCanvas.requestRender();
+    }
+    if (hexInspector) {
+      hexInspector.updateMapStats();
+      // Refresh the current hex details / prop editor panel so the
+      // just-deleted props disappear from the sidebar, not just the
+      // canvas.
+      if (typeof hexInspector._refreshCurrentHex === 'function') {
+        hexInspector._refreshCurrentHex();
+      }
+    }
     setStatus(`Cleared ${plan.removed.length} natural props across ${plan.touchedTiles} tiles.`);
     cleanup();
   });
@@ -782,7 +851,9 @@ function _clearNaturalProps() {
 
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
-  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', keyHandler, true);  // capture so we beat KeyboardManager
+  overlay.addEventListener('click', overlayClickHandler);
+  _clearModalCleanup = cleanup;
   btnCancel.focus();  // focus Cancel by default — this is destructive
 }
 

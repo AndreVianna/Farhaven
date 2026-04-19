@@ -490,6 +490,10 @@ export function computeClearNaturalsPlan(grid) {
     const { q, r } = _parseKey(key);
     for (let i = 0; i < existing.length; i++) {
       const p = existing[i];
+      // Andre's rule: anomalies are NEVER natural. The legacy JSON
+      // loader now tags them origin='crafted', but defend here too in
+      // case a map saved with the old loader is still in memory.
+      if (p.category === 'anomaly') continue;
       const originIsNatural = (typeof p.origin === 'string' && p.origin === 'natural')
         || (typeof p.origin === 'number' && p.origin === 0);
       if (!originIsNatural) continue;
