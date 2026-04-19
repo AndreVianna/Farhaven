@@ -577,7 +577,7 @@ export function renderBiomeEditor(container, options) {
 
     // ── Error area ──
     const errorArea = document.createElement('div');
-    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:var(--bg-error);border-bottom:1px solid var(--line-error);color:var(--text-error);font-size:12px;';
     form.appendChild(errorArea);
 
     // ── Biome header (id + display_name + elevation min/max on one row) ──

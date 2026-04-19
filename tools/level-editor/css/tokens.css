@@ -1,0 +1,86 @@
+/* ==========================================================================
+   Farhaven Editor — Design Tokens (Phase 1)
+   Ported from temp/Farhaven Editor/editor.css:5-55
+   ========================================================================== */
+
+:root {
+  /* Neutral graphite scale */
+  --bg-0: #0f1014;        /* darkest — app background */
+  --bg-1: #15171d;        /* panel */
+  --bg-2: #1c1f27;        /* card / input */
+  --bg-3: #262a35;        /* hover */
+  --bg-4: #333847;        /* active */
+
+  --line:   #22252e;      /* hairline borders */
+  --line-2: #2d313c;      /* stronger borders */
+
+  /* Text scale */
+  --text-0: #e8eaf0;      /* primary */
+  --text-1: #a5a9b5;      /* secondary */
+  --text-2: #6d7280;      /* tertiary / labels */
+  --text-3: #4a4e58;      /* disabled */
+
+  /* Accents — warm from Farhaven game palette */
+  --amber:     #f4a261;
+  --amber-dim: #b97a47;
+  --amber-bg:  rgba(244, 162, 97, 0.14);   /* matches runtime (app.jsx:189) */
+
+  --blue:   #5bb5e0;
+  --green:  #7ec886;
+  --red:    #e07b7b;
+  --gold:   #f0d060;
+  --violet: #a88bd9;
+
+  --accent:    var(--amber);
+  --accent-bg: var(--amber-bg);
+
+  /* State — error / warning banners used across editors */
+  --bg-error:   #4a1c1c;
+  --line-error: #7a3030;
+  --text-error: #ff9999;
+
+  /* Biome colors — lifted from .tres files */
+  --biome-crash:  #8b7355;
+  --biome-grass:  #66bf4d;
+  --biome-forest: #2d8b46;
+  --biome-rocky:  #9e8b78;
+  --biome-water:  #4a9bd9;
+  --biome-desert: #d4b269;
+  --biome-ash:    #4b4852;
+  --biome-tundra: #c8d2dc;
+
+  /* Metrics */
+  --radius:     4px;
+  --radius-lg:  6px;
+  --h-titlebar: 36px;
+  --h-tabs:     34px;
+  --h-status:   24px;
+  --w-tabrail:  52px;
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* --------------------------------------------------------------
+     LEGACY ALIASES — keep the current editor's CSS working while
+     the shell + master-detail rewrite lands in Phases 2 & 3.
+     Delete once no selector references these names.
+     -------------------------------------------------------------- */
+  --bg-primary:    var(--bg-0);
+  --bg-secondary:  var(--bg-1);
+  --bg-tertiary:   var(--bg-2);
+  --text-primary:  var(--text-0);
+  --text-secondary: var(--text-1);
+  --accent-hover:  var(--amber-dim);
+  --danger:        var(--red);
+  --warning:       var(--gold);
+  --success:       var(--green);
+  --border:        var(--line-2);
+  --tab-active:    var(--bg-3);
+  --tab-hover:     var(--bg-2);
+}
+
+/* Accent swap via data attribute (nice-to-have: tweaks panel) */
+[data-accent="blue"]   { --accent: var(--blue);   --accent-bg: rgba( 91,181,224,0.14); }
+[data-accent="green"]  { --accent: var(--green);  --accent-bg: rgba(126,200,134,0.14); }
+[data-accent="violet"] { --accent: var(--violet); --accent-bg: rgba(168,139,217,0.14); }

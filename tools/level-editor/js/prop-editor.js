@@ -1891,7 +1891,7 @@ export function renderPropEditor(container, options) {
 
     // --- Error area ---
     const errorArea = document.createElement('div');
-    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:var(--bg-error);border:1px solid var(--line-error);border-radius:4px;color:var(--text-error);font-size:12px;';
     form.appendChild(errorArea);
 
     // --- Gear base-fields header (2-col: id/name/short | long) ---
