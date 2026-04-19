@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=19 format=3 uid="uid://cgrassland001"]
+[gd_resource type="Resource" script_class="BiomeData" load_steps=18 format=3 uid="uid://cgrassland001"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Texture2D" uid="uid://crsw2irl6c12" path="res://assets/textures/biomes/B00002_grassland_1.png" id="2_tex1"]
@@ -12,73 +12,78 @@ script = ExtResource("6_biome_prop")
 prop_id = &"P01001"
 frequency = 0.03
 grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
 
 [sub_resource type="Resource" id="biome_prop_2"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P01002"
 frequency = 0.1
 grouping_range = Vector2i(1, 3)
+elevation_range = Vector2i(-100, 100)
 
 [sub_resource type="Resource" id="biome_prop_3"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P01003"
 frequency = 0.05
 grouping_range = Vector2i(1, 2)
+elevation_range = Vector2i(-100, 100)
 
 [sub_resource type="Resource" id="biome_prop_4"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P01004"
 frequency = 0.2
 grouping_range = Vector2i(1, 2)
+elevation_range = Vector2i(-100, 100)
 near_biomes = Array[StringName]([&"B00005"])
 
 [sub_resource type="Resource" id="biome_prop_5"]
 script = ExtResource("6_biome_prop")
-prop_id = &"P01005"
-frequency = 0.02
-grouping_range = Vector2i(1, 1)
-
-[sub_resource type="Resource" id="biome_prop_6"]
-script = ExtResource("6_biome_prop")
 prop_id = &"P00001"
 frequency = 0.5
 grouping_range = Vector2i(1, 3)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_7"]
+[sub_resource type="Resource" id="biome_prop_6"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00002"
 frequency = 0.3
 grouping_range = Vector2i(1, 2)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_8"]
+[sub_resource type="Resource" id="biome_prop_7"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00003"
 frequency = 0.15
 grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_9"]
+[sub_resource type="Resource" id="biome_prop_8"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00004"
 frequency = 0.1
 grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_10"]
+[sub_resource type="Resource" id="biome_prop_9"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00005"
 frequency = 0.15
 grouping_range = Vector2i(1, 2)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_11"]
+[sub_resource type="Resource" id="biome_prop_10"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00006"
 frequency = 0.2
 grouping_range = Vector2i(1, 2)
+elevation_range = Vector2i(-100, 100)
 
-[sub_resource type="Resource" id="biome_prop_12"]
+[sub_resource type="Resource" id="biome_prop_11"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00007"
 frequency = 0.15
 grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
 
 [resource]
 script = ExtResource("1_biome")
@@ -87,5 +92,5 @@ display_name = "Grassland"
 short_description = "Open plains of tall grass and low brush."
 long_description = "Wide meadows broken by stands of fiber-rich grass. Easy to cross, easy to spot what is around you, easy to be spotted in turn. Small fauna graze here and watch from a careful distance."
 color = Color(0.4, 0.7490196078431373, 0.30196078431372547, 1.0)
-natural_props = Array[Resource]([SubResource("biome_prop_1"), SubResource("biome_prop_2"), SubResource("biome_prop_3"), SubResource("biome_prop_4"), SubResource("biome_prop_5"), SubResource("biome_prop_6"), SubResource("biome_prop_7"), SubResource("biome_prop_8"), SubResource("biome_prop_9"), SubResource("biome_prop_10"), SubResource("biome_prop_11"), SubResource("biome_prop_12")])
+natural_props = Array[Resource]([SubResource("biome_prop_1"), SubResource("biome_prop_2"), SubResource("biome_prop_3"), SubResource("biome_prop_4"), SubResource("biome_prop_5"), SubResource("biome_prop_6"), SubResource("biome_prop_7"), SubResource("biome_prop_8"), SubResource("biome_prop_9"), SubResource("biome_prop_10"), SubResource("biome_prop_11")])
 terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4")]
