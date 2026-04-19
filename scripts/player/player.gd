@@ -1,7 +1,11 @@
-extends Node3D
+extends CharacterBody3D
 
 ## Player — continuous joystick movement, derived current_tile, tile transitions.
-## Uses Node3D with per-frame position updates (not CharacterBody3D).
+## Uses CharacterBody3D with motion_mode=FLOATING (no gravity); movement is
+## driven by move_and_slide() for XZ-plane prop collision, while Y is
+## slaved to the hex terrain / jump tweens like before. Switched from
+## Node3D on 2026-04-19 so natural-prop StaticBody3D bodies (task #109)
+## actually block the player instead of being phased through.
 ## current_tile is derived from HexMath.world_to_axial(position), not set directly.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
@@ -401,27 +405,41 @@ func _process_walking(delta: float) -> void:
 			survival_start.start_activity_drain(&"moving")
 	_was_moving = is_moving
 
-	var movement := Vector3(velocity_2d.x, 0.0, velocity_2d.y) * delta
+	# Hex-level decision first: does the INTENDED step cross into a tile
+	# that requires a jump, is blocked by terrain, or is just a normal
+	# WALK? We base this on the *desired* displacement, before any
+	# prop-collision slide, because jump/drop is a discrete animation
+	# that shouldn't be triggered by a prop body nudging us sideways.
+	var delta_step := Vector3(velocity_2d.x, 0.0, velocity_2d.y) * delta
+	var desired_pos_2d := Vector2(position.x + delta_step.x, position.z + delta_step.z)
+	var candidate_tile: Vector2i = _HexMath.world_to_axial(desired_pos_2d)
+	var old_walk_tile: Vector2i = current_tile
 
-	var new_pos: Vector3 = position + movement
-	var new_pos_2d := Vector2(new_pos.x, new_pos.z)
-	var candidate_tile: Vector2i = _HexMath.world_to_axial(new_pos_2d)
-
-	if candidate_tile != current_tile:
-		var traversal: int = _grid.get_traversal(current_tile, candidate_tile)
+	if candidate_tile != old_walk_tile:
+		var traversal: int = _grid.get_traversal(old_walk_tile, candidate_tile)
 		match traversal:
-			_grid.TraversalType.WALK:
-				position = new_pos
-				var old_walk_tile: Vector2i = current_tile
-				_update_elevation_y_interpolated(new_pos_2d, old_walk_tile, candidate_tile)
-				_emit_tile_transition(old_walk_tile, candidate_tile)
 			_grid.TraversalType.JUMP, _grid.TraversalType.DROP:
 				_start_jump(candidate_tile, traversal)
+				return
 			_grid.TraversalType.BLOCKED:
 				_slide_along_boundary(velocity_2d, delta)
-	else:
-		position = new_pos
-		_update_elevation_y_same_tile()
+				return
+			# _grid.TraversalType.WALK falls through to move_and_slide below.
+
+	# WALK or same-tile: drive the CharacterBody3D through move_and_slide
+	# so natural-prop StaticBody3Ds block / redirect us as authored. XZ
+	# only — Y stays slaved to terrain.
+	velocity = Vector3(velocity_2d.x, 0.0, velocity_2d.y)
+	move_and_slide()
+	position.y = _grid.get_terrain_y(position.x, position.z)
+
+	# Recompute current_tile from the *actual* final position (a prop
+	# body may have kept us in the old tile even though the desired step
+	# crossed the border). Only emit the transition if we really landed
+	# on a different tile.
+	var final_tile: Vector2i = _HexMath.world_to_axial(Vector2(position.x, position.z))
+	if final_tile != old_walk_tile:
+		_emit_tile_transition(old_walk_tile, final_tile)
 
 
 ## Update Y from curved terrain at current XZ position.
