@@ -143,25 +143,42 @@ static func _build_one_scaled(cs: _CollisionShape, effective_scale: float) -> Co
 	var node := CollisionShape3D.new()
 	var shape: Shape3D = null
 	var size: Vector3 = cs.size
+	# Match _build_one's authoring-error diagnostics so the scaled path
+	# isn't silent when a .tres has NaN / non-positive shape dimensions.
+	# If the scatter path dropped these warnings, authors would see tiny
+	# or missing collision bodies with no indication why.
 	match cs.shape_type:
 		&"box":
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper(scaled): box size.x %s clamped to 0.01 — likely an authoring error" % size.x)
+			if is_nan(size.y) or size.y <= 0.0:
+				push_warning("CollisionHelper(scaled): box size.y %s clamped to 0.01 — likely an authoring error" % size.y)
+			if is_nan(size.z) or size.z <= 0.0:
+				push_warning("CollisionHelper(scaled): box size.z %s clamped to 0.01 — likely an authoring error" % size.z)
 			var box := BoxShape3D.new()
 			box.size = Vector3(
-				maxf(size.x * effective_scale, 0.01),
-				maxf(size.y * effective_scale, 0.01),
-				maxf(size.z * effective_scale, 0.01),
+				0.01 if is_nan(size.x) else maxf(size.x * effective_scale, 0.01),
+				0.01 if is_nan(size.y) else maxf(size.y * effective_scale, 0.01),
+				0.01 if is_nan(size.z) else maxf(size.z * effective_scale, 0.01),
 			)
 			shape = box
 		&"cylinder":
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper(scaled): cylinder radius %s clamped to 0.01 — likely an authoring error" % size.x)
+			if is_nan(size.y) or size.y <= 0.0:
+				push_warning("CollisionHelper(scaled): cylinder height %s clamped to 0.01 — likely an authoring error" % size.y)
 			var cyl := CylinderShape3D.new()
-			cyl.radius = maxf(size.x * effective_scale, 0.01)
-			cyl.height = maxf(size.y * effective_scale, 0.01)
+			cyl.radius = 0.01 if is_nan(size.x) else maxf(size.x * effective_scale, 0.01)
+			cyl.height = 0.01 if is_nan(size.y) else maxf(size.y * effective_scale, 0.01)
 			shape = cyl
 		&"sphere":
+			if is_nan(size.x) or size.x <= 0.0:
+				push_warning("CollisionHelper(scaled): sphere radius %s clamped to 0.01 — likely an authoring error" % size.x)
 			var sph := SphereShape3D.new()
-			sph.radius = maxf(size.x * effective_scale, 0.01)
+			sph.radius = 0.01 if is_nan(size.x) else maxf(size.x * effective_scale, 0.01)
 			shape = sph
 		_:
+			push_warning("CollisionHelper(scaled): unknown shape_type %s — skipping" % cs.shape_type)
 			return null
 	node.shape = shape
 	node.position = cs.offset * effective_scale

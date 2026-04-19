@@ -134,6 +134,16 @@ var _collision_bodies: Dictionary = {}
 ## Created on first use.
 var _collision_root: Node3D = null
 
+## Per-stream-event memo for `_compute_prop_scatter` results. Cleared
+## at the top of every streaming entry point (_stream_around and
+## _stream_collision_around) so the visual + collision paths share
+## one scatter computation per (coords, sub_hex, prop_type) within
+## the same stream cycle. Deterministic seed guarantees the cached
+## and uncached values are identical; the cache exists solely to
+## dedupe the ~30 µs per-call cost that otherwise runs twice for
+## every tile inside both windows.
+var _scatter_cache: Dictionary = {}
+
 ## Player node — source of the `player_moved` signal that drives
 ## streaming. Late-bound via `_connect_player_signals` because the
 ## Player is a sibling of this renderer in the scene tree and isn't
@@ -492,6 +502,7 @@ func _connect_player_signals() -> void:
 	# stream never touched.
 	if "current_tile" in _player:
 		_stream_around(_player.current_tile)
+		_stream_collision_around(_player.current_tile)
 
 
 ## Set the view-distance radius and restream. Called from main.gd
@@ -509,13 +520,19 @@ func set_stream_radius(radius: int) -> void:
 	_stream_around(_get_streaming_anchor())
 
 
-## Update collision streaming radius. Clamped to [0, 60]; 0 disables
-## collision streaming (all bodies freed, no new ones emitted). Not
-## folded into the unlimited-mode semantics of set_stream_radius —
-## unlimited collision would spawn a StaticBody3D per scattered prop
-## on every tile, which the PhysicsServer can't scale to.
+## Update collision streaming radius. 0 disables collision streaming
+## entirely (test / debug escape hatch); otherwise clamped to the same
+## range the GameSettings field exposes, [3, 30], so engine-side and
+## editor-side agree. Unlimited collision would spawn a StaticBody3D
+## per scattered prop on every tile, which the PhysicsServer can't
+## scale to — there is deliberately no "0 = unlimited" parallel with
+## set_stream_radius.
 func set_collision_radius(radius: int) -> void:
-	var clamped: int = clampi(radius, 0, 60)
+	var clamped: int
+	if radius <= 0:
+		clamped = 0
+	else:
+		clamped = clampi(radius, 3, 30)
 	if clamped == _collision_radius:
 		return
 	_collision_radius = clamped
@@ -556,6 +573,9 @@ func _on_map_generated() -> void:
 	# have a current_tile yet on first map generation; once the
 	# player_moved signal fires, _on_player_moved rebases around the
 	# real player position.
+	# Clear the per-cycle scatter memo so visual + collision share one
+	# compute per (coords, sub_hex, type) within this event.
+	_scatter_cache.clear()
 	var anchor: Vector2i = _get_streaming_anchor()
 	_stream_around(anchor)
 	_stream_collision_around(anchor)
@@ -570,6 +590,8 @@ func _on_player_moved(from: Vector2i, to: Vector2i) -> void:
 	# a defensive guard keeps re-ready scenarios cheap.
 	if from == to and _streamed_tiles.size() > 0:
 		return
+	# Per-cycle memo reset; see _on_map_generated for rationale.
+	_scatter_cache.clear()
 	_stream_around(to)
 	_stream_collision_around(to)
 
@@ -780,6 +802,15 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 ## per-copy scale_jitter → per-copy rotation), and replicating that
 ## order in two places is a desync waiting to happen.
 func _compute_prop_scatter(coords: Vector2i, rn: Resource, def: Resource) -> Array:
+	# Per-stream memo lookup — same (coords, sub_hex, prop_type) inside
+	# the same _stream_*_around cycle reuses the first-computed Array
+	# instead of recomputing (~30 µs saved per hit).
+	var cache_key := "%d,%d:%d,%d:%s" % [
+		coords.x, coords.y, rn.sub_hex.x, rn.sub_hex.y, String(rn.type)
+	]
+	if _scatter_cache.has(cache_key):
+		return _scatter_cache[cache_key]
+
 	var out: Array = []
 
 	# Resolve scatter preset from PlaceableCap.placement (feature-011):
@@ -890,6 +921,7 @@ func _compute_prop_scatter(coords: Vector2i, rn: Resource, def: Resource) -> Arr
 			"y_offset": y_off,
 			"is_center": is_center,
 		})
+	_scatter_cache[cache_key] = out
 	return out
 
 
@@ -1016,17 +1048,26 @@ func _build_collision_for_tile(coords: Vector2i) -> void:
 		if shapes == null or shapes.is_empty():
 			continue  # walkthrough prop — skip scatter compute entirely
 		var scatter: Array = _compute_prop_scatter(coords, prop, def)
-		for s in scatter:
+		for i in scatter.size():
+			var s: Dictionary = scatter[i]
 			var copy_scale: float = s["copy_scale"]
 			var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_scaled_collision_shapes(def, copy_scale)
 			if collision_nodes.is_empty():
 				continue  # all shapes below threshold at this scale
 			var body := StaticBody3D.new()
+			# Use the loop index (stable, unique) rather than scatter.find(s),
+			# which was both O(N²) and aliased on duplicate-valued dicts.
 			body.name = "PropCollision_%s_%d_%d_%d" % [
-				String(prop.type), prop.sub_hex.x, prop.sub_hex.y, scatter.find(s)
+				String(prop.type), prop.sub_hex.x, prop.sub_hex.y, i
 			]
 			var ground: Vector3 = s["ground_position"]
-			body.position = ground
+			var y_off: float = s["y_offset"]
+			# Mirror the visual's y_off * copy_scale lift so collision
+			# geometry sits at the same anchor as the MultiMesh instance.
+			# Authored CollisionShape offsets are in mesh-local coords; if
+			# a mesh is modeled with its origin at center instead of bottom,
+			# skipping this lift would bury the shape under the terrain.
+			body.position = Vector3(ground.x, ground.y + y_off * copy_scale, ground.z)
 			body.rotation.y = deg_to_rad(s["rotation_deg"])
 			for cs_node in collision_nodes:
 				body.add_child(cs_node)
