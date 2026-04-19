@@ -23,7 +23,7 @@ import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
 import { showGeneratorDialog, generateMap } from './map-generator.js';
-import { computePopulatePlan, buildPopulateCommand } from './populate.js';
+import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './populate.js';
 
 // ============================================================
 // Module-level state
@@ -701,6 +701,91 @@ function _showPopulateDialog(initialReplace) {
   btnApply.focus();
 }
 
+/**
+ * Handle the "Clear" button — wipes every natural-origin prop from
+ * the map in a single undoable batch. Gated by a confirmation modal
+ * because it's destructive; player-crafted structures and anomalies
+ * stay put (origin !== 'natural').
+ * @returns {void}
+ */
+function _clearNaturalProps() {
+  if (!hexGrid || hexGrid.tiles.size === 0) {
+    setStatus('Clear — no map loaded.');
+    return;
+  }
+  const plan = computeClearNaturalsPlan(hexGrid);
+  if (plan.removed.length === 0) {
+    setStatus('Clear — no natural props to remove.');
+    return;
+  }
+
+  const existing = document.getElementById('clear-naturals-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'clear-naturals-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:420px;max-width:560px;color:var(--text-primary);display:flex;flex-direction:column;gap:10px;';
+
+  const title = document.createElement('div');
+  title.textContent = 'Clear Natural Props';
+  title.style.cssText = 'font-size:15px;font-weight:600;';
+  dialog.appendChild(title);
+
+  const hint = document.createElement('div');
+  hint.classList.add('prop-hint');
+  hint.style.fontSize = '12px';
+  hint.innerHTML = `This will remove <strong>${plan.removed.length}</strong> natural props from <strong>${plan.touchedTiles}</strong> tiles. Player-placed structures, equipment, and anomalies are preserved. Undoable via Ctrl+Z.`;
+  dialog.appendChild(hint);
+
+  const summary = document.createElement('pre');
+  summary.style.cssText = 'background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:8px;margin:0;font-family:monospace;font-size:12px;max-height:260px;overflow:auto;white-space:pre-wrap;';
+  const lines = [];
+  lines.push(`tiles touched: ${plan.touchedTiles}`);
+  lines.push(`props removed: ${plan.removed.length}`);
+  lines.push('');
+  lines.push('by type:');
+  const sortedTypes = [...plan.countByType.entries()].sort((a, b) => b[1] - a[1]);
+  for (const [type, n] of sortedTypes) lines.push(`  ${type.padEnd(10)} ${n}`);
+  summary.textContent = lines.join('\n');
+  dialog.appendChild(summary);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:4px;';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.classList.add('prop-btn');
+  const btnApply = document.createElement('button');
+  btnApply.textContent = 'Clear';
+  btnApply.classList.add('prop-btn-primary');
+  btnApply.style.background = '#7a3030';
+
+  const cleanup = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  };
+  const keyHandler = (e) => { if (e.key === 'Escape') cleanup(); };
+  btnCancel.addEventListener('click', cleanup);
+  btnApply.addEventListener('click', () => {
+    const cmd = buildClearNaturalsCommand(hexGrid, plan);
+    commandHistory.execute(cmd);
+    dirtyTracker.markDirty('map');
+    if (hexCanvas) hexCanvas.requestRender();
+    if (hexInspector) hexInspector.updateMapStats();
+    setStatus(`Cleared ${plan.removed.length} natural props across ${plan.touchedTiles} tiles.`);
+    cleanup();
+  });
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnApply);
+  dialog.appendChild(btnRow);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', keyHandler);
+  btnCancel.focus();  // focus Cancel by default — this is destructive
+}
+
 // ============================================================
 // Save Functions (task-005)
 // ============================================================
@@ -804,6 +889,8 @@ const btnGenerateMap = document.getElementById('btn-generate-map');
 if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
 const btnPopulateMap = document.getElementById('btn-populate-map');
 if (btnPopulateMap) btnPopulateMap.addEventListener('click', () => _populateMap());
+const btnClearProps = document.getElementById('btn-clear-props');
+if (btnClearProps) btnClearProps.addEventListener('click', () => _clearNaturalProps());
 const btnDeleteMap = document.getElementById('btn-delete-map');
 if (btnDeleteMap) btnDeleteMap.addEventListener('click', () => _deleteCurrentMap());
 

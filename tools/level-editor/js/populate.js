@@ -456,3 +456,74 @@ function _parseKey(key) {
   const [qs, rs] = key.split(',');
   return { q: parseInt(qs, 10), r: parseInt(rs, 10) };
 }
+
+/**
+ * @typedef {Object} ClearNaturalsPlan
+ * @property {Array<{q:number,r:number,propIndex:number,prop:Object}>} removed
+ * @property {Map<string, number>} countByType  — prop_id → count removed
+ * @property {number} touchedTiles              — unique tiles with removals
+ */
+
+/**
+ * Walk every tile and build a plan that removes ALL natural-origin
+ * props (origin === 'natural' OR origin === 0). Player-crafted
+ * structures, anomalies, and equipment stay put — the origin check
+ * is the sole filter. Does not mutate the grid; consumer passes
+ * the plan to buildClearNaturalsCommand().
+ *
+ * Mirrors the "replace" branch inside computePopulatePlan, minus the
+ * add sweep. Kept as a standalone function so the Clear button can
+ * ship without coupling its UI to the populate dialog.
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @returns {ClearNaturalsPlan}
+ */
+export function computeClearNaturalsPlan(grid) {
+  /** @type {ClearNaturalsPlan['removed']} */
+  const removed = [];
+  /** @type {Map<string, number>} */
+  const countByType = new Map();
+  const touchedTiles = new Set();
+
+  for (const [key, tile] of grid.getAllTiles()) {
+    const existing = Array.isArray(tile.props) ? tile.props : [];
+    if (existing.length === 0) continue;
+    const { q, r } = _parseKey(key);
+    for (let i = 0; i < existing.length; i++) {
+      const p = existing[i];
+      const originIsNatural = (typeof p.origin === 'string' && p.origin === 'natural')
+        || (typeof p.origin === 'number' && p.origin === 0);
+      if (!originIsNatural) continue;
+      removed.push({ q, r, propIndex: i, prop: p });
+      touchedTiles.add(key);
+      const t = p.type || '(unknown)';
+      countByType.set(t, (countByType.get(t) || 0) + 1);
+    }
+  }
+
+  return { removed, countByType, touchedTiles: touchedTiles.size };
+}
+
+/**
+ * Convert a ClearNaturalsPlan into a BatchCommand that removes every
+ * planned prop. Removes are emitted in descending (tile, propIndex)
+ * order so splicing indices stay valid during execute, and undo
+ * restores each prop to its original slot.
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {ClearNaturalsPlan} plan
+ * @returns {BatchCommand}
+ */
+export function buildClearNaturalsCommand(grid, plan) {
+  const commands = [];
+  const sorted = [...plan.removed].sort((a, b) => {
+    const ka = `${a.q},${a.r}`;
+    const kb = `${b.q},${b.r}`;
+    if (ka !== kb) return ka < kb ? -1 : 1;
+    return b.propIndex - a.propIndex;
+  });
+  for (const rem of sorted) {
+    commands.push(new DeletePropCommand(grid, rem.q, rem.r, rem.propIndex, rem.prop));
+  }
+  const batch = new BatchCommand(commands);
+  batch.type = 'ClearNaturals';
+  return batch;
+}
