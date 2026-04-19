@@ -10,6 +10,7 @@ extends Node3D
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
 const _PlacementPreset = preload("res://scripts/data/capabilities/placement_preset.gd")
+const _CollisionHelper = preload("res://scripts/core/collision_helper.gd")
 
 # --- Constants ---
 
@@ -54,6 +55,16 @@ const DEFAULT_STREAM_RADIUS: int = 20
 ## main bootstrap or a future settings menu can retune without
 ## touching the renderer's internals.
 var _stream_radius: int = DEFAULT_STREAM_RADIUS
+
+## Default collision streaming radius used before GameSettings loads.
+## Overridden by set_collision_radius() from main._apply_render_settings.
+## Smaller than render radius on purpose: MultiMesh draws are cheap, a
+## StaticBody3D per scattered prop is not. 0 disables collision streaming
+## entirely (useful for tests, debug, or "feather-light" modes).
+const DEFAULT_COLLISION_RADIUS: int = 8
+
+## Active collision streaming radius.
+var _collision_radius: int = DEFAULT_COLLISION_RADIUS
 
 ## Per-pool frustum-cull AABB. Godot's default MultiMeshInstance3D
 ## bounding box is derived from the mesh, not the live instance
@@ -111,6 +122,17 @@ var _grid: Node = null
 ## we can diff against `STREAM_RADIUS` as the player moves and only
 ## touch the add/remove delta instead of re-sweeping the whole map.
 var _streamed_tiles: Dictionary = {}
+
+## Tile coords → Array[StaticBody3D] holding every collision body emitted
+## for the scattered natural props on that tile. Parallel to but
+## independent of `_tile_entries` (visual MultiMesh) because the
+## collision window may be much smaller than the render window.
+var _collision_bodies: Dictionary = {}
+
+## Container Node3D that parents all StaticBody3D collision bodies so
+## PropRenderer's immediate children stay clean (just the MMI pools).
+## Created on first use.
+var _collision_root: Node3D = null
 
 ## Player node — source of the `player_moved` signal that drives
 ## streaming. Late-bound via `_connect_player_signals` because the
@@ -487,6 +509,19 @@ func set_stream_radius(radius: int) -> void:
 	_stream_around(_get_streaming_anchor())
 
 
+## Update collision streaming radius. Clamped to [0, 60]; 0 disables
+## collision streaming (all bodies freed, no new ones emitted). Not
+## folded into the unlimited-mode semantics of set_stream_radius —
+## unlimited collision would spawn a StaticBody3D per scattered prop
+## on every tile, which the PhysicsServer can't scale to.
+func set_collision_radius(radius: int) -> void:
+	var clamped: int = clampi(radius, 0, 60)
+	if clamped == _collision_radius:
+		return
+	_collision_radius = clamped
+	_stream_collision_around(_get_streaming_anchor())
+
+
 ## Sibling lookup for the Player node. World.tscn puts Player as a
 ## direct child of the same parent that hosts this renderer; fall
 ## back to a tree search if the project layout ever changes.
@@ -523,6 +558,7 @@ func _on_map_generated() -> void:
 	# real player position.
 	var anchor: Vector2i = _get_streaming_anchor()
 	_stream_around(anchor)
+	_stream_collision_around(anchor)
 	# Deferred pool dump — landing in the output a frame later so all
 	# instance adds inside _stream_around have settled. Lets Andre see
 	# which pools got populated without hunting through the scene tree.
@@ -535,6 +571,7 @@ func _on_player_moved(from: Vector2i, to: Vector2i) -> void:
 	if from == to and _streamed_tiles.size() > 0:
 		return
 	_stream_around(to)
+	_stream_collision_around(to)
 
 
 func _on_prop_depleted(coords: Vector2i, prop_type: StringName) -> void:
@@ -677,59 +714,10 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dimmed: bool, depleted: bool) -> void:
 	if not _pools.has(pool_id):
 		return
-
-	# --- Resolve scatter preset from PlaceableCap.placement (feature-011) ---
-	# Effective placement = Prop.placement_override, then
-	# PropDef.placeable.placement, then SINGLE (default). Ignore overrides
-	# for non-SINGLE presets — the spec says per-instance variant / scale
-	# / rotation overrides only apply when the preset resolves to SINGLE,
-	# because distributing copies with a pinned center breaks the
-	# visual illusion.
 	var def: Resource = PropRegistry.get_def(rn.type) if PropRegistry.has_def(rn.type) else null
-	var effective_placement: int = _PlacementPreset.Preset.SINGLE
-	if rn.placement_override >= 0:
-		effective_placement = rn.placement_override
-	elif def != null and def.placeable != null:
-		effective_placement = def.placeable.placement
-	var preset_count: int = _PlacementPreset.get_count(effective_placement)
-	var sibling_scale: float = _PlacementPreset.get_sibling_scale(effective_placement)
-	var supports_overrides: bool = _PlacementPreset.supports_instance_overrides(effective_placement)
-
-	# --- Seeded RNG: deterministic per (tile, sub_hex, prop_type) ---
-	# Same prop in the same cell of the same map always renders identical
-	# scatter layout / variants / jitter across reloads.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = _compute_scatter_seed(coords, rn.sub_hex, rn.type)
-
-	# --- Actual instance count with ±2 jitter, clamped to [1, 19] ---
-	var actual_count: int = preset_count
-	if preset_count > 1:
-		actual_count = clampi(preset_count + rng.randi_range(-2, 2), 1, 19)
-
-	# --- SSH positions: center (0) plus (actual_count - 1) chosen from the
-	# remaining 18 via seeded Fisher-Yates partial shuffle. ---
-	var ssh_positions: Array[Vector2i] = _select_ssh_positions(rng, actual_count)
-
-	# --- Shared tile/elevation context ---
-	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
-	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
-	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
-	var center_wx: float = world_2d.x + sub_hex_offset.x
-	var center_wz: float = world_2d.y + sub_hex_offset.y
-
-	# --- Emit one MultiMesh instance per SSH position ---
-	var variant_count: int = _get_variant_count(pool_id)
-	for i in ssh_positions.size():
-		var ssh: Vector2i = ssh_positions[i]
-		var is_center: bool = (i == 0)
-
-		# Variant: SINGLE + override → pin. Otherwise seeded random.
-		var variant_idx: int
-		if is_center and supports_overrides and rn.has_variant_override():
-			variant_idx = clampi(rn.variant_override, 0, max(variant_count - 1, 0))
-		else:
-			variant_idx = rng.randi_range(0, max(variant_count - 1, 0))
-
+	var scatter: Array = _compute_prop_scatter(coords, rn, def)
+	for s in scatter:
+		var variant_idx: int = s["variant_idx"]
 		var mmi: MultiMeshInstance3D = _get_pool_for_variant(pool_id, variant_idx)
 		if mmi == null:
 			continue
@@ -738,60 +726,14 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 		if not _ensure_pool_capacity(mm, idx + 1):
 			continue
 
-		# Y offset + base scale from the variant's AABB / authored scale.
-		var variant_offsets: Array = _variant_y_offsets.get(pool_id, [])
-		var y_off: float = variant_offsets[variant_idx] if variant_idx < variant_offsets.size() else _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
-		var variant_scales_arr: Array = _variant_scales.get(pool_id, [])
-		var variant_scale: float = variant_scales_arr[variant_idx] if variant_idx < variant_scales_arr.size() else 1.0
-
-		# Per-copy scale: 0.85..1.15 jitter, then sibling_scale for non-center.
-		var scale_jitter: float = rng.randf_range(0.85, 1.15)
-		var copy_scale: float
-		if is_center and supports_overrides and rn.has_scale_override():
-			copy_scale = rn.scale_override
-		else:
-			copy_scale = variant_scale * scale_jitter
-			if not is_center:
-				copy_scale *= sibling_scale
-			# Floor to keep tiny authored scales from falling below the
-			# GPU's sub-pixel threshold at mid-range camera distance.
-			# Author overrides skip the floor so "explicitly tiny" still
-			# works for pinned instances.
-			if copy_scale < MIN_RENDER_SCALE:
-				copy_scale = MIN_RENDER_SCALE
-
-		# Rotation:
-		#  - SINGLE center + explicit rotation_override ≥ 0 → override
-		#  - SINGLE center without override → authored rotation_deg
-		#    (0.0 = face north, which IS an intentional value; the
-		#    pre-feature-011 code applied rotation_deg unconditionally,
-		#    so a legacy save with rotation_deg=0.0 means "face north,"
-		#    not "never set").
-		#  - Scatter siblings / non-center / non-SINGLE → 0-360° seeded.
-		var rotation_deg: float
-		if is_center and supports_overrides and rn.has_rotation_override():
-			rotation_deg = rn.rotation_override
-		elif is_center and supports_overrides:
-			rotation_deg = rn.rotation_deg
-		else:
-			rotation_deg = rng.randf() * 360.0
-
-		# Position: tile + sub_hex_offset + ssh_offset; center is ZERO.
-		var ssh_offset: Vector2 = Vector2.ZERO
-		if ssh != Vector2i.ZERO:
-			ssh_offset = _HexMath.ssh_axial_to_world(ssh.x, ssh.y)
-		var wx: float = center_wx + ssh_offset.x
-		var wz: float = center_wz + ssh_offset.y
-		var elevation_y: float = 0.0
-		if _grid != null and _grid.has_method("get_terrain_y"):
-			elevation_y = _grid.get_terrain_y(wx, wz)
-		elif tile != null:
-			elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
+		var copy_scale: float = s["copy_scale"]
+		var rotation_deg: float = s["rotation_deg"]
+		var ground_pos: Vector3 = s["ground_position"]
+		var y_off: float = s["y_offset"]
 		# y_offset scales with copy_scale because the AABB was measured at
 		# unit mesh scale.
-		var pos := Vector3(wx, elevation_y + y_off * copy_scale, wz)
+		var pos := Vector3(ground_pos.x, ground_pos.y + y_off * copy_scale, ground_pos.z)
 
-		# Build transform.
 		var xform := Transform3D.IDENTITY
 		xform = xform.scaled(Vector3.ONE * copy_scale)
 		xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rotation_deg))
@@ -815,11 +757,148 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 			# same authored sub_hex so _swap_mesh_variant / depletion can
 			# affect all copies of the same logical prop.
 			"sub_hex": rn.sub_hex,
-			"is_center": is_center,
+			"is_center": s["is_center"],
 		})
 
 
+## Compute the deterministic scatter layout for a single prop on a tile.
+## Returns an Array of per-copy dicts:
+##   {
+##     variant_idx: int,
+##     copy_scale: float,         # final scale (jitter × sibling × floor applied)
+##     rotation_deg: float,
+##     ground_position: Vector3,  # (wx, elevation_y, wz) — no y_offset applied
+##     y_offset: float,           # pre-scale y_off from the variant
+##     is_center: bool,
+##   }
+##
+## Used by BOTH the visual MultiMesh emit path AND the collision body
+## emit path, so both paths see an identical scatter — any desync here
+## would put StaticBody3Ds where there are no meshes (or vice versa).
+## Reason this had to be extracted: the seeded RNG is consumed in a
+## specific order (count jitter → ssh Fisher-Yates → per-copy variant →
+## per-copy scale_jitter → per-copy rotation), and replicating that
+## order in two places is a desync waiting to happen.
+func _compute_prop_scatter(coords: Vector2i, rn: Resource, def: Resource) -> Array:
+	var out: Array = []
+
+	# Resolve scatter preset from PlaceableCap.placement (feature-011):
+	# Effective placement = Prop.placement_override, then
+	# PropDef.placeable.placement, then SINGLE (default). Ignore overrides
+	# for non-SINGLE presets — the spec says per-instance variant / scale
+	# / rotation overrides only apply when the preset resolves to SINGLE,
+	# because distributing copies with a pinned center breaks the
+	# visual illusion.
+	var effective_placement: int = _PlacementPreset.Preset.SINGLE
+	if rn.placement_override >= 0:
+		effective_placement = rn.placement_override
+	elif def != null and def.placeable != null:
+		effective_placement = def.placeable.placement
+	var preset_count: int = _PlacementPreset.get_count(effective_placement)
+	var sibling_scale: float = _PlacementPreset.get_sibling_scale(effective_placement)
+	var supports_overrides: bool = _PlacementPreset.supports_instance_overrides(effective_placement)
+
+	# Seeded RNG: deterministic per (tile, sub_hex, prop_type). Same
+	# prop in the same cell of the same map always produces identical
+	# scatter across reloads, AND the visual + collision paths produce
+	# identical results when they both call _compute_prop_scatter.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _compute_scatter_seed(coords, rn.sub_hex, rn.type)
+
+	# Actual instance count with ±2 jitter, clamped to [1, 19].
+	var actual_count: int = preset_count
+	if preset_count > 1:
+		actual_count = clampi(preset_count + rng.randi_range(-2, 2), 1, 19)
+
+	# SSH positions: center (0) plus (actual_count - 1) chosen from the
+	# remaining 18 via seeded Fisher-Yates partial shuffle.
+	var ssh_positions: Array[Vector2i] = _select_ssh_positions(rng, actual_count)
+
+	# Shared tile/elevation context.
+	var pool_id: StringName = rn.type
+	var world_2d: Vector2 = _HexMath.axial_to_world(coords)
+	var tile: Resource = _grid.get_tile(coords) if _grid != null else null
+	var sub_hex_offset: Vector2 = _HexMath.sub_axial_to_world(rn.sub_hex)
+	var center_wx: float = world_2d.x + sub_hex_offset.x
+	var center_wz: float = world_2d.y + sub_hex_offset.y
+	var variant_count: int = _get_variant_count(pool_id)
+
+	for i in ssh_positions.size():
+		var ssh: Vector2i = ssh_positions[i]
+		var is_center: bool = (i == 0)
+
+		# Variant: SINGLE + override → pin. Otherwise seeded random.
+		var variant_idx: int
+		if is_center and supports_overrides and rn.has_variant_override():
+			variant_idx = clampi(rn.variant_override, 0, max(variant_count - 1, 0))
+		else:
+			variant_idx = rng.randi_range(0, max(variant_count - 1, 0))
+
+		var variant_offsets: Array = _variant_y_offsets.get(pool_id, [])
+		var y_off: float = variant_offsets[variant_idx] if variant_idx < variant_offsets.size() else _pool_y_offsets.get(pool_id, PROP_Y_OFFSET)
+		var variant_scales_arr: Array = _variant_scales.get(pool_id, [])
+		var variant_scale: float = variant_scales_arr[variant_idx] if variant_idx < variant_scales_arr.size() else 1.0
+
+		# Per-copy scale: jitter CONSUMED from RNG even when overridden,
+		# because the override branch must not shift the per-copy rotation
+		# RNG call below.
+		var scale_jitter: float = rng.randf_range(0.85, 1.15)
+		var copy_scale: float
+		if is_center and supports_overrides and rn.has_scale_override():
+			copy_scale = rn.scale_override
+		else:
+			copy_scale = variant_scale * scale_jitter
+			if not is_center:
+				copy_scale *= sibling_scale
+			# Floor to keep tiny authored scales from falling below the
+			# GPU's sub-pixel threshold at mid-range camera distance.
+			# Author overrides skip the floor so "explicitly tiny" still
+			# works for pinned instances.
+			if copy_scale < MIN_RENDER_SCALE:
+				copy_scale = MIN_RENDER_SCALE
+
+		# Rotation:
+		#  - SINGLE center + explicit rotation_override ≥ 0 → override
+		#  - SINGLE center without override → authored rotation_deg
+		#    (0.0 = face north, which IS an intentional value).
+		#  - Scatter siblings / non-center / non-SINGLE → 0-360° seeded.
+		var rotation_deg: float
+		if is_center and supports_overrides and rn.has_rotation_override():
+			rotation_deg = rn.rotation_override
+		elif is_center and supports_overrides:
+			rotation_deg = rn.rotation_deg
+		else:
+			rotation_deg = rng.randf() * 360.0
+
+		# Position: tile + sub_hex_offset + ssh_offset; center is ZERO.
+		var ssh_offset: Vector2 = Vector2.ZERO
+		if ssh != Vector2i.ZERO:
+			ssh_offset = _HexMath.ssh_axial_to_world(ssh.x, ssh.y)
+		var wx: float = center_wx + ssh_offset.x
+		var wz: float = center_wz + ssh_offset.y
+		var elevation_y: float = 0.0
+		if _grid != null and _grid.has_method("get_terrain_y"):
+			elevation_y = _grid.get_terrain_y(wx, wz)
+		elif tile != null:
+			elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
+
+		out.append({
+			"variant_idx": variant_idx,
+			"copy_scale": copy_scale,
+			"rotation_deg": rotation_deg,
+			"ground_position": Vector3(wx, elevation_y, wz),
+			"y_offset": y_off,
+			"is_center": is_center,
+		})
+	return out
+
+
 func _remove_all_props_at(coords: Vector2i) -> void:
+	# Always free collision bodies first — independent of whether
+	# _tile_entries has a visual record (a tile could be in the
+	# collision window but outside the render window, e.g. with a
+	# positive prop_stream_radius smaller than prop_collision_radius).
+	_free_collision_bodies_at(coords)
 	if not _tile_entries.has(coords):
 		return
 	while _tile_entries.has(coords) and not _tile_entries[coords].is_empty():
@@ -881,6 +960,100 @@ func _rebuild_tile(coords: Vector2i) -> void:
 			continue
 		var is_depleted: bool = prop.remaining <= 0
 		_add_prop_instance(coords, prop, pool_id, dimmed, is_depleted)
+	# Rebuild collision if the tile sits inside the current collision window.
+	if _is_in_collision_range(coords):
+		_build_collision_for_tile(coords)
+
+
+# --- Collision streaming ---------------------------------------------------
+
+## True iff the given tile falls inside the current collision window
+## around the streaming anchor. `_collision_radius == 0` disables
+## collision streaming entirely.
+func _is_in_collision_range(coords: Vector2i) -> bool:
+	if _collision_radius <= 0:
+		return false
+	var center: Vector2i = _get_streaming_anchor()
+	return _HexMath.distance(coords, center) <= _collision_radius
+
+
+## Drop collision bodies on tiles that left the collision window;
+## build bodies on tiles that entered. Visual streaming is untouched.
+func _stream_collision_around(center: Vector2i) -> void:
+	if _grid == null:
+		return
+	var desired: Dictionary = {}
+	if _collision_radius > 0 and _grid.has_method("get_tiles_in_range"):
+		for coords in _grid.get_tiles_in_range(center, _collision_radius):
+			desired[coords] = true
+	# Evict tiles that left the window.
+	for coords in _collision_bodies.keys():
+		if not desired.has(coords):
+			_free_collision_bodies_at(coords)
+	# Build tiles that entered the window (skip ones we already have).
+	for coords in desired.keys():
+		if _collision_bodies.has(coords):
+			continue
+		_build_collision_for_tile(coords)
+
+
+## Emit StaticBody3D + CollisionShape3D children for every scattered
+## natural prop copy on the given tile whose effective shape dimensions
+## pass CollisionHelper.MIN_COLLISION_DIM. Called from the collision
+## stream path (player moved / radius changed / tile rebuilt).
+func _build_collision_for_tile(coords: Vector2i) -> void:
+	if _grid == null:
+		return
+	var tile: Resource = _grid.get_tile(coords)
+	if tile == null:
+		return
+	var bodies: Array = []
+	for prop in tile.get_props():
+		var def: Resource = PropRegistry.get_def(prop.type) if PropRegistry.has_def(prop.type) else null
+		if def == null or def.placeable == null:
+			continue
+		var shapes: Array = def.placeable.collision_shapes
+		if shapes == null or shapes.is_empty():
+			continue  # walkthrough prop — skip scatter compute entirely
+		var scatter: Array = _compute_prop_scatter(coords, prop, def)
+		for s in scatter:
+			var copy_scale: float = s["copy_scale"]
+			var collision_nodes: Array[CollisionShape3D] = _CollisionHelper.create_scaled_collision_shapes(def, copy_scale)
+			if collision_nodes.is_empty():
+				continue  # all shapes below threshold at this scale
+			var body := StaticBody3D.new()
+			body.name = "PropCollision_%s_%d_%d_%d" % [
+				String(prop.type), prop.sub_hex.x, prop.sub_hex.y, scatter.find(s)
+			]
+			var ground: Vector3 = s["ground_position"]
+			body.position = ground
+			body.rotation.y = deg_to_rad(s["rotation_deg"])
+			for cs_node in collision_nodes:
+				body.add_child(cs_node)
+			_get_collision_root().add_child(body)
+			bodies.append(body)
+	if not bodies.is_empty():
+		_collision_bodies[coords] = bodies
+
+
+func _free_collision_bodies_at(coords: Vector2i) -> void:
+	if not _collision_bodies.has(coords):
+		return
+	for body in _collision_bodies[coords]:
+		if is_instance_valid(body):
+			body.queue_free()
+	_collision_bodies.erase(coords)
+
+
+## Lazy-initialize the container node. Keeping bodies under one parent
+## (instead of directly under PropRenderer) makes scene-tree inspection
+## cleaner and avoids mixing physics + MMI children.
+func _get_collision_root() -> Node3D:
+	if _collision_root == null or not is_instance_valid(_collision_root):
+		_collision_root = Node3D.new()
+		_collision_root.name = "PropCollisionBodies"
+		add_child(_collision_root)
+	return _collision_root
 
 
 func _update_pool_material(pool_id: StringName, _dimmed: bool) -> void:
