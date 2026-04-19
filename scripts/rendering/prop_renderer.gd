@@ -16,17 +16,20 @@ const _PlacementPreset = preload("res://scripts/data/capabilities/placement_pres
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
 
-## Max instances per MultiMesh pool. 4096 comfortably holds a
-## populated ch1-scale map: ~400 blade-grass authored Props × up to
-## 15 scatter copies (Dense) = 6000 total instances spread across 3
-## mesh variants → ~2000 per pool variant. Previous 128 cap was
-## set for a hand-authored 50-prop chapter and silently dropped most
-## scattered siblings once Populate landed, which showed up in-game
-## as "?" labels floating over empty ground because the label
-## renderer keeps working even when the MultiMesh pool rejects the
-## instance. 4096 × ~64 bytes per instance = 256 KB per pool
-## variant — trivial GPU cost.
-const MAX_INSTANCES: int = 4096
+## Initial capacity of each MultiMesh pool. Pools grow on demand
+## past this via `_ensure_pool_capacity`, doubling each time, so the
+## constant only affects startup cost. Hard ceiling below keeps a
+## runaway populate from eating unbounded VRAM.
+const INITIAL_INSTANCES: int = 512
+
+## Upper bound on MultiMesh.instance_count per pool variant. A
+## populated 150-radius grassland can produce ~150 000 total prop
+## instances (Populate + Dense scatter); split across 12 prop
+## types × 3 variants = 36 pools, the biggest pool comfortably fits
+## inside this ceiling. Per-instance cost is ~64 B (Transform3D +
+## custom data Color), so 65536 × 64 = 4 MB per pool variant ×
+## ~36 pools = ~150 MB worst-case GPU memory. Still modest.
+const MAX_INSTANCES: int = 65536
 
 ## HEX_SIZE for offset calculation
 const HEX_SIZE: float = 3.0
@@ -149,13 +152,42 @@ func _create_pools() -> void:
 		_variant_pools[def.id] = extra_pools
 
 
+## Grow a MultiMesh pool so it can hold at least `required` instances.
+## Pools start at INITIAL_INSTANCES; when Populate pushes them past
+## capacity the count doubles each time until it hits MAX_INSTANCES.
+## Returns true when there is room (possibly after resizing), false
+## when the hard ceiling has been reached and the caller should drop
+## the excess — currently never happens in practice, but keeps the
+## renderer from silently allocating gigabytes if a map goes wild.
+##
+## Godot's MultiMesh.instance_count mutation preserves existing
+## transforms inside the buffer. Newly-created slots are the default
+## Transform3D (origin 0, basis identity) with zero custom data; the
+## caller will overwrite them before bumping visible_instance_count.
+static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
+	if required <= mm.instance_count:
+		return true
+	if required > MAX_INSTANCES:
+		return false
+	var new_size: int = mm.instance_count
+	if new_size < 1:
+		new_size = INITIAL_INSTANCES
+	while new_size < required:
+		new_size *= 2
+		if new_size > MAX_INSTANCES:
+			new_size = MAX_INSTANCES
+			break
+	mm.instance_count = new_size
+	return required <= new_size
+
+
 ## Create an extra MMI for a non-primary variant. Returns the new node.
 ## Added as a child of this PropRenderer just like `_create_pool` does.
 func _build_variant_pool(pool_id: StringName, variant_idx: int, mesh: Mesh, color: Color, is_real_mesh: bool) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	mm.instance_count = MAX_INSTANCES
+	mm.instance_count = INITIAL_INSTANCES
 	mm.visible_instance_count = 0
 	mm.mesh = mesh
 
@@ -258,7 +290,7 @@ func _create_pool(pool_id: StringName, mesh: Mesh, color: Color, is_real_mesh: b
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	mm.instance_count = MAX_INSTANCES
+	mm.instance_count = INITIAL_INSTANCES
 	mm.visible_instance_count = 0
 	mm.mesh = mesh
 
@@ -390,7 +422,7 @@ func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, 
 	var mmi: MultiMeshInstance3D = _pools[anomaly_pool_id]
 	var mm: MultiMesh = mmi.multimesh
 	var idx: int = mm.visible_instance_count
-	if idx >= MAX_INSTANCES:
+	if not _ensure_pool_capacity(mm, idx + 1):
 		return
 
 	var world_2d: Vector2 = _HexMath.prop_world_position(coords, anomaly.sub_hex)
@@ -486,7 +518,7 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 			continue
 		var mm: MultiMesh = mmi.multimesh
 		var idx: int = mm.visible_instance_count
-		if idx >= MAX_INSTANCES:
+		if not _ensure_pool_capacity(mm, idx + 1):
 			continue
 
 		# Y offset + base scale from the variant's AABB / authored scale.
