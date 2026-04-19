@@ -210,78 +210,6 @@ function _modelToPlain(model) {
 }
 
 /**
- * Build a "label: [minInput] – [maxInput]" row bound to a `_range`
- * field on a natural_props card. Returns the wrapper element; the
- * caller is responsible for appending it.
- * @param {string} label
- * @param {string} field — `grouping_range` or `elevation_range`
- * @param {{x: number, y: number}} value
- * @param {number} minBound
- * @param {number} maxBound
- * @returns {HTMLElement}
- */
-function _buildRangeField(label, field, value, minBound, maxBound) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
-  const lbl = document.createElement('span');
-  lbl.classList.add('prop-hint');
-  lbl.textContent = label;
-  const minIn = document.createElement('input');
-  minIn.type = 'number';
-  minIn.step = '1';
-  minIn.min = String(minBound);
-  minIn.max = String(maxBound);
-  minIn.value = String(value.x);
-  minIn.dataset.npField = field + '_min';
-  minIn.classList.add('prop-input');
-  minIn.style.width = '60px';
-  const sep = document.createElement('span');
-  sep.textContent = '–';
-  sep.classList.add('prop-hint');
-  const maxIn = document.createElement('input');
-  maxIn.type = 'number';
-  maxIn.step = '1';
-  maxIn.min = String(minBound);
-  maxIn.max = String(maxBound);
-  maxIn.value = String(value.y);
-  maxIn.dataset.npField = field + '_max';
-  maxIn.classList.add('prop-input');
-  maxIn.style.width = '60px';
-  wrap.appendChild(lbl);
-  wrap.appendChild(minIn);
-  wrap.appendChild(sep);
-  wrap.appendChild(maxIn);
-  return wrap;
-}
-
-/**
- * Build a single-line CSV condition field. The value is a plain
- * comma-separated list of StringName ids; empty = constraint off.
- * @param {string} field
- * @param {string} label
- * @param {string[]} list
- * @returns {HTMLElement}
- */
-function _buildCsvField(field, label, list) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;gap:6px;align-items:center;';
-  const lbl = document.createElement('span');
-  lbl.classList.add('prop-hint');
-  lbl.textContent = label;
-  lbl.style.minWidth = '130px';
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = list.join(', ');
-  input.placeholder = 'comma-separated ids, blank = off';
-  input.dataset.npField = field;
-  input.classList.add('prop-input');
-  input.style.flex = '1';
-  wrap.appendChild(lbl);
-  wrap.appendChild(input);
-  return wrap;
-}
-
-/**
  * Dereference the natural_props sub_resource refs out of a parsed
  * .tres entry. Mirrors prop-editor.js's mesh / collision_shape
  * handling — TresParser keeps the Array[Resource] contents as refs,
@@ -800,9 +728,169 @@ export function renderBiomeEditor(container, options) {
 
     // Note: id/display_name/short_description/long_description are rendered
     // above this tab via the shared renderGearHeader() in _renderDetail.
-    // Color/texture editing lives in its own tab. For now this "General"
-    // tab is a placeholder — additional biome-level settings will land
-    // here as they emerge.
+    // Color/texture editing lives in the right column. This tab hosts the
+    // populate-table so the authoring flow reads left→right: pick the
+    // biome, add its natural props, adjust visuals.
+
+    // ── Natural Props section (feeds Map Editor "Populate") ──
+    const propsSep = document.createElement('div');
+    propsSep.className = 'prop-separator';
+    propsSep.textContent = 'Natural Props';
+    grid.appendChild(propsSep);
+
+    const propsFull = document.createElement('div');
+    propsFull.className = 'prop-full';
+
+    const propsHint = document.createElement('div');
+    propsHint.classList.add('prop-hint');
+    propsHint.style.marginBottom = '6px';
+    propsHint.textContent = 'Drives the Populate command. Frequency = chance a qualifying tile gets this prop; Grouping = how many copies when it does.';
+    propsFull.appendChild(propsHint);
+
+    const propsContainer = document.createElement('div');
+    propsContainer.dataset.naturalPropsContainer = 'true';
+    propsContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+    /**
+     * One natural_props card. UI is deliberately compact — prop select,
+     * frequency, grouping min/max on a single row. The other condition
+     * fields (elevation, near/not_near biomes + props) are preserved on
+     * the card's dataset so an existing biome's config round-trips
+     * through load→save without losing data; a richer editor comes back
+     * once Andre figures out a layout that doesn't eat the screen.
+     * @param {{
+     *   prop_id: string,
+     *   frequency: number,
+     *   grouping_range: {x: number, y: number},
+     *   elevation_range: {x: number, y: number},
+     *   near_biomes: string[],
+     *   not_near_biomes: string[],
+     *   near_props: string[],
+     *   not_near_props: string[],
+     * }} entry
+     */
+    function addNaturalPropRow(entry) {
+      const row = document.createElement('div');
+      row.classList.add('prop-card');
+      row.dataset.naturalProp = 'true';
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;padding:6px 8px;flex-wrap:wrap;';
+
+      // Stash the condition fields that aren't exposed in the UI so they
+      // survive the collect → emit cycle. JSON since the entry may
+      // contain arbitrary StringName lists.
+      row.dataset.hiddenConditions = JSON.stringify({
+        elevation_range: entry.elevation_range,
+        near_biomes: entry.near_biomes,
+        not_near_biomes: entry.not_near_biomes,
+        near_props: entry.near_props,
+        not_near_props: entry.not_near_props,
+      });
+
+      // Prop selector — narrow by design per Andre's feedback.
+      const propSelect = document.createElement('select');
+      propSelect.dataset.npField = 'prop_id';
+      propSelect.classList.add('prop-input');
+      propSelect.style.width = '160px';
+      propSelect.style.flex = '0 0 auto';
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = '— prop —';
+      propSelect.appendChild(blank);
+      for (const [filename, pEntry] of ProjectContext.files.props) {
+        const pid = filename.replace('.tres', '');
+        const origin = pEntry.data && typeof pEntry.data.origin === 'number' ? pEntry.data.origin : 0;
+        if (origin !== 0) continue;
+        const opt = document.createElement('option');
+        opt.value = pid;
+        const label = pEntry.data && pEntry.data.display_name ? `${pid} — ${pEntry.data.display_name}` : pid;
+        opt.textContent = label;
+        if (entry.prop_id === pid) opt.selected = true;
+        propSelect.appendChild(opt);
+      }
+
+      const freqLabel = document.createElement('span');
+      freqLabel.classList.add('prop-hint');
+      freqLabel.textContent = 'Frequency';
+
+      const freqInput = document.createElement('input');
+      freqInput.type = 'number';
+      freqInput.step = '0.01';
+      freqInput.min = '0';
+      freqInput.max = '1';
+      freqInput.value = String(entry.frequency);
+      freqInput.dataset.npField = 'frequency';
+      freqInput.classList.add('prop-input');
+      freqInput.style.width = '70px';
+
+      const groupingLabel = document.createElement('span');
+      groupingLabel.classList.add('prop-hint');
+      groupingLabel.textContent = 'Grouping';
+
+      const groupMin = document.createElement('input');
+      groupMin.type = 'number';
+      groupMin.step = '1';
+      groupMin.min = '1';
+      groupMin.max = '19';
+      groupMin.value = String(entry.grouping_range.x);
+      groupMin.dataset.npField = 'grouping_range_min';
+      groupMin.classList.add('prop-input');
+      groupMin.style.width = '50px';
+
+      const groupSep = document.createElement('span');
+      groupSep.classList.add('prop-hint');
+      groupSep.textContent = '–';
+
+      const groupMax = document.createElement('input');
+      groupMax.type = 'number';
+      groupMax.step = '1';
+      groupMax.min = '1';
+      groupMax.max = '19';
+      groupMax.value = String(entry.grouping_range.y);
+      groupMax.dataset.npField = 'grouping_range_max';
+      groupMax.classList.add('prop-input');
+      groupMax.style.width = '50px';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'X';
+      removeBtn.type = 'button';
+      removeBtn.classList.add('prop-btn-icon');
+      removeBtn.style.marginLeft = 'auto';
+      removeBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(propSelect);
+      row.appendChild(freqLabel);
+      row.appendChild(freqInput);
+      row.appendChild(groupingLabel);
+      row.appendChild(groupMin);
+      row.appendChild(groupSep);
+      row.appendChild(groupMax);
+      row.appendChild(removeBtn);
+      propsContainer.appendChild(row);
+    }
+
+    for (const np of model.natural_props) addNaturalPropRow(np);
+
+    const addNpBtn = document.createElement('button');
+    addNpBtn.textContent = '+ Add Natural Prop';
+    addNpBtn.type = 'button';
+    addNpBtn.classList.add('prop-btn');
+    addNpBtn.style.marginTop = '6px';
+    addNpBtn.addEventListener('click', () => {
+      addNaturalPropRow({
+        prop_id: '',
+        frequency: 1.0,
+        grouping_range: { x: 1, y: 1 },
+        elevation_range: { x: -100, y: 100 },
+        near_biomes: [],
+        not_near_biomes: [],
+        near_props: [],
+        not_near_props: [],
+      });
+    });
+
+    propsFull.appendChild(propsContainer);
+    propsFull.appendChild(addNpBtn);
+    grid.appendChild(propsFull);
 
     wrapper.appendChild(grid);
     return wrapper;
@@ -864,140 +952,6 @@ export function renderBiomeEditor(container, options) {
 
     grid.appendChild(colorLabel);
     grid.appendChild(colorCell);
-
-    // Separator — Natural Props (replaces the old color-variation section)
-    const propsSep = document.createElement('div');
-    propsSep.className = 'prop-separator';
-    propsSep.textContent = 'Natural Props';
-    grid.appendChild(propsSep);
-
-    // Natural props list — full width
-    const propsFull = document.createElement('div');
-    propsFull.className = 'prop-full';
-
-    const propsHint = document.createElement('div');
-    propsHint.classList.add('prop-hint');
-    propsHint.style.marginBottom = '6px';
-    propsHint.textContent = 'Feeds the map-editor Populate command. Each entry spawns its prop on qualifying tiles at `frequency` probability; when it fires, grouping min/max picks the instance count. Conditions are all AND-ed; empty lists disable the constraint.';
-    propsFull.appendChild(propsHint);
-
-    const propsContainer = document.createElement('div');
-    propsContainer.dataset.naturalPropsContainer = 'true';
-    propsContainer.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-
-    /**
-     * Render one natural_props card.
-     * @param {{
-     *   prop_id: string,
-     *   frequency: number,
-     *   grouping_range: {x: number, y: number},
-     *   elevation_range: {x: number, y: number},
-     *   near_biomes: string[],
-     *   not_near_biomes: string[],
-     *   near_props: string[],
-     *   not_near_props: string[],
-     * }} entry
-     */
-    function addNaturalPropRow(entry) {
-      const card = document.createElement('div');
-      card.classList.add('prop-card');
-      card.dataset.naturalProp = 'true';
-      card.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:8px;';
-
-      // Row 1: prop_id + frequency + remove
-      const row1 = document.createElement('div');
-      row1.style.cssText = 'display:flex;gap:6px;align-items:center;';
-
-      const propSelect = document.createElement('select');
-      propSelect.dataset.npField = 'prop_id';
-      propSelect.classList.add('prop-input');
-      propSelect.style.flex = '1';
-      // Populate from ProjectContext.files.props — only Natural-origin props
-      // qualify for populate (structures, equipment, etc. stay manual).
-      const blank = document.createElement('option');
-      blank.value = '';
-      blank.textContent = '— select prop —';
-      propSelect.appendChild(blank);
-      for (const [filename, pEntry] of ProjectContext.files.props) {
-        const pid = filename.replace('.tres', '');
-        const origin = pEntry.data && typeof pEntry.data.origin === 'number' ? pEntry.data.origin : 0;
-        if (origin !== 0) continue; // NATURAL = 0 in Prop.Origin
-        const opt = document.createElement('option');
-        opt.value = pid;
-        const label = pEntry.data && pEntry.data.display_name ? `${pid} — ${pEntry.data.display_name}` : pid;
-        opt.textContent = label;
-        if (entry.prop_id === pid) opt.selected = true;
-        propSelect.appendChild(opt);
-      }
-
-      const freqLabel = document.createElement('span');
-      freqLabel.classList.add('prop-hint');
-      freqLabel.textContent = 'freq';
-
-      const freqInput = document.createElement('input');
-      freqInput.type = 'number';
-      freqInput.step = '0.01';
-      freqInput.min = '0';
-      freqInput.max = '1';
-      freqInput.value = String(entry.frequency);
-      freqInput.dataset.npField = 'frequency';
-      freqInput.classList.add('prop-input');
-      freqInput.style.width = '70px';
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'X';
-      removeBtn.type = 'button';
-      removeBtn.classList.add('prop-btn-icon');
-      removeBtn.addEventListener('click', () => card.remove());
-
-      row1.appendChild(propSelect);
-      row1.appendChild(freqLabel);
-      row1.appendChild(freqInput);
-      row1.appendChild(removeBtn);
-      card.appendChild(row1);
-
-      // Row 2: grouping + elevation ranges (compact numeric pairs)
-      const row2 = document.createElement('div');
-      row2.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
-      row2.appendChild(_buildRangeField('Grouping', 'grouping_range', entry.grouping_range, 1, 19));
-      row2.appendChild(_buildRangeField('Elevation', 'elevation_range', entry.elevation_range, -100, 100));
-      card.appendChild(row2);
-
-      // Row 3..6: one CSV line per list condition. Kept plaintext
-      // (comma-separated ids) to keep the layout tight — a richer
-      // chip picker can replace this later without changing the
-      // underlying data model.
-      card.appendChild(_buildCsvField('near_biomes', 'Near biomes (any)', entry.near_biomes));
-      card.appendChild(_buildCsvField('not_near_biomes', 'Not near biomes', entry.not_near_biomes));
-      card.appendChild(_buildCsvField('near_props', 'Near props (any)', entry.near_props));
-      card.appendChild(_buildCsvField('not_near_props', 'Not near props', entry.not_near_props));
-
-      propsContainer.appendChild(card);
-    }
-
-    for (const np of model.natural_props) addNaturalPropRow(np);
-
-    const addNpBtn = document.createElement('button');
-    addNpBtn.textContent = '+ Add Natural Prop';
-    addNpBtn.type = 'button';
-    addNpBtn.classList.add('prop-btn');
-    addNpBtn.style.marginTop = '6px';
-    addNpBtn.addEventListener('click', () => {
-      addNaturalPropRow({
-        prop_id: '',
-        frequency: 1.0,
-        grouping_range: { x: 1, y: 1 },
-        elevation_range: { x: -100, y: 100 },
-        near_biomes: [],
-        not_near_biomes: [],
-        near_props: [],
-        not_near_props: [],
-      });
-    });
-
-    propsFull.appendChild(propsContainer);
-    propsFull.appendChild(addNpBtn);
-    grid.appendChild(propsFull);
 
     // ── Textures section ──
     const texSep = document.createElement('div');
@@ -1203,7 +1157,10 @@ function _collectBiomeFormData(formElement) {
   model.color = _hexToColor(val('color'));
 
   // Natural props — one card per entry, collected back to plain
-  // JS objects for emit.
+  // JS objects for emit. The simplified UI only exposes prop_id,
+  // frequency, and grouping; the other condition fields are stashed
+  // on each card's dataset as JSON so round-trip preserves them
+  // until the richer condition editor lands.
   model.natural_props = [];
   const propCards = formElement.querySelectorAll('[data-natural-prop]');
   for (const card of propCards) {
@@ -1212,25 +1169,38 @@ function _collectBiomeFormData(formElement) {
       const el = cardEl.querySelector(`[data-np-field="${name}"]`);
       return el ? /** @type {HTMLInputElement|HTMLSelectElement} */ (el).value : '';
     };
-    const intPair = (base) => ({
-      x: parseInt(qField(base + '_min'), 10) || 0,
-      y: parseInt(qField(base + '_max'), 10) || 0,
-    });
-    const csvList = (name) => qField(name)
-      .split(',').map(s => s.trim()).filter(s => s.length > 0);
 
     const propId = qField('prop_id');
     if (!propId) continue; // skip rows the user never filled in
 
+    let hidden = {
+      elevation_range: { x: -100, y: 100 },
+      near_biomes: [],
+      not_near_biomes: [],
+      near_props: [],
+      not_near_props: [],
+    };
+    try {
+      if (cardEl.dataset.hiddenConditions) {
+        const parsed = JSON.parse(cardEl.dataset.hiddenConditions);
+        // Sanity guard — anything malformed falls back to defaults so a
+        // corrupt dataset doesn't break the whole save.
+        if (parsed && typeof parsed === 'object') Object.assign(hidden, parsed);
+      }
+    } catch (_) { /* keep defaults */ }
+
     model.natural_props.push({
       prop_id: propId,
       frequency: Math.max(0, Math.min(1, parseFloat(qField('frequency')) || 0)),
-      grouping_range: intPair('grouping_range'),
-      elevation_range: intPair('elevation_range'),
-      near_biomes: csvList('near_biomes'),
-      not_near_biomes: csvList('not_near_biomes'),
-      near_props: csvList('near_props'),
-      not_near_props: csvList('not_near_props'),
+      grouping_range: {
+        x: parseInt(qField('grouping_range_min'), 10) || 1,
+        y: parseInt(qField('grouping_range_max'), 10) || 1,
+      },
+      elevation_range: hidden.elevation_range,
+      near_biomes: hidden.near_biomes,
+      not_near_biomes: hidden.not_near_biomes,
+      near_props: hidden.near_props,
+      not_near_props: hidden.not_near_props,
     });
   }
 
