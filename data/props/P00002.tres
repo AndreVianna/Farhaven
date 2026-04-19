@@ -1,55 +1,51 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=13 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=16 format=3]
 
-[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_propdef"]
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="3_catalogable"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="4_harvestable"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="5_yield"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="6_meshvar"]
-[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v1.glb" id="7_mesh_v1"]
-[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v2.glb" id="8_mesh_v2"]
-[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v3.glb" id="9_mesh_v3"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="3_mesh_variant"]
+[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v1.glb" id="4_mesh_scene_1"]
+[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v2.glb" id="5_mesh_scene_2"]
+[ext_resource type="PackedScene" path="res://assets/props/P00002/mesh_v3.glb" id="6_mesh_scene_3"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="7_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="8_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="9_harvest_yield"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
-script = ExtResource("6_meshvar")
-scene = ExtResource("7_mesh_v1")
-scale = 0.25
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("4_mesh_scene_1")
+scale = 0.2
 
 [sub_resource type="Resource" id="mesh_variant_2"]
-script = ExtResource("6_meshvar")
-scene = ExtResource("8_mesh_v2")
-scale = 0.25
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("5_mesh_scene_2")
+scale = 0.15
 
 [sub_resource type="Resource" id="mesh_variant_3"]
-script = ExtResource("6_meshvar")
-scene = ExtResource("9_mesh_v3")
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("6_mesh_scene_3")
 scale = 0.25
 
-[sub_resource type="Resource" id="placeable_1"]
-script = ExtResource("2_placeable")
-footprint = Vector2i(1, 1)
-meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
-placement = 1
-
-[sub_resource type="Resource" id="catalogable_1"]
-script = ExtResource("3_catalogable")
-scan_time = 1.0
-show_as_anomaly = false
-properties = { "energy_source": "light", "internal_transport": "none", "shape_symmetry": "irregular", "growth_form": "ground_cover", "rigidity": "pressure_filled", "edibility_level": 0, "toxicity_level": 0, "hydration_level": 7 }
-
-[sub_resource type="Resource" id="yield_moss"]
-script = ExtResource("5_yield")
+[sub_resource type="Resource" id="harvest_yield_1"]
+script = ExtResource("9_harvest_yield")
 item_id = &"moss_padding"
 amount = 1
 conditions = []
 
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
+placement = 1
+
+[sub_resource type="Resource" id="catalogable_1"]
+script = ExtResource("7_catalogable")
+
 [sub_resource type="Resource" id="harvestable_1"]
-script = ExtResource("4_harvestable")
-yields = [SubResource("yield_moss")]
+script = ExtResource("8_harvestable")
+yields = Array[HarvestYield]([SubResource("harvest_yield_1")])
 respawn_conditions = [&"time_elapsed:3_days"]
 
 [resource]
-script = ExtResource("1_propdef")
+script = ExtResource("1_script")
 id = &"P00002"
 display_name = "Tuft Moss"
 short_description = "Soft cushions of water-rich moss-like growth."
@@ -60,3 +56,5 @@ tags = [&"decoration"]
 placeable = SubResource("placeable_1")
 catalogable = SubResource("catalogable_1")
 harvestable = SubResource("harvestable_1")
+max_stack = 99
+origin = 0
