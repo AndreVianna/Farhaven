@@ -228,6 +228,29 @@ static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
 	return required <= new_size
 
 
+## TEMPORARY debug: when a prop type is listed in DEBUG_FORCE_TINT,
+## swap its pool's material for a bright unlit color so we can see
+## exactly where the instances land in the world — rules out the
+## "pool has 12k instances but they're invisible" mystery case. Set
+## DEBUG_FORCE_TINT to an empty dict to ship the normal imported
+## materials.
+const DEBUG_FORCE_TINT: Dictionary = {
+	&"P00001": Color(1.0, 0.0, 1.0, 1.0),  # magenta — blade grass
+	&"P00002": Color(0.0, 1.0, 1.0, 1.0),  # cyan    — tuft moss
+}
+
+func _maybe_apply_debug_tint(mmi: MultiMeshInstance3D, pool_id: StringName) -> void:
+	if not DEBUG_FORCE_TINT.has(pool_id):
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = DEBUG_FORCE_TINT[pool_id]
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Override the imported material so the instance stands out even
+	# against a noisy terrain or through other props. `material_override`
+	# on the MMI applies to every instance in the pool.
+	mmi.material_override = mat
+
+
 ## Dump per-pool instance counts to the output — useful when
 ## diagnosing "which prop type is missing?" in a populated map.
 ## Call from main.gd or a debug console.
@@ -271,6 +294,7 @@ func _build_variant_pool(pool_id: StringName, variant_idx: int, mesh: Mesh, colo
 	# the GPU. Covers a 2 km × 2 km footprint which is far larger
 	# than any authored map radius × hex size.
 	mmi.custom_aabb = _POOL_CULL_AABB
+	_maybe_apply_debug_tint(mmi, pool_id)
 
 	if not is_real_mesh:
 		var mat := StandardMaterial3D.new()
@@ -375,6 +399,7 @@ func _create_pool(pool_id: StringName, mesh: Mesh, color: Color, is_real_mesh: b
 	mmi.multimesh = mm
 	mmi.name = "PropPool_%s" % pool_id
 	mmi.custom_aabb = _POOL_CULL_AABB
+	_maybe_apply_debug_tint(mmi, pool_id)
 
 	# Real meshes carry their own PBR materials — don't override, let them
 	# render natively. Placeholder meshes get a flat unshaded color.
