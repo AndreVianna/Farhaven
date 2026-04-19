@@ -896,6 +896,76 @@ test('MovePropCommand — preserves prop fields across move', () => {
   assert(moved.variant_override === 1, 'variant_override preserved');
 });
 
+// ============================================================
+// Populate — generative biome prop distribution
+// ============================================================
+
+import { SeededRng, computePopulatePlan, buildPopulateCommand } from './js/populate.js';
+
+test('SeededRng — deterministic from same seed', () => {
+  const a = new SeededRng(42);
+  const b = new SeededRng(42);
+  for (let i = 0; i < 10; i++) {
+    assert(a.nextUint32() === b.nextUint32(), 'same seed → same stream');
+  }
+});
+
+test('SeededRng — nextIntInclusive respects bounds', () => {
+  const r = new SeededRng(7);
+  for (let i = 0; i < 1000; i++) {
+    const v = r.nextIntInclusive(3, 7);
+    assert(v >= 3 && v <= 7, `out of range: ${v}`);
+  }
+});
+
+test('computePopulatePlan — no biomes → empty plan', () => {
+  const grid = new HexGridClass();
+  grid.setTile(0, 0, createTileData('')); // no biome id → no populate
+  const plan = computePopulatePlan(grid, { seed: 1 });
+  assert(plan.props.length === 0, 'no props without biome');
+  assert(plan.removed.length === 0, 'nothing removed without replace');
+});
+
+test('computePopulatePlan — replace clears naturals but keeps structures', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('B99999');
+  tile.props = [
+    createProp('P00001', 0, 0, 'plant'),             // natural
+    createProp('S00001', 1, 0, 'structure', { origin: 'crafted' }),
+  ];
+  grid.setTile(0, 0, tile);
+  const plan = computePopulatePlan(grid, { seed: 1, replace: true });
+  // The test biome isn't in ProjectContext so plan.props is empty,
+  // but replace: true should still remove the natural P00001 and
+  // leave the structure untouched.
+  assert(plan.removed.length === 1, 'one natural removed, got: ' + plan.removed.length);
+  assert(plan.removed[0].prop.type === 'P00001', 'natural prop removed');
+});
+
+test('buildPopulateCommand — batches adds + removes with undo', () => {
+  const grid = new HexGridClass();
+  const tile = createTileData('B99999');
+  tile.props = [createProp('P00001', 0, 0, 'plant')];
+  grid.setTile(0, 0, tile);
+
+  // Minimal plan: drop the existing natural, spawn a fresh one.
+  const plan = {
+    props: [{ q: 0, r: 0, sq: 1, sr: 0, type: 'P00002', category: 'plant' }],
+    removed: [{ q: 0, r: 0, propIndex: 0, prop: tile.props[0] }],
+    countByType: new Map([['P00002', 1]]),
+    seed: 1,
+    touchedTiles: 1,
+  };
+  const cmd = buildPopulateCommand(grid, plan);
+  cmd.execute();
+  const after = grid.getTile(0, 0).props;
+  assert(after.length === 1, 'one prop after apply');
+  assert(after[0].type === 'P00002', 'new prop replaced old');
+  cmd.undo();
+  const back = grid.getTile(0, 0).props;
+  assert(back.length === 1 && back[0].type === 'P00001', 'undo restored original');
+});
+
 test('DeletePropCommand — execute and undo', () => {
   const grid = new HexGridClass();
   const tile = createTileData('forest');

@@ -23,6 +23,7 @@ import { renderCutsceneEditor } from './cutscene-editor.js';
 import { renderSettingsEditor } from './settings-editor.js';
 import { clearBiomeTextureCache } from './biome-textures.js';
 import { showGeneratorDialog, generateMap } from './map-generator.js';
+import { computePopulatePlan, buildPopulateCommand } from './populate.js';
 
 // ============================================================
 // Module-level state
@@ -566,6 +567,128 @@ async function _regenerateMap() {
   }
 }
 
+/**
+ * Handle the Populate button — builds a distribution plan from the
+ * active map's biomes, shows the user a summary dialog with a
+ * Replace toggle, and on confirm commits the plan through the
+ * CommandHistory as a single undoable batch.
+ * @returns {void}
+ */
+function _populateMap() {
+  if (!hexGrid || hexGrid.tiles.size === 0) {
+    setStatus('Populate — no map loaded.');
+    return;
+  }
+  _showPopulateDialog(false);
+}
+
+/**
+ * Render the populate confirmation dialog. Recomputes the plan
+ * whenever the user toggles "Replace existing", so the displayed
+ * add/remove counts always match what Apply will do.
+ * @param {boolean} initialReplace
+ * @returns {void}
+ */
+function _showPopulateDialog(initialReplace) {
+  const existing = document.getElementById('populate-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'populate-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;min-width:420px;max-width:560px;color:var(--text-primary);display:flex;flex-direction:column;gap:10px;';
+
+  const title = document.createElement('div');
+  title.textContent = 'Populate Map';
+  title.style.cssText = 'font-size:15px;font-weight:600;';
+  dialog.appendChild(title);
+
+  const hint = document.createElement('div');
+  hint.classList.add('prop-hint');
+  hint.style.fontSize = '12px';
+  hint.textContent = 'Distributes natural props from each tile\'s biome rules. Deterministic per seed. Categories run in order Mineral → Liquid → Ooze → Fungi → Flora → Fauna so near_prop conditions see props placed earlier in the run.';
+  dialog.appendChild(hint);
+
+  const replaceRow = document.createElement('label');
+  replaceRow.style.cssText = 'display:flex;gap:6px;align-items:center;font-size:13px;';
+  const replaceCb = document.createElement('input');
+  replaceCb.type = 'checkbox';
+  replaceCb.checked = !!initialReplace;
+  const replaceLbl = document.createElement('span');
+  replaceLbl.textContent = 'Replace existing natural props (structures / equipment stay)';
+  replaceRow.appendChild(replaceCb);
+  replaceRow.appendChild(replaceLbl);
+  dialog.appendChild(replaceRow);
+
+  const summary = document.createElement('pre');
+  summary.style.cssText = 'background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:8px;margin:0;font-family:monospace;font-size:12px;max-height:260px;overflow:auto;white-space:pre-wrap;';
+  dialog.appendChild(summary);
+
+  /** @type {import('./populate.js').PopulatePlan|null} */
+  let currentPlan = null;
+
+  const _refreshPlan = () => {
+    currentPlan = computePopulatePlan(hexGrid, { replace: replaceCb.checked });
+    const lines = [];
+    lines.push(`seed:          ${currentPlan.seed}`);
+    lines.push(`tiles touched: ${currentPlan.touchedTiles}`);
+    lines.push(`props added:   ${currentPlan.props.length}`);
+    if (currentPlan.removed.length > 0) {
+      lines.push(`props removed: ${currentPlan.removed.length} (existing naturals)`);
+    }
+    lines.push('');
+    lines.push('by type:');
+    const sortedTypes = [...currentPlan.countByType.entries()].sort((a, b) => b[1] - a[1]);
+    if (sortedTypes.length === 0) {
+      lines.push('  (none — no biomes with natural_props conditions qualified)');
+    } else {
+      for (const [type, n] of sortedTypes) lines.push(`  ${type.padEnd(10)} ${n}`);
+    }
+    summary.textContent = lines.join('\n');
+  };
+  _refreshPlan();
+  replaceCb.addEventListener('change', _refreshPlan);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:4px;';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancel';
+  btnCancel.classList.add('prop-btn');
+  const btnApply = document.createElement('button');
+  btnApply.textContent = 'Apply';
+  btnApply.classList.add('prop-btn-primary');
+
+  const cleanup = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  };
+  const keyHandler = (e) => { if (e.key === 'Escape') cleanup(); };
+  btnCancel.addEventListener('click', cleanup);
+  btnApply.addEventListener('click', () => {
+    if (!currentPlan || (currentPlan.props.length === 0 && currentPlan.removed.length === 0)) {
+      cleanup();
+      setStatus('Populate — nothing to do.');
+      return;
+    }
+    const cmd = buildPopulateCommand(hexGrid, currentPlan);
+    commandHistory.execute(cmd);
+    dirtyTracker.markDirty('map');
+    if (hexCanvas) hexCanvas.requestRender();
+    if (hexInspector) hexInspector.updateMapStats();
+    setStatus(`Populated ${currentPlan.props.length} props across ${currentPlan.touchedTiles} tiles (seed ${currentPlan.seed}).`);
+    cleanup();
+  });
+  btnRow.appendChild(btnCancel);
+  btnRow.appendChild(btnApply);
+  dialog.appendChild(btnRow);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', keyHandler);
+  btnApply.focus();
+}
+
 // ============================================================
 // Save Functions (task-005)
 // ============================================================
@@ -667,6 +790,8 @@ const btnNewMap = document.getElementById('btn-new-map');
 if (btnNewMap) btnNewMap.addEventListener('click', () => newMap());
 const btnGenerateMap = document.getElementById('btn-generate-map');
 if (btnGenerateMap) btnGenerateMap.addEventListener('click', () => _generateProceduralMap());
+const btnPopulateMap = document.getElementById('btn-populate-map');
+if (btnPopulateMap) btnPopulateMap.addEventListener('click', () => _populateMap());
 const btnDeleteMap = document.getElementById('btn-delete-map');
 if (btnDeleteMap) btnDeleteMap.addEventListener('click', () => _deleteCurrentMap());
 
