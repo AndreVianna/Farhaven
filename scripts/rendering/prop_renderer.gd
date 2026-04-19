@@ -16,8 +16,17 @@ const _PlacementPreset = preload("res://scripts/data/capabilities/placement_pres
 ## Fallback Y offset if mesh height can't be determined.
 const PROP_Y_OFFSET: float = 0.3
 
-## Max instances per MultiMesh pool (Chapter 1: ~50 elements max)
-const MAX_INSTANCES: int = 128
+## Max instances per MultiMesh pool. 4096 comfortably holds a
+## populated ch1-scale map: ~400 blade-grass authored Props × up to
+## 15 scatter copies (Dense) = 6000 total instances spread across 3
+## mesh variants → ~2000 per pool variant. Previous 128 cap was
+## set for a hand-authored 50-prop chapter and silently dropped most
+## scattered siblings once Populate landed, which showed up in-game
+## as "?" labels floating over empty ground because the label
+## renderer keeps working even when the MultiMesh pool rejects the
+## instance. 4096 × ~64 bytes per instance = 256 KB per pool
+## variant — trivial GPU cost.
+const MAX_INSTANCES: int = 4096
 
 ## HEX_SIZE for offset calculation
 const HEX_SIZE: float = 3.0
