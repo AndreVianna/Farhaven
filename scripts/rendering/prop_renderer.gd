@@ -200,6 +200,10 @@ static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
 	if required <= mm.instance_count:
 		return true
 	if required > MAX_INSTANCES:
+		# One-time per-pool warning: if we ever hit the ceiling, the
+		# author needs to know so they can either lower biome density
+		# or bump MAX_INSTANCES. Silent-skip was the original bug.
+		push_warning("PropRenderer: pool %s hit MAX_INSTANCES cap (%d) — some instances will not render." % [mm.resource_name, MAX_INSTANCES])
 		return false
 	var new_size: int = mm.instance_count
 	if new_size < 1:
@@ -211,6 +215,30 @@ static func _ensure_pool_capacity(mm: MultiMesh, required: int) -> bool:
 			break
 	mm.instance_count = new_size
 	return required <= new_size
+
+
+## Dump per-pool instance counts to the output — useful when
+## diagnosing "which prop type is missing?" in a populated map.
+## Call from main.gd or a debug console.
+func print_pool_stats() -> void:
+	var total: int = 0
+	for pool_id in _pools.keys():
+		var mmi: MultiMeshInstance3D = _pools[pool_id]
+		var primary: int = mmi.multimesh.visible_instance_count if mmi != null else 0
+		var cap: int = mmi.multimesh.instance_count if mmi != null else 0
+		var sum: int = primary
+		var extras: Array = _variant_pools.get(pool_id, [])
+		var variant_parts: Array = [str(primary) + "/" + str(cap)]
+		for ex in extras:
+			if ex == null:
+				continue
+			var v: int = ex.multimesh.visible_instance_count
+			var c: int = ex.multimesh.instance_count
+			sum += v
+			variant_parts.append(str(v) + "/" + str(c))
+		total += sum
+		print("[PropRenderer] %s  total=%d  variants=[%s]" % [pool_id, sum, ", ".join(variant_parts)])
+	print("[PropRenderer] streamed_tiles=%d  total_instances=%d  radius=%d" % [_streamed_tiles.size(), total, _stream_radius])
 
 
 ## Create an extra MMI for a non-primary variant. Returns the new node.
@@ -474,6 +502,10 @@ func _on_map_generated() -> void:
 	# real player position.
 	var anchor: Vector2i = _get_streaming_anchor()
 	_stream_around(anchor)
+	# Deferred pool dump — landing in the output a frame later so all
+	# instance adds inside _stream_around have settled. Lets Andre see
+	# which pools got populated without hunting through the scene tree.
+	print_pool_stats.call_deferred()
 
 
 func _on_player_moved(from: Vector2i, to: Vector2i) -> void:
