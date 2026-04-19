@@ -21,3 +21,11 @@ extends Resource
 ## type the short name in the editor and the engine resolves it.
 
 @export var starting_map: String = "ch1.json"
+
+## View-distance radius (in hex tiles) used by PropRenderer and
+## PropLabelRenderer to stream natural props + their markers around
+## the player. Tiles outside this radius are evicted from the GPU
+## pools; tiles entering are repopulated. Lower values win perf at
+## the cost of visible draw distance; higher values look better but
+## tax mobile hardware. 20 ≈ 1260 tiles inside the window.
+@export_range(5, 60, 1) var prop_stream_radius: int = 20

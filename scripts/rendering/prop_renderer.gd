@@ -28,15 +28,25 @@ const INITIAL_INSTANCES: int = 256
 ## growth signals a bug we'd rather catch than paper over.
 const MAX_INSTANCES: int = 4096
 
-## View-distance streaming radius (in hex tiles). Tiles outside
-## this radius around the player are actively removed from the
-## MultiMesh pools; tiles coming back into range are repopulated.
-## Keeps GPU instance count bounded by O(radius²) independent of
-## map size — essential for the Populate-authored 150 000-prop
-## maps. 20 hexes ≈ 1261 tiles; with Dense scatter that's
-## ~30 instances/tile = ~38 000 visible instances distributed
-## across 36 pool variants. Tunable.
-const STREAM_RADIUS: int = 20
+## Fallback streaming radius used before GameSettings is loaded.
+## Overridden by `set_stream_radius()` (called from main.gd once
+## game_settings.tres is read). Keeps GPU instance count bounded
+## by O(radius²) independent of map size.
+const DEFAULT_STREAM_RADIUS: int = 20
+
+## Active streaming radius. Writable via set_stream_radius so the
+## main bootstrap or a future settings menu can retune without
+## touching the renderer's internals.
+var _stream_radius: int = DEFAULT_STREAM_RADIUS
+
+## Per-pool frustum-cull AABB. Godot's default MultiMeshInstance3D
+## bounding box is derived from the mesh, not the live instance
+## transforms — so rotating the camera could cull the entire pool
+## when the local origin fell outside the frustum even though the
+## instances spanned the map. An oversized AABB disables the node-
+## level cull; Godot still frustum-culls individual instances on
+## the GPU via the MultiMesh shader.
+const _POOL_CULL_AABB: AABB = AABB(Vector3(-1000, -200, -1000), Vector3(2000, 400, 2000))
 
 ## HEX_SIZE for offset calculation
 const HEX_SIZE: float = 3.0
@@ -212,6 +222,12 @@ func _build_variant_pool(pool_id: StringName, variant_idx: int, mesh: Mesh, colo
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.name = "PropPool_%s_v%d" % [pool_id, variant_idx]
+	# Wide custom AABB so Godot's frustum culler never drops the
+	# whole pool when the camera is pointed at the "empty" side of
+	# the origin — individual instance culling still happens on
+	# the GPU. Covers a 2 km × 2 km footprint which is far larger
+	# than any authored map radius × hex size.
+	mmi.custom_aabb = _POOL_CULL_AABB
 
 	if not is_real_mesh:
 		var mat := StandardMaterial3D.new()
@@ -315,6 +331,7 @@ func _create_pool(pool_id: StringName, mesh: Mesh, color: Color, is_real_mesh: b
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.name = "PropPool_%s" % pool_id
+	mmi.custom_aabb = _POOL_CULL_AABB
 
 	# Real meshes carry their own PBR materials — don't override, let them
 	# render natively. Placeholder meshes get a flat unshaded color.
@@ -395,6 +412,26 @@ func _connect_player_signals() -> void:
 	if _player.has_signal("player_moved"):
 		if not _player.player_moved.is_connected(_on_player_moved):
 			_player.player_moved.connect(_on_player_moved)
+	# Re-anchor to the player's real current_tile now that we have
+	# one. The initial map_generated streamed around spawn (or ZERO
+	# if spawn wasn't available yet), which could leave the window
+	# off-center when the player starts somewhere other than spawn
+	# or the player finishes loading position after _ready. Without
+	# this, rotating the camera could reveal empty tiles the first
+	# stream never touched.
+	if "current_tile" in _player:
+		_stream_around(_player.current_tile)
+
+
+## Set the view-distance radius and restream. Called from main.gd
+## after GameSettings loads so the value comes from a single
+## authoritative source instead of a hardcoded constant.
+func set_stream_radius(radius: int) -> void:
+	var clamped: int = clampi(radius, 1, 200)
+	if clamped == _stream_radius:
+		return
+	_stream_radius = clamped
+	_stream_around(_get_streaming_anchor())
 
 
 ## Sibling lookup for the Player node. World.tscn puts Player as a
@@ -477,7 +514,7 @@ func _stream_around(center: Vector2i) -> void:
 	# get_all_tiles so they keep seeing the whole map (radius-less
 	# behavior = "stream everything").
 	if _grid.has_method("get_tiles_in_range"):
-		for coords in _grid.get_tiles_in_range(center, STREAM_RADIUS):
+		for coords in _grid.get_tiles_in_range(center, _stream_radius):
 			desired[coords] = true
 	elif _grid.has_method("get_all_tiles"):
 		for coords in _grid.get_all_tiles():

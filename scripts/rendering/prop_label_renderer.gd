@@ -60,10 +60,12 @@ var _grid: Node = null
 ## Player node — source of player_moved. Late-bound (see _find_player).
 var _player: Node = null
 
-## Mirror of PropRenderer.STREAM_RADIUS. Keeping the labels on the same
-## window as the meshes avoids orphan "?" markers hovering over tiles
-## whose 3D props have been unloaded.
-const STREAM_RADIUS: int = 20
+## Mirror of PropRenderer's streaming radius. Keeping the labels on
+## the same window as the meshes avoids orphan "?" markers hovering
+## over tiles whose 3D props have been unloaded. Overridden via
+## `set_stream_radius()` by main.gd using GameSettings.
+const DEFAULT_STREAM_RADIUS: int = 20
+var _stream_radius: int = DEFAULT_STREAM_RADIUS
 
 ## Tiles we currently show labels for.
 var _streamed_tiles: Dictionary = {}
@@ -88,6 +90,26 @@ func _connect_player_signals() -> void:
 	if _player.has_signal("player_moved"):
 		if not _player.player_moved.is_connected(_on_player_moved):
 			_player.player_moved.connect(_on_player_moved)
+	# Stream labels around the real player position as soon as we
+	# have one. Without this the initial scanner signals might fire
+	# before the first player_moved — handled by the _is_streamed
+	# warm-up path — but nothing re-evaluates labels for tiles that
+	# got populated outside the eventual stream window.
+	if "current_tile" in _player:
+		_stream_around(_player.current_tile)
+
+
+## Adjust the streaming radius. Called from main.gd after
+## GameSettings loads. Immediately re-streams around the current
+## player position so the change is visible without requiring a
+## tile transition.
+func set_stream_radius(radius: int) -> void:
+	var clamped: int = clampi(radius, 1, 200)
+	if clamped == _stream_radius:
+		return
+	_stream_radius = clamped
+	if _player != null and "current_tile" in _player:
+		_stream_around(_player.current_tile)
 
 
 func _find_player() -> Node:
@@ -166,7 +188,7 @@ func _stream_around(center: Vector2i) -> void:
 	# Test doubles typically lack get_tiles_in_range — fall back to
 	# get_all_tiles so the unit suite still covers the full label set.
 	if _grid.has_method("get_tiles_in_range"):
-		for coords in _grid.get_tiles_in_range(center, STREAM_RADIUS):
+		for coords in _grid.get_tiles_in_range(center, _stream_radius):
 			desired[coords] = true
 	elif _grid.has_method("get_all_tiles"):
 		for coords in _grid.get_all_tiles():
