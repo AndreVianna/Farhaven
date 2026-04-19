@@ -144,6 +144,45 @@ var _collision_root: Node3D = null
 ## every tile inside both windows.
 var _scatter_cache: Dictionary = {}
 
+# --- Frame-amortized streaming queues ---
+#
+# Adding tiles' worth of MultiMesh instances + StaticBody3Ds all in one
+# frame produced a ~1s spike per hex crossing (reported by Andre
+# 2026-04-19). The work is real — even with only 14 delta tiles, each
+# tile's scatter compute + per-copy MultiMesh writes + per-copy
+# StaticBody3D allocation + scene-tree insertion add up.
+#
+# The fix: queue the ADD side of streaming and process a bounded
+# batch per _process tick. Evictions stay synchronous — evicted tiles
+# must disappear immediately to avoid lingering ghost instances past
+# the window boundary. Visually, newly-entered tiles fade in over a
+# few frames at the far edge of the window, which is where the
+# player's peripheral vision is least sensitive anyway.
+
+## Max tiles added to the visual MultiMesh pools per frame. Tuned so
+## the per-frame work stays under ~4 ms on the current assets; the
+## queue drains in a handful of frames after a hex cross (~14 tiles
+## delta → 4 frames at 60 Hz, imperceptible).
+const VISUAL_TILES_PER_FRAME: int = 4
+
+## Max tiles that receive StaticBody3D collision bodies per frame.
+## Lower than visual because each body + shape allocation is heavier
+## than a MultiMesh instance write.
+const COLLISION_TILES_PER_FRAME: int = 2
+
+## FIFO queue of tile coords awaiting visual materialization.
+var _pending_visual_tiles: Array[Vector2i] = []
+
+## Set form of _pending_visual_tiles for O(1) membership test during
+## re-queueing / eviction. Keys are Vector2i coords, values unused.
+var _pending_visual_set: Dictionary = {}
+
+## FIFO queue of tile coords awaiting collision body construction.
+var _pending_collision_tiles: Array[Vector2i] = []
+
+## Set form of _pending_collision_tiles (see _pending_visual_set).
+var _pending_collision_set: Dictionary = {}
+
 ## Player node — source of the `player_moved` signal that drives
 ## streaming. Late-bound via `_connect_player_signals` because the
 ## Player is a sibling of this renderer in the scene tree and isn't
@@ -156,6 +195,33 @@ func _ready() -> void:
 		_grid = HexGrid
 	_create_pools()
 	_connect_signals()
+
+
+## Drain the pending-add queues a bounded number of tiles per frame.
+## Eviction happens synchronously inside _stream_*_around so stale
+## instances never linger past one frame; ADDs are what we amortize
+## because their per-tile cost (scatter compute + MultiMesh writes +
+## StaticBody3D allocation + scene-tree insert) is the real spike.
+func _process(_delta: float) -> void:
+	if not _pending_visual_tiles.is_empty():
+		var budget: int = VISUAL_TILES_PER_FRAME
+		while budget > 0 and not _pending_visual_tiles.is_empty():
+			var coords: Vector2i = _pending_visual_tiles.pop_front()
+			_pending_visual_set.erase(coords)
+			if _streamed_tiles.has(coords):
+				continue  # raced with another stream event; already done
+			_add_props_for_tile(coords, false)
+			_streamed_tiles[coords] = true
+			budget -= 1
+	if not _pending_collision_tiles.is_empty():
+		var cbudget: int = COLLISION_TILES_PER_FRAME
+		while cbudget > 0 and not _pending_collision_tiles.is_empty():
+			var coords: Vector2i = _pending_collision_tiles.pop_front()
+			_pending_collision_set.erase(coords)
+			if _collision_bodies.has(coords):
+				continue
+			_build_collision_for_tile(coords)
+			cbudget -= 1
 
 
 func _create_pools() -> void:
@@ -653,19 +719,34 @@ func _stream_around(center: Vector2i) -> void:
 	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return _HexMath.distance(a, center) < _HexMath.distance(b, center))
 
-	# Evict tiles that left the window.
+	# Evict tiles that left the window. Evict SYNCHRONOUSLY — a tile
+	# outside the desired window must stop rendering this frame,
+	# otherwise ghost instances trail the player as they move.
+	# Also drop any pending-queue entries that no longer qualify.
 	for coords in _streamed_tiles.keys():
 		if not desired.has(coords):
 			_remove_all_props_at(coords)
 			_streamed_tiles.erase(coords)
+	if not _pending_visual_set.is_empty():
+		var next_queue: Array[Vector2i] = []
+		for coords in _pending_visual_tiles:
+			if desired.has(coords):
+				next_queue.append(coords)
+			else:
+				_pending_visual_set.erase(coords)
+		_pending_visual_tiles = next_queue
 
-	# Add tiles that entered the window. Skipping tiles already
-	# streamed avoids rebuilding instances on every step.
+	# Queue tiles that entered the window (near-to-far order already
+	# applied to `ordered`). _process drains the queue a few tiles per
+	# frame so a hex cross doesn't burn a whole frame on scatter +
+	# instance adds. Already-streamed and already-pending tiles skip.
 	for coords in ordered:
 		if _streamed_tiles.has(coords):
 			continue
-		_add_props_for_tile(coords, false)
-		_streamed_tiles[coords] = true
+		if _pending_visual_set.has(coords):
+			continue
+		_pending_visual_tiles.append(coords)
+		_pending_visual_set[coords] = true
 
 
 func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
@@ -688,6 +769,11 @@ func _add_props_for_tile(coords: Vector2i, dimmed: bool) -> void:
 		_add_prop_instance(coords, prop, pool_id, dimmed, is_depleted)
 	for anomaly in tile.get_anomalies():
 		_add_anomaly_instance(coords, tile, anomaly, dimmed)
+	# Record that this tile is now visually streamed. Both the normal
+	# queue drain (_process) and ad-hoc callers (_rebuild_tile) end up
+	# here, so marking inside this function keeps _streamed_tiles in
+	# sync regardless of which path ran.
+	_streamed_tiles[coords] = true
 
 
 func _add_anomaly_instance(coords: Vector2i, tile: Resource, anomaly: Resource, dimmed: bool) -> void:
@@ -1010,7 +1096,10 @@ func _is_in_collision_range(coords: Vector2i) -> bool:
 
 
 ## Drop collision bodies on tiles that left the collision window;
-## build bodies on tiles that entered. Visual streaming is untouched.
+## queue bodies on tiles that entered. Visual streaming is untouched.
+## Eviction is synchronous (stale bodies would collide after the
+## player moved on); building is amortized across frames by
+## _process().
 func _stream_collision_around(center: Vector2i) -> void:
 	if _grid == null:
 		return
@@ -1018,15 +1107,34 @@ func _stream_collision_around(center: Vector2i) -> void:
 	if _collision_radius > 0 and _grid.has_method("get_tiles_in_range"):
 		for coords in _grid.get_tiles_in_range(center, _collision_radius):
 			desired[coords] = true
-	# Evict tiles that left the window.
+	# Evict tiles that left the window (synchronous).
 	for coords in _collision_bodies.keys():
 		if not desired.has(coords):
 			_free_collision_bodies_at(coords)
-	# Build tiles that entered the window (skip ones we already have).
+	# Drop pending-queue entries that no longer qualify.
+	if not _pending_collision_set.is_empty():
+		var next_queue: Array[Vector2i] = []
+		for coords in _pending_collision_tiles:
+			if desired.has(coords):
+				next_queue.append(coords)
+			else:
+				_pending_collision_set.erase(coords)
+		_pending_collision_tiles = next_queue
+	# Queue tiles that entered the window. Near-to-far sort so the
+	# player doesn't phase through the closest props while the queue
+	# drains from the far fringe inward.
+	var to_add: Array[Vector2i] = []
 	for coords in desired.keys():
 		if _collision_bodies.has(coords):
 			continue
-		_build_collision_for_tile(coords)
+		if _pending_collision_set.has(coords):
+			continue
+		to_add.append(coords)
+	to_add.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _HexMath.distance(a, center) < _HexMath.distance(b, center))
+	for coords in to_add:
+		_pending_collision_tiles.append(coords)
+		_pending_collision_set[coords] = true
 
 
 ## Emit StaticBody3D + CollisionShape3D children for every scattered
