@@ -103,7 +103,16 @@ Render style: 3D model turnaround reference image for game asset production.
 
 ---
 
-## Variation 3 (Natural scatter, no stacking) — `reference_v3.png` → `mesh_v3.glb`
+## Variation 3 (Stone Cluster — dominant boulder + base stones) — `reference_v3.png` → `mesh_v3.glb`
+
+> **2026-04-19 — regenerated via Meshy (Andre).** Replaced the original
+> "natural scatter, no stacking" mesh with a compact cluster: one
+> dominant boulder seated atop 4–5 smaller stones at its base. This
+> is the mesh currently rendered by BOTH variant 1 and variant 3 on
+> `P01002.tres`, since variant 1's original "pyramid pile" mesh was
+> rejected (see Variation 1 note above). The original prompt text
+> below is kept as historical reference.
+
 
 ```
 A small natural scatter of alien weathered stones resting on the ground. Six stones total in mixed sizes — one about 20 cm across, three about 12 cm, two smaller ones about 7 cm — distributed naturally across a small area where they have settled after weathering out of a parent outcrop. **The stones are NOT stacked or piled on each other** — each rests flat on the ground in its own place, no balancing, no human arrangement. Slightly angular edges suggesting recent natural fracture. Warm gray color with subtle rust-orange oxidation streaks on a couple of them, faint pale cyan-green mineral vein hints visible on the larger stone. Matte dull surface, no metallic sheen. Footprint approximately 20 cm tall and 55 cm wide. Reads as "purely natural debris — nothing has been arranged here."
