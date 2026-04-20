@@ -10,24 +10,39 @@ import { computeBiomeUsedIn, renderRefPanel } from './cross-refs.js';
 import { hexClusterSvg } from './hex-preview.js';
 
 /**
- * Render the preview column for a biome: hex-cluster color preview
- * (NH3) on top, "USED IN" map list below.
+ * Convert `res://assets/…/foo.png` paths into dev-server URLs the
+ * browser can load.
+ * @param {string[]} paths
+ * @returns {string[]}
+ */
+function _texPathsToUrls(paths) {
+  if (!Array.isArray(paths)) return [];
+  return paths
+    .filter(p => typeof p === 'string' && p.length > 0)
+    .map(p => `/api/asset?path=${encodeURIComponent(p.replace(/^res:\/\//, ''))}`);
+}
+
+/**
+ * Render the preview column for a biome: hex-cluster (textures when
+ * available, else color swatches) on top, "USED IN" map list below.
  * @param {HTMLElement} container
  * @param {string} biomeId
  * @param {string} [colorHex]
+ * @param {string[]} [texturePaths]
  */
-function _renderBiomeUsedIn(container, biomeId, colorHex) {
+function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
   container.innerHTML = '';
 
-  // Hex cluster preview
-  if (colorHex) {
+  // Hex cluster preview — textures if the biome has any, else color
+  if (colorHex || (texturePaths && texturePaths.length > 0)) {
     const title = document.createElement('div');
     title.className = 'section-title';
     title.textContent = 'PREVIEW';
     container.appendChild(title);
     const clusterWrap = document.createElement('div');
     clusterWrap.style.cssText = 'display:flex;justify-content:center;padding:4px 0 10px;';
-    clusterWrap.innerHTML = hexClusterSvg(colorHex, 120);
+    const texUrls = _texPathsToUrls(texturePaths);
+    clusterWrap.innerHTML = hexClusterSvg(colorHex || '#555', 140, texUrls.length > 0 ? texUrls : null);
     container.appendChild(clusterWrap);
   }
 
@@ -646,7 +661,7 @@ export function renderBiomeEditor(container, options) {
     // per-map tile counts. Computed client-side from refIndex (app.js).
     const refCol = document.createElement('div');
     refCol.className = 'detail-preview';
-    _renderBiomeUsedIn(refCol, model._id, model.colorHex);
+    _renderBiomeUsedIn(refCol, model._id, model.colorHex, model.terrain_textures);
     columnsWrapper.appendChild(refCol);
 
     form.appendChild(columnsWrapper);

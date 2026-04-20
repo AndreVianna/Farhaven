@@ -10,18 +10,55 @@ import { renderGearHeader } from './editor-common.js';
 import { computePropDropSources, renderRefPanel } from './cross-refs.js';
 
 /**
- * Render the "DROP SOURCES" preview column for a prop's detail pane.
+ * Render the preview column for a prop's detail pane:
+ * DROP SOURCES on top + REFERENCES (concept art thumbnails) below.
  * @param {HTMLElement} container
  * @param {string} propId
  */
 function _renderPropDropSources(container, propId) {
+  container.innerHTML = '';
+
+  // Drop sources (biomes that spawn this prop)
+  const dropWrap = document.createElement('div');
+  container.appendChild(dropWrap);
   const rows = computePropDropSources(propId).map(s => ({
     swatch: s.biomeColor,
     label: s.biomeName,
     meta: `${Math.round(s.frequency * 100)}%  ${s.groupRange[0]}-${s.groupRange[1]}`,
   }));
-  renderRefPanel(container, 'DROP SOURCES', rows,
+  renderRefPanel(dropWrap, 'DROP SOURCES', rows,
     propId ? 'No biome spawns this prop.' : 'Save the new prop to see drop sources.');
+
+  // References (concept art thumbnails) — fills the otherwise empty
+  // bottom of the preview column. 3 slots (reference_v1/v2/v3.png);
+  // server returns 404 for any that don't exist and the <img> onerror
+  // handler hides those thumbnails so authors don't see broken icons.
+  if (propId) {
+    const refsTitle = document.createElement('div');
+    refsTitle.className = 'section-title';
+    refsTitle.textContent = 'REFERENCES';
+    refsTitle.style.marginTop = '16px';
+    container.appendChild(refsTitle);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;';
+    for (let v = 1; v <= 3; v++) {
+      const thumb = document.createElement('div');
+      thumb.style.cssText = 'aspect-ratio:1;background:var(--bg-2);border:1px solid var(--line);border-radius:3px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;';
+      const img = document.createElement('img');
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      img.alt = `Reference v${v}`;
+      img.src = `/api/asset?path=${encodeURIComponent(`assets/props/${propId}/reference_v${v}.png`)}`;
+      img.onerror = () => { thumb.style.display = 'none'; };
+      const label = document.createElement('span');
+      label.style.cssText = 'position:absolute;bottom:2px;left:4px;font-family:var(--font-mono);font-size:9.5px;color:var(--text-0);background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:2px;';
+      label.textContent = `v${v}`;
+      thumb.appendChild(img);
+      thumb.appendChild(label);
+      grid.appendChild(thumb);
+    }
+    container.appendChild(grid);
+  }
 }
 
 /**
