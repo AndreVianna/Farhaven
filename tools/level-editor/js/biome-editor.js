@@ -7,19 +7,38 @@ import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { renderGearHeader } from './editor-common.js';
 import { computeBiomeUsedIn, renderRefPanel } from './cross-refs.js';
+import { hexClusterSvg } from './hex-preview.js';
 
 /**
- * Render the "USED IN" preview column for a biome's detail pane.
- * Pure helper — reads directly from ProjectContext via cross-refs.
+ * Render the preview column for a biome: hex-cluster color preview
+ * (NH3) on top, "USED IN" map list below.
  * @param {HTMLElement} container
  * @param {string} biomeId
+ * @param {string} [colorHex]
  */
-function _renderBiomeUsedIn(container, biomeId) {
+function _renderBiomeUsedIn(container, biomeId, colorHex) {
+  container.innerHTML = '';
+
+  // Hex cluster preview
+  if (colorHex) {
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.textContent = 'PREVIEW';
+    container.appendChild(title);
+    const clusterWrap = document.createElement('div');
+    clusterWrap.style.cssText = 'display:flex;justify-content:center;padding:4px 0 10px;';
+    clusterWrap.innerHTML = hexClusterSvg(colorHex, 120);
+    container.appendChild(clusterWrap);
+  }
+
+  // Used In
   const rows = computeBiomeUsedIn(biomeId).map(u => ({
     label: u.mapName,
     meta: `${u.tileCount} tiles`,
   }));
-  renderRefPanel(container, 'USED IN', rows,
+  const usedInWrap = document.createElement('div');
+  container.appendChild(usedInWrap);
+  renderRefPanel(usedInWrap, 'USED IN', rows,
     biomeId ? 'No maps reference this biome yet.' : 'Save the new biome to see usage.');
 }
 
@@ -627,7 +646,7 @@ export function renderBiomeEditor(container, options) {
     // per-map tile counts. Computed client-side from refIndex (app.js).
     const refCol = document.createElement('div');
     refCol.className = 'detail-preview';
-    _renderBiomeUsedIn(refCol, model._id);
+    _renderBiomeUsedIn(refCol, model._id, model.colorHex);
     columnsWrapper.appendChild(refCol);
 
     form.appendChild(columnsWrapper);

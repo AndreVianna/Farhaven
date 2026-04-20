@@ -214,6 +214,25 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
             with open(full_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(body)
             self._json_response(200, {'ok': True})
+        elif path == '/playtest':
+            # Nice-to-have NH4: launch Godot against the project root.
+            # Detached — we don't wait for Godot to exit and we don't
+            # capture its stdout. Errors surface as 500 so the editor
+            # UI can show them; success is a bare 200.
+            import subprocess
+            try:
+                subprocess.Popen(
+                    ['godot', '--path', PROJECT_ROOT],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                self._json_response(200, {'ok': True})
+            except FileNotFoundError:
+                self._json_response(500, {'error': 'godot binary not found on PATH'})
+            except Exception as e:
+                self._json_response(500, {'error': f'Failed to launch godot: {e}'})
         else:
             self._json_response(404, {'error': 'Not found'})
 

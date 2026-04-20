@@ -40,6 +40,7 @@ import { iconSvg } from './icons.js';
  * @param {() => void} [options.onRedo]
  * @param {() => void} [options.onSave]
  * @param {() => void} [options.onPlaytest]
+ * @param {() => void} [options.onTweaks] - open the tweaks panel
  * @param {() => boolean} [options.isDirty] - returns true when Save should be primary
  */
 export function mountTitlebar(container, options) {
@@ -200,6 +201,19 @@ export function mountTitlebar(container, options) {
     btnPlay.title = 'Launch Godot';
     btnPlay.addEventListener('click', options.onPlaytest);
     right.appendChild(btnPlay);
+  }
+
+  // Tweaks gear button — runtime accent + density toggle
+  if (options.onTweaks) {
+    const btnTweaks = document.createElement('button');
+    btnTweaks.className = 'icon-btn';
+    btnTweaks.title = 'Tweaks (accent + density)';
+    btnTweaks.innerHTML = iconSvg('gear', 14);
+    btnTweaks.addEventListener('click', (e) => {
+      e.stopPropagation();
+      options.onTweaks();
+    });
+    right.appendChild(btnTweaks);
   }
 
   container.appendChild(right);

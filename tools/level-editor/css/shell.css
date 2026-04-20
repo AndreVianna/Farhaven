@@ -275,6 +275,59 @@ input, select, textarea { font: inherit; color: inherit; background: none; borde
 .empty-route .title { color: var(--text-1); font-size: 14px; font-weight: 500; }
 .empty-route .sub { font-size: 12px; }
 
+/* ---- Tweaks panel ---- */
+.tweaks {
+  position: fixed;
+  bottom: 40px; right: 16px;
+  width: 260px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  z-index: 80;
+  overflow: hidden;
+}
+.tweaks-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tweaks-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+.tweak-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.tweak-label {
+  flex: 0 0 60px;
+  color: var(--text-2); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tweak-seg {
+  display: flex; flex-wrap: wrap; gap: 3px; flex: 1;
+}
+.tweak-toggle {
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+.tweak-toggle.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Density: compact reduces padding in common rows/nav/sidebar */
+body[data-density="compact"] .nav-item { padding: 3px 14px; font-size: 12px; }
+body[data-density="compact"] .row { padding: 2px 12px; min-height: 22px; }
+body[data-density="compact"] .master-row,
+body[data-density="compact"] .editor-list-item { padding: 4px 8px; }
+
 /* ---- Command palette (⌘K) ---- */
 .cmdk-backdrop {
   position: fixed;

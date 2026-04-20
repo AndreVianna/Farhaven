@@ -27,6 +27,8 @@ import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, bu
 import { mountTitlebar } from './titlebar.js';
 import { mountSidebar, NAV } from './sidebar.js';
 import { openCommandPalette } from './command-palette.js';
+import { mountStatusbar } from './statusbar.js';
+import { toggleTweaksPanel, applyPersistedTweaks } from './tweaks.js';
 
 // ============================================================
 // Module-level state
@@ -118,6 +120,9 @@ let sidebarHandle = null;
 
 /** @type {{refresh: () => void, setBreadcrumb: (text: string) => void}|null} */
 let titlebarHandle = null;
+
+/** @type {{refresh: () => void}|null} */
+let statusbarHandle = null;
 
 /**
  * Switch to the specified route (tab). Updates the sidebar's active
@@ -284,6 +289,7 @@ dirtyTracker.onChange = () => {
 function updateTabIndicators() {
   if (sidebarHandle) sidebarHandle.refresh();
   if (titlebarHandle) titlebarHandle.refresh();
+  if (statusbarHandle) statusbarHandle.refresh();
 }
 
 /**
@@ -1010,6 +1016,10 @@ async function autoLoadProject() {
   console.log('autoLoadProject: Workspace ready.');
 }
 
+// Apply persisted accent/density tweaks before anything renders so the
+// user's preference lands on first paint instead of flashing amber first.
+applyPersistedTweaks();
+
 autoLoadProject();
 
 /**
@@ -1122,7 +1132,8 @@ function _mountShell() {
       onUndo: () => { if (commandHistory.canUndo()) commandHistory.undo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
       onRedo: () => { if (commandHistory.canRedo()) commandHistory.redo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
       onSave: () => _clickByIdIfExists('btn-save'),
-      onPlaytest: null,  // Nice-to-have: wired once server.py endpoint lands
+      onPlaytest: _launchPlaytest,
+      onTweaks: toggleTweaksPanel,
       isDirty: () => dirtyTracker.hasUnsavedChanges(),
     });
   }
@@ -1133,6 +1144,40 @@ function _mountShell() {
       onRouteChange: (id) => switchTab(id),
       activeRouteId: () => activeTab,
     });
+  }
+
+  const statusbarEl = document.getElementById('status-bar');
+  if (statusbarEl) {
+    statusbarHandle = mountStatusbar(statusbarEl, {
+      route: () => activeTab,
+      isDirty: () => dirtyTracker.hasUnsavedChanges(),
+      chapter: () => {
+        const first = ProjectContext.files.maps.entries().next();
+        if (first.done) return 'ch?';
+        const [name, entry] = first.value;
+        return (entry && entry.data && entry.data.chapter_id) || name.replace(/\.json$/i, '');
+      },
+    });
+  }
+}
+
+/**
+ * Launch Godot in a subprocess via the dev server /playtest endpoint.
+ * Server returns 200 on success, 500 otherwise; either way we just show
+ * a status line — the player then pops up in a new OS window.
+ */
+async function _launchPlaytest() {
+  setStatus('Launching Godot…');
+  try {
+    const resp = await fetch('/playtest', { method: 'POST' });
+    if (!resp.ok) {
+      const msg = await resp.text().catch(() => '');
+      setStatus(`Playtest failed: ${msg || resp.status}`);
+      return;
+    }
+    setStatus('Godot launched.');
+  } catch (err) {
+    setStatus(`Playtest error: ${err.message || err}`);
   }
 }
 
