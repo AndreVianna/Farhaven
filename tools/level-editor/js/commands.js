@@ -28,6 +28,32 @@ function _updateShorelineWalls(grid, wq, wr) {
   }
 }
 
+/**
+ * Recompute a water tile's waterLevel iff the invariant (waterLevel
+ * ≥ elevation) would otherwise break OR the tile has no stored
+ * waterLevel yet. Preserves explicitly-set values — the old
+ * unconditional assignment clobbered user edits on shoreline tiles
+ * (Andre 2026-04-20: "normal click misbehaves only near borders").
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ */
+function _recomputeWaterLevelIfInvariantBroken(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return;
+  const hasStored = typeof tile.waterLevel === 'number';
+  if (hasStored && tile.waterLevel >= tile.elevation) {
+    // User's explicit value is still valid — do not touch. The shore
+    // neighbor may have changed elevation, but that doesn't invalidate
+    // the surface the user chose.
+    return;
+  }
+  // Either waterLevel is null (needs initial compute) or elevation
+  // has risen above it (invariant broken). Let computeWaterLevel
+  // return max(elevation, minDryElev) to restore the invariant.
+  tile.waterLevel = computeWaterLevel(grid, q, r);
+}
+
 function _updateWaterNeighbors(grid, q, r) {
   const tile = grid.getTile(q, r);
   if (!tile) return;
@@ -44,11 +70,11 @@ function _updateWaterNeighbors(grid, q, r) {
     const neighborIsWater = neighbor.biome === 'B00005';
 
     if (neighborIsWater && !tileIsWater) {
-      neighbor.waterLevel = computeWaterLevel(grid, nq, nr);
+      _recomputeWaterLevelIfInvariantBroken(grid, nq, nr);
       waterTilesToUpdate.add(`${nq},${nr}`);
     }
     if (tileIsWater && !neighborIsWater) {
-      tile.waterLevel = computeWaterLevel(grid, q, r);
+      _recomputeWaterLevelIfInvariantBroken(grid, q, r);
       waterTilesToUpdate.add(`${q},${r}`);
     }
   }
