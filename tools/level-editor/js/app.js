@@ -1059,15 +1059,17 @@ async function autoLoadProject() {
   const biomeCount = ProjectContext.files.biomes.size;
   setStatus(`Project loaded: ${mapCount} map(s), ${propCount} prop(s), ${biomeCount} biome(s)`);
   console.log('autoLoadProject: Workspace ready.');
-
-  // Drop the user back onto whichever route they were on before the
-  // last reload. Done here so the target editor has populated data.
-  restorePersistedTab();
 }
 
 // Apply persisted accent/density tweaks before anything renders so the
 // user's preference lands on first paint instead of flashing amber first.
 applyPersistedTweaks();
+
+// Restore the last-active tab BEFORE autoLoadProject so the initial
+// render uses the correct panel and sidebar activeId. Running it
+// after the project load left a visible flash of the map tab and
+// lost the switch if any render path cached the initial activeTab.
+restorePersistedTab();
 
 autoLoadProject();
 
