@@ -26,6 +26,7 @@ import { showGeneratorDialog, generateMap } from './map-generator.js';
 import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './populate.js';
 import { mountTitlebar } from './titlebar.js';
 import { mountSidebar, NAV } from './sidebar.js';
+import { openCommandPalette } from './command-palette.js';
 
 // ============================================================
 // Module-level state
@@ -1080,6 +1081,33 @@ function _toggleHelpOverlay() {
   if (backdrop) backdrop.classList.toggle('visible', !isVisible);
 }
 
+function _openCommandPaletteWithCtx() {
+  openCommandPalette({
+    commands: {
+      save: () => _clickByIdIfExists('btn-save'),
+      undo: () => { if (commandHistory.canUndo()) { commandHistory.undo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); } },
+      redo: () => { if (commandHistory.canRedo()) { commandHistory.redo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); } },
+      newMap: () => _clickByIdIfExists('btn-new-map'),
+      generateMap: () => _clickByIdIfExists('btn-generate-map'),
+      populate: () => _clickByIdIfExists('btn-populate-map'),
+      clearProps: () => _clickByIdIfExists('btn-clear-props'),
+      help: _toggleHelpOverlay,
+    },
+    onRoute: (id) => switchTab(id),
+  });
+}
+
+// Global keyboard shortcut: Ctrl/⌘+K opens the palette.
+document.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && (e.key === 'k' || e.key === 'K')) {
+    // Don't swallow if a modal input has focus on something that
+    // might care about ⌘K (unlikely, but defensive).
+    e.preventDefault();
+    _openCommandPaletteWithCtx();
+  }
+});
+
 /**
  * Mount the new shell (titlebar + sidebar). Called once after
  * ProjectContext + commandHistory + dirtyTracker are available.
@@ -1090,7 +1118,7 @@ function _mountShell() {
   if (titlebarEl) {
     titlebarHandle = mountTitlebar(titlebarEl, {
       menus: _buildTitlebarMenus(),
-      onCommandPalette: () => { /* Nice-to-have: Command Palette — wired in later commit */ },
+      onCommandPalette: _openCommandPaletteWithCtx,
       onUndo: () => { if (commandHistory.canUndo()) commandHistory.undo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
       onRedo: () => { if (commandHistory.canRedo()) commandHistory.redo(); if (hexCanvas) hexCanvas.requestRender(); updateTabIndicators(); },
       onSave: () => _clickByIdIfExists('btn-save'),

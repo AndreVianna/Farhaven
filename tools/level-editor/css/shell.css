@@ -275,6 +275,73 @@ input, select, textarea { font: inherit; color: inherit; background: none; borde
 .empty-route .title { color: var(--text-1); font-size: 14px; font-weight: 500; }
 .empty-route .sub { font-size: 12px; }
 
+/* ---- Command palette (⌘K) ---- */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 900;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+}
+.cmdk {
+  width: 560px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  overflow: hidden;
+}
+.cmdk-input {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.cmdk-input svg { width: 14px; height: 14px; color: var(--text-2); }
+.cmdk-input input {
+  flex: 1;
+  background: transparent;
+  border: none; outline: none;
+  font-size: 14px; color: var(--text-0);
+}
+.cmdk-input input::placeholder { color: var(--text-2); }
+.cmdk-input .hint-kbd {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text-2);
+  padding: 2px 6px; border: 1px solid var(--line-2); border-radius: 3px;
+}
+.cmdk-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 6px 0 10px;
+}
+.cmdk-section {
+  padding: 8px 14px 3px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-2); font-weight: 600;
+}
+.cmdk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-0);
+  cursor: pointer;
+}
+.cmdk-item:hover, .cmdk-item.active {
+  background: var(--accent-bg);
+  color: var(--text-0);
+}
+.cmdk-item .ci-icon { width: 16px; height: 16px; color: var(--text-1); flex-shrink: 0; }
+.cmdk-item.active .ci-icon { color: var(--accent); }
+.cmdk-item .ci-label { flex: 1; }
+.cmdk-item .ci-sub { color: var(--text-2); font-size: 11px; font-family: var(--font-mono); }
+.cmdk-item .ci-kbd {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text-2);
+  padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 3px;
+  background: var(--bg-2);
+}
+
 /* ---- Status bar ---- */
 .statusbar {
   height: var(--h-status);
