@@ -213,15 +213,6 @@ export class ElevationBrush extends DragBrushTool {
     const tile = this.grid.getTile(hex.q, hex.r);
     if (!tile) return;
 
-    if (tile.biome === 'B00005') {
-      console.log('[_applySingle water]',
-        'q,r=', hex.q, hex.r,
-        'delta=', this.delta,
-        'altHeld=', this.toolManager.altHeld,
-        'elevation=', tile.elevation,
-        'waterLevel=', tile.waterLevel);
-    }
-
     // Alt+click on water tiles edits the SURFACE (waterLevel) instead
     // of the floor (elevation). Keeps both dimensions of a water cell
     // editable from the same tool without a separate mode.

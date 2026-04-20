@@ -328,7 +328,12 @@ export class SetWaterLevelCommand {
     tile.waterLevel = this.newLevel;
     if (tile.elevation > this.newLevel) tile.elevation = this.newLevel;
     this.grid.setTile(this.q, this.r, tile);
-    _updateWaterNeighbors(this.grid, this.q, this.r);
+    // Refresh shoreline walls only — DO NOT call _updateWaterNeighbors,
+    // which recomputes waterLevel from neighbor elevations for border
+    // tiles and would silently clobber the value we just set. This bug
+    // made ALT+click appear "broken near the shore" while interior
+    // water tiles (no land neighbor) worked fine (Andre 2026-04-20).
+    _updateShorelineWalls(this.grid, this.q, this.r);
   }
   undo() {
     const tile = this.grid.getTile(this.q, this.r);
@@ -336,7 +341,7 @@ export class SetWaterLevelCommand {
     tile.waterLevel = this.oldLevel;
     if (this.oldElevation !== null) tile.elevation = this.oldElevation;
     this.grid.setTile(this.q, this.r, tile);
-    _updateWaterNeighbors(this.grid, this.q, this.r);
+    _updateShorelineWalls(this.grid, this.q, this.r);
   }
 }
 

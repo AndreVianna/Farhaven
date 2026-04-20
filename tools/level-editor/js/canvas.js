@@ -1432,11 +1432,6 @@ export class HexCanvas {
       this.ctrlHeld = event.ctrlKey || this.ctrlHeld;
       this.toolManager.altHeld = this.altHeld;
       this.toolManager.ctrlHeld = this.ctrlHeld;
-      console.log('[elev right-click]',
-        'event.altKey=', event.altKey,
-        'event.ctrlKey=', event.ctrlKey,
-        'kbd.altHeld=', this.altHeld,
-        'tool.altHeld=', this.toolManager.altHeld);
       this.toolManager.activeTool.delta = -1;
       const hex = this.screenToHex(mx, my);
       this.selectedHex = { q: hex.q, r: hex.r };
