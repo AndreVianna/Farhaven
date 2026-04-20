@@ -1421,6 +1421,12 @@ export class HexCanvas {
     // "right-click = pan" path so the drag batches with the same brush.
     const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
     if (event.button === 2 && isElevation && this.toolManager.activeTool) {
+      // Sync modifier state from the MouseEvent — authoritative even
+      // when we missed a keydown (focus loss, OS-level intercept).
+      this.altHeld = event.altKey;
+      this.ctrlHeld = event.ctrlKey;
+      this.toolManager.altHeld = this.altHeld;
+      this.toolManager.ctrlHeld = this.ctrlHeld;
       this.toolManager.activeTool.delta = -1;
       const hex = this.screenToHex(mx, my);
       this.selectedHex = { q: hex.q, r: hex.r };
@@ -1472,6 +1478,10 @@ export class HexCanvas {
         if (this.hoveredEdge && this.toolManager.activeToolType === 'wall') {
           hexWithExtra.edgeIdx = this.hoveredEdge.edgeIdx;
         }
+        // Authoritative modifier read from the MouseEvent — survives
+        // any missed keydown (focus loss, browser / OS intercept).
+        this.ctrlHeld = event.ctrlKey;
+        this.altHeld = event.altKey;
         this.toolManager.ctrlHeld = this.ctrlHeld;
         this.toolManager.altHeld = this.altHeld;
         this.toolManager.onMouseDown(hexWithExtra);
@@ -1565,8 +1575,15 @@ export class HexCanvas {
       }
     }
 
-    // Forward to tool during drag
+    // Forward to tool during drag. Refresh the modifier state from
+    // the live MouseEvent so each drag step respects the current
+    // Alt/Ctrl — user can press or release Alt mid-drag to switch
+    // between water surface / floor editing on-the-fly.
     if (this._mouseDown && this.toolManager) {
+      this.ctrlHeld = event.ctrlKey;
+      this.altHeld = event.altKey;
+      this.toolManager.ctrlHeld = this.ctrlHeld;
+      this.toolManager.altHeld = this.altHeld;
       this.toolManager.onMouseMove(hex);
     }
   }
