@@ -63,6 +63,11 @@ export class HexCanvas {
     /** @type {Set<string>} Ghost hex positions (recomputed each render) */
     this._ghostSet = new Set();
     this.showCoordinates = false;
+    /** Toggles for map display. When false, the corresponding overlay
+     * is skipped during render. Persisted by the map-sidebar UI via
+     * setter-style assignments; requestRender() picks up changes. */
+    this.showElevationNumbers = true;
+    this.showPlacedProps = true;
     /** @type {{ q: number, r: number }|null} Sub-hex within hovered hex */
     this.hoveredSubHex = null;
     this.isPanning = false;
@@ -267,7 +272,7 @@ export class HexCanvas {
       const wp = HexMath.axialToPixel(q, r);
       if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
       this._drawHex(q, r, tile);
-      this._drawElevationOverlay(q, r, tile);
+      if (this.showElevationNumbers) this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
       if (this._unreachableSet.has(key)) {
         this._drawUnreachableOverlay(q, r);
@@ -278,12 +283,14 @@ export class HexCanvas {
     }
 
     // --- Phase 3b: Props on top of all hex backgrounds (prevents clipping) ---
-    for (const [key, tile] of this.grid.getAllTiles()) {
-      if (tile.props && tile.props.length > 0) {
-        const { q, r } = HexGrid.parseKey(key);
-        const wp = HexMath.axialToPixel(q, r);
-        if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
-        this._drawSubHexOccupancy(q, r, tile);
+    if (this.showPlacedProps) {
+      for (const [key, tile] of this.grid.getAllTiles()) {
+        if (tile.props && tile.props.length > 0) {
+          const { q, r } = HexGrid.parseKey(key);
+          const wp = HexMath.axialToPixel(q, r);
+          if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
+          this._drawSubHexOccupancy(q, r, tile);
+        }
       }
     }
 

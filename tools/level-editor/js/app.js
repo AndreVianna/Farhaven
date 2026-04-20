@@ -974,6 +974,24 @@ if (btnRenderColor) btnRenderColor.addEventListener('click', () => _setBiomeRend
 const btnRenderTexture = document.getElementById('btn-render-texture');
 if (btnRenderTexture) btnRenderTexture.addEventListener('click', () => _setBiomeRenderMode('texture'));
 
+// Display toggles — elevation numbers + placed props (map canvas overlay).
+const chkShowElevation = document.getElementById('btn-show-elevation');
+if (chkShowElevation) {
+  chkShowElevation.addEventListener('change', () => {
+    if (!hexCanvas) return;
+    hexCanvas.showElevationNumbers = chkShowElevation.checked;
+    hexCanvas.requestRender();
+  });
+}
+const chkShowProps = document.getElementById('btn-show-props');
+if (chkShowProps) {
+  chkShowProps.addEventListener('change', () => {
+    if (!hexCanvas) return;
+    hexCanvas.showPlacedProps = chkShowProps.checked;
+    hexCanvas.requestRender();
+  });
+}
+
 // ============================================================
 // beforeunload protection (task-005)
 // ============================================================
