@@ -1421,12 +1421,22 @@ export class HexCanvas {
     // "right-click = pan" path so the drag batches with the same brush.
     const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
     if (event.button === 2 && isElevation && this.toolManager.activeTool) {
-      // Sync modifier state from the MouseEvent — authoritative even
-      // when we missed a keydown (focus loss, OS-level intercept).
-      this.altHeld = event.altKey;
-      this.ctrlHeld = event.ctrlKey;
+      // Sync modifier state. Prefer event.altKey (authoritative at
+      // click time), but fall back to keyboard-tracked this.altHeld
+      // in case the browser consumed the Alt for a native binding
+      // between the keydown and this mousedown (Firefox menu bar,
+      // Chrome Alt+right-click context — both have been seen to
+      // drop altKey=false on the MouseEvent despite the user still
+      // holding Alt physically).
+      this.altHeld = event.altKey || this.altHeld;
+      this.ctrlHeld = event.ctrlKey || this.ctrlHeld;
       this.toolManager.altHeld = this.altHeld;
       this.toolManager.ctrlHeld = this.ctrlHeld;
+      console.log('[elev right-click]',
+        'event.altKey=', event.altKey,
+        'event.ctrlKey=', event.ctrlKey,
+        'kbd.altHeld=', this.altHeld,
+        'tool.altHeld=', this.toolManager.altHeld);
       this.toolManager.activeTool.delta = -1;
       const hex = this.screenToHex(mx, my);
       this.selectedHex = { q: hex.q, r: hex.r };
