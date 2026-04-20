@@ -1089,7 +1089,7 @@ function _buildTitlebarMenus() {
     {
       label: 'Run',
       items: [
-        { label: 'Playtest in Godot', kbd: 'F5', disabled: () => true, action: () => {} },
+        { label: 'Playtest in Godot', kbd: 'F5', action: () => _launchPlaytest() },
       ],
     },
     {
@@ -1150,6 +1150,12 @@ document.addEventListener('keydown', (e) => {
     if (_isEditableEventTarget(e.target)) return;
     e.preventDefault();
     _openCommandPaletteWithCtx();
+  }
+  // F5 launches playtest — matches the kbd hint on the Run menu item.
+  if (e.key === 'F5' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+    if (_isEditableEventTarget(e.target)) return;
+    e.preventDefault();
+    _launchPlaytest();
   }
 });
 
