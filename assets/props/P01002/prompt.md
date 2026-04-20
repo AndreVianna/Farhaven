@@ -33,16 +33,12 @@ Yields 2 stone_piece per harvest, no respawn.
 
 ## Variation 1 (Baseline / medium pile) — `reference_v1.png` → `mesh_v1.glb`
 
-> **2026-04-19 — Andre rejected the generated pyramid pile.** `P01002.tres`
-> currently points variant 1 to `mesh_v3.glb` (same content as variant 3) so
-> no "pyramid of stones" appears in-game. A fresh v1 mesh with the below
-> prompt can be dropped back in and variant 1 in `P01002.tres` pointed back
-> to `mesh_v1.glb` when ready. (Specifically: change the `mesh_variant_1`
-> sub-resource's `scene = ExtResource(…mesh_v3…)` back to the ExtResource
-> that points at `res://assets/props/P01002/mesh_v1.glb` — the exact id
-> suffix may shift if the file has been re-saved.)
+> **2026-04-20 — Andre replaced the v1 assets.** New `reference_v1.png`
+> and `mesh_v1.glb` installed via Discord, and `P01002.tres` variant 1
+> now points at `mesh_v1.glb` again (previously temporarily pointed at
+> `mesh_v3.glb` after the first pyramid-pile mesh was rejected).
 
-**Historical prompt (do not use for current mesh):**
+**Prompt:**
 
 ```
 A small alien stone pile resting on the ground. Roughly seven fist-sized
@@ -111,10 +107,7 @@ Render style: 3D model turnaround reference image for game asset production.
 
 > **2026-04-19 — regenerated via Meshy (Andre).** Replaced the original
 > "natural scatter, no stacking" mesh with a compact cluster: one
-> dominant boulder seated atop 4–5 smaller stones at its base. This
-> is the mesh currently rendered by BOTH variant 1 and variant 3 on
-> `P01002.tres`, since variant 1's original "pyramid pile" mesh was
-> rejected (see Variation 1 note above).
+> dominant boulder seated atop 4–5 smaller stones at its base.
 
 **Historical prompt (do not use for current mesh):**
 
