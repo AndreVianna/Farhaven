@@ -1421,15 +1421,13 @@ export class HexCanvas {
     // "right-click = pan" path so the drag batches with the same brush.
     const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
     if (event.button === 2 && isElevation && this.toolManager.activeTool) {
-      // Sync modifier state. Prefer event.altKey (authoritative at
-      // click time), but fall back to keyboard-tracked this.altHeld
-      // in case the browser consumed the Alt for a native binding
-      // between the keydown and this mousedown (Firefox menu bar,
-      // Chrome Alt+right-click context — both have been seen to
-      // drop altKey=false on the MouseEvent despite the user still
-      // holding Alt physically).
-      this.altHeld = event.altKey || this.altHeld;
-      this.ctrlHeld = event.ctrlKey || this.ctrlHeld;
+      // Authoritative modifier read from the MouseEvent — matches the
+      // left-click path below. Previously OR'd with keyboard-tracked
+      // state to cover browsers that consume Alt for native bindings,
+      // but that let stale `this.altHeld=true` leak into later clicks
+      // and caused the border-tile bug (2026-04-20). Trust the event.
+      this.altHeld = event.altKey;
+      this.ctrlHeld = event.ctrlKey;
       this.toolManager.altHeld = this.altHeld;
       this.toolManager.ctrlHeld = this.ctrlHeld;
       this.toolManager.activeTool.delta = -1;

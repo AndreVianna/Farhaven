@@ -7,7 +7,7 @@ import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, RARITIES, ORIGINS, NATURAL_CATEGORIES, ORIGIN_TO_INT } from './hex-grid.js';
 import { renderGearHeader } from './editor-common.js';
-import { computePropDropSources, renderRefPanel } from './cross-refs.js';
+import { getRefIndex, renderRefPanel } from './cross-refs.js';
 
 /**
  * Render the preview column for a prop's detail pane:
@@ -21,7 +21,7 @@ function _renderPropDropSources(container, propId) {
   // Drop sources (biomes that spawn this prop)
   const dropWrap = document.createElement('div');
   container.appendChild(dropWrap);
-  const rows = computePropDropSources(propId).map(s => ({
+  const rows = getRefIndex().forProp(propId).map(s => ({
     swatch: s.biomeColor,
     label: s.biomeName,
     meta: `${Math.round(s.frequency * 100)}%  ${s.groupRange[0]}-${s.groupRange[1]}`,

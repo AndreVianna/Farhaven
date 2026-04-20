@@ -53,6 +53,7 @@ export function applyPersistedTweaks() {
 }
 
 let _panelOpen = null;
+let _pendingAttachTimer = 0;
 
 /**
  * Toggle the tweaks floating panel near the bottom-right corner.
@@ -63,6 +64,14 @@ export function toggleTweaksPanel() {
     _panelOpen.remove();
     _panelOpen = null;
     document.removeEventListener('click', _outsideClick, true);
+    // Cancel any deferred attach — a fast second click closed the panel
+    // before the listener had a chance to register (Copilot PR #28
+    // comment 3108091236). Without this, the listener attaches AFTER
+    // the close path cleared _panelOpen, leaving it orphaned forever.
+    if (_pendingAttachTimer) {
+      clearTimeout(_pendingAttachTimer);
+      _pendingAttachTimer = 0;
+    }
     return;
   }
   const state = _load();
@@ -116,7 +125,10 @@ export function toggleTweaksPanel() {
   document.body.appendChild(panel);
   _panelOpen = panel;
   // Next tick so the open click doesn't immediately close.
-  setTimeout(() => document.addEventListener('click', _outsideClick, true), 0);
+  _pendingAttachTimer = setTimeout(() => {
+    _pendingAttachTimer = 0;
+    document.addEventListener('click', _outsideClick, true);
+  }, 0);
 }
 
 function _outsideClick(e) {

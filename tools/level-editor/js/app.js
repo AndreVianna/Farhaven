@@ -29,6 +29,7 @@ import { mountSidebar, NAV } from './sidebar.js';
 import { openCommandPalette } from './command-palette.js';
 import { mountStatusbar } from './statusbar.js';
 import { toggleTweaksPanel, applyPersistedTweaks } from './tweaks.js';
+import { invalidateRefIndex } from './cross-refs.js';
 
 // ============================================================
 // Module-level state
@@ -870,17 +871,23 @@ async function saveAll() {
 
   const tabs = ['map', 'props', 'biomes', 'recipes', 'events', 'journal', 'cutscenes'];
   let hadError = false;
+  let touchedRefs = false;
   for (const tab of tabs) {
     if (dirtyTracker.isDirty(tab)) {
       try {
         await saveTab(tab);
         dirtyTracker.markClean(tab);
+        if (tab === 'map' || tab === 'biomes') touchedRefs = true;
       } catch (err) {
         hadError = true;
         showError(`Save failed for ${tab}: ${err.message}`);
       }
     }
   }
+  // Tile contents or biome natural_props may have changed — drop the
+  // cached "Used In" / "Drop Sources" lookups so the next editor open
+  // recomputes against the new state.
+  if (touchedRefs) invalidateRefIndex();
   if (!hadError) {
     setStatus('All changes saved.');
   }
@@ -1125,12 +1132,22 @@ function _openCommandPaletteWithCtx() {
   });
 }
 
-// Global keyboard shortcut: Ctrl/⌘+K opens the palette.
+/** @param {EventTarget | null} target */
+function _isEditableEventTarget(target) {
+  if (!(target instanceof Element)) return false;
+  if (target.closest('[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]')) {
+    return true;
+  }
+  return !!target.closest('input, textarea, select');
+}
+
+// Global keyboard shortcut: Ctrl/⌘+K opens the palette. Skipped when an
+// editable field has focus so typing "k" inside an input still inserts
+// the character (Copilot PR #28 comment 3108091296).
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
   if (mod && (e.key === 'k' || e.key === 'K')) {
-    // Don't swallow if a modal input has focus on something that
-    // might care about ⌘K (unlikely, but defensive).
+    if (_isEditableEventTarget(e.target)) return;
     e.preventDefault();
     _openCommandPaletteWithCtx();
   }
@@ -1170,10 +1187,20 @@ function _mountShell() {
       route: () => activeTab,
       isDirty: () => dirtyTracker.hasUnsavedChanges(),
       chapter: () => {
-        const first = ProjectContext.files.maps.entries().next();
-        if (first.done) return 'ch?';
-        const [name, entry] = first.value;
-        return (entry && entry.data && entry.data.chapter_id) || name.replace(/\.json$/i, '');
+        // Prefer the live grid meta (reflects unsaved edits). Fall back
+        // to the active map file's stored chapter_id, then its filename.
+        // Previously returned the FIRST map in the project regardless of
+        // which one was loaded — wrong once the project had multiple
+        // maps.
+        if (hexGrid && hexGrid.meta && hexGrid.meta.chapter_id) {
+          return hexGrid.meta.chapter_id;
+        }
+        if (activeMapFilename) {
+          const entry = ProjectContext.files.maps.get(activeMapFilename);
+          if (entry && entry.data && entry.data.chapter_id) return entry.data.chapter_id;
+          return activeMapFilename.replace(/\.json$/i, '');
+        }
+        return 'ch?';
       },
     });
   }
@@ -1187,7 +1214,14 @@ function _mountShell() {
 async function _launchPlaytest() {
   setStatus('Launching Godot…');
   try {
-    const resp = await fetch('/playtest', { method: 'POST' });
+    const resp = await fetch('/playtest', {
+      method: 'POST',
+      // Custom header forces a CORS preflight from any non-editor origin,
+      // so drive-by cross-site POSTs can't silently trigger Godot. The
+      // server rejects the POST without it (Copilot PR #28 comments
+      // 3108091263 + 3108091280).
+      headers: { 'X-Editor-Request': '1' },
+    });
     if (!resp.ok) {
       const msg = await resp.text().catch(() => '');
       setStatus(`Playtest failed: ${msg || resp.status}`);

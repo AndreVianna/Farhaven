@@ -211,12 +211,12 @@ export class ElevationBrush extends DragBrushTool {
 
   _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
-    if (!tile) return;
 
-    // Alt+click on water tiles edits the SURFACE (waterLevel) instead
-    // of the floor (elevation). Keeps both dimensions of a water cell
-    // editable from the same tool without a separate mode.
-    if (tile.biome === 'B00005' && this.toolManager.altHeld) {
+    // Alt+click on an existing water tile edits the SURFACE (waterLevel)
+    // instead of the floor (elevation). Only runs for tiles that already
+    // exist and are water — empty hexes fall through to the elevation
+    // path so the brush can still paint ground level on unset cells.
+    if (tile && tile.biome === 'B00005' && this.toolManager.altHeld) {
       const oldLevel = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
       const newLevel = Math.max(-32000, Math.min(32000, oldLevel + this.delta));
       if (oldLevel === newLevel) return;
@@ -226,13 +226,11 @@ export class ElevationBrush extends DragBrushTool {
       return;
     }
 
-    const oldElevation = tile.elevation;
+    const oldElevation = tile ? tile.elevation : 0;
     let target = oldElevation + this.delta;
-    // Water invariant: floor depth capped at surface level. If the
-    // user raises elevation above waterLevel, the SetElevationCommand
-    // clamps it, but we pre-clamp here so the no-op check below can
-    // catch edge cases (e.g. already-at-cap + positive delta).
-    if (tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
+    // Water invariant: floor depth capped at surface level. Pre-clamp so
+    // the no-op check below catches edge cases (e.g. already-at-cap).
+    if (tile && tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
       target = Math.min(target, tile.waterLevel);
     }
     const newElevation = Math.max(-32000, Math.min(32000, target));

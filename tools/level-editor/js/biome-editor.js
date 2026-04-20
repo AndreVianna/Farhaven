@@ -6,7 +6,7 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { renderGearHeader } from './editor-common.js';
-import { computeBiomeUsedIn, renderRefPanel } from './cross-refs.js';
+import { getRefIndex, renderRefPanel } from './cross-refs.js';
 import { hexClusterSvg } from './hex-preview.js';
 
 /**
@@ -46,8 +46,9 @@ function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
     container.appendChild(clusterWrap);
   }
 
-  // Used In
-  const rows = computeBiomeUsedIn(biomeId).map(u => ({
+  // Used In — cached scan via the shared reference index so scanning
+  // all tiles in ch1 isn't repeated per click.
+  const rows = getRefIndex().forBiome(biomeId).map(u => ({
     label: u.mapName,
     meta: `${u.tileCount} tiles`,
   }));

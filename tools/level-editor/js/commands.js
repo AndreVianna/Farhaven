@@ -228,9 +228,15 @@ export class SetBiomeCommand {
     }
     tile.waterType = this.waterType;
     if (this.newBiome === 'B00005') {
-      // Convert to water: compute waterLevel, set depth below surface
-      tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
-      // Depth should be at or below waterLevel (default: waterLevel for shallow)
+      // Only seed waterLevel when converting INTO water (land→water). A
+      // water→water biome change (e.g. swapping Lake for River) would
+      // otherwise clobber the user's explicit surface height. Keep the
+      // previously-set value; the invariant is enforced below anyway.
+      const cameFromWater = this.oldBiome === 'B00005' && typeof this._oldWaterLevel === 'number';
+      if (!cameFromWater) {
+        tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+      }
+      // Depth must stay at or below waterLevel.
       if (tile.waterLevel != null && tile.elevation > tile.waterLevel) {
         tile.elevation = tile.waterLevel;
       }

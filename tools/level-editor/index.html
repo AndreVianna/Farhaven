@@ -1044,22 +1044,18 @@ input[type="checkbox"] {
 </div>
 
 <script>
+// Help overlay: backdrop click + Escape. The titlebar menu and ? button
+// (both owned by app.js) call into _toggleHelpOverlay for open/close.
 (function() {
-  const btn = document.getElementById('help-btn');
   const overlay = document.getElementById('help-overlay');
   const backdrop = document.getElementById('help-overlay-backdrop');
-
-  function toggleHelp() {
-    overlay.classList.toggle('visible');
-    backdrop.classList.toggle('visible');
-  }
+  if (!overlay || !backdrop) return;
 
   function closeHelp() {
     overlay.classList.remove('visible');
     backdrop.classList.remove('visible');
   }
 
-  btn.addEventListener('click', toggleHelp);
   backdrop.addEventListener('click', closeHelp);
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && overlay.classList.contains('visible')) {

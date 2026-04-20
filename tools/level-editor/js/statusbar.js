@@ -9,8 +9,6 @@
  * structure so setStatus() and tool-change handlers continue to work.
  * ============================================================ */
 
-import { iconSvg } from './icons.js';
-
 /**
  * Mount extended status bar content into container.
  *

@@ -86,7 +86,9 @@
 .editor-list-item.active .mr-id { color: var(--accent); }
 
 .master-row .mr-swatch,
-.editor-list-item .mr-swatch {
+.editor-list-item .mr-swatch,
+.editor-list-item .swatch,
+.master-row .swatch {
   width: 16px; height: 16px; border-radius: 3px;
   flex-shrink: 0; border: 1px solid rgba(0,0,0,0.35);
 }

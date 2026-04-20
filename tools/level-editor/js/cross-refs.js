@@ -125,6 +125,30 @@ export function buildReferenceIndex() {
   return { forBiome, forProp, rebuild };
 }
 
+// ---- Module-level singleton -------------------------------------------
+// Editors call `getRefIndex().forBiome(id)` / `.forProp(id)` to avoid the
+// O(tiles) scan on every click. `invalidateRefIndex()` flushes the cache
+// after any mutation that could change map/biome contents (save, import,
+// biome natural_props edit). Cheap to rebuild — just clears two Maps.
+
+let _refIndex = null;
+
+/**
+ * Lazily create (and return) the shared reference index. Safe to call
+ * before ProjectContext is populated — the underlying compute functions
+ * iterate empty collections and return [] in that case.
+ */
+export function getRefIndex() {
+  if (!_refIndex) _refIndex = buildReferenceIndex();
+  return _refIndex;
+}
+
+/** Flush the cached reference index. Call after any mutation that could
+ *  change biome usage counts or prop drop-source frequencies. */
+export function invalidateRefIndex() {
+  if (_refIndex) _refIndex.rebuild();
+}
+
 // ---- Internals ---------------------------------------------------------
 
 function _biomeColorCss(color) {
@@ -212,7 +236,11 @@ export function renderRefPanel(container, title, rows, emptyText) {
     el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:11.5px;color:var(--text-1);';
     if (row.swatch) {
       const sw = document.createElement('span');
-      sw.style.cssText = `width:12px;height:12px;border-radius:3px;background:${row.swatch};border:1px solid rgba(0,0,0,0.3);flex-shrink:0;`;
+      sw.style.cssText = 'width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,0.3);flex-shrink:0;';
+      // Assign via the style property so invalid colors are rejected by
+      // the CSSOM parser — prevents CSS injection if a biome colorHex
+      // somehow contains ";background-image:..." or similar.
+      sw.style.background = _safeCssColor(row.swatch);
       el.appendChild(sw);
     }
     const name = document.createElement('span');
@@ -233,4 +261,19 @@ export function renderRefPanel(container, title, rows, emptyText) {
       container.appendChild(s);
     }
   }
+}
+
+/**
+ * Narrow a swatch color string to something safe to drop into an inline
+ * style. Accepts `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, or `rgb(...)`
+ * / `rgba(...)` forms. Anything else falls back to transparent so a
+ * malformed biome file can't inject extra CSS declarations.
+ * @param {string} s
+ * @returns {string}
+ */
+function _safeCssColor(s) {
+  if (typeof s !== 'string') return 'transparent';
+  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
+  if (/^rgba?\(\s*[\d.\s,%\/]+\)$/.test(s)) return s;
+  return 'transparent';
 }
