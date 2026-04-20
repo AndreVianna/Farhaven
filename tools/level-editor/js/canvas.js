@@ -63,12 +63,18 @@ export class HexCanvas {
     /** @type {Set<string>} Ghost hex positions (recomputed each render) */
     this._ghostSet = new Set();
     this.showCoordinates = false;
+    /** Toggles for map display. When false, the corresponding overlay
+     * is skipped during render. Persisted by the map-sidebar UI via
+     * setter-style assignments; requestRender() picks up changes. */
+    this.showElevationNumbers = true;
+    this.showPlacedProps = true;
     /** @type {{ q: number, r: number }|null} Sub-hex within hovered hex */
     this.hoveredSubHex = null;
     this.isPanning = false;
     this.panStart = null;
     this.spaceHeld = false;
     this.ctrlHeld = false;
+    this.altHeld = false;
     this.toolManager = null;
     /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
     this.onHexHover = null;
@@ -267,7 +273,7 @@ export class HexCanvas {
       const wp = HexMath.axialToPixel(q, r);
       if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
       this._drawHex(q, r, tile);
-      this._drawElevationOverlay(q, r, tile);
+      if (this.showElevationNumbers) this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
       if (this._unreachableSet.has(key)) {
         this._drawUnreachableOverlay(q, r);
@@ -278,12 +284,14 @@ export class HexCanvas {
     }
 
     // --- Phase 3b: Props on top of all hex backgrounds (prevents clipping) ---
-    for (const [key, tile] of this.grid.getAllTiles()) {
-      if (tile.props && tile.props.length > 0) {
-        const { q, r } = HexGrid.parseKey(key);
-        const wp = HexMath.axialToPixel(q, r);
-        if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
-        this._drawSubHexOccupancy(q, r, tile);
+    if (this.showPlacedProps) {
+      for (const [key, tile] of this.grid.getAllTiles()) {
+        if (tile.props && tile.props.length > 0) {
+          const { q, r } = HexGrid.parseKey(key);
+          const wp = HexMath.axialToPixel(q, r);
+          if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
+          this._drawSubHexOccupancy(q, r, tile);
+        }
       }
     }
 
@@ -431,10 +439,13 @@ export class HexCanvas {
     ctx.textBaseline = 'middle';
 
     if (tile.biome === 'B00005') {
-      // Water tiles: show only depth (elevation)
-      if (tile.elevation !== 0) {
-        ctx.fillStyle = 'rgba(160,200,255,0.7)';
-        ctx.fillText(String(tile.elevation), screen.x, screen.y);
+      // Water tiles show "level/elevation" — both the surface height
+      // (waterLevel) and the floor depth (elevation). Skip when both
+      // are zero to avoid cluttering open ocean at sea level.
+      const level = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
+      if (level !== 0 || tile.elevation !== 0) {
+        ctx.fillStyle = 'rgba(160,200,255,0.85)';
+        ctx.fillText(`${level}/${tile.elevation}`, screen.x, screen.y);
       }
     } else if (tile.elevation !== 0) {
       ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
@@ -1410,6 +1421,15 @@ export class HexCanvas {
     // "right-click = pan" path so the drag batches with the same brush.
     const isElevation = this.toolManager && this.toolManager.activeToolType === 'elevation';
     if (event.button === 2 && isElevation && this.toolManager.activeTool) {
+      // Authoritative modifier read from the MouseEvent — matches the
+      // left-click path below. Previously OR'd with keyboard-tracked
+      // state to cover browsers that consume Alt for native bindings,
+      // but that let stale `this.altHeld=true` leak into later clicks
+      // and caused the border-tile bug (2026-04-20). Trust the event.
+      this.altHeld = event.altKey;
+      this.ctrlHeld = event.ctrlKey;
+      this.toolManager.altHeld = this.altHeld;
+      this.toolManager.ctrlHeld = this.ctrlHeld;
       this.toolManager.activeTool.delta = -1;
       const hex = this.screenToHex(mx, my);
       this.selectedHex = { q: hex.q, r: hex.r };
@@ -1461,7 +1481,12 @@ export class HexCanvas {
         if (this.hoveredEdge && this.toolManager.activeToolType === 'wall') {
           hexWithExtra.edgeIdx = this.hoveredEdge.edgeIdx;
         }
+        // Authoritative modifier read from the MouseEvent — survives
+        // any missed keydown (focus loss, browser / OS intercept).
+        this.ctrlHeld = event.ctrlKey;
+        this.altHeld = event.altKey;
         this.toolManager.ctrlHeld = this.ctrlHeld;
+        this.toolManager.altHeld = this.altHeld;
         this.toolManager.onMouseDown(hexWithExtra);
       }
       this.requestRender();
@@ -1553,8 +1578,15 @@ export class HexCanvas {
       }
     }
 
-    // Forward to tool during drag
+    // Forward to tool during drag. Refresh the modifier state from
+    // the live MouseEvent so each drag step respects the current
+    // Alt/Ctrl — user can press or release Alt mid-drag to switch
+    // between water surface / floor editing on-the-fly.
     if (this._mouseDown && this.toolManager) {
+      this.ctrlHeld = event.ctrlKey;
+      this.altHeld = event.altKey;
+      this.toolManager.ctrlHeld = this.ctrlHeld;
+      this.toolManager.altHeld = this.altHeld;
       this.toolManager.onMouseMove(hex);
     }
   }
@@ -1627,11 +1659,16 @@ export class HexCanvas {
   _onKeyDown(event) {
     if (event.key === ' ') this.spaceHeld = true;
     if (event.key === 'Control') this.ctrlHeld = true;
+    if (event.key === 'Alt') this.altHeld = true;
   }
 
   /** @param {KeyboardEvent} event */
   _onKeyUp(event) {
     if (event.key === ' ') this.spaceHeld = false;
+    if (event.key === 'Alt') {
+      this.altHeld = false;
+      if (this.toolManager) this.toolManager.altHeld = false;
+    }
     if (event.key === 'Control') {
       this.ctrlHeld = false;
       if (this.toolManager) {

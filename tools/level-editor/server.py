@@ -15,7 +15,24 @@ import http.server
 import json
 import os
 import sys
+import time
 import urllib.parse
+
+
+class PlaytestState:
+    """Shared state for /playtest dedup. Module-level so it survives across
+    handler instances (HTTPServer creates a fresh handler per request)."""
+    last_launch = 0.0
+
+
+def _origin_is_local(origin_or_referer):
+    """True when the Origin/Referer header points at localhost (any port).
+    Blocks drive-by POSTs from other sites to /playtest."""
+    try:
+        parsed = urllib.parse.urlparse(origin_or_referer)
+        return parsed.hostname in ('localhost', '127.0.0.1', '::1')
+    except ValueError:
+        return False
 
 # Project root is two levels up from this script (tools/level-editor/ → project root)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -214,6 +231,53 @@ class EditorHandler(http.server.SimpleHTTPRequestHandler):
             with open(full_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(body)
             self._json_response(200, {'ok': True})
+        elif path == '/playtest':
+            # Nice-to-have NH4: launch Godot against the project root.
+            # CSRF hardening (Copilot PR #28 comment 3108091263): require a
+            # custom header that forces the browser to preflight the POST
+            # AND validate Origin matches the editor's host. Either check
+            # alone suffices against a drive-by <form> attack, but both
+            # together make the endpoint inert from any page that isn't
+            # the editor itself.
+            if self.headers.get('X-Editor-Request') != '1':
+                self._json_response(403, {'error': 'Missing X-Editor-Request header'})
+                return
+            origin = self.headers.get('Origin') or self.headers.get('Referer') or ''
+            if origin and not _origin_is_local(origin):
+                self._json_response(403, {'error': 'Origin not allowed'})
+                return
+
+            # Dedup: if a recent launch is still within the cooldown
+            # window, skip instead of spawning another Godot. Prevents
+            # accidental button-mashing from fork-bombing the box.
+            now = time.monotonic()
+            last = getattr(PlaytestState, 'last_launch', 0.0)
+            if now - last < 2.0:
+                self._json_response(429, {'error': 'Playtest already launching'})
+                return
+            PlaytestState.last_launch = now
+
+            import subprocess
+            popen_kwargs = {
+                'stdout': subprocess.DEVNULL,
+                'stderr': subprocess.DEVNULL,
+                'stdin': subprocess.DEVNULL,
+            }
+            # Detach the child process so it survives the server. On POSIX
+            # we use a new session; on Windows we use the equivalent flag
+            # so the editor stays portable to Andre's laptop.
+            if sys.platform == 'win32':
+                popen_kwargs['creationflags'] = 0x00000008  # DETACHED_PROCESS
+            else:
+                popen_kwargs['start_new_session'] = True
+
+            try:
+                subprocess.Popen(['godot', '--path', PROJECT_ROOT], **popen_kwargs)
+                self._json_response(200, {'ok': True})
+            except FileNotFoundError:
+                self._json_response(500, {'error': 'godot binary not found on PATH'})
+            except Exception as e:
+                self._json_response(500, {'error': f'Failed to launch godot: {e}'})
         else:
             self._json_response(404, {'error': 'Not found'})
 

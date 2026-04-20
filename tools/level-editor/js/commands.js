@@ -28,6 +28,32 @@ function _updateShorelineWalls(grid, wq, wr) {
   }
 }
 
+/**
+ * Recompute a water tile's waterLevel iff the invariant (waterLevel
+ * ≥ elevation) would otherwise break OR the tile has no stored
+ * waterLevel yet. Preserves explicitly-set values — the old
+ * unconditional assignment clobbered user edits on shoreline tiles
+ * (Andre 2026-04-20: "normal click misbehaves only near borders").
+ * @param {import('./hex-grid.js').HexGrid} grid
+ * @param {number} q
+ * @param {number} r
+ */
+function _recomputeWaterLevelIfInvariantBroken(grid, q, r) {
+  const tile = grid.getTile(q, r);
+  if (!tile) return;
+  const hasStored = typeof tile.waterLevel === 'number';
+  if (hasStored && tile.waterLevel >= tile.elevation) {
+    // User's explicit value is still valid — do not touch. The shore
+    // neighbor may have changed elevation, but that doesn't invalidate
+    // the surface the user chose.
+    return;
+  }
+  // Either waterLevel is null (needs initial compute) or elevation
+  // has risen above it (invariant broken). Let computeWaterLevel
+  // return max(elevation, minDryElev) to restore the invariant.
+  tile.waterLevel = computeWaterLevel(grid, q, r);
+}
+
 function _updateWaterNeighbors(grid, q, r) {
   const tile = grid.getTile(q, r);
   if (!tile) return;
@@ -44,11 +70,11 @@ function _updateWaterNeighbors(grid, q, r) {
     const neighborIsWater = neighbor.biome === 'B00005';
 
     if (neighborIsWater && !tileIsWater) {
-      neighbor.waterLevel = computeWaterLevel(grid, nq, nr);
+      _recomputeWaterLevelIfInvariantBroken(grid, nq, nr);
       waterTilesToUpdate.add(`${nq},${nr}`);
     }
     if (tileIsWater && !neighborIsWater) {
-      tile.waterLevel = computeWaterLevel(grid, q, r);
+      _recomputeWaterLevelIfInvariantBroken(grid, q, r);
       waterTilesToUpdate.add(`${q},${r}`);
     }
   }
@@ -202,9 +228,15 @@ export class SetBiomeCommand {
     }
     tile.waterType = this.waterType;
     if (this.newBiome === 'B00005') {
-      // Convert to water: compute waterLevel, set depth below surface
-      tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
-      // Depth should be at or below waterLevel (default: waterLevel for shallow)
+      // Only seed waterLevel when converting INTO water (land→water). A
+      // water→water biome change (e.g. swapping Lake for River) would
+      // otherwise clobber the user's explicit surface height. Keep the
+      // previously-set value; the invariant is enforced below anyway.
+      const cameFromWater = this.oldBiome === 'B00005' && typeof this._oldWaterLevel === 'number';
+      if (!cameFromWater) {
+        tile.waterLevel = computeWaterLevel(this.grid, this.q, this.r);
+      }
+      // Depth must stay at or below waterLevel.
       if (tile.waterLevel != null && tile.elevation > tile.waterLevel) {
         tile.elevation = tile.waterLevel;
       }
@@ -280,6 +312,12 @@ export class SetElevationCommand {
       this._created = true;
     }
     tile.elevation = this.newElevation;
+    // Water biome: elevation is the floor depth; it must never exceed
+    // the water surface level. Clamp on assignment so edits from any
+    // tool path (paint, pinch, drag) respect the invariant.
+    if (tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
+      if (tile.elevation > tile.waterLevel) tile.elevation = tile.waterLevel;
+    }
     this.grid.setTile(this.q, this.r, tile);
     _updateWaterNeighbors(this.grid, this.q, this.r);
   }
@@ -294,6 +332,48 @@ export class SetElevationCommand {
       }
     }
     _updateWaterNeighbors(this.grid, this.q, this.r);
+  }
+}
+
+/**
+ * Change a water tile's waterLevel (surface height). Invariant: the
+ * tile's elevation (floor depth) never exceeds its waterLevel; if
+ * lowering waterLevel below the current elevation, snap elevation
+ * down to the new level. No-op on non-water tiles.
+ */
+export class SetWaterLevelCommand {
+  constructor(grid, q, r, oldLevel, newLevel) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldLevel = oldLevel;
+    this.newLevel = newLevel;
+    /** @type {number|null} Elevation snapshot for undo if we clamped. */
+    this.oldElevation = null;
+    this.tab = 'map';
+    this.type = 'SetWaterLevel';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile || tile.biome !== 'B00005') return;
+    this.oldElevation = tile.elevation;
+    tile.waterLevel = this.newLevel;
+    if (tile.elevation > this.newLevel) tile.elevation = this.newLevel;
+    this.grid.setTile(this.q, this.r, tile);
+    // Refresh shoreline walls only — DO NOT call _updateWaterNeighbors,
+    // which recomputes waterLevel from neighbor elevations for border
+    // tiles and would silently clobber the value we just set. This bug
+    // made ALT+click appear "broken near the shore" while interior
+    // water tiles (no land neighbor) worked fine (Andre 2026-04-20).
+    _updateShorelineWalls(this.grid, this.q, this.r);
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile) return;
+    tile.waterLevel = this.oldLevel;
+    if (this.oldElevation !== null) tile.elevation = this.oldElevation;
+    this.grid.setTile(this.q, this.r, tile);
+    _updateShorelineWalls(this.grid, this.q, this.r);
   }
 }
 

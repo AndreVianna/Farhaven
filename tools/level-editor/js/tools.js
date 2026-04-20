@@ -7,6 +7,7 @@ import { createTileData, createProp, defaultOrigin, CATEGORY_TO_INT, INT_TO_ORIG
 import {
   SetBiomeCommand,
   SetElevationCommand,
+  SetWaterLevelCommand,
   AddPropCommand,
   DeletePropCommand,
   SetSpawnCommand,
@@ -210,8 +211,29 @@ export class ElevationBrush extends DragBrushTool {
 
   _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
+
+    // Alt+click on an existing water tile edits the SURFACE (waterLevel)
+    // instead of the floor (elevation). Only runs for tiles that already
+    // exist and are water — empty hexes fall through to the elevation
+    // path so the brush can still paint ground level on unset cells.
+    if (tile && tile.biome === 'B00005' && this.toolManager.altHeld) {
+      const oldLevel = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
+      const newLevel = Math.max(-32000, Math.min(32000, oldLevel + this.delta));
+      if (oldLevel === newLevel) return;
+      const cmd = new SetWaterLevelCommand(this.grid, hex.q, hex.r, oldLevel, newLevel);
+      this.commandHistory.execute(cmd);
+      this._dragCommands.push(cmd);
+      return;
+    }
+
     const oldElevation = tile ? tile.elevation : 0;
-    const newElevation = Math.max(-32000, Math.min(32000, oldElevation + this.delta));
+    let target = oldElevation + this.delta;
+    // Water invariant: floor depth capped at surface level. Pre-clamp so
+    // the no-op check below catches edge cases (e.g. already-at-cap).
+    if (tile && tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
+      target = Math.min(target, tile.waterLevel);
+    }
+    const newElevation = Math.max(-32000, Math.min(32000, target));
     if (oldElevation === newElevation) return;
 
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
@@ -422,6 +444,9 @@ export class ToolManager {
     this.activeCategory = 'plant';
     /** @type {string} Active origin for the Prop tool */
     this.activeOrigin = 'natural';
+    /** @type {boolean} Modifier-key state propagated from HexCanvas. */
+    this.ctrlHeld = false;
+    this.altHeld = false;
     /** @type {function(string):void|null} */
     this.onStatus = null;
     /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */

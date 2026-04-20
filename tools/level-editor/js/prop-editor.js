@@ -7,6 +7,59 @@ import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, RARITIES, ORIGINS, NATURAL_CATEGORIES, ORIGIN_TO_INT } from './hex-grid.js';
 import { renderGearHeader } from './editor-common.js';
+import { getRefIndex, renderRefPanel } from './cross-refs.js';
+
+/**
+ * Render the preview column for a prop's detail pane:
+ * DROP SOURCES on top + REFERENCES (concept art thumbnails) below.
+ * @param {HTMLElement} container
+ * @param {string} propId
+ */
+function _renderPropDropSources(container, propId) {
+  container.innerHTML = '';
+
+  // Drop sources (biomes that spawn this prop)
+  const dropWrap = document.createElement('div');
+  container.appendChild(dropWrap);
+  const rows = getRefIndex().forProp(propId).map(s => ({
+    swatch: s.biomeColor,
+    label: s.biomeName,
+    meta: `${Math.round(s.frequency * 100)}%  ${s.groupRange[0]}-${s.groupRange[1]}`,
+  }));
+  renderRefPanel(dropWrap, 'DROP SOURCES', rows,
+    propId ? 'No biome spawns this prop.' : 'Save the new prop to see drop sources.');
+
+  // References (concept art thumbnails) — fills the otherwise empty
+  // bottom of the preview column. 3 slots (reference_v1/v2/v3.png);
+  // server returns 404 for any that don't exist and the <img> onerror
+  // handler hides those thumbnails so authors don't see broken icons.
+  if (propId) {
+    const refsTitle = document.createElement('div');
+    refsTitle.className = 'section-title';
+    refsTitle.textContent = 'REFERENCES';
+    refsTitle.style.marginTop = '16px';
+    container.appendChild(refsTitle);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;';
+    for (let v = 1; v <= 3; v++) {
+      const thumb = document.createElement('div');
+      thumb.style.cssText = 'aspect-ratio:1;background:var(--bg-2);border:1px solid var(--line);border-radius:3px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;';
+      const img = document.createElement('img');
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      img.alt = `Reference v${v}`;
+      img.src = `/api/asset?path=${encodeURIComponent(`assets/props/${propId}/reference_v${v}.png`)}`;
+      img.onerror = () => { thumb.style.display = 'none'; };
+      const label = document.createElement('span');
+      label.style.cssText = 'position:absolute;bottom:2px;left:4px;font-family:var(--font-mono);font-size:9.5px;color:var(--text-0);background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:2px;';
+      label.textContent = `v${v}`;
+      thumb.appendChild(img);
+      thumb.appendChild(label);
+      grid.appendChild(thumb);
+    }
+    container.appendChild(grid);
+  }
+}
 
 /**
  * Maps a parsed .tres PropDef to an editable JS prop model.
@@ -1891,7 +1944,7 @@ export function renderPropEditor(container, options) {
 
     // --- Error area ---
     const errorArea = document.createElement('div');
-    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:#4a1c1c;border:1px solid #7a3030;border-radius:4px;color:#ff9999;font-size:12px;';
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:4px 12px 0;background:var(--bg-error);border:1px solid var(--line-error);border-radius:4px;color:var(--text-error);font-size:12px;';
     form.appendChild(errorArea);
 
     // --- Gear base-fields header (2-col: id/name/short | long) ---
@@ -1916,6 +1969,15 @@ export function renderPropEditor(container, options) {
 
     columnsWrapper.appendChild(leftBody);
     columnsWrapper.appendChild(rightBody);
+
+    // ── Cross-refs preview column (Phase 4) ─────────────────────────────
+    // "DROP SOURCES" panel lists every biome that includes this prop in
+    // its natural_props table, with spawn frequency + grouping range.
+    const refCol = document.createElement('div');
+    refCol.className = 'detail-preview';
+    _renderPropDropSources(refCol, model.id);
+    columnsWrapper.appendChild(refCol);
+
     form.appendChild(columnsWrapper);
 
     detailPanel.appendChild(form);

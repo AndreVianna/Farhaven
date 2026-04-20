@@ -166,7 +166,7 @@ export function showErrorListModal(title, errors) {
 
   const titleEl = document.createElement('div');
   titleEl.textContent = title;
-  titleEl.style.cssText = 'margin-bottom:10px;font-size:15px;font-weight:600;color:#ff9999;';
+  titleEl.style.cssText = 'margin-bottom:10px;font-size:15px;font-weight:600;color:var(--text-error);';
   dialog.appendChild(titleEl);
 
   const summary = document.createElement('div');
@@ -190,7 +190,7 @@ export function showErrorListModal(title, errors) {
     }
 
     const msg = document.createElement('span');
-    msg.style.cssText = 'color:#ff9999;flex:1;word-break:break-word;';
+    msg.style.cssText = 'color:var(--text-error);flex:1;word-break:break-word;';
     msg.textContent = err.field ? `${err.field}: ${err.message}` : err.message;
 
     row.appendChild(prefix);

@@ -4,9 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Farhaven Level Editor</title>
+
+<!-- Google Fonts — Inter + IBM Plex Mono (Phase 1) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Design tokens (Phase 1) -->
+<link rel="stylesheet" href="css/tokens.css">
+
+<!-- Shell styles: titlebar, sidebar, workspace, statusbar (Phase 2) -->
+<link rel="stylesheet" href="css/shell.css">
+
+<!-- Master-detail layout for all data editors (Phase 3) -->
+<link rel="stylesheet" href="css/master-detail.css">
+
 <style>
 /* ============================================================
    CSS — Dark theme, full-viewport layout
+   tokens.css owns the var(--*) palette; this block holds layout
+   + legacy selectors pending Phase 2/3 rewrite.
    ============================================================ */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -14,29 +31,15 @@
   padding: 0;
 }
 
-:root {
-  --bg-primary: #1e1e2e;
-  --bg-secondary: #2a2a3c;
-  --bg-tertiary: #333348;
-  --text-primary: #e0e0e8;
-  --text-secondary: #a0a0b0;
-  --accent: #6ea8fe;
-  --accent-hover: #8dbcff;
-  --danger: #f06060;
-  --warning: #e8a020;
-  --success: #60c060;
-  --border: #444460;
-  --tab-active: #3a3a50;
-  --tab-hover: #2f2f45;
-}
-
 html, body {
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  color: var(--text-primary);
-  background: var(--bg-primary);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-0);
+  background: var(--bg-0);
 }
 
 #app {
@@ -364,156 +367,9 @@ html, body {
   gap: 0;
 }
 
-/* ---- Master-Detail Editor Layout ---- */
-.editor-split {
-  display: flex;
-  height: calc(100vh - 90px);
-  overflow: hidden;
-}
-
-.editor-list-panel {
-  width: 200px;
-  min-width: 200px;
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-secondary);
-}
-
-.editor-list-header {
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.editor-filter {
-  width: 100%;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: 12px;
-  box-sizing: border-box;
-}
-
-.editor-new-btn {
-  padding: 4px 8px;
-  background: var(--accent);
-  color: var(--bg-primary);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 600;
-  width: 100%;
-}
-
-.editor-list-items {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.editor-list-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border);
-}
-
-.editor-list-item:hover {
-  background: var(--bg-tertiary);
-}
-
-.editor-list-item.active {
-  background: var(--accent);
-  color: var(--bg-primary);
-}
-
-.editor-list-item .swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.editor-detail-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.editor-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-secondary);
-  gap: 8px;
-}
-
-.editor-detail-header h3 {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.editor-detail-header .btn-group {
-  display: flex;
-  gap: 6px;
-}
-
-.editor-detail-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-secondary);
-}
-
-.editor-detail-tab {
-  padding: 6px 14px;
-  font-size: 12px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.editor-detail-tab:hover {
-  color: var(--text-primary);
-}
-
-.editor-detail-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.editor-detail-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 14px;
-}
-
-.editor-detail-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
+/* Legacy master-detail layout moved to css/master-detail.css
+   with both new (.master/.detail/...) and legacy (.editor-split/...)
+   selectors preserved for in-progress editors. */
 
 /* Property grid rows (label-value) */
 .prop-grid {
@@ -524,6 +380,14 @@ html, body {
   gap: 4px 10px;
   align-items: center;
   font-size: 12px;
+  /* Stretch to fill the leftBody / form column. Without this, when
+     all fields happen to be short, the grid shrinks to its content
+     width and the right edge of the form collapses inward — leaving
+     empty canvas between the controls and the adjacent Visuals
+     column (Andre 2026-04-20). */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 10px;
 }
 
 .prop-grid .prop-label {
@@ -735,10 +599,10 @@ input[type="checkbox"] {
 
 .editor-btn-delete {
   padding: 4px 12px;
-  border: 1px solid #7a3030;
+  border: 1px solid var(--line-error);
   border-radius: 4px;
-  background: #4a1c1c;
-  color: #ff9999;
+  background: var(--bg-error);
+  color: var(--text-error);
   cursor: pointer;
   font-size: 11px;
   font-weight: 600;
@@ -995,35 +859,15 @@ input[type="checkbox"] {
 </style>
 </head>
 <body>
-<div id="app">
-  <!-- Editor Workspace -->
-  <div id="editor-workspace">
-    <header id="toolbar">
-      <span class="toolbar-title">Farhaven Level Editor</span>
-      <span id="tool-indicator" style="font-size:12px;color:var(--text-secondary);"></span>
-      <button id="help-btn" title="Keyboard Shortcuts (?)">?</button>
-    </header>
-    <nav id="tabs">
-      <button class="tab-btn" data-tab="settings">Settings</button>
-      <button class="tab-btn active" data-tab="map">Maps</button>
-      <button class="tab-btn" data-tab="biomes">Biomes</button>
-      <button class="tab-btn" data-tab="mineral">Minerals</button>
-      <button class="tab-btn" data-tab="plant">Flora</button>
-      <button class="tab-btn" data-tab="animal">Fauna</button>
-      <button class="tab-btn" data-tab="fungi">Fungi</button>
-      <button class="tab-btn" data-tab="ooze">Oozes</button>
-      <button class="tab-btn" data-tab="liquid">Liquids</button>
-      <button class="tab-btn" data-tab="stuff">Stuff</button>
-      <button class="tab-btn" data-tab="structure">Structures</button>
-      <button class="tab-btn" data-tab="equipment">Equipment</button>
-      <button class="tab-btn" data-tab="vehicle">Vehicles</button>
-      <button class="tab-btn" data-tab="storage">Containers</button>
-      <button class="tab-btn" data-tab="recipes">Recipes</button>
-      <button class="tab-btn" data-tab="events">Events</button>
-      <button class="tab-btn" data-tab="journal">Journal</button>
-      <button class="tab-btn" data-tab="cutscenes">Cutscenes</button>
-    </nav>
-    <main id="tab-content">
+<div id="app" class="app-root">
+  <header class="titlebar" id="titlebar">
+    <!-- Mounted by titlebar.js on DOMContentLoaded -->
+  </header>
+  <div class="workspace">
+    <aside class="sidebar" id="sidebar-nav">
+      <!-- Mounted by sidebar.js on DOMContentLoaded -->
+    </aside>
+    <main id="tab-content" class="main">
       <div id="tab-map" class="tab-panel active">
         <div id="map-sidebar">
           <!-- Map selector -->
@@ -1039,6 +883,19 @@ input[type="checkbox"] {
               <button id="btn-render-color" type="button" class="render-mode-btn active" style="flex:1;font-size:11px;padding:3px 6px;">Color</button>
               <button id="btn-render-texture" type="button" class="render-mode-btn" style="flex:1;font-size:11px;padding:3px 6px;">Texture</button>
             </div>
+          </div>
+
+          <!-- Display toggles (elevation numbers, placed props) -->
+          <div class="sidebar-section">
+            <label class="sidebar-label">Display</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-1);cursor:pointer;padding:3px 0;">
+              <input type="checkbox" id="btn-show-elevation" checked>
+              <span>Elevation numbers</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-1);cursor:pointer;padding:3px 0;">
+              <input type="checkbox" id="btn-show-props" checked>
+              <span>Placed props</span>
+            </label>
           </div>
 
           <!-- Tool buttons -->
@@ -1074,9 +931,11 @@ input[type="checkbox"] {
           <div id="palette-elevation" class="sidebar-section palette hidden">
             <label class="sidebar-label">Elevation</label>
             <div style="font-size:11px;color:var(--text-secondary);line-height:1.4;">
-              <strong>Left click</strong>: +1<br>
-              <strong>Right click</strong>: −1<br>
-              Drag to paint a streak.
+              <strong>Left click</strong>: +1 floor<br>
+              <strong>Right click</strong>: −1 floor<br>
+              <strong>Alt + click</strong>: edit water surface (level)<br>
+              Drag to paint a streak.<br>
+              <span style="color:var(--text-2);">Water "level/elevation": floor cannot exceed surface.</span>
             </div>
           </div>
         </div>
@@ -1088,10 +947,10 @@ input[type="checkbox"] {
               <button id="btn-new-map" type="button" title="New Map (Ctrl+N)" class="map-action-btn">New</button>
               <button id="btn-generate-map" type="button" title="Generate Procedural Map" class="map-action-btn">Gen</button>
               <button id="btn-populate-map" type="button" title="Populate natural props from biome rules" class="map-action-btn">Populate</button>
-              <button id="btn-clear-props" type="button" title="Remove all natural props from the map (structures and anomalies stay)" class="map-action-btn" style="color:#ff9999;border-color:var(--danger, #7a3030);">Clear</button>
+              <button id="btn-clear-props" type="button" title="Remove all natural props from the map (structures and anomalies stay)" class="map-action-btn" style="color:var(--text-error);border-color:var(--line-error);">Clear</button>
               <button id="btn-save" type="button" title="Save All (Ctrl+S)" class="map-action-btn">Save</button>
               <button id="btn-save-as" type="button" title="Save As (Ctrl+Shift+S)" class="map-action-btn">Save As</button>
-              <button id="btn-delete-map" type="button" title="Delete current map" class="map-action-btn" style="color:#ff9999;border-color:#7a3030;">Del</button>
+              <button id="btn-delete-map" type="button" title="Delete current map" class="map-action-btn" style="color:var(--text-error);border-color:var(--line-error);">Del</button>
             </div>
             <div id="map-stats-content"></div>
           </div>
@@ -1135,11 +994,15 @@ input[type="checkbox"] {
         <p style="color: var(--text-secondary);">Game Settings</p>
       </div>
     </main>
-    <footer id="status-bar">
-      <span id="status-text">Ready</span>
-    </footer>
   </div>
-
+  <footer id="status-bar" class="statusbar">
+    <div class="sb-group">
+      <span id="status-text" class="sb-item strong">Ready</span>
+    </div>
+    <div class="sb-group">
+      <span id="tool-indicator" class="sb-item"></span>
+    </div>
+  </footer>
 </div>
 
 <!-- Help overlay -->
@@ -1181,22 +1044,18 @@ input[type="checkbox"] {
 </div>
 
 <script>
+// Help overlay: backdrop click + Escape. The titlebar menu and ? button
+// (both owned by app.js) call into _toggleHelpOverlay for open/close.
 (function() {
-  const btn = document.getElementById('help-btn');
   const overlay = document.getElementById('help-overlay');
   const backdrop = document.getElementById('help-overlay-backdrop');
-
-  function toggleHelp() {
-    overlay.classList.toggle('visible');
-    backdrop.classList.toggle('visible');
-  }
+  if (!overlay || !backdrop) return;
 
   function closeHelp() {
     overlay.classList.remove('visible');
     backdrop.classList.remove('visible');
   }
 
-  btn.addEventListener('click', toggleHelp);
   backdrop.addEventListener('click', closeHelp);
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && overlay.classList.contains('visible')) {

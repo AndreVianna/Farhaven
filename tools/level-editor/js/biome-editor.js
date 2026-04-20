@@ -6,6 +6,57 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { renderGearHeader } from './editor-common.js';
+import { getRefIndex, renderRefPanel } from './cross-refs.js';
+import { hexClusterSvg } from './hex-preview.js';
+
+/**
+ * Convert `res://assets/…/foo.png` paths into dev-server URLs the
+ * browser can load.
+ * @param {string[]} paths
+ * @returns {string[]}
+ */
+function _texPathsToUrls(paths) {
+  if (!Array.isArray(paths)) return [];
+  return paths
+    .filter(p => typeof p === 'string' && p.length > 0)
+    .map(p => `/api/asset?path=${encodeURIComponent(p.replace(/^res:\/\//, ''))}`);
+}
+
+/**
+ * Render the preview column for a biome: hex-cluster (textures when
+ * available, else color swatches) on top, "USED IN" map list below.
+ * @param {HTMLElement} container
+ * @param {string} biomeId
+ * @param {string} [colorHex]
+ * @param {string[]} [texturePaths]
+ */
+function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
+  container.innerHTML = '';
+
+  // Hex cluster preview — textures if the biome has any, else color
+  if (colorHex || (texturePaths && texturePaths.length > 0)) {
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.textContent = 'PREVIEW';
+    container.appendChild(title);
+    const clusterWrap = document.createElement('div');
+    clusterWrap.style.cssText = 'display:flex;justify-content:center;padding:4px 0 10px;';
+    const texUrls = _texPathsToUrls(texturePaths);
+    clusterWrap.innerHTML = hexClusterSvg(colorHex || '#555', 140, texUrls.length > 0 ? texUrls : null);
+    container.appendChild(clusterWrap);
+  }
+
+  // Used In — cached scan via the shared reference index so scanning
+  // all tiles in ch1 isn't repeated per click.
+  const rows = getRefIndex().forBiome(biomeId).map(u => ({
+    label: u.mapName,
+    meta: `${u.tileCount} tiles`,
+  }));
+  const usedInWrap = document.createElement('div');
+  container.appendChild(usedInWrap);
+  renderRefPanel(usedInWrap, 'USED IN', rows,
+    biomeId ? 'No maps reference this biome yet.' : 'Save the new biome to see usage.');
+}
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
@@ -577,7 +628,7 @@ export function renderBiomeEditor(container, options) {
 
     // ── Error area ──
     const errorArea = document.createElement('div');
-    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:#4a1c1c;border-bottom:1px solid #7a3030;color:#ff9999;font-size:12px;';
+    errorArea.style.cssText = 'display:none;padding:6px 10px;margin:0;background:var(--bg-error);border-bottom:1px solid var(--line-error);color:var(--text-error);font-size:12px;';
     form.appendChild(errorArea);
 
     // ── Biome header (id + display_name + elevation min/max on one row) ──
@@ -605,6 +656,15 @@ export function renderBiomeEditor(container, options) {
 
     columnsWrapper.appendChild(leftBody);
     columnsWrapper.appendChild(rightBody);
+
+    // ── Cross-refs preview column (Phase 4) ─────────────────────────────
+    // "USED IN" panel showing every map that references this biome with
+    // per-map tile counts. Computed client-side from refIndex (app.js).
+    const refCol = document.createElement('div');
+    refCol.className = 'detail-preview';
+    _renderBiomeUsedIn(refCol, model._id, model.colorHex, model.terrain_textures);
+    columnsWrapper.appendChild(refCol);
+
     form.appendChild(columnsWrapper);
     detailPanel.appendChild(form);
 
