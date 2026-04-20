@@ -38,8 +38,96 @@ import { invalidateRefIndex } from './cross-refs.js';
 /** @type {string} Currently active tab — 'map' | 'props' | 'biomes' */
 let activeTab = 'map';
 
-/** localStorage key for persisting the last active route across reloads. */
+/**
+ * Route state is carried in `location.hash` as `#tab` or `#tab/entityId`.
+ * Refresh preserves the URL so the editor can restore tab + selected
+ * entity on reload. Fallback localStorage key kept for users who land
+ * on the editor root without a hash.
+ */
 const ACTIVE_TAB_STORAGE_KEY = 'farhaven-editor-active-tab-v1';
+
+/** @returns {{tab: string|null, id: string|null}} */
+function _parseRouteHash() {
+  const raw = (location.hash || '').replace(/^#/, '');
+  if (!raw) return { tab: null, id: null };
+  const [tab, id] = raw.split('/');
+  return {
+    tab: tab || null,
+    id: id ? decodeURIComponent(id) : null,
+  };
+}
+
+/**
+ * Write the route to `location.hash` without adding a history entry.
+ * Pass `null` for id to drop the entity part. Silently no-ops when
+ * the URL already matches.
+ * @param {string} tab
+ * @param {string|null} [id]
+ */
+function setRouteHash(tab, id = null) {
+  const hash = id ? `#${tab}/${encodeURIComponent(id)}` : `#${tab}`;
+  if (location.hash !== hash) {
+    history.replaceState(null, '', hash);
+  }
+  // Also persist tab-only fallback so users who clear the hash still
+  // land on the right tab next reload.
+  try { localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tab); } catch (_e) {}
+}
+
+/**
+ * Editors call this when the user picks a different entity in their
+ * list so the URL reflects the new selection and a refresh restores it.
+ * @param {string} tab
+ * @param {string|null} id
+ */
+export function onEditorSelectionChanged(tab, id) {
+  if (tab !== activeTab) return; // stale editor
+  setRouteHash(tab, id);
+}
+
+/** Read the selected entity id from the URL hash for a given tab. */
+export function getPersistedSelection(tab) {
+  const parsed = _parseRouteHash();
+  if (parsed.tab !== tab) return null;
+  return parsed.id;
+}
+
+/**
+ * Wire URL-hash-based selection sync to an editor tab.
+ *
+ * Call once AFTER the editor renders its master-list into `tabEl`.
+ * Two things happen:
+ *   1. If the URL hash has an entity id for this tab, a programmatic
+ *      click is dispatched on the matching `.editor-list-item` so the
+ *      editor's own selection logic runs normally.
+ *   2. A delegated click listener keeps the hash in sync with future
+ *      user selections — no editor needs to know about the hash.
+ *
+ * Both `data-id` (prop/event/recipe/journal/cutscene) and
+ * `data-biome-id` (biome) are recognized.
+ *
+ * @param {HTMLElement} tabEl - the tab-panel container
+ * @param {string} tabId - the tab id ('mineral', 'biomes', 'recipes', …)
+ */
+function _wireTabSelectionSync(tabEl, tabId) {
+  if (!tabEl || tabEl.dataset.selectionWired === '1') return;
+  tabEl.dataset.selectionWired = '1';
+
+  const saved = getPersistedSelection(tabId);
+  if (saved) {
+    const safe = (window.CSS && CSS.escape) ? CSS.escape(saved) : saved.replace(/["\\]/g, '\\$&');
+    const el = tabEl.querySelector(`.editor-list-item[data-id="${safe}"]`) ||
+               tabEl.querySelector(`.editor-list-item[data-biome-id="${safe}"]`);
+    if (el) el.click();
+  }
+
+  tabEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.editor-list-item');
+    if (!item || !tabEl.contains(item)) return;
+    const id = item.dataset.id || item.dataset.biomeId;
+    if (id) onEditorSelectionChanged(tabId, id);
+  });
+}
 
 /** @type {HexGrid} Global hex grid model instance */
 const hexGrid = new HexGrid();
@@ -142,9 +230,10 @@ function switchTab(tabName) {
     if (guard() === false) return;
   }
   activeTab = tabName;
-  // Persist across reloads so a refresh drops the user back onto the
-  // same entity they were editing instead of the default map view.
-  try { localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tabName); } catch (_e) {}
+  // User-initiated tab switch clears any entity id in the hash since
+  // we're leaving the previous editor. The new editor will append its
+  // own id via onEditorSelectionChanged when the user picks one.
+  setRouteHash(tabName, null);
 
   document.querySelectorAll('.tab-panel').forEach(panel => {
     if (panel.id === 'tab-' + tabName) {
@@ -158,17 +247,28 @@ function switchTab(tabName) {
 }
 
 /**
- * Read the persisted active tab from localStorage and switch to it if
- * valid. Called once after autoLoadProject finishes so the matching
- * editor has real data to render.
+ * Apply the persisted active tab from the URL hash (preferred) or
+ * localStorage fallback. Runs before autoLoadProject so the initial
+ * render + sidebar mount see the correct activeTab and no map panel
+ * flashes first. Never calls switchTab — that would rewrite the hash
+ * and drop the entity id part that editors will restore.
  * @returns {void}
  */
 function restorePersistedTab() {
-  let saved = null;
-  try { saved = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY); } catch (_e) {}
+  const parsed = _parseRouteHash();
+  let saved = parsed.tab;
+  if (!saved) {
+    try { saved = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY); } catch (_e) {}
+  }
   if (!saved || saved === activeTab) return;
   if (!TAB_LABELS[saved]) return;
-  switchTab(saved);
+
+  activeTab = saved;
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === 'tab-' + saved);
+  });
+  // sidebarHandle is null at this point (shell hasn't mounted). It'll
+  // read activeTab when mountSidebar runs and mark the right item.
 }
 
 // ============================================================
@@ -1349,6 +1449,7 @@ function initializeAfterLoad() {
         onSave: () => { refreshPalettes(); dirtyTracker.markClean('props'); },
         registerGuard: registerTabSwitchGuard,
       });
+      _wireTabSelectionSync(tabEl, cat);
     }
   }
   console.log('Prop editors rendered (one per category tab).');
@@ -1363,6 +1464,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('biomes'); },
     });
+    _wireTabSelectionSync(biomeTabEl, 'biomes');
     console.log('Biome editor rendered.');
   }
 
@@ -1374,6 +1476,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('recipes'); },
     });
+    _wireTabSelectionSync(recipeTabEl, 'recipes');
     console.log('Recipe editor rendered.');
   }
 
@@ -1385,6 +1488,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { refreshPalettes(); dirtyTracker.markClean('events'); },
     });
+    _wireTabSelectionSync(eventTabEl, 'events');
     console.log('Event editor rendered.');
   }
 
@@ -1396,6 +1500,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { dirtyTracker.markClean('journal'); },
     });
+    _wireTabSelectionSync(journalTabEl, 'journal');
     console.log('Journal editor rendered.');
   }
 
@@ -1407,6 +1512,7 @@ function initializeAfterLoad() {
       onChange: refreshPalettes,
       onSave: () => { dirtyTracker.markClean('cutscenes'); },
     });
+    _wireTabSelectionSync(cutsceneTabEl, 'cutscenes');
     console.log('Cutscene editor rendered.');
   }
 
