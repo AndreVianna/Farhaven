@@ -74,6 +74,7 @@ export class HexCanvas {
     this.panStart = null;
     this.spaceHeld = false;
     this.ctrlHeld = false;
+    this.altHeld = false;
     this.toolManager = null;
     /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
     this.onHexHover = null;
@@ -438,10 +439,13 @@ export class HexCanvas {
     ctx.textBaseline = 'middle';
 
     if (tile.biome === 'B00005') {
-      // Water tiles: show only depth (elevation)
-      if (tile.elevation !== 0) {
-        ctx.fillStyle = 'rgba(160,200,255,0.7)';
-        ctx.fillText(String(tile.elevation), screen.x, screen.y);
+      // Water tiles show "level/elevation" — both the surface height
+      // (waterLevel) and the floor depth (elevation). Skip when both
+      // are zero to avoid cluttering open ocean at sea level.
+      const level = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
+      if (level !== 0 || tile.elevation !== 0) {
+        ctx.fillStyle = 'rgba(160,200,255,0.85)';
+        ctx.fillText(`${level}/${tile.elevation}`, screen.x, screen.y);
       }
     } else if (tile.elevation !== 0) {
       ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
@@ -1469,6 +1473,7 @@ export class HexCanvas {
           hexWithExtra.edgeIdx = this.hoveredEdge.edgeIdx;
         }
         this.toolManager.ctrlHeld = this.ctrlHeld;
+        this.toolManager.altHeld = this.altHeld;
         this.toolManager.onMouseDown(hexWithExtra);
       }
       this.requestRender();
@@ -1634,11 +1639,16 @@ export class HexCanvas {
   _onKeyDown(event) {
     if (event.key === ' ') this.spaceHeld = true;
     if (event.key === 'Control') this.ctrlHeld = true;
+    if (event.key === 'Alt') this.altHeld = true;
   }
 
   /** @param {KeyboardEvent} event */
   _onKeyUp(event) {
     if (event.key === ' ') this.spaceHeld = false;
+    if (event.key === 'Alt') {
+      this.altHeld = false;
+      if (this.toolManager) this.toolManager.altHeld = false;
+    }
     if (event.key === 'Control') {
       this.ctrlHeld = false;
       if (this.toolManager) {

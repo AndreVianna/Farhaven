@@ -280,6 +280,12 @@ export class SetElevationCommand {
       this._created = true;
     }
     tile.elevation = this.newElevation;
+    // Water biome: elevation is the floor depth; it must never exceed
+    // the water surface level. Clamp on assignment so edits from any
+    // tool path (paint, pinch, drag) respect the invariant.
+    if (tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
+      if (tile.elevation > tile.waterLevel) tile.elevation = tile.waterLevel;
+    }
     this.grid.setTile(this.q, this.r, tile);
     _updateWaterNeighbors(this.grid, this.q, this.r);
   }
@@ -293,6 +299,43 @@ export class SetElevationCommand {
         this.grid.setTile(this.q, this.r, tile);
       }
     }
+    _updateWaterNeighbors(this.grid, this.q, this.r);
+  }
+}
+
+/**
+ * Change a water tile's waterLevel (surface height). Invariant: the
+ * tile's elevation (floor depth) never exceeds its waterLevel; if
+ * lowering waterLevel below the current elevation, snap elevation
+ * down to the new level. No-op on non-water tiles.
+ */
+export class SetWaterLevelCommand {
+  constructor(grid, q, r, oldLevel, newLevel) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldLevel = oldLevel;
+    this.newLevel = newLevel;
+    /** @type {number|null} Elevation snapshot for undo if we clamped. */
+    this.oldElevation = null;
+    this.tab = 'map';
+    this.type = 'SetWaterLevel';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile || tile.biome !== 'B00005') return;
+    this.oldElevation = tile.elevation;
+    tile.waterLevel = this.newLevel;
+    if (tile.elevation > this.newLevel) tile.elevation = this.newLevel;
+    this.grid.setTile(this.q, this.r, tile);
+    _updateWaterNeighbors(this.grid, this.q, this.r);
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile) return;
+    tile.waterLevel = this.oldLevel;
+    if (this.oldElevation !== null) tile.elevation = this.oldElevation;
+    this.grid.setTile(this.q, this.r, tile);
     _updateWaterNeighbors(this.grid, this.q, this.r);
   }
 }
