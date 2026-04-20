@@ -38,6 +38,9 @@ import { invalidateRefIndex } from './cross-refs.js';
 /** @type {string} Currently active tab — 'map' | 'props' | 'biomes' */
 let activeTab = 'map';
 
+/** localStorage key for persisting the last active route across reloads. */
+const ACTIVE_TAB_STORAGE_KEY = 'farhaven-editor-active-tab-v1';
+
 /** @type {HexGrid} Global hex grid model instance */
 const hexGrid = new HexGrid();
 
@@ -139,6 +142,9 @@ function switchTab(tabName) {
     if (guard() === false) return;
   }
   activeTab = tabName;
+  // Persist across reloads so a refresh drops the user back onto the
+  // same entity they were editing instead of the default map view.
+  try { localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tabName); } catch (_e) {}
 
   document.querySelectorAll('.tab-panel').forEach(panel => {
     if (panel.id === 'tab-' + tabName) {
@@ -149,6 +155,20 @@ function switchTab(tabName) {
   });
 
   if (sidebarHandle) sidebarHandle.setActive(tabName);
+}
+
+/**
+ * Read the persisted active tab from localStorage and switch to it if
+ * valid. Called once after autoLoadProject finishes so the matching
+ * editor has real data to render.
+ * @returns {void}
+ */
+function restorePersistedTab() {
+  let saved = null;
+  try { saved = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY); } catch (_e) {}
+  if (!saved || saved === activeTab) return;
+  if (!TAB_LABELS[saved]) return;
+  switchTab(saved);
 }
 
 // ============================================================
@@ -1039,6 +1059,10 @@ async function autoLoadProject() {
   const biomeCount = ProjectContext.files.biomes.size;
   setStatus(`Project loaded: ${mapCount} map(s), ${propCount} prop(s), ${biomeCount} biome(s)`);
   console.log('autoLoadProject: Workspace ready.');
+
+  // Drop the user back onto whichever route they were on before the
+  // last reload. Done here so the target editor has populated data.
+  restorePersistedTab();
 }
 
 // Apply persisted accent/density tweaks before anything renders so the
