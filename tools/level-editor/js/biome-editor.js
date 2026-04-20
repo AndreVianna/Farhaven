@@ -6,6 +6,22 @@ import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { TresParser, TresFile, generateTresUid } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { renderGearHeader } from './editor-common.js';
+import { computeBiomeUsedIn, renderRefPanel } from './cross-refs.js';
+
+/**
+ * Render the "USED IN" preview column for a biome's detail pane.
+ * Pure helper — reads directly from ProjectContext via cross-refs.
+ * @param {HTMLElement} container
+ * @param {string} biomeId
+ */
+function _renderBiomeUsedIn(container, biomeId) {
+  const rows = computeBiomeUsedIn(biomeId).map(u => ({
+    label: u.mapName,
+    meta: `${u.tileCount} tiles`,
+  }));
+  renderRefPanel(container, 'USED IN', rows,
+    biomeId ? 'No maps reference this biome yet.' : 'Save the new biome to see usage.');
+}
 
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
@@ -605,6 +621,15 @@ export function renderBiomeEditor(container, options) {
 
     columnsWrapper.appendChild(leftBody);
     columnsWrapper.appendChild(rightBody);
+
+    // ── Cross-refs preview column (Phase 4) ─────────────────────────────
+    // "USED IN" panel showing every map that references this biome with
+    // per-map tile counts. Computed client-side from refIndex (app.js).
+    const refCol = document.createElement('div');
+    refCol.className = 'detail-preview';
+    _renderBiomeUsedIn(refCol, model._id);
+    columnsWrapper.appendChild(refCol);
+
     form.appendChild(columnsWrapper);
     detailPanel.appendChild(form);
 

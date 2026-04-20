@@ -7,6 +7,22 @@ import { TresParser, TresFile } from './tres-parser.js';
 import { showInlineModal } from './panels.js';
 import { CATEGORIES, RARITIES, ORIGINS, NATURAL_CATEGORIES, ORIGIN_TO_INT } from './hex-grid.js';
 import { renderGearHeader } from './editor-common.js';
+import { computePropDropSources, renderRefPanel } from './cross-refs.js';
+
+/**
+ * Render the "DROP SOURCES" preview column for a prop's detail pane.
+ * @param {HTMLElement} container
+ * @param {string} propId
+ */
+function _renderPropDropSources(container, propId) {
+  const rows = computePropDropSources(propId).map(s => ({
+    swatch: s.biomeColor,
+    label: s.biomeName,
+    meta: `${Math.round(s.frequency * 100)}%  ${s.groupRange[0]}-${s.groupRange[1]}`,
+  }));
+  renderRefPanel(container, 'DROP SOURCES', rows,
+    propId ? 'No biome spawns this prop.' : 'Save the new prop to see drop sources.');
+}
 
 /**
  * Maps a parsed .tres PropDef to an editable JS prop model.
@@ -1916,6 +1932,15 @@ export function renderPropEditor(container, options) {
 
     columnsWrapper.appendChild(leftBody);
     columnsWrapper.appendChild(rightBody);
+
+    // ── Cross-refs preview column (Phase 4) ─────────────────────────────
+    // "DROP SOURCES" panel lists every biome that includes this prop in
+    // its natural_props table, with spawn frequency + grouping range.
+    const refCol = document.createElement('div');
+    refCol.className = 'detail-preview';
+    _renderPropDropSources(refCol, model.id);
+    columnsWrapper.appendChild(refCol);
+
     form.appendChild(columnsWrapper);
 
     detailPanel.appendChild(form);
