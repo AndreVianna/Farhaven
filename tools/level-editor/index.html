@@ -380,6 +380,14 @@ html, body {
   gap: 4px 10px;
   align-items: center;
   font-size: 12px;
+  /* Stretch to fill the leftBody / form column. Without this, when
+     all fields happen to be short, the grid shrinks to its content
+     width and the right edge of the form collapses inward — leaving
+     empty canvas between the controls and the adjacent Visuals
+     column (Andre 2026-04-20). */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 10px;
 }
 
 .prop-grid .prop-label {
