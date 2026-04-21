@@ -6,6 +6,7 @@
 
 import { TresParser } from './tres-parser.js';
 import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
+import { HexMath } from './hex-math.js';
 import { CommandHistory, EditPropCommand } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
@@ -624,6 +625,70 @@ function _generateProceduralMap() {
     }
   });
 }
+
+/**
+ * One-shot smoothing pass for Rocky tiles. Clamps every Rocky tile's
+ * elevation so it differs from at least one non-water neighbor by no
+ * more than MAX_DIFF. Breaks up isolated "stone spikes" left by the
+ * procedural generator's spike-promotion step without touching other
+ * biomes. Runs BFS from the lowest-elevation Rocky tile so the
+ * clamping cascades naturally across a Rocky region.
+ */
+function _smoothRockyPeaks() {
+  const ROCKY_BIOME = 'B00004';
+  const MAX_DIFF = 3;
+  const MAX_PASSES = 30;
+
+  const rockyTiles = [];
+  for (const [key, tile] of hexGrid.getAllTiles()) {
+    if (tile && tile.biome === ROCKY_BIOME) rockyTiles.push({ key, tile });
+  }
+  if (rockyTiles.length === 0) {
+    setStatus('Smooth Rocky Peaks: no Rocky tiles on this map.');
+    return;
+  }
+  if (!confirm(`Smooth ${rockyTiles.length} Rocky tile(s)? Clamps elevation to neighbors ±${MAX_DIFF}. Manual edits may follow.`)) return;
+
+  const parseKey = (k) => {
+    const [q, r] = k.split(',').map(Number);
+    return { q, r };
+  };
+
+  let totalChanged = 0;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let changed = 0;
+    for (const { key, tile } of rockyTiles) {
+      const { q, r } = parseKey(key);
+      let maxNeighborElev = -Infinity;
+      let minNeighborElev = Infinity;
+      for (const dir of HexMath.DIRECTIONS) {
+        const nt = hexGrid.getTile(q + dir.q, r + dir.r);
+        if (!nt) continue;
+        if (typeof nt.elevation !== 'number') continue;
+        if (nt.elevation > maxNeighborElev) maxNeighborElev = nt.elevation;
+        if (nt.elevation < minNeighborElev) minNeighborElev = nt.elevation;
+      }
+      if (maxNeighborElev === -Infinity) continue;
+      const cap = maxNeighborElev + MAX_DIFF;
+      const floor = minNeighborElev - MAX_DIFF;
+      const target = Math.max(floor, Math.min(cap, tile.elevation));
+      if (target !== tile.elevation) {
+        tile.elevation = target;
+        changed++;
+      }
+    }
+    totalChanged += changed;
+    if (changed === 0) break;
+  }
+
+  if (totalChanged > 0) {
+    dirtyTracker.markDirty('map');
+    if (hexCanvas) hexCanvas.requestRender();
+    if (hexInspector) hexInspector.updateMapStats();
+  }
+  setStatus(`Smooth Rocky Peaks: adjusted ${totalChanged} elevation value(s) across ${rockyTiles.length} Rocky tile(s).`);
+}
+
 
 /**
  * Regenerate the current map using its stored generator params.
@@ -1245,6 +1310,7 @@ function _openCommandPaletteWithCtx() {
       generateMap: () => _clickByIdIfExists('btn-generate-map'),
       populate: () => _clickByIdIfExists('btn-populate-map'),
       clearProps: () => _clickByIdIfExists('btn-clear-props'),
+      smoothRocky: _smoothRockyPeaks,
       help: _toggleHelpOverlay,
     },
     onRoute: (id) => switchTab(id),
