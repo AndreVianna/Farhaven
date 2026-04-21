@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PropDef" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
@@ -6,27 +6,27 @@
 [ext_resource type="PackedScene" path="res://assets/props/P00043/mesh_v1.glb" id="4_mesh_scene_1"]
 [ext_resource type="PackedScene" path="res://assets/props/P00043/mesh_v2.glb" id="5_mesh_scene_2"]
 [ext_resource type="PackedScene" path="res://assets/props/P00043/mesh_v3.glb" id="6_mesh_scene_3"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="8_catalogable"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="9_harvestable"]
-[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="10_harvest_yield"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="7_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="8_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="9_harvest_yield"]
 
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("3_mesh_variant")
 scene = ExtResource("4_mesh_scene_1")
-scale = 0.2
+scale = 0.1
 
 [sub_resource type="Resource" id="mesh_variant_2"]
 script = ExtResource("3_mesh_variant")
 scene = ExtResource("5_mesh_scene_2")
-scale = 0.2
+scale = 0.1
 
 [sub_resource type="Resource" id="mesh_variant_3"]
 script = ExtResource("3_mesh_variant")
 scene = ExtResource("6_mesh_scene_3")
-scale = 0.2
+scale = 0.1
 
 [sub_resource type="Resource" id="harvest_yield_1"]
-script = ExtResource("10_harvest_yield")
+script = ExtResource("9_harvest_yield")
 item_id = &"lichen"
 amount = 1
 conditions = []
@@ -35,15 +35,13 @@ conditions = []
 script = ExtResource("2_placeable")
 meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 placement = 4
-slope_blend = 1.0
-max_allowed_slope = 90
 
 [sub_resource type="Resource" id="catalogable_1"]
-script = ExtResource("8_catalogable")
+script = ExtResource("7_catalogable")
 scan_time = 2.0
 
 [sub_resource type="Resource" id="harvestable_1"]
-script = ExtResource("9_harvestable")
+script = ExtResource("8_harvestable")
 yields = Array[HarvestYield]([SubResource("harvest_yield_1")])
 respawn_conditions = []
 
