@@ -846,6 +846,25 @@ export function renderBiomeEditor(container, options) {
         not_near_props: entry.not_near_props,
       });
 
+      // Thumb — shows the v1 reference image so Andre can recognize each
+      // prop visually without hunting through the list. Silent no-op if
+      // the reference file is missing (some props may not have one yet).
+      const thumb = document.createElement('img');
+      thumb.className = 'np-thumb';
+      thumb.alt = '';
+      thumb.style.cssText = 'width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:var(--bg-2);flex:0 0 auto;';
+      const _setThumb = (pid) => {
+        if (!pid) {
+          thumb.style.visibility = 'hidden';
+          thumb.removeAttribute('src');
+          return;
+        }
+        thumb.style.visibility = 'visible';
+        thumb.src = `/api/asset?path=${encodeURIComponent('assets/props/' + pid + '/reference_v1.png')}`;
+      };
+      thumb.addEventListener('error', () => { thumb.style.visibility = 'hidden'; });
+      _setThumb(entry.prop_id);
+
       // Prop selector — narrow by design per Andre's feedback.
       const propSelect = document.createElement('select');
       propSelect.dataset.npField = 'prop_id';
@@ -867,6 +886,7 @@ export function renderBiomeEditor(container, options) {
         if (entry.prop_id === pid) opt.selected = true;
         propSelect.appendChild(opt);
       }
+      propSelect.addEventListener('change', () => _setThumb(propSelect.value));
 
       const freqLabel = document.createElement('span');
       freqLabel.classList.add('prop-hint');
@@ -917,6 +937,7 @@ export function renderBiomeEditor(container, options) {
       removeBtn.style.marginLeft = 'auto';
       removeBtn.addEventListener('click', () => row.remove());
 
+      row.appendChild(thumb);
       row.appendChild(propSelect);
       row.appendChild(freqLabel);
       row.appendChild(freqInput);
