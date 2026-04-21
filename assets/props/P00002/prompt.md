@@ -1,8 +1,17 @@
-# Tuft Moss (P00002) — Generation Prompts
+# Puff Sac (P00002) — Generation Prompts
 
-Species identity: pressure-filled avascular moss-like cluster — soft dome bodies
-with translucent outer layer, pulsing bioluminescent veins, and small glowing
-spore pods. Ground cover, irregular symmetry, hydration_level=7.
+> **2026-04-21 — renamed and reclassified.** This prop was originally
+> authored as "Tuft Moss" in the `plant` category. It is now **Puff Sac**
+> in the `fungi` category — the existing dome-cluster silhouette with
+> translucent skin, bioluminescent veins, and spore-pod tufts already
+> reads as a fungal sac colony, so the meshes and reference images are
+> kept. Only `display_name` and `category` in `P00002.tres` and the
+> descriptive text in this file have changed.
+
+Species identity: pressure-filled sac-like fungal cluster — soft dome
+bodies with translucent outer layer, pulsing bioluminescent veins, and
+small glowing spore pods that release fine spores when disturbed.
+Ground cover, irregular symmetry, hydration_level=7.
 
 ## What varies / What stays fixed
 

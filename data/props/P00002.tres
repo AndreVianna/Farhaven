@@ -47,10 +47,10 @@ respawn_conditions = [&"time_elapsed:3_days"]
 [resource]
 script = ExtResource("1_script")
 id = &"P00002"
-display_name = "Tuft Moss"
-short_description = "Soft cushions of water-rich moss-like growth."
-long_description = "Spongy clumps that hold surprising amounts of moisture. Fragile but abundant in wetter patches of the plains. Faint bioluminescent veins pulse beneath translucent domes, dotted with small glowing spore pods."
-category = &"plant"
+display_name = "Puff Sac"
+short_description = "Dense cushions of alien fungal sac-bodies that release spores when disturbed."
+long_description = "Spongy clumps of fused sac-like fruiting bodies, deceptively moss-like at a glance. When pressure breaks their thin outer skin they release fine pale spores into the air. Faint bioluminescent veins pulse beneath translucent domes, dotted with small glowing spore pods."
+category = &"fungi"
 rarity = &"common"
 tags = [&"decoration"]
 placeable = SubResource("placeable_1")
