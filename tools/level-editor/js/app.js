@@ -628,14 +628,14 @@ function _generateProceduralMap() {
 
 /**
  * One-shot smoothing pass for Rocky tiles. Clamps every Rocky tile's
- * elevation so it differs from at least one non-water neighbor by no
- * more than MAX_DIFF. Breaks up isolated "stone spikes" left by the
- * procedural generator's spike-promotion step without touching other
- * biomes. Runs BFS from the lowest-elevation Rocky tile so the
- * clamping cascades naturally across a Rocky region.
+ * elevation so it differs from its NON-rocky non-water neighbors by
+ * no more than MAX_DIFF. Breaks up stone spikes AND flattens small
+ * Rocky clusters down to the surrounding terrain level without
+ * touching other biomes. Runs until stable (or MAX_PASSES hit).
  */
 function _smoothRockyPeaks() {
   const ROCKY_BIOME = 'B00004';
+  const WATER_BIOME = 'B00005';
   const MAX_DIFF = 3;
   const MAX_PASSES = 30;
 
@@ -647,32 +647,42 @@ function _smoothRockyPeaks() {
     setStatus('Smooth Rocky Peaks: no Rocky tiles on this map.');
     return;
   }
-  if (!confirm(`Smooth ${rockyTiles.length} Rocky tile(s)? Clamps elevation to neighbors ±${MAX_DIFF}. Manual edits may follow.`)) return;
+  if (!confirm(`Smooth ${rockyTiles.length} Rocky tile(s)? Clamps elevation to NON-rocky neighbors ±${MAX_DIFF}. Manual edits may follow.`)) return;
 
   const parseKey = (k) => {
     const [q, r] = k.split(',').map(Number);
     return { q, r };
   };
 
+  // Logging helpers — visible in the browser console so behavior is
+  // debuggable in the field.
   let totalChanged = 0;
+  let firstPassSample = null;
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     let changed = 0;
     for (const { key, tile } of rockyTiles) {
       const { q, r } = parseKey(key);
-      let maxNeighborElev = -Infinity;
-      let minNeighborElev = Infinity;
+      // Sample only non-rocky, non-water neighbors — rocky clusters
+      // otherwise mutually cap each other and nothing moves.
+      let maxRef = -Infinity;
+      let minRef = Infinity;
       for (const dir of HexMath.DIRECTIONS) {
         const nt = hexGrid.getTile(q + dir.q, r + dir.r);
         if (!nt) continue;
         if (typeof nt.elevation !== 'number') continue;
-        if (nt.elevation > maxNeighborElev) maxNeighborElev = nt.elevation;
-        if (nt.elevation < minNeighborElev) minNeighborElev = nt.elevation;
+        if (nt.biome === ROCKY_BIOME) continue;
+        if (nt.biome === WATER_BIOME) continue;
+        if (nt.elevation > maxRef) maxRef = nt.elevation;
+        if (nt.elevation < minRef) minRef = nt.elevation;
       }
-      if (maxNeighborElev === -Infinity) continue;
-      const cap = maxNeighborElev + MAX_DIFF;
-      const floor = minNeighborElev - MAX_DIFF;
+      if (maxRef === -Infinity) continue; // rocky surrounded only by rocky/water — defer to next pass
+      const cap = maxRef + MAX_DIFF;
+      const floor = minRef - MAX_DIFF;
       const target = Math.max(floor, Math.min(cap, tile.elevation));
       if (target !== tile.elevation) {
+        if (pass === 0 && firstPassSample === null) {
+          firstPassSample = { q, r, before: tile.elevation, after: target, maxRef, minRef };
+        }
         tile.elevation = target;
         changed++;
       }
@@ -680,6 +690,8 @@ function _smoothRockyPeaks() {
     totalChanged += changed;
     if (changed === 0) break;
   }
+
+  console.log(`smoothRockyPeaks: ${totalChanged} elevation change(s) across ${rockyTiles.length} rocky tile(s)`, firstPassSample ? { firstPassSample } : '');
 
   if (totalChanged > 0) {
     dirtyTracker.markDirty('map');
