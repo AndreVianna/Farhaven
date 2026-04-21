@@ -627,17 +627,19 @@ function _generateProceduralMap() {
 }
 
 /**
- * One-shot smoothing pass for Rocky tiles. Clamps every Rocky tile's
- * elevation so it differs from its NON-rocky non-water neighbors by
- * no more than MAX_DIFF. Breaks up stone spikes AND flattens small
- * Rocky clusters down to the surrounding terrain level without
- * touching other biomes. Runs until stable (or MAX_PASSES hit).
+ * One-shot smoothing pass for Rocky tiles. BFS inward from the
+ * Rocky/non-Rocky border: border tiles get clamped to their
+ * non-Rocky neighbor elevation +MAX_DIFF, then interior tiles clamp
+ * relative to their already-resolved neighbors, propagating the
+ * gradient across the whole Rocky region. Guarantees interior
+ * Rocky clusters also flatten (not just the vegetation border).
+ * Invalidates the canvas reachability cache so impassable-hex
+ * indicators refresh.
  */
 function _smoothRockyPeaks() {
   const ROCKY_BIOME = 'B00004';
   const WATER_BIOME = 'B00005';
   const MAX_DIFF = 3;
-  const MAX_PASSES = 30;
 
   const rockyTiles = [];
   for (const [key, tile] of hexGrid.getAllTiles()) {
@@ -647,55 +649,92 @@ function _smoothRockyPeaks() {
     setStatus('Smooth Rocky Peaks: no Rocky tiles on this map.');
     return;
   }
-  if (!confirm(`Smooth ${rockyTiles.length} Rocky tile(s)? Clamps elevation to NON-rocky neighbors ±${MAX_DIFF}. Manual edits may follow.`)) return;
+  if (!confirm(`Smooth ${rockyTiles.length} Rocky tile(s)? BFS-cascades elevation from border inward, clamp ±${MAX_DIFF}. Manual edits may follow.`)) return;
 
   const parseKey = (k) => {
     const [q, r] = k.split(',').map(Number);
     return { q, r };
   };
 
-  // Logging helpers — visible in the browser console so behavior is
-  // debuggable in the field.
-  let totalChanged = 0;
-  let firstPassSample = null;
-  for (let pass = 0; pass < MAX_PASSES; pass++) {
-    let changed = 0;
-    for (const { key, tile } of rockyTiles) {
-      const { q, r } = parseKey(key);
-      // Sample only non-rocky, non-water neighbors — rocky clusters
-      // otherwise mutually cap each other and nothing moves.
-      let maxRef = -Infinity;
-      let minRef = Infinity;
-      for (const dir of HexMath.DIRECTIONS) {
-        const nt = hexGrid.getTile(q + dir.q, r + dir.r);
-        if (!nt) continue;
-        if (typeof nt.elevation !== 'number') continue;
-        if (nt.biome === ROCKY_BIOME) continue;
-        if (nt.biome === WATER_BIOME) continue;
-        if (nt.elevation > maxRef) maxRef = nt.elevation;
-        if (nt.elevation < minRef) minRef = nt.elevation;
-      }
-      if (maxRef === -Infinity) continue; // rocky surrounded only by rocky/water — defer to next pass
-      const cap = maxRef + MAX_DIFF;
-      const floor = minRef - MAX_DIFF;
-      const target = Math.max(floor, Math.min(cap, tile.elevation));
-      if (target !== tile.elevation) {
-        if (pass === 0 && firstPassSample === null) {
-          firstPassSample = { q, r, before: tile.elevation, after: target, maxRef, minRef };
-        }
-        tile.elevation = target;
-        changed++;
+  const pending = new Set(rockyTiles.map(rt => rt.key));
+  const queue = [];
+
+  // Seed queue with border rocky tiles — rocky with ≥1 non-rocky,
+  // non-water neighbor. These resolve first against the terrain.
+  for (const rt of rockyTiles) {
+    const { q, r } = parseKey(rt.key);
+    for (const dir of HexMath.DIRECTIONS) {
+      const nt = hexGrid.getTile(q + dir.q, r + dir.r);
+      if (nt && nt.biome !== ROCKY_BIOME && nt.biome !== WATER_BIOME) {
+        queue.push(rt.key);
+        break;
       }
     }
-    totalChanged += changed;
-    if (changed === 0) break;
   }
 
-  console.log(`smoothRockyPeaks: ${totalChanged} elevation change(s) across ${rockyTiles.length} rocky tile(s)`, firstPassSample ? { firstPassSample } : '');
+  let totalChanged = 0;
+  let firstSample = null;
+  let maxBeforeAfter = null;
+  const head = () => queue.shift();
+
+  // BFS: process queue; each resolved rocky tile enqueues its still-
+  // pending rocky neighbors so the cascade reaches the interior.
+  while (queue.length > 0) {
+    const key = head();
+    if (!pending.has(key)) continue;
+    const { q, r } = parseKey(key);
+    const tile = hexGrid.getTile(q, r);
+    if (!tile) { pending.delete(key); continue; }
+
+    let maxRef = -Infinity;
+    for (const dir of HexMath.DIRECTIONS) {
+      const nq = q + dir.q, nr = r + dir.r;
+      const nt = hexGrid.getTile(nq, nr);
+      if (!nt) continue;
+      if (typeof nt.elevation !== 'number') continue;
+      if (nt.biome === WATER_BIOME) continue;
+      // Skip rocky neighbors that haven't been resolved yet —
+      // they'll get their chance when we process them.
+      if (nt.biome === ROCKY_BIOME && pending.has(hexGrid.getKey(nq, nr))) continue;
+      if (nt.elevation > maxRef) maxRef = nt.elevation;
+    }
+
+    if (maxRef !== -Infinity) {
+      const cap = maxRef + MAX_DIFF;
+      if (tile.elevation > cap) {
+        const before = tile.elevation;
+        tile.elevation = cap;
+        totalChanged++;
+        if (firstSample === null) {
+          firstSample = { q, r, before, after: cap, maxRef };
+        }
+        if (maxBeforeAfter === null || (before - cap) > (maxBeforeAfter.before - maxBeforeAfter.after)) {
+          maxBeforeAfter = { q, r, before, after: cap, maxRef };
+        }
+      }
+    }
+
+    pending.delete(key);
+
+    // Enqueue pending rocky neighbors so cascade moves inward.
+    for (const dir of HexMath.DIRECTIONS) {
+      const nq = q + dir.q, nr = r + dir.r;
+      const nkey = hexGrid.getKey(nq, nr);
+      if (pending.has(nkey)) queue.push(nkey);
+    }
+  }
+
+  // Anything left in pending is a rocky island with no reachable
+  // border (e.g. entirely surrounded by water). Leave those alone.
+
+  console.log(`smoothRockyPeaks: ${totalChanged} change(s) across ${rockyTiles.length} rocky tile(s); pending after BFS: ${pending.size}`, { firstSample, maxBeforeAfter });
 
   if (totalChanged > 0) {
     dirtyTracker.markDirty('map');
-    if (hexCanvas) hexCanvas.requestRender();
+    if (hexCanvas) {
+      hexCanvas.invalidateReachability();
+      hexCanvas.requestRender();
+    }
     if (hexInspector) hexInspector.updateMapStats();
   }
   setStatus(`Smooth Rocky Peaks: adjusted ${totalChanged} elevation value(s) across ${rockyTiles.length} Rocky tile(s).`);
