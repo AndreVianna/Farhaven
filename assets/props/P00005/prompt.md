@@ -113,8 +113,15 @@ At the top, a sparser crown of only five long upward-pointing fibrous
 fronds spreads outward at a wider angle — each frond about 55 cm long,
 desaturated olive-sage with darker tips, stiff but slightly drooped
 outward at the ends, with faint teal bioluminescent venation. Reads
-as a mature elder specimen. No lower branches. Plant is approximately
-2.8 m tall and 60 cm wide at the crown.
+as a mature elder specimen. Just beneath the frond crown, hanging from
+a short thick pendant stem, is **a single prominent cluster of 10-12
+large woody seed pods in the style of a Brazil-nut (castanha-do-Pará)
+ouriço** — each pod is a nearly spherical thick-walled capsule about
+12 cm across, deep chocolate-brown with a rough heavily textured bark
+surface, fused together into a grape-like cluster roughly 35 cm wide
+hanging 25 cm below the crown. The ouriço cluster is the adult
+specimen's reproductive signature. No lower branches. Plant is
+approximately 2.8 m tall and 60 cm wide at the crown.
 
 Art style: Stylized 3D game asset in the visual language of Subnautica
 and No Man's Sky — clean organic shapes, slightly exaggerated silhouette
