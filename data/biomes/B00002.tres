@@ -130,7 +130,7 @@ elevation_range = Vector2i(-100, 100)
 [sub_resource type="Resource" id="biome_prop_18"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00014"
-frequency = 0.05
+frequency = 0.1
 grouping_range = Vector2i(2, 5)
 elevation_range = Vector2i(-100, 100)
 
@@ -151,14 +151,14 @@ elevation_range = Vector2i(-100, 100)
 [sub_resource type="Resource" id="biome_prop_21"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00017"
-frequency = 0.05
+frequency = 0.1
 grouping_range = Vector2i(2, 5)
 elevation_range = Vector2i(-100, 100)
 
 [sub_resource type="Resource" id="biome_prop_22"]
 script = ExtResource("6_biome_prop")
 prop_id = &"P00018"
-frequency = 0.05
+frequency = 0.1
 grouping_range = Vector2i(2, 5)
 elevation_range = Vector2i(-100, 100)
 
