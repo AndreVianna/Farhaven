@@ -35,7 +35,6 @@ conditions = []
 script = ExtResource("2_placeable")
 meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 placement = 4
-slope_blend = 0.4
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("7_catalogable")
