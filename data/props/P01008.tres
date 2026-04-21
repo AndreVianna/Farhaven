@@ -1,64 +1,64 @@
-        [gd_resource type="Resource" script_class="PropDef" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="PropDef" load_steps=18 format=3]
 
-        [ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
-        [ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
-        [ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="3_mesh_variant"]
-        [ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v1.glb" id="4_mesh_scene_1"]
-        [ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v2.glb" id="5_mesh_scene_2"]
-        [ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v3.glb" id="6_mesh_scene_3"]
-        [ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="8_catalogable"]
-        [ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="9_harvestable"]
-        [ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="10_harvest_yield"]
+[ext_resource type="Script" path="res://scripts/data/prop_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/placeable_cap.gd" id="2_placeable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/mesh_variant.gd" id="3_mesh_variant"]
+[ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v1.glb" id="4_mesh_scene_1"]
+[ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v2.glb" id="5_mesh_scene_2"]
+[ext_resource type="PackedScene" path="res://assets/props/P01008/mesh_v3.glb" id="6_mesh_scene_3"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/catalogable_cap.gd" id="8_catalogable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvestable_cap.gd" id="9_harvestable"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/harvest_yield.gd" id="10_harvest_yield"]
 
-        [sub_resource type="Resource" id="mesh_variant_1"]
-        script = ExtResource("3_mesh_variant")
-        scene = ExtResource("4_mesh_scene_1")
-        scale = 0.22
+[sub_resource type="Resource" id="mesh_variant_1"]
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("4_mesh_scene_1")
+scale = 0.22
 
-        [sub_resource type="Resource" id="mesh_variant_2"]
-        script = ExtResource("3_mesh_variant")
-        scene = ExtResource("5_mesh_scene_2")
-        scale = 0.22
+[sub_resource type="Resource" id="mesh_variant_2"]
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("5_mesh_scene_2")
+scale = 0.22
 
-        [sub_resource type="Resource" id="mesh_variant_3"]
-        script = ExtResource("3_mesh_variant")
-        scene = ExtResource("6_mesh_scene_3")
-        scale = 0.22
+[sub_resource type="Resource" id="mesh_variant_3"]
+script = ExtResource("3_mesh_variant")
+scene = ExtResource("6_mesh_scene_3")
+scale = 0.22
 
-        [sub_resource type="Resource" id="harvest_yield_1"]
-        script = ExtResource("10_harvest_yield")
-        item_id = &"obsidian_shard"
-        amount = 2
-        conditions = [&"tool:stone_breaking_tool"]
+[sub_resource type="Resource" id="harvest_yield_1"]
+script = ExtResource("10_harvest_yield")
+item_id = &"obsidian_shard"
+amount = 2
+conditions = [&"tool:stone_breaking_tool"]
 
-        [sub_resource type="Resource" id="placeable_1"]
-        script = ExtResource("2_placeable")
-        meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
-        placement = 0
-        slope_blend = 0.2
-        max_allowed_slope = 15
+[sub_resource type="Resource" id="placeable_1"]
+script = ExtResource("2_placeable")
+meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
+placement = 0
+slope_blend = 0.2
+max_allowed_slope = 15
 
-        [sub_resource type="Resource" id="catalogable_1"]
+[sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("8_catalogable")
 scan_time = 2.0
 properties = { &"hardness": 6, &"breaking_behavior": 'shatters', &"surface_shine": 'glossy', &"light_transmission": 'opaque', &"fluorescence": false, &"density": 2.4 }
 
-        [sub_resource type="Resource" id="harvestable_1"]
-        script = ExtResource("9_harvestable")
-        yields = Array[HarvestYield]([SubResource("harvest_yield_1")])
-        respawn_conditions = []
+[sub_resource type="Resource" id="harvestable_1"]
+script = ExtResource("9_harvestable")
+yields = Array[HarvestYield]([SubResource("harvest_yield_1")])
+respawn_conditions = []
 
-        [resource]
-        script = ExtResource("1_script")
-        id = &"P01008"
-        display_name = "Obsidian Shard"
-        short_description = "A razor-sharp chunk of volcanic glass."
-        long_description = "Black alien volcanic glass with iridescent sheen. The edges split skin at a glance — useful when worked carefully."
-        category = &"mineral"
-        rarity = &"uncommon"
-        tags = [&"resource_source"]
-        placeable = SubResource("placeable_1")
-        catalogable = SubResource("catalogable_1")
-        harvestable = SubResource("harvestable_1")
-        max_stack = 99
-        origin = 0
+[resource]
+script = ExtResource("1_script")
+id = &"P01008"
+display_name = "Obsidian Shard"
+short_description = "A razor-sharp chunk of volcanic glass."
+long_description = "Black alien volcanic glass with iridescent sheen. The edges split skin at a glance — useful when worked carefully."
+category = &"mineral"
+rarity = &"uncommon"
+tags = [&"resource_source"]
+placeable = SubResource("placeable_1")
+catalogable = SubResource("catalogable_1")
+harvestable = SubResource("harvestable_1")
+max_stack = 99
+origin = 0
