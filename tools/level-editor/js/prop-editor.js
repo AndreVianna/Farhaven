@@ -283,7 +283,13 @@ export class PropDefModel {
       // feature-011: scatter preset lives inside PlaceableCap as a
       // plain int (default SINGLE = 0).
       const placement = Number.isInteger(d.placeable.placement) ? d.placeable.placement : 0;
-      model.placeable = { meshes, collision_shapes, placement };
+      // Slope handling (2026-04-21): allow_on_slope gates Populate;
+      // slope_blend controls runtime terrain-normal tilt.
+      const allow_on_slope = typeof d.placeable.allow_on_slope === 'boolean'
+        ? d.placeable.allow_on_slope : true;
+      const slope_blend = typeof d.placeable.slope_blend === 'number'
+        ? d.placeable.slope_blend : 1.0;
+      model.placeable = { meshes, collision_shapes, placement, allow_on_slope, slope_blend };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -2293,6 +2299,64 @@ export function renderPropEditor(container, options) {
     select.addEventListener('change', _refreshDesc);
     wrap.appendChild(desc);
 
+    // --- Slope handling controls ------------------------------------
+    const slopeHeading = document.createElement('div');
+    slopeHeading.textContent = 'Slope Handling';
+    slopeHeading.style.cssText = 'font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 8px;';
+    wrap.appendChild(slopeHeading);
+
+    // Allow on slope checkbox.
+    const allowRow = document.createElement('label');
+    allowRow.style.cssText = 'display: flex; gap: 8px; align-items: center; cursor: pointer; font-size: 11px;';
+    const allowCheckbox = document.createElement('input');
+    allowCheckbox.type = 'checkbox';
+    allowCheckbox.dataset.field = 'allow_on_slope';
+    const allowValue = (model.placeable && typeof model.placeable.allow_on_slope === 'boolean')
+      ? model.placeable.allow_on_slope : true;
+    allowCheckbox.checked = allowValue;
+    const allowText = document.createElement('span');
+    allowText.textContent = 'Allow on sloped hexes';
+    allowRow.appendChild(allowCheckbox);
+    allowRow.appendChild(allowText);
+    wrap.appendChild(allowRow);
+
+    const allowDesc = document.createElement('div');
+    allowDesc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
+    allowDesc.textContent = 'When off, Populate skips this prop on sloped hexes (any non-wall neighbor with elevation diff > 1). Use for loose rocks that would roll.';
+    wrap.appendChild(allowDesc);
+
+    // Slope blend slider (0..1 in 0.05 steps).
+    const blendRow = document.createElement('div');
+    blendRow.style.cssText = 'display: flex; gap: 8px; align-items: center; font-size: 11px;';
+    const blendLabel = document.createElement('span');
+    blendLabel.textContent = 'Slope Tilt';
+    blendLabel.classList.add('prop-hint');
+    const blendSlider = document.createElement('input');
+    blendSlider.type = 'range';
+    blendSlider.min = '0';
+    blendSlider.max = '1';
+    blendSlider.step = '0.05';
+    blendSlider.dataset.field = 'slope_blend';
+    blendSlider.style.flex = '1';
+    const blendValue = (model.placeable && typeof model.placeable.slope_blend === 'number')
+      ? model.placeable.slope_blend : 1.0;
+    blendSlider.value = String(blendValue);
+    const blendReadout = document.createElement('span');
+    blendReadout.style.cssText = 'min-width: 3em; text-align: right; font-family: var(--font-mono, monospace); font-size: 11px;';
+    blendReadout.textContent = Number(blendSlider.value).toFixed(2);
+    blendSlider.addEventListener('input', () => {
+      blendReadout.textContent = Number(blendSlider.value).toFixed(2);
+    });
+    blendRow.appendChild(blendLabel);
+    blendRow.appendChild(blendSlider);
+    blendRow.appendChild(blendReadout);
+    wrap.appendChild(blendRow);
+
+    const blendDesc = document.createElement('div');
+    blendDesc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
+    blendDesc.textContent = '0.0 = prop stays strictly vertical on slopes (tall trees). 1.0 = prop lies fully against the terrain normal (moss, flat fungi, ground cover). Intermediate values blend partway.';
+    wrap.appendChild(blendDesc);
+
     return wrap;
   }
 
@@ -2796,10 +2860,19 @@ export function collectPropFormData(formElement) {
     const placement = placementSelect
       ? parseInt(/** @type {HTMLSelectElement} */ (placementSelect).value, 10)
       : 0;
+    // Slope handling inputs rendered alongside the preset dropdown.
+    const allowBox = formElement.querySelector('input[data-field="allow_on_slope"]');
+    const allow_on_slope = allowBox
+      ? /** @type {HTMLInputElement} */ (allowBox).checked : true;
+    const blendSlider = formElement.querySelector('input[data-field="slope_blend"]');
+    const slope_blend = blendSlider
+      ? parseFloat(/** @type {HTMLInputElement} */ (blendSlider).value) : 1.0;
     model.placeable = {
       meshes: _collectMeshVariantsData(formElement),
       collision_shapes: _collectCollisionShapesData(formElement),
       placement: Number.isInteger(placement) ? placement : 0,
+      allow_on_slope,
+      slope_blend,
     };
   }
 
@@ -3301,6 +3374,18 @@ export function propModelToRaw(model) {
       ? model.placeable.placement : 0;
     if (placementPreset !== 0) {
       subFields.set('placement', { type: 'int', value: placementPreset });
+    }
+
+    // Slope handling — emit only when non-default to keep legacy files minimal.
+    const allowSlope = typeof model.placeable.allow_on_slope === 'boolean'
+      ? model.placeable.allow_on_slope : true;
+    if (allowSlope !== true) {
+      subFields.set('allow_on_slope', { type: 'bool', value: allowSlope });
+    }
+    const slopeBlend = typeof model.placeable.slope_blend === 'number'
+      ? model.placeable.slope_blend : 1.0;
+    if (slopeBlend !== 1.0) {
+      subFields.set('slope_blend', { type: 'float', value: slopeBlend });
     }
 
     capEntries.push({ capName: 'placeable', subId: 'placeable_1', subFields });
