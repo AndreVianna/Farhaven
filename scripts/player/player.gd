@@ -273,11 +273,17 @@ func _update_model_rotation() -> void:
 
 
 func _on_map_generated() -> void:
+	var prev_tile: Vector2i = current_tile
 	current_tile = _grid.spawn_tile
 	move_state = MoveState.IDLE
 	_joystick_dir = Vector2.ZERO
 	_joystick_magnitude = 0.0
 	_snap_to_spawn()
+	# Tell streaming systems where the player actually is now. Without
+	# this, a pure new-game start streams around Vector2i.ZERO (the
+	# initial value) until the first manual hex transition.
+	if prev_tile != current_tile:
+		player_moved.emit(prev_tile, current_tile)
 
 
 ## Place the player at the HexGrid spawn point using tile + sub-hex offset +
@@ -628,6 +634,7 @@ func get_save_data() -> Dictionary:
 
 
 func load_save_data(data: Dictionary) -> void:
+	var prev_tile: Vector2i = current_tile
 	var col: int = data.get("tile_col", 0)
 	var row: int = data.get("tile_row", 0)
 	current_tile = Vector2i(col, row)
@@ -642,6 +649,12 @@ func load_save_data(data: Dictionary) -> void:
 	_cancel_snap_tween()
 	_snap_to_tile(current_tile)
 	_update_model_rotation()
+	# Notify streaming systems (prop_renderer, prop_label_renderer) that
+	# the player landed somewhere new. Without this, they keep the
+	# streaming window anchored at spawn and half the map stays unloaded
+	# until the player walks a hex. Emit even if current_tile == prev_tile
+	# in case listeners care about the load event itself.
+	player_moved.emit(prev_tile, current_tile)
 	if inventory != null and data.has("inventory"):
 		inventory.load_save_data(data["inventory"])
 	# Restore wearables before the starter fallback so saved state wins.
