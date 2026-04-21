@@ -865,9 +865,23 @@ func _add_prop_instance(coords: Vector2i, rn: Resource, pool_id: StringName, dim
 		# unit mesh scale.
 		var pos := Vector3(ground_pos.x, ground_pos.y + y_off * copy_scale, ground_pos.z)
 
+		# Terrain-normal alignment. Small trunked props (trees, tall ferns)
+		# keep slope_blend low so they grow upward even on inclines; ground
+		# cover / moss / flat fungi blend toward 1.0 so they lie against the
+		# slope. Default on PlaceableCap is 1.0.
+		var slope_blend: float = 1.0
+		if def != null and def.placeable != null:
+			slope_blend = float(def.placeable.slope_blend)
+		var up := Vector3.UP
+		if slope_blend > 0.001:
+			var normal: Vector3 = _sample_terrain_normal(ground_pos.x, ground_pos.z)
+			up = Vector3.UP.lerp(normal, slope_blend).normalized()
+
 		var xform := Transform3D.IDENTITY
 		xform = xform.scaled(Vector3.ONE * copy_scale)
-		xform.basis = xform.basis.rotated(Vector3.UP, deg_to_rad(rotation_deg))
+		# Yaw around the (blended) up axis so rotation_deg still reads as
+		# "spin around the prop's trunk" even when the trunk is tilted.
+		xform.basis = _aligned_basis(up, deg_to_rad(rotation_deg)) * xform.basis
 		xform.origin = pos
 
 		mm.visible_instance_count = idx + 1
@@ -1346,3 +1360,40 @@ func get_pool_material_color(pool_id) -> Color:
 	if mat == null:
 		return Color.BLACK
 	return mat.albedo_color
+
+
+## Approximate the terrain normal at (x, z) using finite differences on
+## the HexGrid's get_terrain_y sampler. Returns Vector3.UP when the grid
+## is unavailable. Uses a 0.3m epsilon — small enough to pick up per-hex
+## slope without getting noisy on curved corners.
+func _sample_terrain_normal(x: float, z: float) -> Vector3:
+	if _grid == null or not _grid.has_method("get_terrain_y"):
+		return Vector3.UP
+	const EPS: float = 0.3
+	var dx: float = _grid.get_terrain_y(x + EPS, z) - _grid.get_terrain_y(x - EPS, z)
+	var dz: float = _grid.get_terrain_y(x, z + EPS) - _grid.get_terrain_y(x, z - EPS)
+	# Standard heightmap normal: (-dy/dx, 1, -dy/dz) normalized, with the
+	# factor absorbed into the denominator by dividing by 2*EPS.
+	var n := Vector3(-dx, 2.0 * EPS, -dz)
+	if n.length_squared() < 0.00001:
+		return Vector3.UP
+	return n.normalized()
+
+
+## Build a Basis whose local Y axis points along `up`, with the rest
+## spun by `yaw_rad` around that up axis. Robust when `up` is nearly
+## parallel to world-X (rare — near-vertical cliffs) by picking a
+## different reference axis to cross against.
+func _aligned_basis(up: Vector3, yaw_rad: float) -> Basis:
+	if up.is_equal_approx(Vector3.UP):
+		return Basis().rotated(Vector3.UP, yaw_rad)
+	# Pick a reference that isn't parallel to `up` so the cross product
+	# is stable near the poles.
+	var reference := Vector3.FORWARD
+	if absf(up.dot(reference)) > 0.95:
+		reference = Vector3.RIGHT
+	var right: Vector3 = reference.cross(up).normalized()
+	var forward: Vector3 = up.cross(right).normalized()
+	# Yaw spins around the blended up axis.
+	var basis := Basis(right, up, forward)
+	return basis.rotated(up, yaw_rad)

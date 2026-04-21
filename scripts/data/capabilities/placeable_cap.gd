@@ -33,3 +33,11 @@ extends Resource
 ##   3 SPROUTING  — 7 instances, sibling scale 0.3 (small satellites)
 ##   4 SPREAD     — 13 instances, sibling scale 1.0 (uniform coverage)
 @export var placement: int = 0  # PlacementPreset.Preset.SINGLE
+
+## How much to tilt the prop toward the terrain normal on inclined
+## ground. 0.0 keeps the prop strictly vertical (good for tall trees
+## that grow upward even on slopes). 1.0 fully aligns the prop's
+## local Y axis with the terrain normal at its base (good for ground
+## cover, moss, flat fungi — they should lie flat against the
+## ground). Intermediate values blend partway.
+@export_range(0.0, 1.0, 0.05) var slope_blend: float = 1.0
