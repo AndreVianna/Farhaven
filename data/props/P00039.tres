@@ -13,12 +13,12 @@
 [sub_resource type="Resource" id="mesh_variant_1"]
 script = ExtResource("3_mesh_variant")
 scene = ExtResource("4_mesh_scene_1")
-scale = 0.5
+scale = 0.2
 
 [sub_resource type="Resource" id="mesh_variant_2"]
 script = ExtResource("3_mesh_variant")
 scene = ExtResource("5_mesh_scene_2")
-scale = 0.5
+scale = 0.3
 
 [sub_resource type="Resource" id="mesh_variant_3"]
 script = ExtResource("3_mesh_variant")
