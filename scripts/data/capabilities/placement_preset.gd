@@ -29,6 +29,10 @@ enum Preset {
 	## 13 instances. scatter_scale 1.0. Uniform coverage, no apparent
 	## "center" — pasture, moss fields, ore clusters.
 	SPREAD,
+
+	## 19 instances filling every SSH position. scatter_scale 1.0.
+	## Maximum density — saturated ground cover, tightly packed fields.
+	FULL,
 }
 
 
@@ -41,6 +45,7 @@ static func get_count(preset: int) -> int:
 		Preset.DENSE:     return 13
 		Preset.SPROUTING: return 7
 		Preset.SPREAD:    return 13
+		Preset.FULL:      return 19
 	return 1
 
 
@@ -53,6 +58,7 @@ static func get_sibling_scale(preset: int) -> float:
 		Preset.DENSE:     return 0.5
 		Preset.SPROUTING: return 0.3
 		Preset.SPREAD:    return 1.0
+		Preset.FULL:      return 1.0
 	return 1.0
 
 
@@ -64,6 +70,7 @@ static func get_label(preset: int) -> String:
 		Preset.DENSE:     return "Dense"
 		Preset.SPROUTING: return "Sprouting"
 		Preset.SPREAD:    return "Spread"
+		Preset.FULL:      return "Full"
 	return "Unknown"
 
 

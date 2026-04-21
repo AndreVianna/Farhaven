@@ -32,6 +32,7 @@ extends Resource
 ##   2 DENSE      — 13 instances, sibling scale 0.5
 ##   3 SPROUTING  — 7 instances, sibling scale 0.3 (small satellites)
 ##   4 SPREAD     — 13 instances, sibling scale 1.0 (uniform coverage)
+##   5 FULL       — 19 instances, sibling scale 1.0 (saturated cover)
 @export var placement: int = 0  # PlacementPreset.Preset.SINGLE
 
 ## How much to tilt the prop toward the terrain normal on inclined

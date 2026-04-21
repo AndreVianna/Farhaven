@@ -2265,6 +2265,7 @@ export function renderPropEditor(container, options) {
       { value: 2, label: 'Dense',     desc: '13 instances (center + 12 scattered). Sibling scale 0.5. Thick vegetation.' },
       { value: 3, label: 'Sprouting', desc: '7 instances, sibling scale 0.3. Small satellites around parent — young growth, mineral clusters.' },
       { value: 4, label: 'Spread',    desc: '13 instances, sibling scale 1.0. Uniform coverage — pasture, moss fields.' },
+      { value: 5, label: 'Full',      desc: '19 instances filling every SSH position. Sibling scale 1.0. Saturated cover — tightly packed fields.' },
     ];
 
     const current = (model.placeable && Number.isInteger(model.placeable.placement))

@@ -987,9 +987,11 @@ func _compute_prop_scatter(coords: Vector2i, rn: Resource, def: Resource) -> Arr
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _compute_scatter_seed(coords, rn.sub_hex, rn.type)
 
-	# Actual instance count with ±2 jitter, clamped to [1, 19].
+	# Actual instance count with ±2 jitter, clamped to [1, 19]. FULL
+	# preset (19 instances) is exempt — it should always fill the SSH
+	# grid completely.
 	var actual_count: int = preset_count
-	if preset_count > 1:
+	if preset_count > 1 and preset_count < 19:
 		actual_count = clampi(preset_count + rng.randi_range(-2, 2), 1, 19)
 
 	# SSH positions: center (0) plus (actual_count - 1) chosen from the

@@ -260,7 +260,7 @@ export function showPropOverrideModal(opts) {
   const existing = document.getElementById('prop-override-modal');
   if (existing) existing.remove();
 
-  const PRESET_LABELS = ['Single', 'Normal', 'Dense', 'Sprouting', 'Spread'];
+  const PRESET_LABELS = ['Single', 'Normal', 'Dense', 'Sprouting', 'Spread', 'Full'];
   const overlay = document.createElement('div');
   overlay.id = 'prop-override-modal';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;';
