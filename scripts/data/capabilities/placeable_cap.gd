@@ -41,3 +41,11 @@ extends Resource
 ## cover, moss, flat fungi — they should lie flat against the
 ## ground). Intermediate values blend partway.
 @export_range(0.0, 1.0, 0.05) var slope_blend: float = 1.0
+
+## Whether this prop may be spawned on sloped hexes during populate.
+## Loose rocks, boulders, and other things that would roll downhill
+## should set this to false so they only appear on flat ground. Things
+## that grow from the soil (grass, moss, flowers, trees) keep this true.
+## A tile is considered "sloped" when any neighbor's elevation differs
+## from the tile's own by more than 1 unit (no wall between them).
+@export var allow_on_slope: bool = true

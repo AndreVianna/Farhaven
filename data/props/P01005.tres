@@ -42,6 +42,7 @@ conditions = [&"tool:stone_breaking_tool"]
 script = ExtResource("2_placeable")
 meshes = Array[Resource]([SubResource("mesh_variant_1"), SubResource("mesh_variant_2"), SubResource("mesh_variant_3")])
 collision_shapes = Array[Resource]([SubResource("collision_shape_1")])
+allow_on_slope = false
 
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("8_catalogable")

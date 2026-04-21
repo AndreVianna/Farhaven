@@ -226,12 +226,21 @@ function _neighborsWithTiles(grid, q, r) {
  * @param {Object} np - natural_props entry
  * @param {Object} tile
  * @param {Array<{q: number, r: number, tile: Object}>} neighbors
+ * @param {number} q
+ * @param {number} r
  * @returns {boolean}
  */
-function _conditionsPass(np, tile, neighbors) {
+function _conditionsPass(np, tile, neighbors, q, r) {
   // elevation_range is inclusive.
   const elev = typeof tile.elevation === 'number' ? tile.elevation : 0;
   if (elev < np.elevation_range.x || elev > np.elevation_range.y) return false;
+
+  // Slope filter — loose rocks would roll downhill, so they're skipped
+  // on sloped tiles. PlaceableCap.allow_on_slope defaults to true; only
+  // minerals that the author opts out set it false.
+  if (!_propAllowsSlope(np.prop_id) && _tileIsSloped(tile, neighbors, q, r)) {
+    return false;
+  }
 
   if (np.near_biomes.length > 0) {
     const ok = neighbors.some(n => np.near_biomes.includes(n.tile.biome));
@@ -252,6 +261,52 @@ function _conditionsPass(np, tile, neighbors) {
     if (bad) return false;
   }
   return true;
+}
+
+/**
+ * Read PlaceableCap.allow_on_slope from the prop's .tres data.
+ * Defaults to true when missing (permissive — old maps keep working).
+ * @param {string} propId
+ * @returns {boolean}
+ */
+function _propAllowsSlope(propId) {
+  const entry = ProjectContext.files.props.get(propId + '.tres');
+  if (!entry || !entry.raw) return true;
+  // Walk sub_resources looking for the placeable sub-resource.
+  const subs = entry.raw.subResources || [];
+  for (const sub of subs) {
+    for (const [field, data] of sub.fields) {
+      if (field === 'allow_on_slope' && data && typeof data.value === 'boolean') {
+        return data.value;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * A tile counts as sloped when any walk-through neighbor's elevation
+ * differs from our own by more than 1 step. Walls count as cliffs, not
+ * slopes, so we ignore them — cliff-adjacent tiles can still be flat
+ * on top.
+ * @param {Object} tile
+ * @param {Array<{q: number, r: number, tile: Object}>} neighbors
+ * @param {number} selfQ
+ * @param {number} selfR
+ * @returns {boolean}
+ */
+function _tileIsSloped(tile, neighbors, selfQ, selfR) {
+  const selfElev = typeof tile.elevation === 'number' ? tile.elevation : 0;
+  const walls = Array.isArray(tile.walls) ? tile.walls : [false, false, false, false, false, false];
+  for (const n of neighbors) {
+    const dirIdx = HexMath.DIRECTIONS.findIndex(d =>
+      d.q === (n.q - selfQ) && d.r === (n.r - selfR)
+    );
+    if (dirIdx >= 0 && walls[dirIdx]) continue;  // cliff via wall
+    const nElev = typeof n.tile.elevation === 'number' ? n.tile.elevation : 0;
+    if (Math.abs(nElev - selfElev) > 1) return true;
+  }
+  return false;
 }
 
 /**
@@ -417,7 +472,7 @@ export function computePopulatePlan(grid, opts) {
       if (bucket.length === 0) continue;
 
       for (const np of bucket) {
-        if (!_conditionsPass(np, stile, neighbors)) continue;
+        if (!_conditionsPass(np, stile, neighbors, q, r)) continue;
         const roll = rng.nextFloat();
         if (roll >= np.frequency) continue;
 
