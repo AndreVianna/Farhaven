@@ -283,13 +283,14 @@ export class PropDefModel {
       // feature-011: scatter preset lives inside PlaceableCap as a
       // plain int (default SINGLE = 0).
       const placement = Number.isInteger(d.placeable.placement) ? d.placeable.placement : 0;
-      // Slope handling (2026-04-21): allow_on_slope gates Populate;
-      // slope_blend controls runtime terrain-normal tilt.
-      const allow_on_slope = typeof d.placeable.allow_on_slope === 'boolean'
-        ? d.placeable.allow_on_slope : true;
+      // Slope handling (2026-04-21): max_allowed_slope (degrees, 0-90)
+      // gates Populate; slope_blend (0-1) controls runtime terrain-
+      // normal tilt.
+      const max_allowed_slope = Number.isFinite(d.placeable.max_allowed_slope)
+        ? d.placeable.max_allowed_slope : 90;
       const slope_blend = typeof d.placeable.slope_blend === 'number'
         ? d.placeable.slope_blend : 1.0;
-      model.placeable = { meshes, collision_shapes, placement, allow_on_slope, slope_blend };
+      model.placeable = { meshes, collision_shapes, placement, max_allowed_slope, slope_blend };
     }
 
     if (d.container && typeof d.container === 'object') {
@@ -2305,25 +2306,37 @@ export function renderPropEditor(container, options) {
     slopeHeading.style.cssText = 'font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 8px;';
     wrap.appendChild(slopeHeading);
 
-    // Allow on slope checkbox.
-    const allowRow = document.createElement('label');
-    allowRow.style.cssText = 'display: flex; gap: 8px; align-items: center; cursor: pointer; font-size: 11px;';
-    const allowCheckbox = document.createElement('input');
-    allowCheckbox.type = 'checkbox';
-    allowCheckbox.dataset.field = 'allow_on_slope';
-    const allowValue = (model.placeable && typeof model.placeable.allow_on_slope === 'boolean')
-      ? model.placeable.allow_on_slope : true;
-    allowCheckbox.checked = allowValue;
-    const allowText = document.createElement('span');
-    allowText.textContent = 'Allow on sloped hexes';
-    allowRow.appendChild(allowCheckbox);
-    allowRow.appendChild(allowText);
-    wrap.appendChild(allowRow);
+    // Max allowed slope (degrees, 0-90, step 5).
+    const maxRow = document.createElement('div');
+    maxRow.style.cssText = 'display: flex; gap: 8px; align-items: center; font-size: 11px;';
+    const maxLabel = document.createElement('span');
+    maxLabel.textContent = 'Max Slope';
+    maxLabel.classList.add('prop-hint');
+    const maxSlider = document.createElement('input');
+    maxSlider.type = 'range';
+    maxSlider.min = '0';
+    maxSlider.max = '90';
+    maxSlider.step = '5';
+    maxSlider.dataset.field = 'max_allowed_slope';
+    maxSlider.style.flex = '1';
+    const maxValue = (model.placeable && Number.isFinite(model.placeable.max_allowed_slope))
+      ? model.placeable.max_allowed_slope : 90;
+    maxSlider.value = String(maxValue);
+    const maxReadout = document.createElement('span');
+    maxReadout.style.cssText = 'min-width: 3em; text-align: right; font-family: var(--font-mono, monospace); font-size: 11px;';
+    maxReadout.textContent = `${maxSlider.value}°`;
+    maxSlider.addEventListener('input', () => {
+      maxReadout.textContent = `${maxSlider.value}°`;
+    });
+    maxRow.appendChild(maxLabel);
+    maxRow.appendChild(maxSlider);
+    maxRow.appendChild(maxReadout);
+    wrap.appendChild(maxRow);
 
-    const allowDesc = document.createElement('div');
-    allowDesc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
-    allowDesc.textContent = 'When off, Populate skips this prop on sloped hexes (any non-wall neighbor with elevation diff > 1). Use for loose rocks that would roll.';
-    wrap.appendChild(allowDesc);
+    const maxDesc = document.createElement('div');
+    maxDesc.style.cssText = 'font-size: 11px; color: var(--text-secondary); padding: 8px 10px; border-left: 2px solid var(--border); background: var(--bg-secondary);';
+    maxDesc.textContent = 'Populate skips this prop on hexes whose steepest local slope exceeds this angle. Scale: 0 = flat only; 15 = loose-rock limit; 30-45 = bushes/trees; 60+ = ground cover / moss; 90 = anywhere including cliffs. Slope is derived from elevation diff to walk-through neighbors.';
+    wrap.appendChild(maxDesc);
 
     // Slope blend slider (0..1 in 0.05 steps).
     const blendRow = document.createElement('div');
@@ -2861,9 +2874,9 @@ export function collectPropFormData(formElement) {
       ? parseInt(/** @type {HTMLSelectElement} */ (placementSelect).value, 10)
       : 0;
     // Slope handling inputs rendered alongside the preset dropdown.
-    const allowBox = formElement.querySelector('input[data-field="allow_on_slope"]');
-    const allow_on_slope = allowBox
-      ? /** @type {HTMLInputElement} */ (allowBox).checked : true;
+    const maxSlopeSlider = formElement.querySelector('input[data-field="max_allowed_slope"]');
+    const max_allowed_slope = maxSlopeSlider
+      ? parseInt(/** @type {HTMLInputElement} */ (maxSlopeSlider).value, 10) : 90;
     const blendSlider = formElement.querySelector('input[data-field="slope_blend"]');
     const slope_blend = blendSlider
       ? parseFloat(/** @type {HTMLInputElement} */ (blendSlider).value) : 1.0;
@@ -2871,7 +2884,7 @@ export function collectPropFormData(formElement) {
       meshes: _collectMeshVariantsData(formElement),
       collision_shapes: _collectCollisionShapesData(formElement),
       placement: Number.isInteger(placement) ? placement : 0,
-      allow_on_slope,
+      max_allowed_slope,
       slope_blend,
     };
   }
@@ -3377,10 +3390,10 @@ export function propModelToRaw(model) {
     }
 
     // Slope handling — emit only when non-default to keep legacy files minimal.
-    const allowSlope = typeof model.placeable.allow_on_slope === 'boolean'
-      ? model.placeable.allow_on_slope : true;
-    if (allowSlope !== true) {
-      subFields.set('allow_on_slope', { type: 'bool', value: allowSlope });
+    const maxSlope = Number.isFinite(model.placeable.max_allowed_slope)
+      ? model.placeable.max_allowed_slope : 90;
+    if (maxSlope !== 90) {
+      subFields.set('max_allowed_slope', { type: 'int', value: maxSlope });
     }
     const slopeBlend = typeof model.placeable.slope_blend === 'number'
       ? model.placeable.slope_blend : 1.0;

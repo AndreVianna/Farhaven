@@ -235,11 +235,14 @@ function _conditionsPass(np, tile, neighbors, q, r) {
   const elev = typeof tile.elevation === 'number' ? tile.elevation : 0;
   if (elev < np.elevation_range.x || elev > np.elevation_range.y) return false;
 
-  // Slope filter — loose rocks would roll downhill, so they're skipped
-  // on sloped tiles. PlaceableCap.allow_on_slope defaults to true; only
-  // minerals that the author opts out set it false.
-  if (!_propAllowsSlope(np.prop_id) && _tileIsSloped(tile, neighbors, q, r)) {
-    return false;
+  // Slope filter — props set their max tolerated slope (in degrees) on
+  // PlaceableCap.max_allowed_slope. 0 = flat only, 90 = anywhere.
+  // Default 90 means no restriction. Loose rocks should use ~15, ground
+  // cover / moss can stay at 90.
+  const maxSlope = _propMaxSlope(np.prop_id);
+  if (maxSlope < 90) {
+    const tileSlopeDeg = _tileMaxSlopeDeg(tile, neighbors, q, r);
+    if (tileSlopeDeg > maxSlope) return false;
   }
 
   if (np.near_biomes.length > 0) {
@@ -264,49 +267,60 @@ function _conditionsPass(np, tile, neighbors, q, r) {
 }
 
 /**
- * Read PlaceableCap.allow_on_slope from the prop's .tres data.
- * Defaults to true when missing (permissive — old maps keep working).
+ * Read PlaceableCap.max_allowed_slope from the prop's .tres data.
+ * Defaults to 90 when missing (permissive — old maps keep working).
  * @param {string} propId
- * @returns {boolean}
+ * @returns {number} degrees in [0, 90]
  */
-function _propAllowsSlope(propId) {
+function _propMaxSlope(propId) {
   const entry = ProjectContext.files.props.get(propId + '.tres');
-  if (!entry || !entry.raw) return true;
-  // Walk sub_resources looking for the placeable sub-resource.
+  if (!entry || !entry.raw) return 90;
   const subs = entry.raw.subResources || [];
   for (const sub of subs) {
     for (const [field, data] of sub.fields) {
-      if (field === 'allow_on_slope' && data && typeof data.value === 'boolean') {
+      if (field === 'max_allowed_slope' && data && typeof data.value === 'number') {
         return data.value;
       }
     }
   }
-  return true;
+  return 90;
 }
 
 /**
- * A tile counts as sloped when any walk-through neighbor's elevation
- * differs from our own by more than 1 step. Walls count as cliffs, not
- * slopes, so we ignore them — cliff-adjacent tiles can still be flat
- * on top.
+ * Compute the steepest local slope angle (in degrees) for a tile.
+ * Slope between the tile and each non-wall neighbor is approximated as
+ * atan2(rise, run) where rise = |ΔelevationSteps| * ELEVATION_STEP and
+ * run = distance between hex centers (flat-top hex, radius 1). Walls
+ * are treated as cliffs (skipped) so cliff-adjacent flat-top tiles
+ * still report slope 0.
+ *
+ * Table (for reference):
+ *   diff 0 →  0°    diff 1 → 16°    diff 2 → 30°
+ *   diff 3 → 41°    diff 4 → 49°    diff 6 → 60°
+ *
  * @param {Object} tile
  * @param {Array<{q: number, r: number, tile: Object}>} neighbors
  * @param {number} selfQ
  * @param {number} selfR
- * @returns {boolean}
+ * @returns {number} degrees in [0, 90]
  */
-function _tileIsSloped(tile, neighbors, selfQ, selfR) {
+function _tileMaxSlopeDeg(tile, neighbors, selfQ, selfR) {
   const selfElev = typeof tile.elevation === 'number' ? tile.elevation : 0;
   const walls = Array.isArray(tile.walls) ? tile.walls : [false, false, false, false, false, false];
+  let maxDiff = 0;
   for (const n of neighbors) {
     const dirIdx = HexMath.DIRECTIONS.findIndex(d =>
       d.q === (n.q - selfQ) && d.r === (n.r - selfR)
     );
-    if (dirIdx >= 0 && walls[dirIdx]) continue;  // cliff via wall
+    if (dirIdx >= 0 && walls[dirIdx]) continue;  // cliff
     const nElev = typeof n.tile.elevation === 'number' ? n.tile.elevation : 0;
-    if (Math.abs(nElev - selfElev) > 1) return true;
+    const diff = Math.abs(nElev - selfElev);
+    if (diff > maxDiff) maxDiff = diff;
   }
-  return false;
+  if (maxDiff === 0) return 0;
+  const ELEVATION_STEP = 0.5;
+  const HEX_CENTER_DIST = Math.sqrt(3);  // flat-top hex, radius 1
+  return Math.atan2(maxDiff * ELEVATION_STEP, HEX_CENTER_DIST) * 180 / Math.PI;
 }
 
 /**
