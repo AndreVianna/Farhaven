@@ -40,7 +40,7 @@ max_allowed_slope = 45
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("7_catalogable")
 scan_time = 2.0
-properties = { &"hardness": 4, &"breaking_behavior": &"'crumbles'", &"surface_shine": &"'matte'", &"light_transmission": &"'opaque'", &"fluorescence": false, &"density": 2.5 }
+properties = { &"hardness": 4, &"breaking_behavior": &"crumbles", &"surface_shine": &"matte", &"light_transmission": &"opaque", &"fluorescence": false, &"density": 2.5 }
 
 [sub_resource type="Resource" id="harvestable_1"]
 script = ExtResource("8_harvestable")

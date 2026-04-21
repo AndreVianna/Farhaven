@@ -40,7 +40,7 @@ slope_blend = 0.2
 [sub_resource type="Resource" id="catalogable_1"]
 script = ExtResource("7_catalogable")
 scan_time = 2.0
-properties = { &"hardness": 3, &"breaking_behavior": &"'bends'", &"surface_shine": &"'metallic'", &"light_transmission": &"'opaque'", &"fluorescence": false, &"density": 8.9 }
+properties = { &"hardness": 3, &"breaking_behavior": &"bends", &"surface_shine": &"metallic", &"light_transmission": &"opaque", &"fluorescence": false, &"density": 8.9 }
 
 [sub_resource type="Resource" id="harvestable_1"]
 script = ExtResource("8_harvestable")
