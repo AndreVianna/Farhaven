@@ -1110,14 +1110,7 @@ if (chkShowElevation) {
     hexCanvas.requestRender();
   });
 }
-const chkShowProps = document.getElementById('btn-show-props');
-if (chkShowProps) {
-  chkShowProps.addEventListener('change', () => {
-    if (!hexCanvas) return;
-    hexCanvas.showPlacedProps = chkShowProps.checked;
-    hexCanvas.requestRender();
-  });
-}
+_mountPropFilter();
 
 // ============================================================
 // beforeunload protection (task-005)
@@ -1336,6 +1329,195 @@ function _mountShell() {
       },
     });
   }
+}
+
+/**
+/**
+ * Mount the Placed Props filter UI in the map sidebar.
+ *
+ * Replaces the old single "Placed props" checkbox with a collapsible
+ * panel grouped by prop category (Flora, Fauna, Mineral, Fungi,
+ * Oozes, Liquids, Structures, Equipment, Vehicles, Storage, Stuff).
+ * Each prop row shows a 20px thumbnail + display name + checkbox.
+ * Quick "All" / "None" toggles at the top. Default state is all-on.
+ *
+ * The canvas picks up changes through hexCanvas.propTypeFilter — a
+ * Set of prop_ids to keep, or null for show-all. We also flip
+ * hexCanvas.showPlacedProps to false when "None" is selected to short-
+ * circuit the per-tile scan entirely.
+ * @returns {void}
+ */
+function _mountPropFilter() {
+  const btn = document.getElementById('btn-prop-filter');
+  const panel = document.getElementById('prop-filter-panel');
+  const summary = document.getElementById('prop-filter-summary');
+  if (!btn || !panel || !summary) return;
+
+  /** @type {Set<string>} - prop_ids currently visible */
+  const visible = new Set();
+  /** @type {Map<string, {id: string, name: string, category: string}>} */
+  const propInfo = new Map();
+  let isOpen = false;
+
+  function _collectProps() {
+    propInfo.clear();
+    visible.clear();
+    for (const [filename, entry] of ProjectContext.files.props) {
+      const pid = filename.replace(/\.tres$/i, '');
+      const data = entry && entry.data;
+      if (!data) continue;
+      const category = typeof data.category === 'string' ? data.category : 'stuff';
+      const name = data.display_name || pid;
+      propInfo.set(pid, { id: pid, name, category });
+      visible.add(pid); // default: all on
+    }
+  }
+
+  function _updateCanvas() {
+    if (!hexCanvas) return;
+    if (visible.size === 0) {
+      hexCanvas.showPlacedProps = false;
+      hexCanvas.propTypeFilter = null;
+    } else if (visible.size === propInfo.size) {
+      hexCanvas.showPlacedProps = true;
+      hexCanvas.propTypeFilter = null;
+    } else {
+      hexCanvas.showPlacedProps = true;
+      hexCanvas.propTypeFilter = new Set(visible);
+    }
+    hexCanvas.requestRender();
+  }
+
+  function _updateSummary() {
+    if (visible.size === 0) {
+      summary.textContent = 'hidden';
+    } else if (visible.size === propInfo.size) {
+      summary.textContent = 'all visible';
+    } else {
+      summary.textContent = `${visible.size}/${propInfo.size}`;
+    }
+  }
+
+  function _render() {
+    panel.innerHTML = '';
+
+    // All / None quick toggles
+    const quick = document.createElement('div');
+    quick.style.cssText = 'display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);';
+    const btnAll = document.createElement('button');
+    btnAll.type = 'button';
+    btnAll.className = 'prop-btn';
+    btnAll.textContent = 'All';
+    btnAll.style.cssText = 'flex:1;font-size:11px;padding:3px;';
+    btnAll.addEventListener('click', () => {
+      visible.clear();
+      for (const pid of propInfo.keys()) visible.add(pid);
+      _render(); _updateCanvas(); _updateSummary();
+    });
+    const btnNone = document.createElement('button');
+    btnNone.type = 'button';
+    btnNone.className = 'prop-btn';
+    btnNone.textContent = 'None';
+    btnNone.style.cssText = 'flex:1;font-size:11px;padding:3px;';
+    btnNone.addEventListener('click', () => {
+      visible.clear();
+      _render(); _updateCanvas(); _updateSummary();
+    });
+    quick.appendChild(btnAll);
+    quick.appendChild(btnNone);
+    panel.appendChild(quick);
+
+    // Group by category
+    const byCat = new Map();
+    for (const info of propInfo.values()) {
+      if (!byCat.has(info.category)) byCat.set(info.category, []);
+      byCat.get(info.category).push(info);
+    }
+    // Stable category order matching the sidebar NAV.
+    const catOrder = ['plant', 'animal', 'mineral', 'fungi', 'ooze', 'liquid', 'stuff', 'structure', 'equipment', 'vehicle', 'storage'];
+    const orderedCats = [...catOrder.filter(c => byCat.has(c)), ...[...byCat.keys()].filter(c => !catOrder.includes(c))];
+
+    for (const cat of orderedCats) {
+      const entries = byCat.get(cat).sort((a, b) => a.name.localeCompare(b.name));
+      // Category header with group All/None
+      const section = document.createElement('div');
+      section.style.cssText = 'margin-bottom:4px;';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;color:var(--text-2);font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;';
+      const hLabel = document.createElement('span');
+      hLabel.textContent = cat;
+      hLabel.style.flex = '1';
+      const hAll = document.createElement('button');
+      hAll.type = 'button';
+      hAll.textContent = 'all';
+      hAll.className = 'prop-btn';
+      hAll.style.cssText = 'font-size:10px;padding:1px 4px;';
+      hAll.addEventListener('click', () => {
+        for (const e of entries) visible.add(e.id);
+        _render(); _updateCanvas(); _updateSummary();
+      });
+      const hNone = document.createElement('button');
+      hNone.type = 'button';
+      hNone.textContent = 'none';
+      hNone.className = 'prop-btn';
+      hNone.style.cssText = 'font-size:10px;padding:1px 4px;';
+      hNone.addEventListener('click', () => {
+        for (const e of entries) visible.delete(e.id);
+        _render(); _updateCanvas(); _updateSummary();
+      });
+      header.appendChild(hLabel);
+      header.appendChild(hAll);
+      header.appendChild(hNone);
+      section.appendChild(header);
+
+      for (const info of entries) {
+        const row = document.createElement('label');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;color:var(--text-1);';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = visible.has(info.id);
+        cb.addEventListener('change', () => {
+          if (cb.checked) visible.add(info.id); else visible.delete(info.id);
+          _updateCanvas(); _updateSummary();
+        });
+        const thumb = document.createElement('img');
+        thumb.style.cssText = 'width:20px;height:20px;object-fit:cover;border-radius:2px;border:1px solid var(--line);background:var(--bg-3);';
+        thumb.src = `/api/asset?path=${encodeURIComponent('assets/props/' + info.id + '/reference_v1.png')}`;
+        thumb.addEventListener('error', () => { thumb.style.visibility = 'hidden'; });
+        const name = document.createElement('span');
+        name.textContent = info.name;
+        name.style.cssText = 'flex:1;font-size:11px;';
+        const idLabel = document.createElement('span');
+        idLabel.textContent = info.id;
+        idLabel.style.cssText = 'font-family:var(--font-mono,monospace);font-size:10px;color:var(--text-2);';
+        row.appendChild(cb);
+        row.appendChild(thumb);
+        row.appendChild(name);
+        row.appendChild(idLabel);
+        section.appendChild(row);
+      }
+      panel.appendChild(section);
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    isOpen = !isOpen;
+    panel.style.display = isOpen ? 'block' : 'none';
+    if (isOpen && propInfo.size === 0) {
+      _collectProps();
+      _render();
+      _updateCanvas();
+      _updateSummary();
+    }
+  });
+
+  // Refresh the prop list once the project finishes loading so the
+  // first open of the panel has real data. If the project isn't
+  // loaded yet, _collectProps runs harmlessly on the empty map and
+  // will be repopulated on first click.
+  _collectProps();
+  _updateSummary();
 }
 
 /**

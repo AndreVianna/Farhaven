@@ -892,10 +892,13 @@ input[type="checkbox"] {
               <input type="checkbox" id="btn-show-elevation" checked>
               <span>Elevation numbers</span>
             </label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-1);cursor:pointer;padding:3px 0;">
-              <input type="checkbox" id="btn-show-props" checked>
-              <span>Placed props</span>
-            </label>
+            <div id="prop-filter-wrap" style="padding:3px 0;">
+              <button type="button" id="btn-prop-filter" class="prop-btn" style="width:100%;display:flex;align-items:center;gap:6px;justify-content:space-between;padding:4px 6px;font-size:11px;">
+                <span>Placed props</span>
+                <span id="prop-filter-summary" style="color:var(--text-2);">all visible</span>
+              </button>
+              <div id="prop-filter-panel" style="display:none;margin-top:4px;padding:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:3px;max-height:340px;overflow:auto;font-size:11px;"></div>
+            </div>
           </div>
 
           <!-- Tool buttons -->

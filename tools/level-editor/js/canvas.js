@@ -68,6 +68,10 @@ export class HexCanvas {
      * setter-style assignments; requestRender() picks up changes. */
     this.showElevationNumbers = true;
     this.showPlacedProps = true;
+    /** @type {Set<string>|null} If null (default) all props render. If a
+     * Set, only props whose `type` (prop_id) is in the set render. Set by
+     * the map-sidebar prop filter UI. */
+    this.propTypeFilter = null;
     /** @type {{ q: number, r: number }|null} Sub-hex within hovered hex */
     this.hoveredSubHex = null;
     this.isPanning = false;
@@ -753,6 +757,9 @@ export class HexCanvas {
     if (!tile.props) return;
 
     for (const prop of tile.props) {
+      // Type filter: when the sidebar restricts the visible prop set,
+      // skip anything not in it. Matches against prop_id (prop.type).
+      if (this.propTypeFilter && !this.propTypeFilter.has(prop.type)) continue;
       // Use per-prop color from propColorMap when available, else fall back to category color
       let color;
       const catInt = CATEGORY_TO_INT[prop.category];
