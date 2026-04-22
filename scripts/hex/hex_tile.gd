@@ -3,12 +3,25 @@ extends Resource
 
 const _Prop = preload("res://scripts/hex/prop.gd")
 
+## Biome name table. The int VALUES stored on tiles are assigned by
+## MapLoader._biome_id_to_int at load time, which sorts .tres
+## filenames alphabetically — NOT from this enum. So far the enum
+## ordering happens to match the alphabetical B00001..B00008 order,
+## but code that compares `tile.biome == Biome.WATER` is really
+## comparing against "position of B00005.tres in the sorted list".
+## If biome files are ever renamed or reordered the enum will
+## silently desync. Treat this enum as a human-readable label, not a
+## source of truth — prefer `biome_id: StringName` lookups in new
+## code.
 enum Biome {
 	CRASH_SITE,
 	GRASSLAND,
 	FOREST,
 	ROCKY,
 	WATER,
+	VOLCANIC,
+	ALPINE,
+	SHORELINE,
 }
 
 @export var coords: Vector2i = Vector2i.ZERO
@@ -23,6 +36,15 @@ enum Biome {
 @export var water_level: int = 0
 ## Water behavior type: 'leveled' (lakes) or 'flowing' (rivers).
 @export var water_type: String = ""
+## Environmental hazard intensity, 0–4. Meaning depends on the
+## biome's `hazard_type`:
+##   hazard_type = "heat"  → drains thirst + HP (Volcanic biome)
+##   hazard_type = "cold"  → drains hunger + HP (Alpine biome)
+##   hazard_type = "none"  → ignored
+## Level 4 is a ~1-second time-to-death pulse; the player must step
+## off within a few ticks or die. Default 0 so existing maps load
+## unchanged.
+@export var temperature: int = 0
 
 
 ## Returns all natural-origin props (non-structure, non-anomaly).

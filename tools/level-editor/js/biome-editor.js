@@ -76,6 +76,10 @@ export class BiomeDataModel {
     this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
+    /** @type {string} Hazard semantics: 'none' (default) | 'heat' | 'cold'.
+     *  Tells SurvivalSystem what the per-tile temperature value means on
+     *  this biome (heat = drain thirst, cold = drain hunger). */
+    this.hazard_type = 'none';
     /**
      * Generative prop distribution entries. Mirrors the GDScript
      * `BiomeProp` resource. Empty = biome doesn't populate props.
@@ -152,6 +156,11 @@ export class BiomeDataModel {
     if (d.color && typeof d.color === 'object' && 'r' in d.color) {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
+
+    // hazard_type — StringName in .tres, comes out as plain string.
+    // Defaults to 'none' so pre-existing biomes keep behaving like today.
+    const rawHazard = _str(d.hazard_type);
+    model.hazard_type = (rawHazard === 'heat' || rawHazard === 'cold') ? rawHazard : 'none';
 
     // natural_props: Array[Resource] of BiomeProp sub_resources.
     // Same dereferencing pattern as PropDef.placeable.meshes — the raw
@@ -1701,6 +1710,12 @@ export function biomeModelToRaw(model) {
     type: 'color',
     value: { r: model.color.r, g: model.color.g, b: model.color.b, a: model.color.a },
   });
+
+  // hazard_type: StringName. Only emitted when non-default so legacy
+  // biomes that never gained a hazard stay byte-clean on save.
+  if (model.hazard_type && model.hazard_type !== 'none') {
+    fields.set('hazard_type', { type: 'stringname', value: model.hazard_type });
+  }
 
   // natural_props: Array[Resource] of BiomeProp sub_resources. Emitted
   // only when the biome actually has entries so byte-clean biomes

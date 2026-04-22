@@ -117,11 +117,15 @@ export const DEFAULT_WALLS = [false, false, false, false, false, false];
 
 /**
  * Creates a default TileData object.
+ * `temperature` is the environmental hazard intensity (0-4) used with
+ * the biome's hazard_type (heat/cold/none) to drive survival drain
+ * and, at level 4, lethal damage. Default 0 keeps legacy maps
+ * unchanged.
  * @param {string} [biome='']
- * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[], waterLevel: number|null, waterType: string|null }}
+ * @returns {{ biome: string, elevation: number, props: Array<Object>, walls: boolean[], waterLevel: number|null, waterType: string|null, temperature: number }}
  */
 export function createTileData(biome = '') {
-  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null, waterType: null };
+  return { biome, elevation: 0, props: [], walls: [...DEFAULT_WALLS], waterLevel: null, waterType: null, temperature: 0 };
 }
 
 /**
@@ -423,6 +427,9 @@ export function loadMapIntoGrid(hexGrid, mapData) {
       if (tileJson.waterType) {
         tile.waterType = tileJson.waterType;
       }
+      if (typeof tileJson.temperature === 'number') {
+        tile.temperature = Math.max(0, Math.min(4, tileJson.temperature));
+      }
 
       // New format: props array present
       if (Array.isArray(tileJson.props)) {
@@ -507,6 +514,11 @@ export function serializeGridToMapJson(hexGrid) {
     }
     if (tile.waterType) {
       entry.waterType = tile.waterType;
+    }
+    // Only emit temperature when non-zero — keeps existing maps
+    // diff-clean during rollout.
+    if (typeof tile.temperature === 'number' && tile.temperature !== 0) {
+      entry.temperature = tile.temperature;
     }
     if (tile.props && tile.props.length > 0) {
       entry.props = tile.props.map(p => {
