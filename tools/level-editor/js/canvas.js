@@ -288,8 +288,16 @@ export class HexCanvas {
       }
       if (this.showElevationNumbers) this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
-      if (this._unreachableSet.has(key)) {
-        this._drawUnreachableOverlay(q, r);
+      // Badges in the top of the hex — left=unreachable, right=hazard.
+      // Badges are always on when the status applies (they're small,
+      // unobtrusive, and don't overlap the central elevation number).
+      // The `showTemperatureOverlay` toggle only controls the full-hex
+      // tint, not the hazard badge.
+      const isUnreachable = this._unreachableSet.has(key);
+      const hazardLevel = (typeof tile.temperature === 'number' && tile.temperature > 0)
+        ? tile.temperature | 0 : 0;
+      if (isUnreachable || hazardLevel > 0) {
+        this._drawHexBadges(q, r, tile, isUnreachable, hazardLevel);
       }
       if (this.showCoordinates) {
         this._drawCoordinateLabel(q, r);
@@ -578,22 +586,85 @@ export class HexCanvas {
   }
 
   /**
-   * Draw a red X overlay on an unreachable hex.
+   * Draw small status badges in the top portion of the hex.
+   *   - Top-left: unreachable (red circle with ⊘)
+   *   - Top-right: hazard (circle tinted by damage_type, showing level)
+   * Badges never overlap the centred elevation/coordinate text and
+   * scale with zoom.
    * @param {number} q
    * @param {number} r
+   * @param {Object} tile
+   * @param {boolean} isUnreachable
+   * @param {number} hazardLevel - 0 = no hazard badge
    */
-  _drawUnreachableOverlay(q, r) {
+  _drawHexBadges(q, r, tile, isUnreachable, hazardLevel) {
+    const { screen, size } = this._getHexScreen(q, r);
+    const badgeR = Math.max(4, size * 0.18);
+    const yOff = -size * 0.55;
+    const xSpread = size * 0.4;
+    if (isUnreachable) {
+      this._drawUnreachableBadge(screen.x - xSpread, screen.y + yOff, badgeR);
+    }
+    if (hazardLevel > 0) {
+      this._drawHazardBadge(screen.x + xSpread, screen.y + yOff, badgeR, tile, hazardLevel);
+    }
+  }
+
+  /**
+   * Small red badge with a white ⊘ glyph — marks a hex the player
+   * can't reach from spawn under current traversal rules.
+   */
+  _drawUnreachableBadge(cx, cy, radius) {
     const ctx = this.ctx;
-    const { screen } = this._getHexScreen(q, r);
-    const size = HEX_SIZE * this.camera.zoom * 0.35;
-    ctx.strokeStyle = 'rgba(255,60,60,0.7)';
-    ctx.lineWidth = Math.max(1.5, 2.5 * this.camera.zoom);
     ctx.beginPath();
-    ctx.moveTo(screen.x - size, screen.y - size);
-    ctx.lineTo(screen.x + size, screen.y + size);
-    ctx.moveTo(screen.x + size, screen.y - size);
-    ctx.lineTo(screen.x - size, screen.y + size);
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(210,40,40,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = Math.max(1, radius * 0.2);
     ctx.stroke();
+    // Diagonal slash for the ⊘ glyph.
+    const d = radius * 0.65;
+    ctx.beginPath();
+    ctx.moveTo(cx - d, cy + d);
+    ctx.lineTo(cx + d, cy - d);
+    ctx.stroke();
+  }
+
+  /**
+   * Small hazard badge — circle filled by the biome's damage_type
+   * colour, with the current level number in the middle.
+   */
+  _drawHazardBadge(cx, cy, radius, tile, level) {
+    const biomeId = tile.biome || '';
+    const entry = (typeof ProjectContext !== 'undefined' && ProjectContext.files && ProjectContext.files.biomes)
+      ? ProjectContext.files.biomes.get(biomeId + '.tres')
+      : null;
+    const hazard = entry && entry.data && entry.data.hazard;
+    const dtype = hazard && hazard.damage_type ? String(hazard.damage_type) : '';
+    const colors = {
+      heat:    '255,60,40',
+      cold:    '120,200,255',
+      hypoxia: '100,220,120',
+      poison:  '140,220,80',
+      acid:    '230,220,60',
+    };
+    const rgb = colors[dtype] || '220,120,220';
+    const ctx = this.ctx;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${rgb},0.95)`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = Math.max(1, radius * 0.15);
+    ctx.stroke();
+    const fontSize = Math.max(8, radius * 1.2);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillText(String(level), cx, cy + radius * 0.05);
   }
 
   /**
