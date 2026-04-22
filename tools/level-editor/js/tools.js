@@ -344,6 +344,15 @@ export class RegionBrush extends DragBrushTool {
     super.onMouseDown(hex);
   }
 
+  // Override DragBrushTool._applyAt — the default pre-inserts the
+  // hex key into _visited BEFORE calling _applyToHex, which caused
+  // our radial loop to skip the brush centre on click. We manage
+  // the per-tile dedup inside _applyToHex so the entire splash
+  // (including centre) gets a chance to paint.
+  _applyAt(hex) {
+    this._applyToHex(hex);
+  }
+
   _cfg() {
     const sidebar = (this.toolManager && this.toolManager.regionConfig) || {};
     return {
@@ -381,9 +390,13 @@ export class RegionBrush extends DragBrushTool {
   _paintTile(hex, cfg) {
     let tile = this.grid.getTile(hex.q, hex.r);
     // Create missing tiles so a brush can fill ghost cells — matches
-    // the elevation/biome brush behavior.
+    // the elevation/biome brush behavior. For a brand-new tile we
+    // DON'T pre-seed the biome (old code did `createTileData(cfg.biome)`)
+    // because SetBiomeCommand then sees `tile.biome === cfg.biome` and
+    // skips — leaving the new tile with all the water/shore side-
+    // effects unconfigured.
     if (!tile) {
-      tile = createTileData(cfg.biome || '');
+      tile = createTileData('');
       this.grid.setTile(hex.q, hex.r, tile);
     }
     if (cfg.biome && tile.biome !== cfg.biome) {
