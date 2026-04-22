@@ -973,14 +973,12 @@ export function renderBiomeEditor(container, options) {
       expanded.classList.add('np-conditions');
       expanded.style.cssText = 'display:none;padding:8px 10px;margin-top:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:4px;';
 
-      const parseIntList = (s) => s.split(',').map(x => x.trim()).filter(Boolean);
-
       const addCondRow = (label, inputEl) => {
         const r = document.createElement('div');
-        r.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+        r.style.cssText = 'display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;';
         const lab = document.createElement('span');
         lab.textContent = label;
-        lab.style.cssText = 'font-size:11px;color:var(--text-2);width:120px;flex:0 0 auto;';
+        lab.style.cssText = 'font-size:11px;color:var(--text-2);width:120px;flex:0 0 auto;padding-top:4px;';
         r.appendChild(lab);
         r.appendChild(inputEl);
         expanded.appendChild(r);
@@ -1020,26 +1018,142 @@ export function renderBiomeEditor(container, options) {
       elevMin.addEventListener('input', updateElev);
       elevMax.addEventListener('input', updateElev);
 
-      // String-list fields — near_biomes, not_near_biomes, near_props, not_near_props.
-      const listFields = [
-        { key: 'near_biomes',     label: 'Near biomes',     placeholder: 'e.g. B00005' },
-        { key: 'not_near_biomes', label: 'Not near biomes', placeholder: 'e.g. B00001' },
-        { key: 'near_props',      label: 'Near props',      placeholder: 'e.g. P00021' },
-        { key: 'not_near_props',  label: 'Not near props',  placeholder: '' },
-      ];
-      for (const f of listFields) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = f.placeholder;
-        input.classList.add('prop-input');
-        input.style.cssText = 'flex:1;';
-        input.value = (hidden[f.key] || []).join(', ');
-        input.addEventListener('input', () => {
-          hidden[f.key] = parseIntList(input.value);
-          syncHidden();
+      // ---- Multi-select helper (shared by all four list fields) ----
+      /**
+       * Compact multi-select rendered as a chip-bearing button that pops
+       * a checkbox list below. `optionsFn` is called each time the
+       * popover opens so options can exclude the currently-selected
+       * prop dynamically.
+       * @param {string} key
+       * @param {() => Array<{id: string, label: string}>} optionsFn
+       */
+      const buildMultiSelect = (key, optionsFn) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;flex:1;';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.classList.add('prop-btn');
+        btn.style.cssText = 'width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;font-size:11px;text-align:left;';
+        const chips = document.createElement('span');
+        chips.style.cssText = 'flex:1;display:flex;gap:4px;flex-wrap:wrap;color:var(--text-1);';
+        const caret = document.createElement('span');
+        caret.textContent = '▾';
+        caret.style.cssText = 'color:var(--text-2);font-size:10px;';
+        btn.appendChild(chips);
+        btn.appendChild(caret);
+        wrap.appendChild(btn);
+
+        const panel = document.createElement('div');
+        panel.style.cssText = 'display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:20;max-height:220px;overflow:auto;padding:4px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        wrap.appendChild(panel);
+
+        const renderChips = () => {
+          const sel = hidden[key] || [];
+          chips.innerHTML = '';
+          if (sel.length === 0) {
+            const hint = document.createElement('span');
+            hint.textContent = '(none)';
+            hint.style.color = 'var(--text-2)';
+            chips.appendChild(hint);
+            return;
+          }
+          for (const id of sel) {
+            const chip = document.createElement('span');
+            chip.textContent = id;
+            chip.style.cssText = 'display:inline-block;padding:1px 6px;background:var(--bg-3);border-radius:3px;font-family:var(--font-mono);font-size:10.5px;color:var(--text-0);';
+            chips.appendChild(chip);
+          }
+        };
+
+        const renderPanel = () => {
+          panel.innerHTML = '';
+          const opts = optionsFn();
+          const selSet = new Set(hidden[key] || []);
+          if (opts.length === 0) {
+            const empty = document.createElement('div');
+            empty.textContent = '(no options)';
+            empty.style.cssText = 'padding:6px 8px;color:var(--text-2);font-size:11px;';
+            panel.appendChild(empty);
+            return;
+          }
+          for (const opt of opts) {
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:11px;color:var(--text-0);border-radius:3px;';
+            label.addEventListener('mouseenter', () => { label.style.background = 'var(--bg-2)'; });
+            label.addEventListener('mouseleave', () => { label.style.background = ''; });
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = selSet.has(opt.id);
+            cb.addEventListener('change', () => {
+              const cur = new Set(hidden[key] || []);
+              if (cb.checked) cur.add(opt.id);
+              else cur.delete(opt.id);
+              hidden[key] = [...cur];
+              syncHidden();
+              renderChips();
+            });
+            const txt = document.createElement('span');
+            txt.textContent = opt.label;
+            label.appendChild(cb);
+            label.appendChild(txt);
+            panel.appendChild(label);
+          }
+        };
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const open = panel.style.display !== 'none';
+          if (open) {
+            panel.style.display = 'none';
+          } else {
+            renderPanel();
+            panel.style.display = 'block';
+          }
         });
-        addCondRow(f.label, input);
-      }
+        // Click-away closes the panel.
+        document.addEventListener('click', (e) => {
+          if (!wrap.contains(e.target)) panel.style.display = 'none';
+        });
+
+        renderChips();
+        return wrap;
+      };
+
+      const biomeOptions = () => {
+        const out = [];
+        for (const [filename, bEntry] of ProjectContext.files.biomes) {
+          const bid = filename.replace('.tres', '');
+          if (bid === model.id) continue; // exclude current biome
+          const label = bEntry.data && bEntry.data.display_name
+            ? `${bid} — ${bEntry.data.display_name}`
+            : bid;
+          out.push({ id: bid, label });
+        }
+        out.sort((a, b) => a.id.localeCompare(b.id));
+        return out;
+      };
+
+      const propOptions = () => {
+        const currentProp = propSelect.value;
+        const out = [];
+        for (const [filename, pEntry] of ProjectContext.files.props) {
+          const pid = filename.replace('.tres', '');
+          if (pid === currentProp) continue; // exclude current prop on the row
+          const origin = pEntry.data && typeof pEntry.data.origin === 'number' ? pEntry.data.origin : 0;
+          if (origin !== 0) continue;
+          const label = pEntry.data && pEntry.data.display_name
+            ? `${pid} — ${pEntry.data.display_name}`
+            : pid;
+          out.push({ id: pid, label });
+        }
+        out.sort((a, b) => a.id.localeCompare(b.id));
+        return out;
+      };
+
+      addCondRow('Near biomes',     buildMultiSelect('near_biomes',     biomeOptions));
+      addCondRow('Not near biomes', buildMultiSelect('not_near_biomes', biomeOptions));
+      addCondRow('Near props',      buildMultiSelect('near_props',      propOptions));
+      addCondRow('Not near props',  buildMultiSelect('not_near_props',  propOptions));
 
       card.appendChild(expanded);
 
