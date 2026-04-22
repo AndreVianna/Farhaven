@@ -382,12 +382,15 @@ export class RegionBrush extends DragBrushTool {
       const key = `${hex.q},${hex.r}`;
       if (this._visited.has(key)) continue;
       const d = HexMath.distance(hex.q, hex.r, center.q, center.r);
-      const nraw = (noise(hex.q * 0.18, hex.r * 0.18) + 1) / 2;        // [0,1]
-      // Paint probability ramp: at d=0 threshold is 0.5 - roughness
-      // (always painted); at d=radius threshold is 1.5 - roughness
-      // (rarely painted). Roughness bends the ramp.
-      const threshold = (d / cfg.radius) - cfg.edge_roughness + 0.5;
-      if (nraw <= threshold) continue;
+      // Perturb the effective distance by coherent 2D noise. At
+      // edge_roughness=0 the perturbation is zero → perfect circle
+      // of `cfg.radius` (no hex skipped, since hexesInRadius already
+      // bounds d ≤ radius). At edge_roughness=1 the boundary wobbles
+      // by up to ±radius*0.5 along the noise field, giving a soft
+      // blobby edge. Interior hexes stay solid at any roughness.
+      const noiseVal = noise(hex.q * 0.18, hex.r * 0.18);              // [-1,1]
+      const perturbation = noiseVal * cfg.edge_roughness * cfg.radius * 0.5;
+      if (d + perturbation > cfg.radius) continue;
       this._visited.add(key);
       this._paintTile(hex, cfg);
     }
