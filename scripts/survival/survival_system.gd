@@ -20,6 +20,7 @@ const STAT_CONFIG: Dictionary = {
 	"thirst_rate": 0.8,
 	"hp_drain_no_hunger": 0.1,
 	"hp_drain_no_thirst": 0.2,
+	"hp_drain_no_oxygen": 2.0,  # drowning/suffocation is fast
 	"hp_regen_day": 0.5,
 }
 
@@ -60,9 +61,11 @@ const ACTIVITY_CONFIG: Dictionary = {
 var hp: float = 100.0
 var hunger: float = 100.0
 var thirst: float = 100.0
+var oxygen: float = 100.0
 var hp_max: float = 100.0
 var hunger_max: float = 100.0
 var thirst_max: float = 100.0
+var oxygen_max: float = 100.0
 var is_dead: bool = false
 
 var _inventory: _Inventory
@@ -116,11 +119,19 @@ func _tick(delta: float) -> void:
 		thirst -= drain["thirst"] * delta
 		hp -= drain["health"] * delta
 
+	# Environmental hazard drain — per-tile HazardCap on the player's
+	# current biome. Applied BEFORE the starvation/regen calculation so
+	# hazard-driven thirst/hunger drops can still push stats below 0 and
+	# trigger the legacy hp_drain_no_* penalty on the same tick.
+	_apply_hazard_drain(delta)
+
 	var hp_drain: float = 0.0
 	if hunger <= 0.0:
 		hp_drain += STAT_CONFIG["hp_drain_no_hunger"]
 	if thirst <= 0.0:
 		hp_drain += STAT_CONFIG["hp_drain_no_thirst"]
+	if oxygen <= 0.0:
+		hp_drain += STAT_CONFIG["hp_drain_no_oxygen"]
 	if hp_drain > 0.0:
 		hp -= hp_drain * delta
 
@@ -133,12 +144,52 @@ func _tick(delta: float) -> void:
 	hp = clampf(hp, 0.0, hp_max)
 	hunger = clampf(hunger, 0.0, hunger_max)
 	thirst = clampf(thirst, 0.0, thirst_max)
+	oxygen = clampf(oxygen, 0.0, oxygen_max)
 
 	stat_changed.emit(&"hp", hp, hp_max)
 	stat_changed.emit(&"hunger", hunger, hunger_max)
 	stat_changed.emit(&"thirst", thirst, thirst_max)
+	stat_changed.emit(&"oxygen", oxygen, oxygen_max)
 
 	_check_death()
+
+
+## Environmental hazard drain. Looks up the HazardCap on the player's
+## current tile's biome and applies per-second drain for each stat at
+## the tile's temperature level. Temperature > table size saturates at
+## the last defined level — stepping onto a temperature 99 tile in a
+## biome with 4-level tables is equivalent to temperature 4.
+##
+## Called from _tick(). Silent no-op when the player has no
+## current_tile, the tile is thermally neutral, or the biome has no
+## HazardCap. Zero temperature always short-circuits.
+func _apply_hazard_drain(delta: float) -> void:
+	if _hex_grid == null:
+		return
+	if not _hex_grid.has_method(&"get_hazard_for_tile"):
+		return
+	var parent: Node = get_parent()
+	if parent == null or not ("current_tile" in parent):
+		return
+	var tile_coords: Vector2i = parent.current_tile
+	var tile: Resource = _hex_grid.get_tile(tile_coords) if _hex_grid.has_method(&"get_tile") else null
+	if tile == null or int(tile.temperature) <= 0:
+		return
+	var cap: Resource = _hex_grid.get_hazard_for_tile(tile_coords)
+	if cap == null:
+		return
+	# Saturate temperature at the cap's table length — everything
+	# past the last authored level applies the last-level drain.
+	var n: int = cap.health_damage.size()
+	if n <= 0:
+		return
+	var lvl_idx: int = mini(int(tile.temperature), n) - 1
+	if lvl_idx < 0:
+		return
+	hp      -= float(cap.health_damage[lvl_idx]) * delta
+	thirst  -= float(cap.thirst_drain[lvl_idx])  * delta
+	hunger  -= float(cap.hunger_drain[lvl_idx])  * delta
+	oxygen  -= float(cap.oxygen_drain[lvl_idx])  * delta
 
 
 func consume(item_type: StringName) -> void:
@@ -381,6 +432,7 @@ func respawn() -> void:
 	hp = hp_max
 	hunger = hunger_max * 0.5
 	thirst = thirst_max * 0.5
+	oxygen = oxygen_max
 	is_dead = false
 	# Teleport player to respawn tile
 	var parent: Node = get_parent()
@@ -471,6 +523,7 @@ func get_save_data() -> Dictionary:
 		"hp": hp,
 		"hunger": hunger,
 		"thirst": thirst,
+		"oxygen": oxygen,
 		"respawn_tile_col": _respawn_tile.x,
 		"respawn_tile_row": _respawn_tile.y,
 		"ground_items": ground_data,
@@ -481,6 +534,7 @@ func load_save_data(data: Dictionary) -> void:
 	hp = data.get("hp", 100.0)
 	hunger = data.get("hunger", 100.0)
 	thirst = data.get("thirst", 100.0)
+	oxygen = data.get("oxygen", 100.0)
 	# is_dead is never saved — always respawn on load
 	is_dead = false
 	_waiting_for_dawn = false

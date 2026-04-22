@@ -209,6 +209,29 @@ func _biome_id_for_tile(tile: Resource) -> String:
 	return ""
 
 
+## Fetch the BiomeData resource for a given biome id string. Returns
+## null when the cache is empty or the id isn't known.
+func get_biome_data(biome_id: String) -> Resource:
+	return _biome_data_cache.get(biome_id, null)
+
+
+## Convenience: returns the HazardCap resource a tile is currently
+## subject to, or null when the tile's biome has no hazard (most
+## biomes) or the cache is uninitialized. SurvivalSystem uses this
+## every tick to know how fast to drain stats.
+func get_hazard_for_tile(coords: Vector2i) -> Resource:
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return null
+	var biome_id: String = _biome_id_for_tile(tile)
+	if biome_id == "":
+		return null
+	var biome_data: Resource = _biome_data_cache.get(biome_id, null)
+	if biome_data == null:
+		return null
+	return biome_data.hazard
+
+
 # --- Coordinate conversions ---
 
 func axial_to_cube(coords: Vector2i) -> Vector3i:

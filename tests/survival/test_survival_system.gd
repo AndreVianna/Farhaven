@@ -515,3 +515,122 @@ func test_inventory_toxic_berries_used_deals_damage() -> void:
 	_inv.add_item(ID_TOXIC_BERRIES, 1)
 	_inv.use_item(ID_TOXIC_BERRIES)
 	assert_float(_sys.hp).is_equal_approx(75.0, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# Hazard drain — per-tile HazardCap on player's current biome
+# ---------------------------------------------------------------------------
+
+class MockHexGrid extends Node:
+	var _tile: Resource = null
+	var _cap: Resource = null
+
+	func set_fixture(tile: Resource, cap: Resource) -> void:
+		_tile = tile
+		_cap = cap
+
+	func get_tile(_coords: Vector2i) -> Resource:
+		return _tile
+
+	func get_hazard_for_tile(_coords: Vector2i) -> Resource:
+		return _cap
+
+
+class MockPlayerWithTile extends Node:
+	var current_tile: Vector2i = Vector2i.ZERO
+	var _inventory: RefCounted
+
+	func _init(inv: RefCounted) -> void:
+		_inventory = inv
+
+	func get_inventory() -> RefCounted:
+		return _inventory
+
+
+func _build_heat_cap() -> Resource:
+	var HazardCap := load("res://scripts/data/capabilities/hazard_cap.gd")
+	var cap: Resource = HazardCap.new()
+	cap.damage_type = &"heat"
+	cap.health_damage = [0, 5, 15, 50]
+	cap.thirst_drain = [5, 14, 25, 35]
+	cap.hunger_drain = [0, 0, 0, 0]
+	cap.oxygen_drain = [0, 0, 0, 0]
+	return cap
+
+
+func _setup_hazard_fixture(temperature: int, cap: Resource) -> void:
+	# Rebuild parent/system with MockPlayerWithTile and a MockHexGrid
+	# so _apply_hazard_drain has somewhere to look up.
+	var player: Node = _sys.get_parent()
+	player.remove_child(_sys)
+	_sys.queue_free()
+	remove_child(player)
+	player.queue_free()
+
+	var new_player := MockPlayerWithTile.new(_inv)
+	add_child(new_player)
+
+	_sys = _SurvivalSystem.new()
+	_sys._day_night_cycle = _dnc
+	var mock_grid := MockHexGrid.new()
+	var HexTile := load("res://scripts/hex/hex_tile.gd")
+	var tile: Resource = HexTile.new()
+	tile.temperature = temperature
+	mock_grid.set_fixture(tile, cap)
+	add_child(mock_grid)
+	_sys._hex_grid = mock_grid
+	new_player.add_child(_sys)
+
+
+func test_hazard_drain_at_level_2_drains_thirst_and_hp() -> void:
+	var cap: Resource = _build_heat_cap()
+	_setup_hazard_fixture(2, cap)
+	_sys.thirst = 50.0
+	_sys.hp = 100.0
+	_tick(1.0)  # 1 second
+	# Level 2 → index 1: thirst_drain 14, health_damage 5. Plus the
+	# passive thirst_rate (0.8) hits too on the same tick.
+	assert_float(_sys.thirst).is_equal_approx(50.0 - 14.0 - 0.8, 0.01)
+	assert_float(_sys.hp).is_equal_approx(100.0 - 5.0 + 0.5, 0.01)  # +0.5 daytime regen
+
+
+func test_hazard_drain_level_0_is_noop() -> void:
+	var cap: Resource = _build_heat_cap()
+	_setup_hazard_fixture(0, cap)
+	_sys.thirst = 50.0
+	_sys.hp = 100.0
+	_tick(1.0)
+	# Only passive drain + daytime regen, no hazard contribution.
+	assert_float(_sys.thirst).is_equal_approx(50.0 - 0.8, 0.01)
+	assert_float(_sys.hp).is_equal_approx(100.0 + 0.5, 0.01)
+
+
+func test_hazard_drain_saturates_above_table_size() -> void:
+	# temperature 99 on a 4-level cap should apply level-4 values, not
+	# index out of bounds.
+	var cap: Resource = _build_heat_cap()
+	_setup_hazard_fixture(99, cap)
+	_sys.hp = 100.0
+	_tick(1.0)
+	# Level 4 index = 3: health_damage 50. Plus daytime regen +0.5.
+	assert_float(_sys.hp).is_equal_approx(100.0 - 50.0 + 0.5, 0.01)
+
+
+func test_oxygen_zero_drains_hp() -> void:
+	_sys.oxygen = 0.0
+	_sys.hp = 100.0
+	# Zero hunger/thirst also drain HP; bump them above zero to isolate
+	# the oxygen-zero contribution.
+	_sys.hunger = 50.0
+	_sys.thirst = 50.0
+	_tick(1.0)
+	# hp_drain_no_oxygen = 2.0 per second. +0.5 daytime regen.
+	assert_float(_sys.hp).is_equal_approx(100.0 - 2.0 + 0.5, 0.01)
+
+
+func test_oxygen_save_round_trip() -> void:
+	_sys.oxygen = 42.0
+	var data: Dictionary = _sys.get_save_data()
+	_sys.oxygen = 0.0
+	_sys.load_save_data(data)
+	assert_float(_sys.oxygen).is_equal(42.0)
