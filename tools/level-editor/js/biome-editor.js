@@ -2058,10 +2058,21 @@ export class CreateBiomeCommand {
     const raw = biomeModelToRaw(this._model);
     const content = TresParser.serialize(raw);
 
-    // Build data object from resourceFields (mirrors _parseTresFile logic)
+    // Build data object from resourceFields, resolving sub_resource
+    // refs the same way file-discovery._parseTresFile does — callers
+    // that re-read the entry right after create expect the flattened
+    // sub_resource data, not the bare id string.
+    const subMap = new Map();
+    if (raw.subResources) {
+      for (const sub of raw.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) subData[k] = v.value;
+        subMap.set(sub.id, subData);
+      }
+    }
     const data = {};
     for (const [key, tv] of raw.resourceFields) {
-      data[key] = tv.value;
+      data[key] = tv.type === 'sub_resource' ? (subMap.get(tv.value) || null) : tv.value;
     }
 
     // Add to ProjectContext
@@ -2110,9 +2121,31 @@ export class EditBiomeCommand {
     const raw = biomeModelToRaw(this._newModel);
     const content = TresParser.serialize(raw);
 
+    // Mirror file-discovery._parseTresFile's sub_resource resolution
+    // so the in-memory entry stays consistent with what a disk read
+    // would produce. Previously this loop set data[key] = tv.value
+    // unconditionally, which meant sub_resource fields like
+    // `hazard = SubResource("hazard_1")` ended up as the raw id
+    // string. The biome editor's re-read right after save then saw
+    // d.hazard = "hazard_1" instead of the flattened fields, dropped
+    // the hazard on BiomeDataModel.fromEntry, and the UI reset to
+    // None / zeros until the next hard reload pulled the .tres fresh
+    // from disk.
+    const subResourceMap = new Map();
+    if (raw.subResources) {
+      for (const sub of raw.subResources) {
+        const subData = {};
+        for (const [k, v] of sub.fields) subData[k] = v.value;
+        subResourceMap.set(sub.id, subData);
+      }
+    }
     const data = {};
     for (const [key, tv] of raw.resourceFields) {
-      data[key] = tv.value;
+      if (tv.type === 'sub_resource') {
+        data[key] = subResourceMap.get(tv.value) || null;
+      } else {
+        data[key] = tv.value;
+      }
     }
 
     const entry = ProjectContext.files.biomes.get(this._filename);
@@ -2134,15 +2167,30 @@ export class EditBiomeCommand {
   }
 
   undo() {
+    // Same sub_resource resolution as execute() — without it, undoing
+    // a save that includes a HazardCap leaves entry.data.hazard as
+    // the sub_resource id string instead of the flattened fields.
+    const _resolveData = (rawFile) => {
+      const subMap = new Map();
+      if (rawFile.subResources) {
+        for (const sub of rawFile.subResources) {
+          const subData = {};
+          for (const [k, v] of sub.fields) subData[k] = v.value;
+          subMap.set(sub.id, subData);
+        }
+      }
+      const out = {};
+      for (const [key, tv] of rawFile.resourceFields) {
+        out[key] = tv.type === 'sub_resource' ? (subMap.get(tv.value) || null) : tv.value;
+      }
+      return out;
+    };
+
     if (this._oldRaw) {
       const entry = ProjectContext.files.biomes.get(this._filename);
       if (entry) {
         entry.raw = this._oldRaw;
-        const data = {};
-        for (const [key, tv] of this._oldRaw.resourceFields) {
-          data[key] = tv.value;
-        }
-        entry.data = data;
+        entry.data = _resolveData(this._oldRaw);
       }
 
       const content = TresParser.serialize(this._oldRaw);
@@ -2154,10 +2202,7 @@ export class EditBiomeCommand {
       const oldRaw = biomeModelToRaw(this._oldModel);
       const content = TresParser.serialize(oldRaw);
 
-      const data = {};
-      for (const [key, tv] of oldRaw.resourceFields) {
-        data[key] = tv.value;
-      }
+      const data = _resolveData(oldRaw);
 
       const entry = ProjectContext.files.biomes.get(this._filename);
       if (entry) {
