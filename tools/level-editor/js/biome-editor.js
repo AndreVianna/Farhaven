@@ -812,12 +812,13 @@ export function renderBiomeEditor(container, options) {
     propsContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
     /**
-     * One natural_props card. UI is deliberately compact — prop select,
-     * frequency, grouping min/max on a single row. The other condition
-     * fields (elevation, near/not_near biomes + props) are preserved on
-     * the card's dataset so an existing biome's config round-trips
-     * through load→save without losing data; a richer editor comes back
-     * once Andre figures out a layout that doesn't eat the screen.
+     * One natural_props card. UI shows the compact row (prop + frequency
+     * + grouping) by default, with an accordion caret that reveals the
+     * extended conditions (elevation_range, near/not_near biomes and
+     * props). The extended fields stay synced back to
+     * row.dataset.hiddenConditions on every change so the collect →
+     * emit cycle continues to round-trip.
+     *
      * @param {{
      *   prop_id: string,
      *   frequency: number,
@@ -830,21 +831,31 @@ export function renderBiomeEditor(container, options) {
      * }} entry
      */
     function addNaturalPropRow(entry) {
-      const row = document.createElement('div');
-      row.classList.add('prop-card');
-      row.dataset.naturalProp = 'true';
-      row.style.cssText = 'display:flex;gap:6px;align-items:center;padding:6px 8px;flex-wrap:wrap;';
+      // Outer container — holds the compact row and (optionally) the
+      // expanded conditions panel stacked vertically.
+      const card = document.createElement('div');
+      card.classList.add('prop-card');
+      card.dataset.naturalProp = 'true';
+      card.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:6px 8px;';
 
-      // Stash the condition fields that aren't exposed in the UI so they
-      // survive the collect → emit cycle. JSON since the entry may
-      // contain arbitrary StringName lists.
-      row.dataset.hiddenConditions = JSON.stringify({
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+
+      // Stash the condition fields that aren't exposed in the compact
+      // UI so they survive the collect → emit cycle. JSON since the
+      // entry may contain arbitrary StringName lists. Kept in sync by
+      // the expanded-section field listeners below.
+      const hidden = {
         elevation_range: entry.elevation_range,
         near_biomes: entry.near_biomes,
         not_near_biomes: entry.not_near_biomes,
         near_props: entry.near_props,
         not_near_props: entry.not_near_props,
-      });
+      };
+      const syncHidden = () => {
+        card.dataset.hiddenConditions = JSON.stringify(hidden);
+      };
+      syncHidden();
 
       // Thumb — shows the v1 reference image so Andre can recognize each
       // prop visually without hunting through the list. Silent no-op if
@@ -930,12 +941,20 @@ export function renderBiomeEditor(container, options) {
       groupMax.classList.add('prop-input');
       groupMax.style.width = '50px';
 
+      // Accordion caret — toggles the extended conditions panel.
+      const caret = document.createElement('button');
+      caret.type = 'button';
+      caret.classList.add('prop-btn-icon');
+      caret.title = 'Show/hide spawn conditions';
+      caret.style.cssText = 'flex:0 0 auto;padding:2px 6px;color:var(--text-2);';
+      caret.innerHTML = '&#9656;'; // ▸
+
       const removeBtn = document.createElement('button');
       removeBtn.textContent = 'X';
       removeBtn.type = 'button';
       removeBtn.classList.add('prop-btn-icon');
       removeBtn.style.marginLeft = 'auto';
-      removeBtn.addEventListener('click', () => row.remove());
+      removeBtn.addEventListener('click', () => card.remove());
 
       row.appendChild(thumb);
       row.appendChild(propSelect);
@@ -945,8 +964,92 @@ export function renderBiomeEditor(container, options) {
       row.appendChild(groupMin);
       row.appendChild(groupSep);
       row.appendChild(groupMax);
+      row.appendChild(caret);
       row.appendChild(removeBtn);
-      propsContainer.appendChild(row);
+      card.appendChild(row);
+
+      // ---- Expanded conditions section (hidden until toggled) ----
+      const expanded = document.createElement('div');
+      expanded.classList.add('np-conditions');
+      expanded.style.cssText = 'display:none;padding:8px 10px;margin-top:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:4px;';
+
+      const parseIntList = (s) => s.split(',').map(x => x.trim()).filter(Boolean);
+
+      const addCondRow = (label, inputEl) => {
+        const r = document.createElement('div');
+        r.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+        const lab = document.createElement('span');
+        lab.textContent = label;
+        lab.style.cssText = 'font-size:11px;color:var(--text-2);width:120px;flex:0 0 auto;';
+        r.appendChild(lab);
+        r.appendChild(inputEl);
+        expanded.appendChild(r);
+        return r;
+      };
+
+      // Elevation range (two number inputs).
+      const elevWrap = document.createElement('div');
+      elevWrap.style.cssText = 'display:flex;gap:4px;align-items:center;flex:1;';
+      const elevMin = document.createElement('input');
+      elevMin.type = 'number';
+      elevMin.value = String(hidden.elevation_range.x);
+      elevMin.step = '1';
+      elevMin.classList.add('prop-input');
+      elevMin.style.cssText = 'width:70px;';
+      const elevDash = document.createElement('span');
+      elevDash.textContent = '–';
+      elevDash.style.cssText = 'color:var(--text-2);font-size:11px;';
+      const elevMax = document.createElement('input');
+      elevMax.type = 'number';
+      elevMax.value = String(hidden.elevation_range.y);
+      elevMax.step = '1';
+      elevMax.classList.add('prop-input');
+      elevMax.style.cssText = 'width:70px;';
+      elevWrap.appendChild(elevMin);
+      elevWrap.appendChild(elevDash);
+      elevWrap.appendChild(elevMax);
+      addCondRow('Elevation', elevWrap);
+
+      const updateElev = () => {
+        hidden.elevation_range = {
+          x: parseInt(elevMin.value, 10) || -100,
+          y: parseInt(elevMax.value, 10) || 100,
+        };
+        syncHidden();
+      };
+      elevMin.addEventListener('input', updateElev);
+      elevMax.addEventListener('input', updateElev);
+
+      // String-list fields — near_biomes, not_near_biomes, near_props, not_near_props.
+      const listFields = [
+        { key: 'near_biomes',     label: 'Near biomes',     placeholder: 'e.g. B00005' },
+        { key: 'not_near_biomes', label: 'Not near biomes', placeholder: 'e.g. B00001' },
+        { key: 'near_props',      label: 'Near props',      placeholder: 'e.g. P00021' },
+        { key: 'not_near_props',  label: 'Not near props',  placeholder: '' },
+      ];
+      for (const f of listFields) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = f.placeholder;
+        input.classList.add('prop-input');
+        input.style.cssText = 'flex:1;';
+        input.value = (hidden[f.key] || []).join(', ');
+        input.addEventListener('input', () => {
+          hidden[f.key] = parseIntList(input.value);
+          syncHidden();
+        });
+        addCondRow(f.label, input);
+      }
+
+      card.appendChild(expanded);
+
+      caret.addEventListener('click', () => {
+        const open = expanded.style.display !== 'none';
+        expanded.style.display = open ? 'none' : 'block';
+        caret.innerHTML = open ? '&#9656;' : '&#9662;'; // ▸ / ▾
+      });
+
+      propsContainer.appendChild(card);
     }
 
     for (const np of model.natural_props) addNaturalPropRow(np);
