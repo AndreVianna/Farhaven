@@ -262,61 +262,106 @@ export class ElevationBrush extends DragBrushTool {
   }
 
   /**
-   * Pinch mode: center hex gets full delta, each ring n gets delta / 2^n.
-   * Fractional amounts accumulate between clicks.
+   * Pinch mode: apply delta scaled by a smoothstep falloff within
+   * PINCH_RADIUS, then run a local thermal-erosion pass so repeated
+   * clicks at the same spot spread the peak outward instead of piling
+   * a cylinder of fixed base.
+   *
+   * Ctrl = pinch (delta=±1). Ctrl+Alt = pinch with 10× delta.
+   * Fractional amounts accumulate between clicks via `_pinchAccum`.
    */
-  _applyPinch(hex) {
-    // Find max ring where effect >= 0.01
-    const maxRing = Math.floor(Math.log2(Math.abs(this.delta) / 0.01));
+  _applyPinch(center) {
+    const PINCH_RADIUS = 4;
+    const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
 
-    // Collect all affected hexes with their fractional deltas
-    for (let ring = 0; ring <= maxRing; ring++) {
-      const ringDelta = this.delta / Math.pow(2, ring);
-      const hexes = ring === 0 ? [{ q: hex.q, r: hex.r }] : this._hexRing(hex.q, hex.r, ring);
-
-      for (const rh of hexes) {
-        if (!this.grid.hasTile(rh.q, rh.r)) continue;
-        const key = `${rh.q},${rh.r}`;
-        const accum = (this._pinchAccum.get(key) || 0) + ringDelta;
-        const intDelta = Math.trunc(accum);
-        this._pinchAccum.set(key, accum - intDelta);
-
-        if (intDelta === 0) continue;
-
-        const tile = this.grid.getTile(rh.q, rh.r);
-        const oldElev = tile ? tile.elevation : 0;
-        const newElev = Math.max(-32000, Math.min(32000, oldElev + intDelta));
-        if (oldElev === newElev) continue;
-
-        const cmd = new SetElevationCommand(this.grid, rh.q, rh.r, oldElev, newElev);
-        cmd.execute();
-        this._dragCommands.push(cmd);
-      }
+    // Phase 1 — smoothstep-weighted elevation change inside the radius.
+    // strength(d) = 1 - (3t² - 2t³)  with t = d/radius ∈ [0,1]
+    // At d=0 strength=1; at d=radius strength=0 (no change).
+    for (const hex of HexMath.hexesInRadius(PINCH_RADIUS, center)) {
+      if (!this.grid.hasTile(hex.q, hex.r)) continue;
+      const d = HexMath.distance(hex.q, hex.r, center.q, center.r);
+      const t = Math.min(1, d / PINCH_RADIUS);
+      const strength = 1 - (3 * t * t - 2 * t * t * t);
+      if (strength <= 0) continue;
+      const fracDelta = effectiveDelta * strength;
+      const key = `${hex.q},${hex.r}`;
+      const accum = (this._pinchAccum.get(key) || 0) + fracDelta;
+      const intDelta = Math.trunc(accum);
+      this._pinchAccum.set(key, accum - intDelta);
+      if (intDelta !== 0) this._applyElevationChange(hex.q, hex.r, intDelta);
     }
+
+    // Phase 2 — thermal erosion: slope outside stable angle spills
+    // from peaks to valleys so the base naturally spreads.
+    this._redistributeSlope(center, PINCH_RADIUS + 1);
   }
 
   /**
-   * Get all hexes at exactly `ring` distance from (cq, cr).
-   * @param {number} cq
-   * @param {number} cr
-   * @param {number} ring
-   * @returns {Array<{q: number, r: number}>}
+   * Apply a signed elevation change at (q,r) via SetElevationCommand,
+   * respecting water-surface clamp. No-op when the tile is absent or
+   * the clamped target matches current elevation.
+   * @param {number} q
+   * @param {number} r
+   * @param {number} delta
    */
-  _hexRing(cq, cr, ring) {
-    if (ring === 0) return [{ q: cq, r: cr }];
-    const results = [];
-    // Start at the hex ring-steps in the "SW" direction, then walk around
-    let q = cq - ring;
-    let r = cr + ring;
-    for (let dir = 0; dir < 6; dir++) {
-      for (let step = 0; step < ring; step++) {
-        results.push({ q, r });
-        q += HexMath.DIRECTIONS[dir].q;
-        r += HexMath.DIRECTIONS[dir].r;
+  _applyElevationChange(q, r, delta) {
+    const tile = this.grid.getTile(q, r);
+    if (!tile) return;
+    const oldElev = tile.elevation;
+    let target = oldElev + delta;
+    if (tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
+      target = Math.min(target, tile.waterLevel);
+    }
+    const newElev = Math.max(-32000, Math.min(32000, target));
+    if (oldElev === newElev) return;
+    const cmd = new SetElevationCommand(this.grid, q, r, oldElev, newElev);
+    cmd.execute();
+    this._dragCommands.push(cmd);
+  }
+
+  /**
+   * Thermal-erosion pass around `center`. A stable talus angle (TALUS)
+   * is enforced: where a hex is taller than a neighbor by more than
+   * TALUS, TRANSFER fraction of the surplus moves to the neighbor.
+   * Runs PASSES iterations so the effect propagates one ring outward
+   * per pass.
+   * @param {{q:number,r:number}} center
+   * @param {number} radius
+   */
+  _redistributeSlope(center, radius) {
+    const TALUS = 2;
+    const TRANSFER = 0.25;
+    const PASSES = 2;
+
+    for (let pass = 0; pass < PASSES; pass++) {
+      /** @type {Map<string, number>} */
+      const transfers = new Map();
+      for (const hex of HexMath.hexesInRadius(radius, center)) {
+        const tile = this.grid.getTile(hex.q, hex.r);
+        if (!tile) continue;
+        for (const dir of HexMath.DIRECTIONS) {
+          const nq = hex.q + dir.q;
+          const nr = hex.r + dir.r;
+          const neighbor = this.grid.getTile(nq, nr);
+          if (!neighbor) continue;
+          const diff = tile.elevation - neighbor.elevation;
+          if (diff <= TALUS) continue;
+          const amount = Math.trunc((diff - TALUS) * TRANSFER);
+          if (amount === 0) continue;
+          const kFrom = `${hex.q},${hex.r}`;
+          const kTo = `${nq},${nr}`;
+          transfers.set(kFrom, (transfers.get(kFrom) || 0) - amount);
+          transfers.set(kTo, (transfers.get(kTo) || 0) + amount);
+        }
+      }
+      for (const [key, d] of transfers) {
+        if (d === 0) continue;
+        const [q, r] = key.split(',').map(Number);
+        this._applyElevationChange(q, r, d);
       }
     }
-    return results;
   }
+
 }
 
 
