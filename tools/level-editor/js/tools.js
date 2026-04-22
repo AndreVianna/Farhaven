@@ -373,6 +373,10 @@ export class ElevationBrush extends DragBrushTool {
         const [q, r] = key.split(',').map(Number);
         const tile = this.grid.getTile(q, r);
         if (!tile) continue;
+        // Don't erode from sea level or below — there's no mass to
+        // redistribute out of a hole. Rechecked every pass so a hex
+        // that sheds down to 0 stops donating on the next iteration.
+        if (tile.elevation <= 0) continue;
 
         // Steepest-descent neighbour (not a parallel split).
         let bestDiff = 0;
@@ -390,8 +394,11 @@ export class ElevationBrush extends DragBrushTool {
           }
         }
         if (!bestNeighbor || bestDiff <= TALUS) continue;
-        const amount = Math.trunc((bestDiff - TALUS) * TRANSFER);
-        if (amount === 0) continue;
+        let amount = Math.trunc((bestDiff - TALUS) * TRANSFER);
+        // Never pull the donor below sea level. If that would happen,
+        // clamp the transfer to whatever's left above 0.
+        if (amount > tile.elevation) amount = tile.elevation;
+        if (amount <= 0) continue;
 
         // Apply immediately — serial updates avoid the oscillation of
         // simultaneous "everyone transfers based on start-of-pass state".
