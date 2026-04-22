@@ -394,17 +394,11 @@ export class RegionBrush extends DragBrushTool {
   }
 
   _paintTile(hex, cfg) {
-    let tile = this.grid.getTile(hex.q, hex.r);
-    // Create missing tiles so a brush can fill ghost cells — matches
-    // the elevation/biome brush behavior. For a brand-new tile we
-    // DON'T pre-seed the biome (old code did `createTileData(cfg.biome)`)
-    // because SetBiomeCommand then sees `tile.biome === cfg.biome` and
-    // skips — leaving the new tile with all the water/shore side-
-    // effects unconfigured.
-    if (!tile) {
-      tile = createTileData('');
-      this.grid.setTile(hex.q, hex.r, tile);
-    }
+    const tile = this.grid.getTile(hex.q, hex.r);
+    // Respect map boundaries: empty hexes stay empty. Runs AFTER the
+    // noise decision so the organic-edge pattern is unchanged — we
+    // just skip the paint on hexes the author never placed.
+    if (!tile) return;
     if (cfg.biome && tile.biome !== cfg.biome) {
       const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, tile.biome, cfg.biome, null);
       this.commandHistory.execute(cmd);
