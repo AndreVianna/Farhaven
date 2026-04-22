@@ -341,7 +341,14 @@ export class RegionBrush extends DragBrushTool {
     // different. Math.random() seed is fine — region painting is not
     // meant to be reproducible across sessions.
     this._noise = createNoise2D(Math.random() * 2147483647);
+    console.log('[RegionBrush] onMouseDown hex=', hex, 'cfg=', this._cfg());
     super.onMouseDown(hex);
+    console.log('[RegionBrush] stroke after mouseDown →', this._dragCommands.length, 'commands');
+  }
+
+  onMouseUp(hex) {
+    console.log('[RegionBrush] onMouseUp, total commands=', this._dragCommands.length);
+    super.onMouseUp(hex);
   }
 
   // Override DragBrushTool._applyAt — the default pre-inserts the
@@ -372,6 +379,7 @@ export class RegionBrush extends DragBrushTool {
     const cfg = this._cfg();
     const noise = this._noise || createNoise2D(Math.random() * 2147483647);
     const candidates = HexMath.hexesInRadius(cfg.radius, center);
+    let painted = 0;
     for (const hex of candidates) {
       const key = `${hex.q},${hex.r}`;
       if (this._visited.has(key)) continue;
@@ -384,7 +392,9 @@ export class RegionBrush extends DragBrushTool {
       if (nraw <= threshold) continue;
       this._visited.add(key);
       this._paintTile(hex, cfg);
+      painted++;
     }
+    console.log('[RegionBrush] _applyToHex center=', center, 'painted=', painted, '/', candidates.length);
   }
 
   _paintTile(hex, cfg) {
@@ -399,20 +409,27 @@ export class RegionBrush extends DragBrushTool {
       tile = createTileData('');
       this.grid.setTile(hex.q, hex.r, tile);
     }
+    let emitted = 0;
     if (cfg.biome && tile.biome !== cfg.biome) {
       const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, tile.biome, cfg.biome, null);
       this.commandHistory.execute(cmd);
       this._dragCommands.push(cmd);
+      emitted++;
     }
     if (cfg.elevation !== null && tile.elevation !== cfg.elevation) {
       const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, tile.elevation, cfg.elevation);
       this.commandHistory.execute(cmd);
       this._dragCommands.push(cmd);
+      emitted++;
     }
     if ((tile.temperature | 0) !== cfg.hazard_level) {
       const cmd = new SetTemperatureCommand(this.grid, hex.q, hex.r, tile.temperature | 0, cfg.hazard_level);
       this.commandHistory.execute(cmd);
       this._dragCommands.push(cmd);
+      emitted++;
+    }
+    if (emitted === 0 && (hex.q === 0 && hex.r === 0)) {
+      console.log('[RegionBrush] _paintTile NO-OP at origin; tile=', tile, 'cfg=', cfg);
     }
   }
 }
