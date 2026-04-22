@@ -105,12 +105,15 @@ export class CommandHistory {
    */
   execute(command) {
     command.execute();
+    this._pushOnly(command);
+  }
+
+  _pushOnly(command) {
     this.undoStack.push(command);
     this.redoStack.length = 0;
     if (this.undoStack.length > this.maxSize) {
       this.undoStack.shift();
     }
-    console.log('[CH.execute]', command.type, '→ undoStack.length=', this.undoStack.length);
     if (this.onChange) {
       this.onChange('execute', command);
     }
@@ -159,27 +162,24 @@ export class CommandHistory {
   }
 
   /**
-   * Replace individual commands on the undo stack with a single BatchCommand.
-   * Used by drag tools to collapse per-hex commands into one undo step.
-   * @param {Array<Object>} commands - Commands to remove and batch
+   * Commit a drag stroke's commands as a single undo entry. The commands
+   * have already been executed (their side effects are on the grid); this
+   * just records them in history.
+   *
+   *   0 commands → no-op
+   *   1 command  → recorded individually
+   *   N commands → recorded as a single BatchCommand
+   *
+   * @param {Array<Object>} commands
    * @returns {void}
    */
-  batchReplace(commands) {
-    console.log('[CH.batchReplace] commands.length=', commands.length, 'undoStack BEFORE:', this.undoStack.length);
-    if (commands.length <= 1) {
-      console.log('[CH.batchReplace] SKIP (≤1 command)');
+  commitDrag(commands) {
+    if (commands.length === 0) return;
+    if (commands.length === 1) {
+      this._pushOnly(commands[0]);
       return;
     }
-    for (const cmd of commands) {
-      const idx = this.undoStack.indexOf(cmd);
-      if (idx !== -1) this.undoStack.splice(idx, 1);
-    }
-    const batch = new BatchCommand(commands);
-    this.undoStack.push(batch);
-    console.log('[CH.batchReplace] → undoStack AFTER:', this.undoStack.length);
-    if (this.onChange) {
-      this.onChange('execute', batch);
-    }
+    this._pushOnly(new BatchCommand(commands));
   }
 
   /**
@@ -187,7 +187,6 @@ export class CommandHistory {
    * @returns {void}
    */
   clear() {
-    console.log('[CH.clear] called! trace:', new Error().stack);
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     if (this.onChange) {

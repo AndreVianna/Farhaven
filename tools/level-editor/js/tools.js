@@ -162,7 +162,10 @@ export class DragBrushTool extends BaseTool {
   onMouseUp(hex) {
     if (!this._isDragging) return;
     this._isDragging = false;
-    this.commandHistory.batchReplace(this._dragCommands);
+    // Sub-commands were executed directly (side effects already applied).
+    // Push a single entry to history so a big stroke doesn't push hundreds
+    // of individual commands that evict older batches via maxSize trim.
+    this.commandHistory.commitDrag(this._dragCommands);
     this._visited.clear();
     this._dragCommands = [];
   }
@@ -199,7 +202,7 @@ export class BiomeBrush extends DragBrushTool {
     if (oldBiome === newBiome && (!waterType || (tile && tile.waterType === waterType))) return;
 
     const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, oldBiome, newBiome, waterType);
-    this.commandHistory.execute(cmd);
+    cmd.execute();
     this._dragCommands.push(cmd);
   }
 }
@@ -238,7 +241,7 @@ export class ElevationBrush extends DragBrushTool {
       const newLevel = Math.max(-32000, Math.min(32000, oldLevel + this.delta));
       if (oldLevel === newLevel) return;
       const cmd = new SetWaterLevelCommand(this.grid, hex.q, hex.r, oldLevel, newLevel);
-      this.commandHistory.execute(cmd);
+      cmd.execute();
       this._dragCommands.push(cmd);
       return;
     }
@@ -254,7 +257,7 @@ export class ElevationBrush extends DragBrushTool {
     if (oldElevation === newElevation) return;
 
     const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, oldElevation, newElevation);
-    this.commandHistory.execute(cmd);
+    cmd.execute();
     this._dragCommands.push(cmd);
   }
 
@@ -286,7 +289,7 @@ export class ElevationBrush extends DragBrushTool {
         if (oldElev === newElev) continue;
 
         const cmd = new SetElevationCommand(this.grid, rh.q, rh.r, oldElev, newElev);
-        this.commandHistory.execute(cmd);
+        cmd.execute();
         this._dragCommands.push(cmd);
       }
     }
@@ -404,17 +407,17 @@ export class RegionBrush extends DragBrushTool {
     if (!tile) return;
     if (cfg.biome && tile.biome !== cfg.biome) {
       const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, tile.biome, cfg.biome, null);
-      this.commandHistory.execute(cmd);
+      cmd.execute();
       this._dragCommands.push(cmd);
     }
     if (cfg.elevation !== null && tile.elevation !== cfg.elevation) {
       const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, tile.elevation, cfg.elevation);
-      this.commandHistory.execute(cmd);
+      cmd.execute();
       this._dragCommands.push(cmd);
     }
     if ((tile.temperature | 0) !== cfg.hazard_level) {
       const cmd = new SetTemperatureCommand(this.grid, hex.q, hex.r, tile.temperature | 0, cfg.hazard_level);
-      this.commandHistory.execute(cmd);
+      cmd.execute();
       this._dragCommands.push(cmd);
     }
   }
@@ -436,7 +439,7 @@ export class EraserTool extends DragBrushTool {
       });
       if (idx !== -1) {
         const cmd = new DeletePropCommand(this.grid, hex.q, hex.r, idx, tile.props[idx]);
-        this.commandHistory.execute(cmd);
+        cmd.execute();
         this._dragCommands.push(cmd);
         return;
       }
@@ -444,7 +447,7 @@ export class EraserTool extends DragBrushTool {
 
     // Fallback: erase all props
     const cmd = new EraseContentCommand(this.grid, hex.q, hex.r, tile);
-    this.commandHistory.execute(cmd);
+    cmd.execute();
     this._dragCommands.push(cmd);
   }
 }

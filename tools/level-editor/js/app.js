@@ -384,9 +384,7 @@ keyboardManager.register('escape', mapOnly(() => selectTool('select')));
 
 // Global shortcuts
 keyboardManager.register('ctrl+z', () => {
-  console.log('[undo] ctrl+z pressed, undoStack.length=', commandHistory.undoStack.length);
   if (commandHistory.canUndo()) commandHistory.undo();
-  console.log('[undo] after, undoStack.length=', commandHistory.undoStack.length, 'redoStack.length=', commandHistory.redoStack.length);
   if (hexCanvas) hexCanvas.requestRender();
   updateTabIndicators();
 });
@@ -395,8 +393,6 @@ keyboardManager.register('ctrl+shift+z', () => {
   if (hexCanvas) hexCanvas.requestRender();
   updateTabIndicators();
 });
-// Expose for debugging — user reports only one undo reverting. Temporary.
-if (typeof window !== 'undefined') window.__CH = commandHistory;
 keyboardManager.register('ctrl+s', () => saveAll());
 keyboardManager.register('ctrl+shift+s', () => saveMapAs());
 keyboardManager.register('ctrl+n', () => newMap());
