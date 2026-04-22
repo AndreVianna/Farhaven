@@ -770,10 +770,13 @@ export class HexInspector {
     elevRow.appendChild(elevText);
     this.hexInfoEl.appendChild(elevRow);
 
-    // Temperature — only surfaced when the tile's biome has a hazard
-    // cap OR the tile already carries a non-zero temperature. For
-    // thermally neutral biomes (no hazard) we stay out of the UI to
-    // avoid confusing the user with a setting that has no effect.
+    // Hazard Level — only surfaced when the tile's biome has a hazard
+    // cap OR the tile already carries a non-zero level. For thermally
+    // neutral biomes (no hazard) we stay out of the UI to avoid
+    // confusing the user with a setting that has no effect. The
+    // on-disk field is still `temperature` (data contract), but the
+    // label says "Hazard Level" because the value drives heat, cold,
+    // oxygen drain, and any future damage_type.
     const hazard = _getBiomeHazard(tile.biome);
     const showTemp = hazard || (typeof tile.temperature === 'number' && tile.temperature !== 0);
     if (showTemp) {
@@ -783,7 +786,7 @@ export class HexInspector {
       const label = document.createElement('span');
       const capLen = hazard && Array.isArray(hazard.health_damage) ? hazard.health_damage.length : 0;
       const hint = hazard ? ` (${hazard.damage_type}, 0-${capLen})` : '';
-      label.textContent = `Temperature${hint}:`;
+      label.textContent = `Hazard Level${hint}:`;
       const input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
