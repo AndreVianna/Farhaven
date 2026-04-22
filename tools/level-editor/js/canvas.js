@@ -6,6 +6,7 @@ import { HEX_SIZE, HexMath } from './hex-math.js';
 import { HexGrid, CATEGORY_COLORS, NATURAL_CATEGORIES, CATEGORY_TO_INT } from './hex-grid.js';
 import { EditPropCommand, MovePropCommand, SetSpawnCommand } from './commands.js';
 import { loadBiomeTextures, pickVariationIdx, pickRotationRadians } from './biome-textures.js';
+import { ProjectContext } from './file-discovery.js';
 
 /** @type {string} Fallback color for unknown biomes */
 export const BIOME_FALLBACK_COLOR = '#888888';
@@ -67,6 +68,11 @@ export class HexCanvas {
      * is skipped during render. Persisted by the map-sidebar UI via
      * setter-style assignments; requestRender() picks up changes. */
     this.showElevationNumbers = true;
+    /** Tint Heat/Cold/Oxygen hazard tiles red/cyan/green proportional
+     *  to their temperature level. Off by default — the inspector
+     *  spinner is enough for most editing, and the tint can clash
+     *  with biome color when designers are matching palette. */
+    this.showTemperatureOverlay = false;
     this.showPlacedProps = true;
     /** @type {Set<string>|null} If null (default) all props render. If a
      * Set, only props whose `type` (prop_id) is in the set render. Set by
@@ -277,6 +283,9 @@ export class HexCanvas {
       const wp = HexMath.axialToPixel(q, r);
       if (wp.x < vb.minX || wp.x > vb.maxX || wp.y < vb.minY || wp.y > vb.maxY) continue;
       this._drawHex(q, r, tile);
+      if (this.showTemperatureOverlay && typeof tile.temperature === 'number' && tile.temperature > 0) {
+        this._drawTemperatureOverlay(q, r, tile);
+      }
       if (this.showElevationNumbers) this._drawElevationOverlay(q, r, tile);
       this._drawCliffEdges(q, r, tile);
       if (this._unreachableSet.has(key)) {
@@ -455,6 +464,52 @@ export class HexCanvas {
       ctx.fillStyle = tile.elevation > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(160,200,255,0.85)';
       ctx.fillText(String(tile.elevation), screen.x, screen.y);
     }
+  }
+
+  /**
+   * Tint a hex a hazard-kind color (red for heat, cyan for cold,
+   * green for oxygen_drain; other kinds fall back to magenta) with
+   * intensity scaling with the tile's temperature level. Temperature
+   * 4 is solidly visible but still semi-transparent so the biome
+   * texture underneath stays readable.
+   *
+   * @param {number} q
+   * @param {number} r
+   * @param {{biome: string, temperature: number}} tile
+   */
+  _drawTemperatureOverlay(q, r, tile) {
+    const biomeId = tile.biome || '';
+    const entry = (typeof ProjectContext !== 'undefined' && ProjectContext.files && ProjectContext.files.biomes)
+      ? ProjectContext.files.biomes.get(biomeId + '.tres')
+      : null;
+    const hazard = entry && entry.data && entry.data.hazard;
+    const dtype = hazard && hazard.damage_type ? String(hazard.damage_type) : '';
+    const colors = {
+      heat: '255,60,40',
+      cold: '120,200,255',
+      oxygen_drain: '100,220,120',
+      hypoxia: '180,120,220',
+      poison: '140,220,80',
+      acid: '230,220,60',
+    };
+    const rgb = colors[dtype] || '220,120,220';
+    // Alpha ramps with temperature — cap table length is the
+    // authoritative "max severity" for this cap; default to 4 if we
+    // can't read it.
+    const capLen = hazard && Array.isArray(hazard.health_damage) ? hazard.health_damage.length
+                  : hazard && hazard.health_damage && hazard.health_damage.value
+                    ? hazard.health_damage.value.length : 4;
+    const n = Math.max(1, capLen);
+    const t = Math.max(0, Math.min(1, tile.temperature / n));
+    const alpha = 0.15 + 0.45 * t;
+
+    const { screen, size, corners } = this._getHexScreen(q, r);
+    this.ctx.beginPath();
+    this.ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) this.ctx.lineTo(corners[i].x, corners[i].y);
+    this.ctx.closePath();
+    this.ctx.fillStyle = `rgba(${rgb},${alpha.toFixed(3)})`;
+    this.ctx.fill();
   }
 
   /**

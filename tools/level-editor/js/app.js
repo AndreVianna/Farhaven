@@ -1255,6 +1255,14 @@ if (chkShowElevation) {
     hexCanvas.requestRender();
   });
 }
+const chkShowTemperature = document.getElementById('btn-show-temperature');
+if (chkShowTemperature) {
+  chkShowTemperature.addEventListener('change', () => {
+    if (!hexCanvas) return;
+    hexCanvas.showTemperatureOverlay = chkShowTemperature.checked;
+    hexCanvas.requestRender();
+  });
+}
 _mountPropFilter();
 
 // ============================================================

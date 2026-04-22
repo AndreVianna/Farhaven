@@ -378,6 +378,36 @@ export class SetWaterLevelCommand {
 }
 
 /**
+ * Change the per-tile `temperature` field. Only meaningful on tiles
+ * whose biome has a HazardCap — SurvivalSystem looks up the level
+ * in the cap's drain tables and applies the corresponding drain.
+ * Level 0 is always safe.
+ */
+export class SetTemperatureCommand {
+  constructor(grid, q, r, oldTemperature, newTemperature) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.oldTemperature = oldTemperature;
+    this.newTemperature = newTemperature;
+    this.tab = 'map';
+    this.type = 'SetTemperature';
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile) return;
+    tile.temperature = this.newTemperature;
+    this.grid.setTile(this.q, this.r, tile);
+  }
+  undo() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile) return;
+    tile.temperature = this.oldTemperature;
+    this.grid.setTile(this.q, this.r, tile);
+  }
+}
+
+/**
  * Toggle a wall on a hex edge (and the opposite edge on the neighbor).
  */
 export class ToggleWallCommand {

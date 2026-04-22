@@ -2,9 +2,56 @@
 // Inline Modal Dialog (task-010)
 // ============================================================
 
-import { EditPropCommand, DeletePropCommand } from './commands.js';
+import { EditPropCommand, DeletePropCommand, SetTemperatureCommand } from './commands.js';
 import { HexMath } from './hex-math.js';
 import { CATEGORY_COLORS } from './hex-grid.js';
+import { ProjectContext } from './file-discovery.js';
+
+/**
+ * Resolve a tile's biome id to the flattened hazard-cap payload from
+ * ProjectContext. Returns null when the biome has no hazard or the
+ * cache hasn't been populated. Cached per-biome so the hex inspector
+ * doesn't re-walk the registry on every hover.
+ *
+ * @param {string} biomeId
+ * @returns {{damage_type: string, health_damage: number[], thirst_drain: number[], hunger_drain: number[], oxygen_drain: number[]} | null}
+ */
+const _hazardCache = new Map();
+function _getBiomeHazard(biomeId) {
+  if (!biomeId) return null;
+  if (_hazardCache.has(biomeId)) return _hazardCache.get(biomeId);
+  const entry = ProjectContext && ProjectContext.files && ProjectContext.files.biomes
+    ? ProjectContext.files.biomes.get(biomeId + '.tres')
+    : null;
+  const h = entry && entry.data && entry.data.hazard;
+  // entry.data.hazard is either null or the flattened sub_resource
+  // fields. Typed arrays come in as [{type:'int', value:N}, …] so
+  // unwrap each element before caching.
+  if (!h || typeof h !== 'object' || !h.damage_type) {
+    _hazardCache.set(biomeId, null);
+    return null;
+  }
+  const unwrap = (v) => {
+    let list = Array.isArray(v) ? v : (v && Array.isArray(v.value) ? v.value : null);
+    if (!list) return [];
+    return list.map((x) => (typeof x === 'number') ? x : (x && typeof x === 'object' && Number.isFinite(x.value) ? x.value : 0));
+  };
+  const cap = {
+    damage_type: h.damage_type,
+    health_damage: unwrap(h.health_damage),
+    thirst_drain:  unwrap(h.thirst_drain),
+    hunger_drain:  unwrap(h.hunger_drain),
+    oxygen_drain:  unwrap(h.oxygen_drain),
+  };
+  _hazardCache.set(biomeId, cap);
+  return cap;
+}
+
+/** Invalidate the hazard cache — called when biomes are saved so the
+ *  inspector picks up edited tables without a page reload. */
+export function invalidateBiomeHazardCache() {
+  _hazardCache.clear();
+}
 
 /**
  * Show an inline modal dialog with a text input.
@@ -722,6 +769,55 @@ export class HexInspector {
     elevText.textContent = `Elevation: ${tile.elevation}`;
     elevRow.appendChild(elevText);
     this.hexInfoEl.appendChild(elevRow);
+
+    // Temperature — only surfaced when the tile's biome has a hazard
+    // cap OR the tile already carries a non-zero temperature. For
+    // thermally neutral biomes (no hazard) we stay out of the UI to
+    // avoid confusing the user with a setting that has no effect.
+    const hazard = _getBiomeHazard(tile.biome);
+    const showTemp = hazard || (typeof tile.temperature === 'number' && tile.temperature !== 0);
+    if (showTemp) {
+      const tempRow = document.createElement('div');
+      tempRow.className = 'hex-info-row';
+      tempRow.style.cssText = 'display:flex;align-items:center;gap:6px;';
+      const label = document.createElement('span');
+      const capLen = hazard && Array.isArray(hazard.health_damage) ? hazard.health_damage.length : 0;
+      const hint = hazard ? ` (${hazard.damage_type}, 0-${capLen})` : '';
+      label.textContent = `Temperature${hint}:`;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = '99';
+      input.step = '1';
+      input.className = 'prop-input';
+      input.style.cssText = 'width:60px;';
+      input.value = String(tile.temperature | 0);
+      input.addEventListener('change', () => {
+        const next = Math.max(0, Math.min(99, parseInt(input.value, 10) || 0));
+        const current = tile.temperature | 0;
+        if (next === current) return;
+        const cmd = new SetTemperatureCommand(this.grid, q, r, current, next);
+        if (this.commandHistory) this.commandHistory.execute(cmd);
+        else cmd.execute();
+        this._renderHexInfo(q, r);
+      });
+      tempRow.appendChild(label);
+      tempRow.appendChild(input);
+      this.hexInfoEl.appendChild(tempRow);
+    }
+
+    // Water level — only for water tiles (also shows in inspector for
+    // existing Water biomes, and now Shoreline-on-waterline edge cases
+    // where an author explicitly set waterLevel).
+    if (typeof tile.waterLevel === 'number') {
+      const wlRow = document.createElement('div');
+      wlRow.className = 'hex-info-row';
+      const wlText = document.createElement('span');
+      const depth = tile.waterLevel - tile.elevation;
+      wlText.textContent = `Water level: ${tile.waterLevel}  (depth ${depth})`;
+      wlRow.appendChild(wlText);
+      this.hexInfoEl.appendChild(wlRow);
+    }
 
     // Prop summary
     if (tile.props && tile.props.length > 0) {
