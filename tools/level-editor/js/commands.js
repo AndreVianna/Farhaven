@@ -454,6 +454,62 @@ export class ToggleWallCommand {
   }
 }
 
+/**
+ * Remove every wall on a hex and the matching wall on each neighbor
+ * (so the shared edges are genuinely gone, not half-gone). Undo
+ * restores whatever was there before — including asymmetric states.
+ */
+export class ClearHexWallsCommand {
+  /**
+   * @param {import('./hex-grid.js').HexGrid} grid
+   * @param {number} q
+   * @param {number} r
+   */
+  constructor(grid, q, r) {
+    this.grid = grid;
+    this.q = q;
+    this.r = r;
+    this.tab = 'map';
+    this.type = 'ClearHexWalls';
+    /** @type {{self: boolean[], neighbors: Array<{q:number,r:number,idx:number,prev:boolean}>}|null} */
+    this._snapshot = null;
+  }
+  execute() {
+    const tile = this.grid.getTile(this.q, this.r);
+    if (!tile || !tile.walls) return;
+    const neighbors = [];
+    for (let i = 0; i < 6; i++) {
+      const dir = HexMath.DIRECTIONS[i];
+      const nq = this.q + dir.q;
+      const nr = this.r + dir.r;
+      const neighbor = this.grid.getTile(nq, nr);
+      if (neighbor && neighbor.walls) {
+        const opp = (i + 3) % 6;
+        neighbors.push({ q: nq, r: nr, idx: opp, prev: neighbor.walls[opp] });
+      }
+    }
+    this._snapshot = { self: [...tile.walls], neighbors };
+    for (let i = 0; i < 6; i++) tile.walls[i] = false;
+    for (const n of neighbors) {
+      const neighbor = this.grid.getTile(n.q, n.r);
+      if (neighbor && neighbor.walls) neighbor.walls[n.idx] = false;
+    }
+    this.grid.setTile(this.q, this.r, tile);
+  }
+  undo() {
+    if (!this._snapshot) return;
+    const tile = this.grid.getTile(this.q, this.r);
+    if (tile && tile.walls) {
+      for (let i = 0; i < 6; i++) tile.walls[i] = this._snapshot.self[i];
+    }
+    for (const n of this._snapshot.neighbors) {
+      const neighbor = this.grid.getTile(n.q, n.r);
+      if (neighbor && neighbor.walls) neighbor.walls[n.idx] = n.prev;
+    }
+    if (tile) this.grid.setTile(this.q, this.r, tile);
+  }
+}
+
 export class AddPropCommand {
   /**
    * @param {import('./hex-grid.js').HexGrid} grid

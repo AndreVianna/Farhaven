@@ -15,6 +15,7 @@ import {
   EraseContentCommand,
   DeleteHexCommand,
   ToggleWallCommand,
+  ClearHexWallsCommand,
   BatchCommand,
 } from './commands.js';
 import { ProjectContext } from './file-discovery.js';
@@ -633,12 +634,42 @@ export class DeleteHexTool extends BaseTool {
   }
 }
 
-export class WallTool extends BaseTool {
+/**
+ * Wall editing:
+ *   - Click: toggle the nearest-edge wall (and its mirror on the neighbour)
+ *   - Alt+click / Alt+drag: clear every wall on the hex. Runs through the
+ *     drag pipeline so a sweep across many hexes collapses into one undo.
+ */
+export class WallTool extends DragBrushTool {
   onMouseDown(hex) {
-    if (!hex || typeof hex.edgeIdx !== 'number') return;
+    if (!hex) return;
+    // Alt mode — bulk clear via the drag pipeline.
+    if (this.toolManager && this.toolManager.altHeld) {
+      super.onMouseDown(hex);
+      return;
+    }
+    // Normal mode — per-edge toggle, single command, no drag.
+    if (typeof hex.edgeIdx !== 'number') return;
     if (!this.grid.hasTile(hex.q, hex.r)) return;
     const cmd = new ToggleWallCommand(this.grid, hex.q, hex.r, hex.edgeIdx);
     this.commandHistory.execute(cmd);
+  }
+
+  onMouseMove(hex) {
+    // Drag-clear only while Alt remains pressed. Releasing Alt mid-drag
+    // stops new hexes from being cleared but keeps the current batch
+    // intact so mouseUp still commits it as one undo entry.
+    if (!this.toolManager || !this.toolManager.altHeld) return;
+    super.onMouseMove(hex);
+  }
+
+  _applyToHex(hex) {
+    const tile = this.grid.getTile(hex.q, hex.r);
+    if (!tile || !tile.walls) return;
+    if (!tile.walls.some(Boolean)) return;   // nothing to clear — skip
+    const cmd = new ClearHexWallsCommand(this.grid, hex.q, hex.r);
+    cmd.execute();
+    this._dragCommands.push(cmd);
   }
 }
 
