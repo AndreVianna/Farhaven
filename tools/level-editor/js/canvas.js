@@ -484,13 +484,14 @@ export class HexCanvas {
       : null;
     const hazard = entry && entry.data && entry.data.hazard;
     const dtype = hazard && hazard.damage_type ? String(hazard.damage_type) : '';
+    // damage_type → tint. Oxygen is a stat (drained by hypoxia
+    // etc), not its own damage_type, so no entry for it here.
     const colors = {
-      heat: '255,60,40',
-      cold: '120,200,255',
-      oxygen_drain: '100,220,120',
-      hypoxia: '180,120,220',
-      poison: '140,220,80',
-      acid: '230,220,60',
+      heat:    '255,60,40',
+      cold:    '120,200,255',
+      hypoxia: '100,220,120',
+      poison:  '140,220,80',
+      acid:    '230,220,60',
     };
     const rgb = colors[dtype] || '220,120,220';
     // Alpha ramps with temperature — cap table length is the

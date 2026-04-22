@@ -33,8 +33,11 @@ func test_terrain_textures_is_array() -> void:
 		for tex in biome.terrain_textures:
 			assert_object(tex).is_not_null()
 
+## damage_type tags are hazard *kinds*. Oxygen is a survival stat —
+## hazards like hypoxia drain it, but oxygen_drain is never itself
+## a damage_type.
 const ALLOWED_HAZARD_TYPES: Array[StringName] = [
-	&"heat", &"cold", &"oxygen_drain", &"hypoxia", &"poison", &"acid",
+	&"heat", &"cold", &"hypoxia", &"poison", &"acid",
 ]
 
 func test_hazard_caps_are_well_formed() -> void:

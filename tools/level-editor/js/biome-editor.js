@@ -61,16 +61,26 @@ function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
 /**
- * Default HazardCap payloads by damage_type, mirroring the GDScript
- * class's default field values. Used when a biome switches from "No
- * hazard" to a hazard type in the editor.
- * @type {Object<string, {damage_type: string, health_damage: number[], thirst_drain: number[], hunger_drain: number[], oxygen_drain: number[]}>}
+ * Shape for an empty HazardCap payload. Used when a biome switches
+ * from "No hazard" to a hazard type — the user then authors the
+ * drain tables by hand (or tunes them from the GDScript-defined
+ * HazardCap defaults, which live in scripts/data/capabilities/
+ * hazard_cap.gd). Biomes intentionally don't ship canonical JS
+ * presets: every biome's damage is part of its authored design.
+ *
+ * @param {string} damage_type
+ * @param {number} [levels=4]
  */
-export const HAZARD_DEFAULTS = {
-  heat:          { damage_type: 'heat',          health_damage: [0, 5, 15, 50], thirst_drain: [5, 14, 25, 35], hunger_drain: [0, 0, 0, 0],   oxygen_drain: [0, 0, 0, 0] },
-  cold:          { damage_type: 'cold',          health_damage: [0, 5, 15, 50], thirst_drain: [0, 0, 0, 0],    hunger_drain: [5, 14, 25, 35], oxygen_drain: [0, 0, 0, 0] },
-  oxygen_drain:  { damage_type: 'oxygen_drain',  health_damage: [0, 0, 5, 30],  thirst_drain: [0, 0, 0, 0],    hunger_drain: [0, 0, 0, 0],   oxygen_drain: [5, 14, 25, 35] },
-};
+export function emptyHazardPayload(damage_type, levels = 4) {
+  const zeros = () => Array.from({ length: levels }, () => 0);
+  return {
+    damage_type,
+    health_damage: zeros(),
+    thirst_drain:  zeros(),
+    hunger_drain:  zeros(),
+    oxygen_drain:  zeros(),
+  };
+}
 
 /**
  * Maps a parsed .tres BiomeData to an editable JS model.
@@ -189,26 +199,29 @@ export class BiomeDataModel {
     if (d.hazard && typeof d.hazard === 'object' && d.hazard.damage_type !== undefined) {
       const subData = d.hazard;
       const dtype = _str(subData.damage_type) || _str(subData.type); // backward-compat with older `type` field
-      const normalizeIntArr = (v, fallback) => {
+      const normalizeIntArr = (v) => {
         let rawList = null;
         if (Array.isArray(v)) rawList = v;
         else if (v && typeof v === 'object' && Array.isArray(v.value)) rawList = v.value;
-        else return fallback;
-        const out = rawList.map((x) => {
+        else return [];
+        return rawList.map((x) => {
           if (typeof x === 'number') return x;
           if (x && typeof x === 'object' && Number.isFinite(x.value)) return x.value;
           return 0;
         });
-        return out.length > 0 ? out : fallback;
       };
-      const preset = HAZARD_DEFAULTS[dtype] || HAZARD_DEFAULTS.heat;
       if (dtype) {
+        // Authored tables win; any missing drain defaults to an empty
+        // array (the biome designer can add levels in the editor).
+        // No HAZARD_DEFAULTS — the GDScript HazardCap class owns the
+        // canonical bootstrap values, and each biome authors its own
+        // drains from there.
         model.hazard = {
           damage_type: dtype,
-          health_damage: normalizeIntArr(subData.health_damage, preset.health_damage.slice()),
-          thirst_drain:  normalizeIntArr(subData.thirst_drain,  preset.thirst_drain.slice()),
-          hunger_drain:  normalizeIntArr(subData.hunger_drain,  preset.hunger_drain.slice()),
-          oxygen_drain:  normalizeIntArr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
+          health_damage: normalizeIntArr(subData.health_damage),
+          thirst_drain:  normalizeIntArr(subData.thirst_drain),
+          hunger_drain:  normalizeIntArr(subData.hunger_drain),
+          oxygen_drain:  normalizeIntArr(subData.oxygen_drain),
         };
       }
     }
@@ -1467,15 +1480,20 @@ export function renderBiomeEditor(container, options) {
     };
     syncHazardTableEnabled();
 
-    // When the user switches between hazard types, refresh the table
-    // with preset values when there is a canonical preset (heat/cold).
-    // Other damage_types reuse whatever values are currently in the
-    // table.
+    // When the user changes the damage_type dropdown, keep whatever
+    // drain values are currently in the table. Switching to 'none'
+    // disables the table but preserves the numbers so a toggle
+    // off/on doesn't wipe authored work. If the table is empty (a
+    // biome that had no hazard is getting one for the first time),
+    // bootstrap with 4 levels of zeros — the designer authors the
+    // drains from there. No JS-side canonical preset; the GDScript
+    // HazardCap class owns whatever defaults exist.
     hazardSelect.addEventListener('change', () => {
       syncHazardTableEnabled();
-      const preset = HAZARD_DEFAULTS[hazardSelect.value];
-      if (preset) {
-        renderHazardTable(preset.health_damage.length, preset);
+      if (hazardSelect.value === 'none') return;
+      const current = _readHazardRows();
+      if (!current.health_damage || current.health_damage.length === 0) {
+        renderHazardTable(4, emptyHazardPayload(hazardSelect.value));
       }
     });
 

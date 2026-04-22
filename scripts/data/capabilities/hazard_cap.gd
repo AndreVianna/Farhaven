@@ -18,12 +18,19 @@ extends Resource
 ## ~1 second (e.g. health_damage[3] ≈ hp_max) so a misstep into lava
 ## or a summit gap is lethal but gives a brief window to back out.
 
-## Damage kind tag — used by resistances, protection items, and
-## armor interactions. Current values: "heat", "cold",
-## "hypoxia", "poison", "acid", "oxygen_drain". Add new tags
-## as new hazard kinds are introduced; SurvivalSystem does a lookup
-## on this tag to pick the default affected stat and the damage
-## resolution pipeline.
+## Damage kind tag — identifies the *kind* of environmental hazard
+## this biome inflicts. Used by resistances, protection items, and
+## armor interactions. Current values:
+##   "heat"     — scorching biomes (Volcanic, deserts later)
+##   "cold"     — frozen biomes (Alpine, arctic later)
+##   "hypoxia"  — oxygen-starved biomes (underwater drowning,
+##                altitude asphyxiation, smoke choking)
+##   "poison"   — toxic swamps, gas clouds
+##   "acid"     — acid pools, corrosive atmosphere
+## Add new tags as new hazard kinds are introduced. Note that
+## oxygen_drain is NOT a damage_type — it's a survival STAT that
+## gets drained by hypoxia (and other hazards that author an
+## oxygen_drain column in the table below).
 @export var damage_type: StringName = &"heat"
 
 ## Health (HP) lost per second at each temperature level [1,2,3,4].
