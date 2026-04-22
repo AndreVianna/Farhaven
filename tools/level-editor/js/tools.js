@@ -290,6 +290,8 @@ export class ElevationBrush extends DragBrushTool {
     // Phase 1 — smoothstep-weighted elevation change inside the radius.
     // strength(d) = 1 - (3t² - 2t³)  with t = d/radius ∈ [0,1]
     // At d=0 strength=1; at d=radius strength=0 (no change).
+    /** @type {Set<string>} hexes actually moved in phase 1 (seed for erosion) */
+    const phase1Touched = new Set();
     for (const hex of HexMath.hexesInRadius(PINCH_RADIUS, center)) {
       if (!this.grid.hasTile(hex.q, hex.r)) continue;
       const d = HexMath.distance(hex.q, hex.r, center.q, center.r);
@@ -301,12 +303,15 @@ export class ElevationBrush extends DragBrushTool {
       const accum = (this._pinchAccum.get(key) || 0) + fracDelta;
       const intDelta = Math.trunc(accum);
       this._pinchAccum.set(key, accum - intDelta);
-      if (intDelta !== 0) this._applyElevationChange(hex.q, hex.r, intDelta);
+      if (intDelta !== 0) {
+        this._applyElevationChange(hex.q, hex.r, intDelta);
+        phase1Touched.add(key);
+      }
     }
 
     // Phase 2 — thermal erosion: slope outside stable angle spills
     // from peaks to valleys so the base naturally spreads.
-    this._redistributeSlope(center, PINCH_RADIUS + 1);
+    this._redistributeSlope(center, phase1Touched);
   }
 
   /**
@@ -333,56 +338,71 @@ export class ElevationBrush extends DragBrushTool {
   }
 
   /**
-   * Thermal-erosion around `center`, run until equilibrium (or cap).
-   * Each pass: every hex taller than a neighbor by more than TALUS gives
-   * TRANSFER fraction of the surplus to that neighbor. Propagation is
-   * one ring per pass, so the search radius grows by one each pass to
-   * cover the still-reachable fringe. Bails as soon as a pass transfers
-   * nothing — that's the natural stable shape for the current peak.
+   * Thermal-erosion wave that propagates **outward** from the phase-1
+   * footprint. Each pass, every hex in the current frontier donates at
+   * most once to its single steepest-downhill neighbour (if the drop
+   * exceeds TALUS). The receiver joins the frontier so next pass it
+   * can pass the mass further out. The clicked centre is locked — it
+   * never donates and stays at its intended peak.
+   *
+   * Compared to the earlier "parallel transfer to every lower neighbour"
+   * scheme this prevents mass-splitting artefacts: a tall hex with
+   * three low neighbours used to lose 3× as much per pass as the
+   * receivers could reasonably absorb, which caused oscillation and
+   * negative spikes across the map.
+   *
    * @param {{q:number,r:number}} center
-   * @param {number} initialRadius
+   * @param {Set<string>} phase1Touched - hexes moved by phase 1, seed of the wave
    */
-  _redistributeSlope(center, initialRadius) {
+  _redistributeSlope(center, phase1Touched) {
     const TALUS = 2;
-    const TRANSFER = 0.25;
-    const MAX_PASSES = 30;
+    const TRANSFER = 0.5;
+    const MAX_PASSES = 12;
+    const centerKey = `${center.q},${center.r}`;
 
-    let radius = initialRadius;
+    /** @type {Set<string>} */
+    let frontier = new Set(phase1Touched);
+
     for (let pass = 0; pass < MAX_PASSES; pass++) {
-      /** @type {Map<string, number>} */
-      const transfers = new Map();
-      for (const hex of HexMath.hexesInRadius(radius, center)) {
-        // The clicked hex is the user's anchor for this pinch — its
-        // elevation is the intended peak. Skip it as a donor so the
-        // erosion wave propagates outward instead of eating the peak
-        // back. Transfers INTO the centre from taller neighbours still
-        // happen (but in practice the centre is the tallest, so that
-        // branch never fires).
-        if (hex.q === center.q && hex.r === center.r) continue;
-        const tile = this.grid.getTile(hex.q, hex.r);
+      let anyChange = false;
+      /** @type {Set<string>} hexes receivers join for the next pass */
+      const nextAdditions = new Set();
+
+      for (const key of frontier) {
+        if (key === centerKey) continue;                     // lock anchor
+        const [q, r] = key.split(',').map(Number);
+        const tile = this.grid.getTile(q, r);
         if (!tile) continue;
+
+        // Steepest-descent neighbour (not a parallel split).
+        let bestDiff = 0;
+        /** @type {{q:number,r:number}|null} */
+        let bestNeighbor = null;
         for (const dir of HexMath.DIRECTIONS) {
-          const nq = hex.q + dir.q;
-          const nr = hex.r + dir.r;
+          const nq = q + dir.q;
+          const nr = r + dir.r;
           const neighbor = this.grid.getTile(nq, nr);
           if (!neighbor) continue;
           const diff = tile.elevation - neighbor.elevation;
-          if (diff <= TALUS) continue;
-          const amount = Math.trunc((diff - TALUS) * TRANSFER);
-          if (amount === 0) continue;
-          const kFrom = `${hex.q},${hex.r}`;
-          const kTo = `${nq},${nr}`;
-          transfers.set(kFrom, (transfers.get(kFrom) || 0) - amount);
-          transfers.set(kTo, (transfers.get(kTo) || 0) + amount);
+          if (diff > bestDiff) {
+            bestDiff = diff;
+            bestNeighbor = { q: nq, r: nr };
+          }
         }
+        if (!bestNeighbor || bestDiff <= TALUS) continue;
+        const amount = Math.trunc((bestDiff - TALUS) * TRANSFER);
+        if (amount === 0) continue;
+
+        // Apply immediately — serial updates avoid the oscillation of
+        // simultaneous "everyone transfers based on start-of-pass state".
+        this._applyElevationChange(q, r, -amount);
+        this._applyElevationChange(bestNeighbor.q, bestNeighbor.r, amount);
+        nextAdditions.add(`${bestNeighbor.q},${bestNeighbor.r}`);
+        anyChange = true;
       }
-      if (transfers.size === 0) break;  // equilibrium
-      for (const [key, d] of transfers) {
-        if (d === 0) continue;
-        const [q, r] = key.split(',').map(Number);
-        this._applyElevationChange(q, r, d);
-      }
-      radius += 1;  // next pass can propagate one ring further
+
+      if (!anyChange) break;
+      for (const k of nextAdditions) frontier.add(k);
     }
   }
 
