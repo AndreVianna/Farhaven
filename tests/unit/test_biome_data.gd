@@ -34,7 +34,7 @@ func test_terrain_textures_is_array() -> void:
 			assert_object(tex).is_not_null()
 
 const ALLOWED_HAZARD_TYPES: Array[StringName] = [
-	&"heat", &"cold", &"oxygen_drain", &"asphyxiation", &"poison", &"acid",
+	&"heat", &"cold", &"oxygen_drain", &"hypoxia", &"poison", &"acid",
 ]
 
 func test_hazard_caps_are_well_formed() -> void:

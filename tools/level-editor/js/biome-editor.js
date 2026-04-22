@@ -1330,8 +1330,7 @@ export function renderBiomeEditor(container, options) {
       { value: 'none', label: 'None' },
       { value: 'heat', label: 'Heat' },
       { value: 'cold', label: 'Cold' },
-      { value: 'oxygen_drain', label: 'Oxygen drain' },
-      { value: 'asphyxiation', label: 'Asphyxiation' },
+      { value: 'hypoxia', label: 'Hypoxia' },
       { value: 'poison', label: 'Poison' },
       { value: 'acid', label: 'Acid' },
     ];

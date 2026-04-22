@@ -20,7 +20,7 @@ extends Resource
 
 ## Damage kind tag — used by resistances, protection items, and
 ## armor interactions. Current values: "heat", "cold",
-## "asphyxiation", "poison", "acid", "oxygen_drain". Add new tags
+## "hypoxia", "poison", "acid", "oxygen_drain". Add new tags
 ## as new hazard kinds are introduced; SurvivalSystem does a lookup
 ## on this tag to pick the default affected stat and the damage
 ## resolution pipeline.

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=7 format=3 uid="uid://cwater0000001"]
+[gd_resource type="Resource" script_class="BiomeData" load_steps=9 format=3 uid="uid://cwater0000001"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00005_water_1.png" id="2_tex1"]
@@ -6,6 +6,15 @@
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00005_water_3.png" id="4_tex3"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00005_water_4.png" id="5_tex4"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00005_water_5.png" id="6_tex5"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/hazard_cap.gd" id="2_hazard_cap"]
+
+[sub_resource type="Resource" id="hazard_1"]
+script = ExtResource("2_hazard_cap")
+damage_type = &"hypoxia"
+health_damage = Array[int]([0, 0, 0, 0])
+thirst_drain = Array[int]([0, 0, 0, 0])
+hunger_drain = Array[int]([0, 0, 0, 0])
+oxygen_drain = Array[int]([0, 10, 30, 50])
 
 [resource]
 script = ExtResource("1_biome")
@@ -14,4 +23,5 @@ display_name = "Water"
 short_description = "Lakes, rivers, and shallow pools."
 long_description = "Drinkable, swimmable, impassable until you build a way across. Algae and fish populate the deeper stretches; the surface mirrors a sky that still feels unfamiliar even days in."
 color = Color(0.30196078431372547, 0.5490196078431373, 0.8509803921568627, 1.0)
+hazard = SubResource("hazard_1")
 terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4"), ExtResource("6_tex5")]
