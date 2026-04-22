@@ -2394,12 +2394,16 @@ function _initRegionBrushPanel() {
   if (!host) return;
   host.innerHTML = '';
 
-  const row = (label, ctrl) => {
+  // Labels sit ABOVE controls so the narrow sidebar (~200px) never
+  // truncates either side. Horizontal rows were running off the right
+  // edge (Andre 2026-04-22) — stacked layout fixes it and leaves
+  // room for sliders to breathe.
+  const stackRow = (label, ctrl) => {
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-bottom:6px;';
     const lab = document.createElement('span');
     lab.textContent = label;
-    lab.style.cssText = 'flex:0 0 90px;font-size:11px;color:var(--text-2);';
+    lab.style.cssText = 'font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.05em;';
     wrap.appendChild(lab);
     wrap.appendChild(ctrl);
     host.appendChild(wrap);
@@ -2408,7 +2412,7 @@ function _initRegionBrushPanel() {
   // Preset dropdown.
   const presetSel = document.createElement('select');
   presetSel.className = 'prop-input';
-  presetSel.style.cssText = 'flex:1;font-size:11px;';
+  presetSel.style.cssText = 'width:100%;font-size:11px;';
   for (const [key, preset] of Object.entries(RegionBrushPresets)) {
     const o = document.createElement('option');
     o.value = key;
@@ -2418,10 +2422,11 @@ function _initRegionBrushPanel() {
   presetSel.value = 'CUSTOM';
 
   // Biome dropdown. Populated each time the panel is shown so newly
-  // authored biomes surface without a restart.
+  // authored biomes surface without a restart. Short id-only labels
+  // so the dropdown doesn't blow past the sidebar width.
   const biomeSel = document.createElement('select');
   biomeSel.className = 'prop-input';
-  biomeSel.style.cssText = 'flex:1;font-size:11px;';
+  biomeSel.style.cssText = 'width:100%;font-size:11px;';
   const _refreshBiomeOptions = () => {
     biomeSel.innerHTML = '';
     const keep = document.createElement('option');
@@ -2432,10 +2437,15 @@ function _initRegionBrushPanel() {
       ? [...ProjectContext.files.biomes.keys()].sort() : [];
     for (const fname of biomeEntries) {
       const id = fname.replace('.tres', '');
+      const data = ProjectContext.files.biomes.get(fname).data;
+      const name = data && data.display_name ? data.display_name : id;
       const o = document.createElement('option');
       o.value = id;
-      const data = ProjectContext.files.biomes.get(fname).data;
-      o.textContent = data && data.display_name ? `${id} — ${data.display_name}` : id;
+      // Drop the id from the label; Godot doesn't need it here and the
+      // sidebar is too narrow to show "B00006 — Volcanic" without
+      // clipping. Full id still round-trips via o.value.
+      o.textContent = name;
+      o.title = `${id} — ${name}`;
       biomeSel.appendChild(o);
     }
   };
@@ -2443,7 +2453,7 @@ function _initRegionBrushPanel() {
 
   // Elevation: checkbox + number. Unchecked = "keep existing".
   const elevWrap = document.createElement('div');
-  elevWrap.style.cssText = 'display:flex;gap:4px;align-items:center;flex:1;';
+  elevWrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
   const elevSet = document.createElement('input');
   elevSet.type = 'checkbox';
   elevSet.title = 'Toggle off to leave tile elevation unchanged';
@@ -2452,7 +2462,7 @@ function _initRegionBrushPanel() {
   elevInput.step = '1';
   elevInput.value = '0';
   elevInput.className = 'prop-input';
-  elevInput.style.cssText = 'width:70px;font-size:11px;';
+  elevInput.style.cssText = 'flex:1;font-size:11px;min-width:0;';
   elevInput.disabled = true;
   elevWrap.appendChild(elevSet);
   elevWrap.appendChild(elevInput);
@@ -2465,22 +2475,22 @@ function _initRegionBrushPanel() {
   hazInput.max = '99';
   hazInput.value = '0';
   hazInput.className = 'prop-input';
-  hazInput.style.cssText = 'width:70px;font-size:11px;';
+  hazInput.style.cssText = 'width:100%;font-size:11px;';
 
   // Radius + Roughness sliders.
   const mkSlider = (min, max, step, value) => {
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;gap:6px;align-items:center;flex:1;';
+    wrap.style.cssText = 'display:flex;gap:6px;align-items:center;';
     const input = document.createElement('input');
     input.type = 'range';
     input.min = String(min);
     input.max = String(max);
     input.step = String(step);
     input.value = String(value);
-    input.style.cssText = 'flex:1;';
+    input.style.cssText = 'flex:1;min-width:0;';
     const out = document.createElement('span');
     out.textContent = String(value);
-    out.style.cssText = 'font-family:var(--font-mono);font-size:11px;color:var(--text-0);width:28px;text-align:right;';
+    out.style.cssText = 'font-family:var(--font-mono);font-size:11px;color:var(--text-0);flex:0 0 28px;text-align:right;';
     input.addEventListener('input', () => { out.textContent = input.value; });
     wrap.appendChild(input);
     wrap.appendChild(out);
@@ -2489,12 +2499,12 @@ function _initRegionBrushPanel() {
   const radius = mkSlider(1, 30, 1, 6);
   const rough  = mkSlider(0, 1, 0.05, 0.5);
 
-  row('Preset',      presetSel);
-  row('Biome',       biomeSel);
-  row('Elevation',   elevWrap);
-  row('Hazard Lv',   hazInput);
-  row('Radius',      radius.wrap);
-  row('Edge rough.', rough.wrap);
+  stackRow('Preset',      presetSel);
+  stackRow('Biome',       biomeSel);
+  stackRow('Elevation',   elevWrap);
+  stackRow('Hazard Level', hazInput);
+  stackRow('Radius',      radius.wrap);
+  stackRow('Edge rough.', rough.wrap);
 
   // Sync any field change → toolManager.regionConfig.
   const _syncConfig = () => {
