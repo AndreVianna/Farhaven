@@ -1879,7 +1879,7 @@ export function biomeModelToRaw(model) {
   // Add the hazard_cap.gd ext_resource when the biome has a hazard
   // capability. Reuse any prior id when present.
   let hazardCapExtId = null;
-  if (model.hazard && typeof model.hazard === 'object' && model.hazard.type) {
+  if (model.hazard && typeof model.hazard === 'object' && model.hazard.damage_type) {
     const hcPath = 'res://scripts/data/capabilities/hazard_cap.gd';
     const prevHc = prevIdByPath.get(hcPath);
     hazardCapExtId = (prevHc && prevHc.id) ? prevHc.id : `${nextTexIdx++}_hazard_cap`;
