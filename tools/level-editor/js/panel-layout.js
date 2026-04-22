@@ -13,6 +13,13 @@ const DEFAULT_STATE = {
   collapsedRight: false,
   navWidth: null,       // width of left sidebar when expanded
   mapRightWidth: null,  // width of right map sidebar when expanded
+  // Master-detail layout (applies to all entity editors that use
+  // .editor-split). Values below are shared across editors so the
+  // user gets a consistent experience tab-to-tab.
+  listWidth: null,         // width of .editor-list-panel
+  previewWidth: null,      // width of .detail-preview / .editor-preview
+  collapsedList: false,
+  collapsedPreview: false,
 };
 
 function _loadState() {
@@ -109,6 +116,85 @@ function _isEditable(target) {
     && target.matches('input, textarea, select, [contenteditable]');
 }
 
+/**
+ * Enhance any .editor-split whose children haven't been wired yet:
+ * inserts a drag handle between the list and detail panels and a
+ * collapse chevron on the list panel. Also enhances any detail-body
+ * that contains a preview sibling. Idempotent — marks enhanced nodes
+ * via data attribute.
+ *
+ * @param {ReturnType<typeof _loadState>} state
+ */
+function _enhanceMasterDetail(state) {
+  const splits = document.querySelectorAll('.editor-split:not([data-panel-enhanced])');
+  for (const split of splits) {
+    split.dataset.panelEnhanced = 'true';
+    const listPanel = split.querySelector(':scope > .editor-list-panel');
+    const detailPanel = split.querySelector(':scope > .editor-detail-panel');
+    if (!listPanel || !detailPanel) continue;
+
+    listPanel.style.position = 'relative';
+
+    // Apply persisted width/collapsed state.
+    const applyListCollapsed = () => {
+      listPanel.classList.toggle('panel-collapsed', state.collapsedList);
+    };
+    const applyListWidth = () => {
+      if (state.listWidth && !state.collapsedList) {
+        listPanel.style.width = `${state.listWidth}px`;
+        listPanel.style.minWidth = `${state.listWidth}px`;
+        listPanel.style.flexBasis = `${state.listWidth}px`;
+      }
+    };
+    applyListCollapsed();
+    applyListWidth();
+
+    _mountToggle(listPanel, 'left',
+      () => state.collapsedList,
+      (v) => { state.collapsedList = v; applyListCollapsed(); _saveState(state); });
+
+    const resizer = _makeResizer(listPanel, 'left', {
+      min: 200, max: 500,
+      onPersist: (w) => { state.listWidth = w; _saveState(state); },
+    });
+    split.insertBefore(resizer, detailPanel);
+  }
+
+  // Detail preview panel — both legacy (.detail-preview inside
+  // .detail-body) and newer (.editor-preview-panel etc) supported.
+  const bodies = document.querySelectorAll('.editor-detail-body:not([data-panel-enhanced]), .detail-body:not([data-panel-enhanced])');
+  for (const body of bodies) {
+    const preview = body.querySelector(':scope > .detail-preview, :scope > .editor-preview-panel');
+    const form = body.querySelector(':scope > .detail-form, :scope > .editor-detail-form');
+    if (!preview || !form) continue;
+    body.dataset.panelEnhanced = 'true';
+    preview.style.position = 'relative';
+
+    const applyPreviewCollapsed = () => {
+      preview.classList.toggle('panel-collapsed', state.collapsedPreview);
+    };
+    const applyPreviewWidth = () => {
+      if (state.previewWidth && !state.collapsedPreview) {
+        preview.style.width = `${state.previewWidth}px`;
+        preview.style.minWidth = `${state.previewWidth}px`;
+        preview.style.flexBasis = `${state.previewWidth}px`;
+      }
+    };
+    applyPreviewCollapsed();
+    applyPreviewWidth();
+
+    _mountToggle(preview, 'right',
+      () => state.collapsedPreview,
+      (v) => { state.collapsedPreview = v; applyPreviewCollapsed(); _saveState(state); });
+
+    const resizer = _makeResizer(preview, 'right', {
+      min: 200, max: 600,
+      onPersist: (w) => { state.previewWidth = w; _saveState(state); },
+    });
+    body.insertBefore(resizer, preview);
+  }
+}
+
 export function initPanelLayout() {
   const state = _loadState();
 
@@ -170,6 +256,20 @@ export function initPanelLayout() {
       });
       mapRight.parentElement.insertBefore(resizer, mapRight);
     }
+  }
+
+  // ---- Phase 2: inner master-detail layout ----
+  _enhanceMasterDetail(state);
+
+  // Entity editors re-render on tab switch / selection change. Watch
+  // the tab-content subtree and enhance any new .editor-split or
+  // .editor-detail-body as it appears.
+  const tabContent = document.getElementById('tab-content');
+  if (tabContent && typeof MutationObserver === 'function') {
+    const observer = new MutationObserver(() => {
+      _enhanceMasterDetail(state);
+    });
+    observer.observe(tabContent, { childList: true, subtree: true });
   }
 
   // ---- Keyboard shortcuts: Ctrl+\ left, Ctrl+Shift+\ right ----
