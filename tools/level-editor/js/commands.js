@@ -110,6 +110,7 @@ export class CommandHistory {
     if (this.undoStack.length > this.maxSize) {
       this.undoStack.shift();
     }
+    console.log('[CH.execute]', command.type, '→ undoStack.length=', this.undoStack.length);
     if (this.onChange) {
       this.onChange('execute', command);
     }
@@ -164,13 +165,18 @@ export class CommandHistory {
    * @returns {void}
    */
   batchReplace(commands) {
-    if (commands.length <= 1) return;
+    console.log('[CH.batchReplace] commands.length=', commands.length, 'undoStack BEFORE:', this.undoStack.length);
+    if (commands.length <= 1) {
+      console.log('[CH.batchReplace] SKIP (≤1 command)');
+      return;
+    }
     for (const cmd of commands) {
       const idx = this.undoStack.indexOf(cmd);
       if (idx !== -1) this.undoStack.splice(idx, 1);
     }
     const batch = new BatchCommand(commands);
     this.undoStack.push(batch);
+    console.log('[CH.batchReplace] → undoStack AFTER:', this.undoStack.length);
     if (this.onChange) {
       this.onChange('execute', batch);
     }
@@ -181,6 +187,7 @@ export class CommandHistory {
    * @returns {void}
    */
   clear() {
+    console.log('[CH.clear] called! trace:', new Error().stack);
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     if (this.onChange) {
