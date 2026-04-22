@@ -13,7 +13,7 @@ import { HexCanvas } from './canvas.js';
 import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal, showPropOverrideModal } from './panels.js';
 import { KeyboardManager } from './keyboard.js';
 import { DirtyTracker } from './dirty-tracker.js';
-import { ToolManager } from './tools.js';
+import { ToolManager, RegionBrushPresets } from './tools.js';
 import { validateMap } from './validator.js';
 import { renderPropEditor } from './prop-editor.js';
 import { renderBiomeEditor } from './biome-editor.js';
@@ -377,6 +377,7 @@ keyboardManager.register('r', mapOnly(() => selectTool('prop')));
 keyboardManager.register('p', mapOnly(() => selectTool('spawn')));
 keyboardManager.register('x', mapOnly(() => selectTool('eraser')));
 keyboardManager.register('w', mapOnly(() => selectTool('wall')));
+keyboardManager.register('g', mapOnly(() => selectTool('region')));
 keyboardManager.register('d', mapOnly(() => selectTool('delete_hex')));
 keyboardManager.register('h', mapOnly(() => { if (hexCanvas) hexCanvas.centerOnSpawn(); }));
 keyboardManager.register('escape', mapOnly(() => selectTool('select')));
@@ -1399,6 +1400,7 @@ function _openCommandPaletteWithCtx() {
       populate: () => _clickByIdIfExists('btn-populate-map'),
       clearProps: () => _clickByIdIfExists('btn-clear-props'),
       smoothRocky: _smoothRockyPeaks,
+      regionBrush: () => selectTool('region'),
       help: _toggleHelpOverlay,
     },
     onRoute: (id) => switchTab(id),
@@ -1959,6 +1961,7 @@ const TOOL_GROUPS = [
     { type: 'biome',      label: 'Biome',      shortcut: 'B' },
     { type: 'elevation',  label: 'Elevation',   shortcut: 'E' },
     { type: 'wall',       label: 'Wall',        shortcut: 'W' },
+    { type: 'region',     label: 'Region',      shortcut: 'G' },
     { type: 'delete_hex', label: 'Delete Hex',  shortcut: 'D' },
   ]},
   { group: 'Sub-Hex Tools', tools: [
@@ -1979,6 +1982,7 @@ function initSidebar() {
   _initBiomePalette();
   _initPropPalette();
   _initElevationControls();
+  _initRegionBrushPanel();
   updateSidebar();
 
   // Trigger canvas resize to account for sidebar width
@@ -2372,6 +2376,172 @@ function _initPropPalette() {
 function _initElevationControls() {}
 
 /**
+ * Mount the Region Brush palette in the sidebar. Renders:
+ *   - Preset dropdown (Mountain Wall / Shoreline / Alpine Peak /
+ *     Volcanic Flow / Custom)
+ *   - Biome dropdown (all biomes, plus "— keep —" to leave biomes
+ *     alone)
+ *   - Elevation spinner (number | "— keep —")
+ *   - Hazard Level spinner
+ *   - Radius slider (1-30)
+ *   - Edge Roughness slider (0-1)
+ * Values are written into toolManager.regionConfig; the RegionBrush
+ * tool reads that dict on every stroke. Selecting a preset prefills
+ * the other fields but leaves them editable.
+ */
+function _initRegionBrushPanel() {
+  const host = document.getElementById('region-brush-controls');
+  if (!host) return;
+  host.innerHTML = '';
+
+  const row = (label, ctrl) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+    const lab = document.createElement('span');
+    lab.textContent = label;
+    lab.style.cssText = 'flex:0 0 90px;font-size:11px;color:var(--text-2);';
+    wrap.appendChild(lab);
+    wrap.appendChild(ctrl);
+    host.appendChild(wrap);
+  };
+
+  // Preset dropdown.
+  const presetSel = document.createElement('select');
+  presetSel.className = 'prop-input';
+  presetSel.style.cssText = 'flex:1;font-size:11px;';
+  for (const [key, preset] of Object.entries(RegionBrushPresets)) {
+    const o = document.createElement('option');
+    o.value = key;
+    o.textContent = preset.label;
+    presetSel.appendChild(o);
+  }
+  presetSel.value = 'CUSTOM';
+
+  // Biome dropdown. Populated each time the panel is shown so newly
+  // authored biomes surface without a restart.
+  const biomeSel = document.createElement('select');
+  biomeSel.className = 'prop-input';
+  biomeSel.style.cssText = 'flex:1;font-size:11px;';
+  const _refreshBiomeOptions = () => {
+    biomeSel.innerHTML = '';
+    const keep = document.createElement('option');
+    keep.value = '';
+    keep.textContent = '— keep existing —';
+    biomeSel.appendChild(keep);
+    const biomeEntries = (ProjectContext && ProjectContext.files && ProjectContext.files.biomes)
+      ? [...ProjectContext.files.biomes.keys()].sort() : [];
+    for (const fname of biomeEntries) {
+      const id = fname.replace('.tres', '');
+      const o = document.createElement('option');
+      o.value = id;
+      const data = ProjectContext.files.biomes.get(fname).data;
+      o.textContent = data && data.display_name ? `${id} — ${data.display_name}` : id;
+      biomeSel.appendChild(o);
+    }
+  };
+  _refreshBiomeOptions();
+
+  // Elevation: checkbox + number. Unchecked = "keep existing".
+  const elevWrap = document.createElement('div');
+  elevWrap.style.cssText = 'display:flex;gap:4px;align-items:center;flex:1;';
+  const elevSet = document.createElement('input');
+  elevSet.type = 'checkbox';
+  elevSet.title = 'Toggle off to leave tile elevation unchanged';
+  const elevInput = document.createElement('input');
+  elevInput.type = 'number';
+  elevInput.step = '1';
+  elevInput.value = '0';
+  elevInput.className = 'prop-input';
+  elevInput.style.cssText = 'width:70px;font-size:11px;';
+  elevInput.disabled = true;
+  elevWrap.appendChild(elevSet);
+  elevWrap.appendChild(elevInput);
+
+  // Hazard Level.
+  const hazInput = document.createElement('input');
+  hazInput.type = 'number';
+  hazInput.step = '1';
+  hazInput.min = '0';
+  hazInput.max = '99';
+  hazInput.value = '0';
+  hazInput.className = 'prop-input';
+  hazInput.style.cssText = 'width:70px;font-size:11px;';
+
+  // Radius + Roughness sliders.
+  const mkSlider = (min, max, step, value) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:6px;align-items:center;flex:1;';
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(value);
+    input.style.cssText = 'flex:1;';
+    const out = document.createElement('span');
+    out.textContent = String(value);
+    out.style.cssText = 'font-family:var(--font-mono);font-size:11px;color:var(--text-0);width:28px;text-align:right;';
+    input.addEventListener('input', () => { out.textContent = input.value; });
+    wrap.appendChild(input);
+    wrap.appendChild(out);
+    return { wrap, input };
+  };
+  const radius = mkSlider(1, 30, 1, 6);
+  const rough  = mkSlider(0, 1, 0.05, 0.5);
+
+  row('Preset',      presetSel);
+  row('Biome',       biomeSel);
+  row('Elevation',   elevWrap);
+  row('Hazard Lv',   hazInput);
+  row('Radius',      radius.wrap);
+  row('Edge rough.', rough.wrap);
+
+  // Sync any field change → toolManager.regionConfig.
+  const _syncConfig = () => {
+    toolManager.regionConfig = {
+      biome: biomeSel.value || null,
+      elevation: elevSet.checked ? (parseInt(elevInput.value, 10) || 0) : null,
+      hazard_level: Math.max(0, Math.min(99, parseInt(hazInput.value, 10) || 0)),
+      radius: Math.max(1, Math.min(30, parseInt(radius.input.value, 10) || 6)),
+      edge_roughness: Math.max(0, Math.min(1, parseFloat(rough.input.value) || 0.5)),
+    };
+  };
+  for (const el of [presetSel, biomeSel, elevInput, hazInput, radius.input, rough.input]) {
+    el.addEventListener('change', _syncConfig);
+    el.addEventListener('input', _syncConfig);
+  }
+  elevSet.addEventListener('change', () => {
+    elevInput.disabled = !elevSet.checked;
+    _syncConfig();
+  });
+
+  // Preset → prefill fields. Does not force-apply; user can still
+  // tweak numbers after selecting.
+  presetSel.addEventListener('change', () => {
+    const p = RegionBrushPresets[presetSel.value];
+    if (!p) return;
+    if (p.biome !== null) biomeSel.value = p.biome;
+    else biomeSel.value = '';
+    if (p.elevation !== null) {
+      elevSet.checked = true;
+      elevInput.disabled = false;
+      elevInput.value = String(p.elevation);
+    } else {
+      elevSet.checked = false;
+      elevInput.disabled = true;
+    }
+    hazInput.value = String(p.hazard_level);
+    radius.input.value = String(p.radius);
+    radius.input.dispatchEvent(new Event('input'));
+    rough.input.value = String(p.edge_roughness);
+    rough.input.dispatchEvent(new Event('input'));
+    _syncConfig();
+  });
+
+  _syncConfig();
+}
+
+/**
  * Update the sidebar to reflect current tool state.
  * Highlights active tool button, shows relevant palette, updates display.
  * @returns {void}
@@ -2390,7 +2560,7 @@ function updateSidebar() {
   });
 
   // Show/hide palettes based on active tool
-  const palettes = ['biome', 'prop', 'elevation'];
+  const palettes = ['biome', 'prop', 'elevation', 'region'];
   for (const p of palettes) {
     const el = document.getElementById('palette-' + p);
     if (!el) continue;

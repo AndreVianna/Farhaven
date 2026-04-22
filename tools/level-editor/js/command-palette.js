@@ -64,6 +64,7 @@ function _buildItems(ctx) {
     { id: 'populate', label: 'Populate Natural Props', icon: 'brush' },
     { id: 'clearProps', label: 'Clear Natural Props', icon: 'trash' },
     { id: 'smoothRocky', label: 'Smooth Rocky Peaks', icon: 'brush' },
+    { id: 'regionBrush', label: 'Region Brush Tool', icon: 'brush' },
     { id: 'help', label: 'Show Keyboard Shortcuts', icon: 'menu' },
   ];
   for (const c of CMD_DEFS) {

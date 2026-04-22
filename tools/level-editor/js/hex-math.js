@@ -91,6 +91,26 @@ export const HexMath = {
   },
 
   /**
+   * Return every axial coordinate within `radius` hex steps of
+   * `center` (default origin). Used by map-generator and the
+   * Region Brush to enumerate the splash area of a brush stroke.
+   * @param {number} radius
+   * @param {{q: number, r: number}} [center]
+   * @returns {Array<{q: number, r: number}>}
+   */
+  hexesInRadius(radius, center) {
+    const cq = (center && typeof center.q === 'number') ? center.q : 0;
+    const cr = (center && typeof center.r === 'number') ? center.r : 0;
+    const out = [];
+    for (let dq = -radius; dq <= radius; dq++) {
+      const r1 = Math.max(-radius, -dq - radius);
+      const r2 = Math.min(radius, -dq + radius);
+      for (let dr = r1; dr <= r2; dr++) out.push({ q: cq + dq, r: cr + dr });
+    }
+    return out;
+  },
+
+  /**
    * Returns the 6 corner points of a flat-top hex at pixel position (cx, cy).
    * @param {number} cx
    * @param {number} cy

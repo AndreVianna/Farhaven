@@ -946,6 +946,13 @@ input[type="checkbox"] {
               <span style="color:var(--text-2);">Water "level/elevation": floor cannot exceed surface.</span>
             </div>
           </div>
+
+          <!-- Region Brush: paints biome+elevation+hazard across a
+               radius with Perlin-noise edges. Mounted by app.js. -->
+          <div id="palette-region" class="sidebar-section palette hidden">
+            <label class="sidebar-label">Region Brush</label>
+            <div id="region-brush-controls"></div>
+          </div>
         </div>
         <canvas id="hex-canvas"></canvas>
         <aside id="sidebar">

@@ -8,6 +8,7 @@ import {
   SetBiomeCommand,
   SetElevationCommand,
   SetWaterLevelCommand,
+  SetTemperatureCommand,
   AddPropCommand,
   DeletePropCommand,
   SetSpawnCommand,
@@ -17,6 +18,7 @@ import {
   BatchCommand,
 } from './commands.js';
 import { ProjectContext } from './file-discovery.js';
+import { createNoise2D } from './simplex-noise.js';
 
 /**
  * Check if a sub-hex position is occupied by any prop on the tile.
@@ -46,6 +48,21 @@ export const ToolType = {
   ERASER: 'eraser',
   DELETE_HEX: 'delete_hex',
   WALL: 'wall',
+  REGION: 'region',
+};
+
+/**
+ * Built-in Region Brush presets. Each entry is a partial config —
+ * the brush merges it with whatever custom overrides the sidebar
+ * sliders produced at click time. `biome: null` or `elevation: null`
+ * means "don't touch this dimension on painted tiles".
+ */
+export const RegionBrushPresets = {
+  MOUNTAIN_WALL: { label: 'Mountain Wall',  biome: 'B00004', elevation: 10, hazard_level: 0, radius: 8,  edge_roughness: 0.6 },
+  SHORELINE:     { label: 'Shoreline',      biome: 'B00008', elevation: 0,  hazard_level: 0, radius: 4,  edge_roughness: 0.7 },
+  ALPINE_PEAK:   { label: 'Alpine Peak',    biome: 'B00007', elevation: 12, hazard_level: 2, radius: 10, edge_roughness: 0.5 },
+  VOLCANIC_FLOW: { label: 'Volcanic Flow',  biome: 'B00006', elevation: 3,  hazard_level: 3, radius: 12, edge_roughness: 0.7 },
+  CUSTOM:        { label: 'Custom',         biome: null,     elevation: null, hazard_level: 0, radius: 6, edge_roughness: 0.5 },
 };
 
 
@@ -300,6 +317,94 @@ export class ElevationBrush extends DragBrushTool {
 }
 
 
+/**
+ * Region Brush — paints a radial splash of tiles with organic edge
+ * noise. Each click/drag applies:
+ *   - biome change to a chosen biome (optional; null skips)
+ *   - elevation set to a chosen value (optional; null skips)
+ *   - hazard-level (tile.temperature) set to a chosen value
+ * Per-tile decision: a simplex-noise lookup at the tile's axial
+ * coordinates combined with the tile's distance from the brush
+ * center determines whether the tile falls inside the ragged
+ * boundary. The entire stroke is one undo step.
+ */
+export class RegionBrush extends DragBrushTool {
+  constructor(grid, cmdHistory, toolManager) {
+    super(grid, cmdHistory, toolManager);
+    /** @type {((x:number,y:number)=>number)|null} Noise sampler,
+     *  created per stroke so repeated strokes don't look identical. */
+    this._noise = null;
+  }
+
+  onMouseDown(hex) {
+    // Re-seed the noise for every stroke so successive strokes look
+    // different. Math.random() seed is fine — region painting is not
+    // meant to be reproducible across sessions.
+    this._noise = createNoise2D(Math.random() * 2147483647);
+    super.onMouseDown(hex);
+  }
+
+  _cfg() {
+    const sidebar = (this.toolManager && this.toolManager.regionConfig) || {};
+    return {
+      biome: (typeof sidebar.biome === 'string' && sidebar.biome !== '') ? sidebar.biome : null,
+      elevation: Number.isFinite(sidebar.elevation) ? (sidebar.elevation | 0) : null,
+      hazard_level: Number.isFinite(sidebar.hazard_level) ? (sidebar.hazard_level | 0) : 0,
+      radius: Math.max(1, Math.min(30, sidebar.radius | 0 || 6)),
+      edge_roughness: Math.max(0, Math.min(1, typeof sidebar.edge_roughness === 'number' ? sidebar.edge_roughness : 0.5)),
+    };
+  }
+
+  /** Apply at the brush centre hex, splashing outward through the
+   *  configured radius with organic-edge noise. Dedup keeps nearby
+   *  strokes from re-painting the same tile with a different noise
+   *  sample. */
+  _applyToHex(center) {
+    const cfg = this._cfg();
+    const noise = this._noise || createNoise2D(Math.random() * 2147483647);
+    const candidates = HexMath.hexesInRadius(cfg.radius, center);
+    for (const hex of candidates) {
+      const key = `${hex.q},${hex.r}`;
+      if (this._visited.has(key)) continue;
+      const d = HexMath.distance(hex.q, hex.r, center.q, center.r);
+      const nraw = (noise(hex.q * 0.18, hex.r * 0.18) + 1) / 2;        // [0,1]
+      // Paint probability ramp: at d=0 threshold is 0.5 - roughness
+      // (always painted); at d=radius threshold is 1.5 - roughness
+      // (rarely painted). Roughness bends the ramp.
+      const threshold = (d / cfg.radius) - cfg.edge_roughness + 0.5;
+      if (nraw <= threshold) continue;
+      this._visited.add(key);
+      this._paintTile(hex, cfg);
+    }
+  }
+
+  _paintTile(hex, cfg) {
+    let tile = this.grid.getTile(hex.q, hex.r);
+    // Create missing tiles so a brush can fill ghost cells — matches
+    // the elevation/biome brush behavior.
+    if (!tile) {
+      tile = createTileData(cfg.biome || '');
+      this.grid.setTile(hex.q, hex.r, tile);
+    }
+    if (cfg.biome && tile.biome !== cfg.biome) {
+      const cmd = new SetBiomeCommand(this.grid, hex.q, hex.r, tile.biome, cfg.biome, null);
+      this.commandHistory.execute(cmd);
+      this._dragCommands.push(cmd);
+    }
+    if (cfg.elevation !== null && tile.elevation !== cfg.elevation) {
+      const cmd = new SetElevationCommand(this.grid, hex.q, hex.r, tile.elevation, cfg.elevation);
+      this.commandHistory.execute(cmd);
+      this._dragCommands.push(cmd);
+    }
+    if ((tile.temperature | 0) !== cfg.hazard_level) {
+      const cmd = new SetTemperatureCommand(this.grid, hex.q, hex.r, tile.temperature | 0, cfg.hazard_level);
+      this.commandHistory.execute(cmd);
+      this._dragCommands.push(cmd);
+    }
+  }
+}
+
+
 export class EraserTool extends DragBrushTool {
   /** @param {{ q: number, r: number, sq?: number, sr?: number }} hex */
   _applyToHex(hex) {
@@ -451,6 +556,15 @@ export class ToolManager {
     this.onStatus = null;
     /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */
     this.canvas = null;
+    /** @type {{biome: string|null, elevation: number|null, hazard_level: number, radius: number, edge_roughness: number}}
+     *  Region Brush config — populated by the sidebar panel. */
+    this.regionConfig = {
+      biome: null,
+      elevation: null,
+      hazard_level: 0,
+      radius: 6,
+      edge_roughness: 0.5,
+    };
   }
 
   /**
@@ -499,6 +613,9 @@ export class ToolManager {
         break;
       case ToolType.WALL:
         this.activeTool = new WallTool(this.grid, this.commandHistory, this);
+        break;
+      case ToolType.REGION:
+        this.activeTool = new RegionBrush(this.grid, this.commandHistory, this);
         break;
       default:
         this.activeTool = null;
