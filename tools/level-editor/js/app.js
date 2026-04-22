@@ -393,6 +393,8 @@ keyboardManager.register('ctrl+shift+z', () => {
   if (hexCanvas) hexCanvas.requestRender();
   updateTabIndicators();
 });
+// Expose for dev inspection: `__CH.undoStack.length` in DevTools.
+if (typeof window !== 'undefined') window.__CH = commandHistory;
 keyboardManager.register('ctrl+s', () => saveAll());
 keyboardManager.register('ctrl+shift+s', () => saveMapAs());
 keyboardManager.register('ctrl+n', () => newMap());
