@@ -171,6 +171,12 @@ We are replacing binary traversability (water = blocked, elevation diff > 4 = bl
 7. **Region Brush.** Build the tool + palette panel + presets. This is the biggest UI chunk; ship last because it depends on all the preceding groundwork (new biomes visible in palette, temperature command exists, region math shared with generator).
 8. **Cleanup.** Remove `passAccessibility` Steps 1 & 2 from `map-generator.js`. Add the optional Shoreline auto-coat pass. Update the generator dialog.
 
+## Decisions (2026-04-22, Andre)
+
+- **Slope rule is symmetrical.** `abs(tile_to.elevation - tile_from.elevation) > 4` → BLOCKED. Drops are capped at the same 4-unit limit as climbs. Old JUMP/DROP tiers collapse into a single WALK(0-2) + JUMP(3-4) ladder in both directions.
+- **Temperature 4 = ~1-second-till-death.** Not a literal instant kill. On enter, `SurvivalSystem` starts draining health at ≥ max_hp per second so the player has a ~1-second grace window to step back. Implementation: `HAZARD_CONFIG.heat[4].health = max_hp` (or very close — make it config) per tick, with the tick loop running every 0.25s. If the player is still on the tile after 4 ticks, they die. Entering is the trigger event; bumping-the-boundary just gets slide-blocked like any impassable tile.
+- **Remove wall rule on biome transitions.** Walls keep their semantic meaning as "hard elevation cut — no blending". Transition from Water to any land biome (Shoreline, Grassland, Rocky) no longer auto-creates a wall. Rendering falls back to elevation blend, which is correct for Shoreline-against-Water. Authors can still place walls manually where they want a cut.
+
 ## Risks, open questions, decisions deferred
 
 - **Biome int mapping.** `MapLoader._biome_id_to_int` is keyed on alphabetized `.tres` filenames, which means adding B00006–B00008 shifts nothing (they sort after B00005). But any code that stores the int biome in a save and reloads with a different biome set will desync. There is currently no such save path (biomes live on tiles, tiles come from the JSON), so we're safe — but document it.
