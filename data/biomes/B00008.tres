@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3 uid="uid://cshore00000001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"B00008"
+display_name = "Shoreline"
+short_description = "Sandy beach between water and land."
+long_description = "Wet-and-dry sand strewn with pebbles and the occasional drift of kelp or shells. Easy to cross but scarce in cover, it reads as the boundary between swim-depths and the grass behind. Chapter 1's beaches are temperate; the Desertic version will live in a later biome."
+color = Color(0.87, 0.82, 0.67, 1.0)

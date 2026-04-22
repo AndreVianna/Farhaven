@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=3 format=3 uid="uid://cvolcan0000001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/hazard_cap.gd" id="2_hazard_cap"]
+
+[sub_resource type="Resource" id="hazard_1"]
+script = ExtResource("2_hazard_cap")
+damage_type = &"heat"
+health_damage = Array[int]([0, 5, 15, 50])
+thirst_drain = Array[int]([5, 14, 25, 35])
+hunger_drain = Array[int]([0, 0, 0, 0])
+
+[resource]
+script = ExtResource("1_biome")
+id = &"B00006"
+display_name = "Volcanic"
+short_description = "Black basalt rock with glowing lava veins."
+long_description = "Ground cooked by old magma intrusions and still warm to the touch. Crystallized flows crack into sharp edges; the air tastes of sulfur, and the brightest veins will char anything that lingers. Useful minerals sit just below the crust where the heat hasn't gotten to them yet."
+color = Color(0.18, 0.12, 0.14, 1.0)
+hazard = SubResource("hazard_1")

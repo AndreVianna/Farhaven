@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=3 format=3 uid="uid://calpine0000001"]
+
+[ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
+[ext_resource type="Script" path="res://scripts/data/capabilities/hazard_cap.gd" id="2_hazard_cap"]
+
+[sub_resource type="Resource" id="hazard_1"]
+script = ExtResource("2_hazard_cap")
+damage_type = &"cold"
+health_damage = Array[int]([0, 5, 15, 50])
+thirst_drain = Array[int]([0, 0, 0, 0])
+hunger_drain = Array[int]([5, 14, 25, 35])
+
+[resource]
+script = ExtResource("1_biome")
+id = &"B00007"
+display_name = "Alpine"
+short_description = "Snowy stone peaks above the treeline."
+long_description = "Thin air, fresh snow, and bare rock polished by wind. Travel is slow and calorie-hungry; the summits bite anything that isn't bundled. Rare mineral lenses catch the sunrise from angles the lowlands never see."
+color = Color(0.85, 0.88, 0.92, 1.0)
+hazard = SubResource("hazard_1")
