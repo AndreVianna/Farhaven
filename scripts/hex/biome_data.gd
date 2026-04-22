@@ -26,14 +26,12 @@ extends Gear
 ## biome contributes no generative props.
 @export var natural_props: Array[Resource] = []
 
-## Per-biome hazard semantics. Tells the engine what the per-tile
-## `temperature` value means on any tile that carries this biome:
-##   &"none" — temperature ignored (default).
-##   &"heat" — temperature drains player thirst and damages HP at
-##             higher levels. Lava flow territory (Volcanic biome).
-##   &"cold" — temperature drains player hunger and damages HP at
-##             higher levels. Snowy peak territory (Alpine biome).
-## SurvivalSystem reads this + tile.temperature (0-4) from
-## HAZARD_CONFIG to determine the per-tick drain. 4 is a ~1-second
-## time-to-death pulse.
-@export var hazard_type: StringName = &"none"
+## Environmental hazard capability — when non-null, the biome's
+## per-tile `temperature` value drives SurvivalSystem drain and
+## damage through `HAZARD_CONFIG`, using the cap's `type` (heat /
+## cold) to pick which stat to drain. Null means thermally neutral
+## (most biomes). Modeled as an Array[Resource] slot only insofar as
+## we follow the same "capability resource" pattern the PropDef
+## caps use (PlaceableCap, HarvestableCap, …) — BiomeData was flat
+## before this.
+@export var hazard: Resource = null

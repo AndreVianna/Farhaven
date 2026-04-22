@@ -76,10 +76,13 @@ export class BiomeDataModel {
     this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {string} Hazard semantics: 'none' (default) | 'heat' | 'cold'.
-     *  Tells SurvivalSystem what the per-tile temperature value means on
-     *  this biome (heat = drain thirst, cold = drain hunger). */
-    this.hazard_type = 'none';
+    /** @type {{type: string} | null} Environmental hazard capability.
+     *  When null, the biome has no hazard (most biomes). When non-null,
+     *  the `type` field ('heat' | 'cold') drives SurvivalSystem drain
+     *  paired with each tile's `temperature` (0-4). Mirrors GDScript
+     *  `HazardCap` resource at `scripts/data/capabilities/hazard_cap.gd`
+     *  and serializes as a sub_resource in the biome .tres. */
+    this.hazard = null;
     /**
      * Generative prop distribution entries. Mirrors the GDScript
      * `BiomeProp` resource. Empty = biome doesn't populate props.
@@ -157,10 +160,20 @@ export class BiomeDataModel {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
 
-    // hazard_type — StringName in .tres, comes out as plain string.
-    // Defaults to 'none' so pre-existing biomes keep behaving like today.
-    const rawHazard = _str(d.hazard_type);
-    model.hazard_type = (rawHazard === 'heat' || rawHazard === 'cold') ? rawHazard : 'none';
+    // hazard: optional HazardCap sub_resource reference. Parse same way
+    // PlaceableCap is resolved — look up the referenced sub_resource in
+    // the TresFile, then read its fields into a plain JS object.
+    if (d.hazard && typeof d.hazard === 'object' && d.hazard.type === 'sub_resource' && entry.raw && Array.isArray(entry.raw.subResources)) {
+      const sub = entry.raw.subResources.find((s) => s && s.id === d.hazard.value);
+      if (sub && sub.fields) {
+        const subData = {};
+        for (const [k, v] of sub.fields) subData[k] = v.value;
+        const rawHazard = _str(subData.type);
+        if (rawHazard === 'heat' || rawHazard === 'cold') {
+          model.hazard = { type: rawHazard };
+        }
+      }
+    }
 
     // natural_props: Array[Resource] of BiomeProp sub_resources.
     // Same dereferencing pattern as PropDef.placeable.meshes — the raw
@@ -1260,6 +1273,39 @@ export function renderBiomeEditor(container, options) {
     grid.appendChild(colorLabel);
     grid.appendChild(colorCell);
 
+    // ── Hazard cap ──
+    const hazardLabel = document.createElement('div');
+    hazardLabel.className = 'prop-label';
+    hazardLabel.textContent = 'Hazard';
+    const hazardCell = document.createElement('div');
+    hazardCell.style.cssText = 'display:flex;gap:6px;align-items:center;';
+    const hazardSelect = document.createElement('select');
+    hazardSelect.name = 'hazard';
+    hazardSelect.className = 'prop-input';
+    hazardSelect.dataset.field = 'hazard';
+    hazardSelect.style.cssText = 'flex:0 0 auto;min-width:120px;';
+    const hazardOptions = [
+      { value: 'none', label: 'None' },
+      { value: 'heat', label: 'Heat (Volcanic)' },
+      { value: 'cold', label: 'Cold (Alpine)' },
+    ];
+    for (const opt of hazardOptions) {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      if ((model.hazard && model.hazard.type === opt.value) || (!model.hazard && opt.value === 'none')) {
+        o.selected = true;
+      }
+      hazardSelect.appendChild(o);
+    }
+    const hazardHint = document.createElement('span');
+    hazardHint.style.cssText = 'color:var(--text-secondary);font-size:11px;';
+    hazardHint.textContent = 'Drains thirst (heat) or hunger (cold) based on tile temperature 0–4.';
+    hazardCell.appendChild(hazardSelect);
+    hazardCell.appendChild(hazardHint);
+    grid.appendChild(hazardLabel);
+    grid.appendChild(hazardCell);
+
     // ── Textures section ──
     const texSep = document.createElement('div');
     texSep.className = 'prop-separator';
@@ -1463,6 +1509,14 @@ function _collectBiomeFormData(formElement) {
   // Color
   model.color = _hexToColor(val('color'));
 
+  // Hazard cap — 'none' collapses back to a null cap so the field
+  // isn't written to the .tres. heat/cold produce a minimal
+  // { type } object, emitted as a HazardCap sub_resource.
+  const hazardValue = val('hazard');
+  model.hazard = (hazardValue === 'heat' || hazardValue === 'cold')
+    ? { type: hazardValue }
+    : null;
+
   // Natural props — one card per entry, collected back to plain
   // JS objects for emit. The simplified UI only exposes prop_id,
   // frequency, and grouping; the other condition fields are stashed
@@ -1623,6 +1677,16 @@ export function biomeModelToRaw(model) {
     biomePropExtId = (prevBp && prevBp.id) ? prevBp.id : `${nextTexIdx++}_biome_prop`;
     newExtResources.push(`[ext_resource type="Script" path="${bpPath}" id="${biomePropExtId}"]`);
   }
+
+  // Add the hazard_cap.gd ext_resource when the biome has a hazard
+  // capability. Reuse any prior id when present.
+  let hazardCapExtId = null;
+  if (model.hazard && typeof model.hazard === 'object' && model.hazard.type) {
+    const hcPath = 'res://scripts/data/capabilities/hazard_cap.gd';
+    const prevHc = prevIdByPath.get(hcPath);
+    hazardCapExtId = (prevHc && prevHc.id) ? prevHc.id : `${nextTexIdx++}_hazard_cap`;
+    newExtResources.push(`[ext_resource type="Script" path="${hcPath}" id="${hazardCapExtId}"]`);
+  }
   raw.extResources = newExtResources;
 
   // Rebuild sub_resources from natural_props. Each entry becomes one
@@ -1635,6 +1699,18 @@ export function biomeModelToRaw(model) {
   const MANAGED_SUB_IDS = new Set();
   const subResources = [];
   const biomePropRefs = [];
+  // HazardCap sub_resource — emitted first so it stays near the top of
+  // the file for readability. ID is stable ('hazard_1') so round-trip
+  // diffs are clean.
+  let hazardSubId = null;
+  if (hazardCapExtId && model.hazard) {
+    hazardSubId = 'hazard_1';
+    MANAGED_SUB_IDS.add(hazardSubId);
+    const hazardFields = new Map();
+    hazardFields.set('script', { type: 'ext_resource', value: `ExtResource("${hazardCapExtId}")` });
+    hazardFields.set('type', { type: 'stringname', value: model.hazard.type });
+    subResources.push({ type: 'Resource', id: hazardSubId, fields: hazardFields });
+  }
   if (biomePropExtId && Array.isArray(model.natural_props)) {
     for (let i = 0; i < model.natural_props.length; i++) {
       const np = model.natural_props[i];
@@ -1711,10 +1787,11 @@ export function biomeModelToRaw(model) {
     value: { r: model.color.r, g: model.color.g, b: model.color.b, a: model.color.a },
   });
 
-  // hazard_type: StringName. Only emitted when non-default so legacy
-  // biomes that never gained a hazard stay byte-clean on save.
-  if (model.hazard_type && model.hazard_type !== 'none') {
-    fields.set('hazard_type', { type: 'stringname', value: model.hazard_type });
+  // hazard: sub_resource ref to the HazardCap emitted above. Only
+  // emitted when the model has a hazard so legacy biomes round-trip
+  // unchanged.
+  if (hazardSubId) {
+    fields.set('hazard', { type: 'sub_resource', value: hazardSubId });
   }
 
   // natural_props: Array[Resource] of BiomeProp sub_resources. Emitted
