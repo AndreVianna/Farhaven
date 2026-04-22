@@ -61,6 +61,17 @@ function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
 /** @type {Set<string>} Biome IDs recognized by the game MapLoader */
 
 /**
+ * Default HazardCap payloads by damage_type, mirroring the GDScript
+ * class's default field values. Used when a biome switches from "No
+ * hazard" to a hazard type in the editor.
+ * @type {Object<string, {damage_type: string, health_damage: number[], thirst_drain: number[], hunger_drain: number[]}>}
+ */
+export const HAZARD_DEFAULTS = {
+  heat: { damage_type: 'heat', health_damage: [0, 5, 15, 50], thirst_drain: [5, 14, 25, 35], hunger_drain: [0, 0, 0, 0] },
+  cold: { damage_type: 'cold', health_damage: [0, 5, 15, 50], thirst_drain: [0, 0, 0, 0], hunger_drain: [5, 14, 25, 35] },
+};
+
+/**
  * Maps a parsed .tres BiomeData to an editable JS model.
  * All fields mirror the BiomeData GDScript class.
  */
@@ -76,12 +87,18 @@ export class BiomeDataModel {
     this.long_description = '';
     /** @type {{ r: number, g: number, b: number, a: number }} */
     this.color = { r: 0, g: 0, b: 0, a: 1 };
-    /** @type {{type: string} | null} Environmental hazard capability.
-     *  When null, the biome has no hazard (most biomes). When non-null,
-     *  the `type` field ('heat' | 'cold') drives SurvivalSystem drain
-     *  paired with each tile's `temperature` (0-4). Mirrors GDScript
-     *  `HazardCap` resource at `scripts/data/capabilities/hazard_cap.gd`
-     *  and serializes as a sub_resource in the biome .tres. */
+    /**
+     * Environmental hazard capability, or null for thermally neutral
+     * biomes. Mirrors `scripts/data/capabilities/hazard_cap.gd` — each
+     * numeric array has four entries indexed by temperature level 1-4
+     * (level 0 is implicitly no damage).
+     * @type {{
+     *   damage_type: string,
+     *   health_damage: number[],
+     *   thirst_drain: number[],
+     *   hunger_drain: number[],
+     * } | null}
+     */
     this.hazard = null;
     /**
      * Generative prop distribution entries. Mirrors the GDScript
@@ -160,17 +177,26 @@ export class BiomeDataModel {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
 
-    // hazard: optional HazardCap sub_resource reference. Parse same way
-    // PlaceableCap is resolved — look up the referenced sub_resource in
-    // the TresFile, then read its fields into a plain JS object.
+    // hazard: optional HazardCap sub_resource reference. Resolve the
+    // sub_resource the same way PlaceableCap is handled — look up the
+    // referenced sub_resource in the TresFile and pull its fields
+    // into a plain JS object. Any missing array defaults to the heat
+    // preset so partially-authored .tres files still round-trip.
     if (d.hazard && typeof d.hazard === 'object' && d.hazard.type === 'sub_resource' && entry.raw && Array.isArray(entry.raw.subResources)) {
       const sub = entry.raw.subResources.find((s) => s && s.id === d.hazard.value);
       if (sub && sub.fields) {
         const subData = {};
         for (const [k, v] of sub.fields) subData[k] = v.value;
-        const rawHazard = _str(subData.type);
-        if (rawHazard === 'heat' || rawHazard === 'cold') {
-          model.hazard = { type: rawHazard };
+        const dtype = _str(subData.damage_type) || _str(subData.type); // backwards-compat with older `type` field
+        const arrOr = (v, fallback) => Array.isArray(v) && v.length === 4 ? v.map((n) => Number.isFinite(n) ? n : 0) : fallback;
+        const preset = HAZARD_DEFAULTS[dtype] || HAZARD_DEFAULTS.heat;
+        if (dtype) {
+          model.hazard = {
+            damage_type: dtype,
+            health_damage: arrOr(subData.health_damage, preset.health_damage.slice()),
+            thirst_drain:  arrOr(subData.thirst_drain,  preset.thirst_drain.slice()),
+            hunger_drain:  arrOr(subData.hunger_drain,  preset.hunger_drain.slice()),
+          };
         }
       }
     }
@@ -1293,7 +1319,7 @@ export function renderBiomeEditor(container, options) {
       const o = document.createElement('option');
       o.value = opt.value;
       o.textContent = opt.label;
-      if ((model.hazard && model.hazard.type === opt.value) || (!model.hazard && opt.value === 'none')) {
+      if ((model.hazard && model.hazard.damage_type === opt.value) || (!model.hazard && opt.value === 'none')) {
         o.selected = true;
       }
       hazardSelect.appendChild(o);
@@ -1510,12 +1536,26 @@ function _collectBiomeFormData(formElement) {
   model.color = _hexToColor(val('color'));
 
   // Hazard cap — 'none' collapses back to a null cap so the field
-  // isn't written to the .tres. heat/cold produce a minimal
-  // { type } object, emitted as a HazardCap sub_resource.
+  // isn't written to the .tres. heat/cold either reuses the existing
+  // drain tables (if the user was already on that hazard) or falls
+  // back to the HAZARD_DEFAULTS preset.
   const hazardValue = val('hazard');
-  model.hazard = (hazardValue === 'heat' || hazardValue === 'cold')
-    ? { type: hazardValue }
-    : null;
+  if (hazardValue === 'heat' || hazardValue === 'cold') {
+    if (model.hazard && model.hazard.damage_type === hazardValue) {
+      // keep whatever values the user may have authored on disk; the
+      // dropdown doesn't expose per-level editing yet (future UI).
+    } else {
+      const preset = HAZARD_DEFAULTS[hazardValue];
+      model.hazard = {
+        damage_type: preset.damage_type,
+        health_damage: preset.health_damage.slice(),
+        thirst_drain:  preset.thirst_drain.slice(),
+        hunger_drain:  preset.hunger_drain.slice(),
+      };
+    }
+  } else {
+    model.hazard = null;
+  }
 
   // Natural props — one card per entry, collected back to plain
   // JS objects for emit. The simplified UI only exposes prop_id,
@@ -1706,9 +1746,17 @@ export function biomeModelToRaw(model) {
   if (hazardCapExtId && model.hazard) {
     hazardSubId = 'hazard_1';
     MANAGED_SUB_IDS.add(hazardSubId);
+    const h = model.hazard;
+    const intArr = (vals) => ({
+      type: 'array', elementType: 'int',
+      value: (vals || [0, 0, 0, 0]).map((n) => ({ type: 'int', value: n | 0 })),
+    });
     const hazardFields = new Map();
     hazardFields.set('script', { type: 'ext_resource', value: `ExtResource("${hazardCapExtId}")` });
-    hazardFields.set('type', { type: 'stringname', value: model.hazard.type });
+    hazardFields.set('damage_type', { type: 'stringname', value: h.damage_type });
+    hazardFields.set('health_damage', intArr(h.health_damage));
+    hazardFields.set('thirst_drain',  intArr(h.thirst_drain));
+    hazardFields.set('hunger_drain',  intArr(h.hunger_drain));
     subResources.push({ type: 'Resource', id: hazardSubId, fields: hazardFields });
   }
   if (biomePropExtId && Array.isArray(model.natural_props)) {
