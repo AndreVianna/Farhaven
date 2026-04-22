@@ -1304,16 +1304,23 @@ export function renderBiomeEditor(container, options) {
     hazardLabel.className = 'prop-label';
     hazardLabel.textContent = 'Hazard';
     const hazardCell = document.createElement('div');
-    hazardCell.style.cssText = 'display:flex;gap:6px;align-items:center;';
+    hazardCell.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+    // Type dropdown.
+    const hazardTopRow = document.createElement('div');
+    hazardTopRow.style.cssText = 'display:flex;gap:6px;align-items:center;';
     const hazardSelect = document.createElement('select');
-    hazardSelect.name = 'hazard';
+    hazardSelect.name = 'hazard_type';
     hazardSelect.className = 'prop-input';
-    hazardSelect.dataset.field = 'hazard';
-    hazardSelect.style.cssText = 'flex:0 0 auto;min-width:120px;';
+    hazardSelect.dataset.field = 'hazard_type';
+    hazardSelect.style.cssText = 'flex:0 0 auto;min-width:160px;';
     const hazardOptions = [
       { value: 'none', label: 'None' },
-      { value: 'heat', label: 'Heat (Volcanic)' },
-      { value: 'cold', label: 'Cold (Alpine)' },
+      { value: 'heat', label: 'Heat' },
+      { value: 'cold', label: 'Cold' },
+      { value: 'asphyxiation', label: 'Asphyxiation' },
+      { value: 'poison', label: 'Poison' },
+      { value: 'acid', label: 'Acid' },
     ];
     for (const opt of hazardOptions) {
       const o = document.createElement('option');
@@ -1326,9 +1333,140 @@ export function renderBiomeEditor(container, options) {
     }
     const hazardHint = document.createElement('span');
     hazardHint.style.cssText = 'color:var(--text-secondary);font-size:11px;';
-    hazardHint.textContent = 'Drains thirst (heat) or hunger (cold) based on tile temperature 0–4.';
-    hazardCell.appendChild(hazardSelect);
-    hazardCell.appendChild(hazardHint);
+    hazardHint.textContent = 'Per-second drain at each tile temperature 1–4.';
+    hazardTopRow.appendChild(hazardSelect);
+    hazardTopRow.appendChild(hazardHint);
+    hazardCell.appendChild(hazardTopRow);
+
+    // Damage table — 3 rows (health / thirst / hunger) × N cols where
+    // N is the number of temperature levels on this cap. Levels can
+    // be added or removed with the + / X buttons in the header.
+    const hazardTable = document.createElement('div');
+    hazardTable.dataset.field = 'hazard_table';
+    hazardTable.style.cssText = 'display:grid;gap:4px;align-items:center;padding:6px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:4px;';
+
+    const STAT_ROWS = [
+      { key: 'health_damage', label: 'Health dmg' },
+      { key: 'thirst_drain',  label: 'Thirst drain' },
+      { key: 'hunger_drain',  label: 'Hunger drain' },
+    ];
+
+    const mkSpan = (text, style) => {
+      const s = document.createElement('span');
+      s.textContent = text;
+      if (style) s.style.cssText = style;
+      return s;
+    };
+
+    const _readHazardRows = () => {
+      // Collapse current DOM inputs back into { stat: number[] }.
+      const lvlCells = hazardTable.querySelectorAll('[data-kind="lvl-header"]');
+      const nLevels = lvlCells.length;
+      const out = { health_damage: [], thirst_drain: [], hunger_drain: [] };
+      for (const row of STAT_ROWS) {
+        for (let i = 0; i < nLevels; i++) {
+          const el = hazardTable.querySelector(`input[data-stat="${row.key}"][data-lvl="${i}"]`);
+          out[row.key].push(el ? (parseInt(/** @type {HTMLInputElement} */ (el).value, 10) || 0) : 0);
+        }
+      }
+      return out;
+    };
+
+    const renderHazardTable = (nLevels, values) => {
+      hazardTable.innerHTML = '';
+      hazardTable.style.gridTemplateColumns = `auto repeat(${nLevels}, minmax(60px, 1fr)) 30px`;
+
+      // Header row: empty corner + Lv 1..N + add button.
+      hazardTable.appendChild(mkSpan('', ''));
+      for (let i = 0; i < nLevels; i++) {
+        const wrap = document.createElement('div');
+        wrap.dataset.kind = 'lvl-header';
+        wrap.dataset.lvl = String(i);
+        wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:2px;';
+        const lbl = mkSpan(`Lv ${i + 1}`, 'font-size:10.5px;color:var(--text-2);text-transform:uppercase;');
+        wrap.appendChild(lbl);
+        // Remove-column button (only when > 1 level).
+        if (nLevels > 1) {
+          const rmBtn = document.createElement('button');
+          rmBtn.type = 'button';
+          rmBtn.textContent = '×';
+          rmBtn.title = `Remove level ${i + 1}`;
+          rmBtn.className = 'prop-btn-icon';
+          rmBtn.style.cssText = 'padding:0 4px;font-size:13px;line-height:1;color:var(--text-2);';
+          rmBtn.addEventListener('click', () => {
+            const current = _readHazardRows();
+            for (const row of STAT_ROWS) current[row.key].splice(i, 1);
+            renderHazardTable(nLevels - 1, current);
+          });
+          wrap.appendChild(rmBtn);
+        }
+        hazardTable.appendChild(wrap);
+      }
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.textContent = '+';
+      addBtn.title = 'Add level';
+      addBtn.className = 'prop-btn';
+      addBtn.style.cssText = 'padding:0;font-weight:600;';
+      addBtn.addEventListener('click', () => {
+        const current = _readHazardRows();
+        // New level defaults to the last column's value (or 0 if empty).
+        for (const row of STAT_ROWS) {
+          const last = current[row.key].length > 0 ? current[row.key][current[row.key].length - 1] : 0;
+          current[row.key].push(last);
+        }
+        renderHazardTable(nLevels + 1, current);
+      });
+      hazardTable.appendChild(addBtn);
+
+      // Data rows.
+      for (const row of STAT_ROWS) {
+        hazardTable.appendChild(mkSpan(row.label, 'font-size:11px;color:var(--text-1);'));
+        const arr = Array.isArray(values && values[row.key]) ? values[row.key] : [];
+        for (let i = 0; i < nLevels; i++) {
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.step = '1';
+          input.min = '0';
+          input.dataset.stat = row.key;
+          input.dataset.lvl = String(i);
+          input.className = 'prop-input';
+          input.style.cssText = 'width:100%;text-align:right;';
+          input.value = String((arr[i] || 0) | 0);
+          hazardTable.appendChild(input);
+        }
+        // Empty cell under the + button.
+        hazardTable.appendChild(mkSpan('', ''));
+      }
+    };
+
+    const initialLevels = model.hazard && Array.isArray(model.hazard.health_damage)
+      ? Math.max(1, model.hazard.health_damage.length)
+      : 4;
+    const initialValues = model.hazard || { health_damage: [], thirst_drain: [], hunger_drain: [] };
+    renderHazardTable(initialLevels, initialValues);
+
+    const syncHazardTableEnabled = () => {
+      const disabled = hazardSelect.value === 'none';
+      hazardTable.style.opacity = disabled ? '0.4' : '1';
+      hazardTable.style.pointerEvents = disabled ? 'none' : 'auto';
+    };
+    syncHazardTableEnabled();
+
+    // When the user switches between hazard types, refresh the table
+    // with preset values when there is a canonical preset (heat/cold).
+    // Other damage_types reuse whatever values are currently in the
+    // table.
+    hazardSelect.addEventListener('change', () => {
+      syncHazardTableEnabled();
+      const preset = HAZARD_DEFAULTS[hazardSelect.value];
+      if (preset) {
+        renderHazardTable(preset.health_damage.length, preset);
+      }
+    });
+
+    hazardCell.appendChild(hazardTable);
+
     grid.appendChild(hazardLabel);
     grid.appendChild(hazardCell);
 
@@ -1536,22 +1674,33 @@ function _collectBiomeFormData(formElement) {
   model.color = _hexToColor(val('color'));
 
   // Hazard cap — 'none' collapses back to a null cap so the field
-  // isn't written to the .tres. heat/cold either reuses the existing
-  // drain tables (if the user was already on that hazard) or falls
-  // back to the HAZARD_DEFAULTS preset.
-  const hazardValue = val('hazard');
-  if (hazardValue === 'heat' || hazardValue === 'cold') {
-    if (model.hazard && model.hazard.damage_type === hazardValue) {
-      // keep whatever values the user may have authored on disk; the
-      // dropdown doesn't expose per-level editing yet (future UI).
-    } else {
-      const preset = HAZARD_DEFAULTS[hazardValue];
-      model.hazard = {
-        damage_type: preset.damage_type,
-        health_damage: preset.health_damage.slice(),
-        thirst_drain:  preset.thirst_drain.slice(),
-        hunger_drain:  preset.hunger_drain.slice(),
-      };
+  // isn't written to the .tres. Any other damage_type reads the
+  // variable-length drain arrays directly from the hazard table
+  // inputs (which have data-stat + data-lvl attributes) so the user
+  // can edit every value and add/remove levels.
+  const damageType = formElement.querySelector('[data-field="hazard_type"]');
+  const hazardValue = damageType ? /** @type {HTMLSelectElement} */ (damageType).value : 'none';
+  if (hazardValue && hazardValue !== 'none') {
+    const hazardTable = formElement.querySelector('[data-field="hazard_table"]');
+    const readArr = (key) => {
+      if (!hazardTable) return [];
+      const inputs = hazardTable.querySelectorAll(`input[data-stat="${key}"]`);
+      return Array.from(inputs)
+        .map((el) => ({ lvl: parseInt(/** @type {HTMLInputElement} */ (el).dataset.lvl || '0', 10), val: parseInt(/** @type {HTMLInputElement} */ (el).value, 10) || 0 }))
+        .sort((a, b) => a.lvl - b.lvl)
+        .map((x) => x.val);
+    };
+    model.hazard = {
+      damage_type: hazardValue,
+      health_damage: readArr('health_damage'),
+      thirst_drain:  readArr('thirst_drain'),
+      hunger_drain:  readArr('hunger_drain'),
+    };
+    // Fallback: if table never rendered (edge case), seed with empty 4-length.
+    if (model.hazard.health_damage.length === 0) {
+      model.hazard.health_damage = [0, 0, 0, 0];
+      model.hazard.thirst_drain  = [0, 0, 0, 0];
+      model.hazard.hunger_drain  = [0, 0, 0, 0];
     }
   } else {
     model.hazard = null;

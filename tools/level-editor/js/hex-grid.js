@@ -428,7 +428,11 @@ export function loadMapIntoGrid(hexGrid, mapData) {
         tile.waterType = tileJson.waterType;
       }
       if (typeof tileJson.temperature === 'number') {
-        tile.temperature = Math.max(0, Math.min(4, tileJson.temperature));
+        // Level N maps to index N-1 in the biome's HazardCap drain
+        // arrays. 0 = safe. Clamp a ceiling (99) so typo-large values
+        // can't wedge the UI; SurvivalSystem saturates at the cap's
+        // table length anyway.
+        tile.temperature = Math.max(0, Math.min(99, tileJson.temperature));
       }
 
       // New format: props array present

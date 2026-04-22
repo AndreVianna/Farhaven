@@ -110,11 +110,15 @@ func load_map(path: String) -> bool:
 			_water_tiles_with_level[coords] = true
 		if td.has("waterType"):
 			tile.water_type = String(td["waterType"])
-		# Environmental hazard intensity (0–4). Meaning is driven by
-		# the biome's BiomeData.hazard_type. Omitted in JSON → default
-		# 0 so legacy maps round-trip unchanged.
+		# Environmental hazard intensity (0 = safe). Meaning is driven
+		# by the biome's BiomeData.hazard — level N maps to index N-1
+		# in the cap's drain arrays. 0 is always "no hazard".
+		# Clamped to a sane ceiling so a typo can't cause absurd
+		# values; SurvivalSystem saturates anything beyond the cap's
+		# table length at the last defined level. Omitted in JSON →
+		# default 0 so legacy maps round-trip unchanged.
 		if td.has("temperature"):
-			tile.temperature = clampi(int(td["temperature"]), 0, 4)
+			tile.temperature = clampi(int(td["temperature"]), 0, 99)
 
 		# --- Props: support BOTH new format ("props") and legacy ("resources" + "structure" + "anomaly") ---
 		if td.has("props"):

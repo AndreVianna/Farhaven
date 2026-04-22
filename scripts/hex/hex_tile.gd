@@ -36,14 +36,12 @@ enum Biome {
 @export var water_level: int = 0
 ## Water behavior type: 'leveled' (lakes) or 'flowing' (rivers).
 @export var water_type: String = ""
-## Environmental hazard intensity, 0–4. Meaning depends on the
-## biome's `hazard_type`:
-##   hazard_type = "heat"  → drains thirst + HP (Volcanic biome)
-##   hazard_type = "cold"  → drains hunger + HP (Alpine biome)
-##   hazard_type = "none"  → ignored
-## Level 4 is a ~1-second time-to-death pulse; the player must step
-## off within a few ticks or die. Default 0 so existing maps load
-## unchanged.
+## Environmental hazard intensity, 0 = safe. Non-zero values index
+## into the biome's HazardCap drain arrays (level N → index N-1).
+## Tables can be any length — usually 4 but extensible per biome.
+## SurvivalSystem saturates at the last defined level if a tile's
+## temperature exceeds the table length. Default 0 so existing maps
+## load unchanged.
 @export var temperature: int = 0
 
 
