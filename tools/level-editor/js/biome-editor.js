@@ -180,43 +180,36 @@ export class BiomeDataModel {
       model.color = { r: d.color.r || 0, g: d.color.g || 0, b: d.color.b || 0, a: d.color.a != null ? d.color.a : 1 };
     }
 
-    // hazard: optional HazardCap sub_resource reference. Resolve the
-    // sub_resource the same way PlaceableCap is handled — look up the
-    // referenced sub_resource in the TresFile and pull its fields
-    // into a plain JS object. Any missing array defaults to the preset
-    // for the damage_type so partially-authored .tres files still
-    // round-trip.
-    if (d.hazard && typeof d.hazard === 'object' && d.hazard.type === 'sub_resource' && entry.raw && Array.isArray(entry.raw.subResources)) {
-      const sub = entry.raw.subResources.find((s) => s && s.id === d.hazard.value);
-      if (sub && sub.fields) {
-        const subData = {};
-        for (const [k, v] of sub.fields) subData[k] = v.value;
-        const dtype = _str(subData.damage_type) || _str(subData.type); // backwards-compat with older `type` field
-        // TresParser represents typed arrays as {type:'array', value:
-        // [{type:'int', value: N}, …]}, so a couple of layers of
-        // unwrapping are needed before we touch numeric values.
-        const normalizeIntArr = (v, fallback) => {
-          let rawList = null;
-          if (Array.isArray(v)) rawList = v;
-          else if (v && typeof v === 'object' && Array.isArray(v.value)) rawList = v.value;
-          else return fallback;
-          const out = rawList.map((x) => {
-            if (typeof x === 'number') return x;
-            if (x && typeof x === 'object' && Number.isFinite(x.value)) return x.value;
-            return 0;
-          });
-          return out.length > 0 ? out : fallback;
+    // hazard: file-discovery._parseTresFile already resolves the
+    // `hazard = SubResource("...")` reference into a flattened object
+    // whose keys are the sub_resource's fields (with their .value
+    // unwrapped one layer). We still need to unwrap the typed-array
+    // element shapes — health_damage etc. arrive as
+    // [{type:'int', value:N}, …].
+    if (d.hazard && typeof d.hazard === 'object' && d.hazard.damage_type !== undefined) {
+      const subData = d.hazard;
+      const dtype = _str(subData.damage_type) || _str(subData.type); // backward-compat with older `type` field
+      const normalizeIntArr = (v, fallback) => {
+        let rawList = null;
+        if (Array.isArray(v)) rawList = v;
+        else if (v && typeof v === 'object' && Array.isArray(v.value)) rawList = v.value;
+        else return fallback;
+        const out = rawList.map((x) => {
+          if (typeof x === 'number') return x;
+          if (x && typeof x === 'object' && Number.isFinite(x.value)) return x.value;
+          return 0;
+        });
+        return out.length > 0 ? out : fallback;
+      };
+      const preset = HAZARD_DEFAULTS[dtype] || HAZARD_DEFAULTS.heat;
+      if (dtype) {
+        model.hazard = {
+          damage_type: dtype,
+          health_damage: normalizeIntArr(subData.health_damage, preset.health_damage.slice()),
+          thirst_drain:  normalizeIntArr(subData.thirst_drain,  preset.thirst_drain.slice()),
+          hunger_drain:  normalizeIntArr(subData.hunger_drain,  preset.hunger_drain.slice()),
+          oxygen_drain:  normalizeIntArr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
         };
-        const preset = HAZARD_DEFAULTS[dtype] || HAZARD_DEFAULTS.heat;
-        if (dtype) {
-          model.hazard = {
-            damage_type: dtype,
-            health_damage: normalizeIntArr(subData.health_damage, preset.health_damage.slice()),
-            thirst_drain:  normalizeIntArr(subData.thirst_drain,  preset.thirst_drain.slice()),
-            hunger_drain:  normalizeIntArr(subData.hunger_drain,  preset.hunger_drain.slice()),
-            oxygen_drain:  normalizeIntArr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
-          };
-        }
       }
     }
 
