@@ -352,6 +352,13 @@ export class ElevationBrush extends DragBrushTool {
       /** @type {Map<string, number>} */
       const transfers = new Map();
       for (const hex of HexMath.hexesInRadius(radius, center)) {
+        // The clicked hex is the user's anchor for this pinch — its
+        // elevation is the intended peak. Skip it as a donor so the
+        // erosion wave propagates outward instead of eating the peak
+        // back. Transfers INTO the centre from taller neighbours still
+        // happen (but in practice the centre is the tallest, so that
+        // branch never fires).
+        if (hex.q === center.q && hex.r === center.r) continue;
         const tile = this.grid.getTile(hex.q, hex.r);
         if (!tile) continue;
         for (const dir of HexMath.DIRECTIONS) {
