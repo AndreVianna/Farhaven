@@ -66,7 +66,7 @@
 		},
 		"-150,5": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -1966,7 +1966,7 @@
 		},
 		"-149,11": {
 			"biome": "B00004",
-			"elevation": 37,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -3692,7 +3692,7 @@
 		},
 		"-148,1": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -3812,7 +3812,7 @@
 		},
 		"-148,11": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -3824,7 +3824,7 @@
 		},
 		"-148,12": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -5356,7 +5356,7 @@
 		},
 		"-148,139": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -5548,7 +5548,7 @@
 		},
 		"-147,1": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -7062,7 +7062,7 @@
 		},
 		"-147,127": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				true,
 				false,
@@ -9938,7 +9938,7 @@
 		},
 		"-145,55": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -10310,7 +10310,7 @@
 		},
 		"-145,86": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -10782,7 +10782,7 @@
 		},
 		"-145,125": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -10794,7 +10794,7 @@
 		},
 		"-145,126": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -10806,7 +10806,7 @@
 		},
 		"-145,127": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -10854,7 +10854,7 @@
 		},
 		"-145,131": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -12186,7 +12186,7 @@
 		},
 		"-144,85": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -12342,7 +12342,7 @@
 		},
 		"-144,98": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -12354,7 +12354,7 @@
 		},
 		"-144,99": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -12366,7 +12366,7 @@
 		},
 		"-144,100": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -12378,7 +12378,7 @@
 		},
 		"-144,101": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -12668,7 +12668,7 @@
 		},
 		"-144,125": {
 			"biome": "B00004",
-			"elevation": 47,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -12692,7 +12692,7 @@
 		},
 		"-144,127": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -12920,7 +12920,7 @@
 		},
 		"-144,146": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -13088,7 +13088,7 @@
 		},
 		"-143,2": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -13184,7 +13184,7 @@
 		},
 		"-143,10": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -13712,7 +13712,7 @@
 		},
 		"-143,54": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -14216,7 +14216,7 @@
 		},
 		"-143,96": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -14228,7 +14228,7 @@
 		},
 		"-143,97": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -14564,7 +14564,7 @@
 		},
 		"-143,125": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -14804,7 +14804,7 @@
 		},
 		"-143,145": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -14816,7 +14816,7 @@
 		},
 		"-143,146": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -15344,7 +15344,7 @@
 		},
 		"-142,31": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -15356,7 +15356,7 @@
 		},
 		"-142,32": {
 			"biome": "B00004",
-			"elevation": 50,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -15368,7 +15368,7 @@
 		},
 		"-142,33": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -16112,7 +16112,7 @@
 		},
 		"-142,95": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -16124,7 +16124,7 @@
 		},
 		"-142,96": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -16712,7 +16712,7 @@
 		},
 		"-142,145": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -17568,7 +17568,7 @@
 		},
 		"-141,56": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				true,
@@ -18012,7 +18012,7 @@
 		},
 		"-141,93": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -18024,7 +18024,7 @@
 		},
 		"-141,94": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -19508,7 +19508,7 @@
 		},
 		"-140,56": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -20012,7 +20012,7 @@
 		},
 		"-140,98": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -20024,7 +20024,7 @@
 		},
 		"-140,99": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -20036,7 +20036,7 @@
 		},
 		"-140,100": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -20832,7 +20832,7 @@
 		},
 		"-139,4": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -20880,7 +20880,7 @@
 		},
 		"-139,8": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -20892,7 +20892,7 @@
 		},
 		"-139,9": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -21876,7 +21876,7 @@
 		},
 		"-139,91": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -21888,7 +21888,7 @@
 		},
 		"-139,92": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -21960,7 +21960,7 @@
 		},
 		"-139,98": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -21972,7 +21972,7 @@
 		},
 		"-139,99": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -21984,7 +21984,7 @@
 		},
 		"-139,100": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -22786,7 +22786,7 @@
 		},
 		"-138,3": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -22798,7 +22798,7 @@
 		},
 		"-138,4": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -22870,7 +22870,7 @@
 		},
 		"-138,10": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -23902,7 +23902,7 @@
 		},
 		"-138,96": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -23914,7 +23914,7 @@
 		},
 		"-138,97": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -23926,7 +23926,7 @@
 		},
 		"-138,98": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -25866,7 +25866,7 @@
 		},
 		"-137,95": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -25878,7 +25878,7 @@
 		},
 		"-137,96": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -25890,7 +25890,7 @@
 		},
 		"-137,97": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -25902,7 +25902,7 @@
 		},
 		"-137,98": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -26714,7 +26714,7 @@
 		},
 		"-136,0": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -26798,7 +26798,7 @@
 		},
 		"-136,7": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -26810,7 +26810,7 @@
 		},
 		"-136,8": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -27866,7 +27866,7 @@
 		},
 		"-136,96": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -27974,7 +27974,7 @@
 		},
 		"-136,105": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -28590,7 +28590,7 @@
 		},
 		"-135,-10": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -28688,7 +28688,7 @@
 		},
 		"-135,-2": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -28700,7 +28700,7 @@
 		},
 		"-135,-1": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -28796,7 +28796,7 @@
 		},
 		"-135,7": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				true,
@@ -28808,7 +28808,7 @@
 		},
 		"-135,8": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -29972,7 +29972,7 @@
 		},
 		"-135,105": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -30706,7 +30706,7 @@
 		},
 		"-134,-2": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -30818,7 +30818,7 @@
 		},
 		"-134,7": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -32656,7 +32656,7 @@
 		},
 		"-133,-10": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -34050,7 +34050,7 @@
 		},
 		"-133,105": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -34062,7 +34062,7 @@
 		},
 		"-133,106": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -34074,7 +34074,7 @@
 		},
 		"-133,107": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -36094,7 +36094,7 @@
 		},
 		"-132,105": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -36106,7 +36106,7 @@
 		},
 		"-132,106": {
 			"biome": "B00004",
-			"elevation": 44,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -36118,7 +36118,7 @@
 		},
 		"-132,107": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -38156,7 +38156,7 @@
 		},
 		"-131,105": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -38360,7 +38360,7 @@
 		},
 		"-131,122": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -40148,7 +40148,7 @@
 		},
 		"-130,98": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -40160,7 +40160,7 @@
 		},
 		"-130,99": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				true,
 				false,
@@ -40232,7 +40232,7 @@
 		},
 		"-130,105": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -40460,7 +40460,7 @@
 		},
 		"-130,124": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -40798,7 +40798,7 @@
 		},
 		"-129,-20": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -42206,7 +42206,7 @@
 		},
 		"-129,96": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -42776,7 +42776,7 @@
 		},
 		"-129,143": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -42896,7 +42896,7 @@
 		},
 		"-128,-20": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -47100,7 +47100,7 @@
 		},
 		"-126,-23": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -47124,7 +47124,7 @@
 		},
 		"-126,-21": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -49212,7 +49212,7 @@
 		},
 		"-125,-25": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -51628,7 +51628,7 @@
 		},
 		"-124,-3": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -53030,7 +53030,7 @@
 		},
 		"-124,113": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -53526,7 +53526,7 @@
 		},
 		"-123,-24": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -55688,7 +55688,7 @@
 		},
 		"-122,-26": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -55760,7 +55760,7 @@
 		},
 		"-122,-20": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -57884,7 +57884,7 @@
 		},
 		"-121,-24": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -57920,7 +57920,7 @@
 		},
 		"-121,-21": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -61838,7 +61838,7 @@
 		},
 		"-120,123": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -62278,7 +62278,7 @@
 		},
 		"-119,-23": {
 			"biome": "B00004",
-			"elevation": 44,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -64480,7 +64480,7 @@
 		},
 		"-118,-24": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -64552,7 +64552,7 @@
 		},
 		"-118,-18": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -66762,7 +66762,7 @@
 		},
 		"-117,-19": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -68972,7 +68972,7 @@
 		},
 		"-116,-21": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -70444,7 +70444,7 @@
 		},
 		"-116,101": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -70456,7 +70456,7 @@
 		},
 		"-116,102": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -70516,7 +70516,7 @@
 		},
 		"-116,107": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -71192,7 +71192,7 @@
 		},
 		"-115,-24": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -71216,7 +71216,7 @@
 		},
 		"-115,-22": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -72076,7 +72076,7 @@
 		},
 		"-115,49": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -72766,7 +72766,7 @@
 		},
 		"-115,106": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -72878,7 +72878,7 @@
 		},
 		"-115,115": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				true,
 				true,
@@ -74410,7 +74410,7 @@
 		},
 		"-114,55": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -76420,7 +76420,7 @@
 		},
 		"-113,32": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -78060,7 +78060,7 @@
 		},
 		"-112,-21": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -80340,7 +80340,7 @@
 		},
 		"-111,-22": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -85932,7 +85932,7 @@
 		},
 		"-109,56": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -86432,7 +86432,7 @@
 		},
 		"-109,97": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -90180,7 +90180,7 @@
 		},
 		"-107,20": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -91302,7 +91302,7 @@
 		},
 		"-107,112": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -91914,7 +91914,7 @@
 		},
 		"-106,-32": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -93018,7 +93018,7 @@
 		},
 		"-106,60": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -97528,7 +97528,7 @@
 		},
 		"-104,42": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -99284,7 +99284,7 @@
 		},
 		"-103,-10": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -101570,7 +101570,7 @@
 		},
 		"-102,-19": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -101642,7 +101642,7 @@
 		},
 		"-102,-13": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -101678,7 +101678,7 @@
 		},
 		"-102,-10": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -101690,7 +101690,7 @@
 		},
 		"-102,-9": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -103552,7 +103552,7 @@
 		},
 		"-102,146": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -103972,7 +103972,7 @@
 		},
 		"-101,-19": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -103996,7 +103996,7 @@
 		},
 		"-101,-17": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -108160,7 +108160,7 @@
 		},
 		"-100,129": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -114312,7 +114312,7 @@
 		},
 		"-97,32": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -116244,7 +116244,7 @@
 		},
 		"-96,-12": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -116772,7 +116772,7 @@
 		},
 		"-96,32": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -116784,7 +116784,7 @@
 		},
 		"-96,33": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -118748,7 +118748,7 @@
 		},
 		"-95,-11": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -119266,7 +119266,7 @@
 		},
 		"-95,32": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -119960,7 +119960,7 @@
 		},
 		"-95,89": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -121372,7 +121372,7 @@
 		},
 		"-94,-1": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -121516,7 +121516,7 @@
 		},
 		"-94,11": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -121768,7 +121768,7 @@
 		},
 		"-94,32": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -122460,7 +122460,7 @@
 		},
 		"-94,89": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -123028,7 +123028,7 @@
 		},
 		"-94,136": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -123040,7 +123040,7 @@
 		},
 		"-94,137": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -123780,7 +123780,7 @@
 		},
 		"-93,-10": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -124032,7 +124032,7 @@
 		},
 		"-93,11": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -124044,7 +124044,7 @@
 		},
 		"-93,12": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -124056,7 +124056,7 @@
 		},
 		"-93,13": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -124272,7 +124272,7 @@
 		},
 		"-93,31": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -124308,7 +124308,7 @@
 		},
 		"-93,34": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -124320,7 +124320,7 @@
 		},
 		"-93,35": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -126540,7 +126540,7 @@
 		},
 		"-92,10": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -126756,7 +126756,7 @@
 		},
 		"-92,28": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -126828,7 +126828,7 @@
 		},
 		"-92,34": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -128920,7 +128920,7 @@
 		},
 		"-91,-2": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -129916,7 +129916,7 @@
 		},
 		"-91,81": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -132456,7 +132456,7 @@
 		},
 		"-90,81": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -133328,7 +133328,7 @@
 		},
 		"-89,-59": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -134842,7 +134842,7 @@
 		},
 		"-89,67": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -137430,7 +137430,7 @@
 		},
 		"-88,69": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -137442,7 +137442,7 @@
 		},
 		"-88,70": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -137490,7 +137490,7 @@
 		},
 		"-88,74": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -137514,7 +137514,7 @@
 		},
 		"-88,76": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -137526,7 +137526,7 @@
 		},
 		"-88,77": {
 			"biome": "B00004",
-			"elevation": 51,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -137538,7 +137538,7 @@
 		},
 		"-88,78": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -139994,7 +139994,7 @@
 		},
 		"-87,68": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -140018,7 +140018,7 @@
 		},
 		"-87,70": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -140030,7 +140030,7 @@
 		},
 		"-87,71": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -140042,7 +140042,7 @@
 		},
 		"-87,72": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -140054,7 +140054,7 @@
 		},
 		"-87,73": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -140066,7 +140066,7 @@
 		},
 		"-87,74": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -140102,7 +140102,7 @@
 		},
 		"-87,77": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -140584,7 +140584,7 @@
 		},
 		"-87,117": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -141648,7 +141648,7 @@
 		},
 		"-86,-10": {
 			"biome": "B00004",
-			"elevation": 60,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -142592,7 +142592,7 @@
 		},
 		"-86,68": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -142604,7 +142604,7 @@
 		},
 		"-86,69": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -142616,7 +142616,7 @@
 		},
 		"-86,70": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -142628,7 +142628,7 @@
 		},
 		"-86,71": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -142640,7 +142640,7 @@
 		},
 		"-86,72": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -142652,7 +142652,7 @@
 		},
 		"-86,73": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -142748,7 +142748,7 @@
 		},
 		"-86,81": {
 			"biome": "B00004",
-			"elevation": 46,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -142760,7 +142760,7 @@
 		},
 		"-86,82": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -144262,7 +144262,7 @@
 		},
 		"-85,-10": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -145206,7 +145206,7 @@
 		},
 		"-85,68": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -145230,7 +145230,7 @@
 		},
 		"-85,70": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -145242,7 +145242,7 @@
 		},
 		"-85,71": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -145254,7 +145254,7 @@
 		},
 		"-85,72": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -145362,7 +145362,7 @@
 		},
 		"-85,81": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -145772,7 +145772,7 @@
 		},
 		"-85,115": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -147854,7 +147854,7 @@
 		},
 		"-84,70": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -147986,7 +147986,7 @@
 		},
 		"-84,81": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -148396,7 +148396,7 @@
 		},
 		"-84,115": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -149506,7 +149506,7 @@
 		},
 		"-83,-11": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -151084,7 +151084,7 @@
 		},
 		"-83,120": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -151812,7 +151812,7 @@
 		},
 		"-82,-39": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -153782,7 +153782,7 @@
 		},
 		"-82,124": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -154284,7 +154284,7 @@
 		},
 		"-81,-55": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -154452,7 +154452,7 @@
 		},
 		"-81,-41": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -154464,7 +154464,7 @@
 		},
 		"-81,-40": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -155672,7 +155672,7 @@
 		},
 		"-81,60": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -155936,7 +155936,7 @@
 		},
 		"-81,82": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -156044,7 +156044,7 @@
 		},
 		"-81,91": {
 			"biome": "B00004",
-			"elevation": 53,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -156382,7 +156382,7 @@
 		},
 		"-81,119": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				true,
@@ -156430,7 +156430,7 @@
 		},
 		"-81,123": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -156768,7 +156768,7 @@
 		},
 		"-80,-70": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -157578,7 +157578,7 @@
 		},
 		"-80,-3": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -157626,7 +157626,7 @@
 		},
 		"-80,1": {
 			"biome": "B00004",
-			"elevation": 37,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -157638,7 +157638,7 @@
 		},
 		"-80,2": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -158334,7 +158334,7 @@
 		},
 		"-80,60": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -158682,7 +158682,7 @@
 		},
 		"-80,89": {
 			"biome": "B00004",
-			"elevation": 65,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -158694,7 +158694,7 @@
 		},
 		"-80,90": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -159084,7 +159084,7 @@
 		},
 		"-80,122": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -159434,7 +159434,7 @@
 		},
 		"-79,-71": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -160174,7 +160174,7 @@
 		},
 		"-79,-10": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -160270,7 +160270,7 @@
 		},
 		"-79,-2": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -160306,7 +160306,7 @@
 		},
 		"-79,1": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -160318,7 +160318,7 @@
 		},
 		"-79,2": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -160438,7 +160438,7 @@
 		},
 		"-79,12": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -160450,7 +160450,7 @@
 		},
 		"-79,13": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -161350,7 +161350,7 @@
 		},
 		"-79,88": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -161362,7 +161362,7 @@
 		},
 		"-79,89": {
 			"biome": "B00004",
-			"elevation": 46,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -161704,7 +161704,7 @@
 		},
 		"-79,117": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -161740,7 +161740,7 @@
 		},
 		"-79,120": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -162246,7 +162246,7 @@
 		},
 		"-78,-61": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -162874,7 +162874,7 @@
 		},
 		"-78,-9": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 14,
 			"walls": [
 				false,
 				true,
@@ -162886,7 +162886,7 @@
 		},
 		"-78,-8": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -162982,7 +162982,7 @@
 		},
 		"-78,0": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -163452,7 +163452,7 @@
 		},
 		"-78,39": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -164018,7 +164018,7 @@
 		},
 		"-78,86": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -164376,7 +164376,7 @@
 		},
 		"-78,115": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -165328,7 +165328,7 @@
 		},
 		"-77,-30": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -165584,7 +165584,7 @@
 		},
 		"-77,-9": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -165596,7 +165596,7 @@
 		},
 		"-77,-8": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -167254,7 +167254,7 @@
 		},
 		"-77,128": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -168048,7 +168048,7 @@
 		},
 		"-76,-31": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -168386,7 +168386,7 @@
 		},
 		"-76,-3": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -169954,7 +169954,7 @@
 		},
 		"-76,127": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -169966,7 +169966,7 @@
 		},
 		"-76,128": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -170784,7 +170784,7 @@
 		},
 		"-75,-30": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -170966,7 +170966,7 @@
 		},
 		"-75,-15": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -170978,7 +170978,7 @@
 		},
 		"-75,-14": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -171158,7 +171158,7 @@
 		},
 		"-75,1": {
 			"biome": "B00004",
-			"elevation": 32,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -173048,7 +173048,7 @@
 		},
 		"-74,-70": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -173060,7 +173060,7 @@
 		},
 		"-74,-69": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -173120,7 +173120,7 @@
 		},
 		"-74,-64": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -173168,7 +173168,7 @@
 		},
 		"-74,-60": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -173494,7 +173494,7 @@
 		},
 		"-74,-33": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -173506,7 +173506,7 @@
 		},
 		"-74,-32": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -173784,7 +173784,7 @@
 		},
 		"-74,-9": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -176676,7 +176676,7 @@
 		},
 		"-73,2": {
 			"biome": "B00004",
-			"elevation": 46,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -177372,7 +177372,7 @@
 		},
 		"-73,60": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -177384,7 +177384,7 @@
 		},
 		"-73,61": {
 			"biome": "B00004",
-			"elevation": 49,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -178976,7 +178976,7 @@
 		},
 		"-72,-36": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -179434,7 +179434,7 @@
 		},
 		"-72,2": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -179482,7 +179482,7 @@
 		},
 		"-72,6": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -181388,7 +181388,7 @@
 		},
 		"-71,-66": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -182246,7 +182246,7 @@
 		},
 		"-71,5": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -182992,7 +182992,7 @@
 		},
 		"-71,67": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -184636,7 +184636,7 @@
 		},
 		"-70,-28": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -185770,7 +185770,7 @@
 		},
 		"-70,66": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -185782,7 +185782,7 @@
 		},
 		"-70,67": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -186964,7 +186964,7 @@
 		},
 		"-69,-67": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -187784,7 +187784,7 @@
 		},
 		"-69,1": {
 			"biome": "B00004",
-			"elevation": 47,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -188576,7 +188576,7 @@
 		},
 		"-69,67": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -190592,7 +190592,7 @@
 		},
 		"-68,1": {
 			"biome": "B00004",
-			"elevation": 36,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -191408,7 +191408,7 @@
 		},
 		"-68,69": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -191896,7 +191896,7 @@
 		},
 		"-68,109": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -192306,7 +192306,7 @@
 		},
 		"-68,143": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -192942,7 +192942,7 @@
 		},
 		"-67,-38": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -195284,7 +195284,7 @@
 		},
 		"-66,-80": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -197796,7 +197796,7 @@
 		},
 		"-66,128": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -197820,7 +197820,7 @@
 		},
 		"-66,130": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -197832,7 +197832,7 @@
 		},
 		"-66,131": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -199920,7 +199920,7 @@
 		},
 		"-65,68": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -200644,7 +200644,7 @@
 		},
 		"-65,128": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -202820,7 +202820,7 @@
 		},
 		"-64,71": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -202832,7 +202832,7 @@
 		},
 		"-64,72": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -203460,7 +203460,7 @@
 		},
 		"-64,124": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -205586,7 +205586,7 @@
 		},
 		"-63,62": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -205706,7 +205706,7 @@
 		},
 		"-63,72": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -205898,7 +205898,7 @@
 		},
 		"-63,88": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -206722,7 +206722,7 @@
 		},
 		"-62,-83": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -209020,7 +209020,7 @@
 		},
 		"-62,107": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -213244,7 +213244,7 @@
 		},
 		"-60,-24": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -215718,7 +215718,7 @@
 		},
 		"-59,-62": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -220732,7 +220732,7 @@
 		},
 		"-58,107": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -221388,7 +221388,7 @@
 		},
 		"-57,-83": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -223700,7 +223700,7 @@
 		},
 		"-57,107": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -223712,7 +223712,7 @@
 		},
 		"-57,108": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -224358,7 +224358,7 @@
 		},
 		"-56,-84": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -224442,7 +224442,7 @@
 		},
 		"-56,-77": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -225462,7 +225462,7 @@
 		},
 		"-56,7": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -226190,7 +226190,7 @@
 		},
 		"-56,67": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -226650,7 +226650,7 @@
 		},
 		"-56,105": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -226662,7 +226662,7 @@
 		},
 		"-56,106": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -227328,7 +227328,7 @@
 		},
 		"-55,-85": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -228432,7 +228432,7 @@
 		},
 		"-55,7": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -229148,7 +229148,7 @@
 		},
 		"-55,66": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -230340,7 +230340,7 @@
 		},
 		"-54,-83": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -233336,7 +233336,7 @@
 		},
 		"-53,-83": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -233504,7 +233504,7 @@
 		},
 		"-53,-69": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -234392,7 +234392,7 @@
 		},
 		"-53,5": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -235208,7 +235208,7 @@
 		},
 		"-53,73": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -236484,7 +236484,7 @@
 		},
 		"-52,-72": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -236496,7 +236496,7 @@
 		},
 		"-52,-71": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -236508,7 +236508,7 @@
 		},
 		"-52,-70": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -237434,7 +237434,7 @@
 		},
 		"-52,7": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -238168,7 +238168,7 @@
 		},
 		"-52,68": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -239460,7 +239460,7 @@
 		},
 		"-51,-75": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -239496,7 +239496,7 @@
 		},
 		"-51,-72": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -239508,7 +239508,7 @@
 		},
 		"-51,-71": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -240060,7 +240060,7 @@
 		},
 		"-51,-25": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -240072,7 +240072,7 @@
 		},
 		"-51,-24": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -242508,7 +242508,7 @@
 		},
 		"-50,-73": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -242664,7 +242664,7 @@
 		},
 		"-50,-60": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -243096,7 +243096,7 @@
 		},
 		"-50,-24": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -243468,7 +243468,7 @@
 		},
 		"-50,7": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -243516,7 +243516,7 @@
 		},
 		"-50,11": {
 			"biome": "B00004",
-			"elevation": 6,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -243528,7 +243528,7 @@
 		},
 		"-50,12": {
 			"biome": "B00004",
-			"elevation": 6,
+			"elevation": 3,
 			"walls": [
 				false,
 				false,
@@ -244154,7 +244154,7 @@
 		},
 		"-50,64": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -245662,7 +245662,7 @@
 		},
 		"-49,-64": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -245686,7 +245686,7 @@
 		},
 		"-49,-62": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -245698,7 +245698,7 @@
 		},
 		"-49,-61": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -246262,7 +246262,7 @@
 		},
 		"-49,-14": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -246274,7 +246274,7 @@
 		},
 		"-49,-13": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -246286,7 +246286,7 @@
 		},
 		"-49,-12": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -248712,7 +248712,7 @@
 		},
 		"-48,-65": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -248736,7 +248736,7 @@
 		},
 		"-48,-63": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -248748,7 +248748,7 @@
 		},
 		"-48,-62": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -248760,7 +248760,7 @@
 		},
 		"-48,-61": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -249312,7 +249312,7 @@
 		},
 		"-48,-15": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -249324,7 +249324,7 @@
 		},
 		"-48,-14": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -250250,7 +250250,7 @@
 		},
 		"-48,63": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -251744,7 +251744,7 @@
 		},
 		"-47,-67": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -252368,7 +252368,7 @@
 		},
 		"-47,-15": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -253820,7 +253820,7 @@
 		},
 		"-47,105": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -254784,7 +254784,7 @@
 		},
 		"-46,-70": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -255432,7 +255432,7 @@
 		},
 		"-46,-16": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -255672,7 +255672,7 @@
 		},
 		"-46,4": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -257830,7 +257830,7 @@
 		},
 		"-45,-73": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -257842,7 +257842,7 @@
 		},
 		"-45,-72": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -257854,7 +257854,7 @@
 		},
 		"-45,-71": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -258298,7 +258298,7 @@
 		},
 		"-45,-34": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -258742,7 +258742,7 @@
 		},
 		"-45,3": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -260930,7 +260930,7 @@
 		},
 		"-44,-73": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -260942,7 +260942,7 @@
 		},
 		"-44,-72": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -261806,7 +261806,7 @@
 		},
 		"-44,0": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -261830,7 +261830,7 @@
 		},
 		"-44,2": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -262346,7 +262346,7 @@
 		},
 		"-44,45": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -262396,7 +262396,7 @@
 		},
 		"-44,49": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -264436,7 +264436,7 @@
 		},
 		"-43,-40": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -264904,7 +264904,7 @@
 		},
 		"-43,-1": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -264940,7 +264940,7 @@
 		},
 		"-43,2": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -264952,7 +264952,7 @@
 		},
 		"-43,3": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -265480,7 +265480,7 @@
 		},
 		"-43,47": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -267952,7 +267952,7 @@
 		},
 		"-42,-7": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -267988,7 +267988,7 @@
 		},
 		"-42,-4": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -268012,7 +268012,7 @@
 		},
 		"-42,-2": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -268060,7 +268060,7 @@
 		},
 		"-42,2": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -268600,7 +268600,7 @@
 		},
 		"-42,47": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -268794,7 +268794,7 @@
 		},
 		"-42,63": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -268818,7 +268818,7 @@
 		},
 		"-42,65": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -269060,7 +269060,7 @@
 		},
 		"-42,85": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -270428,7 +270428,7 @@
 		},
 		"-41,-63": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -271046,7 +271046,7 @@
 		},
 		"-41,-12": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -273600,7 +273600,7 @@
 		},
 		"-40,-64": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -273612,7 +273612,7 @@
 		},
 		"-40,-63": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -274382,7 +274382,7 @@
 		},
 		"-40,1": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -276538,7 +276538,7 @@
 		},
 		"-39,-82": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -276756,7 +276756,7 @@
 		},
 		"-39,-64": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -277526,7 +277526,7 @@
 		},
 		"-39,0": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -277538,7 +277538,7 @@
 		},
 		"-39,1": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -280700,7 +280700,7 @@
 		},
 		"-38,0": {
 			"biome": "B00004",
-			"elevation": 40,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -284942,7 +284942,7 @@
 		},
 		"-37,88": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -286314,7 +286314,7 @@
 		},
 		"-36,-63": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -287102,7 +287102,7 @@
 		},
 		"-36,2": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -287570,7 +287570,7 @@
 		},
 		"-36,41": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -293552,7 +293552,7 @@
 		},
 		"-34,2": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -294694,7 +294694,7 @@
 		},
 		"-34,97": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -295990,7 +295990,7 @@
 		},
 		"-33,-64": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -297242,7 +297242,7 @@
 		},
 		"-33,40": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -297928,7 +297928,7 @@
 		},
 		"-33,97": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -299658,7 +299658,7 @@
 		},
 		"-32,-29": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -300082,7 +300082,7 @@
 		},
 		"-32,6": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -302910,7 +302910,7 @@
 		},
 		"-31,-30": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -303320,7 +303320,7 @@
 		},
 		"-31,4": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -303332,7 +303332,7 @@
 		},
 		"-31,5": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 22,
 			"walls": [
 				false,
 				false,
@@ -304430,7 +304430,7 @@
 		},
 		"-31,96": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -306106,7 +306106,7 @@
 		},
 		"-30,-36": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -306588,7 +306588,7 @@
 		},
 		"-30,4": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -306600,7 +306600,7 @@
 		},
 		"-30,5": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -306804,7 +306804,7 @@
 		},
 		"-30,22": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -307752,7 +307752,7 @@
 		},
 		"-30,100": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -309324,7 +309324,7 @@
 		},
 		"-29,-42": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -309336,7 +309336,7 @@
 		},
 		"-29,-41": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -309348,7 +309348,7 @@
 		},
 		"-29,-40": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -309456,7 +309456,7 @@
 		},
 		"-29,-31": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -309890,7 +309890,7 @@
 		},
 		"-29,5": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -312300,7 +312300,7 @@
 		},
 		"-28,-68": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -312312,7 +312312,7 @@
 		},
 		"-28,-67": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -313586,7 +313586,7 @@
 		},
 		"-28,39": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -315470,7 +315470,7 @@
 		},
 		"-27,-79": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -315578,7 +315578,7 @@
 		},
 		"-27,-70": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -315590,7 +315590,7 @@
 		},
 		"-27,-69": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -315602,7 +315602,7 @@
 		},
 		"-27,-68": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -315614,7 +315614,7 @@
 		},
 		"-27,-67": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -317370,7 +317370,7 @@
 		},
 		"-27,79": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -318554,7 +318554,7 @@
 		},
 		"-26,-98": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -319192,7 +319192,7 @@
 		},
 		"-26,-45": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -319204,7 +319204,7 @@
 		},
 		"-26,-44": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -322146,7 +322146,7 @@
 		},
 		"-25,-76": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -322158,7 +322158,7 @@
 		},
 		"-25,-75": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -322170,7 +322170,7 @@
 		},
 		"-25,-74": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -322902,7 +322902,7 @@
 		},
 		"-25,-13": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -322914,7 +322914,7 @@
 		},
 		"-25,-12": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -323954,7 +323954,7 @@
 		},
 		"-25,74": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -326252,7 +326252,7 @@
 		},
 		"-24,-13": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -326264,7 +326264,7 @@
 		},
 		"-24,-12": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -326336,7 +326336,7 @@
 		},
 		"-24,-6": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -329602,7 +329602,7 @@
 		},
 		"-23,-14": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -329614,7 +329614,7 @@
 		},
 		"-23,-13": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -329626,7 +329626,7 @@
 		},
 		"-23,-12": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -329638,7 +329638,7 @@
 		},
 		"-23,-11": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -329662,7 +329662,7 @@
 		},
 		"-23,-9": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -329686,7 +329686,7 @@
 		},
 		"-23,-7": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -331182,7 +331182,7 @@
 		},
 		"-23,116": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -331364,7 +331364,7 @@
 		},
 		"-23,131": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -332980,7 +332980,7 @@
 		},
 		"-22,-14": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -333004,7 +333004,7 @@
 		},
 		"-22,-12": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -333028,7 +333028,7 @@
 		},
 		"-22,-10": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -333040,7 +333040,7 @@
 		},
 		"-22,-9": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -333052,7 +333052,7 @@
 		},
 		"-22,-8": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -334258,7 +334258,7 @@
 		},
 		"-22,90": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -336408,7 +336408,7 @@
 		},
 		"-21,-12": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -336420,7 +336420,7 @@
 		},
 		"-21,-11": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -336432,7 +336432,7 @@
 		},
 		"-21,-10": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -336444,7 +336444,7 @@
 		},
 		"-21,-9": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -339822,7 +339822,7 @@
 		},
 		"-20,-13": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -339834,7 +339834,7 @@
 		},
 		"-20,-12": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -339846,7 +339846,7 @@
 		},
 		"-20,-11": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -343266,7 +343266,7 @@
 		},
 		"-19,-13": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -343278,7 +343278,7 @@
 		},
 		"-19,-12": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -343290,7 +343290,7 @@
 		},
 		"-19,-11": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -343302,7 +343302,7 @@
 		},
 		"-19,-10": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -345286,7 +345286,7 @@
 		},
 		"-18,-132": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -345298,7 +345298,7 @@
 		},
 		"-18,-131": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -346766,7 +346766,7 @@
 		},
 		"-18,-11": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -348786,7 +348786,7 @@
 		},
 		"-17,-133": {
 			"biome": "B00004",
-			"elevation": 6,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -348798,7 +348798,7 @@
 		},
 		"-17,-132": {
 			"biome": "B00004",
-			"elevation": 6,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -349510,7 +349510,7 @@
 		},
 		"-17,-73": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -352972,7 +352972,7 @@
 		},
 		"-16,-73": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -353560,7 +353560,7 @@
 		},
 		"-16,-25": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -357046,7 +357046,7 @@
 		},
 		"-15,-26": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -357082,7 +357082,7 @@
 		},
 		"-15,-23": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -360520,7 +360520,7 @@
 		},
 		"-14,-27": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -360568,7 +360568,7 @@
 		},
 		"-14,-23": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 7,
 			"walls": [
 				true,
 				true,
@@ -362804,7 +362804,7 @@
 		},
 		"-13,-127": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -363998,7 +363998,7 @@
 		},
 		"-13,-28": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -364010,7 +364010,7 @@
 		},
 		"-13,-27": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -364022,7 +364022,7 @@
 		},
 		"-13,-26": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -366996,7 +366996,7 @@
 		},
 		"-12,-70": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -367008,7 +367008,7 @@
 		},
 		"-12,-69": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -367432,7 +367432,7 @@
 		},
 		"-12,-34": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -367504,7 +367504,7 @@
 		},
 		"-12,-28": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -367516,7 +367516,7 @@
 		},
 		"-12,-27": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -367764,7 +367764,7 @@
 		},
 		"-12,-7": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -367776,7 +367776,7 @@
 		},
 		"-12,-6": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -368634,7 +368634,7 @@
 		},
 		"-12,65": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -370920,7 +370920,7 @@
 		},
 		"-11,-35": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -371248,7 +371248,7 @@
 		},
 		"-11,-8": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -371260,7 +371260,7 @@
 		},
 		"-11,-7": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -371272,7 +371272,7 @@
 		},
 		"-11,-6": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -371284,7 +371284,7 @@
 		},
 		"-11,-5": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -374420,7 +374420,7 @@
 		},
 		"-10,-36": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -374762,7 +374762,7 @@
 		},
 		"-10,-8": {
 			"biome": "B00004",
-			"elevation": 6,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -374798,7 +374798,7 @@
 		},
 		"-10,-5": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -374810,7 +374810,7 @@
 		},
 		"-10,-4": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -377514,7 +377514,7 @@
 		},
 		"-9,-71": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -378080,7 +378080,7 @@
 		},
 		"-9,-24": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -378282,7 +378282,7 @@
 		},
 		"-9,-8": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -378318,7 +378318,7 @@
 		},
 		"-9,-5": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -379404,7 +379404,7 @@
 		},
 		"-9,85": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -380100,7 +380100,7 @@
 		},
 		"-9,143": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -381798,7 +381798,7 @@
 		},
 		"-8,-9": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -381810,7 +381810,7 @@
 		},
 		"-8,-8": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -381822,7 +381822,7 @@
 		},
 		"-8,-7": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -382702,7 +382702,7 @@
 		},
 		"-8,66": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -383172,7 +383172,7 @@
 		},
 		"-8,105": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -383184,7 +383184,7 @@
 		},
 		"-8,106": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -383616,7 +383616,7 @@
 		},
 		"-8,142": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -384962,7 +384962,7 @@
 		},
 		"-7,-40": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -385190,7 +385190,7 @@
 		},
 		"-7,-21": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -385338,7 +385338,7 @@
 		},
 		"-7,-9": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -385350,7 +385350,7 @@
 		},
 		"-7,-8": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -387150,7 +387150,7 @@
 		},
 		"-7,142": {
 			"biome": "B00004",
-			"elevation": 32,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -388742,7 +388742,7 @@
 		},
 		"-6,-21": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				true,
 				false,
@@ -392294,7 +392294,7 @@
 		},
 		"-5,-22": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -392454,7 +392454,7 @@
 		},
 		"-5,-9": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -402466,7 +402466,7 @@
 		},
 		"-2,-72": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -402586,7 +402586,7 @@
 		},
 		"-2,-62": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -405672,7 +405672,7 @@
 		},
 		"-1,-107": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -406116,7 +406116,7 @@
 		},
 		"-1,-70": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 13,
 			"walls": [
 				true,
 				false,
@@ -406128,7 +406128,7 @@
 		},
 		"-1,-69": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				true,
@@ -406200,7 +406200,7 @@
 		},
 		"-1,-63": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -406380,7 +406380,7 @@
 		},
 		"-1,-48": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -406392,7 +406392,7 @@
 		},
 		"-1,-47": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -409750,7 +409750,7 @@
 		},
 		"0,-71": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -410028,7 +410028,7 @@
 		},
 		"0,-48": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -411252,7 +411252,7 @@
 		},
 		"0,53": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -413426,7 +413426,7 @@
 		},
 		"1,-68": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -413654,7 +413654,7 @@
 		},
 		"1,-49": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -415894,7 +415894,7 @@
 		},
 		"1,136": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -416292,7 +416292,7 @@
 		},
 		"2,-132": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -416498,7 +416498,7 @@
 		},
 		"2,-115": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -417230,7 +417230,7 @@
 		},
 		"2,-54": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -417520,7 +417520,7 @@
 		},
 		"2,-30": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -420084,7 +420084,7 @@
 		},
 		"3,-116": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -422132,7 +422132,7 @@
 		},
 		"3,54": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -429300,7 +429300,7 @@
 		},
 		"5,53": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -431356,7 +431356,7 @@
 		},
 		"6,-74": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -431852,7 +431852,7 @@
 		},
 		"6,-33": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -432884,7 +432884,7 @@
 		},
 		"6,53": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -434962,7 +434962,7 @@
 		},
 		"7,-70": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -435384,7 +435384,7 @@
 		},
 		"7,-35": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -436418,7 +436418,7 @@
 		},
 		"7,51": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -436442,7 +436442,7 @@
 		},
 		"7,53": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -436466,7 +436466,7 @@
 		},
 		"7,55": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -438224,7 +438224,7 @@
 		},
 		"8,-93": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -438236,7 +438236,7 @@
 		},
 		"8,-92": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				true,
 				false,
@@ -438248,7 +438248,7 @@
 		},
 		"8,-91": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				true,
@@ -438260,7 +438260,7 @@
 		},
 		"8,-90": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -438440,7 +438440,7 @@
 		},
 		"8,-75": {
 			"biome": "B00004",
-			"elevation": 51,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -438452,7 +438452,7 @@
 		},
 		"8,-74": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -438488,7 +438488,7 @@
 		},
 		"8,-71": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -438716,7 +438716,7 @@
 		},
 		"8,-52": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -440008,7 +440008,7 @@
 		},
 		"8,55": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -440536,7 +440536,7 @@
 		},
 		"8,99": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -440680,7 +440680,7 @@
 		},
 		"8,111": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -440692,7 +440692,7 @@
 		},
 		"8,112": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -441428,7 +441428,7 @@
 		},
 		"9,-120": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -441742,7 +441742,7 @@
 		},
 		"9,-94": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -441840,7 +441840,7 @@
 		},
 		"9,-86": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -442260,7 +442260,7 @@
 		},
 		"9,-51": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				true,
 				false,
@@ -443116,7 +443116,7 @@
 		},
 		"9,20": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -443540,7 +443540,7 @@
 		},
 		"9,55": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -444152,7 +444152,7 @@
 		},
 		"9,106": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -444212,7 +444212,7 @@
 		},
 		"9,111": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -444452,7 +444452,7 @@
 		},
 		"9,131": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -445232,7 +445232,7 @@
 		},
 		"10,-96": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -445790,7 +445790,7 @@
 		},
 		"10,-50": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 16,
 			"walls": [
 				true,
 				true,
@@ -445910,7 +445910,7 @@
 		},
 		"10,-40": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -447570,7 +447570,7 @@
 		},
 		"10,98": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -447906,7 +447906,7 @@
 		},
 		"10,126": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -448990,7 +448990,7 @@
 		},
 		"11,-75": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -449002,7 +449002,7 @@
 		},
 		"11,-74": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -449122,7 +449122,7 @@
 		},
 		"11,-64": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -449316,7 +449316,7 @@
 		},
 		"11,-48": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -451410,7 +451410,7 @@
 		},
 		"11,126": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -451470,7 +451470,7 @@
 		},
 		"11,131": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -451722,7 +451722,7 @@
 		},
 		"12,-138": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -452478,7 +452478,7 @@
 		},
 		"12,-75": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -452490,7 +452490,7 @@
 		},
 		"12,-74": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -452768,7 +452768,7 @@
 		},
 		"12,-51": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 12,
 			"walls": [
 				false,
 				true,
@@ -452792,7 +452792,7 @@
 		},
 		"12,-49": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 11,
 			"walls": [
 				true,
 				false,
@@ -452804,7 +452804,7 @@
 		},
 		"12,-48": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				true,
 				true,
@@ -452816,7 +452816,7 @@
 		},
 		"12,-47": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				true,
 				true,
@@ -452828,7 +452828,7 @@
 		},
 		"12,-46": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 5,
 			"walls": [
 				false,
 				true,
@@ -452840,7 +452840,7 @@
 		},
 		"12,-45": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -452924,7 +452924,7 @@
 		},
 		"12,-38": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -454800,7 +454800,7 @@
 		},
 		"12,118": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -454896,7 +454896,7 @@
 		},
 		"12,126": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -455952,7 +455952,7 @@
 		},
 		"13,-75": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -456256,7 +456256,7 @@
 		},
 		"13,-50": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				true,
 				true,
@@ -456310,7 +456310,7 @@
 		},
 		"13,-46": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -456322,7 +456322,7 @@
 		},
 		"13,-45": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -456418,7 +456418,7 @@
 		},
 		"13,-37": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -456430,7 +456430,7 @@
 		},
 		"13,-36": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -457426,7 +457426,7 @@
 		},
 		"13,47": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -458038,7 +458038,7 @@
 		},
 		"13,98": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -458650,7 +458650,7 @@
 		},
 		"14,-139": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -459658,7 +459658,7 @@
 		},
 		"14,-55": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -459766,7 +459766,7 @@
 		},
 		"14,-47": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -459778,7 +459778,7 @@
 		},
 		"14,-46": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -459790,7 +459790,7 @@
 		},
 		"14,-45": {
 			"biome": "B00004",
-			"elevation": 40,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -461712,7 +461712,7 @@
 		},
 		"14,115": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -461736,7 +461736,7 @@
 		},
 		"14,117": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -461870,7 +461870,7 @@
 		},
 		"14,128": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -462940,7 +462940,7 @@
 		},
 		"15,-70": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -463060,7 +463060,7 @@
 		},
 		"15,-60": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -464002,7 +464002,7 @@
 		},
 		"15,18": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -464170,7 +464170,7 @@
 		},
 		"15,32": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -464182,7 +464182,7 @@
 		},
 		"15,33": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -465174,7 +465174,7 @@
 		},
 		"15,115": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 10,
 			"walls": [
 				true,
 				false,
@@ -465186,7 +465186,7 @@
 		},
 		"15,116": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 10,
 			"walls": [
 				false,
 				true,
@@ -465222,7 +465222,7 @@
 		},
 		"15,119": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -465270,7 +465270,7 @@
 		},
 		"15,123": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -465654,7 +465654,7 @@
 		},
 		"16,-131": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -466050,7 +466050,7 @@
 		},
 		"16,-98": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -466062,7 +466062,7 @@
 		},
 		"16,-97": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -466510,7 +466510,7 @@
 		},
 		"16,-60": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -466582,7 +466582,7 @@
 		},
 		"16,-54": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -466594,7 +466594,7 @@
 		},
 		"16,-53": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -467246,7 +467246,7 @@
 		},
 		"16,1": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -467630,7 +467630,7 @@
 		},
 		"16,33": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -468604,7 +468604,7 @@
 		},
 		"16,113": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -468678,7 +468678,7 @@
 		},
 		"16,119": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -468690,7 +468690,7 @@
 		},
 		"16,120": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -468702,7 +468702,7 @@
 		},
 		"16,121": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				true,
 				false,
@@ -469134,7 +469134,7 @@
 		},
 		"17,-128": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -469494,7 +469494,7 @@
 		},
 		"17,-98": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -469938,7 +469938,7 @@
 		},
 		"17,-61": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -470298,7 +470298,7 @@
 		},
 		"17,-31": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -470310,7 +470310,7 @@
 		},
 		"17,-30": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -472048,7 +472048,7 @@
 		},
 		"17,114": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -472060,7 +472060,7 @@
 		},
 		"17,115": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -473454,7 +473454,7 @@
 		},
 		"18,-53": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -473730,7 +473730,7 @@
 		},
 		"18,-30": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -474408,7 +474408,7 @@
 		},
 		"18,26": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -475472,7 +475472,7 @@
 		},
 		"18,114": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -475484,7 +475484,7 @@
 		},
 		"18,115": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -475544,7 +475544,7 @@
 		},
 		"18,120": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -477810,7 +477810,7 @@
 		},
 		"19,25": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 10,
 			"walls": [
 				true,
 				false,
@@ -478710,7 +478710,7 @@
 		},
 		"19,100": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -478942,7 +478942,7 @@
 		},
 		"19,119": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -479206,7 +479206,7 @@
 		},
 		"20,-141": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -479998,7 +479998,7 @@
 		},
 		"20,-75": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -480430,7 +480430,7 @@
 		},
 		"20,-39": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -480454,7 +480454,7 @@
 		},
 		"20,-37": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -481194,7 +481194,7 @@
 		},
 		"20,24": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -483214,7 +483214,7 @@
 		},
 		"21,-90": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -483756,7 +483756,7 @@
 		},
 		"21,-45": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -483768,7 +483768,7 @@
 		},
 		"21,-44": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -484512,7 +484512,7 @@
 		},
 		"21,17": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -484524,7 +484524,7 @@
 		},
 		"21,18": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -484874,7 +484874,7 @@
 		},
 		"21,47": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -485640,7 +485640,7 @@
 		},
 		"21,110": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -485822,7 +485822,7 @@
 		},
 		"21,125": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -486602,7 +486602,7 @@
 		},
 		"22,-90": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -487002,7 +487002,7 @@
 		},
 		"22,-57": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -487244,7 +487244,7 @@
 		},
 		"22,-37": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -487256,7 +487256,7 @@
 		},
 		"22,-36": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -489390,7 +489390,7 @@
 		},
 		"23,-140": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -489402,7 +489402,7 @@
 		},
 		"23,-139": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -489558,7 +489558,7 @@
 		},
 		"23,-126": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -489570,7 +489570,7 @@
 		},
 		"23,-125": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -490362,7 +490362,7 @@
 		},
 		"23,-59": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -490628,7 +490628,7 @@
 		},
 		"23,-37": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -490640,7 +490640,7 @@
 		},
 		"23,-36": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -490652,7 +490652,7 @@
 		},
 		"23,-35": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -491350,7 +491350,7 @@
 		},
 		"23,23": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 18,
 			"walls": [
 				false,
 				false,
@@ -491386,7 +491386,7 @@
 		},
 		"23,26": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -492850,7 +492850,7 @@
 		},
 		"24,-132": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -492898,7 +492898,7 @@
 		},
 		"24,-128": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -493534,7 +493534,7 @@
 		},
 		"24,-75": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -493546,7 +493546,7 @@
 		},
 		"24,-74": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -493714,7 +493714,7 @@
 		},
 		"24,-60": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -494004,7 +494004,7 @@
 		},
 		"24,-36": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -494016,7 +494016,7 @@
 		},
 		"24,-35": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -494544,7 +494544,7 @@
 		},
 		"24,9": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -494568,7 +494568,7 @@
 		},
 		"24,11": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -494738,7 +494738,7 @@
 		},
 		"24,25": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -496194,7 +496194,7 @@
 		},
 		"25,-133": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -496206,7 +496206,7 @@
 		},
 		"25,-132": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -496218,7 +496218,7 @@
 		},
 		"25,-131": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -496398,7 +496398,7 @@
 		},
 		"25,-116": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -496880,7 +496880,7 @@
 		},
 		"25,-76": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -496892,7 +496892,7 @@
 		},
 		"25,-75": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -497374,7 +497374,7 @@
 		},
 		"25,-35": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -499038,7 +499038,7 @@
 		},
 		"25,103": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -499050,7 +499050,7 @@
 		},
 		"25,104": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -499538,7 +499538,7 @@
 		},
 		"26,-132": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -499718,7 +499718,7 @@
 		},
 		"26,-117": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -500202,7 +500202,7 @@
 		},
 		"26,-77": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -502362,7 +502362,7 @@
 		},
 		"26,102": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -502374,7 +502374,7 @@
 		},
 		"26,103": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -503038,7 +503038,7 @@
 		},
 		"27,-117": {
 			"biome": "B00004",
-			"elevation": 35,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -503424,7 +503424,7 @@
 		},
 		"27,-85": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -503642,7 +503642,7 @@
 		},
 		"27,-67": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -505364,7 +505364,7 @@
 		},
 		"27,76": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -505664,7 +505664,7 @@
 		},
 		"27,100": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -505688,7 +505688,7 @@
 		},
 		"27,102": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -508664,7 +508664,7 @@
 		},
 		"28,75": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -508822,7 +508822,7 @@
 		},
 		"28,88": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				true,
@@ -509172,7 +509172,7 @@
 		},
 		"28,116": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -509666,7 +509666,7 @@
 		},
 		"29,-116": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -510778,7 +510778,7 @@
 		},
 		"29,-24": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -510790,7 +510790,7 @@
 		},
 		"29,-23": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -510802,7 +510802,7 @@
 		},
 		"29,-22": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -511126,7 +511126,7 @@
 		},
 		"29,5": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -512478,7 +512478,7 @@
 		},
 		"29,115": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -512938,7 +512938,7 @@
 		},
 		"30,-119": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -513974,7 +513974,7 @@
 		},
 		"30,-34": {
 			"biome": "B00004",
-			"elevation": 38,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -514094,7 +514094,7 @@
 		},
 		"30,-24": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -514310,7 +514310,7 @@
 		},
 		"30,-6": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -514430,7 +514430,7 @@
 		},
 		"30,4": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -515320,7 +515320,7 @@
 		},
 		"30,78": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -515418,7 +515418,7 @@
 		},
 		"30,86": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -515540,7 +515540,7 @@
 		},
 		"30,96": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -515774,7 +515774,7 @@
 		},
 		"30,115": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -515970,7 +515970,7 @@
 		},
 		"31,-140": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -517142,7 +517142,7 @@
 		},
 		"31,-43": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -517154,7 +517154,7 @@
 		},
 		"31,-42": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -517238,7 +517238,7 @@
 		},
 		"31,-35": {
 			"biome": "B00004",
-			"elevation": 39,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -517586,7 +517586,7 @@
 		},
 		"31,-6": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -517622,7 +517622,7 @@
 		},
 		"31,-3": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -517634,7 +517634,7 @@
 		},
 		"31,-2": {
 			"biome": "B00004",
-			"elevation": 42,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -517646,7 +517646,7 @@
 		},
 		"31,-1": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -517658,7 +517658,7 @@
 		},
 		"31,0": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -517670,7 +517670,7 @@
 		},
 		"31,1": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -518586,7 +518586,7 @@
 		},
 		"31,77": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -519044,7 +519044,7 @@
 		},
 		"31,114": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -519286,7 +519286,7 @@
 		},
 		"32,-136": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -519406,7 +519406,7 @@
 		},
 		"32,-126": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -520394,7 +520394,7 @@
 		},
 		"32,-44": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -520502,7 +520502,7 @@
 		},
 		"32,-35": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -520802,7 +520802,7 @@
 		},
 		"32,-10": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -520838,7 +520838,7 @@
 		},
 		"32,-7": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -520850,7 +520850,7 @@
 		},
 		"32,-6": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -520898,7 +520898,7 @@
 		},
 		"32,-2": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -520934,7 +520934,7 @@
 		},
 		"32,1": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -520946,7 +520946,7 @@
 		},
 		"32,2": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -522122,7 +522122,7 @@
 		},
 		"32,99": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -522312,7 +522312,7 @@
 		},
 		"32,114": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -522746,7 +522746,7 @@
 		},
 		"33,-119": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -523436,7 +523436,7 @@
 		},
 		"33,-62": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -523654,7 +523654,7 @@
 		},
 		"33,-44": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -524050,7 +524050,7 @@
 		},
 		"33,-11": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -525346,7 +525346,7 @@
 		},
 		"33,96": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -525358,7 +525358,7 @@
 		},
 		"33,97": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -525982,7 +525982,7 @@
 		},
 		"34,-120": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -526708,7 +526708,7 @@
 		},
 		"34,-60": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -527274,7 +527274,7 @@
 		},
 		"34,-13": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -527286,7 +527286,7 @@
 		},
 		"34,-12": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -528632,7 +528632,7 @@
 		},
 		"34,99": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -529226,7 +529226,7 @@
 		},
 		"35,-120": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -529238,7 +529238,7 @@
 		},
 		"35,-119": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -530236,7 +530236,7 @@
 		},
 		"35,-36": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -530512,7 +530512,7 @@
 		},
 		"35,-13": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -530898,7 +530898,7 @@
 		},
 		"35,19": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -532348,7 +532348,7 @@
 		},
 		"36,-128": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -532456,7 +532456,7 @@
 		},
 		"36,-119": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -533322,7 +533322,7 @@
 		},
 		"36,-47": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -533708,7 +533708,7 @@
 		},
 		"36,-15": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -533720,7 +533720,7 @@
 		},
 		"36,-14": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -536512,7 +536512,7 @@
 		},
 		"37,-48": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -536908,7 +536908,7 @@
 		},
 		"37,-15": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -538800,7 +538800,7 @@
 		},
 		"38,-123": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -539364,7 +539364,7 @@
 		},
 		"38,-76": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 19,
 			"walls": [
 				false,
 				false,
@@ -540086,7 +540086,7 @@
 		},
 		"38,-16": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -540488,7 +540488,7 @@
 		},
 		"38,17": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -541494,7 +541494,7 @@
 		},
 		"38,100": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -542692,7 +542692,7 @@
 		},
 		"39,-64": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -542958,7 +542958,7 @@
 		},
 		"39,-42": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -543260,7 +543260,7 @@
 		},
 		"39,-17": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -543682,7 +543682,7 @@
 		},
 		"39,17": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -543814,7 +543814,7 @@
 		},
 		"39,28": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -544672,7 +544672,7 @@
 		},
 		"39,99": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -544912,7 +544912,7 @@
 		},
 		"40,-143": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -546406,7 +546406,7 @@
 		},
 		"40,-19": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -546418,7 +546418,7 @@
 		},
 		"40,-18": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -546794,7 +546794,7 @@
 		},
 		"40,13": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -546830,7 +546830,7 @@
 		},
 		"40,16": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -546966,7 +546966,7 @@
 		},
 		"40,27": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -546978,7 +546978,7 @@
 		},
 		"40,28": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -547134,7 +547134,7 @@
 		},
 		"40,41": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -547194,7 +547194,7 @@
 		},
 		"40,46": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -547822,7 +547822,7 @@
 		},
 		"40,98": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -547834,7 +547834,7 @@
 		},
 		"40,99": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -547918,7 +547918,7 @@
 		},
 		"40,106": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -547942,7 +547942,7 @@
 		},
 		"40,108": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -548050,7 +548050,7 @@
 		},
 		"41,-144": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -548688,7 +548688,7 @@
 		},
 		"41,-91": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -548892,7 +548892,7 @@
 		},
 		"41,-74": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -549518,7 +549518,7 @@
 		},
 		"41,-22": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -549530,7 +549530,7 @@
 		},
 		"41,-21": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -549542,7 +549542,7 @@
 		},
 		"41,-20": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -549554,7 +549554,7 @@
 		},
 		"41,-19": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -549566,7 +549566,7 @@
 		},
 		"41,-18": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -550110,7 +550110,7 @@
 		},
 		"41,27": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -550134,7 +550134,7 @@
 		},
 		"41,29": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -550254,7 +550254,7 @@
 		},
 		"41,39": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -550338,7 +550338,7 @@
 		},
 		"41,46": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -551060,7 +551060,7 @@
 		},
 		"41,106": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -551554,7 +551554,7 @@
 		},
 		"42,-113": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -551998,7 +551998,7 @@
 		},
 		"42,-76": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -552010,7 +552010,7 @@
 		},
 		"42,-75": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -552648,7 +552648,7 @@
 		},
 		"42,-22": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -552672,7 +552672,7 @@
 		},
 		"42,-20": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -552696,7 +552696,7 @@
 		},
 		"42,-18": {
 			"biome": "B00004",
-			"elevation": 40,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -552722,7 +552722,7 @@
 		},
 		"42,-16": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -552734,7 +552734,7 @@
 		},
 		"42,-15": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -553458,7 +553458,7 @@
 		},
 		"42,45": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -553470,7 +553470,7 @@
 		},
 		"42,46": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -554096,7 +554096,7 @@
 		},
 		"42,98": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -554168,7 +554168,7 @@
 		},
 		"42,104": {
 			"biome": "B00004",
-			"elevation": 47,
+			"elevation": 21,
 			"walls": [
 				false,
 				false,
@@ -554312,7 +554312,7 @@
 		},
 		"43,-143": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -554674,7 +554674,7 @@
 		},
 		"43,-113": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -554686,7 +554686,7 @@
 		},
 		"43,-112": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -554962,7 +554962,7 @@
 		},
 		"43,-89": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -555746,7 +555746,7 @@
 		},
 		"43,-24": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -555758,7 +555758,7 @@
 		},
 		"43,-23": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -555854,7 +555854,7 @@
 		},
 		"43,-15": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -556278,7 +556278,7 @@
 		},
 		"43,20": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -556290,7 +556290,7 @@
 		},
 		"43,21": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -557326,7 +557326,7 @@
 		},
 		"43,107": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -557434,7 +557434,7 @@
 		},
 		"44,-142": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -557446,7 +557446,7 @@
 		},
 		"44,-141": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -557760,7 +557760,7 @@
 		},
 		"44,-115": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -557772,7 +557772,7 @@
 		},
 		"44,-114": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -557784,7 +557784,7 @@
 		},
 		"44,-113": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -557916,7 +557916,7 @@
 		},
 		"44,-102": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -558012,7 +558012,7 @@
 		},
 		"44,-94": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -558670,7 +558670,7 @@
 		},
 		"44,-40": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -558718,7 +558718,7 @@
 		},
 		"44,-36": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -558730,7 +558730,7 @@
 		},
 		"44,-35": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -558994,7 +558994,7 @@
 		},
 		"44,-13": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -559396,7 +559396,7 @@
 		},
 		"44,20": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -559408,7 +559408,7 @@
 		},
 		"44,21": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -560430,7 +560430,7 @@
 		},
 		"44,106": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -560828,7 +560828,7 @@
 		},
 		"45,-118": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -561104,7 +561104,7 @@
 		},
 		"45,-95": {
 			"biome": "B00004",
-			"elevation": 46,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -561488,7 +561488,7 @@
 		},
 		"45,-63": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -562460,7 +562460,7 @@
 		},
 		"45,17": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -563858,7 +563858,7 @@
 		},
 		"46,-123": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -563870,7 +563870,7 @@
 		},
 		"46,-122": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -564194,7 +564194,7 @@
 		},
 		"46,-95": {
 			"biome": "B00004",
-			"elevation": 46,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -564578,7 +564578,7 @@
 		},
 		"46,-63": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -565182,7 +565182,7 @@
 		},
 		"46,-13": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -566972,7 +566972,7 @@
 		},
 		"47,-120": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -567248,7 +567248,7 @@
 		},
 		"47,-97": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -567260,7 +567260,7 @@
 		},
 		"47,-96": {
 			"biome": "B00004",
-			"elevation": 42,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -568126,7 +568126,7 @@
 		},
 		"47,-24": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -569828,7 +569828,7 @@
 		},
 		"48,-137": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				true,
 				false,
@@ -569950,7 +569950,7 @@
 		},
 		"48,-127": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -570322,7 +570322,7 @@
 		},
 		"48,-96": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -571324,7 +571324,7 @@
 		},
 		"48,-13": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -572622,7 +572622,7 @@
 		},
 		"48,94": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 7,
 			"walls": [
 				false,
 				true,
@@ -573356,7 +573356,7 @@
 		},
 		"49,-98": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -574152,7 +574152,7 @@
 		},
 		"49,-32": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -575942,7 +575942,7 @@
 		},
 		"50,-137": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -578988,7 +578988,7 @@
 		},
 		"51,-137": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -586712,7 +586712,7 @@
 		},
 		"53,2": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -587214,7 +587214,7 @@
 		},
 		"53,43": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -587226,7 +587226,7 @@
 		},
 		"53,44": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -594050,7 +594050,7 @@
 		},
 		"56,-136": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -595018,7 +595018,7 @@
 		},
 		"56,-56": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -597028,7 +597028,7 @@
 		},
 		"57,-136": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -597076,7 +597076,7 @@
 		},
 		"57,-132": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -597742,7 +597742,7 @@
 		},
 		"57,-77": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -597996,7 +597996,7 @@
 		},
 		"57,-56": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -598044,7 +598044,7 @@
 		},
 		"57,-52": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -599212,7 +599212,7 @@
 		},
 		"57,44": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -600700,7 +600700,7 @@
 		},
 		"58,-77": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -600930,7 +600930,7 @@
 		},
 		"58,-58": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -600942,7 +600942,7 @@
 		},
 		"58,-57": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -600954,7 +600954,7 @@
 		},
 		"58,-56": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -600966,7 +600966,7 @@
 		},
 		"58,-55": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -600990,7 +600990,7 @@
 		},
 		"58,-53": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -602304,7 +602304,7 @@
 		},
 		"58,55": {
 			"biome": "B00004",
-			"elevation": 47,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -603000,7 +603000,7 @@
 		},
 		"59,-131": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -603662,7 +603662,7 @@
 		},
 		"59,-77": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -603892,7 +603892,7 @@
 		},
 		"59,-58": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -603904,7 +603904,7 @@
 		},
 		"59,-57": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -603916,7 +603916,7 @@
 		},
 		"59,-56": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -605260,7 +605260,7 @@
 		},
 		"59,54": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -606824,7 +606824,7 @@
 		},
 		"60,-59": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -606836,7 +606836,7 @@
 		},
 		"60,-58": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -606848,7 +606848,7 @@
 		},
 		"60,-57": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -606860,7 +606860,7 @@
 		},
 		"60,-56": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -606872,7 +606872,7 @@
 		},
 		"60,-55": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -607380,7 +607380,7 @@
 		},
 		"60,-13": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -608186,7 +608186,7 @@
 		},
 		"60,53": {
 			"biome": "B00004",
-			"elevation": 36,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -609698,7 +609698,7 @@
 		},
 		"61,-63": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -609710,7 +609710,7 @@
 		},
 		"61,-62": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -609782,7 +609782,7 @@
 		},
 		"61,-56": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -610288,7 +610288,7 @@
 		},
 		"61,-14": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -611686,7 +611686,7 @@
 		},
 		"62,-140": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -613204,7 +613204,7 @@
 		},
 		"62,-16": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -613216,7 +613216,7 @@
 		},
 		"62,-15": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -614084,7 +614084,7 @@
 		},
 		"62,56": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -616098,7 +616098,7 @@
 		},
 		"63,-17": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -616110,7 +616110,7 @@
 		},
 		"63,-16": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -616986,7 +616986,7 @@
 		},
 		"63,56": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -618564,7 +618564,7 @@
 		},
 		"64,-52": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -618960,7 +618960,7 @@
 		},
 		"64,-20": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -618972,7 +618972,7 @@
 		},
 		"64,-19": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -619864,7 +619864,7 @@
 		},
 		"64,55": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -621456,7 +621456,7 @@
 		},
 		"65,-51": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -629798,7 +629798,7 @@
 		},
 		"68,-71": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -629954,7 +629954,7 @@
 		},
 		"68,-58": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -631766,7 +631766,7 @@
 		},
 		"69,-141": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -632588,7 +632588,7 @@
 		},
 		"69,-73": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -632600,7 +632600,7 @@
 		},
 		"69,-72": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -632612,7 +632612,7 @@
 		},
 		"69,-71": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -632744,7 +632744,7 @@
 		},
 		"69,-60": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -632780,7 +632780,7 @@
 		},
 		"69,-57": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -633248,7 +633248,7 @@
 		},
 		"69,-18": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -634572,7 +634572,7 @@
 		},
 		"70,-141": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -634766,7 +634766,7 @@
 		},
 		"70,-125": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -635400,7 +635400,7 @@
 		},
 		"70,-73": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -635412,7 +635412,7 @@
 		},
 		"70,-72": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -635556,7 +635556,7 @@
 		},
 		"70,-60": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -637534,7 +637534,7 @@
 		},
 		"71,-127": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -637570,7 +637570,7 @@
 		},
 		"71,-124": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -638168,7 +638168,7 @@
 		},
 		"71,-75": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -638180,7 +638180,7 @@
 		},
 		"71,-74": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -638192,7 +638192,7 @@
 		},
 		"71,-73": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -640310,7 +640310,7 @@
 		},
 		"72,-127": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -640940,7 +640940,7 @@
 		},
 		"72,-76": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -640952,7 +640952,7 @@
 		},
 		"72,-75": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -640964,7 +640964,7 @@
 		},
 		"72,-74": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -641156,7 +641156,7 @@
 		},
 		"72,-58": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -643718,7 +643718,7 @@
 		},
 		"73,-76": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -646610,7 +646610,7 @@
 		},
 		"74,-65": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -648772,7 +648772,7 @@
 		},
 		"75,-114": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -649354,7 +649354,7 @@
 		},
 		"75,-66": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				true,
@@ -652038,7 +652038,7 @@
 		},
 		"76,-70": {
 			"biome": "B00004",
-			"elevation": 35,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -652088,7 +652088,7 @@
 		},
 		"76,-66": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -652800,7 +652800,7 @@
 		},
 		"76,-8": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -654768,7 +654768,7 @@
 		},
 		"77,-70": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -654804,7 +654804,7 @@
 		},
 		"77,-67": {
 			"biome": "B00004",
-			"elevation": 44,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -654816,7 +654816,7 @@
 		},
 		"77,-66": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -655604,7 +655604,7 @@
 		},
 		"77,-1": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -656818,7 +656818,7 @@
 		},
 		"78,-124": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -659470,7 +659470,7 @@
 		},
 		"79,-127": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -660060,7 +660060,7 @@
 		},
 		"79,-78": {
 			"biome": "B00004",
-			"elevation": 51,
+			"elevation": 8,
 			"walls": [
 				true,
 				false,
@@ -660072,7 +660072,7 @@
 		},
 		"79,-77": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				true,
@@ -660858,7 +660858,7 @@
 		},
 		"79,-12": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -662396,7 +662396,7 @@
 		},
 		"80,-106": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -662750,7 +662750,7 @@
 		},
 		"80,-77": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 12,
 			"walls": [
 				false,
 				true,
@@ -663546,7 +663546,7 @@
 		},
 		"80,-11": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -664638,7 +664638,7 @@
 		},
 		"81,-141": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -665426,7 +665426,7 @@
 		},
 		"81,-76": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -665582,7 +665582,7 @@
 		},
 		"81,-63": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -666168,7 +666168,7 @@
 		},
 		"81,-15": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -668074,7 +668074,7 @@
 		},
 		"82,-77": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -668086,7 +668086,7 @@
 		},
 		"82,-76": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 17,
 			"walls": [
 				false,
 				false,
@@ -668986,7 +668986,7 @@
 		},
 		"82,-1": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -669902,7 +669902,7 @@
 		},
 		"83,-144": {
 			"biome": "B00004",
-			"elevation": 37,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -670654,7 +670654,7 @@
 		},
 		"83,-82": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -670666,7 +670666,7 @@
 		},
 		"83,-81": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -670702,7 +670702,7 @@
 		},
 		"83,-78": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -670798,7 +670798,7 @@
 		},
 		"83,-70": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -672530,7 +672530,7 @@
 		},
 		"84,-145": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -672542,7 +672542,7 @@
 		},
 		"84,-144": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -673446,7 +673446,7 @@
 		},
 		"84,-69": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -673458,7 +673458,7 @@
 		},
 		"84,-68": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -673494,7 +673494,7 @@
 		},
 		"84,-65": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -675194,7 +675194,7 @@
 		},
 		"85,-141": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -675858,7 +675858,7 @@
 		},
 		"85,-86": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -678470,7 +678470,7 @@
 		},
 		"86,-86": {
 			"biome": "B00004",
-			"elevation": 30,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -678820,7 +678820,7 @@
 		},
 		"86,-57": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 15,
 			"walls": [
 				false,
 				false,
@@ -681048,7 +681048,7 @@
 		},
 		"87,-88": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -681252,7 +681252,7 @@
 		},
 		"87,-71": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -681408,7 +681408,7 @@
 		},
 		"87,-58": {
 			"biome": "B00004",
-			"elevation": 33,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -681420,7 +681420,7 @@
 		},
 		"87,-57": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -681432,7 +681432,7 @@
 		},
 		"87,-56": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -683832,7 +683832,7 @@
 		},
 		"88,-72": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -683892,7 +683892,7 @@
 		},
 		"88,-67": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -683904,7 +683904,7 @@
 		},
 		"88,-66": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -686222,7 +686222,7 @@
 		},
 		"89,-88": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -686812,7 +686812,7 @@
 		},
 		"89,-39": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -687028,7 +687028,7 @@
 		},
 		"89,-21": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -689372,7 +689372,7 @@
 		},
 		"90,-40": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -694160,7 +694160,7 @@
 		},
 		"92,-66": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -694652,7 +694652,7 @@
 		},
 		"92,-25": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -696714,7 +696714,7 @@
 		},
 		"93,-65": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -701836,7 +701836,7 @@
 		},
 		"95,-58": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -701860,7 +701860,7 @@
 		},
 		"95,-56": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -705302,7 +705302,7 @@
 		},
 		"96,21": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -707846,7 +707846,7 @@
 		},
 		"97,26": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -708322,7 +708322,7 @@
 		},
 		"98,-139": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -708468,7 +708468,7 @@
 		},
 		"98,-127": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -709634,7 +709634,7 @@
 		},
 		"98,-31": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -710908,7 +710908,7 @@
 		},
 		"99,-128": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -710980,7 +710980,7 @@
 		},
 		"99,-122": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -712264,7 +712264,7 @@
 		},
 		"99,-16": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -712816,7 +712816,7 @@
 		},
 		"99,30": {
 			"biome": "B00004",
-			"elevation": 43,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -713358,7 +713358,7 @@
 		},
 		"100,-127": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -714550,7 +714550,7 @@
 		},
 		"100,-29": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -714670,7 +714670,7 @@
 		},
 		"100,-19": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -716156,7 +716156,7 @@
 		},
 		"101,-97": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -716968,7 +716968,7 @@
 		},
 		"101,-30": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -717964,7 +717964,7 @@
 		},
 		"102,-147": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -718670,7 +718670,7 @@
 		},
 		"102,-89": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -720096,7 +720096,7 @@
 		},
 		"102,29": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -720120,7 +720120,7 @@
 		},
 		"102,31": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -720982,7 +720982,7 @@
 		},
 		"103,-97": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -722488,7 +722488,7 @@
 		},
 		"103,28": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -722500,7 +722500,7 @@
 		},
 		"103,29": {
 			"biome": "B00004",
-			"elevation": 39,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -725960,7 +725960,7 @@
 		},
 		"105,-79": {
 			"biome": "B00004",
-			"elevation": 34,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -726428,7 +726428,7 @@
 		},
 		"105,-40": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -726500,7 +726500,7 @@
 		},
 		"105,-34": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -727578,7 +727578,7 @@
 		},
 		"106,-141": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -727832,7 +727832,7 @@
 		},
 		"106,-120": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -728806,7 +728806,7 @@
 		},
 		"106,-40": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -731940,7 +731940,7 @@
 		},
 		"107,25": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -736608,7 +736608,7 @@
 		},
 		"109,26": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -736740,7 +736740,7 @@
 		},
 		"109,37": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -739052,7 +739052,7 @@
 		},
 		"110,37": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -741218,7 +741218,7 @@
 		},
 		"111,25": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -746636,7 +746636,7 @@
 		},
 		"114,-94": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -747182,7 +747182,7 @@
 		},
 		"114,-49": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -747446,7 +747446,7 @@
 		},
 		"114,-27": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -749284,7 +749284,7 @@
 		},
 		"115,-63": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -749296,7 +749296,7 @@
 		},
 		"115,-62": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -749704,7 +749704,7 @@
 		},
 		"115,-28": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -750704,7 +750704,7 @@
 		},
 		"116,-131": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -751520,7 +751520,7 @@
 		},
 		"116,-65": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -751628,7 +751628,7 @@
 		},
 		"116,-56": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -751844,7 +751844,7 @@
 		},
 		"116,-38": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -752362,7 +752362,7 @@
 		},
 		"116,5": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -752928,7 +752928,7 @@
 		},
 		"117,-133": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -754026,7 +754026,7 @@
 		},
 		"117,-43": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -754830,7 +754830,7 @@
 		},
 		"117,24": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -755134,7 +755134,7 @@
 		},
 		"118,-135": {
 			"biome": "B00004",
-			"elevation": 50,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -755146,7 +755146,7 @@
 		},
 		"118,-134": {
 			"biome": "B00004",
-			"elevation": 49,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -755886,7 +755886,7 @@
 		},
 		"118,-73": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -755946,7 +755946,7 @@
 		},
 		"118,-68": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -757360,7 +757360,7 @@
 		},
 		"119,-134": {
 			"biome": "B00004",
-			"elevation": 31,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -758098,7 +758098,7 @@
 		},
 		"119,-73": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -758362,7 +758362,7 @@
 		},
 		"119,-51": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -758568,7 +758568,7 @@
 		},
 		"119,-34": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -759542,7 +759542,7 @@
 		},
 		"120,-135": {
 			"biome": "B00004",
-			"elevation": 22,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -760060,7 +760060,7 @@
 		},
 		"120,-92": {
 			"biome": "B00004",
-			"elevation": 21,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -761724,7 +761724,7 @@
 		},
 		"121,-135": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -762820,7 +762820,7 @@
 		},
 		"121,-44": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -762832,7 +762832,7 @@
 		},
 		"121,-43": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -762844,7 +762844,7 @@
 		},
 		"121,-42": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -762954,7 +762954,7 @@
 		},
 		"121,-33": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -764944,7 +764944,7 @@
 		},
 		"122,-48": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -766174,7 +766174,7 @@
 		},
 		"123,-125": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -767496,7 +767496,7 @@
 		},
 		"123,-16": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -768304,7 +768304,7 @@
 		},
 		"124,-127": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -768316,7 +768316,7 @@
 		},
 		"124,-126": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -768748,7 +768748,7 @@
 		},
 		"124,-90": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -768760,7 +768760,7 @@
 		},
 		"124,-89": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -769646,7 +769646,7 @@
 		},
 		"124,-16": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -769850,7 +769850,7 @@
 		},
 		"124,1": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -770032,7 +770032,7 @@
 		},
 		"124,16": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -770440,7 +770440,7 @@
 		},
 		"125,-127": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -770896,7 +770896,7 @@
 		},
 		"125,-89": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -771418,7 +771418,7 @@
 		},
 		"125,-46": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -777142,7 +777142,7 @@
 		},
 		"128,-99": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -777906,7 +777906,7 @@
 		},
 		"128,-36": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -779040,7 +779040,7 @@
 		},
 		"129,-115": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -779972,7 +779972,7 @@
 		},
 		"129,-38": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -782960,7 +782960,7 @@
 		},
 		"131,-134": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -784616,7 +784616,7 @@
 		},
 		"131,2": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -785014,7 +785014,7 @@
 		},
 		"132,-135": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -785026,7 +785026,7 @@
 		},
 		"132,-134": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -785038,7 +785038,7 @@
 		},
 		"132,-133": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -786678,7 +786678,7 @@
 		},
 		"132,2": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -787064,7 +787064,7 @@
 		},
 		"133,-135": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -787088,7 +787088,7 @@
 		},
 		"133,-133": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -788004,7 +788004,7 @@
 		},
 		"133,-58": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -788728,7 +788728,7 @@
 		},
 		"133,2": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -791040,7 +791040,7 @@
 		},
 		"135,-143": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -792014,7 +792014,7 @@
 		},
 		"135,-63": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -792414,7 +792414,7 @@
 		},
 		"135,-30": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -793052,7 +793052,7 @@
 		},
 		"136,-143": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -793064,7 +793064,7 @@
 		},
 		"136,-142": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -793476,7 +793476,7 @@
 		},
 		"136,-108": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -794356,7 +794356,7 @@
 		},
 		"136,-35": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -794404,7 +794404,7 @@
 		},
 		"136,-31": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -794800,7 +794800,7 @@
 		},
 		"136,2": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -795006,7 +795006,7 @@
 		},
 		"137,-146": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -795018,7 +795018,7 @@
 		},
 		"137,-145": {
 			"biome": "B00004",
-			"elevation": 28,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -795030,7 +795030,7 @@
 		},
 		"137,-144": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -795042,7 +795042,7 @@
 		},
 		"137,-143": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -795054,7 +795054,7 @@
 		},
 		"137,-142": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -796310,7 +796310,7 @@
 		},
 		"137,-38": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -796382,7 +796382,7 @@
 		},
 		"137,-32": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -796720,7 +796720,7 @@
 		},
 		"137,-4": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -796996,7 +796996,7 @@
 		},
 		"138,-145": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				true,
 				false,
@@ -797020,7 +797020,7 @@
 		},
 		"138,-143": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -797032,7 +797032,7 @@
 		},
 		"138,-142": {
 			"biome": "B00004",
-			"elevation": 29,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -797044,7 +797044,7 @@
 		},
 		"138,-141": {
 			"biome": "B00004",
-			"elevation": 50,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -797250,7 +797250,7 @@
 		},
 		"138,-124": {
 			"biome": "B00004",
-			"elevation": 27,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -797518,7 +797518,7 @@
 		},
 		"138,-102": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -798690,7 +798690,7 @@
 		},
 		"138,-5": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -798702,7 +798702,7 @@
 		},
 		"138,-4": {
 			"biome": "B00004",
-			"elevation": 17,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -798980,7 +798980,7 @@
 		},
 		"139,-144": {
 			"biome": "B00004",
-			"elevation": 24,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -798992,7 +798992,7 @@
 		},
 		"139,-143": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -799428,7 +799428,7 @@
 		},
 		"139,-107": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 13,
 			"walls": [
 				false,
 				false,
@@ -799972,7 +799972,7 @@
 		},
 		"139,-62": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -800646,7 +800646,7 @@
 		},
 		"139,-6": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -801394,7 +801394,7 @@
 		},
 		"140,-106": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -801918,7 +801918,7 @@
 		},
 		"140,-63": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -802806,7 +802806,7 @@
 		},
 		"141,-150": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -803084,7 +803084,7 @@
 		},
 		"141,-127": {
 			"biome": "B00004",
-			"elevation": 26,
+			"elevation": 4,
 			"walls": [
 				false,
 				false,
@@ -803374,7 +803374,7 @@
 		},
 		"141,-103": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -803858,7 +803858,7 @@
 		},
 		"141,-63": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -804100,7 +804100,7 @@
 		},
 		"141,-43": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 16,
 			"walls": [
 				false,
 				false,
@@ -804412,7 +804412,7 @@
 		},
 		"141,-17": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -804630,7 +804630,7 @@
 		},
 		"141,1": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -804702,7 +804702,7 @@
 		},
 		"141,7": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -805016,7 +805016,7 @@
 		},
 		"142,-127": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -805790,7 +805790,7 @@
 		},
 		"142,-63": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -805996,7 +805996,7 @@
 		},
 		"142,-46": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -806020,7 +806020,7 @@
 		},
 		"142,-44": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -806140,7 +806140,7 @@
 		},
 		"142,-34": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -806152,7 +806152,7 @@
 		},
 		"142,-33": {
 			"biome": "B00004",
-			"elevation": 10,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -807286,7 +807286,7 @@
 		},
 		"143,-98": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -807710,7 +807710,7 @@
 		},
 		"143,-63": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -807964,7 +807964,7 @@
 		},
 		"143,-42": {
 			"biome": "B00004",
-			"elevation": 15,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -808060,7 +808060,7 @@
 		},
 		"143,-34": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 7,
 			"walls": [
 				false,
 				false,
@@ -808530,7 +808530,7 @@
 		},
 		"143,5": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -809594,7 +809594,7 @@
 		},
 		"144,-65": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -810414,7 +810414,7 @@
 		},
 		"144,3": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -810572,7 +810572,7 @@
 		},
 		"145,-141": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
@@ -811020,7 +811020,7 @@
 		},
 		"145,-104": {
 			"biome": "B00004",
-			"elevation": 23,
+			"elevation": 14,
 			"walls": [
 				false,
 				false,
@@ -811796,7 +811796,7 @@
 		},
 		"145,-40": {
 			"biome": "B00004",
-			"elevation": 19,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -812036,7 +812036,7 @@
 		},
 		"145,-20": {
 			"biome": "B00004",
-			"elevation": 20,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -812362,7 +812362,7 @@
 		},
 		"146,-149": {
 			"biome": "B00004",
-			"elevation": 25,
+			"elevation": 9,
 			"walls": [
 				false,
 				false,
@@ -812472,7 +812472,7 @@
 		},
 		"146,-140": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -813016,7 +813016,7 @@
 		},
 		"146,-95": {
 			"biome": "B00004",
-			"elevation": 11,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -813028,7 +813028,7 @@
 		},
 		"146,-94": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 5,
 			"walls": [
 				false,
 				false,
@@ -814344,7 +814344,7 @@
 		},
 		"147,-140": {
 			"biome": "B00004",
-			"elevation": 14,
+			"elevation": 12,
 			"walls": [
 				false,
 				false,
@@ -814356,7 +814356,7 @@
 		},
 		"147,-139": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -814900,7 +814900,7 @@
 		},
 		"147,-94": {
 			"biome": "B00004",
-			"elevation": 12,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -816204,7 +816204,7 @@
 		},
 		"148,-140": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -816216,7 +816216,7 @@
 		},
 		"148,-139": {
 			"biome": "B00004",
-			"elevation": 8,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -816772,7 +816772,7 @@
 		},
 		"148,-93": {
 			"biome": "B00004",
-			"elevation": 13,
+			"elevation": 10,
 			"walls": [
 				false,
 				false,
@@ -818056,7 +818056,7 @@
 		},
 		"149,-140": {
 			"biome": "B00004",
-			"elevation": 9,
+			"elevation": 6,
 			"walls": [
 				false,
 				false,
@@ -818628,7 +818628,7 @@
 		},
 		"149,-93": {
 			"biome": "B00004",
-			"elevation": 16,
+			"elevation": 8,
 			"walls": [
 				false,
 				false,
@@ -818920,7 +818920,7 @@
 		},
 		"149,-69": {
 			"biome": "B00004",
-			"elevation": 18,
+			"elevation": 11,
 			"walls": [
 				false,
 				false,
