@@ -458,25 +458,35 @@ export class HexCanvas {
   }
 
   /**
-   * Compute reachability from spawn via BFS. Matches engine rules:
-   * traversal blocked by water and abs(elevation diff) > 4.
+   * Compute reachability from spawn via BFS. Matches engine rules
+   * (HexGrid.get_traversal):
+   *   - Submersion: waterLevel - elevation > 3 blocks entry. Shallow
+   *     water walks normally — old "water biome always blocks" rule
+   *     is gone.
+   *   - Slope: abs(elevation diff) > 4 blocks (symmetric, drops and
+   *     climbs share the cap).
+   * Lethal hazard tiles (temperature at cap level) are NOT treated
+   * as unreachable — the player can enter, they just take heavy
+   * damage while they stay. Movement is still possible, so the BFS
+   * crosses through them.
+   *
    * @returns {Set<string>} Set of unreachable hex keys
    */
   _computeUnreachable() {
     const spawn = this.grid.meta.spawn;
     if (!spawn || !this.grid.hasTile(spawn[0], spawn[1])) return new Set();
 
-    // If spawn is on water, all non-water tiles are unreachable
-    const spawnTile = this.grid.getTile(spawn[0], spawn[1]);
-    if (spawnTile && spawnTile.biome === 'B00005') {
-      const allUnreachable = new Set();
-      for (const [key, tile] of this.grid.getAllTiles()) {
-        if (tile.biome !== 'B00005') allUnreachable.add(key);
-      }
-      return allUnreachable;
-    }
-
+    const SUBMERSION_MAX = 3;
     const JUMP_MAX = 4;
+
+    // Reusable submersion test — uses waterLevel when present,
+    // otherwise falls back to elevation (=> diff 0, never blocks).
+    const isSubmerged = (t) => {
+      if (!t || typeof t.elevation !== 'number') return false;
+      const lvl = typeof t.waterLevel === 'number' ? t.waterLevel : t.elevation;
+      return (lvl - t.elevation) > SUBMERSION_MAX;
+    };
+
     const spawnKey = `${spawn[0]},${spawn[1]}`;
     const reachable = new Set([spawnKey]);
     const queue = [{ q: spawn[0], r: spawn[1] }];
@@ -492,19 +502,20 @@ export class HexCanvas {
         if (reachable.has(nk)) continue;
         const neighbor = this.grid.getTile(nq, nr);
         if (!neighbor) continue;
-        // Water blocks traversal
-        if (neighbor.biome && neighbor.biome.startsWith('B00005')) continue;
-        // Elevation diff > JUMP_MAX blocks
+        if (isSubmerged(neighbor)) continue;
         if (Math.abs(tile.elevation - neighbor.elevation) > JUMP_MAX) continue;
         reachable.add(nk);
         queue.push({ q: nq, r: nr });
       }
     }
 
-    // Unreachable = all non-water tiles not in reachable set
+    // Unreachable = all tiles not in reachable set, excluding tiles
+    // that are themselves fully submerged (they're not reachable,
+    // but we don't flag them with the red X overlay — they're
+    // legitimately impassable water rather than a generation bug).
     const unreachable = new Set();
     for (const [key, tile] of this.grid.getAllTiles()) {
-      if (tile.biome && tile.biome.startsWith('B00005')) continue; // skip water
+      if (isSubmerged(tile)) continue;
       if (!reachable.has(key)) unreachable.add(key);
     }
     return unreachable;

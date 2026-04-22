@@ -265,12 +265,82 @@ func test_traversal_blocked_when_diff_exceeds_jump_max() -> void:
 	)
 
 
-func test_traversal_blocked_when_destination_is_water() -> void:
+func test_traversal_blocked_when_destination_is_deep_water() -> void:
+	# Deep water: water_level − elevation > SUBMERSION_MAX (3). Player
+	# cannot wade into a tile where they'd be fully submerged.
 	_place_tile(Vector2i(0, 0), 0)
-	_place_tile(Vector2i(1, 0), 0, _HexTile.Biome.WATER)
+	var water := _place_tile(Vector2i(1, 0), -5, _HexTile.Biome.WATER)
+	water.water_level = 0  # depth 5 > 3 → blocked
 	assert_int(HexGrid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(
 		HexGrid.TraversalType.BLOCKED
 	)
+
+
+func test_traversal_walks_into_shallow_water() -> void:
+	# Shallow water: water_level − elevation ≤ 3. Player walks in up to
+	# their hips; movement treated like normal ground.
+	_place_tile(Vector2i(0, 0), 0)
+	var shallow := _place_tile(Vector2i(1, 0), -2, _HexTile.Biome.WATER)
+	shallow.water_level = 0  # depth 2 ≤ 3 → walkable (diff 2 = WALK)
+	assert_int(HexGrid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(
+		HexGrid.TraversalType.DROP
+	)
+
+
+func test_traversal_blocked_when_diff_exceeds_jump_max_going_down() -> void:
+	# Symmetric slope rule — drops ALSO cap at JUMP_MAX_DIFF. This test
+	# catches regressions where a previous implementation only capped
+	# uphill moves.
+	_place_tile(Vector2i(0, 0), 10)
+	_place_tile(Vector2i(1, 0), 0)  # diff = 10 going down
+	assert_int(HexGrid.get_traversal(Vector2i(0, 0), Vector2i(1, 0))).is_equal(
+		HexGrid.TraversalType.BLOCKED
+	)
+
+
+# ---------------------------------------------------------------------------
+# Instadeath / hazard cap lookup
+# ---------------------------------------------------------------------------
+
+func test_is_instadeath_false_for_tile_with_no_temperature() -> void:
+	# temperature 0 short-circuits before hazard lookup.
+	_place_tile(Vector2i(0, 0), 0)
+	assert_bool(HexGrid.is_instadeath(Vector2i(0, 0))).is_false()
+
+
+func test_is_instadeath_false_when_no_biome_data_cache() -> void:
+	# Hazard check needs the biome_data cache (populated by MapLoader).
+	# Without it, temperature alone can't resolve to instadeath.
+	var tile := _place_tile(Vector2i(0, 0), 0)
+	tile.temperature = 99
+	HexGrid.set_biome_data_cache({})
+	assert_bool(HexGrid.is_instadeath(Vector2i(0, 0))).is_false()
+
+
+func test_is_instadeath_true_when_temperature_at_cap_last_level() -> void:
+	# With a cached biome whose HazardCap has 4 levels, temperature 4 is
+	# the instadeath threshold.
+	var HazardCap := load("res://scripts/data/capabilities/hazard_cap.gd")
+	var cap: Resource = HazardCap.new()
+	cap.damage_type = &"heat"
+	cap.health_damage = [0, 5, 15, 50]
+	cap.thirst_drain = [5, 14, 25, 35]
+	cap.hunger_drain = [0, 0, 0, 0]
+	var biome: BiomeData = BiomeData.new()
+	biome.id = &"B99999"
+	biome.hazard = cap
+	# Single-biome cache means sorted-index 0 → B99999 → tile.biome = 0.
+	HexGrid.set_biome_data_cache({&"B99999": biome})
+	var tile := _place_tile(Vector2i(0, 0), 0, 0)
+	tile.temperature = 4
+	assert_bool(HexGrid.is_instadeath(Vector2i(0, 0))).is_true()
+
+	# Below the table size → not instadeath yet.
+	tile.temperature = 3
+	assert_bool(HexGrid.is_instadeath(Vector2i(0, 0))).is_false()
+
+	# Cleanup cache so it doesn't leak into other tests.
+	HexGrid.set_biome_data_cache({})
 
 
 func test_traversal_blocked_when_destination_missing() -> void:

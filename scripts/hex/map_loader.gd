@@ -225,6 +225,12 @@ func load_map(path: String) -> bool:
 	_grid.spawn_facing_deg = spawn_facing_deg
 	_grid.starting_loadout = root.get("starting_loadout", {})
 
+	# Share the biome BiomeData cache with HexGrid so its
+	# is_instadeath() / hazard lookups don't hit the resource loader
+	# on every query.
+	if _grid.has_method(&"set_biome_data_cache"):
+		_grid.set_biome_data_cache(_biome_data)
+
 	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
 

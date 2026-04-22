@@ -14,6 +14,11 @@ const JUMP_MAX_DIFF: int = 4
 # Legacy alias — existing code may reference this
 const MAX_ELEVATION_DIFF: int = WALK_MAX_DIFF
 
+## Submersion cap: target tile blocks movement when
+## `water_level - elevation > SUBMERSION_MAX` (player cannot wade in
+## deeper than this). Shallow water (diff ≤ 3) remains walkable.
+const SUBMERSION_MAX: int = 3
+
 ## Elevation scale: world Y per elevation level.
 ## Shared constant — renderer, player, and terrain queries all use this.
 const ELEVATION_STEP: float = 0.5
@@ -112,12 +117,22 @@ func get_elevation_diff(from: Vector2i, to: Vector2i) -> int:
 	return abs(int(tile_to.elevation) - int(tile_from.elevation))
 
 
-## 3-tier traversal: WALK (0-2), JUMP/DROP (3-4), BLOCKED (5+, water, wall).
+## 3-tier traversal: WALK (|diff| 0-2), JUMP/DROP (3-4), BLOCKED (5+,
+## deep water, movement-blocking prop).
+##
+## Previously water biome tiles were always BLOCKED. We now allow
+## shallow water (waterLevel - elevation ≤ SUBMERSION_MAX = 3) so
+## Shoreline-to-water transitions walk naturally; only fully
+## submerged tiles block. Slope rule is symmetric on magnitude —
+## climbs and drops share the same cap.
 func get_traversal(from: Vector2i, to: Vector2i) -> int:
 	var tile_to: Resource = _tiles.get(to, null)
 	if tile_to == null:
 		return TraversalType.BLOCKED
-	if tile_to.biome == _HexTile.Biome.WATER:
+	# Submersion: water level more than SUBMERSION_MAX above the
+	# floor means the player can't wade in. Biome matters only insofar
+	# as water_level is authored there.
+	if int(tile_to.water_level) - int(tile_to.elevation) > SUBMERSION_MAX:
 		return TraversalType.BLOCKED
 	# Check if any structure blocks movement (data-driven via BLOCKS_MOVEMENT tag).
 	for prop in tile_to.props:
@@ -137,6 +152,61 @@ func get_traversal(from: Vector2i, to: Vector2i) -> int:
 		else:
 			return TraversalType.DROP
 	return TraversalType.BLOCKED
+
+
+## True when stepping onto this tile puts the player in the cap's
+## last-level hazard range (temperature >= N where N = size of the
+## biome's HazardCap drain tables). SurvivalSystem uses this to
+## trigger the "~1-second time-to-death" pulse; movement is NOT
+## blocked — the player can enter, but takes lethal drain while
+## they remain.
+##
+## Biomes without a HazardCap or tiles at temperature 0 are never
+## instadeath.
+func is_instadeath(coords: Vector2i) -> bool:
+	var tile: Resource = _tiles.get(coords, null)
+	if tile == null:
+		return false
+	if int(tile.temperature) <= 0:
+		return false
+	# Resolve biome's hazard cap.
+	var biome_id: String = _biome_id_for_tile(tile)
+	if biome_id == "":
+		return false
+	var biome_data: Resource = _biome_data_cache.get(biome_id, null)
+	if biome_data == null:
+		return false
+	if biome_data.hazard == null:
+		return false
+	var tbl: Array = biome_data.hazard.health_damage
+	if tbl.is_empty():
+		return false
+	return int(tile.temperature) >= tbl.size()
+
+
+# --- Hazard helpers ---
+
+var _biome_data_cache: Dictionary = {}
+
+## Called by MapLoader once biome files are discovered so HexGrid can
+## look up hazard caps without re-loading resources every frame.
+func set_biome_data_cache(cache: Dictionary) -> void:
+	_biome_data_cache = cache
+
+
+## Reverse of MapLoader._biome_id_to_int. MapLoader assigns ints by
+## the alphabetical-sort position of each biome .tres filename, so
+## the lookup here must use the same sort. Returns "" when the cache
+## hasn't been populated (e.g. unit tests running without MapLoader).
+func _biome_id_for_tile(tile: Resource) -> String:
+	if _biome_data_cache.is_empty():
+		return ""
+	var keys: Array = _biome_data_cache.keys()
+	keys.sort()
+	var idx: int = int(tile.biome)
+	if idx >= 0 and idx < keys.size():
+		return keys[idx]
+	return ""
 
 
 # --- Coordinate conversions ---
