@@ -229,6 +229,19 @@ export class ElevationBrush extends DragBrushTool {
     }
   }
 
+  /**
+   * Pinch is a click-only gesture — dragging the mouse with Ctrl held
+   * would otherwise fire _applyPinch at every hex along the path, and
+   * overlapping radii would stack smoothstep contributions on the same
+   * tiles (causing the centre to jump well past the nominal delta).
+   * Non-pinch drags (regular elevation brush) keep the normal behavior.
+   * @param {{ q: number, r: number }} hex
+   */
+  onMouseMove(hex) {
+    if (this.toolManager.ctrlHeld) return;
+    super.onMouseMove(hex);
+  }
+
   _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
 
@@ -320,20 +333,22 @@ export class ElevationBrush extends DragBrushTool {
   }
 
   /**
-   * Thermal-erosion pass around `center`. A stable talus angle (TALUS)
-   * is enforced: where a hex is taller than a neighbor by more than
-   * TALUS, TRANSFER fraction of the surplus moves to the neighbor.
-   * Runs PASSES iterations so the effect propagates one ring outward
-   * per pass.
+   * Thermal-erosion around `center`, run until equilibrium (or cap).
+   * Each pass: every hex taller than a neighbor by more than TALUS gives
+   * TRANSFER fraction of the surplus to that neighbor. Propagation is
+   * one ring per pass, so the search radius grows by one each pass to
+   * cover the still-reachable fringe. Bails as soon as a pass transfers
+   * nothing — that's the natural stable shape for the current peak.
    * @param {{q:number,r:number}} center
-   * @param {number} radius
+   * @param {number} initialRadius
    */
-  _redistributeSlope(center, radius) {
+  _redistributeSlope(center, initialRadius) {
     const TALUS = 2;
     const TRANSFER = 0.25;
-    const PASSES = 2;
+    const MAX_PASSES = 30;
 
-    for (let pass = 0; pass < PASSES; pass++) {
+    let radius = initialRadius;
+    for (let pass = 0; pass < MAX_PASSES; pass++) {
       /** @type {Map<string, number>} */
       const transfers = new Map();
       for (const hex of HexMath.hexesInRadius(radius, center)) {
@@ -354,11 +369,13 @@ export class ElevationBrush extends DragBrushTool {
           transfers.set(kTo, (transfers.get(kTo) || 0) + amount);
         }
       }
+      if (transfers.size === 0) break;  // equilibrium
       for (const [key, d] of transfers) {
         if (d === 0) continue;
         const [q, r] = key.split(',').map(Number);
         this._applyElevationChange(q, r, d);
       }
+      radius += 1;  // next pass can propagate one ring further
     }
   }
 
