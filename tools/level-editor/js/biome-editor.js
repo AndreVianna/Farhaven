@@ -183,23 +183,38 @@ export class BiomeDataModel {
     // hazard: optional HazardCap sub_resource reference. Resolve the
     // sub_resource the same way PlaceableCap is handled — look up the
     // referenced sub_resource in the TresFile and pull its fields
-    // into a plain JS object. Any missing array defaults to the heat
-    // preset so partially-authored .tres files still round-trip.
+    // into a plain JS object. Any missing array defaults to the preset
+    // for the damage_type so partially-authored .tres files still
+    // round-trip.
     if (d.hazard && typeof d.hazard === 'object' && d.hazard.type === 'sub_resource' && entry.raw && Array.isArray(entry.raw.subResources)) {
       const sub = entry.raw.subResources.find((s) => s && s.id === d.hazard.value);
       if (sub && sub.fields) {
         const subData = {};
         for (const [k, v] of sub.fields) subData[k] = v.value;
         const dtype = _str(subData.damage_type) || _str(subData.type); // backwards-compat with older `type` field
-        const arrOr = (v, fallback) => Array.isArray(v) && v.length === 4 ? v.map((n) => Number.isFinite(n) ? n : 0) : fallback;
+        // TresParser represents typed arrays as {type:'array', value:
+        // [{type:'int', value: N}, …]}, so a couple of layers of
+        // unwrapping are needed before we touch numeric values.
+        const normalizeIntArr = (v, fallback) => {
+          let rawList = null;
+          if (Array.isArray(v)) rawList = v;
+          else if (v && typeof v === 'object' && Array.isArray(v.value)) rawList = v.value;
+          else return fallback;
+          const out = rawList.map((x) => {
+            if (typeof x === 'number') return x;
+            if (x && typeof x === 'object' && Number.isFinite(x.value)) return x.value;
+            return 0;
+          });
+          return out.length > 0 ? out : fallback;
+        };
         const preset = HAZARD_DEFAULTS[dtype] || HAZARD_DEFAULTS.heat;
         if (dtype) {
           model.hazard = {
             damage_type: dtype,
-            health_damage: arrOr(subData.health_damage, preset.health_damage.slice()),
-            thirst_drain:  arrOr(subData.thirst_drain,  preset.thirst_drain.slice()),
-            hunger_drain:  arrOr(subData.hunger_drain,  preset.hunger_drain.slice()),
-            oxygen_drain:  arrOr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
+            health_damage: normalizeIntArr(subData.health_damage, preset.health_damage.slice()),
+            thirst_drain:  normalizeIntArr(subData.thirst_drain,  preset.thirst_drain.slice()),
+            hunger_drain:  normalizeIntArr(subData.hunger_drain,  preset.hunger_drain.slice()),
+            oxygen_drain:  normalizeIntArr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
           };
         }
       }
