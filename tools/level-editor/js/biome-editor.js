@@ -64,11 +64,12 @@ function _renderBiomeUsedIn(container, biomeId, colorHex, texturePaths) {
  * Default HazardCap payloads by damage_type, mirroring the GDScript
  * class's default field values. Used when a biome switches from "No
  * hazard" to a hazard type in the editor.
- * @type {Object<string, {damage_type: string, health_damage: number[], thirst_drain: number[], hunger_drain: number[]}>}
+ * @type {Object<string, {damage_type: string, health_damage: number[], thirst_drain: number[], hunger_drain: number[], oxygen_drain: number[]}>}
  */
 export const HAZARD_DEFAULTS = {
-  heat: { damage_type: 'heat', health_damage: [0, 5, 15, 50], thirst_drain: [5, 14, 25, 35], hunger_drain: [0, 0, 0, 0] },
-  cold: { damage_type: 'cold', health_damage: [0, 5, 15, 50], thirst_drain: [0, 0, 0, 0], hunger_drain: [5, 14, 25, 35] },
+  heat:          { damage_type: 'heat',          health_damage: [0, 5, 15, 50], thirst_drain: [5, 14, 25, 35], hunger_drain: [0, 0, 0, 0],   oxygen_drain: [0, 0, 0, 0] },
+  cold:          { damage_type: 'cold',          health_damage: [0, 5, 15, 50], thirst_drain: [0, 0, 0, 0],    hunger_drain: [5, 14, 25, 35], oxygen_drain: [0, 0, 0, 0] },
+  oxygen_drain:  { damage_type: 'oxygen_drain',  health_damage: [0, 0, 5, 30],  thirst_drain: [0, 0, 0, 0],    hunger_drain: [0, 0, 0, 0],   oxygen_drain: [5, 14, 25, 35] },
 };
 
 /**
@@ -90,13 +91,15 @@ export class BiomeDataModel {
     /**
      * Environmental hazard capability, or null for thermally neutral
      * biomes. Mirrors `scripts/data/capabilities/hazard_cap.gd` — each
-     * numeric array has four entries indexed by temperature level 1-4
-     * (level 0 is implicitly no damage).
+     * numeric array has entries indexed by temperature level 1-N
+     * (level 0 is implicitly no damage). Level count is biome-chosen;
+     * N = health_damage.length is the authoritative size.
      * @type {{
      *   damage_type: string,
      *   health_damage: number[],
      *   thirst_drain: number[],
      *   hunger_drain: number[],
+     *   oxygen_drain: number[],
      * } | null}
      */
     this.hazard = null;
@@ -196,6 +199,7 @@ export class BiomeDataModel {
             health_damage: arrOr(subData.health_damage, preset.health_damage.slice()),
             thirst_drain:  arrOr(subData.thirst_drain,  preset.thirst_drain.slice()),
             hunger_drain:  arrOr(subData.hunger_drain,  preset.hunger_drain.slice()),
+            oxygen_drain:  arrOr(subData.oxygen_drain,  preset.oxygen_drain.slice()),
           };
         }
       }
@@ -1318,6 +1322,7 @@ export function renderBiomeEditor(container, options) {
       { value: 'none', label: 'None' },
       { value: 'heat', label: 'Heat' },
       { value: 'cold', label: 'Cold' },
+      { value: 'oxygen_drain', label: 'Oxygen drain' },
       { value: 'asphyxiation', label: 'Asphyxiation' },
       { value: 'poison', label: 'Poison' },
       { value: 'acid', label: 'Acid' },
@@ -1349,6 +1354,7 @@ export function renderBiomeEditor(container, options) {
       { key: 'health_damage', label: 'Health dmg' },
       { key: 'thirst_drain',  label: 'Thirst drain' },
       { key: 'hunger_drain',  label: 'Hunger drain' },
+      { key: 'oxygen_drain',  label: 'Oxygen drain' },
     ];
 
     const mkSpan = (text, style) => {
@@ -1362,7 +1368,8 @@ export function renderBiomeEditor(container, options) {
       // Collapse current DOM inputs back into { stat: number[] }.
       const lvlCells = hazardTable.querySelectorAll('[data-kind="lvl-header"]');
       const nLevels = lvlCells.length;
-      const out = { health_damage: [], thirst_drain: [], hunger_drain: [] };
+      const out = {};
+      for (const row of STAT_ROWS) out[row.key] = [];
       for (const row of STAT_ROWS) {
         for (let i = 0; i < nLevels; i++) {
           const el = hazardTable.querySelector(`input[data-stat="${row.key}"][data-lvl="${i}"]`);
@@ -1443,7 +1450,7 @@ export function renderBiomeEditor(container, options) {
     const initialLevels = model.hazard && Array.isArray(model.hazard.health_damage)
       ? Math.max(1, model.hazard.health_damage.length)
       : 4;
-    const initialValues = model.hazard || { health_damage: [], thirst_drain: [], hunger_drain: [] };
+    const initialValues = model.hazard || { health_damage: [], thirst_drain: [], hunger_drain: [], oxygen_drain: [] };
     renderHazardTable(initialLevels, initialValues);
 
     const syncHazardTableEnabled = () => {
@@ -1695,12 +1702,14 @@ function _collectBiomeFormData(formElement) {
       health_damage: readArr('health_damage'),
       thirst_drain:  readArr('thirst_drain'),
       hunger_drain:  readArr('hunger_drain'),
+      oxygen_drain:  readArr('oxygen_drain'),
     };
     // Fallback: if table never rendered (edge case), seed with empty 4-length.
     if (model.hazard.health_damage.length === 0) {
       model.hazard.health_damage = [0, 0, 0, 0];
       model.hazard.thirst_drain  = [0, 0, 0, 0];
       model.hazard.hunger_drain  = [0, 0, 0, 0];
+      model.hazard.oxygen_drain  = [0, 0, 0, 0];
     }
   } else {
     model.hazard = null;
@@ -1906,6 +1915,7 @@ export function biomeModelToRaw(model) {
     hazardFields.set('health_damage', intArr(h.health_damage));
     hazardFields.set('thirst_drain',  intArr(h.thirst_drain));
     hazardFields.set('hunger_drain',  intArr(h.hunger_drain));
+    hazardFields.set('oxygen_drain',  intArr(h.oxygen_drain));
     subResources.push({ type: 'Resource', id: hazardSubId, fields: hazardFields });
   }
   if (biomePropExtId && Array.isArray(model.natural_props)) {

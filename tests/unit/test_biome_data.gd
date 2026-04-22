@@ -34,12 +34,12 @@ func test_terrain_textures_is_array() -> void:
 			assert_object(tex).is_not_null()
 
 const ALLOWED_HAZARD_TYPES: Array[StringName] = [
-	&"heat", &"cold", &"asphyxiation", &"poison", &"acid",
+	&"heat", &"cold", &"oxygen_drain", &"asphyxiation", &"poison", &"acid",
 ]
 
 func test_hazard_caps_are_well_formed() -> void:
 	# BiomeData.hazard is either null (thermally neutral biome) or a
-	# HazardCap with a recognized damage_type and three parallel drain
+	# HazardCap with a recognized damage_type and four parallel drain
 	# arrays of identical length ≥ 1.
 	for path in BIOME_PATHS:
 		var biome: BiomeData = load(path)
@@ -51,3 +51,4 @@ func test_hazard_caps_are_well_formed() -> void:
 		assert_int(n).is_greater(0)
 		assert_int(cap.thirst_drain.size()).is_equal(n)
 		assert_int(cap.hunger_drain.size()).is_equal(n)
+		assert_int(cap.oxygen_drain.size()).is_equal(n)

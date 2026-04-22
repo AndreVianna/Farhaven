@@ -326,6 +326,7 @@ func test_is_instadeath_true_when_temperature_at_cap_last_level() -> void:
 	cap.health_damage = [0, 5, 15, 50]
 	cap.thirst_drain = [5, 14, 25, 35]
 	cap.hunger_drain = [0, 0, 0, 0]
+	cap.oxygen_drain = [0, 0, 0, 0]
 	var biome: BiomeData = BiomeData.new()
 	biome.id = &"B99999"
 	biome.hazard = cap

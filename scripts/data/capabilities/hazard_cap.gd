@@ -20,8 +20,10 @@ extends Resource
 
 ## Damage kind tag — used by resistances, protection items, and
 ## armor interactions. Current values: "heat", "cold",
-## "asphyxiation", "poison", "acid". Add new tags as new hazard
-## kinds are introduced; SurvivalSystem does a lookup on this tag.
+## "asphyxiation", "poison", "acid", "oxygen_drain". Add new tags
+## as new hazard kinds are introduced; SurvivalSystem does a lookup
+## on this tag to pick the default affected stat and the damage
+## resolution pipeline.
 @export var damage_type: StringName = &"heat"
 
 ## Health (HP) lost per second at each temperature level [1,2,3,4].
@@ -36,3 +38,8 @@ extends Resource
 ## Hunger meter lost per second at each temperature level [1,2,3,4].
 ## Cold biomes drain hunger; heat biomes typically leave this at 0.
 @export var hunger_drain: Array[int] = [0, 0, 0, 0]
+
+## Oxygen meter lost per second at each temperature level [1,2,3,4].
+## Underwater / high-altitude / stale-atmosphere biomes drain oxygen.
+## Other hazard types typically leave this at 0.
+@export var oxygen_drain: Array[int] = [0, 0, 0, 0]
