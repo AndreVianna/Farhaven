@@ -27,6 +27,7 @@ import { showGeneratorDialog, generateMap } from './map-generator.js';
 import { computePopulatePlan, buildPopulateCommand, computeClearNaturalsPlan, buildClearNaturalsCommand } from './populate.js';
 import { mountTitlebar } from './titlebar.js';
 import { mountSidebar, NAV } from './sidebar.js';
+import { initPanelLayout } from './panel-layout.js';
 import { openCommandPalette } from './command-palette.js';
 import { mountStatusbar } from './statusbar.js';
 import { toggleTweaksPanel, applyPersistedTweaks } from './tweaks.js';
@@ -1450,6 +1451,9 @@ function _mountShell() {
       activeRouteId: () => activeTab,
     });
   }
+
+  // Collapsible panels + drag-resize handles on the outer workspace.
+  initPanelLayout();
 
   const statusbarEl = document.getElementById('status-bar');
   if (statusbarEl) {

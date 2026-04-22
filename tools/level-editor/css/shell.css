@@ -176,6 +176,78 @@ input, select, textarea { font: inherit; color: inherit; background: none; borde
   display: flex; flex-direction: column;
   overflow-y: auto;
   user-select: none;
+  position: relative; /* for .panel-toggle absolute positioning */
+}
+
+/* ---- Collapsible panels ---------------------------------------------
+   When a panel has .panel-collapsed, its content area collapses but
+   a thin reveal strip stays visible so the toggle chevron is always
+   reachable.
+   -------------------------------------------------------------------- */
+
+.panel-collapsed {
+  width: 16px !important;
+  min-width: 16px !important;
+  flex-basis: 16px !important;
+  overflow: hidden !important;
+}
+
+.panel-toggle {
+  position: absolute;
+  top: 6px;
+  z-index: 5;
+  width: 16px; height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 0;
+  padding: 0;
+}
+.panel-toggle:hover {
+  background: var(--bg-3);
+  color: var(--text-0);
+}
+.panel-toggle-left  { right: 4px; }
+.panel-toggle-right { left: 4px; }
+
+/* When collapsed, the toggle is the only thing visible inside the
+   panel; center it vertically for a cleaner look. */
+.panel-collapsed > .panel-toggle {
+  right: auto;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 0 3px 3px 0;
+  border-left: none;
+}
+
+/* ---- Drag resizer ---------------------------------------------------
+   Thin vertical handle between flex siblings. Expands its hit area
+   on hover so users can grab it without pixel-precision.
+   -------------------------------------------------------------------- */
+
+.panel-resizer {
+  flex: 0 0 4px;
+  width: 4px;
+  background: transparent;
+  cursor: ew-resize;
+  position: relative;
+  z-index: 4;
+}
+.panel-resizer:hover,
+.panel-resizer:active {
+  background: var(--accent);
+}
+.panel-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -2px; right: -2px; /* widen hit area */
 }
 
 .side-project {
