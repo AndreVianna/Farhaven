@@ -1,7 +1,12 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=4 format=3 uid="uid://cvrpmgeqfk441"]
+[gd_resource type="Resource" script_class="BiomeData" load_steps=9 format=3 uid="uid://cvrpmgeqfk441"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/hazard_cap.gd" id="2_hazard_cap"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00007_alpine_1.png" id="3_tex1"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00007_alpine_2.png" id="4_tex2"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00007_alpine_3.png" id="5_tex3"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00007_alpine_4.png" id="6_tex4"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00007_alpine_5.png" id="7_tex5"]
 
 [sub_resource type="Resource" id="hazard_1"]
 script = ExtResource("2_hazard_cap")
@@ -18,4 +23,5 @@ display_name = "Alpine"
 short_description = "Snowy stone peaks above the treeline."
 long_description = "Thin air, fresh snow, and bare rock polished by wind. Travel is slow and calorie-hungry; the summits bite anything that isn't bundled. Rare mineral lenses catch the sunrise from angles the lowlands never see."
 color = Color(0.8509803921568627, 0.8784313725490196, 0.9215686274509803, 1.0)
+terrain_textures = [ExtResource("3_tex1"), ExtResource("4_tex2"), ExtResource("5_tex3"), ExtResource("6_tex4"), ExtResource("7_tex5")]
 hazard = SubResource("hazard_1")

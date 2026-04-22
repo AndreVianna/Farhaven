@@ -1,7 +1,12 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=4 format=3 uid="uid://r7bpdu71dvlg"]
+[gd_resource type="Resource" script_class="BiomeData" load_steps=9 format=3 uid="uid://r7bpdu71dvlg"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Script" path="res://scripts/data/capabilities/hazard_cap.gd" id="2_hazard_cap"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_1.png" id="3_tex1"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_2.png" id="4_tex2"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_3.png" id="5_tex3"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_4.png" id="6_tex4"]
+[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_5.png" id="7_tex5"]
 
 [sub_resource type="Resource" id="hazard_1"]
 script = ExtResource("2_hazard_cap")
@@ -18,4 +23,5 @@ display_name = "Volcanic"
 short_description = "Black basalt rock with glowing lava veins."
 long_description = "Ground cooked by old magma intrusions and still warm to the touch. Crystallized flows crack into sharp edges; the air tastes of sulfur, and the brightest veins will char anything that lingers. Useful minerals sit just below the crust where the heat hasn't gotten to them yet."
 color = Color(0.1803921568627451, 0.12156862745098039, 0.1411764705882353, 1.0)
+terrain_textures = [ExtResource("3_tex1"), ExtResource("4_tex2"), ExtResource("5_tex3"), ExtResource("6_tex4"), ExtResource("7_tex5")]
 hazard = SubResource("hazard_1")
