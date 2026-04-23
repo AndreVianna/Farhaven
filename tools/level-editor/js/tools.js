@@ -276,27 +276,29 @@ export class ElevationBrush extends DragBrushTool {
   }
 
   /**
-   * Pinch mode: apply delta scaled by a smoothstep falloff within
-   * PINCH_RADIUS, then run a local thermal-erosion pass so repeated
-   * clicks at the same spot spread the peak outward instead of piling
-   * a cylinder of fixed base.
+   * Pinch mode: apply delta scaled by a smoothstep falloff over a
+   * radius that scales with the magnitude of the click (R = |delta|/4,
+   * floor 1). The effect naturally fades to 0 at the radius edge —
+   * no arbitrary hard cap. Then runs a local thermal-erosion pass so
+   * repeated clicks settle into a stable mountain shape.
    *
-   * Ctrl = pinch (delta=±1). Ctrl+Alt = pinch with 10× delta.
-   * Fractional amounts accumulate between clicks via `_pinchAccum`.
+   * Ctrl = pinch (delta=±1, radius=1). Ctrl+Alt = pinch with 10× delta
+   * (radius≈3). Fractional amounts accumulate between clicks via
+   * `_pinchAccum` so small contributions don't get lost to truncation.
    */
   _applyPinch(center) {
-    const PINCH_RADIUS = 4;
     const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
+    const pinchRadius = Math.max(1, Math.round(Math.abs(effectiveDelta) / 4));
 
     // Phase 1 — smoothstep-weighted elevation change inside the radius.
     // strength(d) = 1 - (3t² - 2t³)  with t = d/radius ∈ [0,1]
     // At d=0 strength=1; at d=radius strength=0 (no change).
     /** @type {Set<string>} hexes actually moved in phase 1 (seed for erosion) */
     const phase1Touched = new Set();
-    for (const hex of HexMath.hexesInRadius(PINCH_RADIUS, center)) {
+    for (const hex of HexMath.hexesInRadius(pinchRadius, center)) {
       if (!this.grid.hasTile(hex.q, hex.r)) continue;
       const d = HexMath.distance(hex.q, hex.r, center.q, center.r);
-      const t = Math.min(1, d / PINCH_RADIUS);
+      const t = Math.min(1, d / pinchRadius);
       const strength = 1 - (3 * t * t - 2 * t * t * t);
       if (strength <= 0) continue;
       const fracDelta = effectiveDelta * strength;
@@ -356,7 +358,11 @@ export class ElevationBrush extends DragBrushTool {
    * @param {Set<string>} phase1Touched - hexes moved by phase 1, seed of the wave
    */
   _redistributeSlope(center, phase1Touched) {
-    const TALUS = 2;
+    // TALUS=4 preserves the clicked centre (diff ≤ 4 never erodes) and
+    // caps outer slopes at 5 — preserves the "summit" feel of the dome.
+    // TODO: expose this as a sharp-peak / smooth-peak toggle (TALUS 4
+    // vs 3) once we wire a tool option into the sidebar.
+    const TALUS = 4;
     const TRANSFER = 0.5;
     const MAX_PASSES = 12;
     const centerKey = `${center.q},${center.r}`;
