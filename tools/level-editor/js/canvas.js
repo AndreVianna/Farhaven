@@ -85,6 +85,7 @@ export class HexCanvas {
     this.spaceHeld = false;
     this.ctrlHeld = false;
     this.altHeld = false;
+    this.shiftHeld = false;
     this.toolManager = null;
     /** @type {function({q: number, r: number}|null, {q: number, r: number}|null):void|null} */
     this.onHexHover = null;
@@ -1573,8 +1574,10 @@ export class HexCanvas {
       // and caused the border-tile bug (2026-04-20). Trust the event.
       this.altHeld = event.altKey;
       this.ctrlHeld = event.ctrlKey;
+      this.shiftHeld = event.shiftKey;
       this.toolManager.altHeld = this.altHeld;
       this.toolManager.ctrlHeld = this.ctrlHeld;
+      this.toolManager.shiftHeld = this.shiftHeld;
       this.toolManager.activeTool.delta = -1;
       const hex = this.screenToHex(mx, my);
       this.selectedHex = { q: hex.q, r: hex.r };
@@ -1630,8 +1633,10 @@ export class HexCanvas {
         // any missed keydown (focus loss, browser / OS intercept).
         this.ctrlHeld = event.ctrlKey;
         this.altHeld = event.altKey;
+        this.shiftHeld = event.shiftKey;
         this.toolManager.ctrlHeld = this.ctrlHeld;
         this.toolManager.altHeld = this.altHeld;
+        this.toolManager.shiftHeld = this.shiftHeld;
         this.toolManager.onMouseDown(hexWithExtra);
       }
       this.requestRender();
@@ -1725,13 +1730,15 @@ export class HexCanvas {
 
     // Forward to tool during drag. Refresh the modifier state from
     // the live MouseEvent so each drag step respects the current
-    // Alt/Ctrl — user can press or release Alt mid-drag to switch
+    // Alt/Ctrl/Shift — user can press or release mid-drag to switch
     // between water surface / floor editing on-the-fly.
     if (this._mouseDown && this.toolManager) {
       this.ctrlHeld = event.ctrlKey;
       this.altHeld = event.altKey;
+      this.shiftHeld = event.shiftKey;
       this.toolManager.ctrlHeld = this.ctrlHeld;
       this.toolManager.altHeld = this.altHeld;
+      this.toolManager.shiftHeld = this.shiftHeld;
       this.toolManager.onMouseMove(hex);
     }
   }
@@ -1805,6 +1812,7 @@ export class HexCanvas {
     if (event.key === ' ') this.spaceHeld = true;
     if (event.key === 'Control') this.ctrlHeld = true;
     if (event.key === 'Alt') this.altHeld = true;
+    if (event.key === 'Shift') this.shiftHeld = true;
   }
 
   /** @param {KeyboardEvent} event */
@@ -1813,6 +1821,10 @@ export class HexCanvas {
     if (event.key === 'Alt') {
       this.altHeld = false;
       if (this.toolManager) this.toolManager.altHeld = false;
+    }
+    if (event.key === 'Shift') {
+      this.shiftHeld = false;
+      if (this.toolManager) this.toolManager.shiftHeld = false;
     }
     if (event.key === 'Control') {
       this.ctrlHeld = false;

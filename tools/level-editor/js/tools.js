@@ -245,17 +245,19 @@ export class ElevationBrush extends DragBrushTool {
 
   _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
-    // Alt is the 10× multiplier — same semantic as Ctrl+Alt in pinch.
-    // A plain click moves elevation/waterLevel by ±1; Alt by ±10.
-    const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
+    // Modifier matrix:
+    //   (plain)      → ±1 elevation
+    //   Shift        → ±10 elevation   (the 10× multiplier)
+    //   Alt          → ±1 waterLevel   (water tile only)
+    //   Alt+Shift    → ±1 waterLevel   (Shift ignored in water-surface path)
+    // Shift and Alt are intentionally separate axes — no conflict.
+    const effectiveDelta = this.toolManager.shiftHeld ? this.delta * 10 : this.delta;
 
-    // Alt+click on an existing water tile edits the SURFACE (waterLevel)
-    // instead of the floor (elevation). Only runs for tiles that already
-    // exist and are water — empty hexes fall through to the elevation
-    // path so the brush can still paint ground level on unset cells.
+    // Alt+click on an existing water tile edits the SURFACE (waterLevel).
+    // No 10× here: waterLevel moves one step at a time regardless of Shift.
     if (tile && tile.biome === 'B00005' && this.toolManager.altHeld) {
       const oldLevel = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
-      const newLevel = Math.max(-32000, Math.min(32000, oldLevel + effectiveDelta));
+      const newLevel = Math.max(-32000, Math.min(32000, oldLevel + this.delta));
       if (oldLevel === newLevel) return;
       const cmd = new SetWaterLevelCommand(this.grid, hex.q, hex.r, oldLevel, newLevel);
       cmd.execute();
@@ -285,13 +287,13 @@ export class ElevationBrush extends DragBrushTool {
    * erosion pass so repeated clicks settle into a stable mountain
    * shape (ring 1 tracks the centre closely, dome grows gracefully).
    *
-   * Ctrl = pinch (delta=±1, radius=1 — just the centre).
-   * Ctrl+Alt = pinch with 10× delta (radius≈10 — a real mountain).
+   * Ctrl        = pinch (delta=±1, radius=1 — just the centre).
+   * Ctrl+Shift  = pinch with 10× delta (radius≈10 — a real mountain).
    * Fractional amounts accumulate between clicks via `_pinchAccum`
    * so small contributions don't get lost to truncation.
    */
   _applyPinch(center) {
-    const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
+    const effectiveDelta = this.toolManager.shiftHeld ? this.delta * 10 : this.delta;
     const pinchRadius = Math.max(1, Math.abs(effectiveDelta));
 
     // Phase 1 — smoothstep-weighted elevation change inside the radius.
@@ -708,6 +710,7 @@ export class ToolManager {
     /** @type {boolean} Modifier-key state propagated from HexCanvas. */
     this.ctrlHeld = false;
     this.altHeld = false;
+    this.shiftHeld = false;
     /** @type {function(string):void|null} */
     this.onStatus = null;
     /** @type {import('./canvas.js').HexCanvas|null} Back-reference to the canvas for selection clearing */
