@@ -245,6 +245,9 @@ export class ElevationBrush extends DragBrushTool {
 
   _applySingle(hex) {
     const tile = this.grid.getTile(hex.q, hex.r);
+    // Alt is the 10× multiplier — same semantic as Ctrl+Alt in pinch.
+    // A plain click moves elevation/waterLevel by ±1; Alt by ±10.
+    const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
 
     // Alt+click on an existing water tile edits the SURFACE (waterLevel)
     // instead of the floor (elevation). Only runs for tiles that already
@@ -252,7 +255,7 @@ export class ElevationBrush extends DragBrushTool {
     // path so the brush can still paint ground level on unset cells.
     if (tile && tile.biome === 'B00005' && this.toolManager.altHeld) {
       const oldLevel = typeof tile.waterLevel === 'number' ? tile.waterLevel : tile.elevation;
-      const newLevel = Math.max(-32000, Math.min(32000, oldLevel + this.delta));
+      const newLevel = Math.max(-32000, Math.min(32000, oldLevel + effectiveDelta));
       if (oldLevel === newLevel) return;
       const cmd = new SetWaterLevelCommand(this.grid, hex.q, hex.r, oldLevel, newLevel);
       cmd.execute();
@@ -261,7 +264,7 @@ export class ElevationBrush extends DragBrushTool {
     }
 
     const oldElevation = tile ? tile.elevation : 0;
-    let target = oldElevation + this.delta;
+    let target = oldElevation + effectiveDelta;
     // Water invariant: floor depth capped at surface level. Pre-clamp so
     // the no-op check below catches edge cases (e.g. already-at-cap).
     if (tile && tile.biome === 'B00005' && typeof tile.waterLevel === 'number') {
@@ -277,18 +280,19 @@ export class ElevationBrush extends DragBrushTool {
 
   /**
    * Pinch mode: apply delta scaled by a smoothstep falloff over a
-   * radius that scales with the magnitude of the click (R = |delta|/4,
-   * floor 1). The effect naturally fades to 0 at the radius edge —
-   * no arbitrary hard cap. Then runs a local thermal-erosion pass so
-   * repeated clicks settle into a stable mountain shape.
+   * radius equal to |delta|. The effect naturally fades to 0 at the
+   * radius edge — no arbitrary hard cap. Then runs a local thermal-
+   * erosion pass so repeated clicks settle into a stable mountain
+   * shape (ring 1 tracks the centre closely, dome grows gracefully).
    *
-   * Ctrl = pinch (delta=±1, radius=1). Ctrl+Alt = pinch with 10× delta
-   * (radius≈3). Fractional amounts accumulate between clicks via
-   * `_pinchAccum` so small contributions don't get lost to truncation.
+   * Ctrl = pinch (delta=±1, radius=1 — just the centre).
+   * Ctrl+Alt = pinch with 10× delta (radius≈10 — a real mountain).
+   * Fractional amounts accumulate between clicks via `_pinchAccum`
+   * so small contributions don't get lost to truncation.
    */
   _applyPinch(center) {
     const effectiveDelta = this.toolManager.altHeld ? this.delta * 10 : this.delta;
-    const pinchRadius = Math.max(1, Math.round(Math.abs(effectiveDelta) / 4));
+    const pinchRadius = Math.max(1, Math.abs(effectiveDelta));
 
     // Phase 1 — smoothstep-weighted elevation change inside the radius.
     // strength(d) = 1 - (3t² - 2t³)  with t = d/radius ∈ [0,1]
