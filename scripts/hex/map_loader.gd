@@ -99,12 +99,16 @@ func load_map(path: String) -> bool:
 		tile.elevation = clampi(int(td.get("elevation", 0)), -32000, 32000)
 
 		# Walls: 6-boolean array [E,NE,NW,W,SW,SE]. Defaults to all-false.
-		# Only shoreline walls (water↔land with diff) are auto-computed.
 		if td.has("walls") and td["walls"] is Array and td["walls"].size() == 6:
 			var w: Array[bool] = []
 			for v in td["walls"]:
 				w.append(bool(v))
 			tile.walls = w
+			# DIAGNOSTIC: log walls just for the focal area we are debugging.
+			if coords == Vector2i(-9, -14) or coords == Vector2i(-8, -14) or coords == Vector2i(-9, -13):
+				var ws: String = ""
+				for b: bool in tile.walls: ws += "T" if b else "F"
+				print("[ML-DBG] loaded %s biome=%s walls=[%s]" % [str(coords), str(tile.biome), ws])
 		if td.has("waterLevel"):
 			tile.water_level = clampi(int(td["waterLevel"]), -32000, 32000)
 			_water_tiles_with_level[coords] = true
@@ -224,6 +228,14 @@ func load_map(path: String) -> bool:
 
 	# Step 5: Validate (logs warnings on failure, does not abort)
 	_validate(spawn)
+
+	# DIAGNOSTIC: print walls of focal hexes right before MapLoader exits.
+	for fc: Vector2i in [Vector2i(-9, -14), Vector2i(-8, -14), Vector2i(-9, -13)]:
+		var ft: Resource = _grid._tiles.get(fc, null)
+		if ft != null:
+			var ws: String = ""
+			for b: bool in ft.walls: ws += "T" if b else "F"
+			print("[ML-DBG] end-of-load %s biome=%s walls=[%s]" % [str(fc), str(ft.biome), ws])
 
 	# Emit map_generated
 	_grid.map_generated.emit()
