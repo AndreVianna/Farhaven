@@ -22,7 +22,7 @@ import { HexMath } from './hex-math.js';
 /**
  * Order in which categories populate. Read from Andre's spec.
  */
-const CATEGORY_ORDER = ['mineral', 'liquid', 'ooze', 'fungi', 'plant', 'animal'];
+const CATEGORY_ORDER = ['mineral', 'liquid', 'ooze', 'fungi', 'plant', 'animal', 'debris'];
 
 /**
  * xorshift32 RNG — deterministic, seedable, small. Used so a given
