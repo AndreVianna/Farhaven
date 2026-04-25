@@ -13,6 +13,7 @@ export const CATEGORIES = [
   'plant', 'mineral', 'animal', 'fungi', 'liquid', 'ooze',
   'structure', 'vehicle', 'equipment', 'storage',
   'stuff',
+  'debris',
 ];
 
 /** Maps internal string categories to engine JSON integer values. */
@@ -23,8 +24,8 @@ export const INT_TO_CATEGORY = Object.fromEntries(CATEGORIES.map((name, i) => [i
 /** Prop rarity tiers (affect spawn frequency and catalog grouping). */
 export const RARITIES = ['common', 'uncommon', 'rare'];
 
-/** Natural category indices (0-5). */
-export const NATURAL_CATEGORIES = new Set([0, 1, 2, 3, 4, 5]);
+/** Natural category indices: plant, mineral, animal, fungi, liquid, ooze, debris. */
+export const NATURAL_CATEGORIES = new Set([0, 1, 2, 3, 4, 5, 11]);
 
 /**
  * Display labels (plural where applicable) for category tab bar.
@@ -37,6 +38,7 @@ export const CATEGORY_LABELS = {
   fungi: 'Fungi',
   ooze: 'Oozes',
   liquid: 'Liquids',
+  debris: 'Debris',
   stuff: 'Stuff',
   structure: 'Structures',
   equipment: 'Equipment',
@@ -46,7 +48,7 @@ export const CATEGORY_LABELS = {
 
 /** Display order for category tabs (Andre's preferred order, 2026-04-10). */
 export const CATEGORY_TAB_ORDER = [
-  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid',
+  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid', 'debris',
   'stuff', 'structure', 'equipment', 'vehicle', 'storage',
 ];
 

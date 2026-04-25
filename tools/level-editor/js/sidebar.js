@@ -44,6 +44,7 @@ export const NAV = [
   { id: 'fungi',     section: 'PROPS',     label: 'Fungi',      icon: 'drop',    count: () => _countPropsByCategory('fungi') },
   { id: 'ooze',      section: 'PROPS',     label: 'Oozes',      icon: 'drop',    count: () => _countPropsByCategory('ooze') },
   { id: 'liquid',    section: 'PROPS',     label: 'Liquids',    icon: 'drop',    count: () => _countPropsByCategory('liquid') },
+  { id: 'debris',    section: 'PROPS',     label: 'Debris',     icon: 'trash',   count: () => _countPropsByCategory('debris') },
   { id: 'stuff',     section: 'PROPS',     label: 'Stuff',      icon: 'cube',    count: () => _countPropsByCategory('stuff') },
   { id: 'structure', section: 'PROPS',     label: 'Structures', icon: 'house',   count: () => _countPropsByCategory('structure') },
   { id: 'equipment', section: 'PROPS',     label: 'Equipment',  icon: 'tool',    count: () => _countPropsByCategory('equipment') },

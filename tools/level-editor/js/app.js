@@ -192,7 +192,7 @@ const TAB_LABELS = {
 
 /** Tab IDs that show the prop editor (one per category). */
 const PROP_CATEGORY_TABS = [
-  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid',
+  'mineral', 'plant', 'animal', 'fungi', 'ooze', 'liquid', 'debris',
   'stuff', 'structure', 'equipment', 'vehicle', 'storage',
 ];
 
@@ -1649,7 +1649,7 @@ function _mountPropFilter() {
       byCat.get(info.category).push(info);
     }
     // Stable category order matching the sidebar NAV.
-    const catOrder = ['plant', 'animal', 'mineral', 'fungi', 'ooze', 'liquid', 'stuff', 'structure', 'equipment', 'vehicle', 'storage'];
+    const catOrder = ['plant', 'animal', 'mineral', 'fungi', 'ooze', 'liquid', 'debris', 'stuff', 'structure', 'equipment', 'vehicle', 'storage'];
     const orderedCats = [...catOrder.filter(c => byCat.has(c)), ...[...byCat.keys()].filter(c => !catOrder.includes(c))];
 
     for (const cat of orderedCats) {
