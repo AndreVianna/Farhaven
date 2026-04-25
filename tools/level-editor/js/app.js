@@ -177,6 +177,7 @@ const TAB_LABELS = {
   fungi: 'Fungi',
   ooze: 'Oozes',
   liquid: 'Liquids',
+  debris: 'Debris',
   stuff: 'Stuff',
   structure: 'Structures',
   equipment: 'Equipment',
