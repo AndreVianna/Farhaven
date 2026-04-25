@@ -253,8 +253,9 @@ func _rebuild_mesh() -> void:
 			if not corner_map.has(pos_key):
 				corner_map[pos_key] = []
 			# Water tiles use water_level (surface) for corner sharing, not elevation (depth).
-			var surface_elev: int = tile.water_level if tile.biome == _HexTile.Biome.WATER else tile.elevation
-			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = surface_elev, is_water = (tile.biome == _HexTile.Biome.WATER)})
+			var t_is_water: bool = _HexTile.is_water_like(int(tile.biome))
+			var surface_elev: int = tile.water_level if t_is_water else tile.elevation
+			(corner_map[pos_key] as Array).append({color = tile_colors[coords], elevation = surface_elev, is_water = t_is_water})
 
 	# Step 3: Average corner colors per elevation group.
 	var corner_colors: Dictionary = {}
@@ -305,8 +306,8 @@ func _rebuild_mesh() -> void:
 
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		var is_water: bool = tile.biome == _HexTile.Biome.WATER
-		# Water tiles render at water_level (surface), not elevation (depth).
+		var is_water: bool = _HexTile.is_water_like(int(tile.biome))
+		# Water/river tiles render at water_level (surface), not elevation (depth).
 		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 		var elev_y: float = elev * ELEVATION_STEP
 
@@ -319,11 +320,18 @@ func _rebuild_mesh() -> void:
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
-			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+			var n_is_water: bool = _HexTile.is_water_like(int(n_tile.biome))
+			if is_water and not n_is_water:
+				# Water/river side stays at own surface (water doesn't rise).
 				continue
-			# No wall → slope: average the two surface elevations.
-			# Water tiles use water_level (surface), land tiles use elevation.
-			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			if n_is_water and not is_water:
+				# Land side adopts the water/river surface at this edge,
+				# producing a steep drop inside the land tile down to the
+				# shore — without a vertical cliff wall.
+				ey[d] = float(n_tile.water_level) * ELEVATION_STEP
+				continue
+			# Same type on both sides → average the two surface elevations.
+			var n_elev: float = float(n_tile.water_level) if n_is_water else float(n_tile.elevation)
 			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 		all_edge_y[coords] = ey
 
@@ -332,12 +340,15 @@ func _rebuild_mesh() -> void:
 
 	# Step 4b: corner_y — per-point computation for cross-tile consistency.
 	# Each physical corner point is shared by up to 3 tiles. We find connected
-	# components based on walls and type (water/land), average within each
-	# component, and assign the SAME value to every tile in that component.
+	# components (linked across no-wall borders, regardless of biome). Within
+	# each component:
+	#   - if at least one entry is water/river, every entry adopts the average
+	#     surface of the water/river entries (land "drops down" to the shore);
+	#   - otherwise it's a pure-land component and we average all elevations.
 	var corner_point_tiles: Dictionary = {}  # Vector2i pos_key → Array[Dictionary]
 	for coords: Variant in tile_colors:
 		var tile: Resource = HexGrid._tiles[coords]
-		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var is_water: bool = _HexTile.is_water_like(int(tile.biome))
 		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 		for ci: int in range(6):
 			var pos_key: Vector2i = _corner_key(coords as Vector2i, ci)
@@ -354,9 +365,9 @@ func _rebuild_mesh() -> void:
 			# Single tile — keeps its own elevation (already set above).
 			continue
 
-		# Build connectivity: two entries are connected if they are neighbors
-		# with no wall on either side and same type (water/land).
-		# parent[i] tracks union-find root.
+		# Build connectivity: two entries are connected if they are neighbours
+		# with no wall on either side. Biome type no longer blocks the union;
+		# the water/river donation is applied at the averaging step below.
 		var parent: Array[int] = []
 		parent.resize(n)
 		for i: int in range(n):
@@ -365,9 +376,6 @@ func _rebuild_mesh() -> void:
 			for j: int in range(i + 1, n):
 				var a: Dictionary = entries[i]
 				var b: Dictionary = entries[j]
-				if a.is_water != b.is_water:
-					continue
-				# Find direction from a to b.
 				var a_coords: Vector2i = a.coords
 				var b_coords: Vector2i = b.coords
 				var dir_ab: int = -1
@@ -376,13 +384,12 @@ func _rebuild_mesh() -> void:
 						dir_ab = d
 						break
 				if dir_ab < 0:
-					continue  # not neighbors
+					continue  # not neighbours
 				var dir_ba: int = (dir_ab + 3) % 6
 				var a_tile: Resource = HexGrid._tiles[a_coords]
 				var b_tile: Resource = HexGrid._tiles[b_coords]
 				if a_tile.walls[dir_ab] or b_tile.walls[dir_ba]:
 					continue  # wall blocks connection
-				# Union
 				var ra: int = i
 				while parent[ra] != ra:
 					ra = parent[ra]
@@ -392,7 +399,6 @@ func _rebuild_mesh() -> void:
 				if ra != rb:
 					parent[ra] = rb
 
-		# Group by component root and average elevation.
 		var components: Dictionary = {}  # root → Array[int]
 		for i: int in range(n):
 			var r: int = i
@@ -404,10 +410,26 @@ func _rebuild_mesh() -> void:
 
 		for root: Variant in components:
 			var indices: Array = components[root]
-			var sum_e: float = 0.0
+			# If any entry in this component is water/river, its surface
+			# wins for everybody in the component (land "borrows" the
+			# shore height). Otherwise average all land elevations.
+			var water_sum: float = 0.0
+			var water_count: int = 0
+			var land_sum: float = 0.0
+			var land_count: int = 0
 			for idx: int in indices:
-				sum_e += (entries[idx] as Dictionary).elev
-			var avg_y: float = (sum_e / float(indices.size())) * ELEVATION_STEP
+				var e: Dictionary = entries[idx]
+				if e.is_water:
+					water_sum += e.elev
+					water_count += 1
+				else:
+					land_sum += e.elev
+					land_count += 1
+			var avg_y: float
+			if water_count > 0:
+				avg_y = (water_sum / float(water_count)) * ELEVATION_STEP
+			else:
+				avg_y = (land_sum / float(land_count)) * ELEVATION_STEP
 			for idx: int in indices:
 				var entry: Dictionary = entries[idx]
 				(all_corner_y[entry.coords] as Array)[entry.ci] = avg_y
@@ -473,7 +495,7 @@ func _rebuild_mesh() -> void:
 			var world_2d: Vector2 = HexMath.axial_to_world(coords)
 			var cx: float = world_2d.x
 			var cz: float = world_2d.y
-			var is_water: bool = tile.biome == _HexTile.Biome.WATER
+			var is_water: bool = _HexTile.is_water_like(int(tile.biome))
 			var elevation_y: float = (float(tile.water_level) if is_water else float(tile.elevation)) * ELEVATION_STEP
 			var center_color: Color = tile_colors[coords]
 			var corner_y: Array[float] = all_corner_y[coords]
@@ -619,17 +641,19 @@ func _rebuild_mesh() -> void:
 					continue
 				var n_coords: Vector2i = (coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i)
 				var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
-				# Skip if current tile is water and neighbor land is at or above
+				var t_is_water: bool = _HexTile.is_water_like(int(tile.biome))
+				var n_is_water: bool = n_tile != null and _HexTile.is_water_like(int(n_tile.biome))
+				# Skip if current tile is water/river and neighbor land is at or above
 				# water level — land tile draws the shoreline cliff from its side.
-				if tile.biome == _HexTile.Biome.WATER and n_tile != null \
-						and n_tile.biome != _HexTile.Biome.WATER \
+				if t_is_water and n_tile != null \
+						and not n_is_water \
 						and n_tile.elevation >= tile.water_level:
 					continue
 
-				# Water walls get blue color; land walls get darkened biome color.
+				# Water/river walls get blue color; land walls get darkened biome color.
 				var cliff_color: Color
 				var foam_color: Color
-				if tile.biome == _HexTile.Biome.WATER:
+				if t_is_water:
 					cliff_color = Color(0.15, 0.35, 0.7, 1.0)  # water blue
 					foam_color = Color(0.85, 0.92, 0.98, 1.0)  # white foam
 				else:
@@ -675,12 +699,12 @@ func _rebuild_mesh() -> void:
 						l_mid_y = n_ey[rev_d]
 						l_ca_y = n_cy[rev_ec[1]]
 					else:
-						var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+						var n_surface: float = (float(n_tile.water_level) if n_is_water else float(n_tile.elevation)) * ELEVATION_STEP
 						l_ca_y = n_surface
 						l_mid_y = n_surface
 						l_cb_y = n_surface
 				elif n_tile != null:
-					var n_surface: float = (float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)) * ELEVATION_STEP
+					var n_surface: float = (float(n_tile.water_level) if n_is_water else float(n_tile.elevation)) * ELEVATION_STEP
 					l_ca_y = n_surface
 					l_mid_y = n_surface
 					l_cb_y = n_surface
@@ -822,7 +846,7 @@ func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i =
 		var tile: Resource = HexGrid._tiles.get(coords, null)
 		if tile == null:
 			continue
-		var is_water: bool = tile.biome == _HexTile.Biome.WATER
+		var is_water: bool = _HexTile.is_water_like(int(tile.biome))
 		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
 		var elev_y: float = elev * ELEVATION_STEP
 
@@ -834,9 +858,13 @@ func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i =
 			var n_tile: Resource = HexGrid._tiles.get(n_coords, null)
 			if n_tile == null:
 				continue
-			if is_water != (n_tile.biome == _HexTile.Biome.WATER):
+			var n_is_water: bool = _HexTile.is_water_like(int(n_tile.biome))
+			if is_water and not n_is_water:
 				continue
-			var n_elev: float = float(n_tile.water_level) if n_tile.biome == _HexTile.Biome.WATER else float(n_tile.elevation)
+			if n_is_water and not is_water:
+				ey[d] = float(n_tile.water_level) * ELEVATION_STEP
+				continue
+			var n_elev: float = float(n_tile.water_level) if n_is_water else float(n_tile.elevation)
 			ey[d] = ((elev + n_elev) / 2.0) * ELEVATION_STEP
 
 		results[coords] = {
@@ -889,11 +917,6 @@ func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i =
 			for j: int in range(i + 1, n):
 				var a: Dictionary = entries[i]
 				var b: Dictionary = entries[j]
-				if a.is_water != b.is_water:
-					if _bucket_has_focus:
-						print("  pair(%d,%d): SKIP is_water mismatch (a=%s b=%s)" % [
-							i, j, str(a.is_water), str(b.is_water)])
-					continue
 				var dir_ab: int = -1
 				for d: int in range(6):
 					if (a.coords as Vector2i) + (HexMath.DIRECTIONS[d] as Vector2i) == (b.coords as Vector2i):
@@ -940,13 +963,31 @@ func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i =
 			print("  components=%s" % str(components))
 		for root: Variant in components:
 			var indices: Array = components[root]
-			var sum_e: float = 0.0
+			# If any entry in this component is water/river, its surface
+			# wins for everybody (land borrows the shore height).
+			var water_sum: float = 0.0
+			var water_count: int = 0
+			var land_sum: float = 0.0
+			var land_count: int = 0
 			for idx: int in indices:
-				sum_e += (entries[idx] as Dictionary).elev
-			var avg_y: float = (sum_e / float(indices.size())) * ELEVATION_STEP
+				var e: Dictionary = entries[idx]
+				if e.is_water:
+					water_sum += e.elev
+					water_count += 1
+				else:
+					land_sum += e.elev
+					land_count += 1
+			var avg_y: float
+			var avg_src: String
+			if water_count > 0:
+				avg_y = (water_sum / float(water_count)) * ELEVATION_STEP
+				avg_src = "water"
+			else:
+				avg_y = (land_sum / float(land_count)) * ELEVATION_STEP
+				avg_src = "land"
 			if _bucket_has_focus:
-				print("  comp root=%d indices=%s avg_elev=%.3f avg_y=%.3f" % [
-					root, str(indices), sum_e / float(indices.size()), avg_y])
+				print("  comp root=%d indices=%s src=%s avg_y=%.3f (water_count=%d land_count=%d)" % [
+					root, str(indices), avg_src, avg_y, water_count, land_count])
 			for idx: int in indices:
 				var entry: Dictionary = entries[idx]
 				if results.has(entry.coords):

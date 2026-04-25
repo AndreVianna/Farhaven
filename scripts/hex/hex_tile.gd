@@ -22,7 +22,15 @@ enum Biome {
 	VOLCANIC,
 	ALPINE,
 	SHORELINE,
+	RIVER,
 }
+
+
+## True for biomes whose surface is liquid: shared edges/corners with these
+## tiles donate `water_level * ELEVATION_STEP` to land neighbors instead of
+## averaging or smoothing.
+static func is_water_like(b: int) -> bool:
+	return b == Biome.WATER or b == Biome.RIVER
 
 @export var coords: Vector2i = Vector2i.ZERO
 @export var biome: Biome = Biome.GRASSLAND
