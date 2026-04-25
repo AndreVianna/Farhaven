@@ -483,21 +483,11 @@ export function loadMapIntoGrid(hexGrid, mapData) {
     const { q, r } = HexGrid.parseKey(key);
     tile.waterLevel = computeWaterLevel(hexGrid, q, r);
   }
-  // Water↔land shoreline always gets a wall (different biome types
-  // never smooth into each other).
-  for (const [key, tile] of hexGrid.tiles) {
-    const { q, r } = HexGrid.parseKey(key);
-    const tileIsWater = tile.biome === 'B00005';
-    for (let d = 0; d < HexMath.DIRECTIONS.length; d++) {
-      const dir = HexMath.DIRECTIONS[d];
-      const neighbor = hexGrid.getTile(q + dir.q, r + dir.r);
-      if (!neighbor) continue;
-      const neighborIsWater = neighbor.biome === 'B00005';
-      if (tileIsWater !== neighborIsWater) {
-        tile.walls[d] = true;
-      }
-    }
-  }
+  // Walls are deliberate: they only exist where the user placed them.
+  // Water/river shorelines used to get an auto-wall here, but the engine
+  // renderer now handles those borders by donating the water/river
+  // surface to the neighbour's edge_y/corner_y — producing a steep
+  // (but seamless) drop without a vertical cliff face.
 
   return { success: true };
 }
