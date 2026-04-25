@@ -161,17 +161,15 @@ func _on_element_identified(_coords: Vector2i, _entry_id: StringName) -> void:
 	pass
 
 
-func _on_element_unknown(coords: Vector2i, entry_id: StringName, category: int) -> void:
-	if not _is_streamed(coords):
-		return
-	var color: Color = CATEGORY_COLORS.get(category, Color.WHITE)
-	_add_marker(coords, entry_id, "❓", color, _Catalog.KnowledgeState.UNKNOWN, category)
+func _on_element_unknown(_coords: Vector2i, _entry_id: StringName, _category: int) -> void:
+	# Markers disabled — scan stays auto-silent. Catalog still fills in
+	# the background; the world gets an OmniLight3D glow on the active
+	# scan target via ScanProgressRenderer instead.
+	pass
 
 
-func _on_element_encountered(coords: Vector2i, entry_id: StringName, _label: String) -> void:
-	if not _is_streamed(coords):
-		return
-	_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, _Catalog.KnowledgeState.ENCOUNTERED, _Prop.Category.ANIMAL)
+func _on_element_encountered(_coords: Vector2i, _entry_id: StringName, _label: String) -> void:
+	pass
 
 
 ## Player crossed a hex boundary. Diff the label set: drop labels
@@ -240,32 +238,10 @@ func _stream_around(center: Vector2i) -> void:
 		_rehydrate_labels_for_tile(coords)
 
 
-## Restore labels for every prop on the tile using the scanner's
-## knowledge state. Called when a tile enters the streaming window
-## so the user sees the right marker even if they never saw the
-## original element_unknown / element_encountered signal for this
-## instance (e.g. spawned by Populate outside the streaming window).
-func _rehydrate_labels_for_tile(coords: Vector2i) -> void:
-	if _grid == null:
-		return
-	var tile: Resource = _grid.get_tile(coords) if _grid.has_method("get_tile") else null
-	if tile == null:
-		return
-	var catalog: RefCounted = _get_catalog()
-	var props: Array = tile.get_props() if tile.has_method("get_props") else []
-	for prop in props:
-		var entry_id: StringName = prop.type
-		var state: int = _Catalog.KnowledgeState.UNKNOWN
-		if catalog != null and catalog.has_method("get_knowledge_state"):
-			state = catalog.get_knowledge_state(entry_id)
-		if state == _Catalog.KnowledgeState.CATALOGED:
-			continue  # already identified — no marker
-		var category: int = prop.category if "category" in prop else _Prop.Category.PLANT
-		if state == _Catalog.KnowledgeState.ENCOUNTERED:
-			_add_marker(coords, entry_id, "⚠️", ENCOUNTERED_COLOR, state, _Prop.Category.ANIMAL)
-		else:
-			var color: Color = CATEGORY_COLORS.get(category, Color.WHITE)
-			_add_marker(coords, entry_id, "❓", color, state, category)
+## Markers disabled — kept as a stub so callers (stream code) still find
+## a function to invoke. See _on_element_unknown.
+func _rehydrate_labels_for_tile(_coords: Vector2i) -> void:
+	pass
 
 
 func _is_streamed(coords: Vector2i) -> bool:

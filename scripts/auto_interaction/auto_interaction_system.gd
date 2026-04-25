@@ -59,8 +59,6 @@ var _gather_target_coords: Vector2i = Vector2i.ZERO
 var _gather_target_index: int = -1
 var _gather_tween: Tween = null
 var _defend_cooldown: float = 0.0
-var _respawn_queue: Array = []
-var _proximity_timer: float = 0.0
 
 # --- External references (set via _ready or injection for tests) ---
 
@@ -112,15 +110,11 @@ func _resolve_dependencies() -> void:
 
 
 func _process(delta: float) -> void:
-	_tick_respawn_queue(delta)
+	# Auto-gather and auto-pickup were removed — gather is player-driven
+	# now (call try_gather()/try_pickup() from input). Auto-defend cooldown
+	# still ticks here because fauna_moved fires it on its own.
 	if _defend_cooldown > 0.0:
 		_defend_cooldown -= delta
-	# Continuous proximity gather + pickup check (throttled)
-	_proximity_timer += delta
-	if _proximity_timer >= PROXIMITY_CHECK_INTERVAL:
-		_proximity_timer = 0.0
-		_check_gather_proximity()
-		_check_pickup_proximity()
 
 
 func _exit_tree() -> void:
@@ -158,19 +152,20 @@ func can_gather(node: Resource, inventory: RefCounted) -> bool:
 	return inventory.get_tool(slot) != &""
 
 
-# --- Continuous Proximity Gather ---
+# --- Player-driven Gather ---
 
-## Check for gatherable props within GATHER_RADIUS of the player's world position.
-func _check_gather_proximity() -> void:
+## Public entry: attempt to gather the best nearby candidate around the
+## player. Called from input handlers (E/tap once we wire them) — returns
+## true if a gather actually started.
+func try_gather() -> bool:
 	if _is_gathering:
-		return  # Already gathering — chain will re-check after completion
+		return false
 	if _player == null or not "current_tile" in _player:
-		return
-	# Don't gather while dead
+		return false
 	var survival: Node = _get_survival_system()
 	if survival != null and "is_dead" in survival and survival.is_dead:
-		return
-	_try_gather_nearby(_player.current_tile)
+		return false
+	return _try_gather_nearby(_player.current_tile)
 
 
 # --- Auto-Gather Flow ---
@@ -432,47 +427,16 @@ func _on_gather_tween_complete() -> void:
 		node.remaining -= 1
 		auto_gather_completed.emit(coords, node.type, added)
 
-		# Check depletion
+		# Check depletion — once depleted, the prop stays as the
+		# depleted mesh. No respawn queue (collected = gone).
 		if node.remaining <= 0:
 			_grid.prop_depleted.emit(coords, node.type)
-			# Add to respawn queue if respawn_time > 0
-			if node.respawn_time > 0.0:
-				_respawn_queue.append({
-					"coords": coords,
-					"prop_index": index,
-					"time_remaining": node.respawn_time,
-				})
 	else:
 		auto_gather_failed.emit(coords, &"inventory_full")
 
 	_is_gathering = false
-
-	# Chain: re-check from player's CURRENT position
-	if _player != null and "current_tile" in _player:
-		_try_gather_nearby(_player.current_tile)
-
-
-# --- Respawn Queue ---
-
-## Tick respawn timers. Always ticks (fog system removed).
-## On expire: reset node.remaining = max_amount, emit HexGrid.prop_respawned.
-func _tick_respawn_queue(delta: float) -> void:
-	var i: int = _respawn_queue.size() - 1
-	while i >= 0:
-		var entry: Dictionary = _respawn_queue[i]
-		var coords: Vector2i = entry["coords"]
-		entry["time_remaining"] -= delta
-		if entry["time_remaining"] <= 0.0:
-			# Respawn the prop
-			var tile = _grid.get_tile(coords) if _grid != null else null
-			if tile != null:
-				var idx: int = entry["prop_index"]
-				if idx >= 0 and idx < tile.props.size():
-					var node: Resource = tile.props[idx]
-					node.remaining = node.max_amount
-					_grid.prop_respawned.emit(coords, node.type)
-			_respawn_queue.remove_at(i)
-		i -= 1
+	# No auto-chain: gather is player-driven. Player must trigger
+	# try_gather() again to harvest the next nearby prop.
 
 
 # --- Build WorldContext for predicate evaluation ---
@@ -578,10 +542,48 @@ func _get_survival_system() -> Node:
 	return null
 
 
-# --- Auto-Pickup (Proximity-Based) ---
+# --- Player-driven Pickup ---
 
-## Check for ground items within GATHER_RADIUS of the player's world position.
-## Picks up all items at a sub-hex when the player is close enough.
+## Public entry: attempt to pick up nearby ground items. Called from input.
+## Returns true if at least one item was picked up.
+func try_pickup() -> bool:
+	var picked: bool = false
+	if _player == null or not "current_tile" in _player:
+		return picked
+	var survival: Node = _get_survival_system()
+	if survival == null or not survival.has_method("get_ground_items_at"):
+		return picked
+	if "is_dead" in survival and survival.is_dead:
+		return picked
+	if _inventory == null:
+		return picked
+	var player_pos_xz: Vector2 = Vector2.ZERO
+	if "global_position" in _player:
+		player_pos_xz = Vector2(_player.global_position.x, _player.global_position.z)
+	elif "position" in _player:
+		player_pos_xz = Vector2(_player.position.x, _player.position.z)
+	var current_tile: Vector2i = _player.current_tile
+	var items: Array = survival.get_ground_items_at(current_tile)
+	for item in items:
+		var item_name: StringName = item.get("item_type", &"")
+		var amount: int = item.get("count", 0)
+		var sub_hex: Vector2i = item.get("sub_hex", Vector2i.ZERO)
+		if item_name == &"" or amount <= 0:
+			continue
+		var item_world_pos: Vector2 = _HexMath.prop_world_position(current_tile, sub_hex)
+		var dist: float = player_pos_xz.distance_to(item_world_pos)
+		if dist > GATHER_RADIUS:
+			continue
+		var added: int = _inventory.add_item(item_name, amount)
+		if added > 0:
+			survival.remove_ground_item(current_tile, item_name, added, sub_hex)
+			ground_item_picked_up.emit(item_name, added)
+			picked = true
+	return picked
+
+
+## Internal — kept only for callers that already had a reference. No
+## longer wired into _process; use try_pickup() going forward.
 func _check_pickup_proximity() -> void:
 	if _player == null or not "current_tile" in _player:
 		return

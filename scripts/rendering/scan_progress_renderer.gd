@@ -1,9 +1,10 @@
 extends Node3D
 
-## ScanProgressRenderer — single billboard progress bar above scan target.
-## Uses a shader-based approach: one QuadMesh with a spatial shader that
-## handles both billboard orientation and progress fill via UV coordinates.
-## Only one scan at a time, so a single progress bar instance suffices.
+## ScanProgressRenderer — diegetic scan feedback.
+## Replaces the older billboard progress bar with a discreet OmniLight3D
+## hovering above the prop being scanned. Light energy flickers gently
+## while the scan is active and goes dark on complete/interrupt.
+## No HUD chrome; no progress bar; no marker icons.
 
 const _HexMath = preload("res://scripts/hex/hex_math.gd")
 const _HexGrid = preload("res://scripts/hex/hex_grid.gd")
@@ -11,21 +12,33 @@ const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 
 # --- Constants ---
 
-## Y offset above tile surface (slightly higher than icons)
-const PROGRESS_Y_OFFSET: float = 3.5
+## Y offset above tile surface for the light.
+const LIGHT_Y_OFFSET: float = 1.5
 
-## Bar dimensions
-const BAR_WIDTH: float = 1.5
-const BAR_HEIGHT: float = 0.2
+## Light radius — kept small so it lights only the target prop and the
+## immediate ground, doesn't bleed into nearby geometry.
+const LIGHT_RANGE: float = 1.5
+
+## Energy bounds for flicker. Below 1.0 = subtle; the gap (max-min)
+## controls flicker depth, the period below controls speed.
+const FLICKER_ENERGY_MIN: float = 0.45
+const FLICKER_ENERGY_MAX: float = 0.85
+
+## How long one flicker cycle takes (seconds). A small random jitter is
+## added per cycle so it doesn't feel mechanical.
+const FLICKER_PERIOD: float = 0.18
+
+## Warm white — neutral, more diegetic than category-tinted glow.
+const LIGHT_COLOR: Color = Color(1.0, 0.95, 0.78)
 
 # --- State ---
 
-var _mesh_instance: MeshInstance3D = null
-var _shader_material: ShaderMaterial = null
-var _progress: float = 0.0
+var _light: OmniLight3D = null
 var _target_coords: Vector2i = Vector2i.ZERO
 var _target_entry: StringName = &""
 var _active: bool = false
+var _flicker_t: float = 0.0
+var _flicker_period_jittered: float = FLICKER_PERIOD
 var _scanner: Node = null
 var _grid: Node = null
 
@@ -33,28 +46,22 @@ var _grid: Node = null
 func _ready() -> void:
 	if _grid == null:
 		_grid = HexGrid
-	_create_bar()
-	_hide_bar()
+	_create_light()
+	_hide_light()
 	_connect_signals.call_deferred()
+	set_process(false)
 
 
-func _create_bar() -> void:
-	var quad := QuadMesh.new()
-	quad.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-
-	var shader := load("res://shaders/scan_progress.gdshader")
-	_shader_material = ShaderMaterial.new()
-	_shader_material.shader = shader
-	_shader_material.set_shader_parameter("progress", 0.0)
-	_shader_material.set_shader_parameter("fill_color", Color(0.2, 0.9, 0.4, 1.0))
-	_shader_material.set_shader_parameter("bg_color", Color(0.2, 0.2, 0.2, 0.8))
-
-	_mesh_instance = MeshInstance3D.new()
-	_mesh_instance.mesh = quad
-	_mesh_instance.material_override = _shader_material
-	_mesh_instance.name = "ProgressBar"
-	_mesh_instance.visible = false
-	add_child(_mesh_instance)
+func _create_light() -> void:
+	_light = OmniLight3D.new()
+	_light.name = "ScanGlow"
+	_light.light_color = LIGHT_COLOR
+	_light.omni_range = LIGHT_RANGE
+	_light.omni_attenuation = 1.5
+	_light.shadow_enabled = false
+	_light.light_energy = FLICKER_ENERGY_MIN
+	_light.visible = false
+	add_child(_light)
 
 
 func _connect_signals() -> void:
@@ -65,9 +72,6 @@ func _connect_signals() -> void:
 	if _scanner.has_signal("scan_started"):
 		if not _scanner.scan_started.is_connected(_on_scan_started):
 			_scanner.scan_started.connect(_on_scan_started)
-	if _scanner.has_signal("scan_progress_updated"):
-		if not _scanner.scan_progress_updated.is_connected(_on_scan_progress_updated):
-			_scanner.scan_progress_updated.connect(_on_scan_progress_updated)
 	if _scanner.has_signal("scan_completed"):
 		if not _scanner.scan_completed.is_connected(_on_scan_completed):
 			_scanner.scan_completed.connect(_on_scan_completed)
@@ -86,35 +90,42 @@ func _find_scanner() -> Node:
 	return player.get_node_or_null("ScannerSystem")
 
 
+# --- Process (flicker animation) ---
+
+func _process(delta: float) -> void:
+	if not _active or _light == null:
+		return
+	_flicker_t += delta
+	if _flicker_t >= _flicker_period_jittered:
+		_flicker_t = 0.0
+		_flicker_period_jittered = FLICKER_PERIOD * randf_range(0.7, 1.4)
+		# Random energy step inside the band — feels organic, never goes
+		# fully dark mid-scan.
+		_light.light_energy = randf_range(FLICKER_ENERGY_MIN, FLICKER_ENERGY_MAX)
+
+
 # --- Signal handlers ---
 
 func _on_scan_started(entry_id: StringName, coords: Vector2i) -> void:
 	_target_coords = coords
 	_target_entry = entry_id
-	_progress = 0.0
 	_active = true
+	_flicker_t = 0.0
 	_position_at(coords)
-	_update_fill(0.0)
-	_show_bar()
-
-
-func _on_scan_progress_updated(progress: float) -> void:
-	if not _active:
-		return
-	_progress = progress
-	_update_fill(progress)
+	_show_light()
+	set_process(true)
 
 
 func _on_scan_completed(_entry_id: StringName) -> void:
-	_hide_bar()
 	_active = false
-	_progress = 0.0
+	_hide_light()
+	set_process(false)
 
 
 func _on_scan_interrupted() -> void:
-	_hide_bar()
 	_active = false
-	_progress = 0.0
+	_hide_light()
+	set_process(false)
 
 
 # --- Internal ---
@@ -127,34 +138,28 @@ func _position_at(coords: Vector2i) -> void:
 		elevation_y = _grid.get_terrain_y(world_2d.x, world_2d.y)
 	elif tile != null:
 		elevation_y = float(tile.elevation) * _HexGrid.ELEVATION_STEP
-	# Scale the progress bar offset by the target prop's visual scale so
-	# the bar tracks the scanned prop's size rather than floating at a
-	# fixed world height regardless of what's being scanned.
+	# Scale the offset by the target prop's visual scale so a tall tree
+	# gets the glow above its canopy and a small pebble doesn't get one
+	# floating awkwardly high.
 	var visual_scale: float = _PropUtils.get_visual_scale(_target_entry)
-	global_position = Vector3(world_2d.x, elevation_y + PROGRESS_Y_OFFSET * visual_scale, world_2d.y)
+	global_position = Vector3(world_2d.x, elevation_y + LIGHT_Y_OFFSET * visual_scale, world_2d.y)
 
 
-func _update_fill(progress_val: float) -> void:
-	if _shader_material == null:
-		return
-	_shader_material.set_shader_parameter("progress", clampf(progress_val, 0.0, 1.0))
+func _show_light() -> void:
+	if _light != null:
+		_light.visible = true
 
 
-func _show_bar() -> void:
-	if _mesh_instance != null:
-		_mesh_instance.visible = true
-
-
-func _hide_bar() -> void:
-	if _mesh_instance != null:
-		_mesh_instance.visible = false
+func _hide_light() -> void:
+	if _light != null:
+		_light.visible = false
 
 
 # --- Public API (for testing) ---
 
-func is_bar_visible() -> bool:
-	return _active and _mesh_instance != null and _mesh_instance.visible
+func is_active() -> bool:
+	return _active
 
 
-func get_progress() -> float:
-	return _progress
+func get_target_coords() -> Vector2i:
+	return _target_coords
