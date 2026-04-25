@@ -40,6 +40,15 @@ const CHUNK_SIZE: int = 16
 ## Sentinel used in the bucket key when a biome has no textures.
 const _NO_TEXTURE_VARIATION: int = -1
 
+## Integer factors for corner-position keys derived from axial coords.
+## Same physical corner shared by 3 hexes always yields the same (x, y) key,
+## avoiding floating-point divergence that breaks per-point bucketing.
+##   x_key = 3*q + cos(60°*ci)*2
+##   y_key = q + 2*r + sin(60°*ci) / (sqrt(3)/2)
+## Both terms are integers for ci ∈ 0..5.
+const _CORNER_COS2: Array[int] = [2, 1, -1, -2, -1, 1]
+const _CORNER_SIN_F: Array[int] = [0, 1, 1, 0, -1, -1]
+
 ## Legacy/default child — kept for scene compatibility and tests. Always holds
 ## a committed ArrayMesh (first bucket built, or empty).
 var _mesh_instance: MeshInstance3D
@@ -240,13 +249,7 @@ func _rebuild_mesh() -> void:
 		var cx: float = world_2d.x
 		var cz: float = world_2d.y
 		for i: int in range(6):
-			var angle: float = deg_to_rad(60.0 * float(i))
-			var corner_x: float = cx + cos(angle) * HexMath.HEX_SIZE
-			var corner_z: float = cz + sin(angle) * HexMath.HEX_SIZE
-			var pos_key := Vector2i(
-				roundi(corner_x * 1000.0),
-				roundi(corner_z * 1000.0)
-			)
+			var pos_key: Vector2i = _corner_key(coords as Vector2i, i)
 			if not corner_map.has(pos_key):
 				corner_map[pos_key] = []
 			# Water tiles use water_level (surface) for corner sharing, not elevation (depth).
@@ -336,15 +339,8 @@ func _rebuild_mesh() -> void:
 		var tile: Resource = HexGrid._tiles[coords]
 		var is_water: bool = tile.biome == _HexTile.Biome.WATER
 		var elev: float = float(tile.water_level) if is_water else float(tile.elevation)
-		var world_2d: Vector2 = HexMath.axial_to_world(coords)
-		var cx: float = world_2d.x
-		var cz: float = world_2d.y
 		for ci: int in range(6):
-			var angle: float = deg_to_rad(60.0 * float(ci))
-			var pos_key := Vector2i(
-				roundi((cx + cos(angle) * HexMath.HEX_SIZE) * 1000.0),
-				roundi((cz + sin(angle) * HexMath.HEX_SIZE) * 1000.0),
-			)
+			var pos_key: Vector2i = _corner_key(coords as Vector2i, ci)
 			if not corner_point_tiles.has(pos_key):
 				corner_point_tiles[pos_key] = []
 			(corner_point_tiles[pos_key] as Array).append({
@@ -494,14 +490,8 @@ func _rebuild_mesh() -> void:
 				center_color, center_color, center_color,
 			]
 			for i: int in range(6):
-				var angle_i: float = deg_to_rad(60.0 * float(i))
-				var ci_x: float = cx + cos(angle_i) * HexMath.HEX_SIZE
-				var ci_z: float = cz + sin(angle_i) * HexMath.HEX_SIZE
-				var key_i := Vector3i(
-					roundi(ci_x * 1000.0),
-					tile.elevation,
-					roundi(ci_z * 1000.0)
-				)
+				var corner_k: Vector2i = _corner_key(coords as Vector2i, i)
+				var key_i := Vector3i(corner_k.x, tile.elevation, corner_k.y)
 				corner_colors_at[i] = corner_colors.get(key_i, center_color)
 
 			var rings_pos: Array = []
@@ -788,6 +778,16 @@ func _chunk_key_for(coords: Vector2i) -> Vector2i:
 	)
 
 
+## Integer key for corner ci of hex `coords`. Same physical corner from any
+## of the 3 sharing hexes maps to the same Vector2i — no floating-point
+## involved, so bucketing across tiles is exact.
+func _corner_key(coords: Vector2i, ci: int) -> Vector2i:
+	return Vector2i(
+		3 * coords.x + _CORNER_COS2[ci],
+		coords.x + 2 * coords.y + _CORNER_SIN_F[ci],
+	)
+
+
 func _bucket_node_name(key: Vector2i) -> String:
 	if key == Vector2i(-1, -1):
 		return "MeshInstance3D_Cliffs"
@@ -853,15 +853,8 @@ func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i =
 	var corner_point_tiles: Dictionary = {}
 	for coords: Vector2i in results:
 		var data: Dictionary = results[coords]
-		var world_2d: Vector2 = HexMath.axial_to_world(coords)
-		var cx: float = world_2d.x
-		var cz: float = world_2d.y
 		for ci: int in range(6):
-			var angle: float = deg_to_rad(60.0 * float(ci))
-			var pos_key := Vector2i(
-				roundi((cx + cos(angle) * HexMath.HEX_SIZE) * 1000.0),
-				roundi((cz + sin(angle) * HexMath.HEX_SIZE) * 1000.0),
-			)
+			var pos_key: Vector2i = _corner_key(coords, ci)
 			if not corner_point_tiles.has(pos_key):
 				corner_point_tiles[pos_key] = []
 			(corner_point_tiles[pos_key] as Array).append({
