@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_2.png" id="4_tex2"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_3.png" id="5_tex3"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_4.png" id="6_tex4"]
-[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00006_volcanic_5.png" id="7_tex5"]
 
 [sub_resource type="Resource" id="hazard_1"]
 script = ExtResource("2_hazard_cap")
@@ -23,5 +22,5 @@ display_name = "Volcanic"
 short_description = "Black basalt rock with glowing lava veins."
 long_description = "Ground cooked by old magma intrusions and still warm to the touch. Crystallized flows crack into sharp edges; the air tastes of sulfur, and the brightest veins will char anything that lingers. Useful minerals sit just below the crust where the heat hasn't gotten to them yet."
 color = Color(0.1803921568627451, 0.12156862745098039, 0.1411764705882353, 1.0)
-terrain_textures = [ExtResource("3_tex1"), ExtResource("4_tex2"), ExtResource("5_tex3"), ExtResource("6_tex4"), ExtResource("7_tex5")]
+terrain_textures = [ExtResource("3_tex1"), ExtResource("4_tex2"), ExtResource("5_tex3"), ExtResource("6_tex4")]
 hazard = SubResource("hazard_1")
