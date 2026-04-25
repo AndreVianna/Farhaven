@@ -813,8 +813,9 @@ const _DIR_NAMES: Array = ["E", "NE", "NW", "W", "SW", "SE"]
 ## Compute edge_y[6] and corner_y[6] for a set of tiles using the same
 ## per-point algorithm as _rebuild_mesh Steps 4 + 4b.
 ## Returns Dictionary { coords → { edge_y, corner_y, biome, ... } }.
-func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
+func _compute_geometry_for(tile_coords: Array[Vector2i], debug_focus: Vector2i = Vector2i(99999, 99999)) -> Dictionary:
 	var results: Dictionary = {}  # Vector2i → Dictionary
+	var _has_focus: bool = debug_focus != Vector2i(99999, 99999)
 
 	# edge_y: per-tile (same as renderer Step 4).
 	for coords: Vector2i in tile_coords:
@@ -874,6 +875,19 @@ func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
 		var n: int = entries.size()
 		if n <= 1:
 			continue
+		# Diagnostic: only log buckets that involve the focus hex.
+		var _bucket_has_focus: bool = false
+		if _has_focus:
+			for e: Dictionary in entries:
+				if (e.coords as Vector2i) == debug_focus:
+					_bucket_has_focus = true
+					break
+		if _bucket_has_focus:
+			print("[CY-DBG] bucket pos_key=%s entries=%d" % [str(pos_key), n])
+			for ei: int in range(n):
+				var e: Dictionary = entries[ei]
+				print("  [%d] coords=%s ci=%d elev=%.1f is_water=%s" % [
+					ei, str(e.coords), e.ci, e.elev, str(e.is_water)])
 		var parent: Array[int] = []
 		parent.resize(n)
 		for i: int in range(n):
@@ -883,6 +897,9 @@ func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
 				var a: Dictionary = entries[i]
 				var b: Dictionary = entries[j]
 				if a.is_water != b.is_water:
+					if _bucket_has_focus:
+						print("  pair(%d,%d): SKIP is_water mismatch (a=%s b=%s)" % [
+							i, j, str(a.is_water), str(b.is_water)])
 					continue
 				var dir_ab: int = -1
 				for d: int in range(6):
@@ -890,11 +907,21 @@ func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
 						dir_ab = d
 						break
 				if dir_ab < 0:
+					if _bucket_has_focus:
+						print("  pair(%d,%d): SKIP not neighbors (a=%s b=%s)" % [
+							i, j, str(a.coords), str(b.coords)])
 					continue
 				var dir_ba: int = (dir_ab + 3) % 6
 				var a_tile: Resource = HexGrid._tiles[a.coords]
 				var b_tile: Resource = HexGrid._tiles[b.coords]
 				if a_tile.walls[dir_ab] or b_tile.walls[dir_ba]:
+					if _bucket_has_focus:
+						var aw: String = ""
+						for w: bool in a_tile.walls: aw += "T" if w else "F"
+						var bw: String = ""
+						for w: bool in b_tile.walls: bw += "T" if w else "F"
+						print("  pair(%d,%d): SKIP wall blocks dir_ab=%d dir_ba=%d a.walls=[%s] b.walls=[%s]" % [
+							i, j, dir_ab, dir_ba, aw, bw])
 					continue
 				var ra: int = i
 				while parent[ra] != ra:
@@ -902,8 +929,12 @@ func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
 				var rb: int = j
 				while parent[rb] != rb:
 					rb = parent[rb]
+				if _bucket_has_focus:
+					print("  pair(%d,%d): UNION dir_ab=%d ra=%d rb=%d" % [i, j, dir_ab, ra, rb])
 				if ra != rb:
 					parent[ra] = rb
+		if _bucket_has_focus:
+			print("  parent[]=%s" % str(parent))
 		var components: Dictionary = {}
 		for i: int in range(n):
 			var r: int = i
@@ -912,12 +943,17 @@ func _compute_geometry_for(tile_coords: Array[Vector2i]) -> Dictionary:
 			if not components.has(r):
 				components[r] = []
 			(components[r] as Array).append(i)
+		if _bucket_has_focus:
+			print("  components=%s" % str(components))
 		for root: Variant in components:
 			var indices: Array = components[root]
 			var sum_e: float = 0.0
 			for idx: int in indices:
 				sum_e += (entries[idx] as Dictionary).elev
 			var avg_y: float = (sum_e / float(indices.size())) * ELEVATION_STEP
+			if _bucket_has_focus:
+				print("  comp root=%d indices=%s avg_elev=%.3f avg_y=%.3f" % [
+					root, str(indices), sum_e / float(indices.size()), avg_y])
 			for idx: int in indices:
 				var entry: Dictionary = entries[idx]
 				if results.has(entry.coords):
@@ -950,7 +986,7 @@ func debug_hex(coords: Vector2i) -> void:
 			if HexGrid._tiles.has(nn) and not all_coords.has(nn):
 				all_coords.append(nn)
 
-	var geo: Dictionary = _compute_geometry_for(all_coords)
+	var geo: Dictionary = _compute_geometry_for(all_coords, coords)
 	var center: Dictionary = geo[coords]
 
 	var walls_str: String = ""
