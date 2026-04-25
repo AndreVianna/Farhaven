@@ -7,7 +7,7 @@
 import { TresParser } from './tres-parser.js';
 import { HexGrid, loadMapIntoGrid, serializeGridToMapJson, CATEGORIES, ORIGINS, NATURAL_CATEGORIES, CATEGORY_TO_INT, INT_TO_ORIGIN, defaultOrigin } from './hex-grid.js';
 import { HexMath } from './hex-math.js';
-import { CommandHistory, EditPropCommand } from './commands.js';
+import { CommandHistory, EditPropCommand, ClearHexWallsCommand, BatchCommand } from './commands.js';
 import { ProjectContext, FileDiscovery } from './file-discovery.js';
 import { HexCanvas } from './canvas.js';
 import { HexInspector, showInlineModal, showInlineFormModal, showErrorListModal, showPropOverrideModal } from './panels.js';
@@ -782,6 +782,48 @@ function _smoothRockyPeaks() {
 
 
 /**
+ * Clear every wall on every hex of the current map. Each touched hex
+ * is wrapped in a ClearHexWallsCommand (handles the per-edge undo
+ * snapshot + neighbour mirror clearing); the full set is committed as
+ * a single BatchCommand so one Ctrl+Z reverts the whole sweep.
+ */
+function _clearAllWalls() {
+  const tilesWithWalls = [];
+  for (const [key, tile] of hexGrid.getAllTiles()) {
+    if (tile && Array.isArray(tile.walls) && tile.walls.some(Boolean)) {
+      tilesWithWalls.push({ key, tile });
+    }
+  }
+  if (tilesWithWalls.length === 0) {
+    setStatus('Clear All Walls: no walls on this map.');
+    return;
+  }
+  if (!confirm(`Clear ALL walls on ${tilesWithWalls.length} hex(es)? Use Ctrl+Z to undo.`)) return;
+
+  const cmds = [];
+  for (const { key } of tilesWithWalls) {
+    const [q, r] = key.split(',').map(Number);
+    const cmd = new ClearHexWallsCommand(hexGrid, q, r);
+    cmd.execute();
+    cmds.push(cmd);
+  }
+  // Push as a single batch entry so undo reverts the whole sweep at once.
+  if (cmds.length === 1) {
+    commandHistory._pushOnly(cmds[0]);
+  } else if (cmds.length > 1) {
+    commandHistory._pushOnly(new BatchCommand(cmds));
+  }
+  dirtyTracker.markDirty('map');
+  if (hexCanvas) {
+    hexCanvas.invalidateReachability();
+    hexCanvas.requestRender();
+  }
+  if (hexInspector) hexInspector.updateMapStats();
+  setStatus(`Clear All Walls: cleared walls on ${tilesWithWalls.length} hex(es).`);
+}
+
+
+/**
  * Regenerate the current map using its stored generator params.
  * Called from the Map Info panel's Regenerate button.
  */
@@ -1367,6 +1409,9 @@ function _buildTitlebarMenus() {
       items: [
         { label: 'Populate Natural Props…', action: () => _clickByIdIfExists('btn-populate-map') },
         { label: 'Clear Natural Props…',    danger: true, action: () => _clickByIdIfExists('btn-clear-props') },
+        { separator: true },
+        { label: 'Smooth Rocky Peaks',      action: _smoothRockyPeaks },
+        { label: 'Clear All Walls…',        danger: true, action: _clearAllWalls },
       ],
     },
     {
@@ -1410,6 +1455,7 @@ function _openCommandPaletteWithCtx() {
       populate: () => _clickByIdIfExists('btn-populate-map'),
       clearProps: () => _clickByIdIfExists('btn-clear-props'),
       smoothRocky: _smoothRockyPeaks,
+      clearAllWalls: _clearAllWalls,
       regionBrush: () => selectTool('region'),
       help: _toggleHelpOverlay,
     },
