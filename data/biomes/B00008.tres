@@ -5,7 +5,6 @@
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00008_shoreline_2.png" id="3_tex2"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00008_shoreline_3.png" id="4_tex3"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00008_shoreline_4.png" id="5_tex4"]
-[ext_resource type="Texture2D" path="res://assets/textures/biomes/B00008_shoreline_5.png" id="6_tex5"]
 
 [resource]
 script = ExtResource("1_biome")
@@ -14,4 +13,4 @@ display_name = "Shoreline"
 short_description = "Sandy beach between water and land."
 long_description = "Wet-and-dry sand strewn with pebbles and the occasional drift of kelp or shells. Easy to cross but scarce in cover, it reads as the boundary between swim-depths and the grass behind. Chapter 1's beaches are temperate; the Desertic version will live in a later biome."
 color = Color(0.87, 0.82, 0.67, 1.0)
-terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4"), ExtResource("6_tex5")]
+terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4")]
