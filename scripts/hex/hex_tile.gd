@@ -23,6 +23,7 @@ enum Biome {
 	ALPINE,
 	SHORELINE,
 	RIVER,
+	COASTAL_ROCKS,
 }
 
 
