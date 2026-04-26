@@ -15,21 +15,22 @@ const _PropUtils = preload("res://scripts/rendering/prop_utils.gd")
 ## Y offset above tile surface for the light.
 const LIGHT_Y_OFFSET: float = 1.5
 
-## Light radius — kept small so it lights only the target prop and the
-## immediate ground, doesn't bleed into nearby geometry.
-const LIGHT_RANGE: float = 1.5
+## Light radius — large enough to read from a few tiles away while still
+## not flooding the surrounding terrain.
+const LIGHT_RANGE: float = 4.0
 
-## Energy bounds for flicker. Below 1.0 = subtle; the gap (max-min)
-## controls flicker depth, the period below controls speed.
-const FLICKER_ENERGY_MIN: float = 0.45
-const FLICKER_ENERGY_MAX: float = 0.85
+## Energy bounds for flicker. Tuned bright enough to be obviously the
+## scanner glow even in daylight; still walks within a band so it never
+## pegs to a single value.
+const FLICKER_ENERGY_MIN: float = 2.5
+const FLICKER_ENERGY_MAX: float = 4.5
 
 ## How long one flicker cycle takes (seconds). A small random jitter is
 ## added per cycle so it doesn't feel mechanical.
 const FLICKER_PERIOD: float = 0.18
 
-## Warm white — neutral, more diegetic than category-tinted glow.
-const LIGHT_COLOR: Color = Color(1.0, 0.95, 0.78)
+## Cool blue — reads as an active scanner beam.
+const LIGHT_COLOR: Color = Color(0.35, 0.65, 1.0)
 
 # --- State ---
 
