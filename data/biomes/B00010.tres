@@ -1,10 +1,25 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=7 format=3 uid="uid://ccoastalrocks01"]
+[gd_resource type="Resource" script_class="BiomeData" load_steps=9 format=3 uid="uid://ccoastalrocks01"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00004_rocky_1.png" id="2_tex1"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00004_rocky_2.png" id="3_tex2"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00004_rocky_3.png" id="4_tex3"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00004_rocky_4.png" id="5_tex4"]
+[ext_resource type="Script" path="res://scripts/hex/biome_prop.gd" id="2_biome_prop"]
+
+[sub_resource type="Resource" id="biome_prop_1"]
+script = ExtResource("2_biome_prop")
+prop_id = &"P01013"
+frequency = 0.3
+grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
+
+[sub_resource type="Resource" id="biome_prop_2"]
+script = ExtResource("2_biome_prop")
+prop_id = &"P01002"
+frequency = 0.03
+grouping_range = Vector2i(1, 1)
+elevation_range = Vector2i(-100, 100)
 
 [resource]
 script = ExtResource("1_biome")
@@ -13,5 +28,5 @@ display_name = "Coastal Rocks"
 short_description = "Wave-worn rock at the water's edge."
 long_description = "Same hard ground as the inland ridges, but the tide and salt mist have given the surface a different character — pock-marks where shells settled, polished patches where currents linger, scatter from whatever the water leaves behind. The catalogue of life here is its own."
 color = Color(0.5490196078431373, 0.5019607843137255, 0.45098039215686275, 1.0)
+natural_props = Array[Resource]([SubResource("biome_prop_1"), SubResource("biome_prop_2")])
 terrain_textures = [ExtResource("2_tex1"), ExtResource("3_tex2"), ExtResource("4_tex3"), ExtResource("5_tex4")]
-natural_props = Array[Resource]([])
