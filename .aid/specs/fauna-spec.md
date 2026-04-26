@@ -1,12 +1,14 @@
 # Fauna Spec — Farhaven
 
-**Status:** Draft v3 — biology-correction pass (Andre / 2026-04-26)
+**Status:** Draft v4 — A0021 reduced-pair pass (Andre / 2026-04-26)
 **Author:** Architect (Lola)
 **Purpose:** Worldbuilding + technical foundation for the animal system. No code yet. All decisions citeable against the existing codebase.
 
 **v2 changelog:** Added 2 biwing quadrupeds (A0023 Fan-Mantled Pacer, A0024 Cliff-Drop Pouncer); reworked A0022 Carrion Mound to a single-creature, one-per-corpse decomposer (no swarm/patch); swept microfauna wording (A0017 plankton → suspended algae; minor diet copy elsewhere); sharpened A0021 outlier lore (pre-bottleneck relict lineage).
 
 **v3 changelog:** Reframed the six-limb body plan as the planet's *early/foundational* layout, not the result of a later "hexapod radiation" — it goes deep enough that even fish carry three pairs of lateral fins (pectoral, abdominal, pelvic). Removed all "mammal-analogue" language since the spec doesn't commit to mammal-grade biology (no claim about milk/lactation). Megafauna fur is reframed as the "non-plumed, non-scaled" coat — fur because the lineage isn't reptile-equivalent, not because of cold (think Earth giraffe / Megatherium / Lestodon: short hair on warm-climate megafauna). Reworked A0021 outlier story to drop the "displaced by hexapods" framing.
+
+**v4 changelog:** A0021 Ash-Coat Pacer is no longer a true 4-limb outlier. The third pair of limbs hasn't disappeared — it's regressed into two small grasping appendages flanking the mouth, used for handling food before chewing (Andre's call). Net effect: 24 of 24 species now comply with the six-limb plan, and A0021 illustrates the plan flexing rather than breaking. Updated master table limbs column, §3.2 limb tally (added "reduced pair" body-plan row, removed the outlier row), §3.3 long-form description, §4.1 trophic chart (A0021 placed under primary consumers), §4.1 footer note (re-titled "Reduced-pair lineage").
 
 ---
 
@@ -22,7 +24,7 @@ These are non-negotiable. Every species must comply or be flagged as an outlier.
 
 | Rule | Specifics |
 |------|-----------|
-| **Six-limb dominance** | Default body plan is six limbs (three paired appendages), inherited from very early in the planet's evolutionary history. Variants: 6 legs (hexapods), 4 wings + 2 legs, 2 wings + 4 legs, 6 mixed-use (climber/grasper). Fish carry the same plan as 3 pairs of lateral fins (pectoral, abdominal, pelvic). 4-limbed forms exist but must be called out as outliers. |
+| **Six-limb dominance** | Default body plan is six limbs (three paired appendages), inherited from very early in the planet's evolutionary history. Variants: 6 legs (hexapods), 4 wings + 2 legs, 2 wings + 4 legs, 6 mixed-use (climber/grasper), or 4 + 2 reduced (one pair regressed into a vestige with a niche role — A0021's mouth-graspers). Fish carry the same plan as 3 pairs of lateral fins (pectoral, abdominal, pelvic). True 4-limb forms (no third pair at all) are not authored in this spec. |
 | **No giant reptiles** | The "scaly" lineage on Farhaven stayed small and convergently grew plumage. No T-rex analogues. Largest "reptile-like" creature: dog-sized. |
 | **Furry megafauna** | Animals over Large size (>2.5 m) are typically fur-covered. Fur here means "not scaled and not plumed" — it's the coat type for the non-reptile lineage, not an adaptation to cold. Earth analogues: giraffe (short hair, warm climate), Megatherium / Lestodon (long hair, also warm climate). The spec does not commit to mammal-grade biology. |
 | **Size band** | Smallest ~0.2 m body length (rat scale). Largest ~10 m tall / 15 m long (~2× elephant). No insects, no whales. |
@@ -71,12 +73,12 @@ Roster is sized for variety without sprawl. Fourteen land creatures (including t
 | A0018 | Cliff-Anchor          | Small     | 0.5 m       | 6 (4 cling + 2 fold-wing)     | Plumage + hide    | climb / glide       | piscivore (dives from cliffs) | peaceful, colonial | diurnal | Coastal Rocks               | egg harvest, lore      |
 | A0019 | Crash-Site Scavenger  | Small     | 0.4 m       | 6 walking legs                | Patchy plumage    | walk / sprint       | scavenger (carrion, scrap-organic) | curious, skittish | cathemeral | Crash Site (B00001), Shoreline | first encounter, lore  |
 | A0020 | Glow-Tendril Drifter  | Small     | 0.6 m       | 6 (water-suspended fronds)    | Translucent membrane | swim (passive)   | filter-feeder + chemosynth | peaceful, hazardous on contact | nocturnal | Water deep, River deep  | bioluminescent hazard  |
-| A0021 | Ash-Coat Pacer        | Medium    | 1.5 m       | **4 walking legs (outlier)**  | Short fur         | walk / sprint       | omnivore             | territorial    | crepuscular  | Rocky, Crash Site            | called-out outlier; lore: founder mutation |
+| A0021 | Ash-Coat Pacer        | Medium    | 1.5 m       | 4 walking legs + 2 vestigial mouth-graspers | Short fur         | walk / sprint       | omnivore             | territorial    | crepuscular  | Rocky, Crash Site            | reduced-pair lineage; lore detail in §3.3 |
 | A0022 | Carrion Mound         | Small     | 0.4 m       | 6 vestigial nubs              | Slick mucal skin  | walk (slow crawl)   | detritivore (single corpse) | peaceful       | always       | All non-Volcanic            | corpse decomposition mechanism |
 | A0023 | Fan-Mantled Pacer     | Large     | 2.8 m / 2.2 m tall | 4 walking legs + 2 short wings | Plumage + dorsal fan | walk / sprint   | grazer (Blade Grass, low ferns) | territorial males, herd otherwise | diurnal | Grassland (B00002), Coastal Rocks (B00010) edge | display species, plumage harvest |
 | A0024 | Cliff-Drop Pouncer    | Medium    | 1.7 m       | 4 walking legs + 2 wings (one-shot glide) | Short fur + plumed wings | climb / glide / sprint | carnivore (mid-size grazers) | predatory ambush | crepuscular | Coastal Rocks (B00010), Rocky (B00004) ledges | aerial-ambush threat, claw + plume harvest |
 
-**Counts:** 24 species. 14 land (incl. 2 biwing quadrupeds A0023-A0024), 4 aerial-dominant (A0005-A0007 + A0018), 5 aquatic/semi-aquatic (A0013-A0017, A0020). 1 outlier (A0021). 1 decomposer (A0022).
+**Counts:** 24 species. 14 land (incl. 2 biwing quadrupeds A0023-A0024), 4 aerial-dominant (A0005-A0007 + A0018), 5 aquatic/semi-aquatic (A0013-A0017, A0020). 1 decomposer (A0022). All 24 species comply with the six-limb plan; A0021 carries a reduced/atrophied pair rather than a true 4-limb body, so the spec has zero true outliers.
 
 ### 3.2 Limb-count tally (compliance check)
 
@@ -86,12 +88,12 @@ Roster is sized for variety without sprawl. Fourteen land creatures (including t
 | 6 mixed-use       | 6     | A0003, A0011, A0013, A0014, A0017, A0018 |
 | 4 wings + 2 legs (tetrawing biped) | 3 | A0005, A0006, A0007 |
 | 4 legs + 2 wings (biwing quadruped) | 2 | A0023, A0024 |
+| 4 legs + 2 vestigial graspers (reduced pair) | 1 | A0021 |
 | 6 fins            | 1     | A0015 |
 | 4 fins + 2 legs   | 1     | A0016 |
 | 6 fronds          | 1     | A0020 |
-| **4 walking legs (outlier)** | 1 | A0021 — flagged |
 
-23 of 24 species are 6-limbed. A0021 is the explicit outlier. Both six-limbed winged patterns from §1 are now represented (tetrawing biped: 4+2, biwing quadruped: 2+4).
+24 of 24 species comply with the six-limb plan. A0021 is the only species in which one of the three pairs has regressed: its third pair is reduced to small mouth-side graspers (food-handling vestiges, see §3.3). Both six-limbed winged patterns from §1 are represented (tetrawing biped: 4+2, biwing quadruped: 2+4).
 
 ### 3.3 Per-species detail (long form)
 
@@ -111,7 +113,7 @@ For the MVP cut (§6.7), full PropDef-ready descriptions:
 
 **A0022 Carrion Mound.** A single low-slung decomposer — not a swarm, not a patch. Roughly 0.4 m long, slick mucal skin, six vestigial nubs that propel a slow shuffling crawl. One Mound attaches to one corpse; over several hours of game time it breaks the corpse down into reusable detritus. Cannot move between corpses: when "its" corpse is fully consumed, the Mound itself decomposes and despawns alongside it. Implementation note: this is the corpse-cleanup mechanism, not a huntable target — catalog entry only, no harvest yields. Spawns when a corpse prop appears nearby; lifetime is bounded by the corpse's lifetime.
 
-**A0021 Ash-Coat Pacer.** Mid-size four-legged grazer-omnivore, ash-coloured short fur, called out as the spec's only quadruped outlier. **Lore:** an isolated branch that never developed the third pair of limbs — not a regression from a six-limbed ancestor, just a side-line that stayed where it started while the dominant lineages all elaborated on the three-pair plan. It persists in the Rocky and Crash Site margins, where the niche it occupies is narrow enough that competition with six-limbed grazers stays manageable. The player meets it as the planet's quiet evidence that the six-limb pattern, while overwhelmingly dominant, was never the only path biology took here.
+**A0021 Ash-Coat Pacer.** Mid-size grazer-omnivore, ash-coloured short fur, locomotes on four sturdy walking legs. **Distinguishing feature — the reduced pair:** the third pair of limbs has regressed across this lineage's history into two small grasping appendages flanking the mouth, no longer load-bearing and used only for handling food before chewing (think Earth's mantis foreclaws shrunk and migrated up to the jawline, or a hermit crab's chelipeds reduced to picker-size). They are visible up close — short, dexterous, fur-flecked — and the catalog entry calls them out as the spec's clearest illustration that the six-limb plan persists even where evolution has demoted one of the pairs to a niche role. Behaviourally the Pacer is territorial in the Rocky and Crash Site margins, where the narrow niche it occupies (it browses tougher fibrous matter than the herd grazers) keeps competition manageable. The player meets it as quiet evidence that the three-pair body plan flexes — a pair can shrink, migrate, or specialise — without breaking.
 
 **A0023 Fan-Mantled Pacer.** Large biwing quadruped (2.8 m long, 2.2 m at the shoulder). Four sturdy walking legs, plus a pair of short wings that fold flat against the back as a dorsal fan when at rest. The wings are not used for sustained flight — they are display structures, raised in mating bouts and territorial standoffs, and unfurled to dump heat in midday Grassland sun. Males are territorial during display season; outside it, herds of 5-12 graze peacefully on Blade Grass and low ferns. Yields: 4 hide, 6 meat, 2 plumage (a high-value dye material from the fan), 1 sinew. Threat tier 2 (territorial males), 0 (females, off-season). Spans Grassland and the Coastal Rocks edge — herds drift to the rocks during display season for the wind that lifts the fans.
 
@@ -137,6 +139,7 @@ Producers (already in code as plants/fungi)
         ├─ A0013 Tide-Mantled Hexapod (filter + scavenge drift detritus)
         ├─ A0020 Glow-Tendril Drifter (filter drift detritus + chemosynth)
         ├─ A0005 Glasswing Strider    (nectar-analogue)
+        ├─ A0021 Ash-Coat Pacer       (tougher fibrous matter; mouth-graspers handle food)
         └─ A0023 Fan-Mantled Pacer    (Blade Grass, low ferns)
   └─> Secondary consumers (small predators, omnivores, scavengers)
         ├─ A0004 Plumed Stalker       (small fauna)
@@ -155,7 +158,7 @@ Producers (already in code as plants/fungi)
         └─ A0022 Carrion Mound        (one Mound per corpse → corpse cycle)
 ```
 
-**Outlier:** A0021 Ash-Coat Pacer — no trophic role; lore-flagged founder species.
+**Reduced-pair lineage:** A0021 Ash-Coat Pacer — primary consumer (browser); the species is in the trophic chart but called out separately because its morphology illustrates the three-pair body plan flexing, not breaking.
 
 ### 4.2 Predator-prey pairings
 
@@ -262,9 +265,9 @@ Following the plant + mineral schema convention in `catalogable_cap.gd:11-37`. F
 
 ```
 size_class:        String  "tiny" | "small" | "medium" | "large" | "huge" | "colossal"
-limb_count:        int     2-8 (almost always 6)
+limb_count:        int     6 (4 walking + 2 reduced graspers count as 6)
 body_plan:         String  "hexapod" | "tetrawing_biped" | "biwing_quadruped"
-                          | "hex_climber" | "fin_hexapod" | "outlier_quadruped"
+                          | "hex_climber" | "fin_hexapod" | "reduced_pair"
 covering:          String  "fur" | "plumage" | "scaled_hide" | "smooth_skin"
                           | "hide_plate" | "membrane" | "shell"
 diet_class:        String  "grazer" | "browser" | "carnivore" | "piscivore"
