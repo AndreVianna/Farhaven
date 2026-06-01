@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="BiomeData" load_steps=9 format=3 uid="uid://ccoastalrocks01"]
+[gd_resource type="Resource" script_class="BiomeData" format=3 uid="uid://bva34nsqqe1xo"]
 
 [ext_resource type="Script" path="res://scripts/hex/biome_data.gd" id="1_biome"]
 [ext_resource type="Texture2D" path="res://assets/textures/biomes/B00004_rocky_1.png" id="2_tex1"]
